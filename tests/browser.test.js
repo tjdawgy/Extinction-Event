@@ -121,3 +121,19 @@ test('old-version or corrupt saves fall back to a clean New match', { skip }, as
     await page.close();
   }
 });
+
+test('no main-canvas resizes during a 60-second match (each resize clears the canvas: black flash)', { skip, timeout: 60000 }, async () => {
+  const { page, errors } = await openPage(browser, PHONE, { countCanvasResizes: true });
+  await page.click('#bPlay');
+  await page.waitForFunction(() => game.countdown === 0, null, { timeout: 8000 });
+  await page.click('#bSpeed'); await page.click('#bSpeed'); // 3×: 60 game seconds in ~20 s
+  const before = await page.evaluate(() => window.__canvasWrites.cv || 0);
+  // Top-bar text changing width is what used to trigger it: cycle the credits through 1–5 digits
+  await page.evaluate(() => { let k = 0; setInterval(() => { game.sides[0].res.c = [9, 99, 999, 9999, 99999][k++ % 5]; }, 700); });
+  await page.waitForFunction(() => game.t >= 60, null, { timeout: 45000 });
+  const r = await page.evaluate(() => ({ cv: window.__canvasWrites.cv || 0, mm: window.__canvasWrites.mm || 0 }));
+  assert.strictEqual(r.cv - before, 0, `main canvas resized ${r.cv - before} times`);
+  assert.ok(r.mm > 0, 'the minimap did resize (so the trigger was exercised)');
+  assert.deepStrictEqual(errors, []);
+  await page.close();
+});

@@ -211,7 +211,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '1.3'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '1.4'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -1606,23 +1606,42 @@ let diffKey = 'normal';
 try { diffKey = localStorage.getItem('colonyMobile.diff') || 'normal'; if (!DIFF[diffKey]) diffKey = 'normal'; } catch (e) {}
 groundCache = buildGroundCache();
 
-function resize() {
+// Assigning a canvas's width or height clears it, even to the same value, so only touch it on a real change
+function fitCanvas(c, w, h) {
+  const W = Math.max(1, Math.round(w * V.dpr)), H = Math.max(1, Math.round(h * V.dpr));
+  if (c.width === W && c.height === H) return false;
+  c.width = W; c.height = H;
+  return true;
+}
+function drawNow() { // redraw straight after a resize so a cleared canvas is never shown
+  render(ctx, game, last / 1000, sel, selPad);
+  drawMinimapNow();
+}
+function drawMinimapNow() { if (mm.width > 1) { mctx.setTransform(V.dpr, 0, 0, V.dpr, 0, 0); drawMinimap(mctx, game, mm.width / V.dpr, mm.height / V.dpr); } }
+function resizeMain() {
   const r = cv.getBoundingClientRect(), hud = $('hud').getBoundingClientRect(), tray = $('panel').getBoundingClientRect();
   V.dpr = Math.min(2, window.devicePixelRatio || 1);
   V.cw = r.width; V.ch = r.height;
-  cv.width = Math.max(1, Math.round(r.width * V.dpr)); cv.height = Math.max(1, Math.round(r.height * V.dpr));
   V.ft = hud.bottom - r.top; V.fb = tray.top - r.top;
   // Fit the base and battle lanes between the top bar and the card tray
   V.S0 = clamp((V.fb - V.ft) / (Y_BOT - Y_TOP), 0.55, 1.35);
   V.S = V.S0 * V.zoom;
   V.A = V.fb;
-  const mr = mm.getBoundingClientRect();
-  mm.width = Math.max(1, Math.round(mr.width * V.dpr)); mm.height = Math.max(1, Math.round(mr.height * V.dpr));
   clampCam();
+  return fitCanvas(cv, r.width, r.height);
+}
+function resizeMinimap() { const mr = mm.getBoundingClientRect(); return fitCanvas(mm, mr.width, mr.height); }
+function resize() {
+  const a = resizeMain(), b = resizeMinimap();
+  if (a) drawNow(); else if (b) drawMinimapNow();
 }
 window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', () => setTimeout(resize, 250));
-if (window.ResizeObserver) { const ro = new ResizeObserver(resize); ro.observe($('field')); ro.observe(cv); ro.observe(mm); }
+if (window.ResizeObserver) {
+  // The minimap changes width whenever top-bar text does (credit digits, HQ status); that must never touch the battlefield canvas
+  new ResizeObserver(() => { if (resizeMain()) drawNow(); }).observe($('field'));
+  new ResizeObserver(() => { if (resizeMinimap()) drawMinimapNow(); }).observe(mm);
+}
 function homeX() {
   const hw = V.cw / 2 / V.S0, x0 = UMIN - 40, x1 = UMAX + 40;
   return x1 - x0 < 2 * hw ? (x0 + x1) / 2 : clamp(HQ_U + hw * 0.55 - 60, x0 + hw, x1 - hw);
@@ -2089,7 +2108,7 @@ function frame(ts) {
   } else if (game && game.over) update(game, dt);
   if (!gest && Math.abs(cam.vx) > 5) { cam.x += cam.vx * dt; cam.vx *= Math.pow(0.03, dt); clampCam(); }
   render(ctx, game, ts / 1000, sel, selPad);
-  if (mm.width > 1) { mctx.setTransform(V.dpr, 0, 0, V.dpr, 0, 0); drawMinimap(mctx, game, mm.width / V.dpr, mm.height / V.dpr); }
+  drawMinimapNow();
 }
 resize();
 homeCamera();

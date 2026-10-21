@@ -21,8 +21,18 @@ function htmlWithInsets(insets) {
   return html;
 }
 
-async function openPage(browser, device = PHONE) {
+// Counts writes to each canvas's width/height (any write clears the canvas), keyed by element id
+const COUNT_CANVAS_RESIZES = `(() => {
+  const w = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, 'width'), h = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, 'height');
+  window.__canvasWrites = {};
+  const bump = el => { const k = el.id || 'other'; window.__canvasWrites[k] = (window.__canvasWrites[k] || 0) + 1; };
+  Object.defineProperty(HTMLCanvasElement.prototype, 'width', { get: w.get, set(v) { bump(this); w.set.call(this, v); }, configurable: true });
+  Object.defineProperty(HTMLCanvasElement.prototype, 'height', { get: h.get, set(v) { bump(this); h.set.call(this, v); }, configurable: true });
+})();`;
+
+async function openPage(browser, device = PHONE, { countCanvasResizes = false } = {}) {
   const page = await browser.newPage({ viewport: { width: device.width, height: device.height }, deviceScaleFactor: 2 });
+  if (countCanvasResizes) await page.addInitScript(COUNT_CANVAS_RESIZES);
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
