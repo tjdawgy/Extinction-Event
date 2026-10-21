@@ -14,8 +14,10 @@ function loadSim() {
   const end = html.indexOf('/* ===================== SIM END');
   if (start < 0 || end < 0) throw new Error('Could not find the SIM section in index.html');
   const src = html.slice(start + '<script>'.length, end);
-  const exportsList = ['GAME_NAME', 'VERSION', 'DIFF', 'BDEF', 'UDEF', 'newGame', 'update', 'tryBuild', 'tryTrain',
-    'tryUpgrade', 'trySell', 'tryRepair', 'setStance', 'income', 'popCap', 'popUsed', 'serialize', 'deserialize'];
+  const exportsList = ['GAME_NAME', 'VERSION', 'COUNTDOWN', 'DIFF', 'BDEF', 'UDEF', 'DMG', 'PSPEED', 'L', 'NODE_U', 'NODE_R', 'NODE_INC',
+    'REGEN_DELAY', 'SELL_RATE', 'SAVE_VER', 'newGame', 'update', 'tryBuild', 'tryTrain', 'tryUpgrade', 'trySell', 'tryRepair',
+    'repairCost', 'sellValue', 'setStance', 'income', 'popCap', 'popUsed', 'spawnUnit', 'damage', 'kill', 'hqStatus',
+    'rallyU', 'hqU', 'countB', 'hasBuilt', 'serialize', 'deserialize'];
   const sandbox = { Math, JSON, Object, Array, Map, console };
   vm.createContext(sandbox);
   vm.runInContext(`${src}\n;this.__sim = { ${exportsList.join(', ')} };`, sandbox, { filename: 'index.html#sim' });
