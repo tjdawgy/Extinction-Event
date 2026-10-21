@@ -55,10 +55,16 @@ test('HQ readouts in the top bar: shielded, exposed, destroyed', { skip }, async
   const read = () => page.evaluate(() => [0, 1].map(k => ({ cls: $('hq' + k).className, txt: $('hq' + k).querySelector('small').textContent, w: $('hq' + k).querySelector('.hb i').style.width, aria: $('hq' + k).getAttribute('aria-label') })));
   let r = await read();
   assert.strictEqual(r[0].cls, 'hqr shielded'); assert.strictEqual(r[0].txt, 'Shielded');
-  assert.strictEqual(r[1].cls, 'hqr exposed'); assert.match(r[1].aria, /^Enemy HQ: 2800 of 2800 HP, exposed$/);
+  assert.strictEqual(r[1].cls, 'hqr exposed stale', 'enemy HQ is out of sight: last-known values');
+  assert.match(r[1].aria, /^Enemy HQ: last seen with 2800 of 2800 HP, exposed$/);
+  assert.strictEqual(r[1].txt, 'Last seen');
   await page.evaluate(() => { const hq = game.sides[1].hq; hq.hp = hq.maxHp / 4; refreshUI(true); });
   r = await read();
-  assert.strictEqual(parseFloat(r[1].w), 25);
+  assert.strictEqual(parseFloat(r[1].w), 100, 'damage out of sight does not leak');
+  await page.evaluate(() => { updateVision = (orig => g => { orig(g); g.fog[0].vis.fill(1); })(updateVision); updateVision(game); refreshUI(true); }); // put it in view
+  r = await read();
+  assert.ok(Math.abs(parseFloat(r[1].w) - 25) < 1, `in view: real health (${r[1].w}, plus a moment of self-repair)`);
+  assert.strictEqual(r[1].cls, 'hqr exposed');
   await page.evaluate(() => { kill(game, game.sides[1].hq, 0); refreshUI(true); });
   r = await read();
   assert.strictEqual(r[1].cls, 'hqr destroyed'); assert.strictEqual(r[1].txt, 'Destroyed'); assert.strictEqual(parseFloat(r[1].w), 0);
@@ -134,6 +140,64 @@ test('no main-canvas resizes during a 60-second match (each resize clears the ca
   const r = await page.evaluate(() => ({ cv: window.__canvasWrites.cv || 0, mm: window.__canvasWrites.mm || 0 }));
   assert.strictEqual(r.cv - before, 0, `main canvas resized ${r.cv - before} times`);
   assert.ok(r.mm > 0, 'the minimap did resize (so the trigger was exercised)');
+  assert.deepStrictEqual(errors, []);
+  await page.close();
+});
+
+test('fog: hidden enemies are not drawn on the minimap, AI intent toasts are gone, "spotted" shows', { skip }, async () => {
+  const { page, errors } = await openPage(browser, PHONE);
+  await page.click('#bPlay');
+  await page.evaluate(() => { game.countdown = 0; game.sides[1].aiT = 1e9; hideCountdown(); });
+  // red pixels on the minimap in the column around u
+  const redAt = u => page.evaluate(u => {
+    const w = mm.width / V.dpr, k = (w - 8) / (UMAX - UMIN), x = Math.round((4 + (u - UMIN) * k) * V.dpr);
+    drawMinimapNow();
+    const d = mctx.getImageData(Math.max(0, x - 3), 0, 7, mm.height).data;
+    let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] > 200 && d[i + 1] < 120 && d[i + 2] < 120) n++;
+    return n;
+  }, u);
+  await page.evaluate(() => { const e = spawnUnit(game, 1, 'tank', 1000, 0); e.holdU = 1000; e.holdV = 0; game.sides[1].stance = 'hold'; update(game, 1 / 30); });
+  assert.strictEqual(await redAt(1000), 0, 'enemy tank in fog: not on the minimap');
+  await page.evaluate(() => { game.events.push({ type: 'aiAttack', side: 1, mode: 'all' }); handleEvents(); });
+  let toasts = await page.evaluate(() => [...$('toasts').children].map(t => t.textContent));
+  assert.ok(!toasts.some(t => /advancing|besiege|take the field/.test(t)), 'no AI-intent toast');
+  await page.evaluate(() => { const t = game.ents.find(e => e.side === 1 && e.type === 'tank'); t.u = t.holdU = 700; update(game, 1 / 30); handleEvents(); });
+  assert.ok(await redAt(700) > 0, 'in view: drawn');
+  toasts = await page.evaluate(() => [...$('toasts').children].map(t => t.textContent));
+  assert.ok(toasts.includes('Enemy units spotted'));
+  assert.deepStrictEqual(errors, []);
+  await page.close();
+});
+
+test('a v5 save from before fog of war resumes cleanly', { skip }, async () => {
+  const { page, errors } = await openPage(browser, PHONE);
+  await page.click('#bPlay');
+  const v5 = await page.evaluate(() => { game.countdown = 0; for (let i = 0; i < 900; i++) update(game, 1 / 30); const o = JSON.parse(serialize(game, { camX: 600, speed: 1 })); delete o.fog; o.v = 5; return JSON.stringify(o); });
+  await page.evaluate(s => { localStorage.setItem('colonyMobile.save', s); }, v5);
+  await page.reload(); await page.waitForTimeout(300);
+  await page.click('#bResume'); await page.waitForTimeout(300);
+  const st = await page.evaluate(() => ({ h1: document.querySelector('#box h1').textContent, t: Math.round(game.t), exploredMid: game.fog[0].exp[cellOf(850)], fogOk: game.fog.length === 2 }));
+  assert.deepStrictEqual(st, { h1: 'Match restored', t: 30, exploredMid: 0, fogOk: true });
+  await page.click('#bRes'); await page.waitForTimeout(600);
+  assert.ok(await page.evaluate(() => game.t > 30.3));
+  assert.deepStrictEqual(errors, []);
+  await page.close();
+});
+
+test('fog: capture progress on a node out of view is not drawn (it would reveal units)', { skip }, async () => {
+  const { page, errors } = await openPage(browser, PHONE);
+  await page.click('#bPlay');
+  const r = await page.evaluate(() => {
+    game.countdown = 0; hideCountdown(); game.sides[1].aiT = 1e9;
+    const n = game.nodes[2]; n.prog = -60; n.owner = null; n.c = [0, 3];
+    update(game, 1 / 30); n.prog = -60; n.c = [0, 3];
+    const calls = []; const orig = drawNodeZone;
+    drawNodeZone = (c, node, t, inView) => { calls.push([node.id, inView]); orig(c, node, t, inView); };
+    render(ctx, game, 1, null, -1); drawNodeZone = orig;
+    return calls;
+  });
+  assert.deepStrictEqual(r.find(c => c[0] === 2), [2, false], 'far node drawn without progress');
+  assert.deepStrictEqual(r.find(c => c[0] === 0), [0, true], 'near node (in base vision) drawn in full');
   assert.deepStrictEqual(errors, []);
   await page.close();
 });

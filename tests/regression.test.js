@@ -119,23 +119,24 @@ test('Nanoweave description matches what it does (units and defenses)', () => {
   assert.strictEqual(sim.BDEF.techlab.tiers[3], 'Nanoweave: your units and defenses deal 20% more damage and take 15% less');
 });
 
-test('save keys stay colonyMobile.save and colonyMobile.diff; save format is v5', () => {
+test('save keys stay colonyMobile.save and colonyMobile.diff; save format is v6 and still reads v5', () => {
   const html = readHtml();
   assert.match(html, /const SAVE_KEY = 'colonyMobile\.save';/);
   assert.match(html, /localStorage\.getItem\('colonyMobile\.diff'\)/);
   assert.match(html, /localStorage\.setItem\('colonyMobile\.diff', diffKey\)/);
   const keys = new Set([...html.matchAll(/localStorage\.\w+Item\(([^,)]+)/g)].map(m => m[1].trim()));
   assert.deepStrictEqual([...keys].sort(), ["'colonyMobile.diff'", 'SAVE_KEY']);
-  assert.strictEqual(sim.SAVE_VER, 5);
+  assert.strictEqual(sim.SAVE_VER, 6);
+  assert.deepStrictEqual([...sim.SAVE_OK], [5, 6]);
   const o = JSON.parse(sim.serialize(sim.newGame('easy'), {}));
-  assert.strictEqual(o.v, 5);
-  assert.deepStrictEqual(Object.keys(o).sort(), ['diffKey', 'ents', 'extra', 'nid', 'nodes', 'projs', 'sides', 't', 'v']);
+  assert.strictEqual(o.v, 6);
+  assert.deepStrictEqual(Object.keys(o).sort(), ['diffKey', 'ents', 'extra', 'fog', 'nid', 'nodes', 'projs', 'sides', 't', 'v']);
 });
 
 test('old or broken saves never load into a bad state', () => {
   const g = sim.newGame('normal');
   const o = JSON.parse(sim.serialize(g, {}));
-  assert.strictEqual(sim.deserialize(JSON.stringify({ ...o, v: 4 })), null, 'older version rejected');
+  assert.strictEqual(sim.deserialize(JSON.stringify({ ...o, v: 4 })), null, 'v4 and older rejected');
   assert.strictEqual(sim.deserialize(JSON.stringify({ ...o, sides: o.sides.map(s => ({ ...s, hq: 99999 })) })), null, 'missing HQ rejected');
   assert.throws(() => sim.deserialize('{not json'), 'garbage throws; resumeGame() and peekSave() wrap it in try/catch');
   assert.match(readHtml(), /try \{ g = deserialize\(localStorage\.getItem\(SAVE_KEY\)\); \} catch \(e\) \{ g = null; \}/);

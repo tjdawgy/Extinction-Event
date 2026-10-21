@@ -57,8 +57,9 @@ function turtleBot(sim, { attackFill = 0.85 } = {}) {
       }
     }
     // 3) the best unit it can afford without eating the reserve (anything goes when enemies are near the base)
-    const threat = units(g, 1 - s).some(u => Math.abs(u.u - sim.hqU(s)) < 650);
-    const enemyAir = units(g, 1 - s).filter(u => sim.UDEF[u.type].air).length;
+    const seen = units(g, 1 - s).filter(u => sim.visibleTo(g, s, u)); // fog of war: only what the bot can see
+    const threat = seen.some(u => Math.abs(u.u - sim.hqU(s)) < 650);
+    const enemyAir = seen.filter(u => sim.UDEF[u.type].air).length;
     const order = enemyAir >= 3 ? ['interceptor', ...TURTLE_UNITS] : trained % 4 === 3 ? ['aircraft', ...TURTLE_UNITS] : TURTLE_UNITS;
     const unlocked = t => building(g, s, sim.UDEF[t].from).some(b => b.built && b.tier >= sim.UDEF[t].tier);
     if (threat) { for (const t of order) if (sim.tryTrain(g, s, t).ok) { trained++; break; } }

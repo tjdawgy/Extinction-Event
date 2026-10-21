@@ -8,7 +8,8 @@ const HTML_PATH = path.join(__dirname, '..', 'index.html');
 
 function readHtml() { return fs.readFileSync(HTML_PATH, 'utf8'); }
 
-function loadSim() {
+// opts.random: a replacement for Math.random inside the SIM (for deterministic comparisons)
+function loadSim(opts = {}) {
   const html = readHtml();
   const start = html.indexOf('<script>');
   const end = html.indexOf('/* ===================== SIM END');
@@ -17,8 +18,10 @@ function loadSim() {
   const exportsList = ['GAME_NAME', 'VERSION', 'COUNTDOWN', 'DIFF', 'BDEF', 'UDEF', 'DMG', 'PSPEED', 'L', 'NODE_U', 'NODE_R', 'NODE_INC',
     'REGEN_DELAY', 'SELL_RATE', 'SAVE_VER', 'newGame', 'update', 'tryBuild', 'tryTrain', 'tryUpgrade', 'trySell', 'tryRepair',
     'repairCost', 'sellValue', 'setStance', 'income', 'popCap', 'popUsed', 'spawnUnit', 'damage', 'kill', 'hqStatus',
-    'rallyU', 'hqU', 'countB', 'hasBuilt', 'serialize', 'deserialize'];
-  const sandbox = { Math, JSON, Object, Array, Map, console };
+    'rallyU', 'hqU', 'countB', 'hasBuilt', 'serialize', 'deserialize', 'SAVE_OK', 'FOG_CELL', 'FOG_N', 'SIGHT', 'B_SIGHT', 'B_SIGHT_DEF',
+    'NODE_SIGHT', 'INTEL_TTL', 'cellOf', 'visibleTo', 'updateVision', 'aiUpdate', 'aiSpotter'];
+  const M = Object.create(Math); if (opts.random) M.random = opts.random;
+  const sandbox = { Math: M, JSON, Object, Array, Map, Set, Uint8Array, Float32Array, console };
   vm.createContext(sandbox);
   vm.runInContext(`${src}\n;this.__sim = { ${exportsList.join(', ')} };`, sandbox, { filename: 'index.html#sim' });
   return sandbox.__sim;
