@@ -211,7 +211,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '1.2'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '1.3'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -265,7 +265,7 @@ const BDEF = {
     tiers: [null, 'Builds Tanks', 'Unlocks Artillery', 'Unlocks Titans'] },
   techlab: { name: 'Tech Lab', cost: { c: 350, e: 150 }, hp: 700, half: 30, h: 96, time: 26, req: 'factory',
     up: [null, null, { c: 250, e: 150, time: 20 }, { c: 400, e: 300, time: 28 }],
-    tiers: [null, 'Builds Gunships', 'Unlocks Interceptors', 'Nanoweave: all units +20% damage, take 15% less'] },
+    tiers: [null, 'Builds Gunships', 'Unlocks Interceptors', 'Nanoweave: your units and defenses deal 20% more damage and take 15% less'] },
   turret: { name: 'Turret', cost: { c: 200, e: 50 }, hp: 900, half: 26, h: 46, time: 12,
     gun: [null, { weapon: 'gatling', dmg: 12, cd: 0.45, range: 250, hitsAir: true },
                 { weapon: 'gatling', dmg: 17, cd: 0.4, range: 280, hitsAir: true },
@@ -345,6 +345,7 @@ function mkBuilding(g, s, type, slot) {
   return b;
 }
 
+const WAIT_GO = { ok: false, msg: 'Wait for GO' }; // nothing can be queued or paid for during GET READY
 function ev(g, o) { g.events.push(o); if (g.events.length > 60) g.events.shift(); }
 const alive = (g, s, type) => g.ents.filter(e => e.kind === 'b' && e.side === s && e.type === type && e.hp > 0);
 const hasBuilt = (g, s, type) => g.ents.some(e => e.kind === 'b' && e.side === s && e.type === type && e.built && e.hp > 0);
@@ -381,6 +382,7 @@ const unitLockMsg = d => !d ? '' : (d.tier > 1 ? `Requires ${BDEF[d.from].name} 
 function tryBuild(g, s, type, want = -1) {
   const d = BDEF[type], side = g.sides[s];
   if (g.over) return { ok: false, msg: 'The match is over' };
+  if (g.countdown > 0) return WAIT_GO;
   if (d.req && !hasBuilt(g, s, d.req)) return { ok: false, msg: `Requires a finished ${BDEF[d.req].name}` };
   const slot = want >= 0 && !side.slots[want] ? want : side.slots.findIndex(x => !x);
   if (slot < 0) return { ok: false, msg: 'All 8 building pads are in use' };
@@ -398,6 +400,7 @@ function sellValue(b) { return { c: Math.floor(b.spent.c * SELL_RATE), e: Math.f
 function trySell(g, s, b) {
   const d = BDEF[b.type], side = g.sides[s];
   if (g.over) return { ok: false, msg: 'The match is over' };
+  if (g.countdown > 0) return WAIT_GO;
   if (b.type === 'hq') return { ok: false, msg: 'The Command HQ can’t be sold' };
   if (b.hp <= 0) return { ok: false, msg: 'That building is gone' };
   const r = sellValue(b);
@@ -415,6 +418,7 @@ function trySell(g, s, b) {
 function tryUpgrade(g, s, b) {
   const d = BDEF[b.type], side = g.sides[s];
   if (g.over) return { ok: false, msg: 'The match is over' };
+  if (g.countdown > 0) return WAIT_GO;
   if (!b.built) return { ok: false, msg: `${d.name} is still under construction` };
   if (b.upgrading) return { ok: false, msg: 'Upgrade already in progress' };
   if (b.tier >= 3) return { ok: false, msg: `${d.name} is fully upgraded` };
@@ -430,6 +434,7 @@ function tryUpgrade(g, s, b) {
 function tryTrain(g, s, type) {
   const d = UDEF[type], side = g.sides[s];
   if (g.over) return { ok: false, msg: 'The match is over' };
+  if (g.countdown > 0) return WAIT_GO;
   const prods = g.ents.filter(e => e.kind === 'b' && e.side === s && e.type === d.from && e.built && e.hp > 0 && e.tier >= d.tier);
   if (!prods.length) return { ok: false, msg: unitLockMsg(d) };
   const cap = popCap(g, s);
@@ -523,6 +528,7 @@ function updateNodes(g, dt) {
 function tryRepair(g, s, b) {
   const d = BDEF[b.type], side = g.sides[s];
   if (g.over) return { ok: false, msg: 'The match is over' };
+  if (g.countdown > 0) return WAIT_GO;
   if (!b.built) return { ok: false, msg: `${d.name} is still under construction` };
   const missing = b.maxHp - b.hp - (b.repair || 0);
   if (missing < 1) return { ok: false, msg: `${d.name} is already being fully repaired` };
@@ -603,6 +609,7 @@ function acquire(src, def, foes) {
     if (dist < minR) { close = true; continue; }
     // prefer units over buildings, targets this weapon counters, and wounded targets
     const mult = DMG[def.weapon][e.kind === 'b' ? 'building' : UDEF[e.type].armor];
+    if (!mult) continue; // this weapon can't hurt it (e.g. Turret gatling vs buildings)
     const sc = dist + (e.kind === 'b' ? 80 : 0) - (mult - 1) * 45 - (1 - e.hp / e.maxHp) * 25;
     if (sc < bs) { bs = sc; best = e; }
   }
@@ -1865,6 +1872,7 @@ $('bpRep').addEventListener('click', () => {
 });
 $('bpSell').addEventListener('click', () => {
   if (!sel || !game || paused) return;
+  if (game.countdown > 0) { toast(WAIT_GO.msg, 'bad'); shake($('bp')); return; }
   if (sellArm < performance.now()) { sellArm = performance.now() + 2500; refreshPanel(); return; }
   const r = trySell(game, 0, sel);
   toast(r.msg, r.ok ? 'ok' : 'bad');

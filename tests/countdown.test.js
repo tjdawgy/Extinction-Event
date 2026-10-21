@@ -15,9 +15,25 @@ test('countdown defaults to 0 and is 3 seconds in the SIM', () => {
   assert.strictEqual(sim.newGame('normal', { countdown: 4.5 }).countdown, 4.5);
 });
 
-test('during the countdown the player can queue, but nothing progresses and the AI waits', () => {
+test('during the countdown build, train, upgrade, repair and sell are refused with "Wait for GO"', () => {
+  const g = sim.newGame('normal'); g.sides[1].aiT = 1e9;
+  const side = g.sides[0]; side.res.c = side.res.e = 1e5;
+  sim.tryBuild(g, 0, 'barracks'); run(g, 15);
+  const b = g.ents.find(e => e.type === 'barracks' && e.side === 0);
+  b.hp = b.maxHp / 2;
+  g.countdown = 3;
+  const res = [side.res.c, side.res.e];
+  const results = [sim.tryBuild(g, 0, 'refinery'), sim.tryTrain(g, 0, 'rifle'), sim.tryUpgrade(g, 0, b), sim.tryRepair(g, 0, b), sim.trySell(g, 0, b)];
+  for (const r of results) assert.deepStrictEqual({ ...r }, { ok: false, msg: 'Wait for GO' });
+  assert.deepStrictEqual([side.res.c, side.res.e], res, 'nothing paid');
+  assert.deepStrictEqual([b.queue.length, b.upgrading, b.repair || 0, b.hp > 0, g.ents.filter(e => e.side === 0 && e.kind === 'b').length], [0, false, 0, true, 2]);
+  g.countdown = 0;
+  assert.ok(sim.tryTrain(g, 0, 'rifle').ok, 'allowed after GO');
+});
+
+test('during the countdown nothing progresses and the AI waits', () => {
   const g = sim.newGame('hard', { countdown: 3 });
-  assert.ok(sim.tryBuild(g, 0, 'barracks').ok, 'build can be queued during the countdown');
+  g.countdown = 0; assert.ok(sim.tryBuild(g, 0, 'barracks').ok); g.countdown = 3; // a building that was started before the freeze
   const rifle = sim.spawnUnit(g, 0, 'rifle', 800, 0), foe = sim.spawnUnit(g, 1, 'rifle', 860, 0);
   sim.setStance(g, 0, 'attack');
   const res = [g.sides[0].res.c, g.sides[0].res.e, g.sides[1].res.c, g.sides[1].res.e];
@@ -66,10 +82,11 @@ test('the match clock starts at GO and the AI only starts deciding then', () => 
 });
 
 test('HQ readouts: exposed, shielded, damaged and destroyed', () => {
-  const g = sim.newGame('normal', { countdown: 3 });
+  const g = sim.newGame('normal');
   for (const s of [0, 1]) assert.deepStrictEqual({ ...sim.hqStatus(g, s) }, { hp: 2800, maxHp: 2800, frac: 1, state: 'exposed' }, 'no other buildings yet');
+  g.sides[1].aiT = 1e9;
   sim.tryBuild(g, 0, 'refinery'); sim.update(g, STEP);
-  assert.strictEqual(sim.hqStatus(g, 0).state, 'shielded', 'shield goes up as soon as another building stands, even during the countdown');
+  assert.strictEqual(sim.hqStatus(g, 0).state, 'shielded', 'shield goes up as soon as another building stands');
   assert.strictEqual(sim.hqStatus(g, 1).state, 'exposed');
   const hq1 = g.sides[1].hq;
   sim.damage(g, hq1, 700, 'cannon', 0); // 700 × 1.3 vs buildings
@@ -82,11 +99,9 @@ test('HQ readouts: exposed, shielded, damaged and destroyed', () => {
 
 test('the countdown is not saved: a restored match does not replay it', () => {
   const g = sim.newGame('normal', { countdown: 4.5 });
-  sim.tryBuild(g, 0, 'barracks');
   run(g, 1);
   const g2 = sim.deserialize(sim.serialize(g, {}));
   assert.strictEqual(g2.countdown, 0);
   assert.strictEqual(g2.t, 0);
-  assert.ok(g2.ents.some(e => e.type === 'barracks'), 'queued build survives');
   assert.match(readHtml(), /pauseGame\(true\); \/\/ a restored match waits for the player to tap Resume/);
 });

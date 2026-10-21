@@ -23,10 +23,11 @@ async function main() {
     await page.click('#bPlay');
     await page.waitForTimeout(500);
     await shot(page, '2-intro-both-bases');
-    await page.click('#cards .card[data-type="barracks"]'); // queued during the countdown
     await page.waitForFunction(() => game.countdown > 0 && game.countdown <= 2);
+    await page.click('#cards .card[data-type="barracks"]'); // refused: "Wait for GO"
     await shot(page, '3-countdown');
     await page.waitForFunction(() => game.countdown === 0);
+    await page.click('#cards .card[data-type="barracks"]');
     await page.waitForTimeout(150);
     await shot(page, '4-go');
     await page.waitForTimeout(1200);

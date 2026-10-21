@@ -98,6 +98,27 @@ test('stances: Attack advances, Hold stays put, Retreat returns to the rally fla
   assert.ok(us.every((u, i) => u.u < held[i]));
 });
 
+test('acquire() skips targets the weapon cannot damage: a Turret never locks onto a building', () => {
+  const g = base(['turret']), tur = find(g, 'turret');
+  g.sides[1].res.c = g.sides[1].res.e = 1e5;
+  assert.ok(sim.tryBuild(g, 1, 'refinery').ok);
+  const ref = find(g, 'refinery', 1);
+  ref.u = tur.u + 120; ref.v = tur.v; // well inside gatling range
+  g.sides[0].hq.u = -5000; // move our HQ gun out of the picture
+  const hp0 = ref.hp;
+  run(g, 2);
+  assert.strictEqual(tur.aim, null, 'Turret never aimed at the building');
+  assert.strictEqual(g.projs.length, 0);
+  assert.ok(ref.hp >= hp0);
+  sim.spawnUnit(g, 1, 'rifle', tur.u + 150, tur.v);
+  run(g, 1);
+  assert.ok(tur.aim && Math.abs(tur.aim.u - (tur.u + 150)) < 60, 'it still shoots units');
+});
+
+test('Nanoweave description matches what it does (units and defenses)', () => {
+  assert.strictEqual(sim.BDEF.techlab.tiers[3], 'Nanoweave: your units and defenses deal 20% more damage and take 15% less');
+});
+
 test('save keys stay colonyMobile.save and colonyMobile.diff; save format is v5', () => {
   const html = readHtml();
   assert.match(html, /const SAVE_KEY = 'colonyMobile\.save';/);

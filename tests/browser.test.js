@@ -19,7 +19,7 @@ test('title screen: name and version', { skip }, async () => {
   await page.close();
 });
 
-test('match start: wide view, GET READY 3-2-1, GO; builds can be queued meanwhile', { skip }, async () => {
+test('match start: wide view, GET READY 3-2-1, GO; taps wait for GO', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
   await page.click('#bPlay');
   await page.waitForTimeout(300);
@@ -32,15 +32,18 @@ test('match start: wide view, GET READY 3-2-1, GO; builds can be queued meanwhil
   assert.strictEqual(mid.t, 0);
   assert.strictEqual(mid.label, 'GET READY');
   assert.match(mid.big, /^[123]$/);
-  assert.deepStrictEqual(mid.barracks, [0], 'queued but not progressing');
-  assert.strictEqual(mid.credits, 150, 'cost paid, no income yet');
+  assert.deepStrictEqual(mid.barracks, [], 'nothing queued during the countdown');
+  assert.strictEqual(mid.credits, 300, 'nothing paid, no income yet');
+  assert.ok((await page.evaluate(() => [...$('toasts').children].map(t => t.textContent))).includes('Wait for GO'));
   assert.strictEqual(mid.aiB, 1, 'AI has not built');
   await page.waitForFunction(() => document.querySelector('#cd b').textContent === 'GO!', null, { timeout: 4000 });
   const go = await page.evaluate(() => ({ zoom: V.zoom, cd: game.countdown }));
   assert.deepStrictEqual(go, { zoom: 1, cd: 0 });
   await page.waitForTimeout(1200);
+  await page.click('#cards .card[data-type="barracks"]');
+  await page.waitForTimeout(500);
   const after = await page.evaluate(() => ({ t: game.t, p: game.ents.find(e => e.type === 'barracks' && e.side === 0).progress, hidden: $('cd').classList.contains('hide') }));
-  assert.ok(after.t > 0.8 && after.p > 0 && after.hidden, 'clock and construction run after GO');
+  assert.ok(after.t > 0.8 && after.p > 0 && after.hidden, 'clock runs and building works after GO');
   assert.deepStrictEqual(errors, []);
   await page.close();
 });
