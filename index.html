@@ -389,6 +389,7 @@ function aiAbility(g, s, P, ctx) {
     return true;
   };
   const spare = k => abilityCheck(g, s, k).ok && side.res.c >= ABIL[k].cost.c + (ctx.threat ? 0 : 60);
+  if (kind === 'economist' && !ctx.threat && g.t < 480 && side.res.c < 900) return; // the Economist keeps its money in the economy unless defending, flush, or later on
   if (lvl > 0 && spare('strike') && use('strike', aiStrikeTarget(g, s, kind, lvl, seen, ctx))) return;
   if (spare('shield') && use('shield', aiShieldTarget(g, s, kind, lvl, seen, ctx))) return;
   if (spare('repair')) use('repair', aiRepairTarget(g, s, kind, lvl, ctx));
@@ -406,7 +407,7 @@ function aiStrikeTarget(g, s, kind, lvl, seen, ctx) {
     for (const e of ground) {
       const d = Math.hypot(e.u - p.u, e.v - p.v);
       if (d > A.r) continue;
-      const ud = UDEF[e.type], slow = clamp(1.6 - ud.speed / 40, 0.4, 1.2); // slow units can't walk out in time
+      const ud = UDEF[e.type], slow = clamp(1.6 - ud.speed / 40, 0.4, 1.2) * (lvl === 2 && !e.moving ? 1.35 : 1); // slow or (Hard sees it) standing units can't walk out in time
       let w = 1;
       if (kind === 'aggressor' && Math.abs(e.u - hqU(1 - s)) < 560) { // defenders dug in under their HQ: hit them just before the push
         const close = front !== null && Math.abs(front - e.u) < 450 && ctx.myV >= 300;
@@ -445,6 +446,7 @@ function aiShieldTarget(g, s, kind, lvl, seen, ctx) {
     let foe = 0;
     for (const e of seen) if (Math.abs(e.u - m.u) < 230) foe += e.kind === 'u' ? UDEF[e.type].cost.c : (BDEF[e.type].gun ? 300 : 0);
     if (foe < 200) continue; // not in a fight
+    let near = 0; if (lvl === 2) { for (const o of ctx.mine) if (Math.abs(o.u - m.u) < 230) near += UDEF[o.type].cost.c; if (near > foe * 1.6) continue; } // Hard: a fight already won needs no shield
     if (kind === 'turtle' && Math.abs(m.u - home) > 650) continue;
     let mineV = 0;
     for (const o of ctx.mine) if (!(o.shT > g.t) && Math.hypot(o.u - m.u, o.v - m.v) <= A.r) mineV += UDEF[o.type].cost.c + UDEF[o.type].cost.e * 1.5;
