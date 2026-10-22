@@ -76,14 +76,14 @@ const TURTLE_PLAN = ['refinery', 'reactor', 'barracks', 'turret', 'refinery', 'f
 const TURTLE_UPG = [['turret', 2], ['refinery', 2], ['reactor', 2], ['hq', 2], ['factory', 2], ['habitat', 2], ['techlab', 2],
   ['barracks', 2], ['turret', 3], ['refinery', 3], ['reactor', 3], ['hq', 3], ['factory', 3], ['techlab', 3], ['habitat', 3], ['barracks', 3]];
 const TURTLE_UNITS = ['titan', 'aircraft', 'tank', 'heavy', 'rifle'];
-function turtleBot(sim, { attackFill = 0.85 } = {}) {
+function turtleBot(sim, { attackFill = 0.85, plan = TURTLE_PLAN } = {}) {
   let attacking = false, launched = 0, trained = 0;
   const log = { attacks: 0 };
   const bot = every(0.5, (g, s) => {
     const side = g.sides[s], cap = sim.popCap(g, s), used = sim.popUsed(g, s);
     // 1) build the plan in order, at most two at a time
     const need = {}; let want = null;
-    for (const t of TURTLE_PLAN) { need[t] = (need[t] || 0) + 1; if (building(g, s, t).length < need[t]) { want = t; break; } }
+    for (const t of plan) { need[t] = (need[t] || 0) + 1; if (building(g, s, t).length < need[t]) { want = t; break; } }
     const reserve = { c: 0, e: 0 }; // money set aside for the next building or upgrade
     if (want && constructing(g, s).length < 2 && (!sim.BDEF[want].req || sim.hasBuilt(g, s, sim.BDEF[want].req))) {
       if (!sim.tryBuild(g, s, want).ok) Object.assign(reserve, sim.BDEF[want].cost);

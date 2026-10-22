@@ -214,7 +214,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '1.9'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.0'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -229,11 +229,21 @@ const rand = (a, b) => a + Math.random() * (b - a);
 // Side-scrolling view: u is screen x, depth v is foreshortened, z is height
 const P = (u, v, z = 0) => ({ x: u, y: v * DY - z });
 
-// smart = how often the AI picks the best counter instead of a weighted guess
+// Difficulty is decision quality only: every side has the same resources, income and rules.
+//  delay: seconds between decisions   smart: chance of picking the best unit (else a weighted guess)
+//  wave: army size it waits for before a big attack   maxTier / upStart: highest upgrade it uses, and from when
+//  calmSave: while threatened, saves for counters (Tanks against infantry) instead of trickling cheap units
+//  calmTech: while threatened, holds upgrades and new tech and gets a War Factory first
+//  eco: turns spare energy into credits (more Refineries)
+//  turret: chance (per match) that it recognises an infantry rush in time and answers with a Turret
+//  nodes: fights for its near field node with its whole army
+//  refineries: Refineries in its build plan   trainPer: units it queues per decision
+//  fieldEdge: how much stronger than the enemy army it knows of it must be to push out for the field nodes
+//  armyCap: share of its army size limit it actually fills (an under-filled cap grows back to full from 12 to 20 minutes)
 const DIFF = {
-  easy:   { inc: 0.8, delay: 2.0, wave: 1.3,  label: 'Easy',   maxTier: 2, upStart: 150, smart: 0.3, bonus: 0 },
-  normal: { inc: 1.15, delay: 1.0, wave: 1.0, label: 'Normal', maxTier: 3, upStart: 60,  smart: 0.65, bonus: 100 },
-  hard:   { inc: 1.5, delay: 0.55, wave: 0.85, label: 'Hard',  maxTier: 3, upStart: 25,  smart: 0.9, bonus: 300, turret: true },
+  easy:   { delay: 2.5, wave: 0.8, label: 'Easy',   maxTier: 2, upStart: 40, smart: 0.2,  calmSave: false, calmTech: false, eco: false, turret: 0, nodes: false, refineries: 1, trainPer: 1, fieldEdge: 1.5, fieldMin: 600, armyCap: 0.6 },
+  normal: { delay: 1.0, wave: 1.0, label: 'Normal', maxTier: 3, upStart: 90, smart: 0.65, calmSave: true,  calmTech: false, eco: true,  turret: 0.5,  nodes: false, refineries: 2, trainPer: 2, fieldEdge: 0.9, fieldMin: 300, armyCap: 1 },
+  hard:   { delay: 1.0, wave: 1.0, label: 'Hard',   maxTier: 3, upStart: 90, smart: 0.65, calmSave: true,  calmTech: true,  eco: true,  turret: 1,  nodes: true,  refineries: 2, trainPer: 2, fieldEdge: 0.9, fieldMin: 300, armyCap: 1 },
 };
 
 // Seconds of "GET READY" at match start. The world is frozen and the clock (g.t) starts at GO.
@@ -243,9 +253,9 @@ const HPMUL = [1, 1, 1.25, 1.5];
 const BDEF = {
   hq: { name: 'Command HQ', cost: { c: 0, e: 0 }, hp: 2800, half: 44, h: 104, time: 1,
     pop: [0, 12, 12, 12], inc: [null, { c: 3, e: 1 }, { c: 3, e: 1 }, { c: 3, e: 1 }], hpMul: [1, 1, 1.3, 1.6],
-    gun: [null, { weapon: 'rocket', dmg: 32, cd: 1.1, range: 390, hitsAir: true },
-                { weapon: 'rocket', dmg: 42, cd: 1.0, range: 430, hitsAir: true },
-                { weapon: 'rocket', dmg: 55, cd: 0.9, range: 470, hitsAir: true }],
+    gun: [null, { weapon: 'hqgun', dmg: 32, cd: 1.1, range: 390, hitsAir: true },
+                { weapon: 'hqgun', dmg: 42, cd: 1.0, range: 430, hitsAir: true },
+                { weapon: 'hqgun', dmg: 55, cd: 0.9, range: 470, hitsAir: true }],
     up: [null, null, { c: 300, e: 100, time: 20 }, { c: 500, e: 250, time: 28 }],
     tiers: [null, 'Turret 32 damage, 390 range, 2,800 HP', 'Turret 42 damage, 430 range, 3,640 HP', 'Turret 55 damage, 470 range, 4,480 HP'] },
   refinery: { name: 'Refinery', cost: { c: 150, e: 0 }, hp: 520, half: 32, h: 62, time: 10,
@@ -293,6 +303,7 @@ const UDEF = {
 const DMG = {
   rifle:   { light: 1.0, heavy: 0.45, vehicle: 0.3,  air: 0.75, building: 0.45 },
   rocket:  { light: 0.6, heavy: 1.0,  vehicle: 1.6,  air: 1.3,  building: 1.0 },
+  hqgun:   { light: 0.9, heavy: 1.0,  vehicle: 1.6,  air: 1.3,  building: 1.0 }, // the HQ's own rockets: better against infantry
   rail:    { light: 1.6, heavy: 1.4,  vehicle: 0.35, air: 0.5,  building: 0.3 },
   cannon:  { light: 0.9, heavy: 1.25, vehicle: 1.15, air: 0,    building: 1.3 },
   shell:   { light: 1.1, heavy: 1.0,  vehicle: 0.75, air: 0,    building: 1.6 },
@@ -301,17 +312,18 @@ const DMG = {
   flak:    { light: 0,   heavy: 0,    vehicle: 0,    air: 1.8,  building: 0 },
   gatling: { light: 1.0, heavy: 0.8,  vehicle: 0.8,  air: 1.0,  building: 0 },
 };
-const PSPEED = { rifle: 1100, rocket: 430, rail: 1700, cannon: 820, siege: 700, missile: 470, flak: 950, gatling: 1200 };
+const PSPEED = { rifle: 1100, rocket: 430, hqgun: 430, rail: 1700, cannon: 820, siege: 700, missile: 470, flak: 950, gatling: 1200 };
 const MUZ = { rifle: [10, 13], heavy: [12, 27], sniper: [17, 14], tank: [27, 18], artillery: [28, 31], titan: [38, 27], aircraft: [16, -5], interceptor: [20, 0] };
 
 const BUILD_ORDER = ['refinery', 'reactor', 'habitat', 'barracks', 'turret', 'factory', 'techlab'];
 const UNIT_ORDER = ['rifle', 'heavy', 'sniper', 'tank', 'artillery', 'titan', 'aircraft', 'interceptor'];
-const AI_PLAN = ['barracks', 'refinery', 'reactor', 'refinery', 'habitat', 'factory', 'reactor', 'techlab'];
-const AI_PLAN_T = ['barracks', 'refinery', 'reactor', 'turret', 'habitat', 'factory', 'reactor', 'techlab'];
+// Credits first (Refineries before tech); Reactors are skipped while energy is plentiful
+const AI_PLAN = ['barracks', 'refinery', 'refinery', 'reactor', 'habitat', 'factory', 'reactor', 'techlab'];
+const ENERGY_PLENTY = 250;
 const AI_UPG = [['barracks', 2], ['reactor', 2], ['refinery', 2], ['factory', 2], ['habitat', 2], ['reactor', 3], ['hq', 2], ['techlab', 2],
   ['factory', 3], ['barracks', 3], ['turret', 2], ['habitat', 3], ['refinery', 3], ['techlab', 3], ['hq', 3], ['turret', 3]];
 // Field nodes: neutral income points along the lane. Ground troops inside the zone capture them.
-const NODE_U = [640, L / 2, L - 640], NODE_R = 70, NODE_INC = { c: 3, e: 1 }, REGEN_DELAY = 8;
+const NODE_U = [600, L / 2, L - 600], NODE_R = 70, NODE_INC = { c: 3, e: 1 }, REGEN_DELAY = 8;
 // Diamond of pads (tile coords i, j). The HQ takes the back tile (1, -1); the rest fill back to front.
 const PADS = [[0, -1], [1, 0], [-1, -1], [0, 0], [1, 1], [-1, 0], [0, 1], [-1, 1]];
 const HQ_TILE = [1, -1];
@@ -325,11 +337,10 @@ const rallyU = s => hqU(s) + dirOf(s) * 300;
 
 function newGame(diffKey, opts = {}) {
   const g = { t: 0, ents: [], projs: [], fx: [], parts: [], sides: [], over: false, winner: -1, nid: 1,
-    diff: DIFF[diffKey] || DIFF.normal, diffKey, events: [], auto: !!opts.autoPlayer, shake: 0, front: [null, null], countdown: opts.countdown || 0,
+    diff: DIFF[diffKey] || DIFF.normal, diffKey, events: [], auto: !!opts.autoPlayer, autoDiff: opts.autoDiff || 'normal', shake: 0, front: [null, null], countdown: opts.countdown || 0,
     nodes: NODE_U.map((u, i) => ({ id: i, u, v: 0, prog: 0, owner: null, c: [0, 0] })) };
   for (let s = 0; s < 2; s++) {
-    const bonus = s === 1 ? (DIFF[diffKey] || DIFF.normal).bonus : 0;
-    g.sides.push({ res: { c: 300 + bonus, e: 60 + bonus / 3 }, stance: s === 0 ? 'hold' : 'retreat', stanceAt: 0, pushTo: null, slots: new Array(SLOT_COUNT).fill(null),
+    g.sides.push({ res: { c: 300, e: 60 }, stance: s === 0 ? 'hold' : 'retreat', stanceAt: 0, pushTo: null, slots: new Array(SLOT_COUNT).fill(null),
       hq: null, aiT: 1 + s * 0.5, stats: { built: 0, kills: 0, lost: 0 }, lastAlert: -99, buff: false });
     const hq = mkBuilding(g, s, 'hq', -1);
     hq.built = true; hq.progress = 1; hq.hp = hq.maxHp;
@@ -378,10 +389,10 @@ function income(g, s) {
     const inc = BDEF[b.type].inc[b.tier]; c += inc.c; e += inc.e;
   }
   for (const n of g.nodes) if (n.owner === s) { c += NODE_INC.c; e += NODE_INC.e; }
-  const m = s === 1 ? g.diff.inc : 1;
-  return { c: c * m, e: e * m };
+  return { c, e };
 }
-function armyValue(list) { let v = 0; for (const u of list) { const d = UDEF[u.type]; v += (d.cost.c + d.cost.e * 1.5) * (u.w === undefined ? 1 : u.w); } return v; }
+// Army strength for AI decisions; Interceptors count for a quarter, since they can't fight ground units or buildings
+function armyValue(list) { let v = 0; for (const u of list) { const d = UDEF[u.type]; v += (d.cost.c + d.cost.e * 1.5) * (u.w === undefined ? 1 : u.w) * (d.hitsGround === false ? 0.25 : 1); } return v; }
 const unitLockMsg = d => !d ? '' : (d.tier > 1 ? `Requires ${BDEF[d.from].name} T${d.tier}` : `Requires ${BDEF[d.from].name}`);
 
 function tryBuild(g, s, type, want = -1) {
@@ -678,7 +689,7 @@ function acquire(g, src, def, foes) {
 
 function setStance(g, s, v) {
   const side = g.sides[s];
-  side.stance = v; side.stanceAt = g.t; side.pushTo = null;
+  side.stance = v; side.stanceAt = g.t; side.pushTo = null; side.pushMode = null;
   for (const u of g.ents) if (u.kind === 'u' && u.side === s) {
     if (v === 'hold') { u.holdU = u.u; u.holdV = u.v; } else { u.holdU = undefined; u.holdV = undefined; }
   }
@@ -717,7 +728,7 @@ function updateUnit(g, u, foes, dt) {
   let tu = home, tv = u.laneV;
   if (side.stance === 'attack') {
     // a field push spreads forward of its line; a siege spreads back from it, so nobody stands inside the enemy HQ's range
-    const spread = side.pushTo !== null && side.pushTo !== L / 2 + dir * 20 ? -1 : 1;
+    const spread = side.pushMode === 'siege' ? -1 : 1;
     const end = side.pushTo !== null ? side.pushTo - spread * u.rallyOff * dir * 0.6 : (dir > 0 ? L : 0);
     if (u.id === side.spotter && side.spotU != null && side.pushTo !== null) tu = side.spotU;
     else if (u.type === 'interceptor') { const f = g.front[u.side]; tu = f === null ? home : f - dir * 40; }
@@ -770,7 +781,7 @@ function updateProjs(g, dt) {
     const du = p.tu - p.u, dv = p.tv - p.v, dz = p.tz - p.z, dist = Math.hypot(du, dv, dz), step = p.speed * dt;
     if (dist <= step + 2) { p.u = p.tu; p.v = p.tv; p.z = p.tz; impact(g, p, p.target); p.done = true; continue; }
     p.u += du / dist * step; p.v += dv / dist * step; p.z += dz / dist * step;
-    if ((p.weapon === 'rocket' || p.weapon === 'missile') && Math.random() < 0.7) {
+    if ((p.weapon === 'rocket' || p.weapon === 'hqgun' || p.weapon === 'missile') && Math.random() < 0.7) {
       const w = P(p.u, p.v, p.z);
       addPart(g, { x: w.x, y: w.y, vx: rand(-5, 5), vy: rand(-5, 5), life: 0.4, size: 2.2, smoke: true, light: true });
     }
@@ -878,7 +889,7 @@ function aiUpdate(g, s, dt) {
   const side = g.sides[s];
   side.aiT -= dt;
   if (side.aiT > 0) return;
-  const D = s === 1 ? g.diff : DIFF.normal;
+  const D = s === 1 ? g.diff : (DIFF[g.autoDiff] || DIFF.normal);
   side.aiT = D.delay * rand(0.8, 1.2);
   const opp = 1 - s, dir = dirOf(s), fog = g.fog[s], oppTier = fog.lastHQ.tier;
 
@@ -887,25 +898,48 @@ function aiUpdate(g, s, dt) {
   // The enemy army as this side knows it: units it has seen, fading out over INTEL_TTL seconds
   const theirs = Object.values(fog.intel).map(m => ({ type: m.type, u: m.u, w: Math.max(0, 1 - (g.t - m.t) / INTEL_TTL), fresh: g.t - m.t <= THREAT_MEMORY }));
   const myV = armyValue(mine), thV = armyValue(theirs);
-  const threat = theirs.some(u => u.fresh && Math.abs(u.u - hqU(s)) < 650);
+  const near = theirs.filter(u => u.fresh && Math.abs(u.u - hqU(s)) < 650);
+  const threat = near.length > 0;
+  const danger = near.some(u => Math.abs(u.u - hqU(s)) < 430); // enemies inside the base, not just nearby
+  const nearLight = armyValue(near.filter(u => UDEF[u.type].armor === 'light'));
+  const lightThreat = threat && nearLight >= armyValue(near) * 0.5;
+  const infantryRush = lightThreat && nearLight >= 400; // a real rush (about 8 Riflemen), not a couple of scouts
+  const calm = D.calmTech && threat, saving = D.calmSave && threat; // threat-aware: hold tech; save for counters
+  if (side.spotsRush === undefined) side.spotsRush = Math.random() < D.turret; // reaction quality, decided once per match
   const cap = popCap(g, s);
   let used = popUsed(g, s);
   const reserve = { c: 0, e: 0 };
+  const fill = D.armyCap + (1 - D.armyCap) * clamp((g.t - 720) / 480, 0, 1); // share of the army limit it uses
 
   // 1) Economy and tech
   const constructing = g.ents.filter(e => e.kind === 'b' && e.side === s && !e.built && e.hp > 0);
   const freePad = side.slots.some(x => !x);
-  let want = null;
+  let want = null, wantPad = -1;
   if (cap < POP_MAX && used >= cap - 3 && !constructing.some(b => b.type === 'habitat') && freePad) want = 'habitat';
+  else if (side.spotsRush && infantryRush && countB(g, s, 'turret') < (armyValue(near) > 800 ? 2 : 1)) { want = 'turret'; wantPad = side.slots[4] ? -1 : 4; } // front pad
+  else if (calm && hasBuilt(g, s, 'barracks') && countB(g, s, 'factory') < 1) want = 'factory'; // the Tank counter to an infantry rush
+  else if (D.eco && side.res.e > ENERGY_PLENTY * 2 && side.res.c < 300 && countB(g, s, 'refinery') < 4 &&
+    (countB(g, s, 'habitat') > 0 || side.slots.filter(x => !x).length >= 2)) want = 'refinery'; // turn spare energy into credits (leaving room for a Habitat)
   else {
     const need = {};
-    for (const t of (D.turret ? AI_PLAN_T : AI_PLAN)) { need[t] = (need[t] || 0) + 1; if (countB(g, s, t) < need[t]) { want = t; break; } }
+    for (const t of AI_PLAN) {
+      if (t === 'refinery' && (need.refinery || 0) >= D.refineries) continue;
+      if (t === 'reactor' && side.res.e > ENERGY_PLENTY) continue; // energy to spare: no new Reactor
+      if (calm && (t === 'techlab' || t === 'reactor')) continue;  // no tech while under pressure
+      need[t] = (need[t] || 0) + 1;
+      if (countB(g, s, t) < need[t]) { want = t; break; }
+    }
   }
-  if (want && freePad && constructing.length < 2) {
+  // No Habitat and no free pad: the army is stuck at the HQ's 12. Sell a spare Reactor or extra Refinery to make room.
+  if (!freePad && countB(g, s, 'habitat') === 0 && cap < POP_MAX && D.eco) {
+    const spare = alive(g, s, 'reactor').find(b => side.res.e > ENERGY_PLENTY) || (countB(g, s, 'refinery') > 2 && alive(g, s, 'refinery')[0]);
+    if (spare) { trySell(g, s, spare); want = 'habitat'; }
+  }
+  if (want && side.slots.some(x => !x) && constructing.length < 2) {
     const d = BDEF[want];
     if (!d.req || hasBuilt(g, s, d.req)) {
-      const r = tryBuild(g, s, want);
-      if (!r.ok && !threat) reserve.c = d.cost.c;
+      const r = tryBuild(g, s, want, wantPad);
+      if (!r.ok && (!threat || saving)) reserve.c = d.cost.c, reserve.e = d.cost.e;
     }
   }
 
@@ -915,13 +949,14 @@ function aiUpdate(g, s, dt) {
     if (hurt) tryRepair(g, s, hurt);
   }
 
-  // 2) Upgrades: earlier and further on harder settings; always spend if money is piling up
+  // 2) Upgrades; a calm AI holds them while threatened; Reactor upgrades wait until energy runs short
   const upgrading = g.ents.some(b => b.kind === 'b' && b.side === s && b.upgrading && b.hp > 0);
   const floating = side.res.c > 700 && side.res.e > 200;
   const buildDone = !want || !freePad || constructing.length > 0;
-  if (g.t >= D.upStart && !upgrading && (buildDone || floating) && (!threat || D.smart > 0.8 || floating) && !(D.maxTier < 3 && Math.random() < 0.5)) {
+  if (g.t >= D.upStart && !upgrading && (buildDone || floating) && (!calm || floating) && !(D.maxTier < 3 && Math.random() < 0.5)) {
     for (const [type, tier] of AI_UPG) {
       if (tier > D.maxTier) continue;
+      if (type === 'reactor' && side.res.e > ENERGY_PLENTY) continue;
       const b = alive(g, s, type).find(x => x.built && x.tier < tier);
       if (!b) continue;
       const r = tryUpgrade(g, s, b);
@@ -936,9 +971,13 @@ function aiUpdate(g, s, dt) {
   if (types.length) {
     const comp = { light: 0, heavy: 0, vehicle: 0, air: 0 };
     let tot = 0;
-    for (const u of theirs) { const d = UDEF[u.type], v = (d.cost.c + d.cost.e) * u.w; comp[d.armor] += v; tot += v; }
+    // Interceptors can't touch the ground, so only ground-attacking aircraft count as an air threat
+    // (counting them made both sides race to build Interceptors against each other's Interceptors)
+    for (const u of theirs) { const d = UDEF[u.type], v = (d.cost.c + d.cost.e) * u.w; comp[d.armor === 'air' && d.hitsGround === false ? 'harmless' : d.armor] = (comp[d.armor === 'air' && d.hitsGround === false ? 'harmless' : d.armor] || 0) + v; tot += v; }
     if (tot > 0) for (const k in comp) comp[k] /= tot;
     const antiAir = theirs.length ? theirs.filter(u => UDEF[u.type].hitsAir).length / theirs.length : 0.5;
+    const airV = theirs.reduce((a, u) => a + (UDEF[u.type].air && UDEF[u.type].hitsGround !== false ? (UDEF[u.type].cost.c + UDEF[u.type].cost.e) * u.w : 0), 0);
+    const myInterceptV = mine.reduce((a, u) => a + (u.type === 'interceptor' ? UDEF.interceptor.cost.c + UDEF.interceptor.cost.e : 0), 0);
     const nArt = mine.filter(u => u.type === 'artillery').length;
     const nFront = mine.filter(u => !UDEF[u.type].air && u.type !== 'artillery').length;
     const sc = {
@@ -949,14 +988,17 @@ function aiUpdate(g, s, dt) {
       artillery: (nFront >= 3 && nArt < Math.max(2, nFront / 2.5)) ? 1.1 + comp.light * 0.5 + (turtle ? 0.8 : 0) + (oppTier - 1) * 0.3 : 0.1,
       titan: 1.2 + comp.vehicle * 0.8 + comp.heavy * 0.8 + comp.light * 0.4 - comp.air * 1.2 + (turtle ? 0.4 : 0),
       aircraft: 1.2 + comp.vehicle * 1.2 + comp.heavy * 0.4 - comp.air * 0.3 + (antiAir < 0.45 ? 0.9 : 0),
-      interceptor: comp.air > 0.12 ? 1 + comp.air * 3.2 : 0.05,
+      // only while its Interceptors don't already outnumber the enemy's ground-attack aircraft
+      interceptor: comp.air > 0.12 && myInterceptV < airV * 1.2 ? 1 + comp.air * 3.2 : 0.05,
     };
-    const fits = t => used + UDEF[t].pop <= cap && freeProducer(g, s, UDEF[t].from, UDEF[t].tier);
+    const fits = t => used + UDEF[t].pop <= cap * fill && freeProducer(g, s, UDEF[t].from, UDEF[t].tier);
     const top = types.filter(fits).sort((a, b) => sc[b] - sc[a])[0];
-    for (let k = 0; k < 3; k++) {
+    // Save for the better unit unless the enemy is already in the base (a calm AI keeps saving while merely threatened)
+    const mustSpend = saving ? danger && !(lightThreat && hasBuilt(g, s, 'factory')) : threat; // vs infantry, Tanks beat trickled Riflemen
+    for (let k = 0; k < D.trainPer; k++) {
       const cand = types.filter(t => { const d = UDEF[t]; return fits(t) && side.res.c - d.cost.c >= reserve.c && side.res.e - d.cost.e >= reserve.e; });
       if (!cand.length) break;
-      if (top && !cand.includes(top) && !threat && Math.random() < 0.6) break; // save for the better unit
+      if (top && !cand.includes(top) && !mustSpend && (saving || Math.random() < 0.6)) break;
       let pick;
       if (Math.random() < D.smart) pick = cand.slice().sort((a, b) => sc[b] - sc[a])[0];
       else {
@@ -970,34 +1012,44 @@ function aiUpdate(g, s, dt) {
     }
   }
 
-  // 4) Strategy: regroup, siege just outside the enemy turret, or go all in
+  // 4) Strategy: hold the near node, take the field, siege just outside the enemy guns, or go all in
   const hqGun = BDEF.hq.gun[oppTier], hqVal = knownDefense(g, s);
   const rich = side.res.c > 2500;
   const nSiege = mine.filter(u => u.type === 'artillery' || u.type === 'titan').length;
   const wave = Math.min(3600, 400 + g.t * 4) * D.wave;
-  const full = used >= cap - 2, since = g.t - side.stanceAt;
+  const full = used >= cap * fill - 2, since = g.t - side.stanceAt; // full by its own army limit
   // A failed base attack raises the bar for the next one, unless the army is maxed out with money banked to refill it
-  const bold = myV >= attackBar(g, s) || (full && rich);
+  const bold = myV >= attackBar(g, s) || (full && (rich || side.res.c > 1000));
   const siegeLine = hqU(opp) - dir * (hqGun.range + 25), fieldLine = L / 2 + dir * 20;
+  const myNode = g.nodes[s === 0 ? 0 : g.nodes.length - 1];
+  // enemies camping on or near our node, as far as we know
+  const atNode = theirs.filter(u => u.fresh && Math.abs(u.u - myNode.u) < NODE_R + 160);
+  const nodeLost = myNode.owner === opp || atNode.length > 0;
   const failed = () => { if (side.launchV) { side.failV = side.launchV * FAIL_MARGIN; side.failT = g.t; side.launchV = 0; } };
-  const go = pushTo => { const was = side.stance; side.stance = 'attack'; side.pushTo = pushTo; side.stanceAt = g.t; side.launchV = pushTo === fieldLine ? 0 : myV; if (was !== 'attack') ev(g, { type: 'aiAttack', side: s, mode: pushTo === null ? 'all' : pushTo === fieldLine ? 'field' : 'siege' }); };
+  const go = (pushTo, mode) => {
+    const was = side.stance; side.stance = 'attack'; side.pushTo = pushTo; side.pushMode = mode; side.stanceAt = g.t;
+    side.launchV = mode === 'all' || mode === 'siege' ? myV : 0;
+    if (was !== 'attack') ev(g, { type: 'aiAttack', side: s, mode });
+  };
   if (side.stance !== 'attack') {
-    if (bold && myV >= 300 && ((myV >= (thV + hqVal) * 1.35 && myV >= wave * 0.6) || (full && myV > (thV + hqVal) * 1.05))) go(null);
-    else if (bold && nSiege >= 2 && myV >= thV * 0.95 && (myV >= wave * 0.7 || full)) go(siegeLine);
-    else if (bold && myV >= wave && myV > thV * 1.15) go(siegeLine);
-    else if (bold && rich && full && myV >= thV * 0.85) go(null); // money in the bank refills the army, so commit
-    else if (myV >= 300 && myV >= thV * 0.9) go(fieldLine); // take and hold the field nodes
+    if (bold && myV >= 300 && ((myV >= (thV + hqVal) * 1.35 && myV >= wave * 0.6) || (full && myV > (thV + hqVal) * 1.05))) go(null, 'all');
+    else if (bold && nSiege >= 2 && myV >= thV * 0.95 && (myV >= wave * 0.7 || full)) go(siegeLine, 'siege');
+    else if (bold && myV >= wave && myV > thV * 1.15) go(siegeLine, 'siege');
+    else if (bold && rich && full && myV >= thV * 0.85) go(null, 'all'); // money in the bank refills the army, so commit
+    else if (D.nodes && nodeLost && myV >= 250 && myV >= armyValue(atNode) * 1.15) go(myNode.u, 'node'); // win back our node, all together
+    else if (myV >= D.fieldMin && myV >= thV * D.fieldEdge) go(fieldLine, 'field'); // take and hold the field nodes
   } else if (since > 6 && myV < thV * 0.7) {
     failed();
-    side.stance = 'retreat'; side.pushTo = null; side.stanceAt = g.t;
+    side.stance = 'retreat'; side.pushTo = null; side.pushMode = null; side.stanceAt = g.t;
   } else if (side.pushTo === null && since > 10 && thV < 200 && myV < hqVal * 1.2 && !rich) {
     failed();
-    side.stance = 'retreat'; side.stanceAt = g.t; // too few to crack the base defenses: regroup instead of trickling in
-  } else if (side.pushTo === fieldLine) {
-    if (bold && nSiege >= 2 && myV >= thV && (myV >= wave * 0.7 || full)) { side.pushTo = siegeLine; side.launchV = myV; side.stanceAt = g.t; ev(g, { type: 'aiAttack', side: s, mode: 'siege' }); }
-    else if (bold && myV >= 300 && ((myV >= (thV + hqVal) * 1.35 && myV >= wave * 0.6) || (full && myV > (thV + hqVal) * 1.05))) { side.pushTo = null; side.launchV = myV; side.stanceAt = g.t; }
+    side.stance = 'retreat'; side.pushMode = null; side.stanceAt = g.t; // too few to crack the base defenses: regroup instead of trickling in
+  } else if (side.pushMode === 'field' || side.pushMode === 'node') {
+    if (bold && nSiege >= 2 && myV >= thV && (myV >= wave * 0.7 || full)) { side.pushTo = siegeLine; side.pushMode = 'siege'; side.launchV = myV; side.stanceAt = g.t; ev(g, { type: 'aiAttack', side: s, mode: 'siege' }); }
+    else if (bold && myV >= 300 && ((myV >= (thV + hqVal) * 1.35 && myV >= wave * 0.6) || (full && myV > (thV + hqVal) * 1.05))) { side.pushTo = null; side.pushMode = 'all'; side.launchV = myV; side.stanceAt = g.t; }
+    else if (side.pushMode === 'node' && !nodeLost && myNode.owner === s && myV >= 300 && myV >= thV * 0.9) { side.pushTo = fieldLine; side.pushMode = 'field'; side.stanceAt = g.t; }
   } else if (side.pushTo !== null && bold && (myV > (thV + hqVal) * 1.3 || (since > 50 && myV > thV * 1.1))) {
-    side.pushTo = null; side.stanceAt = g.t;
+    side.pushTo = null; side.pushMode = 'all'; side.stanceAt = g.t;
   }
 }
 // Spotters: siege guns can't fire at what their side can't see, so while sieging, one unit walks up until
@@ -1006,7 +1058,7 @@ function aiUpdate(g, s, dt) {
 const SPOTTER_PREF = ['titan', 'tank', 'heavy', 'aircraft', 'interceptor', 'rifle', 'sniper'];
 function aiSpotter(g, s) {
   const side = g.sides[s], dir = dirOf(s), opp = 1 - s;
-  const sieging = side.stance === 'attack' && side.pushTo !== null && side.pushTo !== L / 2 + dir * 20;
+  const sieging = side.stance === 'attack' && side.pushTo !== null && side.pushMode === 'siege';
   const mine = sieging ? g.ents.filter(e => e.kind === 'u' && e.side === s && e.hp > 0) : [];
   if (!sieging || !mine.some(u => u.type === 'artillery')) { side.spotter = null; side.spotU = null; return; }
   let sp = mine.find(u => u.id === side.spotter);

@@ -166,7 +166,7 @@ test('AI siege under fog: a spotter walks up and Artillery hits the player\'s bu
     for (let i = 0; i < 3; i++) sim.spawnUnit(g, 1, 'artillery', 1180 - i * 15, 0);
     if (withSpotter) { sim.spawnUnit(g, 1, 'aircraft', 1190, 0); sim.spawnUnit(g, 1, 'heavy', 1195, 0); sim.spawnUnit(g, 1, 'heavy', 1200, 0); }
     const side = g.sides[1];
-    side.stance = 'attack'; side.pushTo = sim.hqU(0) + (sim.BDEF.hq.gun[1].range + 25); // the AI's siege line vs a T1 HQ (u 635)
+    side.stance = 'attack'; side.pushMode = 'siege'; side.pushTo = sim.hqU(0) + (sim.BDEF.hq.gun[1].range + 25); // the AI's siege line vs a T1 HQ (u 635)
     return g;
   };
   const hpOf = g => g.ents.filter(e => e.kind === 'b' && e.side === 0 && e.type !== 'hq').reduce((a, b) => a + b.hp, 0);
