@@ -30,6 +30,47 @@ function rushBot(sim, { attackAt = 8, regroupAt = 3 } = {}) {
   return bot;
 }
 
+// Configurable Rifleman rush, for calibrating against how a human rushes. Uses only the player's controls.
+//   order:     build order, each item built as soon as affordable (credits are saved for it)
+//   attackAt:  attack the enemy base once this many Riflemen are alive (1 = stream from the first one)
+//   attackT:   ...or once this much time has passed (whichever comes first)
+//   holdU:     before the base attack, push to this point and Hold there (field nodes = income)
+//   regroupAt: fall back below this many (0 = never retreat; reinforcements keep streaming)
+//   habitat:   add Habitats when the army is full; queue: Riflemen kept queued per Barracks
+function rushXBot(sim, o = {}) {
+  const { order = ['barracks', 'barracks', 'barracks'], attackAt = 1, attackT = 1e9, holdU = null, regroupAt = 0, habitat = true, queue = 2 } = o;
+  let phase = holdU === null ? 'build' : 'field', step = 0;
+  const log = { attacks: 0 };
+  const bot = every(0.5, (g, s) => {
+    const side = g.sides[s], B = building(g, s, 'barracks'), army = units(g, s, 'rifle');
+    const cap = sim.popCap(g, s), used = sim.popUsed(g, s);
+    // build order (count-based, so lost buildings are rebuilt)
+    const have = {}; for (const e of g.ents) if (e.kind === 'b' && e.side === s && e.hp > 0) have[e.type] = (have[e.type] || 0) + 1;
+    const need = {}; let next = null;
+    for (const t of order) { need[t] = (need[t] || 0) + 1; if ((have[t] || 0) < need[t]) { next = t; break; } }
+    let reserve = 0;
+    if (next) { if (!sim.tryBuild(g, s, next).ok) reserve = sim.BDEF[next].cost.c; }
+    if (habitat && used >= cap - 1 && cap < 80 && !constructing(g, s).some(b => b.type === 'habitat')) sim.tryBuild(g, s, 'habitat');
+    for (let k = 0; k < 6; k++) {
+      const ready = B.filter(b => b.built && b.hp > 0);
+      if (!ready.length || Math.min(...ready.map(b => b.queue.length)) >= queue || side.res.c - 50 < reserve || !sim.tryTrain(g, s, 'rifle').ok) break;
+    }
+    // army control
+    const n = army.length, front = n ? Math.max(...army.map(u => u.u)) : 0;
+    if (phase === 'field') {
+      if (n >= 3 && side.stance !== 'attack' && front < holdU - 40) sim.setStance(g, s, 'attack');
+      if (side.stance === 'attack' && front >= holdU) sim.setStance(g, s, 'hold');
+      if (n >= attackAt || g.t >= attackT) { phase = 'attack'; }
+    }
+    if (phase !== 'field') {
+      if (side.stance !== 'attack' && (n >= attackAt || g.t >= attackT) && n > 0) { sim.setStance(g, s, 'attack'); log.attacks++; }
+      else if (side.stance === 'attack' && regroupAt && n < regroupAt) sim.setStance(g, s, 'retreat');
+    }
+  });
+  bot.log = log;
+  return bot;
+}
+
 // Turtle / tech: economy and a Turret first, upgrades and heavy units, attack only with a near-full army
 const TURTLE_PLAN = ['refinery', 'reactor', 'barracks', 'turret', 'refinery', 'factory', 'habitat', 'techlab'];
 const TURTLE_UPG = [['turret', 2], ['refinery', 2], ['reactor', 2], ['hq', 2], ['factory', 2], ['habitat', 2], ['techlab', 2],
@@ -78,14 +119,67 @@ function turtleBot(sim, { attackFill = 0.85 } = {}) {
   return bot;
 }
 
-const BOTS = { rush: rushBot, turtle: turtleBot };
+// Smart defender: the best counter to a Rifleman rush we could script, with the player's controls only.
+// Barracks for early Riflemen, a Turret on the front pad, then economy and a War Factory for Tanks
+// (splash, and 1,867 effective HP against rifle fire). Holds under the HQ and Turret, counterattacks with Tanks.
+//   plan: build order; turretPad: pad for the first Turret; holdDist: hold this far out from the HQ
+//   (a node), else at the rally flag; holdMin: only walk out with at least this many units;
+//   riflesFirst: keep this many Riflemen before spending on Tanks
+function defenderBot(sim, o = {}) {
+  const { plan = ['barracks', 'turret', 'refinery', 'factory', 'refinery', 'habitat', 'reactor'], attackTanks = 5, attackArmy = 1e9, turretPad = 4, holdDist = null, holdMin = 3, riflesFirst = 0 } = o;
+  let attacking = false, launched = 0;
+  const log = { attacks: 0 };
+  const bot = every(0.5, (g, s) => {
+    const side = g.sides[s], cap = sim.popCap(g, s), used = sim.popUsed(g, s);
+    const have = {}; for (const e of g.ents) if (e.kind === 'b' && e.side === s && e.hp > 0) have[e.type] = (have[e.type] || 0) + 1;
+    const need = {}; let next = null;
+    for (const t of plan) { need[t] = (need[t] || 0) + 1; if ((have[t] || 0) < need[t]) { next = t; break; } }
+    const seen = units(g, 1 - s).filter(u => sim.visibleTo(g, s, u));
+    const threat = seen.some(u => Math.abs(u.u - sim.hqU(s)) < 700);
+    const reserve = { c: 0, e: 0 };
+    if (next && (!sim.BDEF[next].req || sim.hasBuilt(g, s, sim.BDEF[next].req))) {
+      const r = sim.tryBuild(g, s, next, next === 'turret' ? turretPad : -1);
+      if (!r.ok) Object.assign(reserve, sim.BDEF[next].cost);
+    }
+    if (used >= cap - 2 && cap < 80 && !constructing(g, s).some(b => b.type === 'habitat')) sim.tryBuild(g, s, 'habitat');
+    const hurt = g.ents.find(b => b.kind === 'b' && b.side === s && b.built && b.hp > 0 && !(b.repair > 0) && b.hp < b.maxHp * 0.5);
+    if (hurt && !threat) sim.tryRepair(g, s, hurt);
+    // Tanks once possible; Riflemen while waiting or under pressure
+    const tanks = sim.hasBuilt(g, s, 'factory'), nRifle = units(g, s, 'rifle').length;
+    const can = t => side.res.c - sim.UDEF[t].cost.c >= reserve.c && side.res.e - sim.UDEF[t].cost.e >= reserve.e;
+    if (tanks && nRifle >= riflesFirst && can('tank')) sim.tryTrain(g, s, 'tank');
+    else if ((!tanks || threat || nRifle < riflesFirst) && (threat || can('rifle'))) for (let k = 0; k < 3; k++) if (!sim.tryTrain(g, s, 'rifle').ok) break;
+    // hold at home; counterattack with a Tank core
+    const army = units(g, s), nTank = army.filter(u => u.type === 'tank').length;
+    if (!attacking && (nTank >= attackTanks || army.length >= attackArmy)) { sim.setStance(g, s, 'attack'); attacking = true; launched = army.length; log.attacks++; }
+    else if (attacking && army.length < launched * 0.4) { sim.setStance(g, s, 'retreat'); attacking = false; }
+    else if (!attacking && side.stance === 'retreat' && army.every(u => Math.abs(u.u - sim.rallyU(s)) < 120)) sim.setStance(g, s, 'hold');
+    else if (!attacking && holdDist !== null && army.length >= holdMin) { // walk out to the node, then hold there
+      const dir = s === 0 ? 1 : -1, spot = sim.hqU(s) + dir * holdDist, front = dir > 0 ? Math.max(...army.map(u => u.u)) : Math.min(...army.map(u => u.u));
+      if (side.stance !== 'attack' && dir * (spot - front) > 40) sim.setStance(g, s, 'attack');
+      else if (side.stance === 'attack' && dir * (front - spot) >= 0) sim.setStance(g, s, 'hold');
+    }
+  });
+  bot.log = log;
+  return bot;
+}
 
-// Play one match: bot on side 0 against the AI on side 1
-function playMatch(sim, diffKey, botName, { maxT = 1800 } = {}) {
+const BOTS = { rush: rushBot, turtle: turtleBot, rushx: rushXBot, defender: defenderBot };
+
+// Bot vs bot: botA plays side 0, botB side 1; the built-in AI is switched off
+function duel(sim, makeA, makeB, { maxT = 1800 } = {}) {
+  const g = sim.newGame('normal'), A = makeA(sim), B = makeB(sim);
+  g.sides[1].res = { c: 300, e: 60 }; g.diff = { ...g.diff, inc: 1 }; // a bot duel is even: no AI starting or income bonus
+  while (!g.over && g.t < maxT) { g.sides[1].aiT = 1e9; sim.update(g, STEP); A(g, 0, STEP); B(g, 1, STEP); }
+  return { winner: g.over ? g.winner : -1, t: g.t, g };
+}
+
+// Play one match: bot on side 0 against the AI on side 1 (botName, or a factory sim => bot)
+function playMatch(sim, diffKey, botName, { maxT = 1800, botOpts } = {}) {
   const g = sim.newGame(diffKey);
-  const bot = BOTS[botName](sim);
+  const bot = typeof botName === 'function' ? botName(sim) : BOTS[botName](sim, botOpts);
   while (!g.over && g.t < maxT) { sim.update(g, STEP); bot(g, 0, STEP); }
   return { winner: g.over ? g.winner : -1, t: g.t, stats: g.sides.map(s => ({ ...s.stats })), attacks: bot.log.attacks, g };
 }
 
-module.exports = { rushBot, turtleBot, BOTS, playMatch, STEP };
+module.exports = { rushBot, turtleBot, rushXBot, defenderBot, BOTS, playMatch, duel, STEP, every, units, building, constructing };
