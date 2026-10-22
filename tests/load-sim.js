@@ -6,7 +6,7 @@ const vm = require('vm');
 
 const HTML_PATH = path.join(__dirname, '..', 'index.html');
 
-function readHtml() { return fs.readFileSync(HTML_PATH, 'utf8'); }
+function readHtml() { return fs.readFileSync(process.env.EE_HTML || HTML_PATH, 'utf8'); } // EE_HTML: test another copy of the game
 
 // opts.random: a replacement for Math.random inside the SIM (for deterministic comparisons)
 function loadSim(opts = {}) {
@@ -20,11 +20,12 @@ function loadSim(opts = {}) {
     'repairCost', 'sellValue', 'setStance', 'income', 'popCap', 'popUsed', 'spawnUnit', 'damage', 'kill', 'hqStatus',
     'rallyU', 'hqU', 'countB', 'hasBuilt', 'serialize', 'deserialize', 'SAVE_OK', 'FOG_CELL', 'FOG_N', 'SIGHT', 'B_SIGHT', 'B_SIGHT_DEF',
     'NODE_SIGHT', 'INTEL_TTL', 'cellOf', 'visibleTo', 'updateVision', 'aiUpdate', 'aiSpotter',
-    'knownDefense', 'attackBar', 'FAIL_MARGIN', 'FAIL_MEMORY', 'TURRET_VAL', 'HQ_VAL', 'armyValue', 'PERSONAS', 'PERSONA_NAME', 'rollPersona', 'aiAbility'];
+    'knownDefense', 'attackBar', 'FAIL_MARGIN', 'FAIL_MEMORY', 'TURRET_VAL', 'HQ_VAL', 'armyValue', 'PERSONAS', 'PERSONA_NAME', 'rollPersona', 'aiAbility', 'ABIL', 'ABIL_ORDER', 'abilityCheck', 'useAbility', 'hqPos'];
   const M = Object.create(Math); if (opts.random) M.random = opts.random;
   const sandbox = { Math: M, JSON, Object, Array, Map, Set, Uint8Array, Float32Array, console };
   vm.createContext(sandbox);
-  vm.runInContext(`${src}\n;this.__sim = { ${exportsList.join(', ')} };`, sandbox, { filename: 'index.html#sim' });
+  // names missing from an older copy of the game (EE_HTML) come back undefined instead of failing
+  vm.runInContext(`${src}\n;this.__sim = { ${exportsList.map(n => `${n}: typeof ${n} === 'undefined' ? undefined : ${n}`).join(', ')} };`, sandbox, { filename: 'index.html#sim' });
   return sandbox.__sim;
 }
 
