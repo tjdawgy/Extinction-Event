@@ -15,8 +15,9 @@ npm test
 | `tests/regression.test.js` | Two-tap-sell refund, paid repair and self-repair, field nodes, HQ shield, stances, save keys and format, bad saves |
 | `tests/fog.test.js` | Fog of war: base vision vs gun range, scouting, ghosts, node vision, enemies entering and leaving view, spotters for Artillery and Snipers, last-known enemy HQ, AI memory, AI decisions using only its vision, AI siege with spotters, v6 saves and v5 migration |
 | `tests/ai.test.js` | No AI resource advantages, node placement inside HQ range, the HQ's weapon, and the AI's rules: rush response, holding upgrades under threat, Habitat recovery, no Interceptor race |
+| `tests/personality.test.js` | AI personalities: all four at every difficulty, variation within each style, the Aggressor turning to economy after failed attacks, the Economist defending when outgunned, Trickster feints, the Turtle's attack deadline, saved and migrated with the match |
 | `tests/bots.test.js` | Scripted Rifleman-rush and turtle/tech bots play full matches |
-| `tests/browser.test.js` | Real page in headless Chromium at 858×396 with simulated safe areas: countdown UI, HQ readouts, two-tap Sell, saves, resume paused, no main-canvas resizes during play, fog leaks (minimap, toasts, node progress), v5 save resume |
+| `tests/browser.test.js` | Real page in headless Chromium at 858×396 with simulated safe areas: countdown UI, HQ readouts, two-tap Sell, saves, resume paused, no main-canvas resizes during play, fog leaks (minimap, toasts, node progress), v5 save resume, the AI personality hidden during play and revealed after |
 
 The SIM tests load the SIM section of `index.html` in Node with no dependencies. The browser test needs Playwright (`npm i -D playwright && npx playwright install chromium`) and skips itself if it isn't installed.
 
@@ -24,6 +25,7 @@ Other tools:
 
 - `node tests/balance.js [matches=20] [ai,rush,turtle] [difficulties]`: win counts, timeouts and match lengths for AI vs AI and bot vs AI.
 - `node tests/ladder.js [matches=20] [rows]`: the difficulty ladder (AI vs AI for each pair, sides swapped halfway) and every bot against every difficulty.
+- `node tests/personas.js <matches> <rows>`: results and measured behavior per AI personality (first attack, attacks, feints, Refineries, Turrets, node time, first upgrade, unit mix). Rows are `<bot>:<difficulty>:<personality>` or `ai:<diffA>-<diffB>:<personality>`.
 - `node tests/rush-variants.js [matches] [difficulty] [filters]`: Rifleman-rush variants against the AI (the calibrated rush is `CALIBRATED` in `tests/rush-variants-list.js`).
 - `node tests/duel.js [matches] [filters]`: the calibrated rush against smart-defender bots, with no AI and equal economies.
 - `node tests/difficulty-options.js [matches] [current|no-bonus]`: kept for the record of the Step 3 decision on AI bonuses.

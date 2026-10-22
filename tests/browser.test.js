@@ -201,3 +201,40 @@ test('fog: capture progress on a node out of view is not drawn (it would reveal 
   assert.deepStrictEqual(errors, []);
   await page.close();
 });
+
+test('the AI personality is never shown during a match, only on the post-match screen', { skip }, async () => {
+  const words = /aggressor|turtle|economist|trickster|personality/i;
+  for (const p of ['aggressor', 'turtle', 'economist', 'trickster']) {
+    const { page, errors } = await openPage(browser, PHONE);
+    await page.click('#bPlay');
+    // force this match's personality the way a fresh roll would, then play a few minutes at full speed
+    await page.evaluate(p => { game.sides[1].persona = rollPersona(p); game.countdown = 0; hideCountdown(); }, p);
+    const seen = await page.evaluate(() => {
+      const texts = [];
+      for (let k = 0; k < 6; k++) {
+        for (let i = 0; i < 30 * 30; i++) update(game, 1 / 30);
+        handleEvents(); refreshUI(true);
+        texts.push(document.body.innerText, ...[...document.querySelectorAll('[aria-label],[title]')].map(e => (e.getAttribute('aria-label') || '') + ' ' + (e.getAttribute('title') || '')), document.title);
+      }
+      return texts.join('\n');
+    });
+    assert.doesNotMatch(seen, words, `${p}: nothing in the UI names or hints at the personality during play`);
+    await page.evaluate(() => { kill(game, game.sides[1].hq, 0); });
+    await page.waitForSelector('#box .faced', { timeout: 4000 });
+    assert.match(await page.textContent('#box .faced'), new RegExp(`You faced: The ${p}`, 'i'));
+    assert.deepStrictEqual(errors, []);
+    await page.close();
+  }
+});
+
+test('a resumed match keeps its personality (and still does not show it)', { skip }, async () => {
+  const { page, errors } = await openPage(browser, PHONE);
+  await page.click('#bPlay');
+  const before = await page.evaluate(() => { game.countdown = 0; for (let i = 0; i < 300; i++) update(game, 1 / 30); saveGame(); return JSON.stringify(game.sides[1].persona); });
+  await page.reload(); await page.waitForTimeout(300);
+  await page.click('#bResume'); await page.waitForTimeout(300);
+  assert.strictEqual(await page.evaluate(() => JSON.stringify(game.sides[1].persona)), before);
+  assert.doesNotMatch(await page.evaluate(() => document.body.innerText), /aggressor|turtle|economist|trickster/i);
+  assert.deepStrictEqual(errors, []);
+  await page.close();
+});
