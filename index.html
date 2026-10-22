@@ -623,7 +623,7 @@ function spawnUnit(g, s, type, u, v) {
   const d = UDEF[type];
   const unit = { id: g.nid++, kind: 'u', type, side: s, u, v, z: d.air ? (type === 'interceptor' ? rand(100, 124) : rand(70, 94)) : 0,
     laneV: rand(-LANE_V, LANE_V), hp: d.hp, maxHp: d.hp, cd: Math.random() * 0.5, face: dirOf(s), anim: Math.random() * 10,
-    moving: false, rallyOff: -Math.random() * 100, recoil: 0, hitT: 0 };
+    moving: false, rallyOff: -Math.random() * 100, recoil: 0, hitT: 0, shT: 0 }; // shT (shield until) set from the start keeps every unit the same shape for the JS engine
   g.ents.push(unit);
   g.sides[s].stats.built++;
   return unit;
@@ -932,7 +932,7 @@ const ABIL = {
 };
 const ABIL_ORDER = ['shield', 'strike', 'repair'];
 const newAb = t0 => ({ shield: t0 + ABIL.shield.first, strike: t0 + ABIL.strike.first, repair: t0 + ABIL.repair.first });
-const inAbil = (e, u, v, r) => Math.hypot(e.u - u, e.v - v) - (e.kind === 'b' ? e.half : 0) <= r;
+const inAbil = (e, u, v, r) => { const du = e.u - u, dv = e.v - v, R = r + (e.kind === 'b' ? e.half : 0); return du * du + dv * dv <= R * R; };
 // Can side s use ability k on (u, v) now? Without a target, only the cost, cooldown and unlock are checked.
 function abilityCheck(g, s, k, u, v) {
   const A = ABIL[k], side = g.sides[s];
@@ -2020,21 +2020,31 @@ function drawGhost(c, gh) {
 }
 // Fog: unexplored ground is dark, explored ground dimmed, visible ground clear; soft edges; the sky stays clear
 const FOG_EXP = 0.45, FOG_DARK = 0.74, FOG_RGB = '5,8,20';
+// Recomputed only when the player's vision changes (the field and the minimap share it); arrays allocated once
+const FOGA = { a: new Float32Array(FOG_N), b: new Float32Array(FOG_N), vis: new Uint8Array(FOG_N), exp: new Uint8Array(FOG_N), ver: 0, grad: null, gradVer: -1, F: null };
 function fogAlpha(F) {
-  const a = new Float32Array(FOG_N), b = new Float32Array(FOG_N);
+  let same = FOGA.F === F;
+  for (let i = 0; i < FOG_N && same; i++) if (FOGA.vis[i] !== F.vis[i] || FOGA.exp[i] !== F.exp[i]) same = false;
+  if (same) return FOGA.b;
+  FOGA.F = F; FOGA.vis.set(F.vis); FOGA.exp.set(F.exp); FOGA.ver++;
+  const a = FOGA.a, b = FOGA.b;
   for (let i = 0; i < FOG_N; i++) a[i] = F.vis[i] ? 0 : F.exp[i] ? FOG_EXP : FOG_DARK;
   for (let i = 0; i < FOG_N; i++) { let sum = 0, n = 0; for (let k = -3; k <= 3; k++) { const j = i + k; if (j >= 0 && j < FOG_N) { sum += a[j]; n++; } } b[i] = sum / n; }
   return b;
 }
 function drawFog(c, F) {
-  const a = fogAlpha(F), gr = c.createLinearGradient(GU0, 0, GU1, 0), span = GU1 - GU0;
-  gr.addColorStop(0, `rgba(${FOG_RGB},${a[0]})`);
-  for (let i = 0; i < FOG_N; i++) {
-    if (i > 0 && i < FOG_N - 1 && a[i] === a[i - 1] && a[i] === a[i + 1]) continue;
-    gr.addColorStop(clamp((i * FOG_CELL + FOG_CELL / 2 - GU0) / span, 0, 1), `rgba(${FOG_RGB},${a[i]})`);
+  const a = fogAlpha(F);
+  if (FOGA.gradVer !== FOGA.ver) { // the gradient is in world units, so it stays valid while the camera moves
+    const gr = c.createLinearGradient(GU0, 0, GU1, 0), span = GU1 - GU0;
+    gr.addColorStop(0, `rgba(${FOG_RGB},${a[0]})`);
+    for (let i = 0; i < FOG_N; i++) {
+      if (i > 0 && i < FOG_N - 1 && a[i] === a[i - 1] && a[i] === a[i + 1]) continue;
+      gr.addColorStop(clamp((i * FOG_CELL + FOG_CELL / 2 - GU0) / span, 0, 1), `rgba(${FOG_RGB},${a[i]})`);
+    }
+    gr.addColorStop(1, `rgba(${FOG_RGB},${a[FOG_N - 1]})`);
+    FOGA.grad = gr; FOGA.gradVer = FOGA.ver;
   }
-  gr.addColorStop(1, `rgba(${FOG_RGB},${a[FOG_N - 1]})`);
-  c.fillStyle = gr;
+  c.fillStyle = FOGA.grad;
   c.fillRect(GB.x0, HORIZON, GB.x1 - GB.x0, GB.y1 - HORIZON);
   for (let k = 1; k <= 6; k++) { c.globalAlpha = 1 - k / 7; c.fillRect(GB.x0, HORIZON - k * 20, GB.x1 - GB.x0, 20); } // fade out over the ridges
   c.globalAlpha = 1;
@@ -2350,10 +2360,18 @@ function drawAbilities(c, g, lit, time) {
     }
   }
 }
+// Shield bubble: drawn once per team into a small canvas, then stamped (no paths or colour strings per unit per frame)
+const BUBBLE = [0, 1].map(s => {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 96;
+  const k = cv.getContext('2d'); k.beginPath(); k.ellipse(48, 48, 45, 45, 0, 0, 7);
+  k.fillStyle = `rgba(${TEAM[s].glow},0.18)`; k.fill(); k.strokeStyle = `rgba(${TEAM[s].glow},1)`; k.lineWidth = 3; k.stroke();
+  return cv;
+});
 function drawShield(c, u, t) { // a shimmering bubble around a shielded unit, fading in its last second
-  const d = UDEF[u.type], w = P(u.u, u.v), h = visH(u.type) * US, left = u.shT - t, a = Math.min(1, left) * (0.55 + 0.2 * Math.sin(t * 9 + u.id));
-  c.strokeStyle = `rgba(${TEAM[u.side].glow},${a})`; c.lineWidth = 1.6; c.fillStyle = `rgba(${TEAM[u.side].glow},${a * 0.18})`;
-  c.beginPath(); c.ellipse(w.x, w.y - u.z - h * 0.45, Math.max(12, h * 0.55) + (d.air ? 10 : 0), h * 0.62, 0, 0, 7); c.fill(); c.stroke();
+  const d = UDEF[u.type], w = P(u.u, u.v), h = visH(u.type) * US, rx = Math.max(12, h * 0.55) + (d.air ? 10 : 0), ry = h * 0.62;
+  c.globalAlpha = Math.min(1, u.shT - t) * (0.55 + 0.2 * Math.sin(t * 9 + u.id));
+  c.drawImage(BUBBLE[u.side], w.x - rx, w.y - u.z - h * 0.45 - ry, rx * 2, ry * 2);
+  c.globalAlpha = 1;
 }
 // Player targeting: the circle, the units it will cover, red where it isn't allowed
 function drawAim(c, g) {
@@ -3221,7 +3239,7 @@ function showEnd() {
    come only from the effects code, which already skips anything hidden in the fog. iOS: audio starts on the first
    tap, is suspended in the background and resumed on return (or on the next tap). */
 const SOUND_KEY = 'extinctionEvent.sound';
-const SND = { ctx: null, master: null, noise: null, bufs: {}, on: true, voices: 0, live: 0, per: {}, last: {}, rnd: mulberry(77), played: 0, dropped: 0 };
+const SND = { ctx: null, master: null, noise: null, bufs: {}, live_v: [], on: true, voices: 0, live: 0, per: {}, last: {}, rnd: mulberry(77), played: 0, dropped: 0 };
 try { SND.on = localStorage.getItem(SOUND_KEY) !== 'off'; } catch (e) {}
 const SND_MAX = 14, SND_ROOM = [[3, 8, 14], [6, 10, 14], [9, 12, 14]]; // room per priority, by effect quality level (low, medium, full)
 
@@ -3264,6 +3282,12 @@ document.addEventListener('visibilitychange', () => {
   if (!SND.ctx) return;
   if (document.hidden) SND.ctx.suspend().catch(() => {}); else SND.ctx.resume().catch(() => {});
 });
+// Backstop: one sweep a second disconnects any voice whose 'ended' event never came (no timer per sound)
+setInterval(() => {
+  if (!SND.ctx || !SND.live_v.length) return;
+  const now = SND.ctx.currentTime;
+  SND.live_v = SND.live_v.filter(v => { if (now > v.end + 1.5) { v.done(); return false; } return !v.ended; });
+}, 1000);
 function sndSet(on) {
   SND.on = on;
   try { localStorage.setItem(SOUND_KEY, on ? 'on' : 'off'); } catch (e) {}
@@ -3348,14 +3372,13 @@ function sndPlay(name, x, size) {
     v.nodes.push(src); v.last = src; v.end = v.t + buf.duration / rate;
   } else fn(v, size || 0);
   SND.live += v.nodes.length;
-  let ended = false;
   const done = () => { // every node of the voice is disconnected when it ends
-    if (ended) return; ended = true;
+    if (v.ended) return; v.ended = true;
     for (const n of v.nodes) { try { n.disconnect(); } catch (e) {} }
     SND.live -= v.nodes.length; SND.voices--; SND.per[name]--;
   };
   if (v.last) v.last.onended = done; else done();
-  setTimeout(done, (v.end - now) * 1000 + 1500); // backstop in case 'ended' never arrives
+  v.done = done; SND.live_v.push(v); // swept below in case 'ended' never arrives
   return true;
 }
 
