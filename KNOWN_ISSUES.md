@@ -2,15 +2,15 @@
 
 Issues found during testing that are deliberately deferred. Each lists the step that should address it.
 
-## For Step 6 (commander abilities)
+## Open after Step 6 (v2.5)
 
-### The Aggressor is weak against turtling players
-- Measured in v2.1 (`tests/personas.js`, 10 matches each): the Aggressor lost 0–9 to the eco bot (Refinery-heavy turtle) at Normal and 0–8 at Hard, while the Economist and Turtle won 10–0 and 5–0 / 6–0. It also has the thinnest margin against the calibrated rush at Hard (16–4 over 20).
-- Cause: its answer to a defended base is a head-on attack into Turrets and the HQ gun.
-- Plan: give it an ability-based answer in Step 6 (for example using the Orbital Strike on Turrets) rather than more head-on attacks.
+### Stalemates are not ended by abilities: escalation decision pending
+- Abilities did not reduce timeouts. v2.5, same-personality AI ladder (`tests/personas.js`, 20 matches per row): 11/240 timeouts (4.6%), the same as v2.1 (11/240). `tests/ladder.js` AI rows: 2/60 (v2.0: 1/60).
+- The eco bot (Refinery-heavy turtle) still stalls many matches: v2.5 `tests/ladder.js` 20 matches, eco vs Normal 8–5 with 7 timeouts, eco vs Hard 5–11 with 4 timeouts (v2.1: 7–12 with 1, 5–8 with 7).
+- Next: a late-game escalation mechanic was proposed in the Step 6 report and is waiting for approval. Nothing is implemented.
+- Side effect: the unseeded test `AI vs AI match on <difficulty> plays to a finish` in `tests/sim.test.js` can fail when its random match hits the 30-minute limit (seen once in Step 5; it passes on rerun). Ending stalemates should remove the flake; seeding the test would only hide it.
 
-### AI-vs-AI timeouts and eco-bot stalls
-- AI-vs-AI ladder timeouts rose from 1/60 (1.7%, v2.0) to 11/240 (4.6%, v2.1, same-personality ladder over 20 matches per row).
-- The eco bot still stalls some matches: v2.1 `tests/ladder.js` 20 matches, eco vs Normal 7–12 with 1 timeout, eco vs Hard 5–8 with 7 timeouts.
-- Plan: in Step 6, check whether abilities end these stalemates; if not, consider a late-game escalation mechanic.
-- Side effect: the unseeded test `AI vs AI match on <difficulty> plays to a finish` in `tests/sim.test.js` occasionally fails when its random match hits the 30-minute limit (seen once in Step 5 while the SIM was byte-identical to v2.2; it passed 6/6 on rerun). Ending stalemates in Step 6 should remove the flake; seeding the test would only hide it.
+### The Aggressor still loses to the eco bot
+- Step 6 gave it an ability-based answer: it builds a War Factory when it meets Turrets or a failed attack, saves for the Orbital Strike, waits for it, and strikes Turrets or defenders dug in under the enemy HQ just before its army arrives (2.5–4.7 strikes per match on defences against the turtling bots). It also no longer walks into an infantry rush at its door.
+- Result: it beats the turtle bot 10–0 (Normal) and 9–0 (Hard) and the calibrated rush 15–5 on Hard, but still loses to the eco bot: 1–9 (Normal) and 0–7 with 3 timeouts (Hard), 10 matches each (v2.1: 0–9 and 0–8). The eco bot has no Turrets: it out-earns the Aggressor and defends at home under its HQ gun.
+- The Economist's Normal-vs-Hard margin is narrow, as it was before abilities: v2.5 pooled over 120 matches Normal 42–64 Hard; v2.4 over 80 matches 31–42. Single 20-match rows can come out even.
