@@ -16,7 +16,7 @@ const PHONE = { width: 858, height: 396, insets: { top: 72, bottom: 21, left: 54
 const NARROW = { width: 667, height: 375, insets: { top: 72, bottom: 21, left: 54, right: 54 } };
 
 function htmlWithInsets(insets) {
-  let html = fs.readFileSync(HTML_PATH, 'utf8');
+  let html = fs.readFileSync(process.env.EE_HTML || HTML_PATH, 'utf8'); // EE_HTML: measure another copy of the game
   for (const side of ['top', 'bottom', 'left', 'right']) html = html.split(`env(safe-area-inset-${side},0px)`).join(`${insets[side]}px`);
   return html;
 }
@@ -30,9 +30,10 @@ const COUNT_CANVAS_RESIZES = `(() => {
   Object.defineProperty(HTMLCanvasElement.prototype, 'height', { get: h.get, set(v) { bump(this); h.set.call(this, v); }, configurable: true });
 })();`;
 
-async function openPage(browser, device = PHONE, { countCanvasResizes = false } = {}) {
+async function openPage(browser, device = PHONE, { countCanvasResizes = false, init = null } = {}) {
   const page = await browser.newPage({ viewport: { width: device.width, height: device.height }, deviceScaleFactor: 2 });
   if (countCanvasResizes) await page.addInitScript(COUNT_CANVAS_RESIZES);
+  if (init) await page.addInitScript(init);
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });

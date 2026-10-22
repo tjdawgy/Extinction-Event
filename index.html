@@ -214,7 +214,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.1'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.2'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -1437,107 +1437,190 @@ function drawNode(c, n, time) {
   c.restore();
 }
 const DRAW_B = { turret: drawTurret, hq: drawHQ, refinery: drawRefinery, reactor: drawReactor, habitat: drawHabitat, barracks: drawBarracks, factory: drawFactory, techlab: drawTechLab };
+// Unit sprites: side view facing +x, feet on y = 0. Gun tips sit on the SIM's muzzle points (MUZ) so shots leave the barrel.
+// Flat fills only (no gradients) and a handful of paths each, so a full battle stays cheap to draw.
+function limb(c, x0, y0, x1, y1, x2, y2) { c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.lineTo(x2, y2); c.stroke(); }
+function legs(c, st, hip, w, col) { // two jointed legs; st = walk phase (−1…1)
+  c.strokeStyle = col; c.lineWidth = w; c.lineCap = 'round'; c.lineJoin = 'round';
+  limb(c, -1, -hip, -1 - st * 1.2 + 1, -hip / 2, -1 - st * 3, 0);
+  limb(c, 1, -hip, 1 + st * 1.2 + 1, -hip / 2, 1 + st * 3, 0);
+}
 function dRifle(c, T, u) {
-  const st = u.moving ? Math.sin(u.anim * 11) : 0;
-  c.strokeStyle = M.d; c.lineWidth = 2.4; c.lineCap = 'round';
-  c.beginPath(); c.moveTo(-1, -8); c.lineTo(-1 - st * 3, 0); c.moveTo(1, -8); c.lineTo(1 + st * 3, 0); c.stroke();
-  c.fillStyle = T.hull; rr(c, -3.6, -16.5, 7.2, 9.5, 2); c.fill();
-  c.fillStyle = T.main; c.fillRect(-3.6, -12.5, 7.2, 1.6);
-  c.fillStyle = M.l; c.beginPath(); c.arc(0, -19, 3.3, 0, 7); c.fill();
-  c.fillStyle = T.light; c.fillRect(0.6, -20, 3, 1.6);
-  const rk = u.recoil * 1.5;
-  c.fillStyle = M.h; c.fillRect(-1 - rk, -13.8, 11, 1.8);
-  c.fillStyle = M.d; c.fillRect(1 - rk, -12.4, 3, 3);
+  const st = u.moving ? Math.sin(u.anim * 11) : 0, rk = u.recoil * 1.5;
+  legs(c, st, 8, 2.6, M.d);
+  c.fillStyle = M.m; rr(c, -6.2, -17, 3.4, 7, 1.2); c.fill();                       // pack
+  c.fillStyle = T.hull; rr(c, -3.8, -17.2, 7.6, 10, 2); c.fill();
+  c.fillStyle = T.main; poly(c, [[-2.4, -16.4], [3, -16.4], [3.4, -12], [-2, -12]]); c.fill(); // chest plate
+  c.fillStyle = M.d; c.fillRect(-3.8, -8.8, 7.6, 1.4);
+  c.fillStyle = M.l; c.beginPath(); c.arc(0.2, -19.8, 3.5, 0, 7); c.fill();           // helmet
+  c.fillStyle = T.light; c.fillRect(0.9, -20.8, 3, 1.7);                              // visor
+  c.fillStyle = M.m; c.fillRect(-3.6 - rk, -13.6, 2.2, 3);                            // stock
+  c.fillStyle = M.h; c.fillRect(-2 - rk, -14, 12, 2);                                 // rifle, tip at x 10
+  c.fillStyle = M.d; c.fillRect(2 - rk, -12.4, 2, 3.2);
+  c.strokeStyle = T.hull; c.lineWidth = 2; limb(c, -0.5, -15.5, 1.5, -12.5, 3.5 - rk, -13);
 }
 function dHeavy(c, T, u) {
-  const st = u.moving ? Math.sin(u.anim * 8) : 0;
-  c.strokeStyle = M.d; c.lineWidth = 3.6; c.lineCap = 'round';
-  c.beginPath(); c.moveTo(-2, -10); c.lineTo(-2 - st * 3, 0); c.moveTo(2, -10); c.lineTo(2 + st * 3, 0); c.stroke();
-  c.fillStyle = T.hull; rr(c, -6, -21, 12, 12.5, 3); c.fill();
-  c.fillStyle = T.main; c.fillRect(-6, -14, 12, 2);
-  c.fillStyle = M.l; rr(c, -3.5, -27, 8, 6.5, 2.5); c.fill();
-  c.fillStyle = T.light; c.fillRect(1.5, -25.5, 3, 2);
-  c.save(); c.translate(-4, -25);
-  c.fillStyle = M.m; c.fillRect(-3 - u.recoil * 2, -3.5, 17, 4.5);
-  c.fillStyle = T.main; c.fillRect(11 - u.recoil * 2, -3.5, 2.5, 4.5);
-  c.restore();
-  c.fillStyle = M.l; rr(c, -8, -22, 6, 5, 2); c.fill();
+  const st = u.moving ? Math.sin(u.anim * 8) : 0, rk = u.recoil * 2;
+  legs(c, st * 1.1, 10, 3.8, M.d);
+  c.fillStyle = M.m; c.fillRect(-4.4, -2.2, 3.4, 2.2); c.fillRect(1.6, -2.2, 3.4, 2.2);         // boots
+  c.fillStyle = T.hull; rr(c, -6.5, -22, 13, 13, 3.5); c.fill();
+  c.fillStyle = T.main; c.fillRect(-6.5, -15.2, 13, 2.2);
+  c.fillStyle = M.d; c.fillRect(-5.5, -10.6, 11, 1.6);
+  c.fillStyle = M.l; rr(c, -3, -26.5, 7.5, 6.5, 2.5); c.fill();                        // helmet
+  c.fillStyle = T.light; c.fillRect(1.6, -24, 3, 1.8);
+  c.fillStyle = M.d; poly(c, [[-8 - rk, -29], [-11 - rk, -30.5], [-11 - rk, -23.5], [-8 - rk, -25]]); c.fill(); // exhaust bell
+  c.fillStyle = M.m; c.fillRect(-8 - rk, -29.5, 20, 5);                               // launcher, tip at x 12
+  c.fillStyle = T.main; c.fillRect(9.4 - rk, -30, 2.6, 6);
+  c.fillStyle = M.d; c.fillRect(-1 - rk, -24.5, 3, 3);
+  c.fillStyle = M.l; rr(c, -8.5, -23, 6.5, 6, 2); c.fill();                            // shoulder plate
+  c.fillStyle = T.main; c.fillRect(-8, -19.5, 5.5, 1.2);
 }
 function dSniper(c, T, u) {
-  const st = u.moving ? Math.sin(u.anim * 10) : 0;
-  c.strokeStyle = M.d; c.lineWidth = 2.2; c.lineCap = 'round';
-  c.beginPath(); c.moveTo(-1, -8); c.lineTo(-1 - st * 3, 0); c.moveTo(1, -8); c.lineTo(1 + st * 3, 0); c.stroke();
-  c.fillStyle = M.d; c.beginPath(); c.moveTo(-4, -17); c.lineTo(3, -17); c.lineTo(4, -6); c.lineTo(-7, -5); c.closePath(); c.fill();
-  c.fillStyle = T.hull; rr(c, -3.2, -16.5, 6.4, 9, 2); c.fill();
-  c.fillStyle = M.m; c.beginPath(); c.arc(0, -19, 3.5, 0, 7); c.fill();
-  c.fillStyle = T.main; c.fillRect(0.8, -20, 2.8, 1.4);
-  const rk = u.recoil * 2;
-  c.fillStyle = M.h; c.fillRect(-4 - rk, -14, 22, 1.6);
-  c.fillStyle = M.d; c.fillRect(1 - rk, -16.2, 5, 2);
-  c.fillStyle = T.main; c.fillRect(16 - rk, -14.2, 2, 2);
+  const st = u.moving ? Math.sin(u.anim * 10) : 0, rk = u.recoil * 2;
+  c.fillStyle = M.d; poly(c, [[-4, -17.5], [3, -17], [4, -6], [-8.5, -3.5]]); c.fill();   // cloak
+  legs(c, st, 8, 2.2, M.d);
+  c.fillStyle = T.hull; rr(c, -3, -16.5, 6.4, 9, 2); c.fill();
+  c.fillStyle = M.m; poly(c, [[-4, -18], [0, -23.2], [3.8, -19.5], [2.8, -16.5], [-3.5, -16]]); c.fill(); // hood
+  c.fillStyle = T.light; c.beginPath(); c.arc(2.5, -19.3, 1.2, 0, 7); c.fill();       // lens
+  c.fillStyle = M.h; c.fillRect(-5 - rk, -14.8, 22, 1.6);                             // rail rifle, tip at x 17
+  c.fillStyle = M.d; rr(c, 0.5 - rk, -17.8, 7, 2.4, 1); c.fill();                      // scope
+  c.fillStyle = T.light; c.fillRect(6.6 - rk, -17.4, 0.9, 1.6);
+  c.fillStyle = T.main; c.fillRect(10 - rk, -15.6, 1.2, 3.2); c.fillRect(12.4 - rk, -15.6, 1.2, 3.2); c.fillRect(15.2 - rk, -15.4, 1.8, 2.8); // coils
+  c.strokeStyle = M.d; c.lineWidth = 0.9; limb(c, 9 - rk, -13.4, 11 - rk, -9, 12.5 - rk, -6.5); // bipod
+  c.strokeStyle = T.hull; c.lineWidth = 1.8; limb(c, -0.5, -15, 1.5, -12.8, 3 - rk, -13.8);
 }
 function dTank(c, T, u) {
-  c.fillStyle = M.d; rr(c, -22, -9, 44, 9, 4.5); c.fill();
-  c.fillStyle = M.l;
-  for (let i = 0; i < 5; i++) { c.beginPath(); c.arc(-16 + i * 8, -4.5, 2.6, 0, 7); c.fill(); }
-  const sp = u.moving ? u.anim * 30 : 0;
+  const rk = u.recoil * 4, sp = u.moving ? u.anim * 30 : 0;
+  c.fillStyle = M.d; rr(c, -22, -9, 44, 9, 4.5); c.fill();                            // track
   c.fillStyle = M.m;
-  for (let i = 0; i < 7; i++) c.fillRect(-20 + ((i * 6 + sp) % 40 + 40) % 40, -9, 1.6, 1.6);
-  c.fillStyle = T.hull; c.beginPath(); c.moveTo(-21, -9); c.lineTo(-17, -15); c.lineTo(15, -15); c.lineTo(22, -10); c.closePath(); c.fill();
-  c.fillStyle = T.main; c.fillRect(-14, -13, 22, 2);
-  c.fillStyle = M.l; c.beginPath(); c.moveTo(-10, -15); c.lineTo(-7, -21); c.lineTo(6, -21); c.lineTo(9, -15); c.closePath(); c.fill();
-  c.fillStyle = M.h; c.fillRect(7 - u.recoil * 4, -19.3, 19, 2.6); c.fillRect(24 - u.recoil * 4, -20, 3, 4);
-  c.fillStyle = T.light; c.fillRect(-4, -20, 3, 1.5);
+  for (let i = 0; i < 8; i++) c.fillRect(-20 + ((i * 5 + sp) % 40 + 40) % 40, -9, 1.6, 1.4);
+  for (let i = 0; i < 5; i++) { c.fillStyle = M.l; c.beginPath(); c.arc(-16 + i * 8, -4.2, 2.8, 0, 7); c.fill(); c.fillStyle = M.d; c.fillRect(-16.8 + i * 8, -5, 1.6, 1.6); }
+  c.fillStyle = T.hull; poly(c, [[-22, -8.5], [-18, -15.5], [14, -15.5], [23, -10], [21, -8.5]]); c.fill(); // hull and skirt
+  c.fillStyle = T.main; c.fillRect(-15, -12.8, 26, 2);
+  c.fillStyle = M.m; c.fillRect(-20, -17, 4, 2);                                       // exhaust
+  c.fillStyle = M.h; c.fillRect(7 - rk, -19.3, 17, 2.6); c.fillRect(23 - rk, -20.2, 4, 4.4); // barrel and muzzle brake, tip at x 27
+  c.fillStyle = M.l; poly(c, [[-11, -15.5], [-8, -22], [6, -22], [10, -15.5]]); c.fill(); // turret
+  c.fillStyle = T.main; c.fillRect(-9.5, -18.6, 18, 1.4);
+  c.fillStyle = M.m; rr(c, -5.5, -24.4, 6, 2.8, 1.2); c.fill();                         // hatch
+  c.strokeStyle = M.h; c.lineWidth = 0.8; c.beginPath(); c.moveTo(-7.5, -22); c.lineTo(-9.5, -30); c.stroke();
+  c.fillStyle = T.light; c.fillRect(-10.2, -31, 1.6, 1.6);
 }
 function dArt(c, T, u) {
-  c.fillStyle = M.m; c.beginPath(); c.moveTo(-18, -10); c.lineTo(-27, -1); c.lineTo(-24, -1); c.lineTo(-15, -9); c.closePath(); c.fill();
+  const rk = u.recoil * 6;
+  c.fillStyle = M.m; poly(c, [[-18, -10], [-27, -1], [-23.5, -1], [-15, -8.5]]); c.fill(); // rear spade
   c.save(); c.translate(0, -15); c.rotate(-0.52);
-  c.fillStyle = M.h; c.fillRect(-6 - u.recoil * 6, -2, 38, 3.6);
-  c.fillStyle = M.l; c.fillRect(-8, -4, 12, 8);
+  c.fillStyle = M.h; c.fillRect(-6 - rk, -1.8, 38, 3.6);                                 // barrel, tip at (28, −31)
+  c.fillStyle = T.main; c.fillRect(27 - rk, -2.4, 5, 4.8);
+  c.fillStyle = M.l; rr(c, -9, -4.5, 14, 9, 2); c.fill();                                // breech
   c.restore();
-  c.fillStyle = T.hull; rr(c, -20, -14, 36, 7, 2.5); c.fill();
+  c.strokeStyle = M.h; c.lineWidth = 1.6; c.beginPath(); c.moveTo(6, -12); c.lineTo(10, -19.5); c.stroke(); // ram
+  c.fillStyle = T.hull; rr(c, -20, -14, 36, 7.5, 2.5); c.fill();
   c.fillStyle = T.main; c.fillRect(-18, -12, 14, 1.6);
-  for (const x of [-12, 10]) {
+  c.fillStyle = M.m; rr(c, 4, -20, 9, 7, 1.5); c.fill();                                // cab
+  c.fillStyle = T.light; c.fillRect(9.5, -18.5, 2.6, 2.2);
+  for (const x of [-13, -1, 11]) {
     c.fillStyle = M.d; c.beginPath(); c.arc(x, -5, 5, 0, 7); c.fill();
     c.fillStyle = M.l; c.beginPath(); c.arc(x, -5, 2, 0, 7); c.fill();
   }
-  c.fillStyle = M.m; c.fillRect(2, -24, 4, 11);
+}
+// Titan: a bipedal walker. Slow, heavy steps: the body dips as each foot lands.
+function mechLeg(c, ph, near) {
+  const s = Math.sin(ph), lift = Math.max(0, Math.cos(ph)) * 4.5, fx = s * 9, hx = near ? 2 : -2;
+  const kx = hx + fx * 0.45 + 5, ky = -12 - lift * 0.6;
+  c.strokeStyle = near ? M.l : M.m; c.lineWidth = 7; c.lineCap = 'round'; c.lineJoin = 'round';
+  limb(c, hx, -23, kx, ky, fx, -2.5 - lift);
+  c.fillStyle = near ? M.m : M.d; c.beginPath(); c.arc(hx, -23, 4.2, 0, 7); c.fill();                  // hip
+  c.fillStyle = near ? M.m : M.d; poly(c, [[fx - 5, -lift], [fx + 9, -lift], [fx + 7, -4 - lift], [fx - 3, -4.5 - lift]]); c.fill(); // foot
+  c.fillStyle = near ? M.h : M.l; c.beginPath(); c.arc(kx, ky, 2.6, 0, 7); c.fill();         // knee
 }
 function dTitan(c, T, u) {
-  c.fillStyle = M.d; rr(c, -30, -12, 60, 12, 6); c.fill();
-  c.fillStyle = M.l;
-  for (let i = 0; i < 7; i++) { c.beginPath(); c.arc(-24 + i * 8, -6, 3, 0, 7); c.fill(); }
-  c.fillStyle = T.hull; c.beginPath(); c.moveTo(-29, -12); c.lineTo(-24, -21); c.lineTo(22, -21); c.lineTo(30, -13); c.closePath(); c.fill();
-  c.fillStyle = M.m; c.fillRect(-22, -20, 12, 6); c.fillRect(6, -20, 12, 6);
-  c.fillStyle = T.main; c.fillRect(-24, -15, 44, 2.5);
-  c.fillStyle = M.l; c.beginPath(); c.moveTo(-14, -21); c.lineTo(-10, -32); c.lineTo(10, -32); c.lineTo(14, -21); c.closePath(); c.fill();
-  const rk = u.recoil * 5;
-  c.fillStyle = M.h; c.fillRect(10 - rk, -30, 26, 2.8); c.fillRect(10 - rk, -25.8, 26, 2.8);
-  c.fillRect(34 - rk, -31, 4, 9);
-  c.fillStyle = T.light; c.fillRect(-6, -31, 4, 1.6);
+  const ph = u.moving ? u.anim * 3.2 : 0, bob = u.moving ? -Math.abs(Math.cos(ph)) * 1.8 + 1.8 : 0, rk = u.recoil * 4;
+  mechLeg(c, ph + Math.PI, false);
+  c.save(); c.translate(0, bob);
+  c.strokeStyle = M.d; c.lineWidth = 4; limb(c, -4, -34, -2, -26, 4, -22);                 // far arm
+  c.fillStyle = M.d; rr(c, -9, -27, 18, 6, 2); c.fill();                                   // pelvis
+  c.fillStyle = M.m; rr(c, -16, -50, 12, 9, 2); c.fill();                                  // missile pod
+  c.fillStyle = T.light; for (let i = 0; i < 3; i++) c.fillRect(-14 + i * 3.4, -48, 2, 2);
+  c.fillStyle = T.hull; poly(c, [[-13, -25], [12, -25], [15, -33], [10, -43], [-11, -43], [-16, -34]]); c.fill(); // torso
+  c.fillStyle = T.main; poly(c, [[-12, -31], [14, -31], [13.2, -28.6], [-11.2, -28.6]]); c.fill();
+  c.fillStyle = M.d; poly(c, [[4, -41], [10, -41], [12.6, -36], [6, -36]]); c.fill();       // cockpit
+  c.fillStyle = T.light; c.fillRect(7, -39.6, 4.6, 1.8);
+  c.restore();
+  mechLeg(c, ph, true);
+  c.save(); c.translate(-rk, bob);
+  c.strokeStyle = M.l; c.lineWidth = 4.5; limb(c, 0, -36, 3, -30, 7, -27);                 // weapon arm
+  c.fillStyle = M.h; c.fillRect(8, -30, 30, 2.2); c.fillRect(8, -26.2, 30, 2.2);           // twin cannon, tips at x 38
+  c.fillStyle = M.l; rr(c, 3, -31.5, 15, 9, 2); c.fill();
+  c.fillStyle = T.main; c.fillRect(35, -30.4, 3, 3); c.fillRect(35, -26.6, 3, 3); c.fillRect(5, -28.5, 11, 1.4);
+  c.fillStyle = M.h; c.beginPath(); c.arc(0, -36, 3.6, 0, 7); c.fill();                    // shoulder
+  c.restore();
 }
-function dAir(c, T, u) {
-  const fl = 0.6 + 0.4 * Math.sin(u.anim * 30);
+function dAir(c, T, u) { // Gunship: rotor on top, chin gun underneath
+  const fl = 0.6 + 0.4 * Math.sin(u.anim * 30), bl = Math.cos(u.anim * 40) * 19;
   c.fillStyle = `rgba(255,180,90,${0.55 * fl})`; c.beginPath(); c.ellipse(-25, -1, 7 * fl + 3, 2.5, 0, 0, 7); c.fill();
+  c.fillStyle = 'rgba(200,215,240,0.16)'; c.beginPath(); c.ellipse(-2, -12, 20, 2, 0, 0, 7); c.fill(); // rotor disc
+  c.strokeStyle = 'rgba(220,230,250,0.55)'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(-2 - bl, -12); c.lineTo(-2 + bl, -12); c.stroke();
+  c.fillStyle = M.m; c.fillRect(-3, -12, 2, 4);                                          // mast
   c.fillStyle = T.hull;
-  c.beginPath(); c.moveTo(24, 0); c.lineTo(12, -5); c.lineTo(-12, -6); c.lineTo(-22, -13); c.lineTo(-19, -3); c.lineTo(-22, 2); c.lineTo(-10, 4); c.lineTo(12, 4); c.closePath(); c.fill();
-  c.fillStyle = T.light; c.beginPath(); c.moveTo(14, -3); c.lineTo(8, -7); c.lineTo(2, -6); c.lineTo(4, -3); c.closePath(); c.fill();
-  c.fillStyle = M.l; c.beginPath(); c.moveTo(-2, 0); c.lineTo(-14, 9); c.lineTo(-8, 9); c.lineTo(6, 1); c.closePath(); c.fill();
-  c.fillStyle = T.main; c.fillRect(-14, -3, 16, 1.6);
-  c.fillStyle = M.d; c.fillRect(6, 4, 8 - u.recoil * 2, 2.4);
+  poly(c, [[23, 0], [16, -5.5], [4, -8], [-12, -7], [-23, -13], [-20, -3], [-23, 2], [-10, 4.5], [14, 5]]); c.fill();
+  c.fillStyle = T.light; poly(c, [[16, -3], [10, -7], [3, -6.5], [5, -3]]); c.fill();   // canopy
+  c.fillStyle = T.main; c.fillRect(-15, -2.5, 17, 1.6); c.fillRect(-23, -13, 3, 4);
+  c.fillStyle = M.l; poly(c, [[-1, 1], [-12, 8], [-6, 8], [6, 1.5]]); c.fill();          // stub wing
+  c.fillStyle = M.m; rr(c, -10, 6.5, 12, 3.4, 1.5); c.fill();                            // rocket pod
+  c.fillStyle = T.main; c.fillRect(0.5, 6.7, 1.5, 3);
+  c.fillStyle = M.d; c.beginPath(); c.arc(12, 4.6, 2.4, 0, 7); c.fill();                // chin gun, tip at (16, 5)
+  c.fillRect(12, 3.9, 4 - u.recoil * 2, 2.2);
 }
-function dInter(c, T, u) {
+function dInter(c, T, u) { // Interceptor: a delta-wing dart with twin afterburners
   const fl = 0.6 + 0.4 * Math.sin(u.anim * 34);
   c.fillStyle = `rgba(140,220,255,${0.6 * fl})`;
-  c.beginPath(); c.ellipse(-24, -2, 6 * fl + 3, 1.8, 0, 0, 7); c.fill();
-  c.beginPath(); c.ellipse(-24, 2, 6 * fl + 3, 1.8, 0, 0, 7); c.fill();
+  c.beginPath(); c.ellipse(-24, -2, 7 * fl + 3, 1.8, 0, 0, 7); c.fill();
+  c.beginPath(); c.ellipse(-24, 2, 7 * fl + 3, 1.8, 0, 0, 7); c.fill();
+  c.fillStyle = M.l; poly(c, [[8, 0], [-16, 9], [-20, 9], [-12, 0]]); c.fill();           // delta wing
+  c.fillStyle = T.main; poly(c, [[8, 0], [-16, 9], [-14.5, 9], [9.5, 0.5]]); c.fill();     // wing edge
+  c.fillStyle = M.h; c.fillRect(13, 0.2, 7, 1.2);                                           // cannon, tip at (20, 0)
   c.fillStyle = T.hull;
-  c.beginPath(); c.moveTo(26, 0); c.lineTo(8, -4); c.lineTo(-16, -4); c.lineTo(-22, -11); c.lineTo(-19, -2); c.lineTo(-21, 3); c.lineTo(-14, 3); c.lineTo(8, 3); c.closePath(); c.fill();
-  c.fillStyle = M.l; c.beginPath(); c.moveTo(6, 0); c.lineTo(-14, 8); c.lineTo(-19, 8); c.lineTo(-6, 0); c.closePath(); c.fill();
-  c.fillStyle = T.light; c.beginPath(); c.moveTo(14, -2); c.lineTo(7, -6); c.lineTo(2, -4); c.closePath(); c.fill();
-  c.fillStyle = T.main; c.fillRect(-12, -2.5, 18, 1.4);
+  poly(c, [[27, -0.6], [10, -4], [-16, -4], [-22, -12], [-19, -2.5], [-21, 3], [-14, 3], [10, 2]]); c.fill();
+  c.fillStyle = M.m; poly(c, [[-15, -4], [-19, -9], [-17, -9], [-11, -4]]); c.fill();      // second fin
+  c.fillStyle = T.light; poly(c, [[15, -2.2], [7, -6], [1, -4]]); c.fill();               // canopy
+  c.fillStyle = T.main; c.fillRect(-12, -2.4, 18, 1.4);
 }
 const DRAW_U = { rifle: dRifle, heavy: dHeavy, sniper: dSniper, tank: dTank, artillery: dArt, titan: dTitan, aircraft: dAir, interceptor: dInter };
+// Drawn size where it differs from the SIM height (the Titan walker stands taller than its hitbox): health bars and shadows follow the art
+const UVIS = { titan: { h: 50, w: 17 } };
+const visH = type => (UVIS[type] || UDEF[type]).h;
+// Sprite cache: a ground unit's pose is drawn once into a small canvas at the current zoom, then stamped with one
+// drawImage. Walk cycles are cut into a few poses; a unit mid-recoil and aircraft (few, always animating) draw live.
+const SPR_BOX = { rifle: [-9, -26, 22, 30], heavy: [-14, -33, 29, 36], sniper: [-11, -26, 31, 30], tank: [-25, -34, 55, 37], artillery: [-30, -38, 64, 41], titan: [-22, -56, 64, 62] };
+const SPR_STEP = { rifle: [11, 8], heavy: [8, 8], sniper: [10, 8], titan: [3.2, 12] }; // [phase speed, poses per cycle]
+const SPR = { scale: 0, map: new Map(), budget: 0 };
+function sprPose(u) { // a stand-in unit snapped to one of the cached poses, with its cache key; null = draw live
+  const box = SPR_BOX[u.type];
+  if (!box || u.recoil > 0.02) return null;
+  let q = 0, anim = 0;
+  if (u.moving) {
+    if (u.type === 'tank') { q = 1 + (((u.anim * 30) % 5 + 5) % 5 / 1.25 | 0); anim = (q - 1) * 1.25 / 30; }
+    else if (u.type !== 'artillery') { const [k, n] = SPR_STEP[u.type], c = Math.round(u.anim * k / (2 * Math.PI) * n) % n; q = 1 + c; anim = c * 2 * Math.PI / n / k; }
+  }
+  return { key: u.type + u.side + '.' + q, box, u: { anim, moving: q > 0, recoil: 0 } };
+}
+function drawUnitArt(c, u, T) {
+  const p = sprPose(u);
+  if (p) {
+    const b = 2 ** (Math.ceil(Math.log2(V.dpr * V.S * US) * 4) / 4); // device pixels per art unit, in quarter-octave steps
+    if (b !== SPR.scale) { SPR.scale = b; SPR.map.clear(); }
+    let cv = SPR.map.get(p.key);
+    if (!cv && SPR.budget > 0) { // a few new poses per frame at most, so a zoom change never stalls a frame
+      SPR.budget--;
+      cv = document.createElement('canvas'); cv.width = Math.ceil(p.box[2] * b); cv.height = Math.ceil(p.box[3] * b);
+      const k = cv.getContext('2d'); k.setTransform(b, 0, 0, b, -p.box[0] * b, -p.box[1] * b);
+      DRAW_U[u.type](k, T, p.u);
+      SPR.map.set(p.key, cv);
+    }
+    if (cv) { c.drawImage(cv, p.box[0], p.box[1], cv.width / b, cv.height / b); return; }
+  }
+  DRAW_U[u.type](c, T, u);
+}
 
 /* ---------- Backdrop: sky, mountains and the ground plane ---------- */
 function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -1745,16 +1828,17 @@ function drawFog(c, F) {
 function drawUnit(c, u) {
   const d = UDEF[u.type], w = P(u.u, u.v), bob = d.air ? Math.sin(u.anim * 2.2) * 3 : 0;
   c.fillStyle = d.air ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.32)';
-  c.beginPath(); c.ellipse(w.x, w.y, (d.air ? 16 : Math.max(8, d.h * 0.7)) * US, (d.air ? 3.5 : 2.6) * US, 0, 0, 7); c.fill();
+  c.beginPath(); c.ellipse(w.x, w.y, (d.air ? 16 : UVIS[u.type] ? UVIS[u.type].w : Math.max(8, d.h * 0.7)) * US, (d.air ? 3.5 : 2.6) * US, 0, 0, 7); c.fill();
   c.save(); c.translate(w.x, w.y - u.z + bob); c.scale(u.face * US, US);
-  DRAW_U[u.type](c, TEAM[u.side], u);
-  if (u.hitT > 0) { c.globalAlpha = 0.35; c.fillStyle = '#fff'; c.fillRect(-6, -d.h, 12, d.h); c.globalAlpha = 1; }
+  drawUnitArt(c, u, TEAM[u.side]);
+  if (u.hitT > 0) { const h = visH(u.type); c.globalAlpha = 0.35; c.fillStyle = '#fff'; c.fillRect(-6, -h, 12, h); c.globalAlpha = 1; }
   c.restore();
 }
 
 function render(c, g, time, sel, selPad) {
   const { cw, ch, dpr, S, A } = V;
   if (!cw) return;
+  SPR.budget = 16;
   const hy = (HORIZON - Y_BOT) * S + A;
   c.setTransform(dpr, 0, 0, dpr, 0, 0);
   drawSky(c, time, hy);
@@ -1855,7 +1939,7 @@ function render(c, g, time, sel, selPad) {
       }
     } else if (e.hp < e.maxHp) {
       const d = UDEF[e.type], w = P(e.u, e.v);
-      bar(c, w.x, w.y - e.z - d.h * US - 9, d.air ? 28 : Math.max(18, d.h * 0.9 + 6), e.hp / e.maxHp, 2.4);
+      bar(c, w.x, w.y - e.z - visH(e.type) * US - 9, d.air ? 28 : Math.max(18, d.h * 0.9 + 6), e.hp / e.maxHp, 2.4);
     }
   }
 }
@@ -1998,7 +2082,7 @@ function drawIcon(cvs, kind, type) {
     const d = BDEF[type], s = Math.min(54 / (d.half * 3.6), 31 / (d.half * 2 + d.h + 4));
     c.translate(W / 2, H - 1 - d.half * s); c.scale(s, s); DRAW_B[type](c, TEAM[0], 1.2, null, 1);
   } else {
-    const d = UDEF[type], s = d.air ? 1.1 : Math.min(1.45, 28 / (d.h + 4)) * (type === 'titan' ? 0.85 : 1);
+    const d = UDEF[type], s = d.air ? 1.1 : Math.min(1.45, 28 / (visH(type) + 4));
     c.translate(W / 2 - (type === 'artillery' || type === 'titan' ? 3 : 0), d.air ? H / 2 : H - 2); c.scale(s, s);
     DRAW_U[type](c, TEAM[0], { anim: 0, moving: false, recoil: 0 });
   }

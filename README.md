@@ -29,6 +29,8 @@ Other tools:
 - `node tests/rush-variants.js [matches] [difficulty] [filters]`: Rifleman-rush variants against the AI (the calibrated rush is `CALIBRATED` in `tests/rush-variants-list.js`).
 - `node tests/duel.js [matches] [filters]`: the calibrated rush against smart-defender bots, with no AI and equal economies.
 - `node tests/difficulty-options.js [matches] [current|no-bonus]`: kept for the record of the Step 3 decision on AI bonuses.
+- `node tests/perf.js [battle] [memory] [--secs=15] [--rates=1,4,6]`: frame timing in a large battle (both armies near the population cap, mid-map, in view) at each Chromium CPU throttle rate, and JS heap after GC across 15 game minutes of AI-vs-AI play. Set `EE_HTML=path` to measure another copy of the game (for before/after comparisons).
+- `node tests/unit-sheet.js [outDir] [--tag=name] [--narrow]`: a sheet of all eight units (both teams, idle and walking, enlarged and at game size) and a large-battle screenshot. Also honours `EE_HTML`.
 - `node tests/screenshot.js [outDir] [--narrow]`: PNGs of the title, intro, countdown, play, HQ states and victory at 858×396 (or 667×375). The default output folder, `tests/screenshots/`, is git-ignored.
 
 The version shown on the title screen is `VERSION` near the top of the script in `index.html`. Bump it with every change.
