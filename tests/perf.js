@@ -1,5 +1,5 @@
 // Performance measurement in headless Chromium at iPhone landscape size (858×396, 2× pixels).
-//   node tests/perf.js [battle] [memory] [--secs=15] [--rates=1,4,6] [--quality=2|1|0|auto] [--json=out.json]
+//   node tests/perf.js [battle] [memory] [--secs=15] [--rates=1,4,6] [--quality=2|1|0|auto] [--abilities | --abilities-spam] [--json=out.json]
 // battle: both armies kept near the 80-population cap and fighting mid-map in full view, measured
 //         at each CPU throttle rate (Chromium DevTools CPU throttling simulates a slower phone).
 //         Reports the script time per frame (update + render) and the time between frames.
@@ -41,7 +41,24 @@ const BATTLE = army => {
     }
   };
   topUp();
-  window.__topUp = setInterval(topUp, 1500);
+  window.__topUp = setInterval(topUp, 300); // often enough that both armies stay at full size whatever kills or saves units
+  // --abilities (v2.5+): both sides keep casting Shield, Orbital Strike and Repair Pulse into the fight, far more often than real play
+  if (window.__abil && typeof useAbility === 'function') {
+    for (const s of [0, 1]) for (const k of ['barracks', 'factory']) { tryBuild(game, s, k); for (const b of game.ents) if (b.type === k && b.side === s) { b.built = true; b.progress = 1; } }
+    // default: every 10 s each side casts all three at once (5-10x the real cooldowns); __abilSpam: one cast every 1.2 s per side (about 30x)
+    let n = 0;
+    const cast = (s, k) => {
+      const side = game.sides[s];
+      side.ab[k] = 0; side.res.c = side.res.e = 1000; game.fog[s].exp.fill(1);
+      const mine = game.ents.filter(e => e.side === s && e.kind === 'u'), foes = game.ents.filter(e => e.side !== s && e.kind === 'u');
+      const t = k === 'strike' ? foes[n % Math.max(1, foes.length)] : mine[n % Math.max(1, mine.length)];
+      if (t) useAbility(game, s, k, t.u, t.v);
+      side.res.c = side.res.e = 0;
+    };
+    const wave = () => { for (const s of [0, 1]) for (const k of ['shield', 'strike', 'repair']) cast(s, k); n++; };
+    if (window.__abil === 'spam') window.__cast = setInterval(() => { for (const s of [0, 1]) cast(s, ['shield', 'strike', 'repair'][n % 3]); n++; }, 1200);
+    else { wave(); window.__cast = setInterval(wave, 10000); }
+  }
 };
 
 const stats = a => {
@@ -49,13 +66,14 @@ const stats = a => {
   return { frames: s.length, avg: +(s.reduce((x, y) => x + y, 0) / n).toFixed(2), p95: +(s[Math.floor(n * 0.95)] || 0).toFixed(2), max: +(s[s.length - 1] || 0).toFixed(1), over50: s.filter(x => x > 50).length, over33: s.filter(x => x > 33.4).length };
 };
 
-async function battle(browser, rates, secs, quality) {
+async function battle(browser, rates, secs, quality, abil) {
   const out = {};
   for (const rate of rates) {
     const { page, errors } = await openPage(browser, PHONE, { init: SEED });
     await page.click('#bPlay');
     await page.waitForTimeout(300);
     await page.evaluate(PROBE);
+    await page.evaluate(a => { window.__abil = a; }, abil);
     await page.evaluate(BATTLE, ARMY);
     await page.evaluate(q => { if (typeof VFX !== 'undefined') VFX.lock = q === 'auto' ? null : +q; }, quality); // effect quality (v2.3+): a level, or auto
     const cdp = await page.context().newCDPSession(page);
@@ -114,7 +132,7 @@ async function main() {
   const args = process.argv.slice(2);
   const opt = k => (args.find(a => a.startsWith(`--${k}=`)) || '').split('=')[1];
   const which = args.filter(a => !a.startsWith('--'));
-  const secs = +(opt('secs') || 15), rates = (opt('rates') || '1,4,6').split(',').map(Number), quality = opt('quality') || '2';
+  const secs = +(opt('secs') || 15), rates = (opt('rates') || '1,4,6').split(',').map(Number), quality = opt('quality') || '2', abil = args.includes('--abilities-spam') ? 'spam' : args.includes('--abilities');
   const pw = findPlaywright();
   if (!pw) { console.error('Playwright is not installed'); process.exit(1); }
   const browser = await pw.chromium.launch();
@@ -123,7 +141,7 @@ async function main() {
     const { page } = await openPage(browser, PHONE);
     res.version = await page.evaluate(() => VERSION); await page.close();
     console.log('version', res.version);
-    if (!which.length || which.includes('battle')) res.battle = await battle(browser, rates, secs, quality);
+    if (!which.length || which.includes('battle')) res.battle = await battle(browser, rates, secs, quality, abil);
     if (!which.length || which.includes('memory')) res.memory = await memory(browser);
   } finally { await browser.close(); }
   if (opt('json')) fs.writeFileSync(opt('json'), JSON.stringify(res, null, 1));

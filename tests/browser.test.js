@@ -2,7 +2,7 @@
 // Skips itself when Playwright isn't installed.
 const test = require('node:test');
 const assert = require('node:assert');
-const { findPlaywright, PHONE, openPage } = require('./browser-kit');
+const { findPlaywright, PHONE, NARROW, openPage } = require('./browser-kit');
 
 const pw = findPlaywright();
 const skip = !pw && 'playwright not installed';
@@ -392,6 +392,111 @@ test('sound: every sound is baked into a buffer, so a playing sound costs at mos
   });
   for (const [n, k] of Object.entries(r.out)) assert.ok(k > 0 && k <= 3, `${n} uses ${k} nodes`);
   assert.ok(r.longest < 1.6, `longest sound ${r.longest.toFixed(2)} s`);
+  assert.deepStrictEqual(errors, []);
+  await page.close();
+});
+
+for (const dev of [PHONE, NARROW]) {
+  test(`abilities at ${dev.width}×${dev.height}: buttons, building panel, info panel, banner, top bar and cards never overlap`, { skip }, async () => {
+    const { page, errors } = await openPage(browser, dev);
+    await page.click('#bPlay'); await page.waitForTimeout(300);
+    const r = await page.evaluate(() => {
+      game.countdown = 0; hideCountdown(); game.t = 200; game.sides[0].res.c = game.sides[0].res.e = 5000;
+      for (const k of ['barracks', 'factory']) { tryBuild(game, 0, k); for (const b of game.ents) if (b.type === k) { b.built = true; b.progress = 1; } }
+      refreshUI(true);
+      const box = id => { const e = $(id), b = e.getBoundingClientRect(), st = getComputedStyle(e); return st.display === 'none' || st.visibility === 'hidden' ? null : { id, l: b.left, t: b.top, r: b.right, b: b.bottom }; };
+      const hit = (a, b) => a && b && a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b;
+      const out = [], check = (label, ids) => { const bs = ids.map(box); for (let i = 0; i < bs.length; i++) for (let j = i + 1; j < bs.length; j++) if (hit(bs[i], bs[j])) out.push(`${label}: ${bs[i].id} overlaps ${bs[j].id}`); return bs; };
+      openPanel(game.ents.find(e => e.type === 'factory'));
+      const withPanel = check('building panel open', ['abil', 'bp', 'hud', 'panel']);
+      showInfo('a', 'strike');
+      check('info open over the panel', ['abil', 'bp', 'info', 'panel']);
+      hideInfo(); closePanel(); showInfo('u', 'tank');
+      check('unit info open', ['abil', 'info', 'panel']);
+      hideInfo(); onAbil('shield', $('abil').children[0]);
+      check('targeting banner', ['abil', 'aim', 'panel', 'hud']);
+      const btn = $('abil').children[0].getBoundingClientRect();
+      return { out, abilShown: !!withPanel[0], bp: !!withPanel[1], btn: Math.round(btn.width) };
+    });
+    assert.ok(r.abilShown && r.bp, 'both on screen together');
+    assert.deepStrictEqual(r.out, []);
+    assert.ok(r.btn >= 44, `buttons are at least 44 pt (${r.btn})`);
+    assert.deepStrictEqual(errors, []);
+    await page.close();
+  });
+}
+
+test('abilities: tap, place, confirm; cancel; blocked during GET READY, while paused and when short of resources', { skip }, async () => {
+  const { page, errors } = await openPage(browser, PHONE);
+  await page.click('#bPlay'); await page.waitForTimeout(300);
+  const toasts = () => page.evaluate(() => [...$('toasts').children].map(t => t.textContent));
+  // GET READY
+  await page.click('#abil .ab[data-k="shield"]');
+  assert.ok((await toasts()).includes('Wait for GO'));
+  assert.ok(await page.evaluate(() => $('aim').classList.contains('hide')));
+  const at = await page.evaluate(() => {
+    game.countdown = 0; hideCountdown(); game.t = 200; game.sides[0].ab = { shield: 0, strike: 0, repair: 0 };
+    for (const s of game.sides) s.aiT = 1e9;
+    for (let i = 0; i < 6; i++) { const e = spawnUnit(game, 0, 'rifle', 500 + i * 12, 0); e.holdU = e.u; e.holdV = 0; }
+    update(game, 1 / 30); updateIntro(); cam.x = 600; clampCam(); refreshUI(true);
+    const w = P(530, 0); return { x: V.cw / 2 + (w.x - cam.x) * V.S, y: V.A + (w.y - Y_BOT) * V.S };
+  });
+  // not enough energy
+  await page.evaluate(() => { game.sides[0].res.e = 10; refreshUI(true); });
+  await page.click('#abil .ab[data-k="shield"]');
+  assert.ok((await toasts()).some(t => /more energy/.test(t)));
+  await page.evaluate(() => { game.sides[0].res.c = game.sides[0].res.e = 1000; refreshUI(true); });
+  // cancel
+  await page.click('#abil .ab[data-k="shield"]');
+  assert.ok(await page.evaluate(() => !$('aim').classList.contains('hide')));
+  await page.click('#aimX');
+  assert.ok(await page.evaluate(() => $('aim').classList.contains('hide') && aim === null));
+  // place, then confirm inside the circle
+  await page.click('#abil .ab[data-k="shield"]');
+  await page.mouse.click(at.x, at.y);
+  assert.match(await page.textContent('#aimTxt'), /tap inside the circle/);
+  const e0 = await page.evaluate(() => game.sides[0].res.e);
+  assert.ok(e0 >= 1000, 'nothing is paid before confirming');
+  await page.mouse.click(at.x + 4, at.y);
+  const r = await page.evaluate(() => ({ e: game.sides[0].res.e, shielded: game.ents.filter(e => e.side === 0 && e.shT > game.t).length, aim, cd: game.sides[0].ab.shield - game.t }));
+  assert.ok(Math.abs(e0 - r.e - 75) < 1, `paid ${e0 - r.e} energy`); assert.strictEqual(r.shielded, 6); assert.strictEqual(r.aim, null); assert.ok(r.cd > 49);
+  // paused: pausing cancels targeting and the buttons do nothing
+  await page.click('#abil .ab[data-k="repair"]');
+  await page.evaluate(() => pauseGame());
+  assert.ok(await page.evaluate(() => aim === null && $('aim').classList.contains('hide')));
+  await page.evaluate(() => onAbil('repair', $('abil').children[2]));
+  assert.ok(await page.evaluate(() => aim === null));
+  assert.deepStrictEqual(errors, []);
+  await page.close();
+});
+
+test('abilities and the fog: an enemy strike on ground the player cannot see shows nothing; one in view warns, even off screen', { skip }, async () => {
+  const { page, errors } = await openPage(browser, PHONE);
+  await page.click('#bPlay'); await page.waitForTimeout(300);
+  const r = await page.evaluate(() => {
+    paused = true; game.countdown = 0; hideCountdown(); updateIntro(); game.t = 300; // play zoom, not the intro's whole-map view
+    for (const s of game.sides) { s.aiT = 1e9; s.ab = { shield: 0, strike: 0, repair: 0 }; s.res.c = s.res.e = 5000; }
+    for (const k of ['barracks', 'factory']) { tryBuild(game, 1, k); for (const b of game.ents) if (b.type === k && b.side === 1) { b.built = true; b.progress = 1; } }
+    const calls = []; const sf = sfx; window.sfx = (n, x) => { calls.push(n); return sf(n, x); };
+    const tt = toast; window.toast = (m, k) => { calls.push('toast:' + m); return tt(m, k); };
+    const F = game.fog[0], lit = u => F.vis[cellOf(u)] === 1;
+    game.fog[1].exp.fill(1);
+    const hidden = 1000; // middle of the map: dark for the player
+    const ok1 = useAbility(game, 1, 'strike', hidden, 0).ok;
+    for (let i = 0; i < 120; i++) { update(game, 1 / 30); render(ctx, game, game.t, null, -1); }
+    const hiddenCalls = calls.slice(), hiddenSeen = game.abil.filter(a => abilSeen(a, lit)).length;
+    // now one on the player's own base, with the camera far away
+    game.sides[1].ab.strike = 0; cam.x = 1600; clampCam();
+    const target = hqPos(0).u + 60;
+    const ok2 = useAbility(game, 1, 'strike', target, 0).ok;
+    update(game, 1 / 30); const arrows = render(ctx, game, game.t, null, -1) === undefined ? drawStrikeAlerts(ctx, game, lit, game.t) : 0;
+    return { ok1, ok2, hiddenCalls, hiddenSeen, calls: calls.slice(hiddenCalls.length), arrows };
+  });
+  assert.ok(r.ok1 && r.ok2);
+  assert.deepStrictEqual(r.hiddenCalls, [], 'no sound, toast or warning for a strike in the fog');
+  assert.strictEqual(r.hiddenSeen, 0);
+  assert.ok(r.calls.includes('siren') && r.calls.includes('toast:Enemy orbital strike incoming!'), JSON.stringify(r.calls));
+  assert.strictEqual(r.arrows, 1, 'an arrow points to the off-screen strike');
   assert.deepStrictEqual(errors, []);
   await page.close();
 });
