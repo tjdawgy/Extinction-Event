@@ -214,7 +214,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.3'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.4'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -1878,7 +1878,7 @@ for (let i = 0; i < VFX_PARTS; i++) VFX.parts.push({ x: 0, y: 0, vx: 0, vy: 0, l
 for (let i = 0; i < VFX_FX; i++) VFX.fx.push({ k: '', x: 0, y: 0, x2: 0, y2: 0, r: 0, r2: 0, t: 0, life: 1, col: null, w: 1, pri: 0 });
 for (let i = 0; i < 64; i++) VFX.shots.push({ e: null, u: 0, v: 0, z: 0, w: '' });
 const vr = (a, b) => a + VFX.rnd() * (b - a);
-function sfx(name, x) {} // sound hook (v2.4)
+function sfx(name, x, size) { sndPlay(name, x, size); } // effects → sound (sndPlay is in the UI section)
 
 // Soft glows drawn once into small canvases, then stamped (no gradients built during play)
 function makeGlow(rgb) {
@@ -1910,7 +1910,7 @@ function vFx(k, x, y, r, life, col, pri, x2 = 0, y2 = 0, w = 1, delay = 0) {
 function vCount(n) { return Math.max(n > 0 ? 1 : 0, Math.round(n * QMUL[VFX.q])); }
 
 function vfxReset(g) {
-  VFX.g = g; VFX.lastT = -1; VFX.np = 0; VFX.nfx = 0; VFX.shake = 0;
+  VFX.g = g; VFX.lastT = -1; VFX.np = 0; VFX.nfx = 0; VFX.shake = 0; VFX.primed = false;
   VFX.decals.length = 0; VFX.smokers.length = 0; VFX.wrecks.length = 0; VFX.prevE.length = 0; VFX.prevP.length = 0;
   VFX.rec = new WeakMap(); VFX.seenFx = new WeakSet();
 }
@@ -1953,7 +1953,11 @@ function vfxScan(g, dt) {
   VFX.nshots = 0;
   for (const e of g.ents) {
     let r = R.get(e);
-    if (!r) { r = { f: 0, cd: e.cd || 0, hp: e.hp, ghost: e.hp, ghostT: 0, step: 0 }; R.set(e, r); if (e.kind === 'u' && e.type === 'titan') r.step = titanStep(e); }
+    if (!r) {
+      r = { f: 0, cd: e.cd || 0, hp: e.hp, ghost: e.hp, ghostT: 0, step: 0 }; R.set(e, r);
+      if (e.kind === 'u' && e.type === 'titan') r.step = titanStep(e);
+      if (VFX.primed && e.kind === 'u' && e.side === 0) sfx('trained'); // one of yours just rolled out (not on load)
+    }
     r.f = frame;
     const cd = e.cd || 0;
     if (cd > r.cd + 0.05) onFire(g, e, lit);
@@ -1966,10 +1970,12 @@ function vfxScan(g, dt) {
   }
   for (const e of VFX.prevE) { const r = R.get(e); if (r && r.f !== frame && e.hp <= 0) onDeath(g, e, lit); }
   VFX.prevE.length = 0; for (const e of g.ents) VFX.prevE.push(e);
+  VFX.primed = true;
   for (const p of g.projs) {
     let r = R.get(p);
-    if (!r) { r = VFX.freeRec.pop() || { f: 0, ou: 0, ov: 0, oz: 0, has: 0 }; r.has = 0; R.set(p, r); onShot(g, p, r, lit); }
+    if (!r) { r = VFX.freeRec.pop() || { f: 0, ou: 0, ov: 0, oz: 0, has: 0, wh: 0 }; r.has = 0; r.wh = 0; R.set(p, r); onShot(g, p, r, lit); }
     r.f = frame;
+    if (p.weapon === 'shell' && !r.wh && p.t > p.T * 0.45 && lit(p.u)) { r.wh = 1; sfx('whistle', p.u); } // incoming, once the shell is in view
   }
   for (const p of VFX.prevP) { const r = R.get(p); if (r && r.f !== frame) { if (p.t <= 4) onImpact(g, p, lit); R.delete(p); VFX.freeRec.push(r); } }
   VFX.prevP.length = 0; for (const p of g.projs) VFX.prevP.push(p);
@@ -2057,7 +2063,8 @@ function onImpact(g, p, lit) {
       break;
   }
 }
-function onBoom(f) { // every blast from the SIM gets a shockwave; bigger ones throw debris
+function onBoom(f) { // every blast from the SIM gets a shockwave and a sound; bigger ones throw debris
+  sfx('boom', f.x, f.r);
   if (f.r >= 18) vFx('ring', f.x, f.y, f.r * 0.3, 0.35 + f.r / 160, '#ffe2b0', 1, f.r * 1.6, 0, 1.8);
   if (f.r >= 28) for (let i = vCount(Math.min(8, f.r / 6)); i > 0; i--) vPart(f.x, f.y, vr(-90, 90), vr(-120, -30), vr(0.6, 1.2), vr(1.8, 3.2), 2, '#2a3648', 320, 1, f.y + vr(4, 14));
 }
@@ -2640,13 +2647,14 @@ $('bpSell').addEventListener('click', () => {
 
 function handleEvents() {
   for (const e of game.events) {
-    if (e.type === 'built' && e.side === 0) toast(`${e.name} is ready`, 'ok');
-    else if (e.type === 'upgraded' && e.side === 0) toast(`${e.name} reached T${e.tier}`, 'ok');
-    else if (e.type === 'alert' && e.side === 0) toast(e.hq ? 'Your HQ is under attack' : 'Your base is under attack', 'warn');
+    if (e.type === 'built' && e.side === 0) { toast(`${e.name} is ready`, 'ok'); sndPlay('built'); }
+    else if (e.type === 'upgraded' && e.side === 0) { toast(`${e.name} reached T${e.tier}`, 'ok'); sndPlay('upgrade'); }
+    else if (e.type === 'alert' && e.side === 0) { toast(e.hq ? 'Your HQ is under attack' : 'Your base is under attack', 'warn'); sndPlay('alarm'); }
+    else if (e.type === 'over') sndPlay(e.winner === 0 ? 'victory' : 'defeat');
     else if (e.type === 'destroyed' && e.side === 1 && !e.seen && !e.hq) continue; // happened out of sight
     else if (e.type === 'destroyed') toast(e.side === 0 ? `${e.name} destroyed` : `Enemy ${e.name} destroyed`, e.side === 0 ? 'bad' : 'ok');
-    else if (e.type === 'spotted' && e.side === 0) toast('Enemy units spotted', 'warn');
-    else if (e.type === 'node') toast(e.lost ? (e.side === 0 ? 'You lost a field node' : 'Enemy lost a field node') : (e.side === 0 ? 'Field node captured: +3 credits, +1 energy per second' : 'Enemy captured a field node'), (e.side === 0) === !e.lost ? 'ok' : 'warn');
+    else if (e.type === 'spotted' && e.side === 0) { toast('Enemy units spotted', 'warn'); sndPlay('ping'); }
+    else if (e.type === 'node') { if (e.side === 0 && !e.lost) sndPlay('node'); toast(e.lost ? (e.side === 0 ? 'You lost a field node' : 'Enemy lost a field node') : (e.side === 0 ? 'Field node captured: +3 credits, +1 energy per second' : 'Enemy captured a field node'), (e.side === 0) === !e.lost ? 'ok' : 'warn'); }
     else if (e.type === 'go') showGo();
     else if (e.type === 'shieldDown' && e.side === 1 && !e.seen) continue;
     else if (e.type === 'shieldDown') toast(e.side === 1 ? 'Enemy HQ shield is down. Finish it!' : 'Your HQ shield is down', e.side === 1 ? 'ok' : 'bad');
@@ -2746,6 +2754,7 @@ function hideOverlay() { $('ov').classList.add('hide'); }
 function diffSeg() {
   return `<div class="seg" id="diffSeg">${Object.keys(DIFF).map(k => `<button data-d="${k}" class="${k === diffKey ? 'on' : ''}">${DIFF[k].label}</button>`).join('')}</div>`;
 }
+function wireSound() { $('bSound').addEventListener('click', () => { sndSet(!SND.on); $('bSound').textContent = sndLabel(); }); }
 function wireDiff() {
   for (const b of $('diffSeg').children) b.addEventListener('click', () => {
     diffKey = b.dataset.d;
@@ -2774,8 +2783,8 @@ function showStart() {
       <div><b>Command your army</b>Attack pushes forward, Hold stops everyone where they stand, Retreat pulls back to your flag. Drag sideways to look around.</div>
     </div>
     <div class="row"><span class="lbl">Difficulty</span>${diffSeg()}</div>
-    <div class="row">${sv ? `<button class="big" id="bResume">Resume match</button><button class="ghost" id="bPlay">New match</button><span class="lbl">${DIFF[sv.diffKey] ? DIFF[sv.diffKey].label : ''}, ${fmtTime(sv.t)} in</span>` : '<button class="big" id="bPlay">Start match</button>'}</div>`);
-  wireDiff();
+    <div class="row">${sv ? `<button class="big" id="bResume">Resume match</button><button class="ghost" id="bPlay">New match</button><span class="lbl">${DIFF[sv.diffKey] ? DIFF[sv.diffKey].label : ''}, ${fmtTime(sv.t)} in</span>` : '<button class="big" id="bPlay">Start match</button>'}<button class="ghost" id="bSound">${sndLabel()}</button></div>`);
+  wireDiff(); wireSound();
   $('bPlay').addEventListener('click', startGame);
   if (sv) $('bResume').addEventListener('click', resumeGame);
 }
@@ -2811,7 +2820,8 @@ function startGame() {
 function pauseGame(restored) {
   paused = true; saveGame();
   overlay(`<h1>${restored === true ? 'Match restored' : 'Paused'}</h1><p>${DIFF[game.diffKey].label} match, ${fmtTime(game.t)} elapsed.</p>
-    <div class="row"><button class="big" id="bRes">Resume</button><button class="ghost" id="bRe">Restart</button><button class="ghost" id="bMenu">Main menu</button></div>`);
+    <div class="row"><button class="big" id="bRes">Resume</button><button class="ghost" id="bRe">Restart</button><button class="ghost" id="bMenu">Main menu</button><button class="ghost" id="bSound">${sndLabel()}</button></div>`);
+  wireSound();
   $('bRes').addEventListener('click', () => { paused = false; hideOverlay(); });
   $('bRe').addEventListener('click', startGame);
   $('bMenu').addEventListener('click', showStart);
@@ -2830,6 +2840,147 @@ function showEnd() {
   wireDiff();
   $('bAgain').addEventListener('click', startGame);
   $('bMenu2').addEventListener('click', showStart);
+}
+
+/* ---------- Sound (Web Audio, generated in code; no files) ----------
+   One AudioContext, a master gain and a compressor so big fights don't clip. Each sound is 2–5 short-lived nodes
+   that are disconnected when they end; nothing loops, so nothing can get stuck. At most 14 sounds play at once:
+   small arms may use 9 of them, cannons and blasts 12, game events all 14. Each sound also has its own cap and a
+   minimum gap. Battle sounds are panned by screen position, fade at the screen edge and are silent off screen; they
+   come only from the effects code, which already skips anything hidden in the fog. iOS: audio starts on the first
+   tap, is suspended in the background and resumed on return (or on the next tap). */
+const SOUND_KEY = 'extinctionEvent.sound';
+const SND = { ctx: null, master: null, noise: null, bufs: {}, on: true, voices: 0, live: 0, per: {}, last: {}, rnd: mulberry(77), played: 0, dropped: 0 };
+try { SND.on = localStorage.getItem(SOUND_KEY) !== 'off'; } catch (e) {}
+const SND_MAX = 14, SND_ROOM = [[3, 8, 14], [6, 10, 14], [9, 12, 14]]; // room per priority, by effect quality level (low, medium, full)
+
+function sndInit() {
+  if (SND.ctx || !SND.on) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return;
+  try {
+    const ctx = new AC(), comp = ctx.createDynamicsCompressor(), master = ctx.createGain();
+    comp.threshold.value = -18; comp.knee.value = 12; comp.ratio.value = 4; comp.attack.value = 0.003; comp.release.value = 0.2;
+    master.gain.value = 0.7; master.connect(comp); comp.connect(ctx.destination);
+    const nb = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate), d = nb.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = SND.rnd() * 2 - 1;
+    const s = ctx.createBufferSource(); s.buffer = ctx.createBuffer(1, 1, 22050); s.connect(ctx.destination); s.start(0); // iOS unlock
+    SND.ctx = ctx; SND.master = master; SND.noise = nb;
+    sndBake();
+  } catch (e) { SND.ctx = null; } // no audio: the game plays on silently
+}
+// Every sound is rendered once into a buffer (off the main audio graph), so playing one costs three nodes:
+// a buffer source, a gain and a pan. Until a buffer is ready, that sound is synthesised live.
+async function sndBake() {
+  const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext, sr = SND.ctx.sampleRate;
+  if (!OAC) return;
+  const jobs = [];
+  for (const name of Object.keys(SFX)) if (name === 'boom') for (const sz of [12, 30, 50]) jobs.push([`boom:${sz}`, name, sz]); else jobs.push([name, name, 0]);
+  for (const [key, name, size] of jobs) {
+    try {
+      const oc = new OAC(1, Math.ceil(sr * 1.6), sr), v = voice(oc, 0, 1, 0, oc.destination);
+      SFX[name][4](v, size);
+      const buf = await oc.startRendering(), d = buf.getChannelData(0);
+      let n = d.length; while (n > 1 && Math.abs(d[n - 1]) < 1e-4) n--;
+      const out = SND.ctx.createBuffer(1, n, sr); out.copyToChannel(d.subarray(0, n), 0);
+      SND.bufs[key] = out;
+    } catch (e) { return; } // keep synthesising live
+  }
+}
+function sndWake() { sndInit(); if (SND.ctx && SND.ctx.state !== 'running' && !document.hidden) SND.ctx.resume().catch(() => {}); }
+for (const t of ['pointerdown', 'touchend', 'keydown']) document.addEventListener(t, sndWake, { capture: true, passive: true });
+document.addEventListener('visibilitychange', () => {
+  if (!SND.ctx) return;
+  if (document.hidden) SND.ctx.suspend().catch(() => {}); else SND.ctx.resume().catch(() => {});
+});
+function sndSet(on) {
+  SND.on = on;
+  try { localStorage.setItem(SOUND_KEY, on ? 'on' : 'off'); } catch (e) {}
+  if (on) sndWake();
+  if (SND.master) SND.master.gain.value = on ? 0.7 : 0;
+}
+const sndLabel = () => `Sound: ${SND.on ? 'On' : 'Off'}`;
+
+// A voice: a gain (and a stereo pan where supported) into the master; sources are added by the recipe
+function voice(ctx, t, vol, pan, dest = SND.master) {
+  const v = { ctx, t, nodes: [], end: t, last: null, out: ctx.createGain() };
+  v.out.gain.value = vol;
+  let tail = v.out;
+  if (pan && ctx.createStereoPanner) { const p = ctx.createStereoPanner(); p.pan.value = pan; v.out.connect(p); tail = p; v.nodes.push(p); }
+  tail.connect(dest); v.nodes.push(v.out);
+  return v;
+}
+function env(v, g, at, dur, peak) {
+  g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(peak, at + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+}
+function tone(v, type, f0, f1, dur, peak, delay = 0) {
+  const { ctx } = v, at = v.t + delay, o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = type; o.frequency.setValueAtTime(f0, at); if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, at + dur);
+  env(v, g, at, dur, peak); o.connect(g); g.connect(v.out); o.start(at); o.stop(at + dur + 0.02);
+  v.nodes.push(o, g); if (at + dur + 0.02 >= v.end) { v.end = at + dur + 0.02; v.last = o; } return o;
+}
+function hiss(v, filter, f0, f1, q, dur, peak, delay = 0) {
+  const { ctx } = v, at = v.t + delay, s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+  s.buffer = SND.noise; f.type = filter; f.Q.value = q;
+  f.frequency.setValueAtTime(f0, at); if (f1 !== f0) f.frequency.exponentialRampToValueAtTime(f1, at + dur);
+  env(v, g, at, dur, peak); s.connect(f); f.connect(g); g.connect(v.out);
+  s.start(at, SND.rnd() * 0.5); s.stop(at + dur + 0.02);
+  v.nodes.push(s, f, g); if (at + dur + 0.02 >= v.end) { v.end = at + dur + 0.02; v.last = s; } return s;
+}
+// name: [priority 0 small arms / 1 heavy / 2 events, per-sound cap, min gap s, global (plays without a position), recipe]
+const SFX = {
+  rifle:    [0, 2, 0.07, 0, v => hiss(v, 'bandpass', 2400, 1600, 1.2, 0.05, 0.5)],
+  gatling:  [0, 2, 0.12, 0, v => { hiss(v, 'bandpass', 1800, 1300, 1.4, 0.045, 0.5); hiss(v, 'bandpass', 1800, 1300, 1.4, 0.045, 0.45, 0.08); }],
+  flak:     [0, 2, 0.1, 0, v => { tone(v, 'triangle', 520, 300, 0.05, 0.35); tone(v, 'triangle', 520, 300, 0.05, 0.3, 0.06); }],
+  rail:     [1, 2, 0.1, 0, v => { hiss(v, 'highpass', 3000, 3000, 0.7, 0.06, 0.5); tone(v, 'sine', 1500, 350, 0.18, 0.25); }],
+  rocket:   [1, 2, 0.08, 0, v => hiss(v, 'bandpass', 600, 2400, 1.5, 0.3, 0.45)],
+  missile:  [0, 2, 0.1, 0, v => hiss(v, 'bandpass', 900, 2600, 1.5, 0.14, 0.4)],
+  cannon:   [1, 2, 0.08, 0, v => { tone(v, 'sine', 110, 45, 0.3, 0.9); hiss(v, 'lowpass', 900, 300, 0.7, 0.18, 0.5); }],
+  siege:    [1, 1, 0.15, 0, v => { tone(v, 'sine', 90, 35, 0.35, 0.9); tone(v, 'sine', 90, 35, 0.35, 0.8, 0.07); hiss(v, 'lowpass', 700, 200, 0.7, 0.25, 0.5); tone(v, 'square', 140, 120, 0.08, 0.06); }],
+  shell:    [1, 2, 0.15, 0, v => { tone(v, 'sine', 70, 35, 0.35, 0.9); hiss(v, 'lowpass', 500, 200, 0.7, 0.25, 0.5); }],
+  whistle:  [0, 1, 0.3, 0, v => tone(v, 'sine', 1500, 600, 0.7, 0.12)],
+  boom:     [1, 2, 0.06, 0, (v, s) => { const d = 0.25 + s / 80; hiss(v, 'lowpass', 400 + s * 20, 120, 0.7, d, 0.7); if (s > 28) tone(v, 'sine', 60, 30, d, 0.8); }],
+  step:     [0, 1, 0.25, 0, v => { tone(v, 'sine', 55, 35, 0.16, 0.7); hiss(v, 'lowpass', 220, 150, 0.7, 0.1, 0.3); }],
+  collapse: [2, 1, 0.3, 0, v => { hiss(v, 'lowpass', 320, 90, 0.7, 1.2, 0.8); tone(v, 'sine', 45, 25, 1, 0.8); }],
+  hqgun:    [1, 1, 0.2, 0, v => { const o = tone(v, 'sawtooth', 220, 60, 0.28, 0.25); tone(v, 'sine', 90, 40, 0.2, 0.6); return o; }],
+  built:    [2, 1, 0.3, 1, v => { tone(v, 'triangle', 660, 660, 0.12, 0.5); tone(v, 'triangle', 990, 990, 0.16, 0.5, 0.1); }],
+  upgrade:  [2, 1, 0.3, 1, v => { [523, 659, 784].forEach((f, i) => tone(v, 'triangle', f, f, 0.14, 0.45, i * 0.09)); }],
+  trained:  [2, 1, 0.25, 1, v => tone(v, 'sine', 880, 880, 0.07, 0.3)],
+  node:     [2, 1, 0.5, 1, v => { tone(v, 'triangle', 523, 523, 0.45, 0.35); tone(v, 'triangle', 784, 784, 0.45, 0.3, 0.05); }],
+  alarm:    [2, 1, 1, 1, v => { [700, 520, 700, 520].forEach((f, i) => tone(v, 'triangle', f, f, 0.13, 0.4, i * 0.15)); }],
+  ping:     [2, 1, 1, 1, v => { tone(v, 'sine', 1200, 1200, 0.35, 0.3); tone(v, 'sine', 1200, 1200, 0.25, 0.12, 0.18); }],
+  victory:  [2, 1, 2, 1, v => { [523, 659, 784, 1047].forEach((f, i) => tone(v, 'triangle', f, f, i === 3 ? 0.6 : 0.16, 0.5, i * 0.14)); }],
+  defeat:   [2, 1, 2, 1, v => { [440, 349, 294, 220].forEach((f, i) => tone(v, 'triangle', f, f, i === 3 ? 0.7 : 0.22, 0.45, i * 0.2)); }],
+};
+const SND_VOL = { 0: 0.22, 1: 0.32, 2: 0.4 };
+function sndPlay(name, x, size) {
+  const r = SFX[name], ctx = SND.ctx;
+  if (!r || !SND.on || !ctx || ctx.state !== 'running') return false;
+  const [pri, cap, gap, global, fn] = r, now = ctx.currentTime;
+  let vol = SND_VOL[pri], pan = 0;
+  if (!global) { // position: pan across the screen, fade at the edges, silent off screen
+    const off = (x - cam.x) / (V.cw / 2 / V.S || 1);
+    if (Math.abs(off) > 1.15) return false;
+    vol *= 1 - 0.6 * clamp((Math.abs(off) - 0.8) / 0.35, 0, 1); pan = clamp(off * 0.6, -0.8, 0.8);
+  }
+  if (now - (SND.last[name] ?? -9) < gap || (SND.per[name] || 0) >= cap || SND.voices >= SND_ROOM[VFX.q][pri]) { SND.dropped++; return false; }
+  SND.last[name] = now; SND.per[name] = (SND.per[name] || 0) + 1; SND.voices++; SND.played++;
+  const v = voice(ctx, now + 0.005, vol, pan), buf = SND.bufs[name === 'boom' ? `boom:${size < 20 ? 12 : size < 40 ? 30 : 50}` : name];
+  if (buf) { // the usual path: play the baked buffer, a little detuned so repeats don't sound identical
+    const src = ctx.createBufferSource(), rate = pri === 0 ? 0.94 + SND.rnd() * 0.12 : 0.97 + SND.rnd() * 0.06;
+    src.buffer = buf; src.playbackRate.value = rate; src.connect(v.out); src.start(v.t);
+    v.nodes.push(src); v.last = src; v.end = v.t + buf.duration / rate;
+  } else fn(v, size || 0);
+  SND.live += v.nodes.length;
+  let ended = false;
+  const done = () => { // every node of the voice is disconnected when it ends
+    if (ended) return; ended = true;
+    for (const n of v.nodes) { try { n.disconnect(); } catch (e) {} }
+    SND.live -= v.nodes.length; SND.voices--; SND.per[name]--;
+  };
+  if (v.last) v.last.onended = done; else done();
+  setTimeout(done, (v.end - now) * 1000 + 1500); // backstop in case 'ended' never arrives
+  return true;
 }
 
 /* ---------- Main loop ---------- */

@@ -272,7 +272,7 @@ test('effects: nothing is spawned for hidden enemies (firing, dying, walking, bu
     paused = true; game.countdown = 0; hideCountdown();
     for (const s of [0, 1]) { game.sides[s].aiT = 1e9; game.sides[s].stance = 'hold'; }
     let calls = 0; const leaks = [], F = game.fog[0], lit = x => F.vis[cellOf(x)] === 1;
-    const watch = name => { const orig = window[name]; window[name] = function (...a) { calls++; const x = a[1]; if (!lit(x)) leaks.push(`${name}(${a[0]}) at ${Math.round(x)}`); if (name === 'vFx' && a[0] === 'beam' && !lit(a[7])) leaks.push('beam end in fog'); return orig.apply(this, a); }; };
+    const watch = name => { const orig = window[name]; window[name] = function (...a) { calls++; const x = a[1]; if (name === 'sfx' && x === undefined) return orig.apply(this, a); /* event sounds have no position */ if (!lit(x)) leaks.push(`${name}(${a[0]}) at ${Math.round(x)}`); if (name === 'vFx' && a[0] === 'beam' && !lit(a[7])) leaks.push('beam end in fog'); return orig.apply(this, a); }; };
     watch('vPart'); watch('vFx'); watch('sfx');
     const hold = (e, u, v) => { e.holdU = u; e.holdV = v; return e; };
     for (let i = 0; i < 4; i++) hold(spawnUnit(game, 0, 'rifle', 720 + i * 10, (i - 1.5) * 25), 720 + i * 10, (i - 1.5) * 25);
@@ -324,6 +324,74 @@ test('effects: pools stay within their caps in a big battle, and quality steps d
   assert.ok(r.np > 50 && r.np <= 300, `particles ${r.np}`);
   assert.ok(r.nfx > 10 && r.nfx <= 120, `effects ${r.nfx}`);
   assert.deepStrictEqual(r.q, [2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2]);
+  assert.deepStrictEqual(errors, []);
+  await page.close();
+});
+
+test('sound: toggle on the title screen and pause menu, remembered under its own key; save keys untouched', { skip }, async () => {
+  const { page, errors } = await openPage(browser, PHONE);
+  assert.strictEqual(await page.textContent('#bSound'), 'Sound: On');
+  await page.click('#bSound');
+  assert.strictEqual(await page.textContent('#bSound'), 'Sound: Off');
+  assert.strictEqual(await page.evaluate(() => localStorage.getItem('extinctionEvent.sound')), 'off');
+  await page.reload(); await page.waitForTimeout(300);
+  assert.strictEqual(await page.textContent('#bSound'), 'Sound: Off', 'remembered after a reload');
+  await page.click('#bPlay'); await page.waitForTimeout(200);
+  assert.strictEqual(await page.evaluate(() => sndPlay('built')), false, 'muted: nothing plays');
+  await page.evaluate(() => pauseGame());
+  assert.strictEqual(await page.textContent('#bSound'), 'Sound: Off');
+  await page.click('#bSound');
+  assert.strictEqual(await page.textContent('#bSound'), 'Sound: On');
+  const keys = await page.evaluate(() => Object.keys(localStorage).sort());
+  assert.deepStrictEqual(keys.filter(k => !['colonyMobile.diff', 'colonyMobile.save', 'extinctionEvent.sound'].includes(k)), [], 'only the save keys and the sound key');
+  assert.ok(keys.includes('colonyMobile.save') && keys.includes('extinctionEvent.sound'));
+  assert.deepStrictEqual(errors, []);
+  await page.close();
+});
+
+test('sound: starts on the first tap, caps voices, disconnects every node, silent off screen, survives backgrounding', { skip }, async () => {
+  const { page, errors } = await openPage(browser, PHONE);
+  assert.strictEqual(await page.evaluate(() => SND.ctx), null, 'no audio before the first tap');
+  await page.click('#bPlay'); await page.waitForTimeout(300);
+  const st = await page.evaluate(() => SND.ctx && SND.ctx.state);
+  assert.strictEqual(st, 'running');
+  const r = await page.evaluate(() => new Promise(res => {
+    const names = Object.keys(SFX), caps = {};
+    let maxV = 0, over = [];
+    const t = setInterval(() => {
+      for (const n of names) sndPlay(n, cam.x, 40);
+      maxV = Math.max(maxV, SND.voices);
+      for (const n of names) if ((SND.per[n] || 0) > SFX[n][1]) over.push(n);
+    }, 10);
+    setTimeout(() => { clearInterval(t); setTimeout(() => res({ maxV, over, voices: SND.voices, live: SND.live, played: SND.played, offscreen: sndPlay('cannon', cam.x + 5000) }), 3500); }, 1500);
+  }));
+  assert.ok(r.played > 30, `sounds played (${r.played})`);
+  assert.ok(r.maxV <= 14, `at most 14 at once (${r.maxV})`);
+  assert.deepStrictEqual(r.over, [], 'per-sound caps hold');
+  assert.strictEqual(r.voices, 0, 'every voice ended');
+  assert.strictEqual(r.live, 0, 'every node was disconnected');
+  assert.strictEqual(r.offscreen, false, 'off-screen fights are silent');
+  await page.evaluate(() => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => true }); document.dispatchEvent(new Event('visibilitychange')); });
+  await page.waitForTimeout(300);
+  assert.strictEqual(await page.evaluate(() => SND.ctx.state), 'suspended', 'suspended in the background');
+  await page.evaluate(() => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => false }); document.dispatchEvent(new Event('visibilitychange')); });
+  await page.waitForTimeout(300);
+  assert.strictEqual(await page.evaluate(() => SND.ctx.state), 'running', 'resumed on return');
+  assert.deepStrictEqual(errors, []);
+  await page.close();
+});
+
+test('sound: every sound is baked into a buffer, so a playing sound costs at most three nodes', { skip }, async () => {
+  const { page, errors } = await openPage(browser, PHONE);
+  await page.click('#bPlay');
+  await page.waitForFunction(() => Object.keys(SND.bufs).length >= Object.keys(SFX).length + 2, null, { timeout: 10000 });
+  const r = await page.evaluate(() => {
+    const before = SND.live, out = {};
+    for (const n of ['rifle', 'cannon', 'siege', 'collapse', 'victory']) { const l0 = SND.live; sndPlay(n, cam.x, 40); out[n] = SND.live - l0; }
+    return { out, longest: Math.max(...Object.values(SND.bufs).map(b => b.duration)), before };
+  });
+  for (const [n, k] of Object.entries(r.out)) assert.ok(k > 0 && k <= 3, `${n} uses ${k} nodes`);
+  assert.ok(r.longest < 1.6, `longest sound ${r.longest.toFixed(2)} s`);
   assert.deepStrictEqual(errors, []);
   await page.close();
 });

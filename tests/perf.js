@@ -65,14 +65,14 @@ async function battle(browser, rates, secs, quality) {
     const sample = [];
     for (let i = 0; i < secs; i++) {
       await page.waitForTimeout(1000);
-      sample.push(await page.evaluate(() => ({ units: game.ents.filter(e => e.kind === 'u').length, parts: game.parts.length + (typeof VFX !== 'undefined' ? VFX.np : 0), fx: game.fx.length + (typeof VFX !== 'undefined' ? VFX.nfx : 0), projs: game.projs.length, q: typeof VFX !== 'undefined' ? VFX.q : -1 })));
+      sample.push(await page.evaluate(() => ({ units: game.ents.filter(e => e.kind === 'u').length, parts: game.parts.length + (typeof VFX !== 'undefined' ? VFX.np : 0), fx: game.fx.length + (typeof VFX !== 'undefined' ? VFX.nfx : 0), projs: game.projs.length, q: typeof VFX !== 'undefined' ? VFX.q : -1, voices: typeof SND !== 'undefined' ? SND.voices : -1, audio: typeof SND !== 'undefined' && SND.ctx ? SND.ctx.state : '-' })));
     }
     const P = await page.evaluate(() => { window.__perf.on = false; return { work: window.__perf.work, gap: window.__perf.gap, slow: window.__perf.slow }; });
     await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
     const avgOf = k => Math.round(sample.reduce((x, y) => x + y[k], 0) / sample.length);
-    out[rate + 'x'] = { work: stats(P.work), gap: stats(P.gap), units: avgOf('units'), parts: avgOf('parts'), fx: avgOf('fx'), projs: avgOf('projs'), quality: sample.map(x => x.q).join(''), slow: P.slow.slice(0, 12), maxParts: Math.max(...sample.map(s => s.parts)), errors };
+    out[rate + 'x'] = { work: stats(P.work), gap: stats(P.gap), units: avgOf('units'), parts: avgOf('parts'), fx: avgOf('fx'), projs: avgOf('projs'), quality: sample.map(x => x.q).join(''), voices: Math.max(...sample.map(x => x.voices)), audio: sample[0].audio, sound: await page.evaluate(() => typeof SND !== 'undefined' ? { played: SND.played, dropped: SND.dropped } : null), slow: P.slow.slice(0, 12), maxParts: Math.max(...sample.map(s => s.parts)), errors };
     const r = out[rate + 'x'];
-    console.log(`battle ${rate}x CPU: script/frame avg ${r.work.avg} ms, p95 ${r.work.p95}, max ${r.work.max} | frame gap avg ${r.gap.avg} ms, max ${r.gap.max}, >50ms ${r.gap.over50}, >33ms ${r.gap.over33} of ${r.gap.frames} | units ${r.units}, particles ${r.parts} (max ${r.maxParts}), fx ${r.fx}, projectiles ${r.projs}, quality per second ${r.quality}${errors.length ? ' | ERRORS ' + errors.join('; ') : ''}`);
+    console.log(`battle ${rate}x CPU: script/frame avg ${r.work.avg} ms, p95 ${r.work.p95}, max ${r.work.max} | frame gap avg ${r.gap.avg} ms, max ${r.gap.max}, >50ms ${r.gap.over50}, >33ms ${r.gap.over33} of ${r.gap.frames} | units ${r.units}, particles ${r.parts} (max ${r.maxParts}), fx ${r.fx}, projectiles ${r.projs}, quality per second ${r.quality}${r.sound ? `, audio ${r.audio}: ${r.sound.played} sounds played, ${r.sound.dropped} dropped by the caps, peak voices sampled ${r.voices}` : ''}${errors.length ? ' | ERRORS ' + errors.join('; ') : ''}`);
     if (rate === 1 && P.slow.length) console.log(`  script frames over 12 ms: ${P.slow.slice(0, 12).join(', ')}`);
     await page.close();
   }
@@ -85,6 +85,8 @@ async function memory(browser) {
   await cdp.send('HeapProfiler.enable');
   const heap = async () => { await cdp.send('HeapProfiler.collectGarbage'); const h = await cdp.send('Runtime.getHeapUsage'); return +(h.usedSize / 1048576).toFixed(2); };
   const nodes = async () => (await cdp.send('Memory.getDOMCounters')).nodes;
+  await page.click('#bPlay'); // a tap: starts audio (v2.4+)
+  await page.waitForTimeout(300);
   await page.evaluate(() => {
     window.__played = 0; window.__matches = 0;
     window.__newMatch = () => { game = newGame('hard', { autoPlayer: true, autoDiff: 'hard' }); resize(); camTouched = true; cam.x = L / 2; clampCam(); hideOverlay(); running = true; paused = false; speed = 3; window.__matches++; };
@@ -99,9 +101,9 @@ async function memory(browser) {
   const rows = [];
   for (const mark of [60, 300, 600, 900]) {
     await page.waitForFunction(m => window.__played >= m, mark, { timeout: 900000, polling: 1000 });
-    const st = await page.evaluate(() => ({ t: Math.round(window.__played), matches: window.__matches, parts: game.parts.length, fx: game.fx.length, projs: game.projs.length, ents: game.ents.length, vfx: typeof VFX !== 'undefined' ? `${VFX.np}/${VFX.nfx}/${VFX.decals.length}/${VFX.smokers.length}/${VFX.wrecks.length}` : '-' }));
+    const st = await page.evaluate(() => ({ t: Math.round(window.__played), matches: window.__matches, parts: game.parts.length, fx: game.fx.length, projs: game.projs.length, ents: game.ents.length, snd: typeof SND !== 'undefined' && SND.ctx ? `${SND.ctx.state}, ${SND.played} played, ${SND.voices} voices, ${SND.live} live nodes` : '-', vfx: typeof VFX !== 'undefined' ? `${VFX.np}/${VFX.nfx}/${VFX.decals.length}/${VFX.smokers.length}/${VFX.wrecks.length}` : '-' }));
     rows.push({ ...st, heapMB: await heap(), domNodes: await nodes() });
-    console.log(`memory @ ${st.t}s game time: heap ${rows[rows.length - 1].heapMB} MB after GC, DOM nodes ${rows[rows.length - 1].domNodes}, matches ${st.matches}, entities ${st.ents}, particles ${st.parts}, fx ${st.fx}, projectiles ${st.projs}, effects pool parts/fx/decals/smokers/wrecks ${st.vfx}`);
+    console.log(`memory @ ${st.t}s game time: heap ${rows[rows.length - 1].heapMB} MB after GC, DOM nodes ${rows[rows.length - 1].domNodes}, matches ${st.matches}, entities ${st.ents}, particles ${st.parts}, fx ${st.fx}, projectiles ${st.projs}, effects pool parts/fx/decals/smokers/wrecks ${st.vfx}, sound ${st.snd}`);
   }
   if (errors.length) console.log('ERRORS ' + errors.join('; '));
   await page.close();

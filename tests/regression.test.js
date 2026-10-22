@@ -119,13 +119,14 @@ test('Nanoweave description matches what it does (units and defenses)', () => {
   assert.strictEqual(sim.BDEF.techlab.tiers[3], 'Nanoweave: your units and defenses deal 20% more damage and take 15% less');
 });
 
-test('save keys stay colonyMobile.save and colonyMobile.diff; save format is v7 and still reads v5/v6', () => {
+test('save keys stay colonyMobile.save and colonyMobile.diff (plus the separate sound key); save format is v7 and still reads v5/v6', () => {
   const html = readHtml();
   assert.match(html, /const SAVE_KEY = 'colonyMobile\.save';/);
   assert.match(html, /localStorage\.getItem\('colonyMobile\.diff'\)/);
   assert.match(html, /localStorage\.setItem\('colonyMobile\.diff', diffKey\)/);
   const keys = new Set([...html.matchAll(/localStorage\.\w+Item\(([^,)]+)/g)].map(m => m[1].trim()));
-  assert.deepStrictEqual([...keys].sort(), ["'colonyMobile.diff'", 'SAVE_KEY']);
+  assert.deepStrictEqual([...keys].sort(), ["'colonyMobile.diff'", 'SAVE_KEY', 'SOUND_KEY']); // v2.4 adds only the sound setting
+  assert.match(html, /const SOUND_KEY = 'extinctionEvent\.sound';/);
   assert.strictEqual(sim.SAVE_VER, 7);
   assert.deepStrictEqual([...sim.SAVE_OK], [5, 6, 7]);
   const o = JSON.parse(sim.serialize(sim.newGame('easy'), {}));
