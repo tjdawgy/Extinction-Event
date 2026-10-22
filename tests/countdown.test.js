@@ -94,6 +94,7 @@ test('HQ readouts: exposed, shielded, damaged and destroyed', () => {
   assert.ok(Math.abs(sim.hqStatus(g, 1).frac - 1890 / 2800) < 1e-9);
   sim.kill(g, hq1, 0);
   assert.deepStrictEqual({ ...sim.hqStatus(g, 1) }, { hp: 0, maxHp: 2800, frac: 0, state: 'destroyed' });
+  sim.resolveEnd(g); // the result is settled at the end of the tick (v2.6), so two HQs falling together never depend on code order
   assert.ok(g.over && g.winner === 0);
 });
 
