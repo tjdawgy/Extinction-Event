@@ -214,7 +214,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '1.6'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '1.7'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -860,6 +860,18 @@ function updateFx(g, dt) {
 }
 
 /* ---------- Enemy AI: same economy, same rules, same upgrades as the player ---------- */
+// Known base defenses: the enemy HQ gun plus remembered Turrets, each at its last-seen tier
+const HQ_VAL = 400, TURRET_VAL = 300;
+function knownDefense(g, s) {
+  const f = g.fog[s];
+  return HQ_VAL * f.lastHQ.tier + Object.values(f.ghosts).reduce((a, b) => a + (b.type === 'turret' ? TURRET_VAL * b.tier : 0), 0);
+}
+// After a base attack fails, the next one needs a clearly bigger army; the bar fades out so nobody waits forever
+const FAIL_MARGIN = 1.3, FAIL_MEMORY = 150;
+function attackBar(g, s) {
+  const side = g.sides[s];
+  return side.failV ? side.failV * Math.max(0, 1 - (g.t - side.failT) / FAIL_MEMORY) : 0;
+}
 function freeProducer(g, s, type, tier) { return g.ents.some(e => e.kind === 'b' && e.side === s && e.type === type && e.built && e.hp > 0 && e.tier >= tier && e.queue.length < 1); }
 
 function aiUpdate(g, s, dt) {
@@ -959,27 +971,32 @@ function aiUpdate(g, s, dt) {
   }
 
   // 4) Strategy: regroup, siege just outside the enemy turret, or go all in
-  const hqGun = BDEF.hq.gun[oppTier], hqVal = 400 * oppTier;
+  const hqGun = BDEF.hq.gun[oppTier], hqVal = knownDefense(g, s);
   const rich = side.res.c > 2500;
   const nSiege = mine.filter(u => u.type === 'artillery' || u.type === 'titan').length;
   const wave = Math.min(3600, 400 + g.t * 4) * D.wave;
   const full = used >= cap - 2, since = g.t - side.stanceAt;
+  // A failed base attack raises the bar for the next one, unless the army is maxed out with money banked to refill it
+  const bold = myV >= attackBar(g, s) || (full && rich);
   const siegeLine = hqU(opp) - dir * (hqGun.range + 25), fieldLine = L / 2 + dir * 20;
-  const go = pushTo => { const was = side.stance; side.stance = 'attack'; side.pushTo = pushTo; side.stanceAt = g.t; if (was !== 'attack') ev(g, { type: 'aiAttack', side: s, mode: pushTo === null ? 'all' : pushTo === fieldLine ? 'field' : 'siege' }); };
+  const failed = () => { if (side.launchV) { side.failV = side.launchV * FAIL_MARGIN; side.failT = g.t; side.launchV = 0; } };
+  const go = pushTo => { const was = side.stance; side.stance = 'attack'; side.pushTo = pushTo; side.stanceAt = g.t; side.launchV = pushTo === fieldLine ? 0 : myV; if (was !== 'attack') ev(g, { type: 'aiAttack', side: s, mode: pushTo === null ? 'all' : pushTo === fieldLine ? 'field' : 'siege' }); };
   if (side.stance !== 'attack') {
-    if (myV >= 300 && ((myV >= (thV + hqVal) * 1.35 && myV >= wave * 0.6) || (full && myV > (thV + hqVal) * 1.05))) go(null);
-    else if (nSiege >= 2 && myV >= thV * 0.95 && (myV >= wave * 0.7 || full)) go(siegeLine);
-    else if (myV >= wave && myV > thV * 1.15) go(siegeLine);
-    else if (rich && full && myV >= thV * 0.85) go(null); // money in the bank refills the army, so commit
+    if (bold && myV >= 300 && ((myV >= (thV + hqVal) * 1.35 && myV >= wave * 0.6) || (full && myV > (thV + hqVal) * 1.05))) go(null);
+    else if (bold && nSiege >= 2 && myV >= thV * 0.95 && (myV >= wave * 0.7 || full)) go(siegeLine);
+    else if (bold && myV >= wave && myV > thV * 1.15) go(siegeLine);
+    else if (bold && rich && full && myV >= thV * 0.85) go(null); // money in the bank refills the army, so commit
     else if (myV >= 300 && myV >= thV * 0.9) go(fieldLine); // take and hold the field nodes
   } else if (since > 6 && myV < thV * 0.7) {
+    failed();
     side.stance = 'retreat'; side.pushTo = null; side.stanceAt = g.t;
   } else if (side.pushTo === null && since > 10 && thV < 200 && myV < hqVal * 1.2 && !rich) {
-    side.stance = 'retreat'; side.stanceAt = g.t; // too few to crack the HQ turret: regroup instead of trickling in
+    failed();
+    side.stance = 'retreat'; side.stanceAt = g.t; // too few to crack the base defenses: regroup instead of trickling in
   } else if (side.pushTo === fieldLine) {
-    if (nSiege >= 2 && myV >= thV && (myV >= wave * 0.7 || full)) { side.pushTo = siegeLine; side.stanceAt = g.t; ev(g, { type: 'aiAttack', side: s, mode: 'siege' }); }
-    else if (myV >= 300 && ((myV >= (thV + hqVal) * 1.35 && myV >= wave * 0.6) || (full && myV > (thV + hqVal) * 1.05))) { side.pushTo = null; side.stanceAt = g.t; }
-  } else if (side.pushTo !== null && (myV > (thV + hqVal) * 1.3 || (since > 50 && myV > thV * 1.1))) {
+    if (bold && nSiege >= 2 && myV >= thV && (myV >= wave * 0.7 || full)) { side.pushTo = siegeLine; side.launchV = myV; side.stanceAt = g.t; ev(g, { type: 'aiAttack', side: s, mode: 'siege' }); }
+    else if (bold && myV >= 300 && ((myV >= (thV + hqVal) * 1.35 && myV >= wave * 0.6) || (full && myV > (thV + hqVal) * 1.05))) { side.pushTo = null; side.launchV = myV; side.stanceAt = g.t; }
+  } else if (side.pushTo !== null && bold && (myV > (thV + hqVal) * 1.3 || (since > 50 && myV > thV * 1.1))) {
     side.pushTo = null; side.stanceAt = g.t;
   }
 }

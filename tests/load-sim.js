@@ -19,7 +19,8 @@ function loadSim(opts = {}) {
     'REGEN_DELAY', 'SELL_RATE', 'SAVE_VER', 'newGame', 'update', 'tryBuild', 'tryTrain', 'tryUpgrade', 'trySell', 'tryRepair',
     'repairCost', 'sellValue', 'setStance', 'income', 'popCap', 'popUsed', 'spawnUnit', 'damage', 'kill', 'hqStatus',
     'rallyU', 'hqU', 'countB', 'hasBuilt', 'serialize', 'deserialize', 'SAVE_OK', 'FOG_CELL', 'FOG_N', 'SIGHT', 'B_SIGHT', 'B_SIGHT_DEF',
-    'NODE_SIGHT', 'INTEL_TTL', 'cellOf', 'visibleTo', 'updateVision', 'aiUpdate', 'aiSpotter'];
+    'NODE_SIGHT', 'INTEL_TTL', 'cellOf', 'visibleTo', 'updateVision', 'aiUpdate', 'aiSpotter',
+    'knownDefense', 'attackBar', 'FAIL_MARGIN', 'FAIL_MEMORY', 'TURRET_VAL', 'HQ_VAL'];
   const M = Object.create(Math); if (opts.random) M.random = opts.random;
   const sandbox = { Math: M, JSON, Object, Array, Map, Set, Uint8Array, Float32Array, console };
   vm.createContext(sandbox);
