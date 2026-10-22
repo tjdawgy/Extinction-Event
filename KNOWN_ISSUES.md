@@ -13,3 +13,4 @@ Issues found during testing that are deliberately deferred. Each lists the step 
 - AI-vs-AI ladder timeouts rose from 1/60 (1.7%, v2.0) to 11/240 (4.6%, v2.1, same-personality ladder over 20 matches per row).
 - The eco bot still stalls some matches: v2.1 `tests/ladder.js` 20 matches, eco vs Normal 7–12 with 1 timeout, eco vs Hard 5–8 with 7 timeouts.
 - Plan: in Step 6, check whether abilities end these stalemates; if not, consider a late-game escalation mechanic.
+- Side effect: the unseeded test `AI vs AI match on <difficulty> plays to a finish` in `tests/sim.test.js` occasionally fails when its random match hits the 30-minute limit (seen once in Step 5 while the SIM was byte-identical to v2.2; it passed 6/6 on rerun). Ending stalemates in Step 6 should remove the flake; seeding the test would only hide it.

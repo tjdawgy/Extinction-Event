@@ -263,3 +263,67 @@ test('unit sprite cache: every cached pose fits its box; recoil and aircraft dra
   assert.deepStrictEqual(errors, []);
   await page.close();
 });
+
+test('effects: nothing is spawned for hidden enemies (firing, dying, walking, buildings) and no shake from them', { skip }, async () => {
+  const { page, errors } = await openPage(browser, PHONE);
+  await page.click('#bPlay');
+  await page.waitForTimeout(300);
+  const r = await page.evaluate(() => {
+    paused = true; game.countdown = 0; hideCountdown();
+    for (const s of [0, 1]) { game.sides[s].aiT = 1e9; game.sides[s].stance = 'hold'; }
+    let calls = 0; const leaks = [], F = game.fog[0], lit = x => F.vis[cellOf(x)] === 1;
+    const watch = name => { const orig = window[name]; window[name] = function (...a) { calls++; const x = a[1]; if (!lit(x)) leaks.push(`${name}(${a[0]}) at ${Math.round(x)}`); if (name === 'vFx' && a[0] === 'beam' && !lit(a[7])) leaks.push('beam end in fog'); return orig.apply(this, a); }; };
+    watch('vPart'); watch('vFx'); watch('sfx');
+    const hold = (e, u, v) => { e.holdU = u; e.holdV = v; return e; };
+    for (let i = 0; i < 4; i++) hold(spawnUnit(game, 0, 'rifle', 720 + i * 10, (i - 1.5) * 25), 720 + i * 10, (i - 1.5) * 25);
+    const orig = updateVision; updateVision = g => { orig(g); g.fog[1].vis.fill(1); }; // the enemy sees everything, the player only near its men
+    hold(spawnUnit(game, 1, 'artillery', 1150, 0), 1150, 0);
+    hold(spawnUnit(game, 1, 'sniper', 1000, 30), 1000, 30);
+    const titan = spawnUnit(game, 1, 'titan', 1300, -40); hold(titan, 1200, -40);
+    const doomed = hold(spawnUnit(game, 1, 'tank', 1250, 60), 1250, 60);
+    let hiddenShellRing = 0, shake = 0;
+    for (let i = 0; i < 30 * 12; i++) {
+      if (i === 60) kill(game, doomed, 0);
+      if (i === 90) { const b = game.ents.find(e => e.side === 1 && e.kind === 'b' && e.type !== 'hq'); if (b) kill(game, b, 0); }
+      update(game, 1 / 30); render(ctx, game, game.t, null, -1);
+      for (const p of game.projs) if (p.weapon === 'shell' && !lit(p.u) && showLanding(p, lit)) hiddenShellRing++;
+      shake = Math.max(shake, VFX.shake);
+    }
+    const fired = game.sides[0].stats.lost > 0 || game.ents.filter(e => e.side === 0 && e.kind === 'u').some(e => e.hp < e.maxHp);
+    return { calls, leaks: leaks.slice(0, 10), hiddenShellRing, shake, fired, wrecks: VFX.wrecks.length, decals: VFX.decals.filter(d => !lit(d.x)).length };
+  });
+  assert.ok(r.fired, 'the hidden enemies did fire at the player');
+  assert.ok(r.calls > 20, `effects were spawned where the player can see (${r.calls})`);
+  assert.deepStrictEqual(r.leaks, []);
+  assert.strictEqual(r.hiddenShellRing, 0, 'no landing ring while the shell is hidden');
+  assert.strictEqual(r.shake, 0, 'a hidden Titan does not shake the screen');
+  assert.strictEqual(r.decals, 0);
+  assert.deepStrictEqual(errors, []);
+  await page.close();
+});
+
+test('effects: pools stay within their caps in a big battle, and quality steps down and back up', { skip }, async () => {
+  const { page, errors } = await openPage(browser, PHONE);
+  await page.click('#bPlay');
+  await page.waitForTimeout(300);
+  const r = await page.evaluate(() => {
+    paused = true; game.countdown = 0; hideCountdown(); updateIntro(); cam.x = L / 2; clampCam();
+    for (const s of [0, 1]) { game.sides[s].aiT = 1e9; game.sides[s].stance = 'attack'; }
+    const army = { rifle: 20, heavy: 8, sniper: 4, tank: 4, artillery: 2, titan: 1, aircraft: 2, interceptor: 2 };
+    for (const s of [0, 1]) for (const [t, n] of Object.entries(army)) for (let i = 0; i < n; i++) spawnUnit(game, s, t, L / 2 + (s ? 1 : -1) * (100 + i * 4), (i % 9 - 4) * 20);
+    let np = 0, nfx = 0;
+    for (let i = 0; i < 30 * 20; i++) { update(game, 1 / 30); render(ctx, game, game.t, null, -1); np = Math.max(np, VFX.np); nfx = Math.max(nfx, VFX.nfx); }
+    // quality: slow frames step it down a level every 2 s; smooth frames step it back up every 6 s
+    VFX.lock = null; VFX.q = 2; VFX.gaps.length = 0; VFX.gapAt = 0; VFX.slowFor = VFX.fastFor = 0;
+    const q = [];
+    for (let s = 0; s < 6; s++) { for (let i = 0; i < 25; i++) vfxQuality(40, true); q.push(VFX.q); }
+    for (let s = 0; s < 12; s++) { for (let i = 0; i < 60; i++) vfxQuality(16.7, true); q.push(VFX.q); }
+    vfxQuality(5000, true); // a tab switch is ignored
+    return { np, nfx, q, after: VFX.q };
+  });
+  assert.ok(r.np > 50 && r.np <= 300, `particles ${r.np}`);
+  assert.ok(r.nfx > 10 && r.nfx <= 120, `effects ${r.nfx}`);
+  assert.deepStrictEqual(r.q, [2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2]);
+  assert.deepStrictEqual(errors, []);
+  await page.close();
+});

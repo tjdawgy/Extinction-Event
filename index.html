@@ -214,7 +214,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.2'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.3'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -1701,8 +1701,10 @@ function buildGroundCache() {
   } catch (e) { return null; }
 }
 
-function drawSky(c, time, hy) {
-  const { cw, ch, S } = V;
+// The sky's gradients and the planet are drawn once into canvases and stamped while the view holds still
+// (during the intro zoom they are drawn live); the stars still twinkle and drift every frame.
+const SKY = { key: '', last: '', bg: null, pkey: '', planet: null };
+function skyLayer(c, cw, ch, hy) {
   const g = c.createLinearGradient(0, 0, 0, Math.max(hy, 10));
   g.addColorStop(0, '#04060f'); g.addColorStop(0.55, '#0e1532'); g.addColorStop(1, '#30255a');
   c.fillStyle = g; c.fillRect(0, 0, cw, Math.max(0, hy) + 2);
@@ -1710,6 +1712,23 @@ function drawSky(c, time, hy) {
   const nb = c.createRadialGradient(cw * 0.35, hy * 0.45, 10, cw * 0.35, hy * 0.45, cw * 0.4);
   nb.addColorStop(0, 'rgba(110,70,170,0.16)'); nb.addColorStop(1, 'rgba(110,70,170,0)');
   c.fillStyle = nb; c.fillRect(0, 0, cw, hy);
+}
+function planetLayer(c, px, py, pr) {
+  const pg = c.createRadialGradient(px - pr * 0.35, py - pr * 0.35, pr * 0.1, px, py, pr);
+  pg.addColorStop(0, '#a6b8ff'); pg.addColorStop(0.6, '#4b4f9a'); pg.addColorStop(1, '#22234a');
+  c.fillStyle = pg; c.beginPath(); c.arc(px, py, pr, 0, 7); c.fill();
+  c.strokeStyle = 'rgba(196,155,255,0.45)'; c.lineWidth = 2; c.beginPath(); c.ellipse(px, py, pr * 1.75, pr * 0.3, -0.2, 0, 7); c.stroke();
+}
+function cached(key, w, h, dpr, draw) { // a canvas the size of w×h points, drawn by draw(ctx)
+  const cv = document.createElement('canvas'); cv.width = Math.ceil(w * dpr); cv.height = Math.ceil(h * dpr);
+  const k = cv.getContext('2d'); k.setTransform(dpr, 0, 0, dpr, 0, 0); draw(k); return cv;
+}
+function drawSky(c, time, hy) {
+  const { cw, ch, S, dpr } = V;
+  const key = `${cw}|${ch}|${hy}|${dpr}`, still = key === SKY.last;
+  SKY.last = key;
+  if (SKY.key !== key && still) { SKY.key = key; SKY.bg = cached(key, cw, ch, dpr, k => skyLayer(k, cw, ch, hy)); }
+  if (SKY.key === key) c.drawImage(SKY.bg, 0, 0, cw, ch); else skyLayer(c, cw, ch, hy);
   const sw = cw * 1.5;
   for (const s of BG.stars) {
     const y = s.y * hy * 0.95;
@@ -1719,10 +1738,9 @@ function drawSky(c, time, hy) {
   }
   c.globalAlpha = 1;
   const pr = clamp(hy * 0.32, 22, 70), px = cw * 0.74 - cam.x * S * 0.05, py = clamp(hy * 0.42, pr + 6, hy - pr * 0.4);
-  const pg = c.createRadialGradient(px - pr * 0.35, py - pr * 0.35, pr * 0.1, px, py, pr);
-  pg.addColorStop(0, '#a6b8ff'); pg.addColorStop(0.6, '#4b4f9a'); pg.addColorStop(1, '#22234a');
-  c.fillStyle = pg; c.beginPath(); c.arc(px, py, pr, 0, 7); c.fill();
-  c.strokeStyle = 'rgba(196,155,255,0.45)'; c.lineWidth = 2; c.beginPath(); c.ellipse(px, py, pr * 1.75, pr * 0.3, -0.2, 0, 7); c.stroke();
+  const pkey = `${pr}|${dpr}`, half = pr * 1.8 + 2;
+  if (SKY.pkey !== pkey && still) { SKY.pkey = pkey; SKY.planet = cached(pkey, half * 2, half * 2, dpr, k => planetLayer(k, half, half, pr)); }
+  if (SKY.pkey === pkey) c.drawImage(SKY.planet, px - half, py - half, half * 2, half * 2); else planetLayer(c, px, py, pr);
 }
 function drawRidge(c, pts, p, fill, rim) {
   c.save(); c.translate(cam.x * (1 - p), HORIZON + 3);
@@ -1754,10 +1772,13 @@ function drawPad(c, x, y, h, s, empty, time, selected) {
 }
 
 function hpColor(f) { return f > 0.6 ? '#5dff8a' : f > 0.3 ? '#ffd34d' : '#ff5a5a'; }
-function bar(c, x, y, w, f, h) {
+function bar(c, x, y, w, f, h, lost = f) { // lost: health just lost, shown as a white chunk that drains away
   c.fillStyle = 'rgba(0,0,0,0.65)'; c.fillRect(x - w / 2 - 1, y - 1, w + 2, h + 2);
-  c.fillStyle = hpColor(f); c.fillRect(x - w / 2, y, w * clamp(f, 0, 1), h);
+  f = clamp(f, 0, 1);
+  if (lost > f) { c.fillStyle = 'rgba(255,255,255,0.85)'; c.fillRect(x - w / 2 + w * f, y, w * (Math.min(1, lost) - f), h); }
+  c.fillStyle = hpColor(f); c.fillRect(x - w / 2, y, w * f, h);
 }
+const lostF = e => { const r = VFX.rec.get(e); return r ? r.ghost / e.maxHp : 0; };
 const bTop = b => P(b.u, b.v).y - (BDEF[b.type].half + BDEF[b.type].h) * BS;
 
 function drawBuilding(c, b, time) {
@@ -1831,8 +1852,325 @@ function drawUnit(c, u) {
   c.beginPath(); c.ellipse(w.x, w.y, (d.air ? 16 : UVIS[u.type] ? UVIS[u.type].w : Math.max(8, d.h * 0.7)) * US, (d.air ? 3.5 : 2.6) * US, 0, 0, 7); c.fill();
   c.save(); c.translate(w.x, w.y - u.z + bob); c.scale(u.face * US, US);
   drawUnitArt(c, u, TEAM[u.side]);
-  if (u.hitT > 0) { const h = visH(u.type); c.globalAlpha = 0.35; c.fillStyle = '#fff'; c.fillRect(-6, -h, 12, h); c.globalAlpha = 1; }
+  c.globalCompositeOperation = 'lighter';
+  if (u.hitT > 0) { c.globalAlpha = 0.6 * Math.min(1, u.hitT / 0.12); drawUnitArt(c, u, TEAM[u.side]); } // hit: the unit itself flashes
+  if (u.type === 'sniper' && u.cd > 0 && u.cd < 0.35) stamp(c, GLOW.cyan, MUZ.sniper[0], -MUZ.sniper[1], 2 + (0.35 - u.cd) * 14, 0.9); // rail charging
+  c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
   c.restore();
+}
+
+/* ---------- Combat effects (render only) ----------
+   The SIM is left exactly as it is: these effects are worked out by watching its state each frame (a cooldown that
+   jumps back up = a shot, a projectile that disappears = an impact, an entity that disappears with no hp = a death).
+   They use their own random numbers, so they can never change a match. Everything is pooled and capped, follows the
+   player's fog exactly (nothing is spawned or drawn for what the player can't see) and skips fights off screen.
+   Quality steps down automatically when frames run long (see vfxQuality). */
+const VFX_PARTS = 300, VFX_FX = 120, VFX_DECALS = 12, VFX_SMOKERS = 6;
+const QMUL = [0.3, 0.6, 1];                       // particle counts per quality level (0 low, 1 medium, 2 full)
+const VFX = {
+  g: null, lastT: -1, frame: 0, q: 2, lock: null, shake: 0, rnd: mulberry(4242),
+  parts: [], np: 0, fx: [], nfx: 0, decals: [], smokers: [], wrecks: [],
+  rec: new WeakMap(), seenFx: new WeakSet(), prevE: [], prevP: [], shots: [], nshots: 0, freeRec: [],
+  reduced: typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches,
+  gaps: [], gapAt: 0, slowFor: 0, fastFor: 0,
+};
+for (let i = 0; i < VFX_PARTS; i++) VFX.parts.push({ x: 0, y: 0, vx: 0, vy: 0, life: 0, max: 1, size: 1, kind: 0, col: '', grav: 0, floor: 0, pri: 0 });
+for (let i = 0; i < VFX_FX; i++) VFX.fx.push({ k: '', x: 0, y: 0, x2: 0, y2: 0, r: 0, r2: 0, t: 0, life: 1, col: null, w: 1, pri: 0 });
+for (let i = 0; i < 64; i++) VFX.shots.push({ e: null, u: 0, v: 0, z: 0, w: '' });
+const vr = (a, b) => a + VFX.rnd() * (b - a);
+function sfx(name, x) {} // sound hook (v2.4)
+
+// Soft glows drawn once into small canvases, then stamped (no gradients built during play)
+function makeGlow(rgb) {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 64;
+  const k = cv.getContext('2d'), gr = k.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, `rgba(${rgb},1)`); gr.addColorStop(0.35, `rgba(${rgb},0.55)`); gr.addColorStop(1, `rgba(${rgb},0)`);
+  k.fillStyle = gr; k.fillRect(0, 0, 64, 64); return cv;
+}
+const GLOW = { warm: makeGlow('255,214,140'), white: makeGlow('255,255,255'), cyan: makeGlow('150,235,255'), fire: makeGlow('255,150,60'), t0: makeGlow(TEAM[0].glow), t1: makeGlow(TEAM[1].glow) };
+function stamp(c, img, x, y, r, a) { if (a <= 0.01 || r <= 0) return; c.globalAlpha = Math.min(1, a); c.drawImage(img, x - r, y - r, r * 2, r * 2); }
+
+// Pools. Particle kinds: 0 smoke, 1 spark, 2 debris (falls and settles), 3 dust. pri 1 = may push out pri 0.
+function vPart(x, y, vx, vy, life, size, kind, col, grav, pri, floor) {
+  const P_ = VFX.parts;
+  let p = null;
+  if (VFX.np < VFX_PARTS) p = P_[VFX.np++];
+  else if (pri > 0) { for (let i = 0; i < VFX.np; i++) if (P_[i].pri === 0) { p = P_[i]; break; } }
+  if (!p) return; // full: the least important effect is the one dropped
+  p.x = x; p.y = y; p.vx = vx; p.vy = vy; p.life = p.max = life; p.size = size; p.kind = kind; p.col = col; p.grav = grav || 0; p.pri = pri || 0; p.floor = floor ?? 1e9;
+}
+function vFx(k, x, y, r, life, col, pri, x2 = 0, y2 = 0, w = 1, delay = 0) {
+  const F_ = VFX.fx;
+  let f = null;
+  if (VFX.nfx < VFX_FX) f = F_[VFX.nfx++];
+  else { let lo = pri; for (let i = 0; i < VFX.nfx; i++) if (F_[i].pri < lo) { lo = F_[i].pri; f = F_[i]; } }
+  if (!f) return;
+  f.k = k; f.x = x; f.y = y; f.r = r; f.life = life; f.col = col; f.pri = pri; f.x2 = x2; f.y2 = y2; f.w = w; f.t = -delay;
+}
+function vCount(n) { return Math.max(n > 0 ? 1 : 0, Math.round(n * QMUL[VFX.q])); }
+
+function vfxReset(g) {
+  VFX.g = g; VFX.lastT = -1; VFX.np = 0; VFX.nfx = 0; VFX.shake = 0;
+  VFX.decals.length = 0; VFX.smokers.length = 0; VFX.wrecks.length = 0; VFX.prevE.length = 0; VFX.prevP.length = 0;
+  VFX.rec = new WeakMap(); VFX.seenFx = new WeakSet();
+}
+const onView = x => Math.abs(x - cam.x) < V.cw / 2 / V.S + 80;
+
+// One step: look for what happened since the last frame, then age every effect by the game time that passed
+function vfxStep(g) {
+  if (g !== VFX.g) vfxReset(g);
+  const dt = VFX.lastT < 0 ? 0 : clamp(g.t - VFX.lastT, 0, 0.25);
+  VFX.lastT = g.t;
+  if (dt > 0) vfxScan(g, dt);
+  const P_ = VFX.parts;
+  for (let i = 0; i < VFX.np; i++) {
+    const p = P_[i];
+    p.life -= dt;
+    if (p.life <= 0) { const last = P_[--VFX.np]; P_[VFX.np] = p; P_[i] = last; i--; continue; }
+    p.vy += p.grav * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+    if (p.y > p.floor) { p.y = p.floor; p.vy *= -0.3; p.vx *= 0.6; }
+    if (p.kind === 0 || p.kind === 3) p.vx *= 0.97;
+  }
+  const F_ = VFX.fx;
+  for (let i = 0; i < VFX.nfx; i++) {
+    const f = F_[i];
+    f.t += dt;
+    if (f.t >= f.life) { const last = F_[--VFX.nfx]; F_[VFX.nfx] = f; F_[i] = last; i--; }
+  }
+  for (let i = VFX.decals.length - 1; i >= 0; i--) if ((VFX.decals[i].t += dt) > VFX.decals[i].life) VFX.decals.splice(i, 1);
+  for (let i = VFX.wrecks.length - 1; i >= 0; i--) if ((VFX.wrecks[i].t += dt) > 1.2) VFX.wrecks.splice(i, 1);
+  for (let i = VFX.smokers.length - 1; i >= 0; i--) {
+    const s = VFX.smokers[i];
+    s.t += dt; s.acc += dt;
+    while (s.acc > 0.12) { s.acc -= 0.12; if (VFX.rnd() < QMUL[VFX.q]) vPart(s.x + vr(-s.w, s.w), s.y - vr(0, 6), vr(-6, 6), vr(-30, -16), vr(1.2, 2), vr(5, 9), 0, s.acc > 0.06 ? 'dark' : 'light', -6, 0); }
+    if (s.t > s.life) VFX.smokers.splice(i, 1);
+  }
+  if (VFX.shake > 0) VFX.shake = Math.max(0, VFX.shake - dt * 18);
+}
+
+function vfxScan(g, dt) {
+  const F = g.fog[0], lit = u => F.vis[cellOf(u)] === 1, frame = ++VFX.frame, R = VFX.rec;
+  VFX.nshots = 0;
+  for (const e of g.ents) {
+    let r = R.get(e);
+    if (!r) { r = { f: 0, cd: e.cd || 0, hp: e.hp, ghost: e.hp, ghostT: 0, step: 0 }; R.set(e, r); if (e.kind === 'u' && e.type === 'titan') r.step = titanStep(e); }
+    r.f = frame;
+    const cd = e.cd || 0;
+    if (cd > r.cd + 0.05) onFire(g, e, lit);
+    r.cd = cd;
+    if (e.hp < r.hp - 0.01) { r.ghost = Math.max(r.ghost, r.hp); r.ghostT = 0.35; }      // health just lost shows as a draining white chunk
+    else if (r.ghostT > 0) r.ghostT -= dt;
+    else r.ghost = Math.max(e.hp, r.ghost - e.maxHp * 0.8 * dt);
+    r.hp = e.hp;
+    if (e.kind === 'u' && e.type === 'titan') { const s = titanStep(e); if (s !== r.step) { r.step = s; if (e.moving) onStep(g, e, lit); } }
+  }
+  for (const e of VFX.prevE) { const r = R.get(e); if (r && r.f !== frame && e.hp <= 0) onDeath(g, e, lit); }
+  VFX.prevE.length = 0; for (const e of g.ents) VFX.prevE.push(e);
+  for (const p of g.projs) {
+    let r = R.get(p);
+    if (!r) { r = VFX.freeRec.pop() || { f: 0, ou: 0, ov: 0, oz: 0, has: 0 }; r.has = 0; R.set(p, r); onShot(g, p, r, lit); }
+    r.f = frame;
+  }
+  for (const p of VFX.prevP) { const r = R.get(p); if (r && r.f !== frame) { if (p.t <= 4) onImpact(g, p, lit); R.delete(p); VFX.freeRec.push(r); } }
+  VFX.prevP.length = 0; for (const p of g.projs) VFX.prevP.push(p);
+  for (const f of g.fx) if (!VFX.seenFx.has(f)) { VFX.seenFx.add(f); if (f.k === 'boom' && lit(f.x) && onView(f.x)) onBoom(f); }
+}
+const titanStep = u => Math.floor((u.anim * 3.2 - Math.PI / 2) / Math.PI);
+
+const MUZ_COL = { rifle: 'warm', gatling: 'warm', flak: 'warm', rail: 'cyan', rocket: 'fire', missile: 'fire', cannon: 'warm', siege: 'white', shell: 'fire', hqgun: null };
+function onFire(g, e, lit) {
+  const gun = e.kind === 'b' ? BDEF[e.type].gun && BDEF[e.type].gun[e.tier] : UDEF[e.type];
+  if (!gun) return;
+  const m = muzzle(e), w = P(m.u, m.v, m.z), wpn = gun.weapon;
+  if (VFX.nshots < VFX.shots.length) { const s = VFX.shots[VFX.nshots++]; s.e = e; s.u = m.u; s.v = m.v; s.z = m.z; s.w = wpn; }
+  if (!lit(m.u) || !onView(w.x)) return; // firing in the fog stays hidden
+  const face = e.face || (e.side ? -1 : 1), col = MUZ_COL[wpn] ? GLOW[MUZ_COL[wpn]] : GLOW['t' + e.side];
+  sfx(wpn, w.x);
+  switch (wpn) {
+    case 'rifle': vFx('flash', w.x, w.y, 6, 0.08, col, 1); break;
+    case 'gatling': vFx('flash', w.x - 3, w.y, 6, 0.07, col, 1); vFx('flash', w.x + 3, w.y - 1, 6, 0.07, col, 1, 0, 0, 1, 0.08); break;
+    case 'flak': vFx('flash', w.x, w.y - 1.5, 5, 0.05, col, 1); vFx('flash', w.x, w.y + 1.5, 5, 0.05, col, 1, 0, 0, 1, 0.06); break;
+    case 'rail': vFx('flash', w.x, w.y, 9, 0.12, col, 2); break;
+    case 'rocket': // backblast out of the launcher's rear
+      vFx('flash', w.x, w.y, 7, 0.08, col, 1);
+      for (let i = vCount(3); i > 0; i--) vPart(w.x - face * 22, w.y + vr(-2, 2), -face * vr(20, 50), vr(-12, 4), vr(0.4, 0.7), vr(3, 5), 0, 'light', -4, 0);
+      break;
+    case 'missile': vFx('flash', w.x, w.y, 6, 0.07, col, 1); break;
+    case 'cannon':
+      vFx('flash', w.x + face * 3, w.y, 11, 0.09, col, 1); vFx('flash', w.x, w.y, 5, 0.09, GLOW.white, 1);
+      for (let i = vCount(3); i > 0; i--) vPart(w.x + face * 4, w.y, face * vr(10, 30), vr(-14, 2), vr(0.5, 0.9), vr(3, 5), 0, 'light', -5, 0);
+      break;
+    case 'siege': // the Titan's twin cannon: one flash per barrel
+      for (const dz of [-2.5, 2.5]) { const q = P(m.u, m.v, m.z + dz * US); vFx('flash', q.x + face * 3, q.y, 12, 0.1, GLOW.warm, 2); vFx('flash', q.x, q.y, 5, 0.1, col, 2); }
+      for (let i = vCount(4); i > 0; i--) vPart(w.x + face * 4, w.y, face * vr(10, 40), vr(-18, 2), vr(0.6, 1), vr(4, 6), 0, 'light', -5, 0);
+      break;
+    case 'shell':
+      vFx('flash', w.x, w.y, 14, 0.12, col, 2); vFx('flash', w.x, w.y, 6, 0.12, GLOW.white, 2);
+      for (let i = vCount(5); i > 0; i--) vPart(w.x, w.y, vr(-25, 25), vr(-30, -5), vr(0.6, 1.1), vr(4, 7), 0, 'light', -4, 0);
+      break;
+    case 'hqgun':
+      vFx('flash', w.x, w.y, 14, 0.12, col, 2); vFx('ring', w.x, w.y, 4, 0.3, TEAM[e.side].main, 1, 18, 0, 2);
+      break;
+  }
+}
+function onShot(g, p, r, lit) { // pair a new projectile with the shot that made it, for beams and trails
+  let best = null, bd = 90;
+  for (let i = 0; i < VFX.nshots; i++) { const s = VFX.shots[i]; if (s.e.side !== p.side || s.w !== p.weapon) continue; const d = Math.abs(s.u - p.u) + Math.abs(s.v - p.v); if (d < bd) { bd = d; best = s; } }
+  if (!best) return;
+  r.ou = best.u; r.ov = best.v; r.oz = best.z; r.has = 1;
+  if (p.weapon === 'rail' && lit(best.u) && lit(p.tu)) { // the beam is drawn only when both ends are in view
+    const a = P(best.u, best.v, best.z), b = P(p.tu, p.tv, p.tz);
+    if (onView(a.x) || onView(b.x)) vFx('beam', a.x, a.y, 0, 0.2, null, 2, b.x, b.y, 2.4);
+  }
+}
+function onImpact(g, p, lit) {
+  const u = p.tu, v = p.tv, z = p.weapon === 'shell' ? 0 : p.tz; // where it hit (homing shots end on their target)
+  if (!lit(u)) return;
+  const w = P(u, v, z);
+  if (!onView(w.x)) return;
+  const ground = P(u, v, 0).y;
+  switch (p.weapon) {
+    case 'rifle': case 'gatling': vFx('flash', w.x, w.y, 3.5, 0.05, GLOW.white, 0); break;
+    case 'rail':
+      vFx('flash', w.x, w.y, 8, 0.12, GLOW.cyan, 1); vFx('ring', w.x, w.y, 2, 0.25, '#bff4ff', 1, 12, 0, 1.4);
+      for (let i = vCount(4); i > 0; i--) vPart(w.x, w.y, vr(-60, 60), vr(-70, 10), vr(0.15, 0.3), 1.3, 1, '#c9f6ff', 220, 0, ground);
+      break;
+    case 'rocket': case 'missile': vFx('ring', w.x, w.y, 3, 0.25, '#ffd9a0', 0, 16, 0, 1.4); break;
+    case 'hqgun': vFx('flash', w.x, w.y, 12, 0.15, GLOW['t' + p.side], 1); vFx('ring', w.x, w.y, 3, 0.3, TEAM[p.side].light, 1, 22, 0, 1.6); break;
+    case 'cannon':
+      vFx('ring', w.x, w.y, 4, 0.3, '#ffd9a0', 1, 22, 0, 1.6);
+      for (let i = vCount(4); i > 0; i--) vPart(w.x, ground - 1, vr(-20, 20), vr(-18, -4), vr(0.6, 1), vr(3, 6), 3, '', -2, 0);
+      break;
+    case 'siege':
+      vFx('ring', w.x, ground, 6, 0.4, '#ffe2b0', 2, 40, 1, 2.2);
+      for (let i = vCount(5); i > 0; i--) vPart(w.x, w.y, vr(-70, 70), vr(-90, -30), vr(0.6, 1.1), vr(1.8, 3), 2, '#2a3648', 300, 1, ground);
+      for (let i = vCount(4); i > 0; i--) vPart(w.x, ground - 1, vr(-26, 26), vr(-16, -4), vr(0.8, 1.3), vr(4, 7), 3, '', -2, 0);
+      break;
+    case 'shell': // artillery: shockwave across the ground, dust and debris
+      vFx('ring', w.x, ground, 8, 0.45, '#ffe2b0', 2, 62, 1, 2.4);
+      vFx('flash', w.x, ground - 6, 22, 0.16, GLOW.fire, 2);
+      for (let i = vCount(6); i > 0; i--) vPart(w.x + vr(-10, 10), ground - 1, vr(-34, 34), vr(-22, -6), vr(0.9, 1.5), vr(5, 9), 3, '', -2, 0);
+      for (let i = vCount(4); i > 0; i--) vPart(w.x, ground - 2, vr(-80, 80), vr(-110, -40), vr(0.7, 1.2), vr(1.8, 3), 2, '#2a3648', 320, 1, ground);
+      break;
+    case 'flak': // anti-air airburst
+      for (let i = vCount(3); i > 0; i--) vPart(w.x + vr(-4, 4), w.y + vr(-4, 4), vr(-10, 10), vr(-8, 4), vr(0.5, 0.8), vr(2.5, 4), 0, 'light', -2, 0);
+      break;
+  }
+}
+function onBoom(f) { // every blast from the SIM gets a shockwave; bigger ones throw debris
+  if (f.r >= 18) vFx('ring', f.x, f.y, f.r * 0.3, 0.35 + f.r / 160, '#ffe2b0', 1, f.r * 1.6, 0, 1.8);
+  if (f.r >= 28) for (let i = vCount(Math.min(8, f.r / 6)); i > 0; i--) vPart(f.x, f.y, vr(-90, 90), vr(-120, -30), vr(0.6, 1.2), vr(1.8, 3.2), 2, '#2a3648', 320, 1, f.y + vr(4, 14));
+}
+function onStep(g, u, lit) { // a Titan's foot lands
+  const w = P(u.u, u.v);
+  if (!lit(u.u) || !onView(w.x)) return;
+  sfx('step', w.x);
+  for (let i = vCount(3); i > 0; i--) vPart(w.x + u.face * vr(-6, 16), w.y - 1, vr(-22, 22), vr(-10, -2), vr(0.6, 1), vr(3, 6), 3, '', -1, 0);
+  if (VFX.q > 0 && !VFX.reduced) VFX.shake = Math.max(VFX.shake, 0.9);
+}
+function onDeath(g, e, lit) {
+  if (!lit(e.u)) return;
+  const w = P(e.u, e.v);
+  if (!onView(w.x)) return;
+  if (e.kind === 'b') { // the building collapses over 1.2 s, with staggered blasts, a smoke column and a scorch mark
+    const d = BDEF[e.type];
+    VFX.wrecks.push({ b: e, t: 0 });
+    for (let i = 0; i < 4; i++) { const q = P(e.u + vr(-e.half, e.half) * 0.6, e.v + vr(-e.half, e.half) * 0.6, vr(8, e.h * 0.6)); vFx('boom', q.x, q.y, vr(26, 44), 0.6, null, 3, 0, 0, 1, 0.15 + i * 0.28); }
+    for (let i = vCount(10); i > 0; i--) vPart(w.x + vr(-12, 12), w.y - vr(10, 30), vr(-110, 110), vr(-160, -50), vr(0.8, 1.5), vr(2, 4), 2, i % 2 ? '#3e4b65' : '#2a3648', 300, 1, w.y + vr(-6, 10));
+    if (VFX.smokers.length < VFX_SMOKERS) VFX.smokers.push({ x: w.x, y: w.y - d.h * BS * 0.3, w: d.half * BS * 0.6, t: 0, acc: 0, life: 4 });
+    addDecal(w.x, w.y + 4, d.half * BS * 1.5, 25);
+    sfx('collapse', w.x);
+    return;
+  }
+  const d = UDEF[e.type];
+  if (d.air) { for (let i = vCount(5); i > 0; i--) vPart(w.x, w.y - e.z, vr(-50, 50), vr(-40, 10), vr(0.8, 1.4), vr(1.6, 2.8), 2, '#3e4b65', 260, 1, w.y); return; }
+  if (e.type === 'titan') { // the walker goes down in stages
+    for (let i = 0; i < 2; i++) vFx('boom', w.x + vr(-14, 14), w.y - vr(20, 50), 40, 0.7, null, 3, 0, 0, 1, 0.2 + i * 0.3);
+    addDecal(w.x, w.y, 30, 20);
+  } else if (e.type === 'tank' || e.type === 'artillery') addDecal(w.x, w.y, 18, 14);
+  if (d.armor === 'vehicle') for (let i = vCount(6); i > 0; i--) vPart(w.x, w.y - 10, vr(-80, 80), vr(-120, -40), vr(0.7, 1.2), vr(1.8, 3), 2, '#2a3648', 320, 1, w.y + vr(-3, 4));
+}
+function addDecal(x, y, r, life) { if (VFX.decals.length >= VFX_DECALS) VFX.decals.shift(); VFX.decals.push({ x, y, r, t: 0, life }); }
+
+// Quality fallback: if over 30% of frames take longer than 33 ms for 2 seconds, step down a level;
+// after 6 smooth seconds (under 10% slow frames), step back up. Gaps over 250 ms (tab switches) are ignored.
+function vfxQuality(gap, playing) {
+  if (VFX.lock !== null) { VFX.q = VFX.lock; return; }
+  if (!playing || gap > 250) return;
+  VFX.gaps.push(gap);
+  VFX.gapAt += gap;
+  if (VFX.gapAt < 1000) return;
+  const slow = VFX.gaps.filter(x => x > 33.4).length / VFX.gaps.length;
+  VFX.gaps.length = 0; VFX.gapAt = 0;
+  if (slow > 0.3) { VFX.fastFor = 0; if (++VFX.slowFor >= 2 && VFX.q > 0) { VFX.q--; VFX.slowFor = 0; } }
+  else if (slow < 0.1) { VFX.slowFor = 0; if (++VFX.fastFor >= 6 && VFX.q < 2) { VFX.q++; VFX.fastFor = 0; } }
+  else { VFX.slowFor = 0; VFX.fastFor = 0; }
+}
+
+// Drawing
+// Artillery landing marker: only while the shell itself can be seen, and only on ground in view, so it can never
+// give away a gun firing from the fog
+const showLanding = (p, lit) => lit(p.u) && lit(p.tu);
+function drawBoom(c, x, y, r, k) {
+  c.globalCompositeOperation = 'lighter';
+  stamp(c, GLOW.fire, x, y, r * (0.9 + k * 0.8), (1 - k) * 0.7);
+  if (k < 0.35) stamp(c, GLOW.white, x, y, r * 0.45, 1 - k / 0.35);
+  c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
+  c.fillStyle = `rgba(255,170,80,${(1 - k) * 0.55})`; c.beginPath(); c.arc(x, y, r * (0.35 + k * 0.75), 0, 7); c.fill();
+}
+function drawDecals(c) {
+  for (const d of VFX.decals) {
+    const a = 0.45 * Math.min(1, (d.life - d.t) / 4);
+    c.fillStyle = `rgba(12,10,8,${a})`; c.beginPath(); c.ellipse(d.x, d.y, d.r, d.r * 0.42, 0, 0, 7); c.fill();
+  }
+}
+function drawWrecks(c, time) {
+  for (const w of VFX.wrecks) {
+    const b = w.b, k = w.t / 1.2, p = P(b.u, b.v), base = p.y + (BDEF[b.type].half + 6) * BS;
+    c.save();
+    c.beginPath(); c.rect(p.x - 200, p.y - 300, 400, base - p.y + 300); c.clip();
+    c.globalAlpha = 1 - k * k; c.translate(0, k * k * 46 * BS);
+    drawBuilding(c, b, time);
+    c.restore();
+  }
+}
+function drawVfx(c) {
+  const P_ = VFX.parts;
+  // smoke and dust first, then sparks and debris
+  for (let i = 0; i < VFX.np; i++) {
+    const p = P_[i];
+    if (p.kind !== 0 && p.kind !== 3) continue;
+    const k = p.life / p.max;
+    if (p.kind === 3) { c.fillStyle = '#7a6a55'; c.globalAlpha = 0.4 * k; }
+    else { c.fillStyle = p.col === 'light' ? '#aaaabf' : '#282834'; c.globalAlpha = (p.col === 'light' ? 0.3 : 0.55) * k; }
+    c.beginPath(); c.arc(p.x, p.y, p.size * (1.8 - k), 0, 7); c.fill();
+  }
+  for (let i = 0; i < VFX.np; i++) {
+    const p = P_[i];
+    if (p.kind === 0 || p.kind === 3) continue;
+    c.globalAlpha = p.kind === 2 ? Math.min(1, p.life / p.max * 3) : p.life / p.max;
+    c.fillStyle = p.col; c.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+  }
+  c.globalAlpha = 1;
+  const F_ = VFX.fx;
+  for (let i = 0; i < VFX.nfx; i++) {
+    const f = F_[i];
+    if (f.t < 0) continue;
+    const k = f.t / f.life;
+    if (f.k === 'flash') {
+      c.globalCompositeOperation = 'lighter'; stamp(c, f.col, f.x, f.y, f.r * (1 - k * 0.4), 1 - k); c.globalCompositeOperation = 'source-over';
+    } else if (f.k === 'ring') {
+      const e = 1 - (1 - k) * (1 - k), r = f.r + (f.x2 - f.r) * e;
+      c.globalAlpha = (1 - k) * 0.75; c.strokeStyle = f.col || TEAM[0].light; c.lineWidth = f.w * (1 - k) + 0.4;
+      c.beginPath(); c.ellipse(f.x, f.y, r, f.y2 ? r * 0.42 : r, 0, 0, 7); c.stroke();
+    } else if (f.k === 'beam') {
+      c.globalAlpha = 1 - k; c.lineCap = 'round';
+      c.strokeStyle = 'rgba(120,220,255,0.45)'; c.lineWidth = f.w * 2.6 * (1 - k * 0.5); c.beginPath(); c.moveTo(f.x, f.y); c.lineTo(f.x2, f.y2); c.stroke();
+      c.strokeStyle = '#e8fbff'; c.lineWidth = f.w * (1 - k * 0.6); c.stroke();
+      c.lineCap = 'butt';
+    } else if (f.k === 'boom') drawBoom(c, f.x, f.y, f.r, k);
+  }
+  c.globalAlpha = 1;
 }
 
 function render(c, g, time, sel, selPad) {
@@ -1843,7 +2181,9 @@ function render(c, g, time, sel, selPad) {
   c.setTransform(dpr, 0, 0, dpr, 0, 0);
   drawSky(c, time, hy);
   let sx = 0, sy = 0;
-  if (g && g.shake > 0) { sx = rand(-1, 1) * g.shake; sy = rand(-1, 1) * g.shake; }
+  if (g) vfxStep(g);
+  const shake = g && VFX.q > 0 ? g.shake + VFX.shake : 0; // no shake at the lowest quality level
+  if (shake > 0) { sx = vr(-1, 1) * shake; sy = vr(-1, 1) * shake; }
   c.setTransform(dpr * S, 0, 0, dpr * S, dpr * (cw / 2 - cam.x * S + sx), dpr * (A - Y_BOT * S + sy));
   drawRidge(c, BG.far, 0.25, '#1a1a3c', 'rgba(170,150,240,0.35)');
   drawRidge(c, BG.near, 0.5, '#13152c', 'rgba(120,110,200,0.2)');
@@ -1864,6 +2204,8 @@ function render(c, g, time, sel, selPad) {
     }
   }
   for (const n of g.nodes) drawNodeZone(c, n, time, lit(n.u));
+  drawDecals(c);
+  drawWrecks(c, time);
   // everything on the field, back to front
   const list = g.ents.filter(seen);
   for (const gh of ghosts) list.push({ kind: 'ghost', u: gh.u, v: gh.v, gh });
@@ -1887,47 +2229,60 @@ function render(c, g, time, sel, selPad) {
   drawFog(c, F);
   for (const p of g.projs) {
     if (p.side !== 0 && !lit(p.u)) continue;
-    const a = P(p.pu, p.pv, p.pz), b = P(p.u, p.v, p.z);
-    if (p.weapon === 'rifle' || p.weapon === 'rail' || p.weapon === 'flak' || p.weapon === 'gatling') {
-      c.strokeStyle = p.weapon === 'rail' ? '#bff4ff' : p.weapon === 'flak' ? '#ffe9a8' : '#fff3b0';
-      c.lineWidth = p.weapon === 'rail' ? 2 : 1.2;
+    const a = P(p.pu, p.pv, p.pz), b = P(p.u, p.v, p.z), wp = p.weapon;
+    if (wp === 'rifle' || wp === 'flak' || wp === 'gatling' || wp === 'rail') {
+      c.strokeStyle = wp === 'rail' ? '#bff4ff' : wp === 'flak' ? '#ffe9a8' : wp === 'gatling' ? '#ffd38a' : '#fff3b0';
+      c.lineWidth = wp === 'rail' ? 2 : wp === 'gatling' ? 1.5 : 1.2;
       c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
-    } else if (p.weapon === 'cannon' || p.weapon === 'siege') {
-      c.strokeStyle = 'rgba(255,220,140,0.7)'; c.lineWidth = p.weapon === 'siege' ? 3 : 2; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
-      c.fillStyle = '#fff6d0'; c.beginPath(); c.arc(b.x, b.y, p.weapon === 'siege' ? 2.8 : 2, 0, 7); c.fill();
-    } else if (p.weapon === 'shell') {
+      if (wp === 'rail') { c.globalCompositeOperation = 'lighter'; stamp(c, GLOW.cyan, b.x, b.y, 5, 0.9); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1; }
+    } else if (wp === 'cannon' || wp === 'siege') {
+      const big = wp === 'siege';
+      c.strokeStyle = 'rgba(255,220,140,0.75)'; c.lineWidth = big ? 3.2 : 2.2; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
+      c.globalCompositeOperation = 'lighter'; stamp(c, big ? GLOW.white : GLOW.warm, b.x, b.y, big ? 8 : 6, 0.85); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
+      c.fillStyle = '#fff6d0'; c.beginPath(); c.arc(b.x, b.y, big ? 3 : 2.2, 0, 7); c.fill();
+    } else if (wp === 'shell') {
       const gp = P(p.u, p.v, 0);
+      if (showLanding(p, lit)) {
+        const t = P(p.tu, p.tv, 0), k = clamp(p.t / p.T, 0, 1);
+        c.strokeStyle = TEAM[p.side].main; c.globalAlpha = 0.2 + 0.5 * k; c.lineWidth = 1.2;
+        c.beginPath(); c.ellipse(t.x, t.y, 26 - 8 * k, (26 - 8 * k) * 0.42, 0, 0, 7); c.stroke(); c.globalAlpha = 1;
+      }
       c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.ellipse(gp.x, gp.y, 4, 1.6, 0, 0, 7); c.fill();
-      c.fillStyle = 'rgba(255,170,80,0.35)'; c.beginPath(); c.arc(b.x, b.y, 5, 0, 7); c.fill();
+      c.globalCompositeOperation = 'lighter'; stamp(c, GLOW.fire, b.x, b.y, 9, 0.8); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
       c.fillStyle = '#ffe2a8'; c.beginPath(); c.arc(b.x, b.y, 2.4, 0, 7); c.fill();
-    } else {
-      c.fillStyle = p.side === 0 ? '#bff2ff' : '#ffd0d0'; c.beginPath(); c.arc(b.x, b.y, 2.2, 0, 7); c.fill();
-      c.fillStyle = 'rgba(255,170,80,0.5)'; c.beginPath(); c.arc(a.x, a.y, 3, 0, 7); c.fill();
+    } else if (wp === 'hqgun') {
+      c.globalCompositeOperation = 'lighter'; stamp(c, GLOW['t' + p.side], b.x, b.y, 8, 1); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
+      c.fillStyle = '#ffffff'; c.beginPath(); c.arc(b.x, b.y, 2.3, 0, 7); c.fill();
+    } else { // rocket, missile
+      c.strokeStyle = 'rgba(255,170,80,0.7)'; c.lineWidth = wp === 'rocket' ? 2.2 : 1.5; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
+      c.globalCompositeOperation = 'lighter'; stamp(c, GLOW.fire, b.x, b.y, wp === 'rocket' ? 6 : 4.5, 0.9); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
+      c.fillStyle = p.side === 0 ? '#bff2ff' : '#ffd0d0'; c.beginPath(); c.arc(b.x, b.y, 2, 0, 7); c.fill();
     }
   }
-  for (const p of g.parts) {
-    if (!lit(p.x)) continue; // smoke, sparks and debris give away activity
+  const thin = VFX.q === 0; // lowest quality: half the SIM's smoke is drawn
+  for (let i = 0; i < g.parts.length; i++) {
+    const p = g.parts[i];
+    if (!lit(p.x) || (thin && p.smoke && i % 2)) continue; // smoke, sparks and debris give away activity
     const k = p.life / p.max;
     if (p.smoke) {
-      c.fillStyle = p.light ? `rgba(170,170,190,${0.3 * k})` : `rgba(40,40,52,${0.55 * k})`;
+      c.fillStyle = p.light ? '#aaaabe' : '#282834'; c.globalAlpha = (p.light ? 0.3 : 0.55) * k;
       c.beginPath(); c.arc(p.x, p.y, p.size * (1.8 - k), 0, 7); c.fill();
-    } else { c.globalAlpha = k; c.fillStyle = p.color; c.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size); c.globalAlpha = 1; }
+    } else { c.globalAlpha = k; c.fillStyle = p.color; c.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size); }
   }
-  for (const f of g.fx) {
-    if (!lit(f.x)) continue;
-    const k = f.t / f.life;
-    if (f.k === 'flash') { c.fillStyle = `rgba(255,240,180,${1 - k})`; c.beginPath(); c.arc(f.x, f.y, f.r * (1 - k * 0.5), 0, 7); c.fill(); continue; }
-    c.fillStyle = `rgba(255,190,90,${(1 - k) * 0.75})`; c.beginPath(); c.arc(f.x, f.y, f.r * (0.35 + k * 0.8), 0, 7); c.fill();
-    if (k < 0.35) { c.fillStyle = `rgba(255,250,220,${1 - k / 0.35})`; c.beginPath(); c.arc(f.x, f.y, f.r * 0.35, 0, 7); c.fill(); }
-    c.strokeStyle = `rgba(255,220,160,${(1 - k) * 0.6})`; c.lineWidth = 1.5; c.beginPath(); c.arc(f.x, f.y, f.r * (0.5 + k * 1.1), 0, 7); c.stroke();
+  c.globalAlpha = 1;
+  for (const f of g.fx) { // the SIM's blasts (its muzzle flashes are replaced by the per-weapon ones in drawVfx)
+    if (f.k !== 'boom' || !lit(f.x)) continue;
+    drawBoom(c, f.x, f.y, f.r, f.t / f.life);
   }
+  c.globalAlpha = 1;
+  drawVfx(c);
   c.font = '600 11px -apple-system,system-ui,sans-serif'; c.textAlign = 'center';
   const barMin = (V.ft - V.A) / V.S + Y_BOT + 12 / V.S; // highest world row that clears the top bar (with room for tier pips)
   for (const e of g.ents) {
     if (!seen(e)) continue;
     if (e.kind === 'b') {
       const x = P(e.u, e.v).x, top = Math.max(bTop(e) - 8, barMin), hq = e.type === 'hq';
-      bar(c, x, top, hq ? 84 : 52, e.hp / e.maxHp, hq ? 5 : 3.5);
+      bar(c, x, top, hq ? 84 : 52, e.hp / e.maxHp, hq ? 5 : 3.5, lostF(e));
       if (e.built) for (let i = 0; i < 3; i++) {
         c.beginPath(); c.arc(x - 8 + i * 8, top - 6, 2.4, 0, 7);
         if (i < e.tier) { c.fillStyle = '#ffd34d'; c.fill(); } else { c.strokeStyle = 'rgba(255,211,77,0.4)'; c.lineWidth = 1; c.stroke(); }
@@ -1939,7 +2294,7 @@ function render(c, g, time, sel, selPad) {
       }
     } else if (e.hp < e.maxHp) {
       const d = UDEF[e.type], w = P(e.u, e.v);
-      bar(c, w.x, w.y - e.z - visH(e.type) * US - 9, d.air ? 28 : Math.max(18, d.h * 0.9 + 6), e.hp / e.maxHp, 2.4);
+      bar(c, w.x, w.y - e.z - visH(e.type) * US - 9, d.air ? 28 : Math.max(18, d.h * 0.9 + 6), e.hp / e.maxHp, 2.4, lostF(e));
     }
   }
 }
@@ -2481,6 +2836,7 @@ function showEnd() {
 let uiT = 0, saveT = 5;
 function frame(ts) {
   requestAnimationFrame(frame);
+  vfxQuality(ts - last, !!(game && running && !paused));
   const dt = Math.min(0.05, Math.max(0, (ts - last) / 1000)); last = ts;
   if (game && running && !paused) {
     let rem = dt * (game.countdown > 0 ? 1 : speed); // the countdown always takes real seconds

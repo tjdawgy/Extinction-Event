@@ -1,5 +1,5 @@
 // Performance measurement in headless Chromium at iPhone landscape size (858×396, 2× pixels).
-//   node tests/perf.js [battle] [memory] [--secs=15] [--rates=1,4,6] [--json=out.json]
+//   node tests/perf.js [battle] [memory] [--secs=15] [--rates=1,4,6] [--quality=2|1|0|auto] [--json=out.json]
 // battle: both armies kept near the 80-population cap and fighting mid-map in full view, measured
 //         at each CPU throttle rate (Chromium DevTools CPU throttling simulates a slower phone).
 //         Reports the script time per frame (update + render) and the time between frames.
@@ -49,7 +49,7 @@ const stats = a => {
   return { frames: s.length, avg: +(s.reduce((x, y) => x + y, 0) / n).toFixed(2), p95: +(s[Math.floor(n * 0.95)] || 0).toFixed(2), max: +(s[s.length - 1] || 0).toFixed(1), over50: s.filter(x => x > 50).length, over33: s.filter(x => x > 33.4).length };
 };
 
-async function battle(browser, rates, secs) {
+async function battle(browser, rates, secs, quality) {
   const out = {};
   for (const rate of rates) {
     const { page, errors } = await openPage(browser, PHONE, { init: SEED });
@@ -57,6 +57,7 @@ async function battle(browser, rates, secs) {
     await page.waitForTimeout(300);
     await page.evaluate(PROBE);
     await page.evaluate(BATTLE, ARMY);
+    await page.evaluate(q => { if (typeof VFX !== 'undefined') VFX.lock = q === 'auto' ? null : +q; }, quality); // effect quality (v2.3+): a level, or auto
     const cdp = await page.context().newCDPSession(page);
     await cdp.send('Emulation.setCPUThrottlingRate', { rate });
     await page.waitForTimeout(4000); // let the armies meet
@@ -64,14 +65,14 @@ async function battle(browser, rates, secs) {
     const sample = [];
     for (let i = 0; i < secs; i++) {
       await page.waitForTimeout(1000);
-      sample.push(await page.evaluate(() => ({ units: game.ents.filter(e => e.kind === 'u').length, parts: game.parts.length, fx: game.fx.length, projs: game.projs.length })));
+      sample.push(await page.evaluate(() => ({ units: game.ents.filter(e => e.kind === 'u').length, parts: game.parts.length + (typeof VFX !== 'undefined' ? VFX.np : 0), fx: game.fx.length + (typeof VFX !== 'undefined' ? VFX.nfx : 0), projs: game.projs.length, q: typeof VFX !== 'undefined' ? VFX.q : -1 })));
     }
     const P = await page.evaluate(() => { window.__perf.on = false; return { work: window.__perf.work, gap: window.__perf.gap, slow: window.__perf.slow }; });
     await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
     const avgOf = k => Math.round(sample.reduce((x, y) => x + y[k], 0) / sample.length);
-    out[rate + 'x'] = { work: stats(P.work), gap: stats(P.gap), units: avgOf('units'), parts: avgOf('parts'), fx: avgOf('fx'), projs: avgOf('projs'), slow: P.slow.slice(0, 12), maxParts: Math.max(...sample.map(s => s.parts)), errors };
+    out[rate + 'x'] = { work: stats(P.work), gap: stats(P.gap), units: avgOf('units'), parts: avgOf('parts'), fx: avgOf('fx'), projs: avgOf('projs'), quality: sample.map(x => x.q).join(''), slow: P.slow.slice(0, 12), maxParts: Math.max(...sample.map(s => s.parts)), errors };
     const r = out[rate + 'x'];
-    console.log(`battle ${rate}x CPU: script/frame avg ${r.work.avg} ms, p95 ${r.work.p95}, max ${r.work.max} | frame gap avg ${r.gap.avg} ms, max ${r.gap.max}, >50ms ${r.gap.over50}, >33ms ${r.gap.over33} of ${r.gap.frames} | units ${r.units}, particles ${r.parts} (max ${r.maxParts}), fx ${r.fx}, projectiles ${r.projs}${errors.length ? ' | ERRORS ' + errors.join('; ') : ''}`);
+    console.log(`battle ${rate}x CPU: script/frame avg ${r.work.avg} ms, p95 ${r.work.p95}, max ${r.work.max} | frame gap avg ${r.gap.avg} ms, max ${r.gap.max}, >50ms ${r.gap.over50}, >33ms ${r.gap.over33} of ${r.gap.frames} | units ${r.units}, particles ${r.parts} (max ${r.maxParts}), fx ${r.fx}, projectiles ${r.projs}, quality per second ${r.quality}${errors.length ? ' | ERRORS ' + errors.join('; ') : ''}`);
     if (rate === 1 && P.slow.length) console.log(`  script frames over 12 ms: ${P.slow.slice(0, 12).join(', ')}`);
     await page.close();
   }
@@ -98,9 +99,9 @@ async function memory(browser) {
   const rows = [];
   for (const mark of [60, 300, 600, 900]) {
     await page.waitForFunction(m => window.__played >= m, mark, { timeout: 900000, polling: 1000 });
-    const st = await page.evaluate(() => ({ t: Math.round(window.__played), matches: window.__matches, parts: game.parts.length, fx: game.fx.length, projs: game.projs.length, ents: game.ents.length }));
+    const st = await page.evaluate(() => ({ t: Math.round(window.__played), matches: window.__matches, parts: game.parts.length, fx: game.fx.length, projs: game.projs.length, ents: game.ents.length, vfx: typeof VFX !== 'undefined' ? `${VFX.np}/${VFX.nfx}/${VFX.decals.length}/${VFX.smokers.length}/${VFX.wrecks.length}` : '-' }));
     rows.push({ ...st, heapMB: await heap(), domNodes: await nodes() });
-    console.log(`memory @ ${st.t}s game time: heap ${rows[rows.length - 1].heapMB} MB after GC, DOM nodes ${rows[rows.length - 1].domNodes}, matches ${st.matches}, entities ${st.ents}, particles ${st.parts}, fx ${st.fx}, projectiles ${st.projs}`);
+    console.log(`memory @ ${st.t}s game time: heap ${rows[rows.length - 1].heapMB} MB after GC, DOM nodes ${rows[rows.length - 1].domNodes}, matches ${st.matches}, entities ${st.ents}, particles ${st.parts}, fx ${st.fx}, projectiles ${st.projs}, effects pool parts/fx/decals/smokers/wrecks ${st.vfx}`);
   }
   if (errors.length) console.log('ERRORS ' + errors.join('; '));
   await page.close();
@@ -111,7 +112,7 @@ async function main() {
   const args = process.argv.slice(2);
   const opt = k => (args.find(a => a.startsWith(`--${k}=`)) || '').split('=')[1];
   const which = args.filter(a => !a.startsWith('--'));
-  const secs = +(opt('secs') || 15), rates = (opt('rates') || '1,4,6').split(',').map(Number);
+  const secs = +(opt('secs') || 15), rates = (opt('rates') || '1,4,6').split(',').map(Number), quality = opt('quality') || '2';
   const pw = findPlaywright();
   if (!pw) { console.error('Playwright is not installed'); process.exit(1); }
   const browser = await pw.chromium.launch();
@@ -120,7 +121,7 @@ async function main() {
     const { page } = await openPage(browser, PHONE);
     res.version = await page.evaluate(() => VERSION); await page.close();
     console.log('version', res.version);
-    if (!which.length || which.includes('battle')) res.battle = await battle(browser, rates, secs);
+    if (!which.length || which.includes('battle')) res.battle = await battle(browser, rates, secs, quality);
     if (!which.length || which.includes('memory')) res.memory = await memory(browser);
   } finally { await browser.close(); }
   if (opt('json')) fs.writeFileSync(opt('json'), JSON.stringify(res, null, 1));
