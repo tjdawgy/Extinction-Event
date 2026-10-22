@@ -27,3 +27,12 @@ A mobile real-time strategy game (formerly Colony Mobile) in a single self-conta
 - Run `npm test` before every push. It must pass.
 - The test kit lives in tests/ and loads the SIM section headlessly in Node.
 - Every balance claim must come from test scripts, reported as win counts over at least 20 matches.
+
+## Step discipline
+- Implement one step at a time. Do not start the next step until the current one is complete and tested.
+- Before each step, briefly explain what exists, what you intend to change, and any risks or design decisions that need my approval.
+- If a major design decision is unresolved, ask me before implementing it rather than silently choosing.
+- If you discover a problem that requires a change to an earlier step, explain why before making a major change.
+- Test the actual game after implementation. In reports, separate automated tests, manual tests, and what could not be verified. Do not claim success based on code inspection alone.
+- End each step with a concise report of changes, tests performed, results, and remaining issues.
+- Goal: make Extinction Event a genuinely strategic, replayable RTS where army composition, economy, scouting, positioning and player decisions matter.
