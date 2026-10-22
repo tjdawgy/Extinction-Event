@@ -381,7 +381,7 @@ const aiFortified = (g, s) => !!g.sides[s].failV || Object.values(g.fog[s].ghost
 function aiAbility(g, s, P, ctx) {
   const D = s === 1 ? g.diff : (DIFF[g.autoDiff] || DIFF.normal), lvl = D === DIFF.easy ? 0 : D === DIFF.hard ? 2 : 1;
   const side = g.sides[s], f = g.fog[s], log = side.aiLog, kind = P.kind;
-  if (g.t < ABIL.shield.first || Math.random() > [0.35, 0.7, 1][lvl]) return; // slower to react on lower difficulties
+  if (g.t < ABIL.shield.first || Math.random() > [0.2, 0.5, 1][lvl]) return; // slower to react on lower difficulties
   const seen = g.ents.filter(e => e.side !== s && e.hp > 0 && visibleTo(g, s, e));
   const use = (k, t) => {
     if (!t || !useAbility(g, s, k, t.u, t.v).ok) return false;
@@ -399,7 +399,7 @@ function aiStrikeTarget(g, s, kind, lvl, seen, ctx) {
   const known = Object.values(f.ghosts).filter(gh => gh.side !== s && !(gh.type === 'hq' && f.lastHQ.shielded));
   const hit = (d, hp) => Math.min(1, (A.dmg - (A.dmg - A.edge) * Math.min(1, d / A.r)) / hp);
   const pts = ground.map(e => ({ u: e.u, v: e.v })).concat(known.map(gh => ({ u: gh.u, v: gh.v, b: gh })));
-  let best = null, bs = [Infinity, 260, 300][lvl]; // Hard reacts faster but only takes clearly good strikes
+  let best = null, bs = [Infinity, 340, 300][lvl]; // Normal waits for a fatter target; Hard reacts at once to a good one
   for (const p of pts) {
     if (!f.exp[cellOf(p.u)]) continue;
     let sc = 0, def = false;
@@ -438,7 +438,7 @@ function aiShieldTarget(g, s, kind, lvl, seen, ctx) {
   const attacking = side.stance === 'attack' && !(side.feintUntil > g.t);
   if ((kind === 'economist' || kind === 'turtle') && !ctx.threat) return null; // defensive personalities shield at home
   if (kind === 'trickster' && !attacking && !ctx.threat) return null;
-  const need = [520, 380, 400][lvl] * (kind === 'aggressor' && attacking ? 0.8 : 1);
+  const need = [520, 460, 400][lvl] * (kind === 'aggressor' && attacking ? 0.8 : 1);
   let best = null, bs = need;
   for (const m of ctx.mine) {
     if (m.shT > g.t) continue;
@@ -456,7 +456,7 @@ function aiRepairTarget(g, s, kind, lvl, ctx) {
   const A = ABIL.repair, side = g.sides[s];
   if (kind === 'aggressor' && side.stance === 'attack' && !side.fails) return null; // it repairs after a failed push, not during one
   const own = g.ents.filter(e => e.side === s && e.hp > 0 && e.hp < e.maxHp && !(e.kind === 'b' && (!e.built || e.repair > 0)));
-  let best = null, bs = [900, 700, 750][lvl];
+  let best = null, bs = [900, 850, 750][lvl];
   for (const c of own) {
     let miss = 0;
     for (const e of own) {
