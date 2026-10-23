@@ -1,6 +1,6 @@
 # Unit micro controls (v2.12, branch `micro-controls`)
 
-This is built on the `micro-controls` branch, created from main at v2.11. It is **not merged to main**.
+Built on the `micro-controls` branch from main at v2.11, tested on the phone, approved and merged into main as v2.12.
 
 ## What was built
 
