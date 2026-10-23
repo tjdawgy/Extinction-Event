@@ -1957,7 +1957,7 @@ function buildGroundCache() {
 // The sky's gradients and the planet are drawn once into canvases and stamped while the view holds still
 // (during the intro zoom they are drawn live); the stars still twinkle and drift every frame.
 const SKY = { key: '', last: '', bg: null, pkey: '', planet: null };
-function skyLayer(c, cw, ch, hy) {
+function skyLayer(c, cw, ch, hy, tint = 0) {
   const g = c.createLinearGradient(0, 0, 0, Math.max(hy, 10));
   g.addColorStop(0, '#04060f'); g.addColorStop(0.55, '#0e1532'); g.addColorStop(1, '#30255a');
   c.fillStyle = g; c.fillRect(0, 0, cw, Math.max(0, hy) + 2);
@@ -1965,6 +1965,7 @@ function skyLayer(c, cw, ch, hy) {
   const nb = c.createRadialGradient(cw * 0.35, hy * 0.45, 10, cw * 0.35, hy * 0.45, cw * 0.4);
   nb.addColorStop(0, 'rgba(110,70,170,0.16)'); nb.addColorStop(1, 'rgba(110,70,170,0)');
   c.fillStyle = nb; c.fillRect(0, 0, cw, hy);
+  if (tint) { c.fillStyle = `rgba(150,32,12,${(0.3 * tint / 12).toFixed(3)})`; c.fillRect(0, 0, cw, Math.max(0, hy)); } // storm red, in 12 steps so the cached sky is rebuilt only 12 times
 }
 function planetLayer(c, px, py, pr) {
   const pg = c.createRadialGradient(px - pr * 0.35, py - pr * 0.35, pr * 0.1, px, py, pr);
@@ -1976,12 +1977,12 @@ function cached(key, w, h, dpr, draw) { // a canvas the size of w×h points, dra
   const cv = document.createElement('canvas'); cv.width = Math.ceil(w * dpr); cv.height = Math.ceil(h * dpr);
   const k = cv.getContext('2d'); k.setTransform(dpr, 0, 0, dpr, 0, 0); draw(k); return cv;
 }
-function drawSky(c, time, hy) {
+function drawSky(c, time, hy, tint = 0) {
   const { cw, ch, S, dpr } = V;
-  const key = `${cw}|${ch}|${hy}|${dpr}`, still = key === SKY.last;
-  SKY.last = key;
-  if (SKY.key !== key && still) { SKY.key = key; SKY.bg = cached(key, cw, ch, dpr, k => skyLayer(k, cw, ch, hy)); }
-  if (SKY.key === key) c.drawImage(SKY.bg, 0, 0, cw, ch); else skyLayer(c, cw, ch, hy);
+  const key = `${cw}|${ch}|${hy}|${dpr}|${tint}`, geo = `${cw}|${ch}|${hy}|${dpr}`, still = geo === SKY.lastGeo;
+  SKY.lastGeo = geo;
+  if (SKY.key !== key && still) { SKY.key = key; SKY.bg = cached(key, cw, ch, dpr, k => skyLayer(k, cw, ch, hy, tint)); }
+  if (SKY.key === key) c.drawImage(SKY.bg, 0, 0, cw, ch); else skyLayer(c, cw, ch, hy, tint);
   const sw = cw * 1.5;
   for (const s of BG.stars) {
     const y = s.y * hy * 0.95;
@@ -2567,8 +2568,7 @@ function render(c, g, time, sel, selPad) {
   SPR.budget = 16;
   const hy = (HORIZON - Y_BOT) * S + A;
   c.setTransform(dpr, 0, 0, dpr, 0, 0);
-  drawSky(c, time, hy);
-  if (g && g.t >= EXT.warn) { c.fillStyle = `rgba(150,32,12,${(0.3 * clamp((g.t - EXT.warn) / (EXT.start + 60 - EXT.warn), 0, 1)).toFixed(3)})`; c.fillRect(0, 0, cw, Math.max(0, hy)); } // the sky reddens
+  drawSky(c, time, hy, g && g.t >= EXT.warn ? Math.round(12 * clamp((g.t - EXT.warn) / (EXT.start + 60 - EXT.warn), 0, 1)) : 0); // the sky reddens for the Extinction Event
   let sx = 0, sy = 0;
   if (g) vfxStep(g);
   const shake = g && VFX.q > 0 ? g.shake + VFX.shake : 0; // no shake at the lowest quality level
