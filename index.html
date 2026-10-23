@@ -107,6 +107,16 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 #bpRep{border:1px solid rgba(93,255,138,.45);background:rgba(93,255,138,.08);color:#c8ffd9}
 #bpRep[disabled]{opacity:.6}
 #bpHp{color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
+/* Upgrade-tree path picker (v2.13): two path cards, then the Upgrade button confirms */
+#bp.wide{width:344px}
+#bp.wide #bpUp{flex:1.6}
+#bpNext:empty,#bpNow:empty{display:none}
+#bpPick{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:5px}
+#bpPick.hide{display:none}
+#bpPick button{text-align:left;border:1px solid var(--line);border-radius:10px;padding:4px 7px;background:rgba(0,0,0,.25);font-size:11px;line-height:1.3;color:#cfd8e6;min-height:46px}
+#bpPick button b{display:block;font-size:12px;color:var(--text)}
+#bpPick button em{font-style:normal;color:var(--muted);margin-right:4px}
+#bpPick button.on{border-color:#fff;box-shadow:inset 0 0 0 2px var(--blue);background:rgba(57,200,255,.08)}
 #info{position:fixed;z-index:4;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 90px);width:min(420px,calc(100vw - 2 * (env(safe-area-inset-right,0px) + 70px)));background:rgba(10,17,33,.95);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:12px;padding:9px 12px 10px;font-size:12.5px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
 #info.hide{display:none}
 /* Extinction Event warning: under the top bar, takes no taps; toasts move down while it shows */
@@ -174,6 +184,10 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .card .badge.show{display:flex}
 .card .bar{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(255,255,255,.06)}
 .card .bar i{display:block;height:100%;width:0;background:var(--blue)}
+.card .path{position:absolute;left:4px;top:3px;font-size:9px;font-weight:800;letter-spacing:.04em;color:#ffd34d;pointer-events:none}
+.card .path.pr:empty{display:none}
+.card.other{border-style:dashed;justify-content:center}
+.card.other .oc{font-size:18px;font-weight:900;color:var(--muted)}
 .card.locked{opacity:.5}
 .card.poor .nm{color:var(--muted)}
 .shake{animation:shake .3s}
@@ -275,6 +289,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
       <div class="bph"><b id="bpName"></b><span class="pips" id="bpPips"></span><span id="bpHp"></span><button id="bpX" aria-label="Close">×</button></div>
       <div id="bpNow"></div>
       <div id="bpNext"></div>
+      <div id="bpPick" class="hide"><button data-p="A"></button><button data-p="B"></button></div>
       <div class="bpr"><button id="bpUp">Upgrade</button><button id="bpRep">Repair</button><button id="bpSell">Sell</button></div>
     </div>
     <div id="ext" class="hide" aria-live="assertive"></div>
@@ -292,7 +307,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.12'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.13'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -365,6 +380,21 @@ const BDEF = {
     tiers: [null, 'Gun 27 damage/s, 250 range, hits air', 'Gun 42 damage/s, 280 range, hits air', 'Gun 63 damage/s, 310 range, hits air'] },
 };
 const hpMul = (d, t) => (d.hpMul || HPMUL)[t];
+/* ---------- Upgrade trees (v2.13) ----------
+   A production building with a tree picks a path when it upgrades to T2 (per building: a second Barracks can take
+   the other path; selling resets it). T3 is the second step of that path. Data only: a step unlocks units or turns
+   on a named modifier; a later faction is mostly a different TREES table. (War Factory and Tech Lab follow.) */
+const TREES = {
+  barracks: { A: { name: 'Specialists', short: 'SPEC', steps: [null, null, { unlock: ['heavy'], short: 'Heavy troopers', txt: 'Unlocks Heavy troopers' }, { unlock: ['sniper'], short: 'Snipers', txt: 'Unlocks Snipers' }] },
+              B: { name: 'Mass Deployment', short: 'MASS', steps: [null, null, { mod: 'pairs', short: 'Riflemen in pairs', txt: 'Trains Riflemen two at a time' }, { mod: 'drill', short: 'Drilled Riflemen', txt: 'Drilled Riflemen: +35% HP, +10% damage, capture nodes 1.5× faster' }] } },
+};
+const DRILL = { hp: 1.35, dmg: 1.1, capture: 1.5 };
+const UNIT_PATH = {}; // unit type → { b: building type, p: path } for units a path unlocks
+for (const bt in TREES) for (const p in TREES[bt]) for (const st of TREES[bt][p].steps) if (st && st.unlock) for (const u of st.unlock) UNIT_PATH[u] = { b: bt, p };
+const pathMod = (b, mod) => { const T = TREES[b.type]; if (!T || !b.path || !b.built) return false; const st = T[b.path].steps; for (let t = 2; t <= b.tier; t++) if (st[t] && st[t].mod === mod) return true; return false; };
+// Can this building train this unit now? (type, finished, tier, and the path that unlocks it)
+const canMake = (b, type) => { const d = UDEF[type], q = UNIT_PATH[type]; return b.kind === 'b' && b.type === d.from && b.built && b.hp > 0 && b.tier >= d.tier && (!q || b.path === q.p); };
+const canTrain = (g, s, type) => g.ents.some(e => e.side === s && canMake(e, type));
 
 const UDEF = {
   rifle:     { name: 'Rifleman',  from: 'barracks', tier: 1, cost: { c: 50, e: 0 },    pop: 1, hp: 70,   dmg: 7,  cd: 0.7,  range: 120, speed: 38, hitsAir: true,  armor: 'light',   weapon: 'rifle',  time: 4,  h: 20 },
@@ -418,20 +448,20 @@ function rollPersona(kind) {
     plan: pickOne([['barracks', 'barracks', 'refinery', 'habitat', 'factory', 'refinery', 'reactor', 'techlab'],
                    ['barracks', 'refinery', 'barracks', 'factory', 'habitat', 'refinery', 'reactor', 'techlab']]),
     wave: rand(0.85, 1.0), fieldEdge: rand(0.6, 0.75), attackEdge: 1, upShift: rand(20, 60), // pressure through the field
-    upgFirst: [['barracks', 2], ['factory', 2]], bias: { rifle: 1.2, heavy: 1.25, tank: 1.25, artillery: 0.8, titan: 0.9 }, opportunist: true, unitsFirst: true });
+    upgFirst: [['barracks', 2], ['factory', 2]], bias: { rifle: 1.2, heavy: 1.25, tank: 1.25, artillery: 0.8, titan: 0.9 }, opportunist: true, unitsFirst: true, paths: { barracks: 'B' } });
   else if (kind === 'turtle') Object.assign(P, {
     plan: pickOne([['barracks', 'refinery', 'turret', 'refinery', 'reactor', 'habitat', 'factory', 'techlab'],
                    ['barracks', 'refinery', 'refinery', 'turret', 'reactor', 'habitat', 'factory', 'techlab']]),
     wave: rand(1.1, 1.3), fieldEdge: rand(1.3, 1.6), attackEdge: rand(1.2, 1.4), deadline: rand(660, 840),
-    upgFirst: [['turret', 2], ['hq', 2]], bias: { tank: 1.2, titan: 1.3, artillery: 1.2, rifle: 0.8 } }); // T3 defenses only in the normal order (an early fortress stalls games)
+    upgFirst: [['turret', 2], ['hq', 2]], bias: { tank: 1.2, titan: 1.3, artillery: 1.2, rifle: 0.8 }, paths: { barracks: 'A' } }); // T3 defenses only in the normal order (an early fortress stalls games)
   else if (kind === 'economist') Object.assign(P, {
     plan: pickOne([['barracks', 'refinery', 'refinery', 'refinery', 'reactor', 'factory', 'habitat', 'techlab'],
                    ['refinery', 'barracks', 'refinery', 'refinery', 'reactor', 'habitat', 'factory', 'techlab']]),
     upShift: -rand(30, 60), fieldEdge: 0.75, wave: rand(1.0, 1.2), earlyFill: rand(0.5, 0.6),
-    upgFirst: [['refinery', 2], ['techlab', 2], ['refinery', 3]], bias: { aircraft: 1.25, titan: 1.2, rifle: 0.75, heavy: 0.9 } });
+    upgFirst: [['refinery', 2], ['techlab', 2], ['refinery', 3]], bias: { aircraft: 1.25, titan: 1.2, rifle: 0.75, heavy: 0.9 }, paths: { barracks: 'A' } });
   else Object.assign(P, { // trickster
     plan: pickOne([AI_PLAN, ['barracks', 'refinery', 'barracks', 'refinery', 'reactor', 'habitat', 'factory', 'techlab']]),
-    wave: rand(0.8, 1.3), feint: rand(0.25, 0.4), opportunist: true, bias: { aircraft: 1.15, sniper: 1.1 } });
+    wave: rand(0.8, 1.3), feint: rand(0.25, 0.4), opportunist: true, bias: { aircraft: 1.15, sniper: 1.1 }, paths: { barracks: 'B' } });
   return P;
 }
 // Commander abilities for the AI: the same rules as the player (cost, cooldown, unlock, vision; strikes only on explored
@@ -572,7 +602,7 @@ const rallyU = s => hqU(s) + dirOf(s) * 300;
 function newGame(diffKey, opts = {}) {
   const g = { t: 0, ents: [], projs: [], fx: [], parts: [], sides: [], abil: [], over: false, winner: -1, nid: 1,
     diff: DIFF[diffKey] || DIFF.normal, diffKey, events: [], auto: !!opts.autoPlayer, autoDiff: opts.autoDiff || 'normal', shake: 0, front: [null, null], countdown: opts.countdown || 0,
-    nodes: NODE_U.map((u, i) => ({ id: i, u, v: 0, prog: 0, owner: null, c: [0, 0] })), log: null };
+    nodes: NODE_U.map((u, i) => ({ id: i, u, v: 0, prog: 0, owner: null, c: [0, 0] })), log: null, forcePath: opts.forcePath || null };
   for (let s = 0; s < 2; s++) {
     g.sides.push({ res: { c: 300, e: 60 }, stance: s === 0 ? 'hold' : 'retreat', stanceAt: 0, pushTo: null, slots: new Array(SLOT_COUNT).fill(null),
       hq: null, aiT: 1 + s * 0.5, stats: { built: 0, kills: 0, lost: 0, earned: 0 }, lastAlert: -99, buff: false, ab: newAb(0), abK: null, abEnd: 0, orders: newOrders(), sel: null });
@@ -592,7 +622,7 @@ function mkBuilding(g, s, type, slot) {
   const d = BDEF[type], pos = slot < 0 ? hqPos(s) : slotPos(s, slot);
   const b = { id: g.nid++, kind: 'b', type, side: s, slot, u: pos.u, v: pos.v, half: d.half, h: d.h * BS, tier: 1,
     hp: d.hp * 0.15, maxHp: d.hp, built: false, progress: 0, upgrading: false, upProg: 0, queue: [], prodT: 0,
-    cd: 0, aim: null, hitT: 0, anim: Math.random() * 10, spent: { c: 0, e: 0 } };
+    cd: 0, aim: null, hitT: 0, anim: Math.random() * 10, spent: { c: 0, e: 0 }, path: null, upPath: null }; // path: its upgrade-tree path (v2.13)
   g.ents.push(b);
   if (slot >= 0) g.sides[s].slots[slot] = b;
   return b;
@@ -630,7 +660,7 @@ function income(g, s) {
 }
 // Army strength for AI decisions; Interceptors count for a quarter, since they can't fight ground units or buildings
 function armyValue(list) { let v = 0; for (const u of list) { const d = UDEF[u.type]; v += (d.cost.c + d.cost.e * 1.5) * (u.w === undefined ? 1 : u.w) * (d.hitsGround === false ? 0.25 : 1); } return v; }
-const unitLockMsg = d => !d ? '' : (d.tier > 1 ? `Requires ${BDEF[d.from].name} T${d.tier}` : `Requires ${BDEF[d.from].name}`);
+const unitLockMsg = d => { if (!d) return ''; const q = UNIT_PATH[Object.keys(UDEF).find(k => UDEF[k] === d)]; return q ? `Requires ${BDEF[d.from].name} T${d.tier} · ${TREES[q.b][q.p].name}` : d.tier > 1 ? `Requires ${BDEF[d.from].name} T${d.tier}` : `Requires ${BDEF[d.from].name}`; };
 
 function tryBuild(g, s, type, want = -1) {
   const d = BDEF[type], side = g.sides[s];
@@ -670,47 +700,51 @@ function trySell(g, s, b) {
   return { ok: true, msg: `${d.name} sold for ${r.c} credits` + (r.e ? ` and ${r.e} energy` : '') };
 }
 
-function tryUpgrade(g, s, b) {
+function tryUpgrade(g, s, b, path) { // path: 'A' or 'B' when a building with a tree goes to T2
   const d = BDEF[b.type], side = g.sides[s];
   if (g.over) return { ok: false, msg: 'The match is over' };
   if (g.countdown > 0) return WAIT_GO;
   if (!b.built) return { ok: false, msg: `${d.name} is still under construction` };
   if (b.upgrading) return { ok: false, msg: 'Upgrade already in progress' };
   if (b.tier >= 3) return { ok: false, msg: `${d.name} is fully upgraded` };
+  const T = TREES[b.type];
+  if (T && b.tier === 1 && !T[path]) return { ok: false, msg: `Choose a path for this ${d.name}` };
   const up = d.up[b.tier + 1];
   if (side.res.c < up.c) return { ok: false, msg: `Need ${Math.ceil(up.c - side.res.c)} more credits` };
   if (side.res.e < up.e) return { ok: false, msg: `Need ${Math.ceil(up.e - side.res.e)} more energy` };
   side.res.c -= up.c; side.res.e -= up.e;
   b.spent.c += up.c; b.spent.e += up.e;
   b.upgrading = true; b.upProg = 0;
-  logSpend(g, s, 'up', up.c, up.e); lg(g, s, 'U', b.type, b.tier + 1, b.id);
-  return { ok: true, msg: `Upgrading ${d.name} to T${b.tier + 1}` };
+  if (T && b.tier === 1) b.upPath = path;
+  logSpend(g, s, 'up', up.c, up.e); lg(g, s, 'U', b.type, b.tier + 1, b.id, b.upPath || b.path || undefined);
+  return { ok: true, msg: T && b.tier === 1 ? `${d.name}: ${T[path].name} path (T2)` : `Upgrading ${d.name} to T${b.tier + 1}` };
 }
 
 function tryTrain(g, s, type) {
   const d = UDEF[type], side = g.sides[s];
   if (g.over) return { ok: false, msg: 'The match is over' };
   if (g.countdown > 0) return WAIT_GO;
-  const prods = g.ents.filter(e => e.kind === 'b' && e.side === s && e.type === d.from && e.built && e.hp > 0 && e.tier >= d.tier);
+  const prods = g.ents.filter(e => e.side === s && canMake(e, type));
   if (!prods.length) return { ok: false, msg: unitLockMsg(d) };
+  // Riflemen go to a Mass Deployment Barracks first, where an order is a pair trained together
+  prods.sort((a, b) => (type === 'rifle' ? (pathMod(b, 'pairs') ? 1 : 0) - (pathMod(a, 'pairs') ? 1 : 0) : 0) || a.queue.length - b.queue.length);
+  const nOf = b => type === 'rifle' && pathMod(b, 'pairs') ? 2 : 1, p = prods.find(b => b.queue.length + nOf(b) <= 5) || prods[0], n = nOf(p); // the first with room in its queue
   const cap = popCap(g, s);
-  if (popUsed(g, s) + d.pop > cap) return { ok: false, msg: cap >= POP_MAX ? 'Army is at maximum size' : 'Army is full — build or upgrade a Habitat' };
-  if (side.res.c < d.cost.c) return { ok: false, msg: `Need ${Math.ceil(d.cost.c - side.res.c)} more credits` };
-  if (side.res.e < d.cost.e) return { ok: false, msg: `Need ${Math.ceil(d.cost.e - side.res.e)} more energy` };
-  prods.sort((a, b) => a.queue.length - b.queue.length);
-  const p = prods[0];
-  if (p.queue.length >= 5) return { ok: false, msg: 'Production queue is full' };
-  side.res.c -= d.cost.c; side.res.e -= d.cost.e;
-  p.queue.push(type);
-  logSpend(g, s, 'u', d.cost.c, d.cost.e);
-  return { ok: true, msg: `${d.name} queued` };
+  if (popUsed(g, s) + d.pop * n > cap) return { ok: false, msg: cap >= POP_MAX ? 'Army is at maximum size' : 'Army is full — build or upgrade a Habitat' };
+  if (side.res.c < d.cost.c * n) return { ok: false, msg: `Need ${Math.ceil(d.cost.c * n - side.res.c)} more credits` };
+  if (side.res.e < d.cost.e * n) return { ok: false, msg: `Need ${Math.ceil(d.cost.e * n - side.res.e)} more energy` };
+  if (p.queue.length + n > 5) return { ok: false, msg: 'Production queue is full' };
+  side.res.c -= d.cost.c * n; side.res.e -= d.cost.e * n;
+  for (let i = 0; i < n; i++) p.queue.push(type);
+  logSpend(g, s, 'u', d.cost.c * n, d.cost.e * n);
+  return { ok: true, msg: n === 2 ? 'Riflemen ×2 queued' : `${d.name} queued` };
 }
 
 function spawnUnit(g, s, type, u, v) {
   const d = UDEF[type];
   const unit = { id: g.nid++, kind: 'u', type, side: s, u, v, z: d.air ? (type === 'interceptor' ? rand(100, 124) : rand(70, 94)) : 0,
     laneV: rand(-LANE_V, LANE_V), hp: d.hp, maxHp: d.hp, cd: Math.random() * 0.5, face: dirOf(s), anim: Math.random() * 10,
-    moving: false, rallyOff: -Math.random() * 100, recoil: 0, hitT: 0, shT: 0 }; // shT (shield until) set from the start keeps every unit the same shape for the JS engine
+    moving: false, rallyOff: -Math.random() * 100, recoil: 0, hitT: 0, shT: 0, vet: 0 }; // vet: a Drilled Rifleman (v2.13) // shT (shield until) set from the start keeps every unit the same shape for the JS engine
   g.ents.push(unit);
   g.sides[s].stats.built++;
   return unit;
@@ -744,7 +778,7 @@ const B_SIGHT = { hq: 520, turret: 340 }, B_SIGHT_DEF = 200, NODE_SIGHT = 220; /
 const INTEL_TTL = 45, THREAT_MEMORY = 5, SPOT_GAP = 10;
 const cellOf = u => clamp(Math.floor(u / FOG_CELL), 0, FOG_N - 1);
 const sightOf = e => e.kind === 'u' ? SIGHT[e.type] : (B_SIGHT[e.type] || B_SIGHT_DEF);
-const ghostOf = b => ({ id: b.id, type: b.type, side: b.side, slot: b.slot, tier: b.tier, u: b.u, v: b.v, half: b.half });
+const ghostOf = b => ({ id: b.id, type: b.type, side: b.side, slot: b.slot, tier: b.tier, path: b.path, u: b.u, v: b.v, half: b.half }); // path: the last-seen upgrade-tree path
 function newFog(g, s) {
   const ehq = g.sides[1 - s].hq, f = { vis: new Uint8Array(FOG_N), exp: new Uint8Array(FOG_N), ghosts: {}, intel: {},
     lastHQ: { hp: ehq.hp, maxHp: ehq.maxHp, shielded: false, tier: 1 }, lastSpot: -99, seenUnits: 0 };
@@ -832,10 +866,11 @@ function update(g, dt) {
 function updateNodes(g, dt) {
   for (const n of g.nodes) {
     let c0 = 0, c1 = 0;
-    for (const e of g.ents) if (e.kind === 'u' && e.hp > 0 && !UDEF[e.type].air && Math.abs(e.u - n.u) <= NODE_R) { if (e.side === 0) c0++; else c1++; }
+    let w0 = 0, w1 = 0; // capture weight: a Drilled Rifleman counts 1.5
+    for (const e of g.ents) if (e.kind === 'u' && e.hp > 0 && !UDEF[e.type].air && Math.abs(e.u - n.u) <= NODE_R) { const w = e.vet ? DRILL.capture : 1; if (e.side === 0) { c0++; w0 += w; } else { c1++; w1 += w; } }
     n.c = [c0, c1];
-    if (c0 && !c1) n.prog = Math.min(100, n.prog + 8 * Math.sqrt(c0) * dt);
-    else if (c1 && !c0) n.prog = Math.max(-100, n.prog - 8 * Math.sqrt(c1) * dt);
+    if (c0 && !c1) n.prog = Math.min(100, n.prog + 8 * Math.sqrt(w0) * dt);
+    else if (c1 && !c0) n.prog = Math.max(-100, n.prog - 8 * Math.sqrt(w1) * dt);
     let o = n.owner;
     if (n.prog >= 100) o = 0; else if (n.prog <= -100) o = 1;
     else if ((o === 0 && n.prog <= 0) || (o === 1 && n.prog >= 0)) o = null;
@@ -886,6 +921,7 @@ function updateBuilding(g, b, foes, dt) {
     if (b.upProg >= 1) {
       const old = b.maxHp;
       b.tier++; b.maxHp = d.hp * hpMul(d, b.tier); b.hp = Math.min(b.maxHp, b.hp + b.maxHp - old);
+      if (b.upPath) { b.path = b.upPath; b.upPath = null; }
       b.upgrading = false; b.upProg = 0;
       ev(g, { type: 'upgraded', side: b.side, name: d.name, tier: b.tier });
       if (g.log) { g.log.tot[b.side].bUp++; lg(g, b.side, 'V', b.type, b.tier, b.id); }
@@ -896,8 +932,13 @@ function updateBuilding(g, b, foes, dt) {
     const ut = b.queue[0];
     if (b.prodT >= UDEF[ut].time) {
       b.prodT = 0; b.queue.shift();
-      spawnUnit(g, b.side, ut, b.u + dirOf(b.side) * (b.half + 10), b.v + rand(-12, 12));
-      if (g.log) { logAdd(g.log.tot[b.side].trained, ut); lgUnit(g, b.side, 'T', ut); }
+      const n = ut === 'rifle' && b.queue[0] === 'rifle' && pathMod(b, 'pairs') ? 2 : 1; // Mass Deployment: two Riflemen at a time
+      if (n === 2) b.queue.shift();
+      for (let i = 0; i < n; i++) {
+        const nu = spawnUnit(g, b.side, ut, b.u + dirOf(b.side) * (b.half + 10), b.v + rand(-12, 12) + i * 16);
+        if (ut === 'rifle' && pathMod(b, 'drill')) { nu.vet = 1; nu.maxHp = nu.hp = UDEF.rifle.hp * DRILL.hp; } // Drilled Riflemen
+        if (g.log) { logAdd(g.log.tot[b.side].trained, ut); lgUnit(g, b.side, 'T', ut); }
+      }
     }
   }
   if (b.type === 'refinery' && Math.random() < dt * 2.2) {
@@ -1067,7 +1108,7 @@ function aimZ(e) {
 function fire(g, src, t, def) {
   const m = muzzle(src);
   const p = { u: m.u, v: m.v, z: m.z, pu: m.u, pv: m.v, pz: m.z, tu: t.u, tv: t.v, tz: aimZ(t), target: t, side: src.side,
-    weapon: def.weapon, dmg: def.dmg * (g.sides[src.side].buff ? 1.2 : 1), splash: def.splash || 0, t: 0 };
+    weapon: def.weapon, dmg: def.dmg * (g.sides[src.side].buff ? 1.2 : 1) * (src.vet ? DRILL.dmg : 1), splash: def.splash || 0, t: 0 };
   if (def.weapon === 'shell') {
     p.su = m.u; p.sv = m.v; p.sz = m.z;
     p.tu = t.u + rand(-14, 14); p.tv = t.v + rand(-12, 12); p.tz = 0;
@@ -1328,7 +1369,19 @@ function attackBar(g, s) {
   const side = g.sides[s];
   return side.failV ? side.failV * Math.max(0, 1 - (g.t - side.failT) / FAIL_MEMORY) : 0;
 }
-function freeProducer(g, s, type, tier) { return g.ents.some(e => e.kind === 'b' && e.side === s && e.type === type && e.built && e.hp > 0 && e.tier >= tier && e.queue.length < 1); }
+// The AI's path for a building going to T2. Easy: the personality's taste. Normal and Hard: an armored or airborne
+// enemy (as this side has seen it) calls for Specialists (Heavies); a second copy takes the path the first lacks.
+function aiPickPath(g, s, b, P, theirs) {
+  if (g.forcePath && g.forcePath[s] && g.forcePath[s][b.type]) return g.forcePath[s][b.type]; // test hook (forced-path matrix)
+  const D = s === 1 ? g.diff : (DIFF[g.autoDiff] || DIFF.normal), def = (P.paths && P.paths[b.type]) || 'A';
+  if (D === DIFF.easy) return def;
+  const have = g.ents.filter(e => e !== b && e.side === s && e.type === b.type && e.hp > 0).map(e => e.path || e.upPath).filter(Boolean);
+  if (b.type === 'barracks' && aiArmorShare(theirs) > 0.35 && !have.includes('A')) return 'A';
+  if (have.length && have.includes(def)) return def === 'A' ? 'B' : 'A';
+  return def;
+}
+const aiArmorShare = theirs => { let a = 0, t = 0; for (const u of theirs) { const d = UDEF[u.type], v = (d.cost.c + d.cost.e) * u.w; t += v; if (d.armor === 'vehicle' || (d.air && d.hitsGround !== false)) a += v; } return t ? a / t : 0; };
+function freeProducer(g, s, unit) { return g.ents.some(e => e.side === s && canMake(e, unit) && e.queue.length < 1); }
 
 function aiUpdate(g, s, dt) {
   const side = g.sides[s];
@@ -1399,6 +1452,10 @@ function aiUpdate(g, s, dt) {
   if (!freePad && D.eco && side.res.e < 120 && side.res.c > 1500 && countB(g, s, 'refinery') > 2 && !constructing.length) {
     trySell(g, s, alive(g, s, 'refinery')[0]); want = 'reactor';
   }
+  if (!want && D === DIFF.hard && !g.forcePath && freePad && !constructing.length && income(g, s).c >= 25 && aiArmorShare(theirs) > 0.35) {
+    const bar = alive(g, s, 'barracks');
+    if (bar.length && bar.length < 2 && bar.every(b => (b.path || b.upPath) === 'B')) want = 'barracks'; // then its T2 upgrade takes Specialists
+  }
   if (want && side.slots.some(x => !x) && constructing.length < 2) {
     const d = BDEF[want];
     if (!d.req || hasBuilt(g, s, d.req)) {
@@ -1426,7 +1483,7 @@ function aiUpdate(g, s, dt) {
       if (type === 'reactor' && side.res.e > ENERGY_PLENTY) continue;
       const b = alive(g, s, type).find(x => x.built && x.tier < tier);
       if (!b) continue;
-      const r = tryUpgrade(g, s, b);
+      const r = tryUpgrade(g, s, b, b.tier === 1 && TREES[type] ? aiPickPath(g, s, b, P, theirs) : undefined);
       if (r.ok && log.firstUpgrade === null) log.firstUpgrade = g.t;
       if (!r.ok && !floating) { const up = BDEF[type].up[b.tier + 1]; reserve.c = Math.max(reserve.c, up.c * 0.8); reserve.e = Math.max(reserve.e, up.e * 0.8); }
       break;
@@ -1438,7 +1495,7 @@ function aiUpdate(g, s, dt) {
     reserve.c = Math.max(reserve.c, ABIL.strike.cost.c); reserve.e = Math.max(reserve.e, ABIL.strike.cost.e);
   }
   // 3) Army: counter what the opponent fields, bring siege guns against a turtle
-  const types = UNIT_ORDER.filter(t => hasTier(g, s, UDEF[t].from, UDEF[t].tier));
+  const types = UNIT_ORDER.filter(t => canTrain(g, s, t));
   const turtle = theirs.length > 2 && theirs.filter(u => Math.abs(u.u - hqU(opp)) < 560).length / theirs.length > 0.6;
   if (types.length) {
     const comp = { light: 0, heavy: 0, vehicle: 0, air: 0 };
@@ -1464,7 +1521,7 @@ function aiUpdate(g, s, dt) {
       interceptor: comp.air > 0.12 && myInterceptV < airV * 1.2 ? 1 + comp.air * 3.2 : 0.05,
     };
     if (!threat) for (const t in P.bias) if (sc[t] > 0) sc[t] *= P.bias[t]; // the personality's taste in units (threats are answered on merit)
-    const fits = t => used + UDEF[t].pop <= cap * fillNow && freeProducer(g, s, UDEF[t].from, UDEF[t].tier);
+    const fits = t => used + UDEF[t].pop <= cap * fillNow && freeProducer(g, s, t);
     const top = types.filter(fits).sort((a, b) => sc[b] - sc[a])[0];
     // Save for the better unit unless the enemy is already in the base (a calm AI keeps saving while merely threatened)
     const mustSpend = defend || (saving ? danger && !(lightThreat && hasBuilt(g, s, 'factory')) : threat); // vs infantry, Tanks beat trickled Riflemen
@@ -1588,9 +1645,9 @@ const newTot = () => ({ earn: [0, 0], sold: [0, 0], spent: { b: [0, 0], u: [0, 0
 const newLog = t0 => ({ from: t0, ev: [], open: {}, cur: [null, null], army: [[], []], bank: [[], []], next: Math.ceil(t0 / LOG_SAMPLE) * LOG_SAMPLE,
   loss: [{}, {}], tot: [newTot(), newTot()], merged: 0, dropped: 0 });
 const logT = g => Math.round(g.t * 10) / 10;
-function lg(g, s, code, a, b, c) { // a key event: always its own line
+function lg(g, s, code, a, b, c, d) { // a key event: always its own line
   const L = g.log; if (!L) return;
-  const e = [logT(g), s, code]; if (a !== undefined) e.push(a); if (b !== undefined) e.push(b); if (c !== undefined) e.push(c);
+  const e = [logT(g), s, code]; if (a !== undefined) e.push(a); if (b !== undefined) e.push(b); if (c !== undefined) e.push(c); if (d !== undefined) e.push(d);
   L.ev.push(e); if (L.ev.length > LOG_CAP) logCompact(L);
   return e;
 }
@@ -1651,8 +1708,8 @@ const logAdd = (o, k, n = 1) => { o[k] = (o[k] || 0) + n; };
 const logSpend = (g, s, kind, c, e) => { if (g.log) { const a = g.log.tot[s].spent[kind]; a[0] += c; a[1] += e; } };
 
 /* ---------- Save and resume ---------- */
-// v6 adds fog of war; v7 the AI's personality (kept on its side record); v10 the shared ability cooldown; v11 the match log; v12 group orders, the selection and Regroup flags. Older saves are migrated.
-const SAVE_VER = 12, SAVE_OK = [5, 6, 7, 8, 9, 10, 11, 12];
+// v6 adds fog of war; v7 the AI's personality (kept on its side record); v10 the shared ability cooldown; v11 the match log; v12 group orders, the selection and Regroup flags; v13 upgrade-tree paths. Older saves are migrated.
+const SAVE_VER = 13, SAVE_OK = [5, 6, 7, 8, 9, 10, 11, 12, 13];
 function serialize(g, extra) {
   const live = g.ents.filter(e => e.hp > 0);
   for (const sd of g.sides) if (sd.hq.hp <= 0 && !live.includes(sd.hq)) live.push(sd.hq); // a fallen HQ inside the storm's 5 s end window
@@ -1691,6 +1748,10 @@ function deserialize(str) {
   g.abil = o.abil || [];
   g.endHold = o.endHold || null; // the 5-second end window of a storm match (v9)
   for (const sd of g.sides) { if (!sd.orders) sd.orders = newOrders(); if (sd.sel === undefined) sd.sel = null; } // v12: older saves start with no group orders
+  for (const e of g.ents) { // v13: before upgrade trees, a T2 or T3 building is on path A (it keeps what it had: Heavies, Snipers)
+    if (e.kind === 'u') { if (e.vet === undefined) e.vet = 0; continue; }
+    if (e.path === undefined) { e.path = TREES[e.type] && e.tier >= 2 ? 'A' : null; e.upPath = TREES[e.type] && e.upgrading && e.tier === 1 ? 'A' : null; }
+  }
   g.log = o.log || newLog(g.t); // v11; an older save starts its log now (the report says the early part wasn't recorded)
   updateVision(g);
   g.events.length = 0;
@@ -1706,7 +1767,7 @@ function logEvText(e, me) { // one log event as a line of text (me: written from
   switch (c) {
     case 'B': return `${B(a)} started (not finished)`; // a finished one shares the line with its finish (logLines)
     case 'F': return `${B(a)} finished`;
-    case 'U': return `${B(a)} upgrade to T${b} started (not finished)`;
+    case 'U': return `${B(a)} upgrade to T${b}${e[6] && TREES[a] ? ` · ${TREES[a][e[6]].name}` : ''} started (not finished)`;
     case 'V': return `${B(a)} upgraded to T${b}`;
     case 'S': return `${B(a)} sold`;
     case 'D': return `${B(a)} destroyed${x === -1 ? ' by the storm' : ''}`;
@@ -1754,7 +1815,7 @@ function logLines(g, s, widen = true) { // widen: the screen may widen unit grou
     }
     for (let i = ev.length - 1; i >= 0; i--) if (!ev[i]) ev.splice(i, 1);
   }
-  const B = t => BDEF[t] ? BDEF[t].name : t, txt = e => e.done === undefined ? logEvText(e, s === 0) : e[2] === 'B' ? `${B(e[3])} ${mmss(e[0])} → ${mmss(e.done)}` : `${B(e[3])} T${e[4]} ${mmss(e[0])} → ${mmss(e.done)}`;
+  const B = t => BDEF[t] ? BDEF[t].name : t, txt = e => e.done === undefined ? logEvText(e, s === 0) : e[2] === 'B' ? `${B(e[3])} ${mmss(e[0])} → ${mmss(e.done)}` : `${B(e[3])} T${e[4]}${e[6] && TREES[e[3]] ? ` · ${TREES[e[3]][e[6]].name}` : ''} ${mmss(e[0])} → ${mmss(e.done)}`;
   return ev.map(e => { const u = e[2] === 'T' || e[2] === 'K'; return { t: e[0], i: e.i, key: !u, code: e[2], txt: txt(e), type: u ? e[3] : null, n: u ? e[4] : 0, t1: u ? e[5] : e.done ?? e[0], paired: e.done !== undefined }; });
 }
 function logBattles(g) { // runs of 10-s buckets with unit losses; value = credits + energy of the units lost
@@ -2693,6 +2754,7 @@ function drawBuilding(c, b, time) {
     drawArt(c, b, T, b.anim, b.tier + 1); c.restore();
     scaffold(c, b, T, b.upProg, bottom, top);
   } else drawArt(c, b, T, b.anim, b.tier);
+  if (b.path && TREES[b.type] && b.built) drawPathMark(c, b.path, T, d); // which path this building took (v2.13; ghosts remember it)
   if (b.shielded) {
     const a = 0.3 + 0.15 * Math.sin(time * 2.5 + b.side);
     c.beginPath(); c.ellipse(0, 12, 96, 158, 0, Math.PI, Math.PI * 2); c.ellipse(0, 12, 96, 40, 0, 0, Math.PI);
@@ -2703,6 +2765,16 @@ function drawBuilding(c, b, time) {
     c.beginPath(); c.ellipse(0, 12, 96, 40, 0, 0, Math.PI); c.stroke();
   }
   c.restore();
+}
+// A small team-colored badge on the building's front: crosshair = path A (Specialists), chevrons = path B (Mass Deployment)
+function drawPathMark(c, path, T, d) {
+  const x = -d.half * 1.15, y = -d.h * 0.42 - 4, r = 8;
+  c.fillStyle = 'rgba(8,14,26,0.85)'; c.strokeStyle = T.main; c.lineWidth = 1.6;
+  c.beginPath(); c.moveTo(x - r, y - r); c.lineTo(x + r, y - r); c.lineTo(x + r, y + r * 0.4); c.lineTo(x, y + r * 1.25); c.lineTo(x - r, y + r * 0.4); c.closePath(); c.fill(); c.stroke();
+  c.strokeStyle = T.light; c.lineWidth = 1.5; c.beginPath();
+  if (path === 'A') { c.arc(x, y - 1, 4, 0, 7); c.moveTo(x - 6.5, y - 1); c.lineTo(x + 6.5, y - 1); c.moveTo(x, y - 7.5); c.lineTo(x, y + 5.5); }
+  else for (const k of [0, 5]) { c.moveTo(x - 5, y - 5 + k); c.lineTo(x, y - 1 + k); c.lineTo(x + 5, y - 5 + k); }
+  c.stroke();
 }
 function scaffold(c, b, T, prog, bottom, top) {
   const d = BDEF[b.type], a = d.half, h = d.h;
@@ -3545,6 +3617,16 @@ function showInfo(kind, type) {
       <div class="irow">${A.tip}</div>
       <div class="irow"><em>Shared cooldown</em> Using any ability locks all three for the used one's cooldown (Shield and Repair Pulse 50 s, Orbital Strike 100 s).</div>
       <div class="irow"><em>Available</em> ${A.first} s after GO${A.req ? `, with a ${BDEF[A.req].name}` : ''}. Tap the button, tap the battlefield, then tap inside the circle to confirm.</div>`;
+  } else if (kind === 'o') { // the Train tab's "Other paths" card
+    const hid = type.split(',');
+    name = 'Other paths'; sub = 'Units none of your buildings can make on its path';
+    body = hid.map(t => { const q = UNIT_PATH[t]; return `<div class="irow"><em>${UDEF[t].name}</em> ${BDEF[q.b].name} on ${TREES[q.b][q.p].name} (T${UDEF[t].tier}). Build another ${BDEF[q.b].name} and choose ${TREES[q.b][q.p].name}, or sell one and rebuild it.</div>`; }).join('');
+  } else if (TREES[type]) { // a building with an upgrade tree
+    const d = BDEF[type], T = TREES[type];
+    name = d.name; sub = (d.req ? `Requires ${BDEF[d.req].name} · ` : '') + 'picks a path at T2';
+    body = `<div class="istats">${stat('HP', d.hp)}${stat('Build time', d.time + 's')}${stat('Credits', d.cost.c)}${stat('Energy', d.cost.e)}</div><div class="irow"><em>T1</em> ${d.tiers[1]}</div>` +
+      Object.keys(T).map(k => `<div class="irow"><em>Path ${k} · ${T[k].name}</em> T2 (${d.up[2].c}/${d.up[2].e}): ${T[k].steps[2].txt}. T3 (${d.up[3].c}/${d.up[3].e}): ${T[k].steps[3].txt}.</div>`).join('') +
+      `<div class="irow">Each ${d.name} picks its own path; a second one can take the other. Selling resets it.</div>`;
   } else {
     const d = BDEF[type];
     name = d.name; sub = d.req ? `Requires ${BDEF[d.req].name}` : '';
@@ -3562,7 +3644,8 @@ function buildCards() {
   const wrap = $('cards'); wrap.innerHTML = '';
   wrap.classList.toggle('army', tab === 'army');
   if (tab === 'army') { buildArmy(); return; }
-  const list = tab === 'build' ? BUILD_ORDER : UNIT_ORDER;
+  const list = tab === 'build' ? BUILD_ORDER : UNIT_ORDER.filter(t => !game || unitVisible(game, t));
+  trainSig = game ? hiddenUnits(game).join(',') : '';
   for (const type of list) {
     const d = tab === 'build' ? BDEF[type] : UDEF[type];
     const el = document.createElement('button');
@@ -3576,10 +3659,28 @@ function buildCards() {
     el.addEventListener('contextmenu', e => e.preventDefault());
     el.addEventListener('click', () => { if (lp && lp.el === el && lp.fired) { lp.fired = false; return; } hideInfo(); onCard(type, el); });
     el.addEventListener('animationend', () => el.classList.remove('shake'));
+    if (tab === 'train' && UNIT_PATH[type]) el.insertAdjacentHTML('beforeend', `<span class="path">${TREES[UNIT_PATH[type].b][UNIT_PATH[type].p].short}</span>`);
+    if (tab === 'train' && type === 'rifle') el.insertAdjacentHTML('beforeend', '<span class="path pr"></span>');
+    wrap.appendChild(el);
+  }
+  const hid = tab === 'train' && game ? hiddenUnits(game) : [];
+  if (hid.length) { // units on paths none of your buildings has: one card that explains where they come from
+    const el = document.createElement('button');
+    el.className = 'card other'; el.dataset.type = 'other';
+    el.innerHTML = `<span class="oc">+${hid.length}</span><span class="nm">Other paths</span><span class="cost"><span class="lock">${hid.map(t => UDEF[t].name).join(', ')}</span></span>`;
+    el.addEventListener('click', () => showInfo('o', hid.join(',')));
     wrap.appendChild(el);
   }
   refreshUI(true);
 }
+// Train tab (v2.13): a unit a path unlocks shows while one of your buildings has, or can still choose, that path
+let trainSig = '';
+function unitVisible(g, type) {
+  const q = UNIT_PATH[type]; if (!q) return true;
+  const own = g.ents.filter(e => e.kind === 'b' && e.side === 0 && e.type === q.b && e.hp > 0);
+  return !own.length || own.some(e => (e.path || e.upPath || null) === null ? e.tier === 1 : (e.path || e.upPath) === q.p);
+}
+const hiddenUnits = g => UNIT_ORDER.filter(t => !unitVisible(g, t));
 
 function shake(el) { el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
 function onCard(type, el) {
@@ -3771,8 +3872,10 @@ function refreshUI(force) {
   $('resP').classList.toggle('full', used >= cap);
   for (const b of $('stance').children) b.classList.toggle('on', b.dataset.s === s.stance);
   if (tab === 'army') refreshArmy();
+  else if (tab === 'train' && hiddenUnits(game).join(',') !== trainSig) { buildCards(); return; } // a path was chosen or lost
   else for (const el of $('cards').children) {
     const type = el.dataset.type;
+    if (type === 'other') continue;
     let html, locked, poor, badge = 0, prog = 0;
     if (tab === 'build') {
       const d = BDEF[type];
@@ -3784,7 +3887,8 @@ function refreshUI(force) {
       html = locked ? `<span class="lock">Requires ${BDEF[d.req].name}</span>` : costHTML(d.cost, s.res);
     } else {
       const d = UDEF[type];
-      const prods = alive(game, 0, d.from).filter(b => b.built && b.tier >= d.tier);
+      const prods = alive(game, 0, d.from).filter(b => canMake(b, type));
+      if (type === 'rifle') setHTML(el.querySelector('.pr'), prods.some(b => pathMod(b, 'pairs')) ? 'MASS ×2' : '');
       locked = !prods.length;
       poor = s.res.c < d.cost.c || s.res.e < d.cost.e || used + d.pop > cap;
       for (const p of prods) {
@@ -3813,7 +3917,7 @@ function refreshExt() {
 }
 
 /* ---------- Building panel: tap a building to upgrade or sell it ---------- */
-function openPanel(b) { sel = b; selPad = -1; sellArm = 0; $('bp').classList.remove('hide'); refreshPanel(); }
+function openPanel(b) { sel = b; selPad = -1; sellArm = 0; bpPath = null; $('bp').classList.remove('hide'); refreshPanel(); }
 function openPad(k) {
   sel = null; selPad = k; sellArm = 0; $('bp').classList.remove('hide');
   if (tab !== 'build') document.querySelector('.tabs [data-tab="build"]').click();
@@ -3821,6 +3925,7 @@ function openPad(k) {
 }
 function closePanel() { sel = null; selPad = -1; sellArm = 0; $('bp').classList.add('hide'); }
 function refreshPanel() {
+  $('bpPick').classList.add('hide'); $('bp').classList.remove('wide'); // shown again below for a building choosing its path
   if (selPad >= 0) {
     if (!game || game.sides[0].slots[selPad]) { closePanel(); return; }
     $('bpName').textContent = 'Empty pad'; setHTML($('bpPips'), '');
@@ -3854,17 +3959,35 @@ function refreshPanel() {
     up.disabled = true; up.textContent = 'Building…'; up.classList.remove('poor');
     return;
   }
-  $('bpNow').textContent = `T${b.tier}: ${d.tiers[b.tier]}` + (b.type === 'hq' ? (b.shielded ? '. Shielded while your other buildings stand.' : '. Shield is down!') : '');
+  const T = TREES[b.type], P = T && (b.path || b.upPath) ? T[b.path || b.upPath] : null, pick = T && b.tier === 1 && !b.upgrading;
+  const tierTxt = (t, named) => P && t >= 2 ? (named ? `${P.name}: ` : '') + P.steps[t].short : d.tiers[t];
+  $('bp').classList.toggle('wide', !!pick);
+  $('bpPick').classList.toggle('hide', !pick);
+  $('bpNow').textContent = pick ? '' : `T${b.tier}: ${tierTxt(b.tier, true)}` + (b.type === 'hq' ? (b.shielded ? '. Shielded while your other buildings stand.' : '. Shield is down!') : '') 
   if (b.tier >= 3) { setHTML($('bpNext'), '<span>Fully upgraded</span>'); up.disabled = true; up.textContent = 'Max tier'; up.classList.remove('poor'); return; }
   const nx = d.up[b.tier + 1];
-  setHTML($('bpNext'), `<span>Next T${b.tier + 1}: ${d.tiers[b.tier + 1]}</span>` + costHTML(nx, res) + `<span>${nx.time}s</span>`);
+  if (pick) { // the path picker: tap a path, then the Upgrade button confirms it
+    for (const el of $('bpPick').children) {
+      const k = el.dataset.p, Q = T[k];
+      setHTML(el, `<b>${k} · ${Q.name}</b><em>T2</em>${Q.steps[2].short}<br><em>T3</em>${Q.steps[3].short}`);
+      el.classList.toggle('on', bpPath === k);
+    }
+    setHTML($('bpNext'), '');
+    up.disabled = false; up.textContent = bpPath ? `Choose · ${nx.c}/${nx.e}` : 'Pick a path'; up.classList.toggle('poor', !bpPath || res.c < nx.c || res.e < nx.e);
+    return;
+  }
+  setHTML($('bpNext'), `<span>Next T${b.tier + 1}: ${tierTxt(b.tier + 1)}</span>` + costHTML(nx, res) + `<span>${nx.time}s</span>`);
   if (b.upgrading) { up.disabled = true; up.textContent = `Upgrading ${Math.round(b.upProg * 100)}%`; up.classList.remove('poor'); }
   else { up.disabled = false; up.textContent = 'Upgrade'; up.classList.toggle('poor', res.c < nx.c || res.e < nx.e); }
 }
+let bpPath = null; // the path picked in the panel, not yet confirmed
+for (const el of $('bpPick').children) el.addEventListener('click', () => { if (!sel || paused) return; bpPath = bpPath === el.dataset.p ? null : el.dataset.p; refreshPanel(); });
 $('bpX').addEventListener('click', closePanel);
 $('bpUp').addEventListener('click', () => {
   if (!sel || !game || paused) return;
-  const r = tryUpgrade(game, 0, sel);
+  if (TREES[sel.type] && sel.tier === 1 && !bpPath) { toast('Pick a path first: tap A or B', 'bad'); shake($('bp')); return; }
+  const r = tryUpgrade(game, 0, sel, TREES[sel.type] && sel.tier === 1 ? bpPath : undefined);
+  if (r.ok) bpPath = null;
   if (r.ok) toast(r.msg, 'ok'); else { toast(r.msg, 'bad'); shake($('bp')); }
   refreshUI(true);
 });
@@ -4116,6 +4239,7 @@ function repSummary(g) {
   const units = t => { const ks = Object.keys(UDEF).filter(k => t.trained[k] || t.lost[k]); return `${sum(t.trained)} (${sum(t.lost)})${ks.length ? ': ' + ks.map(k => `${UDEF[k].name} ${t.trained[k] || 0} (${t.lost[k] || 0})`).join(', ') : ''}`; };
   const blds = t => `${sum(t.bBuilt)} · ${t.bUp} · ${sum(t.bLost)}${sum(t.bLost) ? ` (${Object.keys(t.bLost).map(k => `${BDEF[k].name}${t.bLost[k] > 1 ? ' ×' + t.bLost[k] : ''}`).join(', ')})` : ''}${t.bSold ? ` · ${t.bSold} sold` : ''}`;
   const abil = t => ABIL_ORDER.filter(k => t.ab[k][0]).map(k => k === 'strike' ? `Strike ×${t.ab.strike[0]}: ${fmtN(t.ab.strike[1])} damage, ${t.ab.strike[2]} destroyed` : k === 'shield' ? `Shield ×${t.ab.shield[0]}: ${fmtN(t.ab.shield[1])} blocked` : `Repair ×${t.ab.repair[0]}: ${fmtN(t.ab.repair[1])} HP`).join(' · ') || 'none';
+  const PATHS = [0, 1].map(s => [...new Set(L.ev.filter(e => e[2] === 'U' && e[1] === s && e[6] && TREES[e[3]]).map(e => `${BDEF[e[3]].name}: ${TREES[e[3]][e[6]].name}`))].join(', ')); // from the recorded path choices
   const row = (h, f) => `<tr><th>${h}</th><td>${f(T[0])}</td><td class="e">${f(T[1])}</td></tr>`;
   const att = L.ev.filter(e => e[2] === 'G' && e[1] === 1), real = att.filter(e => !e[4]), aiLog = g.sides[1].aiLog || {};
   const behave = [`${real.length} attack${real.length === 1 ? '' : 's'}${real.length ? ` (first at ${mmss(real[0][0])})` : ''}`, `${att.length - real.length} feint${att.length - real.length === 1 ? '' : 's'}`,
@@ -4128,6 +4252,7 @@ function repSummary(g) {
     ${row('Units built (lost)', units)}
     ${row('Enemy units destroyed', t => fmtN(sum(t.killed)))}
     ${row('Buildings built · upgraded · lost', blds)}
+    ${row('Upgrade paths taken', t => PATHS[T.indexOf(t)] || '–')}
     ${row('Field nodes', t => `${t.nodeCap} captured, ${t.nodeLost} lost · held ${mmss(t.nodeTime)}`)}
     ${row('Abilities', abil)}
     ${row('Storm damage taken', t => fmtN(t.storm))}
