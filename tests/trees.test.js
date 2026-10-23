@@ -47,7 +47,7 @@ test('what each path unlocks: Heavy (A, T2) and Sniper (A, T3); never from a Mas
   assert.ok(a.queue.includes('heavy') && a.queue.includes('sniper') && !b.queue.length, 'queued at the Specialists Barracks');
 });
 
-test('Mass Deployment: a Rifleman order is a pair (double cost and army size), trained together; Riflemen go there first', () => {
+test('Mass Deployment: a Rifleman order is a pair (double cost and army size), trained together in 1.5× the time; Riflemen go there first', () => {
   const { g, bar: [a, b] } = base();
   sim.tryUpgrade(g, 0, b, 'B'); finishUp(g, b);
   const c0 = g.sides[0].res.c, n0 = g.ents.filter(e => e.type === 'rifle').length;
@@ -56,7 +56,9 @@ test('Mass Deployment: a Rifleman order is a pair (double cost and army size), t
   assert.strictEqual(c0 - g.sides[0].res.c, 100);
   assert.deepStrictEqual([...b.queue], ['rifle', 'rifle'], 'at the Mass Barracks'); assert.strictEqual(a.queue.length, 0);
   step(g, 4.2);
-  assert.strictEqual(g.ents.filter(e => e.type === 'rifle').length - n0, 2, 'both after one Rifleman\'s training time');
+  assert.strictEqual(g.ents.filter(e => e.type === 'rifle').length - n0, 0, 'a pair takes 1.5× a Rifleman\'s time (6 s)');
+  step(g, 2);
+  assert.strictEqual(g.ents.filter(e => e.type === 'rifle').length - n0, 2, 'both at once after 6 s');
   // the queue still holds five at most: a pair needs two places
   for (let i = 0; i < 2; i++) sim.tryTrain(g, 0, 'rifle');
   b.queue.push('rifle');
@@ -67,7 +69,7 @@ test('Mass Deployment: a Rifleman order is a pair (double cost and army size), t
 test('Drilled Riflemen (Mass Deployment T3): +35% HP, +10% damage, capture nodes 1.5× faster', () => {
   const { g, bar: [, b] } = base();
   sim.tryUpgrade(g, 0, b, 'B'); finishUp(g, b); sim.tryUpgrade(g, 0, b); finishUp(g, b);
-  sim.tryTrain(g, 0, 'rifle'); step(g, 4.2);
+  sim.tryTrain(g, 0, 'rifle'); step(g, 6.2);
   const vets = g.ents.filter(e => e.type === 'rifle' && e.vet);
   assert.strictEqual(vets.length, 2);
   assert.ok(Math.abs(vets[0].maxHp - 70 * 1.35) < 1e-9 && vets[0].hp === vets[0].maxHp);

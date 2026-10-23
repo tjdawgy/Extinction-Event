@@ -386,9 +386,9 @@ const hpMul = (d, t) => (d.hpMul || HPMUL)[t];
    on a named modifier; a later faction is mostly a different TREES table. (War Factory and Tech Lab follow.) */
 const TREES = {
   barracks: { A: { name: 'Specialists', short: 'SPEC', steps: [null, null, { unlock: ['heavy'], short: 'Heavy troopers', txt: 'Unlocks Heavy troopers' }, { unlock: ['sniper'], short: 'Snipers', txt: 'Unlocks Snipers' }] },
-              B: { name: 'Mass Deployment', short: 'MASS', steps: [null, null, { mod: 'pairs', short: 'Riflemen in pairs', txt: 'Trains Riflemen two at a time' }, { mod: 'drill', short: 'Drilled Riflemen', txt: 'Drilled Riflemen: +35% HP, +10% damage, capture nodes 1.5× faster' }] } },
+              B: { name: 'Mass Deployment', short: 'MASS', steps: [null, null, { mod: 'pairs', short: 'Riflemen in pairs', txt: 'Trains Riflemen two at a time (a pair takes 6 s)' }, { mod: 'drill', short: 'Drilled Riflemen', txt: 'Drilled Riflemen: +35% HP, +10% damage, capture nodes 1.5× faster' }] } },
 };
-const DRILL = { hp: 1.35, dmg: 1.1, capture: 1.5 };
+const DRILL = { hp: 1.35, dmg: 1.1, capture: 1.5 }, PAIR_TIME = 1.5; // a Mass Deployment pair takes 1.5× a Rifleman's training time
 const UNIT_PATH = {}; // unit type → { b: building type, p: path } for units a path unlocks
 for (const bt in TREES) for (const p in TREES[bt]) for (const st of TREES[bt][p].steps) if (st && st.unlock) for (const u of st.unlock) UNIT_PATH[u] = { b: bt, p };
 const pathMod = (b, mod) => { const T = TREES[b.type]; if (!T || !b.path || !b.built) return false; const st = T[b.path].steps; for (let t = 2; t <= b.tier; t++) if (st[t] && st[t].mod === mod) return true; return false; };
@@ -929,10 +929,10 @@ function updateBuilding(g, b, foes, dt) {
   }
   if (b.queue.length) {
     b.prodT += dt;
-    const ut = b.queue[0];
-    if (b.prodT >= UDEF[ut].time) {
+    const ut = b.queue[0], pair = ut === 'rifle' && b.queue[1] === 'rifle' && pathMod(b, 'pairs');
+    if (b.prodT >= UDEF[ut].time * (pair ? PAIR_TIME : 1)) {
       b.prodT = 0; b.queue.shift();
-      const n = ut === 'rifle' && b.queue[0] === 'rifle' && pathMod(b, 'pairs') ? 2 : 1; // Mass Deployment: two Riflemen at a time
+      const n = pair ? 2 : 1; // Mass Deployment: two Riflemen at a time
       if (n === 2) b.queue.shift();
       for (let i = 0; i < n; i++) {
         const nu = spawnUnit(g, b.side, ut, b.u + dirOf(b.side) * (b.half + 10), b.v + rand(-12, 12) + i * 16);
@@ -3893,7 +3893,7 @@ function refreshUI(force) {
       poor = s.res.c < d.cost.c || s.res.e < d.cost.e || used + d.pop > cap;
       for (const p of prods) {
         badge += p.queue.filter(q => q === type).length;
-        if (p.queue[0] === type) prog = Math.max(prog, p.prodT / d.time);
+        if (p.queue[0] === type) prog = Math.max(prog, Math.min(1, p.prodT / (d.time * (type === 'rifle' && p.queue[1] === 'rifle' && pathMod(p, 'pairs') ? PAIR_TIME : 1))));
       }
       html = locked ? `<span class="lock">${unitLockMsg(d)}</span>` : costHTML(d.cost, s.res, d.pop);
     }
