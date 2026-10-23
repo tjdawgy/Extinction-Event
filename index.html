@@ -140,11 +140,29 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .irow{margin-top:5px;line-height:1.3}
 .irow em{font-style:normal;color:var(--muted)}
 #panel{flex:0 0 auto;height:78px;margin-bottom:3px;display:flex;background:var(--glass);border:1px solid var(--line);border-radius:14px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);overflow:hidden}
-.tabs{display:flex;flex-direction:column;gap:4px;padding:5px 0 5px 5px;width:72px;flex:0 0 auto}
+.tabs{display:grid;grid-template-columns:62px 52px;grid-template-rows:1fr 1fr;gap:4px;padding:5px 0 5px 5px;flex:0 0 auto}
+.tabs [data-tab="army"]{grid-column:2;grid-row:1 / span 2} /* v2.12: Build and Train stacked, Army beside them: the tray keeps its height */
 .tabs button{flex:1;border:1px solid var(--line);background:rgba(0,0,0,.25);border-radius:9px;font-weight:700;font-size:13px;color:var(--muted)}
 .tabs button.on{background:var(--panel3);color:var(--text);border-color:rgba(57,200,255,.6)}
 #cards{flex:1;display:flex;gap:5px;padding:5px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;touch-action:pan-x}
 #cards::-webkit-scrollbar{display:none}
+/* Army tab (v2.12): owned groups and types to select (scrolls), the order buttons always in view */
+#cards.army{overflow:hidden}
+.asel{flex:1;min-width:0;display:flex;gap:5px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;touch-action:pan-x;-webkit-overflow-scrolling:touch}
+.asel::-webkit-scrollbar{display:none}
+.aempty{align-self:center;color:var(--muted);font-size:12.5px;padding:0 8px;white-space:nowrap}
+.chip{position:relative;flex:0 0 80px;height:100%;border-radius:10px;border:1px solid var(--line);background:linear-gradient(rgba(30,46,76,.9),rgba(15,24,43,.9));display:flex;flex-direction:column;align-items:center;padding:2px 3px 3px;overflow:hidden}
+.chip.grp{border-color:rgba(57,200,255,.4);background:linear-gradient(rgba(28,58,86,.9),rgba(14,28,48,.9))}
+.chip.on{border-color:#fff;box-shadow:inset 0 0 0 2px var(--blue)}
+.chip .ic{width:52px;height:30px;display:block;pointer-events:none}
+.chip .nm{font-size:11.5px;font-weight:800;white-space:nowrap;pointer-events:none}
+.chip .od{font-size:10px;color:var(--muted);white-space:nowrap;pointer-events:none}
+.chip .od.set{color:#ffd34d}
+.chip .cnt{position:absolute;top:3px;right:4px;min-width:17px;height:17px;border-radius:9px;background:var(--blue);color:#001522;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 5px;pointer-events:none}
+.acmd{flex:0 0 auto;display:grid;grid-template-columns:64px 64px;grid-template-rows:1fr 1fr;gap:4px}
+.acmd button{border-radius:9px;border:1px solid var(--line);background:rgba(0,0,0,.3);font-weight:800;font-size:12.5px;color:var(--text)}
+.acmd button.on{background:var(--panel3);border-color:rgba(57,200,255,.7)}
+.acmd [data-o="attack"]{color:#ffb0b0} .acmd [data-o="retreat"]{color:#ffe08a} .acmd [data-o="move"]{color:#9fe6ff}
 .card{position:relative;flex:0 0 92px;height:100%;border-radius:10px;border:1px solid var(--line);background:linear-gradient(rgba(30,46,76,.9),rgba(15,24,43,.9));display:flex;flex-direction:column;align-items:center;padding:2px 4px 6px;overflow:hidden;transition:transform .08s}
 .card:active{transform:scale(.94)}
 .card .ic{width:56px;height:32px;display:block;pointer-events:none}
@@ -265,7 +283,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
     <div id="info" class="hide"><div class="ih"><b id="infoName"></b><small id="infoSub"></small><button id="infoX" aria-label="Close">×</button></div><div id="infoBody"></div></div>
   </main>
   <footer id="panel">
-    <div class="tabs"><button data-tab="build" class="on">Build</button><button data-tab="army">Army</button></div>
+    <div class="tabs"><button data-tab="build" class="on">Build</button><button data-tab="train">Train</button><button data-tab="army">Army</button></div>
     <div id="cards"></div>
   </footer>
 </div>
@@ -274,7 +292,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.11'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.12'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -557,7 +575,7 @@ function newGame(diffKey, opts = {}) {
     nodes: NODE_U.map((u, i) => ({ id: i, u, v: 0, prog: 0, owner: null, c: [0, 0] })), log: null };
   for (let s = 0; s < 2; s++) {
     g.sides.push({ res: { c: 300, e: 60 }, stance: s === 0 ? 'hold' : 'retreat', stanceAt: 0, pushTo: null, slots: new Array(SLOT_COUNT).fill(null),
-      hq: null, aiT: 1 + s * 0.5, stats: { built: 0, kills: 0, lost: 0, earned: 0 }, lastAlert: -99, buff: false, ab: newAb(0), abK: null, abEnd: 0 });
+      hq: null, aiT: 1 + s * 0.5, stats: { built: 0, kills: 0, lost: 0, earned: 0 }, lastAlert: -99, buff: false, ab: newAb(0), abK: null, abEnd: 0, orders: newOrders(), sel: null });
     const hq = mkBuilding(g, s, 'hq', -1);
     hq.built = true; hq.progress = 1; hq.hp = hq.maxHp;
     g.sides[s].hq = hq;
@@ -803,6 +821,7 @@ function update(g, dt) {
   }
   updateProjs(g, dt);
   updateAbilities(g, dt);
+  if (Math.floor(g.t * 2) !== Math.floor(t0 * 2)) updateOrders(g);
   updateStorm(g, dt, t0);
   aiUpdate(g, 1, dt); aiSpotter(g, 1);
   if (g.auto) { aiUpdate(g, 0, dt); aiSpotter(g, 0); }
@@ -923,9 +942,68 @@ function acquire(g, src, def, foes) {
   return { best, close };
 }
 
+/* ---------- Unit micro controls (v2.12) ----------
+   Orders for a group (Infantry, Armor, Air), a unit type, or the whole army (Regroup with nothing selected). An order
+   overrides the global stance for the units it covers; where a group and a type order both cover a unit, the most
+   recent wins (order.n counts up). A global stance clears them all. 'move' (Regroup) walks to a point, fighting what
+   it meets on the way like any stance, then holds there; its flag is done once every unit it covers has arrived. */
+const UGROUPS = { inf: ['rifle', 'heavy', 'sniper'], arm: ['tank', 'artillery', 'titan'], air: ['aircraft', 'interceptor'] };
+const GROUP_NAME = { inf: 'Infantry', arm: 'Armor', air: 'Air' };
+const GROUP_OF = {}; for (const k in UGROUPS) for (const t of UGROUPS[k]) GROUP_OF[t] = k;
+const ORDER_NAME = { hold: 'Hold', attack: 'Attack', retreat: 'Retreat', move: 'Regroup' };
+const PLURAL = { rifle: 'Riflemen', heavy: 'Heavies', sniper: 'Snipers', tank: 'Tanks', artillery: 'Artillery', titan: 'Titans', aircraft: 'Gunships', interceptor: 'Interceptors' };
+const newOrders = () => ({ all: null, groups: {}, types: {}, n: 0 });
+function unitOrder(side, type) { // the order a unit of this type follows, or null for the global stance
+  const O = side.orders; if (!O) return null;
+  let best = O.all; const gr = O.groups[GROUP_OF[type]], ty = O.types[type];
+  if (gr && (!best || gr.n > best.n)) best = gr;
+  if (ty && (!best || ty.n > best.n)) best = ty;
+  return best;
+}
+const orderCovers = (scope, key, type) => scope === 'all' || (scope === 'group' ? GROUP_OF[type] === key : type === key);
+const slotOf = (u, o) => [o.u + ((u.id * 37) % 9 - 4) * 9, o.v + ((u.id * 53) % 9 - 4) * 7]; // a spread spot around the flag, fixed per unit
+function giveOrder(g, s, scope, key, o, u, v, quiet) { // quiet: the AI's automatic micro is counted, not listed, in the match log
+  if (g.over) return { ok: false, msg: 'The match is over' };
+  if (g.countdown > 0) return WAIT_GO;
+  if (!ORDER_NAME[o] || !(scope === 'all' ? o === 'move' : scope === 'group' ? UGROUPS[key] : UDEF[key])) return { ok: false, msg: 'Unknown order' };
+  if (o === 'move' && !(u >= 0 && u <= L && Math.abs(v) <= 220)) return { ok: false, msg: 'Target the battlefield' };
+  const side = g.sides[s], O = side.orders || (side.orders = newOrders()), ord = { o, n: ++O.n, t: g.t };
+  if (o === 'move') { ord.u = u; ord.v = v; ord.done = false; }
+  if (scope === 'all') O.all = ord; else if (scope === 'group') O.groups[key] = ord; else O.types[key] = ord;
+  for (const e of g.ents) if (e.kind === 'u' && e.side === s && e.hp > 0 && orderCovers(scope, key, e.type)) {
+    if (o === 'hold') { e.holdU = e.u; e.holdV = e.v; } else { e.holdU = undefined; e.holdV = undefined; }
+  }
+  if (quiet) { if (g.log) g.log.tot[s].micro = (g.log.tot[s].micro || 0) + 1; } else lg(g, s, 'O', scope, key, o);
+  const who = scope === 'all' ? 'Army' : scope === 'group' ? GROUP_NAME[key] : PLURAL[key];
+  return { ok: true, msg: o === 'move' ? `${who}: regrouping at the flag` : `${who}: ${o === 'hold' ? 'holding position' : o === 'attack' ? 'attacking' : 'retreating to the rally flag'}` };
+}
+function updateOrders(g) { // twice a second: a Regroup flag is done once every unit it covers has arrived
+  for (let s = 0; s < 2; s++) {
+    const side = g.sides[s], O = side.orders; if (!O) continue;
+    const list = [O.all, ...Object.values(O.groups), ...Object.values(O.types)].filter(o => o && o.o === 'move' && !o.done);
+    if (!list.length) continue;
+    const away = new Set();
+    for (const e of g.ents) if (e.kind === 'u' && e.side === s && e.hp > 0) {
+      const o = unitOrder(side, e.type);
+      if (o && o.o === 'move' && !o.done) { const [su, sv] = slotOf(e, o); if (Math.abs(e.u - su) > 14 || Math.abs(e.v - sv) > 14) away.add(o); }
+    }
+    for (const o of list) if (!away.has(o)) o.done = true;
+  }
+}
+// The AI's only micro so far (Normal and Hard): pull Artillery back when enemy ground units it can see get close
+function aiMicro(g, s, D, mine) {
+  if (D === DIFF.easy) return;
+  const side = g.sides[s], O = side.orders || (side.orders = newOrders()), art = mine.filter(u => u.type === 'artillery');
+  const near = art.some(a => g.ents.some(e => e.kind === 'u' && e.side !== s && e.hp > 0 && !UDEF[e.type].air && Math.abs(e.u - a.u) < 160 && visibleTo(g, s, e)));
+  const cur = O.types.artillery;
+  if (near && !cur) giveOrder(g, s, 'type', 'artillery', 'retreat', undefined, undefined, true);
+  else if (!near && cur && cur.o === 'retreat' && g.t - cur.t > 6) { delete O.types.artillery; for (const a of art) { a.holdU = undefined; a.holdV = undefined; } }
+}
+
 function setStance(g, s, v) {
   const side = g.sides[s];
   side.stance = v; side.stanceAt = g.t; side.pushTo = null; side.pushMode = null;
+  side.orders = newOrders(); // a global stance clears every group, type and Regroup order (v2.12)
   for (const u of g.ents) if (u.kind === 'u' && u.side === s) {
     if (v === 'hold') { u.holdU = u.u; u.holdV = u.v; } else { u.holdU = undefined; u.holdV = undefined; }
   }
@@ -947,9 +1025,10 @@ function updateUnit(g, u, foes, dt) {
   if (u.recoil > 0) u.recoil = Math.max(0, u.recoil - dt * 5);
   if (u.hitT > 0) u.hitT -= dt;
   const side = g.sides[u.side], dir = dirOf(u.side), home = rallyU(u.side) + u.rallyOff * dir;
+  const ord = unitOrder(side, u.type), st = ord ? ord.o : side.stance; // a group or type order overrides the global stance
   const { best, close } = acquire(g, u, d, foes);
   // Retreat: keep running home, firing on the move, until back at the rally flag
-  if (side.stance === 'retreat' && Math.abs(home - u.u) > 12) {
+  if (st === 'retreat' && Math.abs(home - u.u) > 12) {
     if (best && u.cd <= 0) { fire(g, u, best, d); u.cd = d.cd * rand(0.9, 1.1); }
     moveToward(u, d, home, u.laneV, dt);
     return;
@@ -962,14 +1041,15 @@ function updateUnit(g, u, foes, dt) {
   }
   if (close) { u.moving = false; return; } // artillery: enemy is inside minimum range
   let tu = home, tv = u.laneV;
-  if (side.stance === 'attack') {
+  if (st === 'move') [tu, tv] = slotOf(u, ord); // Regroup: walk to the flag, then hold there
+  else if (st === 'attack') {
     // a field push spreads forward of its line; a siege spreads back from it, so nobody stands inside the enemy HQ's range
     const spread = side.pushMode === 'siege' ? -1 : 1;
     const end = side.pushTo !== null ? side.pushTo - spread * u.rallyOff * dir * 0.6 : (dir > 0 ? L : 0);
     if (u.id === side.spotter && side.spotU != null && side.pushTo !== null) tu = side.spotU;
     else if (u.type === 'interceptor') { const f = g.front[u.side]; tu = f === null ? home : f - dir * 40; }
     else tu = end;
-  } else if (side.stance === 'hold' && u.holdU !== undefined) { tu = u.holdU; tv = u.holdV; }
+  } else if (st === 'hold' && u.holdU !== undefined) { tu = u.holdU; tv = u.holdV; }
   if (!moveToward(u, d, tu, tv, dt)) u.face = dir;
 }
 
@@ -1473,6 +1553,7 @@ function aiUpdate(g, s, dt) {
     side.pushTo = null; side.pushMode = 'all'; side.stanceAt = g.t;
   }
   aiAbility(g, s, P, { mine, theirs, threat, myV, thV });
+  aiMicro(g, s, D, mine);
 }
 // Spotters: siege guns can't fire at what their side can't see, so while sieging, one unit walks up until
 // its sight reaches the front of the enemy base (as far as this side knows where that is). Seeing the base
@@ -1570,8 +1651,8 @@ const logAdd = (o, k, n = 1) => { o[k] = (o[k] || 0) + n; };
 const logSpend = (g, s, kind, c, e) => { if (g.log) { const a = g.log.tot[s].spent[kind]; a[0] += c; a[1] += e; } };
 
 /* ---------- Save and resume ---------- */
-// v6 adds fog of war; v7 the AI's personality (kept on its side record); v10 the shared ability cooldown; v11 the match log. Older saves are migrated.
-const SAVE_VER = 11, SAVE_OK = [5, 6, 7, 8, 9, 10, 11];
+// v6 adds fog of war; v7 the AI's personality (kept on its side record); v10 the shared ability cooldown; v11 the match log; v12 group orders, the selection and Regroup flags. Older saves are migrated.
+const SAVE_VER = 12, SAVE_OK = [5, 6, 7, 8, 9, 10, 11, 12];
 function serialize(g, extra) {
   const live = g.ents.filter(e => e.hp > 0);
   for (const sd of g.sides) if (sd.hq.hp <= 0 && !live.includes(sd.hq)) live.push(sd.hq); // a fallen HQ inside the storm's 5 s end window
@@ -1609,6 +1690,7 @@ function deserialize(str) {
   }
   g.abil = o.abil || [];
   g.endHold = o.endHold || null; // the 5-second end window of a storm match (v9)
+  for (const sd of g.sides) { if (!sd.orders) sd.orders = newOrders(); if (sd.sel === undefined) sd.sel = null; } // v12: older saves start with no group orders
   g.log = o.log || newLog(g.t); // v11; an older save starts its log now (the report says the early part wasn't recorded)
   updateVision(g);
   g.events.length = 0;
@@ -1632,6 +1714,7 @@ function logEvText(e, me) { // one log event as a line of text (me: written from
     case 'L': return `Lost the ${NODE_NAME[a] || ''} field node`;
     case 'A': return a === 'strike' ? `Orbital Strike: ${Math.round(b || 0)} damage, ${x || 0} destroyed` : a === 'shield' ? `Emergency Shield: ${Math.round(b || 0)} damage blocked` : `Repair Pulse: ${Math.round(b || 0)} HP restored`;
     case 'H': return 'HQ shield down';
+    case 'O': return `Order: ${a === 'all' ? 'whole army' : a === 'group' ? GROUP_NAME[b] : (PLURAL[b] || b)} ${ORDER_NAME[x] ? ORDER_NAME[x].toLowerCase() : x}`;
     case 'G': return b ? 'Feint attack launched (pulled back)' : `Attack launched${a === 'siege' ? ' (siege)' : ''}`;
     case 'W': return 'Extinction Event warning (30 s)';
     case 'X': return 'Extinction Event began';
@@ -3060,6 +3143,28 @@ function drawBoom(c, x, y, r, k) {
   c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
   c.fillStyle = `rgba(255,170,80,${(1 - k) * 0.55})`; c.beginPath(); c.arc(x, y, r * (0.35 + k * 0.75), 0, 7); c.fill();
 }
+// Army tab (v2.12): rings under the selected units, flags where your Regroup orders are still on their way
+function drawSelection(c, g, time) {
+  const s = g.sides[0], k = s.sel; if (!k) return;
+  const key = k.slice(2), grp = k[0] === 'g', a = 0.65 + 0.25 * Math.sin(time * 5);
+  c.strokeStyle = `rgba(127,227,255,${a})`; c.lineWidth = 1.8;
+  for (const e of g.ents) {
+    if (e.kind !== 'u' || e.side !== 0 || e.hp <= 0 || (grp ? GROUP_OF[e.type] !== key : e.type !== key)) continue;
+    const w = P(e.u, e.v), r = (UDEF[e.type].air ? 12 : UDEF[e.type].pop >= 3 ? 16 : 9) * US;
+    c.beginPath(); c.ellipse(w.x, w.y, r, r * 0.42, 0, 0, 7); c.stroke();
+  }
+}
+function drawFlags(c, g, time) {
+  const O = g.sides[0].orders; if (!O) return;
+  for (const o of [O.all, ...Object.values(O.groups), ...Object.values(O.types)]) {
+    if (!o || o.o !== 'move' || o.done) continue;
+    const w = P(o.u, o.v), wave = Math.sin(time * 5) * 1.5;
+    c.setLineDash([5, 5]); c.strokeStyle = 'rgba(159,230,255,0.55)'; c.lineWidth = 1.3;
+    c.beginPath(); c.ellipse(w.x, w.y, 40, 40 * DY * 0.9, 0, 0, 7); c.stroke(); c.setLineDash([]);
+    c.strokeStyle = '#d9e6f5'; c.lineWidth = 1.6; c.beginPath(); c.moveTo(w.x, w.y); c.lineTo(w.x, w.y - 30); c.stroke();
+    c.fillStyle = TEAM[0].main; c.beginPath(); c.moveTo(w.x, w.y - 30); c.lineTo(w.x + 15, w.y - 25 + wave); c.lineTo(w.x, w.y - 20); c.closePath(); c.fill();
+  }
+}
 function drawDecals(c) {
   for (const d of VFX.decals) {
     const a = 0.45 * Math.min(1, (d.life - d.t) / 4);
@@ -3152,6 +3257,7 @@ function render(c, g, time, sel, selPad) {
   }
   for (const n of g.nodes) drawNodeZone(c, n, time, lit(n.u));
   drawDecals(c);
+  if (g) drawSelection(c, g, time);
   drawWrecks(c, time);
   // everything on the field, back to front
   const list = g.ents.filter(seen);
@@ -3224,6 +3330,7 @@ function render(c, g, time, sel, selPad) {
   c.globalAlpha = 1;
   drawVfx(c);
   drawAbilities(c, g, lit, time);
+  drawFlags(c, g, time);
   drawAim(c, g);
   c.font = '600 11px -apple-system,system-ui,sans-serif'; c.textAlign = 'center';
   const barMin = (V.ft - V.A) / V.S + Y_BOT + 12 / V.S; // highest world row that clears the top bar (with room for tier pips)
@@ -3453,6 +3560,8 @@ let lp = null;
 
 function buildCards() {
   const wrap = $('cards'); wrap.innerHTML = '';
+  wrap.classList.toggle('army', tab === 'army');
+  if (tab === 'army') { buildArmy(); return; }
   const list = tab === 'build' ? BUILD_ORDER : UNIT_ORDER;
   for (const type of list) {
     const d = tab === 'build' ? BDEF[type] : UDEF[type];
@@ -3490,6 +3599,86 @@ function costHTML(cost, res, pop) {
 function setHTML(el, h) { if (el.innerHTML !== h) el.innerHTML = h; }
 
 const HQ_STATE = { shielded: 'Shielded', exposed: 'Exposed', destroyed: 'Destroyed' };
+/* ---------- Army tab (v2.12): select a group or a unit type, then Hold, Attack, Retreat or Regroup ----------
+   Shows only what you own. With nothing selected, Hold / Attack / Retreat are the global stance and Regroup sends
+   the whole army. Regroup: tap it, then tap the battlefield. */
+let armySig = '', rg = null; // rg: Regroup targeting in progress
+function armyCounts() { const c = {}; for (const e of game.ents) if (e.kind === 'u' && e.side === 0 && e.hp > 0) c[e.type] = (c[e.type] || 0) + 1; return c; }
+const selCount = (k, c) => !k ? 0 : k[0] === 'g' ? UGROUPS[k.slice(2)].reduce((a, t) => a + (c[t] || 0), 0) : c[k.slice(2)] || 0;
+const selName = k => !k ? 'the whole army' : k[0] === 'g' ? GROUP_NAME[k.slice(2)] : PLURAL[k.slice(2)];
+function buildArmy() {
+  const wrap = $('cards'), c = game ? armyCounts() : {}, box = document.createElement('div'), cmd = document.createElement('div');
+  wrap.innerHTML = ''; box.className = 'asel'; box.id = 'asel'; cmd.className = 'acmd'; cmd.id = 'acmd';
+  const items = [];
+  for (const k of ['inf', 'arm', 'air']) { const n = UGROUPS[k].reduce((a, t) => a + (c[t] || 0), 0); if (n) items.push({ key: 'g:' + k, name: GROUP_NAME[k], icon: UGROUPS[k].find(t => c[t]), grp: true }); }
+  for (const t of UNIT_ORDER) if (c[t]) items.push({ key: 't:' + t, name: UDEF[t].name, icon: t });
+  if (!items.length) box.innerHTML = '<div class="aempty">No units yet: train some in the Train tab.</div>';
+  for (const it of items) {
+    const el = document.createElement('button');
+    el.className = 'chip' + (it.grp ? ' grp' : ''); el.dataset.k = it.key;
+    el.innerHTML = '<canvas class="ic"></canvas><span class="nm"></span><span class="od"></span><span class="cnt"></span>';
+    el.querySelector('.nm').textContent = it.name;
+    drawIcon(el.querySelector('.ic'), 'u', it.icon);
+    el.addEventListener('click', () => onChip(it.key));
+    box.appendChild(el);
+  }
+  for (const o of ['hold', 'attack', 'retreat', 'move']) {
+    const b = document.createElement('button'); b.dataset.o = o; b.textContent = ORDER_NAME[o];
+    b.addEventListener('click', () => onCmd(o, b)); b.addEventListener('animationend', () => b.classList.remove('shake'));
+    cmd.appendChild(b);
+  }
+  wrap.append(box, cmd);
+  armySig = Object.keys(c).sort().join(',');
+  if (game) refreshArmy();
+}
+function refreshArmy() {
+  if (!game || !$('asel')) return;
+  const c = armyCounts(), s = game.sides[0], O = s.orders || newOrders();
+  if (Object.keys(c).sort().join(',') !== armySig) { buildArmy(); return; } // a type or group appeared or died out
+  if (s.sel && !selCount(s.sel, c)) s.sel = null;
+  for (const el of $('asel').querySelectorAll('.chip')) {
+    const k = el.dataset.k, key = k.slice(2), o = k[0] === 'g' ? O.groups[key] : unitOrder(s, key), od = el.querySelector('.od');
+    setHTML(el.querySelector('.cnt'), String(selCount(k, c)));
+    el.classList.toggle('on', s.sel === k);
+    const txt = o ? ORDER_NAME[o.o] + (o.o === 'move' && o.done ? ' (there)' : '') : k[0] === 'g' ? '' : ORDER_NAME[s.stance];
+    if (od.textContent !== txt) od.textContent = txt;
+    od.classList.toggle('set', !!o);
+  }
+  const cur = s.sel ? (s.sel[0] === 'g' ? O.groups[s.sel.slice(2)] : unitOrder(s, s.sel.slice(2))) : null;
+  for (const b of $('acmd').children) b.classList.toggle('on', b.dataset.o === 'move' ? !!rg : s.sel ? !!cur && cur.o === b.dataset.o : !hasOrders(s) && b.dataset.o === s.stance);
+}
+function onChip(k) {
+  if (!game || paused || !running || game.over) return;
+  const s = game.sides[0]; s.sel = s.sel === k ? null : k;
+  if (rg) endAim();
+  refreshArmy();
+}
+function onCmd(o, b) {
+  if (!game || paused || !running || game.over) return;
+  const s = game.sides[0];
+  if (o === 'move') {
+    if (rg) { endAim(); return; }
+    if (game.countdown > 0) { toast(WAIT_GO.msg, 'bad'); shake(b); return; }
+    if (!Object.keys(armyCounts()).length) { toast('No units to regroup', 'bad'); shake(b); return; }
+    endAim(); closePanel(); hideInfo();
+    rg = { k: s.sel };
+    $('aim').style.setProperty('--ac', '#9fe6ff');
+    $('aimName').textContent = 'Regroup'; $('aimTxt').textContent = `: tap the battlefield to send ${selName(s.sel)}`;
+    $('aim').classList.remove('hide');
+    refreshArmy(); return;
+  }
+  if (!s.sel) { if (game.countdown > 0) { toast(WAIT_GO.msg, 'bad'); shake(b); return; } applyStance(o); return; }
+  const r = giveOrder(game, 0, s.sel[0] === 'g' ? 'group' : 'type', s.sel.slice(2), o);
+  toast(r.msg, r.ok ? (o === 'attack' ? 'warn' : 'ok') : 'bad'); if (!r.ok) shake(b);
+  refreshUI(true);
+}
+function rgTap(x, y) {
+  const w = toWorld(x, y), k = rg.k;
+  const r = giveOrder(game, 0, k ? (k[0] === 'g' ? 'group' : 'type') : 'all', k ? k.slice(2) : null, 'move', w.x, w.y / DY);
+  toast(r.msg, r.ok ? 'ok' : 'bad');
+  if (r.ok) { endAim(); refreshUI(true); }
+}
+
 /* ---------- Commander abilities: buttons and one-finger targeting ----------
    Tap a button, tap the battlefield to place the circle, tap inside it to confirm. Cancel: the banner's button,
    the ability button again, or pausing. Long-press a button for details. */
@@ -3518,6 +3707,7 @@ function onAbil(k, el) {
   if (!game || paused || !running) return;
   hideInfo();
   if (aim && aim.k === k) { endAim(); return; }
+  if (rg) endAim();
   const r = abilityCheck(game, 0, k);
   if (!r.ok) { toast(r.msg, 'bad'); el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); return; }
   closePanel();
@@ -3527,7 +3717,10 @@ function onAbil(k, el) {
   $('aim').classList.remove('hide');
   refreshAbil();
 }
-function endAim() { if (!aim) return; aim = null; $('aim').classList.add('hide'); refreshAbil(); }
+function endAim() { // ends ability targeting and Regroup targeting
+  if (rg) { rg = null; $('aim').classList.add('hide'); if (tab === 'army') refreshArmy(); }
+  if (!aim) return; aim = null; $('aim').classList.add('hide'); refreshAbil();
+}
 $('aimX').addEventListener('click', endAim);
 function aimTap(x, y) {
   const w = toWorld(x, y), u = clamp(w.x, -40, L + 40), v = clamp(w.y / DY, -240, 240), A = ABIL[aim.k];
@@ -3577,7 +3770,8 @@ function refreshUI(force) {
   }
   $('resP').classList.toggle('full', used >= cap);
   for (const b of $('stance').children) b.classList.toggle('on', b.dataset.s === s.stance);
-  for (const el of $('cards').children) {
+  if (tab === 'army') refreshArmy();
+  else for (const el of $('cards').children) {
     const type = el.dataset.type;
     let html, locked, poor, badge = 0, prog = 0;
     if (tab === 'build') {
@@ -3717,6 +3911,7 @@ function inDiamond(wx, wy, cx, cy, h) { return Math.abs(wx - cx) / (2 * h * IX) 
 function handleTap(x, y) {
   if (!game) return;
   hideInfo();
+  if (rg) { rgTap(x, y); return; }
   if (aim) { aimTap(x, y); return; }
   const w = toWorld(x, y), hits = [];
   for (const b of game.ents) {
@@ -3783,14 +3978,16 @@ for (const b of document.querySelectorAll('.tabs button')) b.addEventListener('c
   for (const x of document.querySelectorAll('.tabs button')) x.classList.toggle('on', x === b);
   buildCards();
 });
-for (const b of $('stance').children) b.addEventListener('click', () => {
+for (const b of $('stance').children) b.addEventListener('click', () => applyStance(b.dataset.s));
+const hasOrders = s => !!(s.orders && (s.orders.all || Object.keys(s.orders.groups).length || Object.keys(s.orders.types).length));
+function applyStance(v) { // the global stance: everyone, and it clears every group order (v2.12)
   if (!game || game.over) return;
-  const s = game.sides[0], v = b.dataset.s;
-  if (s.stance === v) return;
+  const s = game.sides[0];
+  if (s.stance === v && !hasOrders(s)) return;
   setStance(game, 0, v);
   toast(v === 'attack' ? 'Army advancing on the enemy base' : v === 'hold' ? 'Army holding position' : 'Army retreating to the rally flag', v === 'attack' ? 'warn' : 'ok');
   refreshUI(true);
-});
+}
 $('bSpeed').addEventListener('click', () => { speed = speed >= 3 ? 1 : speed + 1; $('bSpeed').textContent = speed + '×'; });
 $('bPause').addEventListener('click', () => { if (running && game && !game.over) pauseGame(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && running && !paused && game && !game.over) pauseGame(); else if (document.hidden) saveGame(); });
@@ -3922,7 +4119,7 @@ function repSummary(g) {
   const row = (h, f) => `<tr><th>${h}</th><td>${f(T[0])}</td><td class="e">${f(T[1])}</td></tr>`;
   const att = L.ev.filter(e => e[2] === 'G' && e[1] === 1), real = att.filter(e => !e[4]), aiLog = g.sides[1].aiLog || {};
   const behave = [`${real.length} attack${real.length === 1 ? '' : 's'}${real.length ? ` (first at ${mmss(real[0][0])})` : ''}`, `${att.length - real.length} feint${att.length - real.length === 1 ? '' : 's'}`,
-    `${T[1].bBuilt.turret || 0} Turret${T[1].bBuilt.turret === 1 ? '' : 's'} built`, aiLog.firstUpgrade != null ? `first upgrade at ${mmss(aiLog.firstUpgrade)}` : 'no upgrades'].join(' · ');
+    `${T[1].bBuilt.turret || 0} Turret${T[1].bBuilt.turret === 1 ? '' : 's'} built`, ...(T[1].micro ? [`Artillery pulled back ${T[1].micro} time${T[1].micro === 1 ? '' : 's'}`] : []), aiLog.firstUpgrade != null ? `first upgrade at ${mmss(aiLog.firstUpgrade)}` : 'no upgrades'].join(' · ');
   const ext = L.ev.some(e => e[2] === 'X') ? `Reached at 20:00${R.how === 'storm' || R.how === 'score' || R.how === 'draw' ? '; it decided the match' : ''}` : `Not reached (the match ended at ${mmss(g.t)})`;
   const score = R.score ? `<p class="note">Remaining strength (buildings + army): <b>you ${R.score[0].toLocaleString('en')}</b> · enemy ${R.score[1].toLocaleString('en')}${R.by !== 'score' ? ` (decided by ${R.by})` : ''}</p>` : '';
   return `${score}<table><tr><th></th><td><b>You</b></td><td class="e"><b>Enemy</b></td></tr>

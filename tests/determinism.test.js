@@ -1,12 +1,12 @@
 // The SIM must not change by accident: the same seeded AI-vs-AI match must end in exactly the same state,
 // particles and screen shake included. When a rules change is intended, re-record the fingerprint
-// (node tests/determinism.test.js --print) and say so in the commit. Recorded at v2.9; still the same at v2.11 (the v2.11 shield and Repair Pulse fixes never come up in this 8-minute seeded match).
+// (node tests/determinism.test.js --print) and say so in the commit. Recorded at v2.12 (micro controls: the AI pulls its Artillery back when enemies come close).
 const test = require('node:test');
 const assert = require('node:assert');
 const crypto = require('crypto');
 const { loadSim } = require('./load-sim');
 
-const FINGERPRINT = '698b8f27906cc44b303db955185279227131dfb081b32a37a4550d48f8aeed88';
+const FINGERPRINT = '275a4f6bbfbd0543db722914281db2ca360e20645ab08bf06d24b5eadaa4fa52';
 
 function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 
