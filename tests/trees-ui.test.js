@@ -95,3 +95,28 @@ test('War Factory (v2.14): Siege or Assault in the picker; Assault puts Flame Ta
   assert.deepStrictEqual(errors, []);
   await page.close();
 });
+
+test('Tech Lab (v2.15): Air Power or Support in the picker; Support units on the Train tab; Army tab gets a Support group', { skip }, async () => {
+  const { page, errors } = await openPage(browser, PHONE);
+  await page.click('#bPlay'); await page.waitForTimeout(300);
+  await page.evaluate(SETUP);
+  await page.evaluate(() => { for (const k of ['refinery', 'factory', 'techlab']) { tryBuild(game, 0, k); for (const b of game.ents) if (b.kind === 'b') { b.built = true; b.progress = 1; } } openPanel(game.ents.find(e => e.type === 'techlab')); });
+  assert.match(await page.textContent('#bpPick [data-p="A"]'), /Air Power.*Interceptors.*Leviathans/);
+  assert.match(await page.textContent('#bpPick [data-p="B"]'), /Support.*Medicopters, Recon Drones.*Nanoweave/);
+  await page.click('#bpPick [data-p="B"]'); await page.click('#bpUp');
+  await page.evaluate(() => { sel.upProg = 0.9999; update(game, 0.2); closePanel(); });
+  await page.click('.tabs [data-tab="train"]');
+  const t = await page.$$eval('#cards .card', c => c.map(x => x.dataset.type));
+  assert.ok(t.includes('medic') && t.includes('drone') && t.includes('aircraft') && !t.includes('interceptor') && !t.includes('leviathan'), JSON.stringify(t));
+  assert.match(await page.textContent('#cards .card.other'), /Interceptor, Leviathan/);
+  await page.evaluate(() => { spawnUnit(game, 0, 'medic', hqPos(0).u + 200, 0); spawnUnit(game, 0, 'drone', hqPos(0).u + 220, 0); spawnUnit(game, 0, 'rifle', hqPos(0).u + 200, 0); });
+  await page.click('.tabs [data-tab="army"]'); await page.waitForTimeout(700);
+  const k = await page.$$eval('#asel .chip', c => c.map(x => x.dataset.k));
+  assert.ok(k.includes('g:sup') && k.includes('t:medic') && k.includes('t:drone'), JSON.stringify(k));
+  await page.click('#asel [data-k="g:sup"]'); await page.click('#acmd [data-o="hold"]');
+  assert.strictEqual(await page.evaluate(() => game.sides[0].orders.groups.sup.o), 'hold');
+  await page.evaluate(() => showInfo('u', 'medic'));
+  assert.match(await page.textContent('#info'), /Heals.*2\.5%\/s/);
+  assert.deepStrictEqual(errors, []);
+  await page.close();
+});

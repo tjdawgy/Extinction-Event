@@ -6,7 +6,7 @@ const assert = require('node:assert');
 const crypto = require('crypto');
 const { loadSim } = require('./load-sim');
 
-const FINGERPRINT = '7d8c6d714f37c0589b84f1fe7e205f4cb782b01a69baa10dd7b27d8f7a65325e';
+const FINGERPRINT = '3c36acc88839bff01a7258bd2226936a89fa702dd0818eadd7ffd5b9fecedc6e';
 
 function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 

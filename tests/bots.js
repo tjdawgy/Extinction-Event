@@ -93,7 +93,8 @@ function turtleBot(sim, { attackFill = 0.85, plan = TURTLE_PLAN } = {}) {
       for (const [type, tier] of TURTLE_UPG) {
         const b = building(g, s, type).find(x => x.built && x.tier < tier);
         if (!b) continue;
-        if (!sim.tryUpgrade(g, s, b).ok && !want) { const up = sim.BDEF[type].up[b.tier + 1]; reserve.c = up.c; reserve.e = up.e; }
+        const path = b.tier === 1 && sim.TREES && sim.TREES[type] ? (type === 'techlab' ? 'B' : 'A') : undefined; // trees (v2.13+): what it had before them
+        if (!sim.tryUpgrade(g, s, b, path).ok && !want) { const up = sim.BDEF[type].up[b.tier + 1]; reserve.c = up.c; reserve.e = up.e; }
         break;
       }
     }

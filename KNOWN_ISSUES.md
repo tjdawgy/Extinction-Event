@@ -10,6 +10,34 @@ Issues found during testing that are deliberately deferred. Each lists the step 
 
 ## Open
 
+### Tech Lab tree: numbers for the later balance and AI audit (v2.15)
+v2.15 was implementation only: no tuning, minimal AI. Measured, not tuned:
+- **Forced-path matrix** (Hard, each personality against itself, one side on Air Power, the other on Support, 40 matches each, zero timeouts, longest 23:01). Air Power beat Support 96–64 overall (60%). Per personality, Air Power–Support: Aggressor 18–22, Economist 33–7, Trickster 22–18, Turtle 23–17.
+  - The matrix ran on a build where the Leviathan and Recon Drone flew higher (z 118–130 and 130–145). Only their look changed before the push (z 88–98 and 104–114, so they stay below the top bar), plus shot travel time to them.
+- **Leviathans are almost never trained** (0% of units everywhere). The AI keeps about 100–300 credits and an army near its limit, so a 480/240, 7-pop unit seldom fits; cheaper units win the scoring every time.
+- **Recon Drones are lost and replaced often:** 13–21% of Support units by count (Economist 21%), 11–19% by value. That's despite the cap of 3 and waiting just behind the front, so the AI retrains them as they fall.
+- **Medicopters:** 1–7% by value on Support. The AI trains one per 8 infantry, once it has 6.
+- **Units trained, share by value** (per personality: Aggressor, Economist, Trickster, Turtle):
+  - On Air Power: Interceptors 0%, 12%, 10%, 6%; Leviathans 0%.
+  - On Support: Medicopters 0%, 1%, 7%, 2%; Recon Drones 0%, 19%, 11%, 12%.
+  - The Aggressor never reached its Tech Lab upgrade before its matches ended.
+- **The AI's Tech Lab defaults were chosen in v2.15 (not decided by design):**
+  - Economist and Trickster on Air Power (both favour aircraft);
+  - Aggressor on Support (Medicopters for its infantry);
+  - Turtle on Support (keeps Nanoweave, which it had before trees).
+- **Ladder sanity check:**
+  - Easy lost 0–20 to Normal and 0–20 to Hard.
+  - Normal vs Hard was 7–13 over 20 matches and 19–21 over 40 (main v2.14: 18–22 over 40).
+  - Bot rows, v2.15 against main, both with the fixed bots: calibrated:normal 7–13 vs 8–12, calibrated:hard 2–18 vs 2–18, turtle:normal 1–19 vs 0–20, eco:normal 7–13 vs 9–11, eco:hard 9–11 vs 5–15.
+  - Zero timeouts throughout.
+- **Test bots fixed in v2.15:** `tests/bots.js` called `tryUpgrade` without a path. Since v2.13 its bots never upgraded a Barracks or War Factory, and they held money for the failed upgrade. They now take path A, and Support for the Tech Lab (what they had before trees). Bot rows from v2.13–v2.14 are therefore not comparable with later ones.
+- **For the audit:**
+  - the AI's economy and army limit against expensive units (Leviathan, Hydra);
+  - Recon Drone losses;
+  - Air Power at 60%;
+  - the default paths;
+  - Nanoweave on Support (watch whether a second Tech Lab becomes mandatory).
+
 ### War Factory tree: numbers for the later balance and AI audit (v2.14)
 v2.14 was implementation only: no tuning, and the AI got minimal path support. Measured, not tuned:
 - **Forced-path matrix** (Hard, each personality against itself, one side forced onto Siege and the other onto Assault, 40 matches each, zero timeouts, longest 23:09). Siege beat Assault 133–27 overall (83%). Per personality, Siege–Assault: Aggressor 23–17, Economist 38–2, Trickster 35–5, Turtle 37–3.

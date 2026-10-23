@@ -89,7 +89,7 @@ test('enemy Interceptors do not set off an Interceptor race, and count little to
   const g = sim.newGame('hard'); g.sides[0].aiT = 1e9;
   base(g, 1, ['barracks', 'refinery', 'factory', 'techlab', 'habitat']);
   const side = g.sides[1]; side.res.c = side.res.e = 1e5;
-  side.aiT = 1e9; assert.ok(sim.tryUpgrade(g, 1, g.ents.find(e => e.side === 1 && e.type === 'techlab')).ok); run(g, 21);
+  side.aiT = 1e9; assert.ok(sim.tryUpgrade(g, 1, g.ents.find(e => e.side === 1 && e.type === 'techlab'), 'A').ok); run(g, 21); // v2.15: Air Power
   for (let i = 0; i < 6; i++) { const e = sim.spawnUnit(g, 0, 'interceptor', 900 + i * 5, 0); e.holdU = e.u; e.holdV = e.v; }
   g.sides[0].stance = 'hold';
   const eye = sim.spawnUnit(g, 1, 'rifle', 1000, 0); eye.holdU = 1000; eye.holdV = 0; // the AI sees them
@@ -97,6 +97,6 @@ test('enemy Interceptors do not set off an Interceptor race, and count little to
   const made = g.ents.filter(e => e.side === 1 && e.type === 'interceptor').length;
   assert.ok(made <= 1, `AI built ${made} Interceptors against Interceptors`);
   const unit = t => ({ type: t });
-  assert.strictEqual(sim.armyValue([unit('interceptor')]), (175 + 80 * 1.5) * 0.25);
+  assert.strictEqual(sim.armyValue([unit('interceptor')]), (150 + 60 * 1.5) * 0.25); // v2.15 cost 150/60
   assert.strictEqual(sim.armyValue([unit('tank')]), 200 + 40 * 1.5);
 });

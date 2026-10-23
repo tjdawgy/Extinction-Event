@@ -63,7 +63,7 @@ async function main() {
       await snap(`T${tier}, ${s ? 'red (enemy)' : 'blue (player)'} base`, `base-T${tier}-${s ? 'red' : 'blue'}`);
     }
     await scene(2, () => { // upgrades during combat
-      for (const b of game.ents) if (b.kind === 'b' && b.side === 0 && ['turret', 'barracks', 'techlab'].includes(b.type)) { tryUpgrade(game, 0, b); b.upProg = 0.55; }
+      for (const b of game.ents) if (b.kind === 'b' && b.side === 0 && ['turret', 'barracks', 'techlab'].includes(b.type)) { tryUpgrade(game, 0, b, 'A'); b.upProg = 0.55; }
       for (let i = 0; i < 10; i++) { const e = spawnUnit(game, 1, i < 6 ? 'rifle' : 'tank', hqPos(0).u + 330 + i * 12, (i % 3 - 1) * 40); e.holdU = e.u; e.holdV = e.v; }
       for (let i = 0; i < 6; i++) { const e = spawnUnit(game, 0, i < 4 ? 'heavy' : 'tank', hqPos(0).u + 250 + i * 10, (i % 3 - 1) * 40); e.holdU = e.u; e.holdV = e.v; }
       __frames(40);
