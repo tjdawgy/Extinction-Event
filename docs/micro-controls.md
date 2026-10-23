@@ -87,7 +87,14 @@ Zero timeouts in every row, and Easy < Normal < Hard holds. Every change is with
 
 1× and 6× are equal. 4× is about 4% higher in script time (+1.6% in frame time). The runs at 1× and 6× show no matching rise, so I read it as noise, but I'm reporting it.
 
-Memory over 15 game minutes: see the memory section at the end.
+Memory over 15 game minutes, run back to back:
+
+| Version | Heap after GC (1 / 5 / 10 / 15 min) | DOM nodes at 15 min |
+|---|---|---|
+| v2.11 (main) | 3.43 / 3.99 / 4.24 / 4.40 MB | 462 |
+| v2.12 | 3.47 / 4.00 / 4.08 / 4.41 MB | 455 |
+
+Equal: no memory growth from the micro controls.
 
 ## Screenshots (`docs/screenshots`)
 
@@ -108,5 +115,5 @@ The "37/12" army count in the screenshots comes from the test setup, which spawn
 
 **How to open this branch's version** (main stays at v2.11):
 
-- Open the private artifact link I'll post in my report. It's the branch's `index.html`, published as-is.
+- **Easiest:** open the private artifact https://claude.ai/artifact/L7Z2yrHMaLRrVdRheheRnB. It's this branch's `index.html` (v2.12), published as-is, and the title screen shows v2.12. Its saves are kept separately from your main version's.
 - Or on GitHub: open `index.html` on the `micro-controls` branch, tap "Raw", and load it the way you normally load the game.
