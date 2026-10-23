@@ -520,7 +520,8 @@ test('Extinction Event: warning banner (no taps), meteors only on ground the pla
       shot({ winner: 1, result: { how: 'storm' } }),
       shot({ winner: -1, result: { how: 'draw', reason: 'limit', by: 'credits', score: [1000, 1000] } }),
     ];
-    return { banner, bad, meteors, texts, scoreLine: (shot({ winner: 0, result: { how: 'score', reason: 'limit', by: 'score', score: [5200, 3100] } }), document.body.innerText.includes('Remaining strength')) };
+    $('box').scrollTop = 1e4; const g0 = game; showEnd(); const atTop = $('box').scrollTop === 0; // a scrolled screen before must not hide the title
+    return { atTop, banner, bad, meteors, texts, scoreLine: (shot({ winner: 0, result: { how: 'score', reason: 'limit', by: 'score', score: [5200, 3100] } }), document.body.innerText.includes('Remaining strength')) };
   });
   assert.ok(r.banner.shown && /Extinction event in 0:2\d/.test(r.banner.text), JSON.stringify(r.banner));
   assert.strictEqual(r.banner.taps, 'none');
@@ -530,6 +531,7 @@ test('Extinction Event: warning banner (no taps), meteors only on ground the pla
   assert.match(r.texts[1], /^Defeat \| Your Command HQ fell to the Extinction Event/);
   assert.match(r.texts[2], /^Mutual extinction/);
   assert.ok(r.scoreLine, 'scores are shown');
+  assert.ok(r.atTop, 'the end screen opens at its top');
   assert.deepStrictEqual(errors, []);
   await page.close();
 });
