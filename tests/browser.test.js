@@ -51,7 +51,7 @@ test('match start: wide view, GET READY 3-2-1, GO; taps wait for GO', { skip }, 
 test('HQ readouts in the top bar: shielded, exposed, destroyed', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
   await page.click('#bPlay');
-  await page.evaluate(() => { game.countdown = 0; tryBuild(game, 0, 'refinery'); update(game, 1 / 30); refreshUI(true); });
+  await page.evaluate(() => { game.countdown = 0; tryBuild(game, 0, 'refinery'); for (const b of game.ents) if (b.type === 'refinery') { b.built = true; b.progress = 1; } update(game, 1 / 30); refreshUI(true); }); // only a finished building shields the HQ (v2.11)
   const read = () => page.evaluate(() => [0, 1].map(k => ({ cls: $('hq' + k).className, txt: $('hq' + k).querySelector('small').textContent, w: $('hq' + k).querySelector('.hb i').style.width, aria: $('hq' + k).getAttribute('aria-label') })));
   let r = await read();
   assert.strictEqual(r[0].cls, 'hqr shielded'); assert.strictEqual(r[0].txt, 'Shielded');
