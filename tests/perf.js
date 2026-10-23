@@ -1,5 +1,5 @@
 // Performance measurement in headless Chromium at iPhone landscape size (858×396, 2× pixels).
-//   node tests/perf.js [battle] [memory] [--secs=15] [--rates=1,4,6] [--quality=2|1|0|auto] [--abilities | --abilities-spam] [--json=out.json]
+//   node tests/perf.js [battle] [memory] [--secs=15] [--rates=1,4,6] [--quality=2|1|0|auto] [--abilities | --abilities-spam] [--storm] [--json=out.json]
 // battle: both armies kept near the 80-population cap and fighting mid-map in full view, measured
 //         at each CPU throttle rate (Chromium DevTools CPU throttling simulates a slower phone).
 //         Reports the script time per frame (update + render) and the time between frames.
@@ -30,13 +30,21 @@ const ARMY = { rifle: 20, heavy: 8, sniper: 4, tank: 4, artillery: 2, titan: 1, 
 const BATTLE = army => {
   game.countdown = 0; hideCountdown();
   for (const s of [0, 1]) { game.sides[s].aiT = 1e9; game.sides[s].stance = 'attack'; game.sides[s].res.c = game.sides[s].res.e = 0; }
-  camTouched = true; cam.x = L / 2; cam.vx = 0; clampCam();
+  // --storm (v2.6): the fight moves next to the player's base, both sides get buildings, and the clock is at 21:40,
+  // inside the Extinction Event (meteors on every building in view); buildings are kept standing so the match goes on
+  const storm = !!window.__storm, mid = storm ? hqPos(0).u + 420 : L / 2;
+  if (storm) {
+    for (const s of [0, 1]) { game.sides[s].res.c = game.sides[s].res.e = 1e5; for (const k of ['refinery', 'reactor', 'barracks', 'turret']) { tryBuild(game, s, k); for (const b of game.ents) if (b.type === k && b.side === s) { b.built = true; b.progress = 1; } } game.sides[s].res.c = game.sides[s].res.e = 0; }
+    game.t = 1300;
+  }
+  camTouched = true; cam.x = mid; cam.vx = 0; clampCam();
   const topUp = () => {
     for (const s of [0, 1]) {
       game.sides[s].hq.hp = game.sides[s].hq.maxHp;
+      if (storm) { for (const b of game.ents) if (b.kind === 'b') b.hp = b.maxHp; game.t = Math.min(game.t, 1300); }
       for (const [type, n] of Object.entries(army)) {
         const have = game.ents.filter(e => e.kind === 'u' && e.side === s && e.type === type && e.hp > 0).length;
-        for (let i = have; i < n; i++) spawnUnit(game, s, type, L / 2 + (s ? 1 : -1) * (140 + Math.random() * 120), (Math.random() - 0.5) * 200);
+        for (let i = have; i < n; i++) spawnUnit(game, s, type, mid + (s ? 1 : -1) * (140 + Math.random() * 120), (Math.random() - 0.5) * 200);
       }
     }
   };
@@ -66,14 +74,14 @@ const stats = a => {
   return { frames: s.length, avg: +(s.reduce((x, y) => x + y, 0) / n).toFixed(2), p95: +(s[Math.floor(n * 0.95)] || 0).toFixed(2), max: +(s[s.length - 1] || 0).toFixed(1), over50: s.filter(x => x > 50).length, over33: s.filter(x => x > 33.4).length };
 };
 
-async function battle(browser, rates, secs, quality, abil) {
+async function battle(browser, rates, secs, quality, abil, storm) {
   const out = {};
   for (const rate of rates) {
     const { page, errors } = await openPage(browser, PHONE, { init: SEED });
     await page.click('#bPlay');
     await page.waitForTimeout(300);
     await page.evaluate(PROBE);
-    await page.evaluate(a => { window.__abil = a; }, abil);
+    await page.evaluate(([a, st]) => { window.__abil = a; window.__storm = st; }, [abil, storm]);
     await page.evaluate(BATTLE, ARMY);
     await page.evaluate(q => { if (typeof VFX !== 'undefined') VFX.lock = q === 'auto' ? null : +q; }, quality); // effect quality (v2.3+): a level, or auto
     const cdp = await page.context().newCDPSession(page);
@@ -97,17 +105,18 @@ async function battle(browser, rates, secs, quality, abil) {
   return out;
 }
 
-async function memory(browser) {
+async function memory(browser, storm) {
   const { page, errors } = await openPage(browser, PHONE, { init: SEED });
   const cdp = await page.context().newCDPSession(page);
   await cdp.send('HeapProfiler.enable');
   const heap = async () => { await cdp.send('HeapProfiler.collectGarbage'); const h = await cdp.send('Runtime.getHeapUsage'); return +(h.usedSize / 1048576).toFixed(2); };
   const nodes = async () => (await cdp.send('Memory.getDOMCounters')).nodes;
   await page.click('#bPlay'); // a tap: starts audio (v2.4+)
+  await page.evaluate(st => { window.__storm = st; }, storm);
   await page.waitForTimeout(300);
   await page.evaluate(() => {
     window.__played = 0; window.__matches = 0;
-    window.__newMatch = () => { game = newGame('hard', { autoPlayer: true, autoDiff: 'hard' }); resize(); camTouched = true; cam.x = L / 2; clampCam(); hideOverlay(); running = true; paused = false; speed = 3; window.__matches++; };
+    window.__newMatch = () => { game = newGame('hard', { autoPlayer: true, autoDiff: 'hard' }); if (window.__storm) game.t = 1150; /* --storm: every match plays through the Extinction Event */ resize(); camTouched = true; cam.x = L / 2; clampCam(); hideOverlay(); running = true; paused = false; speed = 3; window.__matches++; };
     window.__newMatch();
     setInterval(() => { // count game time across matches; start a new match if one ends
       if (window.__lastT !== undefined && game.t >= window.__lastT) window.__played += game.t - window.__lastT;
@@ -132,7 +141,7 @@ async function main() {
   const args = process.argv.slice(2);
   const opt = k => (args.find(a => a.startsWith(`--${k}=`)) || '').split('=')[1];
   const which = args.filter(a => !a.startsWith('--'));
-  const secs = +(opt('secs') || 15), rates = (opt('rates') || '1,4,6').split(',').map(Number), quality = opt('quality') || '2', abil = args.includes('--abilities-spam') ? 'spam' : args.includes('--abilities');
+  const secs = +(opt('secs') || 15), rates = (opt('rates') || '1,4,6').split(',').map(Number), quality = opt('quality') || '2', abil = args.includes('--abilities-spam') ? 'spam' : args.includes('--abilities'), storm = args.includes('--storm');
   const pw = findPlaywright();
   if (!pw) { console.error('Playwright is not installed'); process.exit(1); }
   const browser = await pw.chromium.launch();
@@ -141,8 +150,8 @@ async function main() {
     const { page } = await openPage(browser, PHONE);
     res.version = await page.evaluate(() => VERSION); await page.close();
     console.log('version', res.version);
-    if (!which.length || which.includes('battle')) res.battle = await battle(browser, rates, secs, quality, abil);
-    if (!which.length || which.includes('memory')) res.memory = await memory(browser);
+    if (!which.length || which.includes('battle')) res.battle = await battle(browser, rates, secs, quality, abil, storm);
+    if (!which.length || which.includes('memory')) res.memory = await memory(browser, storm);
   } finally { await browser.close(); }
   if (opt('json')) fs.writeFileSync(opt('json'), JSON.stringify(res, null, 1));
 }
