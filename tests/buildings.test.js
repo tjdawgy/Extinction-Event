@@ -94,7 +94,7 @@ test('the drawn tier is always the gameplay tier: built, upgrading, under constr
     r.built = { drawn: log.filter(x => x.side === 0).length, wrong: wrong(log).length };
     r.cached = log.filter(x => x.side === 0).every(x => BCACHE.map.has(x.type + x.side + x.tier));
     // mid-upgrade: the current tier, plus the next one rising under the scaffold
-    const up = mine.find(b => b.type === 'barracks'); up.tier = 1; tryUpgrade(game, 0, up); up.upProg = 0.5;
+    const up = mine.find(b => b.type === 'barracks'); up.tier = 1; tryUpgrade(game, 0, up, 'A'); up.upProg = 0.5;
     log = frameAt(at); r.upgrading = log.filter(x => x.id === up.id).map(x => x.tier);
     up.upProg = 0.999; for (let i = 0; i < 400 && up.upgrading; i++) update(game, 1 / 30);
     log = frameAt(at); r.afterUpgrade = [up.tier, log.filter(x => x.id === up.id).map(x => x.tier)];

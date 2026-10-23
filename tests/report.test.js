@@ -52,7 +52,7 @@ function checkExact(g, label) {
     assert.strictEqual(lines.filter(l => l.key).length + paired.length, keys, `${label} side ${s}: every key event listed (a start and its finish share a line)`);
     assert.strictEqual(paired.filter(l => l.code === 'B').length + lines.filter(l => l.code === 'F').length, of('F'), `${label}: every finished building accounted for`);
     assert.strictEqual(paired.filter(l => l.code === 'U').length + lines.filter(l => l.code === 'V').length, of('V'), `${label}: every finished upgrade accounted for`);
-    for (const l of paired) assert.match(l.txt, l.code === 'B' ? /^[A-Z][\w ]+ \d\d:\d\d → \d\d:\d\d$/ : /^[A-Z][\w ]+ T[23] \d\d:\d\d → \d\d:\d\d$/, `${label}: ${l.txt}`);
+    for (const l of paired) assert.match(l.txt, l.code === 'B' ? /^[A-Z][\w ]+ \d\d:\d\d → \d\d:\d\d$/ : /^[A-Z][\w ]+ T[23]( · [A-Z][\w ]+)? \d\d:\d\d → \d\d:\d\d$/, `${label}: ${l.txt}`);
     for (const l of paired) assert.ok(l.t1 >= l.t, `${label}: finish after start`);
     assert.ok(lines.length <= Math.max(sim.LINE_MAX, keys + 20), `${label} side ${s}: ${lines.length} lines, ${keys} key events`);
     for (const k of Object.keys(sim.UDEF)) assert.strictEqual(lines.filter(l => l.code === 'T' && l.type === k).reduce((a, l) => a + l.n, 0), L.tot[s].trained[k] || 0, `${label} ${k} in lines`);
