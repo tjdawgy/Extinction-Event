@@ -185,6 +185,43 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .stats div{background:rgba(30,46,76,.6);border:1px solid var(--line);border-radius:10px;padding:8px;text-align:center}
 .stats b{display:block;font-size:19px;font-variant-numeric:tabular-nums}
 .stats small{color:var(--muted);font-size:11.5px}
+/* Post-match report (v2.9): tabs, a scrolling pane, and the footer (Play again, Main menu, difficulty) always in view */
+.box.rep{height:100%;display:flex;flex-direction:column;padding:10px 14px 0;overflow:hidden}
+.rep .top{display:flex;align-items:center;gap:10px}
+.rep .top h1{font-size:22px}
+.rep .rtabs{display:flex;flex-direction:row;margin-left:auto}
+.rep .rtabs button{height:28px;font-size:12.5px;white-space:nowrap}
+.rep p.sub{margin:3px 0 0;font-size:12.5px;max-width:none}
+.rep .flav{color:var(--text);font-weight:700}
+.rep .pane{flex:1;min-height:0;overflow:auto;margin-top:6px;padding-bottom:8px;-webkit-overflow-scrolling:touch}
+.rep .foot{display:flex;gap:8px;align-items:center;padding:7px 0 9px;border-top:1px solid var(--line);margin-top:2px}
+.rep .foot .big,.rep .foot .ghost{height:38px;padding:0 14px;font-size:14px}
+.rep .foot .seg button{height:28px;font-size:12px}
+.rep table{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
+.rep th{color:var(--muted);font-weight:700;text-align:left;padding:3px 6px 3px 0;white-space:nowrap;vertical-align:top}
+.rep td{padding:3px 6px;color:var(--text);vertical-align:top} .rep td.e{color:#ffb0b0}
+.rep tr+tr{border-top:1px solid rgba(120,150,200,.12)}
+.rep .note{font-size:11.5px;color:var(--muted);margin:5px 0 0}
+.rep .tl{list-style:none;margin:0;padding:0;font-size:12.5px}
+.rep .tl li{display:flex;gap:8px;padding:4px 0;border-top:1px solid rgba(120,150,200,.12)}
+.rep .tl b{min-width:42px;color:var(--blue);font-variant-numeric:tabular-nums}
+.rep .tag{font-size:10.5px;padding:0 5px;border-radius:5px;background:rgba(255,255,255,.08);color:var(--muted);white-space:nowrap;align-self:flex-start}
+.rep .les{margin:0 0 8px;padding:6px 8px;border:1px solid var(--line);border-radius:10px;font-size:12.5px}
+.rep .les div{margin-top:2px} .rep .les em{font-style:normal;font-weight:800;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;margin-right:5px}
+.rep .f{color:#9fe6ff} .rep .i{color:#ffd34d} .rep .r{color:#5dff8a}
+.rep svg{display:block;width:100%;height:46px;margin:2px 0 2px}
+.rep .tbar{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.rep .tbar .ghost{height:30px;padding:0 10px;font-size:12.5px;border-radius:9px}
+.rep .ok{color:var(--good);font-weight:800;font-size:12.5px}
+.rep .tw{display:grid;grid-template-columns:46px 1fr 54px 1fr;font-size:12px;font-variant-numeric:tabular-nums}
+.rep .tw>*{padding:2px 4px;border-bottom:1px solid rgba(120,150,200,.08)}
+.rep .tw h4{margin:0;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid var(--line)}
+.rep .tw .mh{color:#39c8ff;grid-column:span 2} .rep .tw .th{color:#ff6b6b;grid-column:span 2;border-left:1px solid var(--line);padding-left:8px}
+.rep .tw b{font-weight:700} .rep .tw .tme{color:#39c8ff} .rep .tw .tthem{color:#ff6b6b;border-left:1px solid var(--line);padding-left:8px}
+.rep .tw .me{color:#8fdcff} .rep .tw .them{color:#ff9a9a} .rep .tw .k{font-weight:700} .rep .tw .u{opacity:.75}
+.rep .cpy{position:absolute;inset:44px 12px 56px;background:#0a1222;border:1px solid var(--blue);border-radius:12px;padding:8px;display:flex;flex-direction:column;gap:6px;z-index:3}
+.rep .cpy p{margin:0;font-size:12px} .rep .cpy textarea{flex:1;width:100%;background:#050a14;color:#cfd8e6;border:1px solid var(--line);border-radius:8px;font:11px ui-monospace,Menlo,monospace;padding:6px;-webkit-user-select:text;user-select:text}
+.rep .cpy .ghost{height:30px}
 #rotate{position:fixed;inset:0;z-index:20;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:var(--bg);text-align:center;padding:24px}
 #rotate .ph{width:40px;height:66px;border:3px solid var(--blue);border-radius:9px;animation:rot 2.2s ease-in-out infinite}
 #rotate small{color:var(--muted);font-size:13px;max-width:30ch}
@@ -237,7 +274,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.8'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.9'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -517,7 +554,7 @@ const rallyU = s => hqU(s) + dirOf(s) * 300;
 function newGame(diffKey, opts = {}) {
   const g = { t: 0, ents: [], projs: [], fx: [], parts: [], sides: [], abil: [], over: false, winner: -1, nid: 1,
     diff: DIFF[diffKey] || DIFF.normal, diffKey, events: [], auto: !!opts.autoPlayer, autoDiff: opts.autoDiff || 'normal', shake: 0, front: [null, null], countdown: opts.countdown || 0,
-    nodes: NODE_U.map((u, i) => ({ id: i, u, v: 0, prog: 0, owner: null, c: [0, 0] })) };
+    nodes: NODE_U.map((u, i) => ({ id: i, u, v: 0, prog: 0, owner: null, c: [0, 0] })), log: null };
   for (let s = 0; s < 2; s++) {
     g.sides.push({ res: { c: 300, e: 60 }, stance: s === 0 ? 'hold' : 'retreat', stanceAt: 0, pushTo: null, slots: new Array(SLOT_COUNT).fill(null),
       hq: null, aiT: 1 + s * 0.5, stats: { built: 0, kills: 0, lost: 0, earned: 0 }, lastAlert: -99, buff: false, ab: newAb(0), abK: null, abEnd: 0 });
@@ -527,6 +564,7 @@ function newGame(diffKey, opts = {}) {
   }
   g.sides[1].persona = rollPersona(opts.persona); // secret: never shown until the match is over
   if (g.auto) g.sides[0].persona = rollPersona(opts.autoPersona);
+  g.log = newLog(0); // the match log (never read by the SIM)
   g.fog = [newFog(g, 0), newFog(g, 1)];
   updateVision(g);
   return g;
@@ -588,6 +626,7 @@ function tryBuild(g, s, type, want = -1) {
   side.res.c -= d.cost.c; side.res.e -= d.cost.e;
   const nb = mkBuilding(g, s, type, slot);
   nb.spent = { c: d.cost.c, e: d.cost.e };
+  logSpend(g, s, 'b', d.cost.c, d.cost.e); lg(g, s, 'B', type);
   return { ok: true, msg: `Building ${d.name}` };
 }
 
@@ -602,7 +641,8 @@ function trySell(g, s, b) {
   if (b.hp <= 0) return { ok: false, msg: 'That building is gone' };
   const r = sellValue(b);
   side.res.c += r.c; side.res.e += r.e;
-  for (const q of b.queue) { side.res.c += UDEF[q].cost.c; side.res.e += UDEF[q].cost.e; }
+  for (const q of b.queue) { side.res.c += UDEF[q].cost.c; side.res.e += UDEF[q].cost.e; logSpend(g, s, 'u', -UDEF[q].cost.c, -UDEF[q].cost.e); } // queued units are refunded: never spent
+  if (g.log) { const T = g.log.tot[s]; T.sold[0] += r.c; T.sold[1] += r.e; T.bSold++; lg(g, s, 'S', b.type, b.tier); }
   b.queue.length = 0; b.hp = 0; b.dead = true; b.sold = true;
   if (b.slot >= 0 && side.slots[b.slot] === b) side.slots[b.slot] = null;
   for (let i = 0; i < 10; i++) {
@@ -625,6 +665,7 @@ function tryUpgrade(g, s, b) {
   side.res.c -= up.c; side.res.e -= up.e;
   b.spent.c += up.c; b.spent.e += up.e;
   b.upgrading = true; b.upProg = 0;
+  logSpend(g, s, 'up', up.c, up.e); lg(g, s, 'U', b.type, b.tier + 1);
   return { ok: true, msg: `Upgrading ${d.name} to T${b.tier + 1}` };
 }
 
@@ -643,6 +684,7 @@ function tryTrain(g, s, type) {
   if (p.queue.length >= 5) return { ok: false, msg: 'Production queue is full' };
   side.res.c -= d.cost.c; side.res.e -= d.cost.e;
   p.queue.push(type);
+  logSpend(g, s, 'u', d.cost.c, d.cost.e);
   return { ok: true, msg: `${d.name} queued` };
 }
 
@@ -660,7 +702,7 @@ function spawnUnit(g, s, type, u, v) {
 function refreshShields(g) {
   for (let s = 0; s < 2; s++) {
     const hq = g.sides[s].hq, sh = g.ents.some(b => b.kind === 'b' && b.side === s && b.type !== 'hq' && b.hp > 0);
-    if (hq.shielded && !sh) ev(g, { type: 'shieldDown', side: s, seen: !!g.fog && visibleTo(g, 1 - s, hq) });
+    if (hq.shielded && !sh) { ev(g, { type: 'shieldDown', side: s, seen: !!g.fog && visibleTo(g, 1 - s, hq) }); lg(g, s, 'H'); }
     hq.shielded = sh;
   }
 }
@@ -738,9 +780,11 @@ function update(g, dt) {
   for (let s = 0; s < 2; s++) {
     const inc = income(g, s), side = g.sides[s];
     side.res.c += inc.c * dt; side.res.e += inc.e * dt; side.stats.earned = (side.stats.earned || 0) + inc.c * dt;
+    if (g.log) { const E = g.log.tot[s].earn; E[0] += inc.c * dt; E[1] += inc.e * dt; }
     side.buff = hasTier(g, s, 'techlab', 3);
   }
   updateNodes(g, dt);
+  logTick(g, dt);
   const foes = [[], []]; // foes[s] = everything hostile to side s
   g.front = [null, null];
   for (const e of g.ents) {
@@ -776,7 +820,11 @@ function updateNodes(g, dt) {
     let o = n.owner;
     if (n.prog >= 100) o = 0; else if (n.prog <= -100) o = 1;
     else if ((o === 0 && n.prog <= 0) || (o === 1 && n.prog >= 0)) o = null;
-    if (o !== n.owner) { ev(g, { type: 'node', side: o === null ? n.owner : o, lost: o === null }); n.owner = o; }
+    if (o !== n.owner) {
+      ev(g, { type: 'node', side: o === null ? n.owner : o, lost: o === null });
+      if (g.log) { const sd = o === null ? n.owner : o; g.log.tot[sd][o === null ? 'nodeLost' : 'nodeCap']++; lg(g, sd, o === null ? 'L' : 'N', n.id); }
+      n.owner = o;
+    }
   }
 }
 
@@ -790,6 +838,7 @@ function tryRepair(g, s, b) {
   const cost = repairCost(b);
   if (side.res.c < cost) return { ok: false, msg: `Need ${Math.ceil(cost - side.res.c)} more credits` };
   side.res.c -= cost; b.repair = (b.repair || 0) + missing;
+  logSpend(g, s, 'rep', cost, 0);
   return { ok: true, msg: `Repairing ${d.name}` };
 }
 const repairCost = b => Math.ceil(Math.max(0, b.maxHp - b.hp - (b.repair || 0)) * 0.3);
@@ -802,7 +851,7 @@ function updateBuilding(g, b, foes, dt) {
     const dp = dt / d.time;
     b.progress = Math.min(1, b.progress + dp);
     b.hp = Math.min(b.maxHp, b.hp + b.maxHp * 0.85 * dp);
-    if (b.progress >= 1) { b.built = true; ev(g, { type: 'built', side: b.side, name: d.name }); }
+    if (b.progress >= 1) { b.built = true; ev(g, { type: 'built', side: b.side, name: d.name }); if (g.log) { logAdd(g.log.tot[b.side].bBuilt, b.type); lg(g, b.side, 'F', b.type); } }
     return;
   }
   // Paid repair is fast; after a quiet spell every building also slowly patches itself up
@@ -820,6 +869,7 @@ function updateBuilding(g, b, foes, dt) {
       b.tier++; b.maxHp = d.hp * hpMul(d, b.tier); b.hp = Math.min(b.maxHp, b.hp + b.maxHp - old);
       b.upgrading = false; b.upProg = 0;
       ev(g, { type: 'upgraded', side: b.side, name: d.name, tier: b.tier });
+      if (g.log) { g.log.tot[b.side].bUp++; lg(g, b.side, 'V', b.type, b.tier); }
     }
   }
   if (b.queue.length) {
@@ -828,6 +878,7 @@ function updateBuilding(g, b, foes, dt) {
     if (b.prodT >= UDEF[ut].time) {
       b.prodT = 0; b.queue.shift();
       spawnUnit(g, b.side, ut, b.u + dirOf(b.side) * (b.half + 10), b.v + rand(-12, 12));
+      if (g.log) { logAdd(g.log.tot[b.side].trained, ut); lgUnit(g, b.side, 'T', ut); }
     }
   }
   if (b.type === 'refinery' && Math.random() < dt * 2.2) {
@@ -985,6 +1036,7 @@ function useAbility(g, s, k, u, v) {
   if (!r.ok) return r;
   const A = ABIL[k], side = g.sides[s];
   side.res.c -= A.cost.c; side.res.e -= A.cost.e;
+  logSpend(g, s, 'ab', A.cost.c, A.cost.e); logAbility(g, s, k);
   for (const k2 of ABIL_ORDER) side.ab[k2] = Math.max(side.ab[k2], g.t + A.cd); // the shared cooldown
   side.abK = k; side.abEnd = g.t + A.cd;
   if (k === 'shield') {
@@ -1004,7 +1056,7 @@ function updateAbilities(g, dt) {
         if (e.side !== a.side || e.hp <= 0 || e.hp >= e.maxHp || (e.kind === 'b' && (!e.built || g.t >= EXT.start)) || !inAbil(e, a.u, a.v, A.r)) continue; // in the storm it heals units only
         const paid = e.kind === 'b' && e.repair > 0 ? 0.06 : 0; // paid Repair heals 6%/s: the faster one applies
         const rate = Math.max(0, A.rate - paid);
-        if (rate > 0) e.hp = Math.min(e.maxHp, e.hp + e.maxHp * rate * dt);
+        if (rate > 0) { const h0 = e.hp; e.hp = Math.min(e.maxHp, e.hp + e.maxHp * rate * dt); logEffect(g, a.side, 'repair', e.hp - h0); }
       }
     }
     if (a.k === 'strike' && g.t >= a.end && !a.done) {
@@ -1013,7 +1065,7 @@ function updateAbilities(g, dt) {
       for (const e of g.ents) {
         if (e.side === a.side || e.hp <= 0 || (e.kind === 'u' && UDEF[e.type].air)) continue;
         const d = Math.max(0, Math.hypot(e.u - a.u, e.v - a.v) - (e.kind === 'b' ? e.half : 0));
-        if (d <= A.r) damage(g, e, A.dmg - (A.dmg - A.edge) * d / A.r, 'orbital', a.side);
+        if (d <= A.r) { const h0 = e.hp; damage(g, e, A.dmg - (A.dmg - A.edge) * d / A.r, 'orbital', a.side); logEffect(g, a.side, 'strike', h0 - Math.max(0, e.hp), e.hp <= 0 ? 1 : 0); }
       }
     }
   }
@@ -1029,11 +1081,12 @@ function updateAbilities(g, dt) {
 const EXT = { show: 1080, warn: 1170, start: 1200, base: 0.003, ramp: 0.0075, repairMul: 0.5, window: 5, limit: 1620 };
 const stormRate = t => t < EXT.start ? 0 : EXT.base + EXT.ramp * (t - EXT.start) / 60; // share of max HP lost per second
 function updateStorm(g, dt, t0) {
-  if (t0 < EXT.warn && g.t >= EXT.warn) ev(g, { type: 'extWarn' });
-  if (t0 < EXT.start && g.t >= EXT.start) ev(g, { type: 'extStart' });
+  if (t0 < EXT.warn && g.t >= EXT.warn) { ev(g, { type: 'extWarn' }); lg(g, -1, 'W'); }
+  if (t0 < EXT.start && g.t >= EXT.start) { ev(g, { type: 'extStart' }); lg(g, -1, 'X'); }
   const r = stormRate(g.t);
   if (!r) return;
   for (const b of g.ents) if (b.kind === 'b' && b.hp > 0) {
+    if (g.log) g.log.tot[b.side].storm += Math.min(b.hp, b.maxHp * r * dt);
     b.hp -= b.maxHp * r * dt;
     if (b.hp <= 0) kill(g, b, -1);
   }
@@ -1043,6 +1096,7 @@ function finish(g, winner, how, extra = {}) {
   g.over = true; g.winner = winner; g.endHold = null;
   g.result = { how, ...extra };
   ev(g, { type: 'over', winner, how });
+  if (g.log) { lg(g, -1, 'E', how, winner); logAbilityDone(g.log, 0); logAbilityDone(g.log, 1); }
 }
 function tieBreak(g, reason) { // score, then kills, then credits earned; equal on all three is a draw
   const sc = [0, 1].map(s => Math.round(sideScore(g, s))), k = g.sides.map(sd => sd.stats.kills), c = g.sides.map(sd => Math.round(sd.stats.earned || 0));
@@ -1116,7 +1170,9 @@ function damage(g, e, amt, weapon, fromSide) {
   const armor = e.kind === 'b' ? 'building' : UDEF[e.type].armor;
   const mult = DMG[weapon][armor];
   if (!mult) return;
-  e.hp -= amt * mult * (g.sides[e.side].buff ? 0.85 : 1) * (e.shT > g.t ? 1 - ABIL.shield.cut : 1); // Emergency Shield
+  const dmg = amt * mult * (g.sides[e.side].buff ? 0.85 : 1);
+  if (e.shT > g.t) { e.hp -= dmg * (1 - ABIL.shield.cut); logEffect(g, e.side, 'shield', dmg * ABIL.shield.cut); } // Emergency Shield
+  else e.hp -= dmg;
   e.hitT = 0.12;
   if (e.kind === 'b') {
     e.lastHit = g.t;
@@ -1133,6 +1189,7 @@ function kill(g, e, by) {
   if (e.kind === 'u') {
     side.stats.lost++;
     if (by >= 0) g.sides[by].stats.kills++;
+    if (g.log) { logAdd(g.log.tot[e.side].lost, e.type); if (by >= 0) logAdd(g.log.tot[by].killed, e.type); lgUnit(g, e.side, 'K', e.type); logLoss(g, e); }
     const d = UDEF[e.type], w = P(e.u, e.v, aimZ(e));
     fxBoom(g, w.x, w.y, d.air ? 28 : e.type === 'rifle' || e.type === 'sniper' ? 9 : e.type === 'heavy' ? 15 : e.type === 'titan' ? 46 : 30);
     return;
@@ -1140,6 +1197,7 @@ function kill(g, e, by) {
   if (e.slot >= 0 && side.slots[e.slot] === e) side.slots[e.slot] = null;
   for (let i = 0; i < 3; i++) { const w = P(e.u + rand(-e.half, e.half) * 0.6, e.v + rand(-e.half, e.half) * 0.6, rand(10, e.h * 0.7)); fxBoom(g, w.x, w.y, rand(36, 56)); }
   ev(g, { type: 'destroyed', side: e.side, name: BDEF[e.type].name, hq: e.type === 'hq', seen: visibleTo(g, 1 - e.side, e) });
+  if (g.log) { logAdd(g.log.tot[e.side].bLost, e.type); lg(g, e.side, 'D', e.type, e.tier, by); }
   if (e.type === 'hq') {
     side.hqBy = by; side.hqT = g.t; // the match result is settled at the end of this tick (resolveEnd), never by code order
     for (let i = 0; i < 6; i++) { const w = P(e.u + rand(-50, 50), e.v + rand(-50, 50), rand(0, 100)); fxBoom(g, w.x, w.y, rand(50, 80)); }
@@ -1368,9 +1426,10 @@ function aiUpdate(g, s, dt) {
     side.launchV = mode === 'all' || mode === 'siege' ? myV : 0;
     if (was === 'attack') return;
     // Trickster: some pushes are feints that pull back; two feints in a row and the next push is real
-    if (P.feint && (side.feintStreak || 0) < 2 && Math.random() < P.feint) { side.feintUntil = g.t + rand(8, 15); side.feintStreak = (side.feintStreak || 0) + 1; side.launchV = 0; log.feints++; }
+    let feint = 0;
+    if (P.feint && (side.feintStreak || 0) < 2 && Math.random() < P.feint) { side.feintUntil = g.t + rand(8, 15); side.feintStreak = (side.feintStreak || 0) + 1; side.launchV = 0; log.feints++; feint = 1; }
     else { side.feintStreak = 0; log.attacks++; if (log.firstAttack === null) log.firstAttack = g.t; if (P.kind === 'trickster') P.wave = rand(0.8, 1.3); }
-    ev(g, { type: 'aiAttack', side: s, mode });
+    ev(g, { type: 'aiAttack', side: s, mode }); lg(g, s, 'G', mode, feint);
   };
   // weak spots it can see: a field node the enemy holds with little around it, or an enemy that just spent its army on us
   const oppNode = g.nodes[1]; // the middle node (the enemy's own node sits under its HQ guns)
@@ -1401,7 +1460,7 @@ function aiUpdate(g, s, dt) {
     failed();
     side.stance = 'retreat'; side.pushMode = null; side.stanceAt = g.t; // too few to crack the base defenses: regroup instead of trickling in
   } else if (side.pushMode === 'field' || side.pushMode === 'node') {
-    if (bold && nSiege >= 2 && myV >= thV && (myV >= wave * 0.7 || full)) { side.pushTo = siegeLine; side.pushMode = 'siege'; side.launchV = myV; side.stanceAt = g.t; ev(g, { type: 'aiAttack', side: s, mode: 'siege' }); }
+    if (bold && nSiege >= 2 && myV >= thV && (myV >= wave * 0.7 || full)) { side.pushTo = siegeLine; side.pushMode = 'siege'; side.launchV = myV; side.stanceAt = g.t; ev(g, { type: 'aiAttack', side: s, mode: 'siege' }); lg(g, s, 'G', 'siege'); }
     else if (bold && myV >= 300 && ((myV >= (thV + hqVal) * 1.35 && myV >= wave * 0.6) || (full && myV > (thV + hqVal) * 1.05))) { side.pushTo = null; side.pushMode = 'all'; side.launchV = myV; side.stanceAt = g.t; }
     else if (side.pushMode === 'node' && !nodeLost && myNode.owner === s && myV >= 300 && myV >= thV * 0.9) { side.pushTo = fieldLine; side.pushMode = 'field'; side.stanceAt = g.t; }
   } else if (side.pushTo !== null && bold && (myV > (thV + hqVal) * 1.3 || (since > 50 && myV > thV * 1.1))) {
@@ -1429,9 +1488,86 @@ function aiSpotter(g, s) {
   side.spotU = clamp(-dir * (front + SIGHT[sp.type] - 15), 0, L);
 }
 
+/* ---------- Match log (v2.9) ----------
+   Written by the SIM for the post-match report and never read by it, so play is unchanged; the UI reads it only
+   once the match is over. Bounded: at most LOG_CAP events, an army and bank sample every 15 s, losses per 10 s.
+   An event is [t, side, code, ...]: B started, F finished, U upgrade started, V upgraded, S sold, D destroyed
+   (type, tier, by), N/L node captured/lost (node), A ability (k, a, b: its recorded effect), H HQ shield down,
+   G AI attack (mode), W/X storm warning/start, E end (how, winner); T/K units trained/lost (type, n, last t),
+   grouped while production continues: a group closes after 60 s or 10 units, or a 45 s pause. */
+const LOG_CAP = 600, LOG_GAP = 45, LOG_SPAN = 60, LOG_N = 10, LOG_SAMPLE = 15, LOG_BUCKET = 10;
+const newTot = () => ({ earn: [0, 0], sold: [0, 0], spent: { b: [0, 0], u: [0, 0], up: [0, 0], rep: [0, 0], ab: [0, 0] }, trained: {}, lost: {}, killed: {},
+  bBuilt: {}, bUp: 0, bLost: {}, bSold: 0, nodeCap: 0, nodeLost: 0, nodeTime: 0, ab: { shield: [0, 0], strike: [0, 0, 0], repair: [0, 0] }, storm: 0, peak: 0 });
+const newLog = t0 => ({ from: t0, ev: [], open: {}, cur: [null, null], army: [[], []], bank: [[], []], next: Math.ceil(t0 / LOG_SAMPLE) * LOG_SAMPLE,
+  loss: [{}, {}], tot: [newTot(), newTot()], merged: 0, dropped: 0 });
+const logT = g => Math.round(g.t * 10) / 10;
+function lg(g, s, code, a, b, c) { // a key event: always its own line
+  const L = g.log; if (!L) return;
+  const e = [logT(g), s, code]; if (a !== undefined) e.push(a); if (b !== undefined) e.push(b); if (c !== undefined) e.push(c);
+  L.ev.push(e); if (L.ev.length > LOG_CAP) logCompact(L);
+  return e;
+}
+function lgUnit(g, s, code, type) { // a unit trained (T) or lost (K): extends the open group while production continues
+  const L = g.log; if (!L) return;
+  const t = logT(g), key = s + code + type, i = L.open[key], e = i !== undefined ? L.ev[i] : null;
+  if (e && e[2] === code && e[1] === s && e[3] === type && t - e[5] <= LOG_GAP && t - e[0] <= LOG_SPAN && e[4] < LOG_N) { e[4]++; e[5] = t; return; }
+  L.ev.push([t, s, code, type, 1, t]); L.open[key] = L.ev.length - 1;
+  if (L.ev.length > LOG_CAP) logCompact(L);
+}
+function logCompact(L) { // over the cap: merge unit groups in wider windows; key events are kept
+  for (const win of [120, 300, 900, 1e9]) {
+    const last = {}, out = [];
+    for (const e of L.ev) {
+      if (e[2] !== 'T' && e[2] !== 'K') { out.push(e); continue; }
+      const k = e[1] + e[2] + e[3], p = last[k];
+      if (p && e[0] - p[5] <= win) { p[4] += e[4]; p[5] = e[5]; L.merged++; continue; }
+      last[k] = e; out.push(e);
+    }
+    L.ev = out;
+    if (L.ev.length <= LOG_CAP * 0.9) break;
+  }
+  while (L.ev.length > LOG_CAP * 0.9) { const i = L.ev.findIndex(e => e[2] === 'T' || e[2] === 'K'); L.ev.splice(i < 0 ? 0 : i, 1); L.dropped++; }
+  L.open = {};
+}
+function logAbilityDone(L, s) { // an ability's effect builds up until the side's next cast (one at a time under the shared cooldown)
+  const c = L.cur[s]; if (!c) return;
+  for (let i = L.ev.length - 1; i >= 0; i--) { const e = L.ev[i]; if (e[2] === 'A' && e[1] === s && e[0] === c.t) { e[4] = Math.round(c.a); e[5] = Math.round(c.b); break; } }
+}
+function logAbility(g, s, k) {
+  const L = g.log; if (!L) return;
+  logAbilityDone(L, s);
+  L.cur[s] = { k, t: logT(g), a: 0, b: 0 };
+  lg(g, s, 'A', k, 0, 0);
+  L.tot[s].ab[k][0]++;
+}
+function logEffect(g, s, k, a, b = 0) { // strike: damage, kills; shield: damage blocked; repair: HP restored
+  const L = g.log; if (!L) return;
+  const c = L.cur[s]; if (c && c.k === k) { c.a += a; c.b += b; }
+  const T = L.tot[s].ab[k]; T[1] += a; if (k === 'strike') T[2] += b;
+}
+function logLoss(g, e) { // unit value lost per 10 s, with where it happened, for battles in the report
+  const L = g.log; if (!L) return;
+  const d = UDEF[e.type], k = Math.floor(g.t / LOG_BUCKET), m = L.loss[e.side], r = m[k] || (m[k] = [0, 0, 0]);
+  r[0] += d.cost.c + d.cost.e; r[1]++; r[2] += e.u;
+}
+function logTick(g, dt) {
+  const L = g.log; if (!L) return;
+  for (const n of g.nodes) if (n.owner !== null) L.tot[n.owner].nodeTime += dt;
+  if (g.t < L.next) return;
+  L.next += LOG_SAMPLE;
+  const v = [0, 0];
+  for (const e of g.ents) if (e.kind === 'u' && e.hp > 0) v[e.side] += UDEF[e.type].cost.c + UDEF[e.type].cost.e;
+  for (const s of [0, 1]) {
+    if (L.army[s].length < 120) { L.army[s].push(v[s]); L.bank[s].push(Math.round(g.sides[s].res.c)); }
+    L.tot[s].peak = Math.max(L.tot[s].peak, v[s]);
+  }
+}
+const logAdd = (o, k, n = 1) => { o[k] = (o[k] || 0) + n; };
+const logSpend = (g, s, kind, c, e) => { if (g.log) { const a = g.log.tot[s].spent[kind]; a[0] += c; a[1] += e; } };
+
 /* ---------- Save and resume ---------- */
-// v6 adds fog of war; v7 the AI's personality (kept on its side record); v10 the shared ability cooldown. Older saves are migrated.
-const SAVE_VER = 10, SAVE_OK = [5, 6, 7, 8, 9, 10];
+// v6 adds fog of war; v7 the AI's personality (kept on its side record); v10 the shared ability cooldown; v11 the match log. Older saves are migrated.
+const SAVE_VER = 11, SAVE_OK = [5, 6, 7, 8, 9, 10, 11];
 function serialize(g, extra) {
   const live = g.ents.filter(e => e.hp > 0);
   for (const sd of g.sides) if (sd.hq.hp <= 0 && !live.includes(sd.hq)) live.push(sd.hq); // a fallen HQ inside the storm's 5 s end window
@@ -1439,7 +1575,7 @@ function serialize(g, extra) {
   const projs = g.projs.map(p => Object.assign({}, p, { target: p.target ? p.target.id : null }));
   const sides = g.sides.map(sd => Object.assign({}, sd, { hq: sd.hq.id, slots: sd.slots.map(b => b ? b.id : null), res: Object.assign({}, sd.res), stats: Object.assign({}, sd.stats) }));
   const fog = g.fog.map(f => ({ exp: Array.from(f.exp).join(''), ghosts: f.ghosts, intel: f.intel, lastHQ: f.lastHQ, lastSpot: f.lastSpot, seenUnits: f.seenUnits }));
-  return JSON.stringify({ v: SAVE_VER, t: g.t, nid: g.nid, diffKey: g.diffKey, ents, projs, sides, nodes: g.nodes, fog, abil: g.abil, endHold: g.endHold || null, extra });
+  return JSON.stringify({ v: SAVE_VER, t: g.t, nid: g.nid, diffKey: g.diffKey, ents, projs, sides, nodes: g.nodes, fog, abil: g.abil, endHold: g.endHold || null, log: g.log, extra });
 }
 function deserialize(str) {
   const o = JSON.parse(str);
@@ -1469,10 +1605,128 @@ function deserialize(str) {
   }
   g.abil = o.abil || [];
   g.endHold = o.endHold || null; // the 5-second end window of a storm match (v9)
+  g.log = o.log || newLog(g.t); // v11; an older save starts its log now (the report says the early part wasn't recorded)
   updateVision(g);
   g.events.length = 0;
   g.extra = o.extra || {};
   return g;
+}
+/* ---------- Match report (v2.9): read-only views of the match log, used only once the match is over ---------- */
+const mmss = t => { t = Math.max(0, Math.floor(t)); return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`; };
+const NODE_NAME = ['west', 'centre', 'east'];
+const LINE_MAX = 80; // per side; unit groups are widened only past this
+function logEvText(e, me) { // one log event as a line of text (me: written from the player's point of view)
+  const [, , c, a, b, x] = e, B = t => BDEF[t] ? BDEF[t].name : t;
+  switch (c) {
+    case 'B': return `${B(a)} started`;
+    case 'F': return `${B(a)} finished`;
+    case 'U': return `${B(a)} upgrade to T${b} started`;
+    case 'V': return `${B(a)} upgraded to T${b}`;
+    case 'S': return `${B(a)} sold`;
+    case 'D': return `${B(a)} destroyed${x === -1 ? ' by the storm' : ''}`;
+    case 'N': return `Captured the ${NODE_NAME[a] || ''} field node`;
+    case 'L': return `Lost the ${NODE_NAME[a] || ''} field node`;
+    case 'A': return a === 'strike' ? `Orbital Strike: ${Math.round(b || 0)} damage, ${x || 0} destroyed` : a === 'shield' ? `Emergency Shield: ${Math.round(b || 0)} damage blocked` : `Repair Pulse: ${Math.round(b || 0)} HP restored`;
+    case 'H': return 'HQ shield down';
+    case 'G': return b ? 'Feint attack launched (pulled back)' : `Attack launched${a === 'siege' ? ' (siege)' : ''}`;
+    case 'W': return 'Extinction Event warning (30 s)';
+    case 'X': return 'Extinction Event began';
+    case 'E': return a === 'draw' ? 'Match ended: mutual extinction' : `Match ended: ${b === 0 ? 'you won' : 'you lost'}`; // the player's view, in both columns
+    case 'T': case 'K': { const n = UDEF[a] ? UDEF[a].name : a; return `${c === 'K' ? 'Lost ' : ''}${n}${b > 1 ? ` ×${b}, ${mmss(e[0])}–${mmss(x)}` : ''}`; }
+  }
+  return c;
+}
+// One side's timeline: key events one per line, units in groups (60 s or 10 units). Groups are widened only if the side
+// would have more than LINE_MAX lines; key events are never merged or cut. When key events alone nearly fill the list,
+// unit groups are widened only until about 20 unit lines are left, so the pace of production still shows.
+// Storm and end lines appear on both sides.
+function logLines(g, s) {
+  const L = g.log, ev = [];
+  if (L) L.ev.forEach((e, i) => { if (e[1] === s || e[1] === -1) { const c = e.slice(); c.i = i; ev.push(c); } }); // c.i: log order, for ties
+  const keys = ev.filter(e => e[2] !== 'T' && e[2] !== 'K').length, target = Math.max(LINE_MAX, keys + 20);
+  for (const [gap, span, n] of [[90, 120, 20], [180, 300, 50], [600, 900, 200], [1e9, 1e9, 1e9]]) {
+    if (ev.length <= target) break;
+    const open = {};
+    for (let i = 0; i < ev.length; i++) {
+      const e = ev[i]; if (e[2] !== 'T' && e[2] !== 'K') continue;
+      const k = e[2] + e[3], p = open[k];
+      if (p && e[0] - p[5] <= gap && e[5] - p[0] <= span && p[4] + e[4] <= n) { p[4] += e[4]; p[5] = e[5]; ev[i] = null; continue; }
+      open[k] = e;
+    }
+    for (let i = ev.length - 1; i >= 0; i--) if (!ev[i]) ev.splice(i, 1);
+  }
+  return ev.map(e => { const u = e[2] === 'T' || e[2] === 'K'; return { t: e[0], i: e.i, key: !u, code: e[2], txt: logEvText(e, s === 0), type: u ? e[3] : null, n: u ? e[4] : 0, t1: u ? e[5] : e[0] }; });
+}
+function logBattles(g) { // runs of 10-s buckets with unit losses; value = credits + energy of the units lost
+  const L = g.log; if (!L) return [];
+  const ks = [...new Set([...Object.keys(L.loss[0]), ...Object.keys(L.loss[1])].map(Number))].sort((a, b) => a - b), out = [];
+  let cur = null;
+  for (const k of ks) {
+    if (!cur || k > cur.k1 + 1) { cur = { k0: k, k1: k, v: [0, 0], n: [0, 0], u: 0, m: 0 }; out.push(cur); }
+    cur.k1 = k;
+    for (const s of [0, 1]) { const r = L.loss[s][k]; if (r) { cur.v[s] += r[0]; cur.n[s] += r[1]; cur.u += r[2]; cur.m += r[1]; } }
+  }
+  return out.map(b => ({ t0: b.k0 * LOG_BUCKET, t1: (b.k1 + 1) * LOG_BUCKET, v: b.v, n: b.n, u: b.u / b.m }));
+}
+const zoneOf = u => u < L * 0.3 ? 'near your base' : u > L * 0.7 ? 'near the enemy base' : 'mid-field';
+function logMoments(g) { // up to 8 recorded turning points, in time order
+  const L = g.log; if (!L) return [];
+  const c = [], who = s => s === 0 ? 'Your' : 'Enemy', big = logBattles(g).filter(b => b.v[0] + b.v[1] >= 400).sort((a, b) => (b.v[0] + b.v[1]) - (a.v[0] + a.v[1])).slice(0, 3);
+  const worst = big.reduce((m, b) => b.v[0] - b.v[1] > (m ? m.v[0] - m.v[1] : 0) ? b : m, null), best = big.reduce((m, b) => b.v[1] - b.v[0] > (m ? m.v[1] - m.v[0] : 0) ? b : m, null);
+  for (const b of big) c.push({ t: b.t0, p: 6 + (b.v[0] + b.v[1]) / 1000, txt: `Battle ${zoneOf(b.u)}, ${mmss(b.t0)}–${mmss(b.t1)}: you lost ${b.n[0]} units (${b.v[0]}), the enemy lost ${b.n[1]} (${b.v[1]})`, tag: b === worst ? 'largest loss' : b === best ? 'largest win' : '' });
+  const firstUnit = {};
+  for (const e of L.ev) {
+    const [t, s, k, a, b] = e;
+    if (k === 'H') { if (!c.some(m => m.h === s && t - m.t < 60)) c.push({ t, p: 9, h: s, txt: `${who(s)} HQ shield went down` }); } // once a minute: it can flicker as buildings fall and rise
+    else if (k === 'D' && a === 'hq') c.push({ t, p: 10, txt: `${who(s)} Command HQ destroyed${e[5] === -1 ? ' by the storm' : ''}` });
+    else if (k === 'D' && ['factory', 'techlab', 'turret', 'refinery'].includes(a)) c.push({ t, p: 5, txt: `${who(s)} ${BDEF[a].name} destroyed` });
+    else if (k === 'N' || k === 'L') c.push({ t, p: k === 'L' ? 4 : 3, txt: `${s === 0 ? 'You' : 'The enemy'} ${k === 'N' ? 'captured' : 'lost'} the ${NODE_NAME[a]} field node` });
+    else if (k === 'A' && a === 'strike' && b >= 400) c.push({ t, p: 5 + b / 1000, txt: `${s === 0 ? 'Your' : 'Enemy'} Orbital Strike: ${b} damage, ${e[5]} destroyed` });
+    else if (k === 'T' && ['titan', 'aircraft', 'artillery'].includes(a) && !firstUnit[s + a]) { firstUnit[s + a] = 1; c.push({ t, p: 2, txt: `${s === 0 ? 'Your' : 'Enemy'} first ${UDEF[a].name}` }); }
+    else if (k === 'X') c.push({ t, p: 8, txt: 'The Extinction Event began' });
+  }
+  return c.sort((a, b) => b.p - a.p).slice(0, 8).sort((a, b) => a.t - b.t);
+}
+// Lessons: each from recorded facts only, labelled fact / interpretation / recommendation. None fits: say so.
+function logLessons(g) {
+  const L = g.log, out = []; if (!L) return out;
+  const T = L.tot, me = T[0], foe = T[1], sum = o => Object.values(o).reduce((a, b) => a + b, 0);
+  const worst = logBattles(g).filter(b => b.v[0] >= 600 && b.v[0] > b.v[1] * 1.3).sort((a, b) => (b.v[0] - b.v[1]) - (a.v[0] - a.v[1]))[0];
+  if (worst) {
+    const z = zoneOf(worst.u), lostB = L.ev.filter(e => e[2] === 'D' && e[1] === 0 && e[0] >= worst.t0 && e[0] <= worst.t1).map(e => BDEF[e[3]].name);
+    out.push({ fact: `${mmss(worst.t0)}–${mmss(worst.t1)}, ${z}: you lost ${worst.n[0]} units (${worst.v[0]})${lostB.length ? ` and your ${lostB.join(', ')}` : ''}; the enemy lost ${worst.n[1]} (${worst.v[1]}).`,
+      why: 'That fight cost you far more than it cost them.',
+      next: z === 'near the enemy base' ? 'Attack with a bigger army, or bring Artillery or an Orbital Strike against their defences first.' : z === 'near your base' ? 'Keep a Turret or a group of Heavies at home before the enemy pushes.' : 'Fight closer to your Turrets, or pull back and regroup before engaging.' });
+  }
+  if (foe.nodeTime > 120 && foe.nodeTime > me.nodeTime * 1.5) out.push({ fact: `Field node time held: you ${mmss(me.nodeTime)}, the enemy ${mmss(foe.nodeTime)} (all nodes added up).`,
+    why: 'The enemy earned more from field nodes (each gives +3 credits and +1 energy per second).', next: 'Capture a node earlier and keep a few units on it.' });
+  const casts = L.ev.filter(e => e[2] === 'A' && e[1] === 0), weak = casts.find(e => (e[3] === 'shield' && e[4] < 100) || (e[3] === 'strike' && e[4] < 150) || (e[3] === 'repair' && e[4] < 150));
+  if (!casts.length && g.t - L.from > 300) out.push({ fact: 'You used no commander abilities.', why: 'An Emergency Shield, Orbital Strike or Repair Pulse can swing a close fight.', next: 'Use one per big fight: they share one cooldown, so pick the one that fits the moment.' });
+  else if (weak) out.push({ fact: `At ${mmss(weak[0])}: ${logEvText(weak, true)}.`, why: 'It spent the shared cooldown on a small effect.', next: 'Save the cooldown for a big fight or a Strike on a clump of units.' });
+  const bank = L.bank[0], avg = bank.length ? bank.reduce((a, b) => a + b, 0) / bank.length : 0;
+  if (bank.length >= 8 && avg > 600) out.push({ fact: `You held ${Math.round(avg)} credits on average (sampled every 15 s).`, why: 'Unspent credits are not fighting for you.', next: 'Spend as you earn: more units, upgrades or another production building.' });
+  const air = ['aircraft', 'interceptor'].reduce((a, k) => a + (foe.trained[k] || 0), 0), aa = Object.keys(me.trained).reduce((a, k) => a + (UDEF[k].hitsAir && k !== 'rifle' ? me.trained[k] : 0), 0);
+  if (air >= 3 && aa < 3) out.push({ fact: `The enemy trained ${air} aircraft; you trained ${aa} units that hit air apart from Riflemen.`, why: 'Few of your units could fight their aircraft.', next: 'Answer aircraft with Heavies, Snipers or your own Interceptors.' });
+  if (!out.length) out.push({ fact: `You lost ${sum(me.lost)} units and ${sum(me.bLost)} buildings; the enemy lost ${sum(foe.lost)} and ${sum(foe.bLost)}.`, why: 'From what it recorded, the game can\'t tell why this match was won or lost.', next: '' });
+  return out.slice(0, 3);
+}
+// The copied match log: plain text, one chronological list tagged [ME] / [ENEMY] / [ALL], same grouping as the screen
+function logText(g, meta) {
+  const L = g.log, T = L.tot, R = g.result || {}, nm = t => UDEF[t].name, lines = [];
+  const units = (tr, lo) => Object.keys(UDEF).filter(k => tr[k] || lo[k]).map(k => `${nm(k)} ${tr[k] || 0} (${lo[k] || 0} lost)`).join(', ') || 'none';
+  const res = s => { const t = T[s], sp = Object.values(t.spent); return `credits ${Math.round(t.earn[0]).toLocaleString('en')} earned / ${Math.round(sp.reduce((a, b) => a + b[0], 0)).toLocaleString('en')} spent; energy ${Math.round(t.earn[1]).toLocaleString('en')} / ${Math.round(sp.reduce((a, b) => a + b[1], 0)).toLocaleString('en')}`; };
+  const sum = o => Object.values(o).reduce((a, b) => a + b, 0);
+  lines.push(`Extinction Event v${meta.version} · ${meta.diff} · vs ${meta.persona}`);
+  lines.push(`Result: ${meta.result} · ${mmss(g.t)}`);
+  if (L.from > 0) lines.push(`Recorded from ${mmss(L.from)} (resumed from an older save); earlier events are not included.`);
+  for (const s of [0, 1]) { lines.push(`${s ? 'Enemy' : 'You'}: ${res(s)}`); lines.push(`  Units built ${sum(T[s].trained)}, lost ${sum(T[s].lost)}: ${units(T[s].trained, T[s].lost)}`); }
+  lines.push('TIMELINE');
+  const all = [];
+  for (const s of [0, 1]) for (const l of logLines(g, s)) if (s === 0 || !['W', 'X', 'E'].includes(l.code)) all.push({ ...l, tag: ['W', 'X', 'E'].includes(l.code) ? 'ALL' : s ? 'ENEMY' : 'ME' });
+  all.sort((a, b) => a.t - b.t || a.i - b.i);
+  for (const l of all) lines.push(`${mmss(l.t)} [${l.tag}] ${l.txt}`);
+  if (L.merged || L.dropped) lines.push(`(Long match: ${L.dropped ? 'some early unit lines were dropped' : 'unit lines were merged into wider groups'} to keep the log small.)`);
+  return lines.join('\n');
 }
 /* ===================== SIM END ===================== */
 
@@ -3525,7 +3779,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && run
 window.addEventListener('pagehide', saveGame);
 
 /* ---------- Menus ---------- */
-function overlay(html) { $('box').innerHTML = html; $('ov').classList.remove('hide'); $('box').scrollTop = 0; } // each screen starts at its top (set once shown: a hidden box ignores it)
+function overlay(html) { $('box').className = 'box'; $('box').innerHTML = html; $('ov').classList.remove('hide'); $('box').scrollTop = 0; } // each screen starts at its top (set once shown: a hidden box ignores it)
 function hideOverlay() { $('ov').classList.add('hide'); }
 function diffSeg() {
   return `<div class="seg" id="diffSeg">${Object.keys(DIFF).map(k => `<button data-d="${k}" class="${k === diffKey ? 'on' : ''}">${DIFF[k].label}</button>`).join('')}</div>`;
@@ -3603,25 +3857,103 @@ function pauseGame(restored) {
   $('bMenu').addEventListener('click', showStart);
 }
 function fmtTime(t) { t = Math.floor(t); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; }
+// Post-match report (v2.9): built from the match log, which the UI reads only now that the match is over.
+// The enemy's moves and stats are revealed here (never during play).
+const REP_TABS = ['Summary', 'Timeline', 'Key moments', 'Lessons'];
+let repTab = 'Summary';
 function showEnd() {
-  const win = game.winner === 0, st = game.sides[0].stats, R = game.result || { how: 'hq' };
+  const g = game, win = g.winner === 0, R = g.result || { how: 'hq' }, L = g.log;
   const title = R.how === 'draw' ? 'Mutual extinction' : win ? 'Victory' : 'Defeat';
-  const line = R.how === 'draw' ? 'Both commands fell to the Extinction Event and nothing could separate them.'
+  const how = R.how === 'draw' ? 'Both commands fell to the Extinction Event and nothing could separate them.'
     : R.how === 'score' ? `${win ? 'Survived the Extinction Event' : 'Lost to the Extinction Event'}: ${R.reason === 'limit' ? 'the storm reached its peak' : 'both Command HQs fell together'}, and the stronger side remains.`
-    : R.how === 'storm' ? (win ? 'The enemy base fell to the Extinction Event. The valley is yours.' : 'Your Command HQ fell to the Extinction Event.')
-    : win ? 'The enemy Command HQ has fallen. The valley is yours.' : 'Your Command HQ was destroyed. Regroup and try a new strategy.';
-  const score = R.score ? `<p class="faced">Remaining strength (buildings + army): <b>you ${R.score[0].toLocaleString()}</b> · enemy ${R.score[1].toLocaleString()}${R.by !== 'score' ? ` (decided by ${R.by})` : ''}</p>` : '';
-  closePanel();
-  overlay(`<p class="kicker">${GAME_NAME}</p><h1 class="${win ? 'win' : 'lose'}">${title}</h1>
-    <p>${line}</p>${score}
-    <p class="faced">You faced: <b>${PERSONA_NAME[(game.sides[1].persona || {}).kind] || 'an unknown commander'}</b></p>
-    <div class="stats"><div><b>${fmtTime(game.t)}</b><small>Match time</small></div><div><b>${st.built}</b><small>Units built</small></div>
-    <div><b>${st.kills}</b><small>Enemies destroyed</small></div><div><b>${st.lost}</b><small>Units lost</small></div></div>
-    <div class="row"><span class="lbl">Difficulty</span>${diffSeg()}</div>
-    <div class="row"><button class="big" id="bAgain">Play again</button><button class="ghost" id="bMenu2">Main menu</button></div>`);
+    : R.how === 'storm' ? (win ? 'The enemy base fell to the Extinction Event.' : 'Your Command HQ fell to the Extinction Event.')
+    : win ? 'The enemy Command HQ has fallen.' : 'Your Command HQ was destroyed.';
+  const flavor = R.how === 'draw' ? 'Nobody won. Nothing survives.'
+    : win ? (R.how === 'storm' ? 'You won. Outlasted the extinction.' : R.how === 'score' ? 'You won. Barely. Live to die another day.' : 'You won. Live to die another day.')
+    : R.how === 'storm' ? 'You lost. The extinction came for you first.' : 'You lost. Your colony went extinct.';
+  const line = `${how} <span class="flav">${flavor}</span>`;
+  const persona = PERSONA_NAME[(g.sides[1].persona || {}).kind] || 'an unknown commander';
+  closePanel(); repTab = 'Summary';
+  overlay(`<div class="top"><h1 class="${win ? 'win' : 'lose'}">${title}</h1><div class="seg rtabs" id="repTabs">${REP_TABS.map(t => `<button data-t="${t}">${t}</button>`).join('')}</div></div>
+    <p class="sub">${line} <b>${fmtTime(g.t)}</b> · ${(DIFF[g.diffKey] || DIFF.normal).label} · You faced <b>${persona}</b></p>
+    <div class="pane" id="repPane"></div>
+    <div class="foot"><button class="big" id="bAgain">Play again</button><button class="ghost" id="bMenu2">Main menu</button><span style="flex:1"></span>${diffSeg()}</div>`);
+  $('box').classList.add('rep');
+  for (const b of $('repTabs').children) b.addEventListener('click', () => repShow(b.dataset.t));
+  repShow('Summary');
   wireDiff();
   $('bAgain').addEventListener('click', startGame);
   $('bMenu2').addEventListener('click', showStart);
+}
+function repShow(tab) {
+  repTab = tab;
+  const cp = $('box').querySelector('.cpy'); if (cp) cp.remove();
+  for (const b of $('repTabs').children) b.classList.toggle('on', b.dataset.t === tab);
+  const pane = $('repPane'), g = game;
+  pane.innerHTML = !g.log ? '<p class="note">This match was not recorded.</p>' : tab === 'Summary' ? repSummary(g) : tab === 'Timeline' ? repTimeline(g) : tab === 'Key moments' ? repMoments(g) : repLessons(g);
+  pane.scrollTop = 0;
+  if (tab === 'Timeline') $('bCopy').addEventListener('click', repCopy);
+}
+const fmtN = n => Math.round(n).toLocaleString('en');
+const repFrom = L => L.from > 0 ? `<p class="note">Recorded from ${mmss(L.from)} (this match was resumed from an older save); earlier events are not included.</p>` : '';
+function repSummary(g) {
+  const L = g.log, T = L.tot, R = g.result || {}, sum = o => Object.values(o).reduce((a, b) => a + b, 0), sp = (t, i) => Object.values(t.spent).reduce((a, b) => a + b[i], 0);
+  const units = t => { const ks = Object.keys(UDEF).filter(k => t.trained[k] || t.lost[k]); return `${sum(t.trained)} (${sum(t.lost)})${ks.length ? ': ' + ks.map(k => `${UDEF[k].name} ${t.trained[k] || 0} (${t.lost[k] || 0})`).join(', ') : ''}`; };
+  const blds = t => `${sum(t.bBuilt)} · ${t.bUp} · ${sum(t.bLost)}${sum(t.bLost) ? ` (${Object.keys(t.bLost).map(k => `${BDEF[k].name}${t.bLost[k] > 1 ? ' ×' + t.bLost[k] : ''}`).join(', ')})` : ''}${t.bSold ? ` · ${t.bSold} sold` : ''}`;
+  const abil = t => ABIL_ORDER.filter(k => t.ab[k][0]).map(k => k === 'strike' ? `Strike ×${t.ab.strike[0]}: ${fmtN(t.ab.strike[1])} damage, ${t.ab.strike[2]} destroyed` : k === 'shield' ? `Shield ×${t.ab.shield[0]}: ${fmtN(t.ab.shield[1])} blocked` : `Repair ×${t.ab.repair[0]}: ${fmtN(t.ab.repair[1])} HP`).join(' · ') || 'none';
+  const row = (h, f) => `<tr><th>${h}</th><td>${f(T[0])}</td><td class="e">${f(T[1])}</td></tr>`;
+  const att = L.ev.filter(e => e[2] === 'G' && e[1] === 1), real = att.filter(e => !e[4]), aiLog = g.sides[1].aiLog || {};
+  const behave = [`${real.length} attack${real.length === 1 ? '' : 's'}${real.length ? ` (first at ${mmss(real[0][0])})` : ''}`, `${att.length - real.length} feint${att.length - real.length === 1 ? '' : 's'}`,
+    `${T[1].bBuilt.turret || 0} Turret${T[1].bBuilt.turret === 1 ? '' : 's'} built`, aiLog.firstUpgrade != null ? `first upgrade at ${mmss(aiLog.firstUpgrade)}` : 'no upgrades'].join(' · ');
+  const ext = L.ev.some(e => e[2] === 'X') ? `Reached at 20:00${R.how === 'storm' || R.how === 'score' || R.how === 'draw' ? '; it decided the match' : ''}` : `Not reached (the match ended at ${mmss(g.t)})`;
+  const score = R.score ? `<p class="note">Remaining strength (buildings + army): <b>you ${R.score[0].toLocaleString('en')}</b> · enemy ${R.score[1].toLocaleString('en')}${R.by !== 'score' ? ` (decided by ${R.by})` : ''}</p>` : '';
+  return `${score}<table><tr><th></th><td><b>You</b></td><td class="e"><b>Enemy</b></td></tr>
+    ${row('Credits earned / spent', t => `${fmtN(t.earn[0])} / ${fmtN(sp(t, 0))}${t.sold[0] ? ` (+${fmtN(t.sold[0])} from sales)` : ''}`)}
+    ${row('Energy earned / spent', t => `${fmtN(t.earn[1])} / ${fmtN(sp(t, 1))}`)}
+    ${row('Units built (lost)', units)}
+    ${row('Enemy units destroyed', t => fmtN(sum(t.killed)))}
+    ${row('Buildings built · upgraded · lost', blds)}
+    ${row('Field nodes', t => `${t.nodeCap} captured, ${t.nodeLost} lost · held ${mmss(t.nodeTime)}`)}
+    ${row('Abilities', abil)}
+    ${row('Storm damage taken', t => fmtN(t.storm))}
+    <tr><th>Extinction Event</th><td colspan="2">${ext}</td></tr>
+    <tr><th>Enemy behavior</th><td colspan="2">${behave}</td></tr></table>
+    <p class="note">Enemy numbers are revealed after the match; during play you saw only what your units could see. Node time adds up all three nodes.</p>${repFrom(L)}`;
+}
+function repTimeline(g) {
+  const A = logLines(g, 0), B = logLines(g, 1), n = Math.max(A.length, B.length), cell = (l, c) => l ? `<b class="t${c}">${mmss(l.t)}</b><span class="${l.key ? 'k' : 'u'} ${c}">${l.txt}</span>` : '<b></b><span></span>';
+  let rows = ''; for (let i = 0; i < n; i++) rows += cell(A[i], 'me') + cell(B[i], 'them');
+  return `<div class="tbar"><button class="ghost" id="bCopy">Copy match log</button><span class="note" id="copyMsg" style="margin:0">Units trained or lost close together are grouped</span></div>
+    <div class="tw"><h4 class="mh">You</h4><h4 class="th">Enemy (${PERSONA_NAME[(g.sides[1].persona || {}).kind] || 'enemy'})</h4>${rows}</div>${repFrom(g.log)}`;
+}
+function repMoments(g) {
+  const L = g.log, M = logMoments(g), top = Math.max(1, ...L.army[0], ...L.army[1]), n = Math.max(L.army[0].length, 2);
+  const pl = a => a.map((v, i) => `${(i / (n - 1) * 300).toFixed(1)},${(44 - v / top * 40).toFixed(1)}`).join(' ');
+  return `<svg viewBox="0 0 300 46" preserveAspectRatio="none"><polyline fill="none" stroke="#39c8ff" stroke-width="1.6" points="${pl(L.army[0])}"/><polyline fill="none" stroke="#ff4d4d" stroke-width="1.6" points="${pl(L.army[1])}"/></svg>
+    <p class="note" style="margin-top:0">Army value every 15 s${L.from > 0 ? ` from ${mmss(L.from)}` : ''} (you blue, enemy red; peak ${fmtN(top)})</p>
+    <ul class="tl">${M.map(m => `<li><b>${mmss(m.t)}</b><span>${m.txt}</span>${m.tag ? `<span class="tag">${m.tag}</span>` : ''}</li>`).join('') || '<li>No major moments were recorded.</li>'}</ul>${repFrom(L)}`;
+}
+function repLessons(g) {
+  return logLessons(g).map(l => `<div class="les"><div><em class="f">Fact</em>${l.fact}</div><div><em class="i">Interpretation</em>${l.why}</div>${l.next ? `<div><em class="r">Next time</em>${l.next}</div>` : ''}</div>`).join('') +
+    `<p class="note">Lessons come only from events the game recorded. Where it can't tell why a fight was won or lost, it says so.</p>${repFrom(g.log)}`;
+}
+function repText(g) {
+  const R = g.result || {}, win = g.winner === 0;
+  const res = R.how === 'draw' ? 'Draw (mutual extinction)' : `${win ? 'Victory' : 'Defeat'}, ${R.how === 'score' ? `decided by ${R.by || 'score'} (${R.reason === 'limit' ? 'storm peak' : 'both HQs fell'})` : R.how === 'storm' ? `${win ? 'enemy' : 'your'} HQ fell to the Extinction Event` : `${win ? 'enemy' : 'your'} HQ destroyed`}`;
+  return logText(g, { version: VERSION, diff: (DIFF[g.diffKey] || DIFF.normal).label, persona: PERSONA_NAME[(g.sides[1].persona || {}).kind] || 'unknown', result: res });
+}
+function repCopy() {
+  const text = repText(game), done = () => { const m = $('copyMsg'); if (m) { m.textContent = 'Copied'; m.className = 'ok'; } };
+  const fallback = () => { // clipboard blocked (some iPhone Safari cases): show the text selected, ready for the Copy menu
+    const box = document.createElement('div'); box.className = 'cpy';
+    box.innerHTML = '<p><b>Copy match log</b>: this browser blocked the clipboard. The text is selected: tap <b>Copy</b>, or press and hold to select it.</p><textarea readonly></textarea><button class="ghost">Close</button>';
+    const ta = box.querySelector('textarea'); ta.value = text;
+    box.querySelector('button').addEventListener('click', () => box.remove());
+    $('box').appendChild(box); ta.focus(); ta.select(); ta.setSelectionRange(0, text.length);
+    try { if (document.execCommand('copy')) done(); } catch (e) {}
+  };
+  try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); return; } } catch (e) {}
+  fallback();
 }
 
 /* ---------- Sound (Web Audio, generated in code; no files) ----------

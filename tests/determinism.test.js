@@ -1,12 +1,12 @@
 // The SIM must not change by accident: the same seeded AI-vs-AI match must end in exactly the same state,
 // particles and screen shake included. When a rules change is intended, re-record the fingerprint
-// (node tests/determinism.test.js --print) and say so in the commit. Recorded at v2.8 (one shared ability cooldown).
+// (node tests/determinism.test.js --print) and say so in the commit. Recorded at v2.9: the same game as v2.8 (with the log stripped and v10 it hashes to v2.8's 9269dc50…); only the save version differs.
 const test = require('node:test');
 const assert = require('node:assert');
 const crypto = require('crypto');
 const { loadSim } = require('./load-sim');
 
-const FINGERPRINT = '9269dc50c195f58a8318ba24937b67445ef687d0063a9300eb36f6de3010785f';
+const FINGERPRINT = '698b8f27906cc44b303db955185279227131dfb081b32a37a4550d48f8aeed88';
 
 function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 
@@ -14,7 +14,8 @@ function fingerprint() {
   const sim = loadSim({ random: mulberry(2024) });
   const g = sim.newGame('hard', { autoPlayer: true, autoDiff: 'hard', persona: 'trickster', autoPersona: 'turtle' });
   for (let i = 0; i < 30 * 480 && !g.over; i++) sim.update(g, 1 / 30);
-  const state = sim.serialize(g, {}) + JSON.stringify({ parts: g.parts, fx: g.fx, shake: g.shake, over: g.over, winner: g.winner });
+  const o = JSON.parse(sim.serialize(g, {})); delete o.log; // the match log (v2.9) is a record, not game state: left out so it can change freely
+  const state = JSON.stringify(o) + JSON.stringify({ parts: g.parts, fx: g.fx, shake: g.shake, over: g.over, winner: g.winner });
   return crypto.createHash('sha256').update(state).digest('hex');
 }
 
