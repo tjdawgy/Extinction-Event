@@ -48,7 +48,12 @@ function checkExact(g, label) {
   // the condensed timeline keeps every key event and every unit, within the line target
   for (const s of [0, 1]) {
     const lines = sim.logLines(g, s), keys = L.ev.filter(e => (e[1] === s || e[1] === -1) && e[2] !== 'T' && e[2] !== 'K').length;
-    assert.strictEqual(lines.filter(l => l.key).length, keys, `${label} side ${s}: every key event listed`);
+    const paired = lines.filter(l => l.paired), of = c => L.ev.filter(e => e[1] === s && e[2] === c).length;
+    assert.strictEqual(lines.filter(l => l.key).length + paired.length, keys, `${label} side ${s}: every key event listed (a start and its finish share a line)`);
+    assert.strictEqual(paired.filter(l => l.code === 'B').length + lines.filter(l => l.code === 'F').length, of('F'), `${label}: every finished building accounted for`);
+    assert.strictEqual(paired.filter(l => l.code === 'U').length + lines.filter(l => l.code === 'V').length, of('V'), `${label}: every finished upgrade accounted for`);
+    for (const l of paired) assert.match(l.txt, l.code === 'B' ? /^[A-Z][\w ]+ \d\d:\d\d → \d\d:\d\d$/ : /^[A-Z][\w ]+ T[23] \d\d:\d\d → \d\d:\d\d$/, `${label}: ${l.txt}`);
+    for (const l of paired) assert.ok(l.t1 >= l.t, `${label}: finish after start`);
     assert.ok(lines.length <= Math.max(sim.LINE_MAX, keys + 20), `${label} side ${s}: ${lines.length} lines, ${keys} key events`);
     for (const k of Object.keys(sim.UDEF)) assert.strictEqual(lines.filter(l => l.code === 'T' && l.type === k).reduce((a, l) => a + l.n, 0), L.tot[s].trained[k] || 0, `${label} ${k} in lines`);
     for (let i = 1; i < lines.length; i++) assert.ok(lines[i].t >= lines[i - 1].t, `${label}: lines in time order`);
@@ -72,6 +77,16 @@ test('unit grouping: a group closes after 60 s or 10 units or a 45 s pause, so n
   same(T.slice(0, 2).map(x => [x[2], x[3]]), [[120, 156], [160, 196]]);
   assert.strictEqual(sim.logEvText(L.ev[0], true), 'Rifleman ×10, 02:00–02:36');
   assert.strictEqual(sim.logEvText(L.ev[1], true), 'Rifleman ×10, 02:40–03:16');
+});
+
+test('a build or upgrade and its finish share one line, matched by building (two at once, an unfinished one, an old log without ids)', () => {
+  const g = sim.newGame('normal'), L = g.log, at = t => { g.t = t; };
+  at(2); sim.lg(g, 0, 'B', 'refinery', 7); at(5); sim.lg(g, 0, 'B', 'refinery', 9); at(14); sim.lg(g, 0, 'F', 'refinery', 9); at(16); sim.lg(g, 0, 'F', 'refinery', 7);
+  at(310); sim.lg(g, 0, 'U', 'refinery', 2, 7); at(322); sim.lg(g, 0, 'V', 'refinery', 2, 7);
+  at(400); sim.lg(g, 0, 'B', 'turret', 12); at(405); sim.lg(g, 0, 'D', 'turret', 1, 1);
+  at(500); sim.lg(g, 0, 'B', 'reactor'); at(512); sim.lg(g, 0, 'F', 'reactor'); // saved before ids were recorded
+  same(sim.logLines(g, 0).map(l => l.txt), ['Refinery 00:02 → 00:16', 'Refinery 00:05 → 00:14', 'Refinery T2 05:10 → 05:22', 'Turret started (not finished)', 'Turret destroyed', 'Reactor 08:20 → 08:32']);
+  assert.match(sim.logText(g, META), /\n00:02 \[ME\] Refinery 00:02 → 00:16\n00:05 \[ME\] Refinery 00:05 → 00:14\n05:10 \[ME\] Refinery T2 05:10 → 05:22\n/);
 });
 
 test('the log is capped: past 600 events unit groups merge and key events are kept', () => {

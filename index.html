@@ -274,7 +274,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.9'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.10'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -626,7 +626,7 @@ function tryBuild(g, s, type, want = -1) {
   side.res.c -= d.cost.c; side.res.e -= d.cost.e;
   const nb = mkBuilding(g, s, type, slot);
   nb.spent = { c: d.cost.c, e: d.cost.e };
-  logSpend(g, s, 'b', d.cost.c, d.cost.e); lg(g, s, 'B', type);
+  logSpend(g, s, 'b', d.cost.c, d.cost.e); lg(g, s, 'B', type, nb.id);
   return { ok: true, msg: `Building ${d.name}` };
 }
 
@@ -665,7 +665,7 @@ function tryUpgrade(g, s, b) {
   side.res.c -= up.c; side.res.e -= up.e;
   b.spent.c += up.c; b.spent.e += up.e;
   b.upgrading = true; b.upProg = 0;
-  logSpend(g, s, 'up', up.c, up.e); lg(g, s, 'U', b.type, b.tier + 1);
+  logSpend(g, s, 'up', up.c, up.e); lg(g, s, 'U', b.type, b.tier + 1, b.id);
   return { ok: true, msg: `Upgrading ${d.name} to T${b.tier + 1}` };
 }
 
@@ -851,7 +851,7 @@ function updateBuilding(g, b, foes, dt) {
     const dp = dt / d.time;
     b.progress = Math.min(1, b.progress + dp);
     b.hp = Math.min(b.maxHp, b.hp + b.maxHp * 0.85 * dp);
-    if (b.progress >= 1) { b.built = true; ev(g, { type: 'built', side: b.side, name: d.name }); if (g.log) { logAdd(g.log.tot[b.side].bBuilt, b.type); lg(g, b.side, 'F', b.type); } }
+    if (b.progress >= 1) { b.built = true; ev(g, { type: 'built', side: b.side, name: d.name }); if (g.log) { logAdd(g.log.tot[b.side].bBuilt, b.type); lg(g, b.side, 'F', b.type, b.id); } }
     return;
   }
   // Paid repair is fast; after a quiet spell every building also slowly patches itself up
@@ -869,7 +869,7 @@ function updateBuilding(g, b, foes, dt) {
       b.tier++; b.maxHp = d.hp * hpMul(d, b.tier); b.hp = Math.min(b.maxHp, b.hp + b.maxHp - old);
       b.upgrading = false; b.upProg = 0;
       ev(g, { type: 'upgraded', side: b.side, name: d.name, tier: b.tier });
-      if (g.log) { g.log.tot[b.side].bUp++; lg(g, b.side, 'V', b.type, b.tier); }
+      if (g.log) { g.log.tot[b.side].bUp++; lg(g, b.side, 'V', b.type, b.tier, b.id); }
     }
   }
   if (b.queue.length) {
@@ -1491,7 +1491,7 @@ function aiSpotter(g, s) {
 /* ---------- Match log (v2.9) ----------
    Written by the SIM for the post-match report and never read by it, so play is unchanged; the UI reads it only
    once the match is over. Bounded: at most LOG_CAP events, an army and bank sample every 15 s, losses per 10 s.
-   An event is [t, side, code, ...]: B started, F finished, U upgrade started, V upgraded, S sold, D destroyed
+   An event is [t, side, code, ...]: B started, F finished (type, building id), U upgrade started, V upgraded (type, tier, id), S sold, D destroyed
    (type, tier, by), N/L node captured/lost (node), A ability (k, a, b: its recorded effect), H HQ shield down,
    G AI attack (mode), W/X storm warning/start, E end (how, winner); T/K units trained/lost (type, n, last t),
    grouped while production continues: a group closes after 60 s or 10 units, or a 45 s pause. */
@@ -1618,9 +1618,9 @@ const LINE_MAX = 80; // per side; unit groups are widened only past this
 function logEvText(e, me) { // one log event as a line of text (me: written from the player's point of view)
   const [, , c, a, b, x] = e, B = t => BDEF[t] ? BDEF[t].name : t;
   switch (c) {
-    case 'B': return `${B(a)} started`;
+    case 'B': return `${B(a)} started (not finished)`; // a finished one shares the line with its finish (logLines)
     case 'F': return `${B(a)} finished`;
-    case 'U': return `${B(a)} upgrade to T${b} started`;
+    case 'U': return `${B(a)} upgrade to T${b} started (not finished)`;
     case 'V': return `${B(a)} upgraded to T${b}`;
     case 'S': return `${B(a)} sold`;
     case 'D': return `${B(a)} destroyed${x === -1 ? ' by the storm' : ''}`;
@@ -1643,6 +1643,18 @@ function logEvText(e, me) { // one log event as a line of text (me: written from
 function logLines(g, s) {
   const L = g.log, ev = [];
   if (L) L.ev.forEach((e, i) => { if (e[1] === s || e[1] === -1) { const c = e.slice(); c.i = i; ev.push(c); } }); // c.i: log order, for ties
+  // v2.10: a build or upgrade and its finish share one line ('Refinery 00:02 → 00:12', 'Refinery T2 05:10 → 05:22'),
+  // matched by building id (by order per type for a log saved before ids were recorded)
+  const openB = {};
+  for (let i = 0; i < ev.length; i++) {
+    const e = ev[i], c = e[2];
+    if (c === 'B' || c === 'U') { const k = c + e[3] + (c === 'U' ? e[4] : '') + (c === 'B' ? (e[4] ?? '') : (e[5] ?? '')); (openB[k] || (openB[k] = [])).push(e); }
+    else if (c === 'F' || c === 'V') {
+      const k = (c === 'F' ? 'B' : 'U') + e[3] + (c === 'V' ? e[4] : '') + (c === 'F' ? (e[4] ?? '') : (e[5] ?? '')), q = openB[k];
+      if (q && q.length) { q.shift().done = e[0]; ev[i] = null; }
+    }
+  }
+  for (let i = ev.length - 1; i >= 0; i--) if (!ev[i]) ev.splice(i, 1);
   const keys = ev.filter(e => e[2] !== 'T' && e[2] !== 'K').length, target = Math.max(LINE_MAX, keys + 20);
   for (const [gap, span, n] of [[90, 120, 20], [180, 300, 50], [600, 900, 200], [1e9, 1e9, 1e9]]) {
     if (ev.length <= target) break;
@@ -1655,7 +1667,8 @@ function logLines(g, s) {
     }
     for (let i = ev.length - 1; i >= 0; i--) if (!ev[i]) ev.splice(i, 1);
   }
-  return ev.map(e => { const u = e[2] === 'T' || e[2] === 'K'; return { t: e[0], i: e.i, key: !u, code: e[2], txt: logEvText(e, s === 0), type: u ? e[3] : null, n: u ? e[4] : 0, t1: u ? e[5] : e[0] }; });
+  const B = t => BDEF[t] ? BDEF[t].name : t, txt = e => e.done === undefined ? logEvText(e, s === 0) : e[2] === 'B' ? `${B(e[3])} ${mmss(e[0])} → ${mmss(e.done)}` : `${B(e[3])} T${e[4]} ${mmss(e[0])} → ${mmss(e.done)}`;
+  return ev.map(e => { const u = e[2] === 'T' || e[2] === 'K'; return { t: e[0], i: e.i, key: !u, code: e[2], txt: txt(e), type: u ? e[3] : null, n: u ? e[4] : 0, t1: u ? e[5] : e.done ?? e[0], paired: e.done !== undefined }; });
 }
 function logBattles(g) { // runs of 10-s buckets with unit losses; value = credits + energy of the units lost
   const L = g.log; if (!L) return [];

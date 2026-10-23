@@ -1,0 +1,160 @@
+Extinction Event v2.10 · Normal · vs The Turtle
+Result: Victory, enemy HQ destroyed · 09:44
+You: credits 13,337 earned / 13,485 spent; energy 4,679 / 4,180
+  Units built 67, lost 54: Rifleman 28 (27 lost), Heavy 14 (10 lost), Sniper 1 (0 lost), Tank 10 (8 lost), Artillery 3 (0 lost), Gunship 8 (7 lost), Interceptor 3 (2 lost)
+Enemy: credits 7,692 earned / 7,905 spent; energy 2,273 / 2,020
+  Units built 31, lost 31: Rifleman 18 (18 lost), Heavy 10 (10 lost), Tank 2 (2 lost), Artillery 1 (1 lost)
+TIMELINE
+00:01 [ME] Refinery 00:01 → 00:11
+00:01 [ENEMY] Barracks 00:01 → 00:15
+00:02 [ME] Barracks 00:02 → 00:16
+00:02 [ENEMY] Refinery 00:02 → 00:12
+00:28 [ME] Refinery 00:28 → 00:38
+00:28 [ENEMY] Refinery 00:28 → 00:38
+00:43 [ME] Reactor 00:43 → 00:55
+00:51 [ENEMY] Turret 00:51 → 01:03
+00:53 [ME] Habitat 00:53 → 01:01
+01:02 [ENEMY] Reactor 01:02 → 01:14
+01:11 [ENEMY] Habitat 01:11 → 01:19
+01:20 [ME] War Factory 01:20 → 01:40
+01:30 [ME] Refinery T2 01:30 → 01:42
+01:38 [ENEMY] War Factory 01:38 → 01:58
+01:39 [ME] Rifleman ×4, 01:39–02:30
+01:52 [ENEMY] Turret T2 01:52 → 02:04
+02:01 [ENEMY] Rifleman
+02:06 [ME] Tech Lab 02:06 → 02:33
+02:16 [ME] Refinery T2 02:16 → 02:28
+02:28 [ENEMY] Tech Lab 02:28 → 02:54
+02:41 [ME] Tech Lab T2 02:41 → 03:01
+02:51 [ME] Rifleman ×6, 02:51–03:48
+02:56 [ME] Attack launched
+02:59 [ENEMY] Rifleman ×6, 02:59–03:43
+03:00 [ENEMY] Command HQ T2 03:00 → 03:20
+03:04 [ME] Captured the west field node
+03:05 [ME] Refinery T3 03:05 → 03:23
+03:09 [ME] Captured the centre field node
+03:28 [ENEMY] Barracks T2 03:28 → 03:42
+03:28 [ME] Tank
+03:28 [ME] Refinery T3 03:28 → 03:46
+03:38 [ENEMY] Attack launched
+03:44 [ME] Lost Rifleman ×3, 03:44–03:46
+03:46 [ENEMY] Reactor T2 03:46 → 03:58
+03:46 [ENEMY] Captured the east field node
+03:46 [ME] Barracks T2 03:46 → 04:01
+03:49 [ENEMY] Lost Rifleman
+03:57 [ME] Interceptor
+03:58 [ENEMY] Refinery T2 03:58 → 04:10
+04:02 [ME] Reactor T2 04:02 → 04:14
+04:11 [ENEMY] Refinery T2 04:11 → 04:23
+04:14 [ME] War Factory T2 04:14 → 04:32
+04:15 [ENEMY] Heavy
+04:23 [ENEMY] War Factory T2 04:23 → 04:41
+04:25 [ME] Reactor 04:25 → 04:37
+04:33 [ME] Habitat T2 04:33 → 04:43
+04:42 [ENEMY] Habitat T2 04:42 → 04:52
+04:43 [ME] Reactor T2 04:43 → 04:55
+04:45 [ENEMY] Tank ×2, 04:45–05:01
+04:55 [ME] Reactor T3 04:55 → 05:13
+04:56 [ME] Gunship ×3, 04:56–05:38
+05:01 [ENEMY] Reactor T3 05:01 → 05:19
+05:02 [ENEMY] Attack launched
+05:05 [ENEMY] Emergency Shield: 120 damage blocked
+05:05 [ENEMY] Lost Rifleman ×6, 05:05–05:15
+05:07 [ME] Rifleman ×4, 05:07–06:02
+05:07 [ME] Lost Rifleman ×9, 05:07–05:54
+05:13 [ME] Tank ×4, 05:13–06:08
+05:14 [ME] Reactor T3 05:14 → 05:32
+05:15 [ME] Heavy ×4, 05:15–05:53
+05:16 [ME] Lost Tank ×2, 05:16–06:00
+05:17 [ENEMY] Heavy ×5, 05:17–06:16
+05:21 [ENEMY] Lost Heavy ×4, 05:21–05:55
+05:30 [ENEMY] Tech Lab T2 05:30 → 05:50
+05:33 [ENEMY] Lost Tank ×2, 05:33–05:39
+05:39 [ME] Command HQ T2 05:39 → 05:59
+05:43 [ME] Lost Gunship ×4, 05:43–06:33
+05:49 [ME] Lost Heavy ×4, 05:49–06:41
+05:50 [ENEMY] Lost the east field node
+06:00 [ME] Captured the east field node
+06:01 [ME] Attack launched
+06:06 [ME] Gunship
+06:12 [ME] War Factory T3 06:12 → 06:36
+06:14 [ME] Rifleman ×5, 06:14–07:09
+06:16 [ENEMY] War Factory T3 06:16 → 06:40
+06:20 [ENEMY] Rifleman ×5, 06:20–07:07
+06:21 [ENEMY] Attack launched
+06:22 [ME] Heavy ×2, 06:22–06:31
+06:27 [ENEMY] Lost Heavy ×2, 06:27–06:33
+06:31 [ENEMY] Lost Rifleman ×5, 06:31–07:25
+06:31 [ME] Lost Rifleman ×4, 06:31–07:14
+06:31 [ME] Tank
+06:34 [ENEMY] Heavy ×2, 06:34–07:15
+06:38 [ME] Attack launched
+06:41 [ME] Barracks T3 06:41 → 07:01
+06:43 [ENEMY] Artillery
+06:44 [ENEMY] Attack launched
+06:45 [ME] Artillery ×2, 06:45–07:01
+06:54 [ENEMY] Barracks T3 06:54 → 07:14
+07:01 [ME] Habitat T3 07:01 → 07:15
+07:02 [ME] Attack launched (siege)
+07:12 [ME] Lost Tank ×4, 07:12–07:35
+07:15 [ENEMY] Emergency Shield: 61 damage blocked
+07:18 [ME] Tech Lab T3 07:18 → 07:46
+07:19 [ME] Rifleman ×6, 07:19–08:15
+07:23 [ENEMY] Habitat T3 07:23 → 07:37
+07:26 [ME] Gunship ×2, 07:26–07:41
+07:27 [ENEMY] Lost Heavy ×2, 07:27–07:31
+07:31 [ENEMY] Rifleman ×5, 07:31–08:23
+07:31 [ENEMY] Lost Artillery
+07:38 [ME] Heavy ×4, 07:38–08:31
+07:39 [ENEMY] Lost Rifleman ×5, 07:39–08:31
+07:40 [ME] Lost Heavy ×2, 07:40–07:44
+07:46 [ME] Lost Gunship
+07:46 [ENEMY] Refinery T3 07:46 → 08:04
+07:47 [ME] Lost Rifleman ×9, 07:47–08:40
+07:49 [ME] Tank ×2, 07:49–08:21
+07:54 [ME] Attack launched
+08:00 [ENEMY] Turret destroyed
+08:02 [ME] Command HQ T3 08:02 → 08:30
+08:03 [ENEMY] Turret 08:03 → 08:15
+08:14 [ENEMY] Refinery T3 08:14 → 08:32
+08:28 [ME] Attack launched (siege)
+08:30 [ME] Interceptor ×2, 08:30–09:13
+08:30 [ENEMY] Heavy ×2, 08:30–08:38
+08:33 [ME] Lost Gunship
+08:36 [ENEMY] Turret upgrade to T2 started (not finished)
+08:36 [ME] Lost Interceptor
+08:38 [ENEMY] Lost Heavy ×2, 08:38–08:44
+08:41 [ME] Artillery
+08:41 [ENEMY] Turret destroyed
+08:43 [ENEMY] Rifleman
+08:43 [ME] Sniper
+08:44 [ENEMY] Reactor started (not finished)
+08:44 [ENEMY] Reactor destroyed
+08:44 [ENEMY] Refinery destroyed
+08:48 [ENEMY] Lost Rifleman
+08:48 [ME] Rifleman ×3, 08:48–09:32
+08:49 [ME] Lost Tank ×2, 08:49–09:06
+08:51 [ENEMY] War Factory destroyed
+08:52 [ME] Tank
+08:55 [ME] Lost Heavy ×4, 08:55–09:36
+08:57 [ENEMY] Refinery started (not finished)
+08:58 [ENEMY] Refinery destroyed
+09:00 [ENEMY] Reactor destroyed
+09:03 [ME] Gunship ×2, 09:03–09:26
+09:04 [ME] Heavy ×4, 09:04–09:43
+09:05 [ENEMY] Tech Lab destroyed
+09:09 [ENEMY] Refinery started (not finished)
+09:12 [ENEMY] Refinery destroyed
+09:15 [ENEMY] Habitat destroyed
+09:18 [ME] Orbital Strike: 344 damage, 1 destroyed
+09:20 [ENEMY] Barracks destroyed
+09:21 [ENEMY] Barracks started (not finished)
+09:21 [ENEMY] Barracks destroyed
+09:23 [ENEMY] Refinery destroyed
+09:23 [ENEMY] HQ shield down
+09:25 [ME] Lost Rifleman ×2, 09:25–09:43
+09:28 [ME] Lost Gunship
+09:40 [ME] Tank
+09:40 [ME] Lost Interceptor
+09:44 [ENEMY] Command HQ destroyed
+09:44 [ALL] Match ended: you won
