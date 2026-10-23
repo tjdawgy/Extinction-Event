@@ -1,6 +1,6 @@
 // The SIM must not change by accident: the same seeded AI-vs-AI match must end in exactly the same state,
 // particles and screen shake included. When a rules change is intended, re-record the fingerprint
-// (node tests/determinism.test.js --print) and say so in the commit. Recorded at v2.9: the same game as v2.8 (with the log stripped and v10 it hashes to v2.8's 9269dc50…); only the save version differs.
+// (node tests/determinism.test.js --print) and say so in the commit. Recorded at v2.9; still the same at v2.11 (the v2.11 shield and Repair Pulse fixes never come up in this 8-minute seeded match).
 const test = require('node:test');
 const assert = require('node:assert');
 const crypto = require('crypto');
