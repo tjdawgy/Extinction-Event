@@ -10,8 +10,8 @@ Issues found during testing that are deliberately deferred. Each lists the step 
 
 ## Open
 
-### The match timeline runs past 80 lines per side (v2.9)
-- Key events are never merged or cut, and in a typical 10–14 minute match they alone come to 61–114 lines per side (building started, finished, upgrade started and upgraded make up about 52 of them). Unit lines are widened to leave about 20, so a side shows 77–130 lines (8 AI matches). Pairing "started" and "finished" on one line would bring it to roughly 60–90.
+### Long matches run past 80 timeline lines per side (v2.10)
+- Since v2.10 a build or upgrade and its finish share one line, which brought typical matches to 63–76 lines per side (median 72 over 8 AI matches). Long matches (14–22 minutes) still reach 85–156 lines, because key events are never merged or cut.
 
 ### Normal holds the calibrated Rifleman rush a little less often (v2.8)
 - With one shared ability cooldown, AI Normal beats the calibrated rush in 61 of 100 matches (ladder 60 plus the per-personality rows 40), against 68 of 100 in v2.7. The gap is within about two standard deviations, so it may be noise; Easy, Normal and Hard keep their order (Normal vs Hard: 24–36 over 60, v2.7 20–40).
