@@ -64,8 +64,8 @@ async function main() {
     await page.evaluate(() => { __tapWorld(610, 0); __frames(60); });
     await snap('Repair Pulse: active');
     // Layout: building panel, then the info panel, next to the ability column
-    await page.evaluate(() => { __scene(); for (const s of game.sides) s.ab = { shield: game.t + 23, strike: game.t + 70, repair: 0 }; refreshUI(true); openPanel(game.ents.find(e => e.type === 'factory')); render(ctx, game, game.t, sel, selPad); });
-    await snap('Layout: building panel + abilities (two cooling down)');
+    await page.evaluate(() => { __scene(); for (const s of game.sides) { const end = game.t + 70; s.ab = { shield: end, strike: end, repair: end }; s.abK = 'strike'; s.abEnd = end; } refreshUI(true); openPanel(game.ents.find(e => e.type === 'factory')); render(ctx, game, game.t, sel, selPad); });
+    await snap('Layout: building panel + abilities (shared cooldown after a Strike)');
     await page.evaluate(() => { showInfo('a', 'strike'); });
     await snap('Layout: long-press info + abilities');
     await page.evaluate(() => { hideInfo(); closePanel(); game.countdown = 2; refreshUI(true); });

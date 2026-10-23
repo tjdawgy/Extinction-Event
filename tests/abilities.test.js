@@ -1,4 +1,4 @@
-// Commander abilities (Step 6): rules, effects, fog limits, save/resume and AI use. SIM only (Node).
+// Commander abilities (Step 6; one shared cooldown from v2.8): rules, effects, fog limits, save/resume and AI use. SIM only (Node).
 const test = require('node:test');
 const assert = require('node:assert');
 const { loadSim } = require('./load-sim');
@@ -15,6 +15,7 @@ function quiet(t = 130) {
 const hold = (e, u, v) => { e.holdU = u; e.holdV = v; e.cd = 1e6; return e; }; // units stay put and hold fire
 const factory = g => { for (const k of ['barracks', 'factory']) { sim.tryBuild(g, 0, k); for (const b of g.ents) if (b.type === k) { b.built = true; b.progress = 1; } } };
 const seeAll = g => { for (const f of g.fog) { f.vis.fill(1); f.exp.fill(1); } };
+const ready = (g, s = 0) => { for (const k of ['shield', 'strike', 'repair']) g.sides[s].ab[k] = 0; }; // skip the (shared) cooldown
 
 test('cost, cooldown, unlock, countdown and resources are enforced', () => {
   const g = sim.newGame('normal', { countdown: 3 });
@@ -43,6 +44,7 @@ test('targeting: Shield and Repair only on ground in view; Orbital Strike on exp
   assert.match(sim.useAbility(g, 0, 'strike', 1000, 0).msg, /explored ground/);
   g.fog[0].exp[sim.cellOf(1000)] = 1; // explored but not in view: allowed
   assert.ok(sim.useAbility(g, 0, 'strike', 1000, 0).ok);
+  ready(g);
   assert.ok(sim.useAbility(g, 0, 'shield', 300, 0).ok, 'own base is in view');
 });
 
@@ -63,6 +65,41 @@ test('Emergency Shield: 40% less damage for 7 s, follows the unit, never extende
   assert.ok(Math.abs(hp2 - a.hp - 100) < 1e-6, 'expired');
 });
 
+test('one shared cooldown: any ability locks all three for its own cooldown (Shield and Repair 50 s, Strike 100 s); unlock times still apply', () => {
+  const g = quiet(); seeAll(g); factory(g); g.sides[0].res.c = g.sides[0].res.e = 5000;
+  assert.deepStrictEqual([sim.ABIL.shield.cd, sim.ABIL.repair.cd, sim.ABIL.strike.cd], [50, 50, 100]);
+  assert.ok(sim.useAbility(g, 0, 'shield', 400, 0).ok);
+  for (const k of ['shield', 'strike', 'repair']) assert.match(sim.abilityCheck(g, 0, k).msg, /Shared cooldown: abilities ready in 50 s/, k);
+  assert.ok(sim.abilityCheck(g, 1, 'shield').ok || /credits|energy/.test(sim.abilityCheck(g, 1, 'shield').msg), 'the other side is not locked');
+  step(g, 50.1);
+  for (const k of ['shield', 'strike', 'repair']) assert.ok(sim.abilityCheck(g, 0, k).ok, k);
+  assert.ok(sim.useAbility(g, 0, 'strike', 1000, 0).ok);
+  step(g, 99);
+  assert.match(sim.abilityCheck(g, 0, 'repair').msg, /ready in 1 s/);
+  step(g, 1.1);
+  assert.ok(sim.abilityCheck(g, 0, 'repair').ok);
+  // before 2:00 a Shield doesn't unlock the Strike early: each ability's own unlock time still holds
+  const g2 = sim.newGame('normal'); g2.sides[0].aiT = g2.sides[1].aiT = 1e9; g2.t = 61; g2.sides[0].res.c = g2.sides[0].res.e = 5000; factory(g2); sim.updateVision(g2);
+  assert.ok(sim.useAbility(g2, 0, 'shield', 300, 0).ok);
+  assert.strictEqual(g2.sides[0].ab.strike, 120); assert.strictEqual(g2.sides[0].ab.repair, 111);
+});
+
+test('a v9 save (separate cooldowns) migrates: the longest cooldown still running locks all three; no free use', () => {
+  const g = quiet(300); seeAll(g); factory(g); g.sides[0].res.c = g.sides[0].res.e = 5000;
+  const o = JSON.parse(sim.serialize(g, {})); o.v = 9;
+  for (const sd of o.sides) { delete sd.abK; delete sd.abEnd; }
+  o.sides[0].ab = { shield: 330, strike: 380, repair: 0 }; // shield and strike used earlier, repair ready
+  o.sides[1].ab = { shield: 0, strike: 0, repair: 0 };
+  const g2 = sim.deserialize(JSON.stringify(o));
+  assert.deepStrictEqual(['shield', 'strike', 'repair'].map(k => g2.sides[0].ab[k]), [380, 380, 380]);
+  assert.strictEqual(g2.sides[0].abK, 'strike');
+  assert.deepStrictEqual(['shield', 'strike', 'repair'].map(k => g2.sides[1].ab[k]), [0, 0, 0], 'nothing running: nothing locked');
+  // a v9 save from before 2:00 keeps the Strike's unlock time without treating it as a cooldown
+  const o2 = JSON.parse(sim.serialize(quiet(70), {})); o2.v = 9; for (const sd of o2.sides) { delete sd.abK; delete sd.abEnd; sd.ab = { shield: 60, strike: 120, repair: 60 }; }
+  const g3 = sim.deserialize(JSON.stringify(o2));
+  assert.deepStrictEqual(['shield', 'strike', 'repair'].map(k => g3.sides[0].ab[k]), [60, 120, 60]);
+});
+
 test('Orbital Strike: 3 s warning, 280 at the centre to 140 at the edge, ground only, enemies only, shielded HQ immune', () => {
   const g = quiet(); seeAll(g);
   factory(g); g.sides[0].res.c = g.sides[0].res.e = 5000;
@@ -79,7 +116,7 @@ test('Orbital Strike: 3 s warning, 280 at the centre to 140 at the edge, ground 
   assert.strictEqual(air.hp, hp[2], 'aircraft are not hit');
   assert.strictEqual(mine.hp, hp[3], 'own units are not hit');
   // the enemy HQ is shielded while its other buildings stand
-  g.sides[0].ab.strike = 0; g.sides[1].res.c = 1e4; sim.tryBuild(g, 1, 'refinery'); step(g, 0.1);
+  ready(g); g.sides[1].res.c = 1e4; sim.tryBuild(g, 1, 'refinery'); step(g, 0.1);
   const hq = g.sides[1].hq, hqHp = hq.hp;
   assert.ok(hq.shielded);
   assert.ok(sim.useAbility(g, 0, 'strike', hq.u, hq.v).ok); step(g, 3.2);
@@ -111,10 +148,12 @@ test('save and resume mid-cooldown and mid-effect; a v7 save starts each ability
   const g = quiet(); seeAll(g);
   factory(g); g.sides[0].res.c = g.sides[0].res.e = 5000;
   const u = hold(sim.spawnUnit(g, 0, 'tank', 400, 0), 400, 0), foe = hold(sim.spawnUnit(g, 1, 'titan', 1000, 0), 1000, 0);
-  sim.useAbility(g, 0, 'shield', 400, 0); sim.useAbility(g, 0, 'strike', 1000, 0);
+  sim.useAbility(g, 0, 'shield', 400, 0); ready(g); sim.useAbility(g, 0, 'strike', 1000, 0);
   step(g, 1);
   const g2 = sim.deserialize(sim.serialize(g, {}));
-  assert.ok(g2.sides[0].ab.shield - g2.t > 48 && g2.sides[0].ab.strike - g2.t > 98, 'cooldowns kept');
+  assert.ok(['shield', 'strike', 'repair'].every(k => g2.sides[0].ab[k] - g2.t > 98), 'the shared cooldown is kept');
+  assert.strictEqual(g2.sides[0].abK, 'strike');
+  assert.match(sim.abilityCheck(g2, 0, 'shield').msg, /Shared cooldown: abilities ready in (99|100) s/);
   const u2 = g2.ents.find(e => e.id === u.id), f2 = g2.ents.find(e => e.id === foe.id), hp = f2.hp;
   assert.ok(u2.shT > g2.t, 'shield kept');
   assert.strictEqual(g2.abil.filter(a => a.k === 'strike').length, 1, 'pending strike kept');
@@ -128,14 +167,22 @@ test('save and resume mid-cooldown and mid-effect; a v7 save starts each ability
   assert.strictEqual(g3.sides[0].ab.shield, 560); assert.strictEqual(g3.sides[0].ab.strike, 620);
 });
 
-test('the AI uses abilities under the same rules, each personality in its own way', () => {
+test('the AI uses abilities under the same rules (one shared cooldown), each personality in its own way', () => {
   const use = {}, strikeDef = {};
   for (const kind of ['aggressor', 'turtle', 'economist', 'trickster']) {
     use[kind] = { shield: 0, strike: 0, repair: 0 }; strikeDef[kind] = 0;
     for (let m = 0; m < 3; m++) {
       const g = sim.newGame('hard', { autoPlayer: true, autoDiff: 'hard', persona: kind, autoPersona: 'turtle' });
-      const orig = g.sides[1].res; // the AI pays: resources can never go negative from an ability
-      for (let i = 0; i < 30 * 900 && !g.over; i++) { sim.update(g, 1 / 30); assert.ok(orig.c > -1e-6 && orig.e > -1e-6); }
+      const orig = g.sides[1].res, last = [null, null]; // the AI pays: resources can never go negative from an ability
+      for (let i = 0; i < 30 * 900 && !g.over; i++) {
+        sim.update(g, 1 / 30); assert.ok(orig.c > -1e-6 && orig.e > -1e-6);
+        for (const e of g.events) if (e.type === 'ability') { // the AI waits out the shared cooldown too
+          const p = last[e.side];
+          if (p) assert.ok(g.t - p.t >= sim.ABIL[p.k].cd - 1e-6, `${kind}: ${e.k} ${(g.t - p.t).toFixed(1)} s after ${p.k}`);
+          last[e.side] = { t: g.t, k: e.k };
+        }
+        g.events.length = 0;
+      }
       const a = g.sides[1].aiLog.abil || {};
       for (const k of ['shield', 'strike', 'repair']) use[kind][k] += a[k] || 0;
       strikeDef[kind] += a.strikeDef || 0;

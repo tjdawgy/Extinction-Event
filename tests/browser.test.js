@@ -426,7 +426,7 @@ for (const dev of [PHONE, NARROW]) {
   });
 }
 
-test('abilities: tap, place, confirm; cancel; blocked during GET READY, while paused and when short of resources', { skip }, async () => {
+test('abilities: tap, place, confirm; cancel; one shared cooldown ring; blocked during GET READY, while paused and when short of resources', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
   await page.click('#bPlay'); await page.waitForTimeout(300);
   const toasts = () => page.evaluate(() => [...$('toasts').children].map(t => t.textContent));
@@ -437,6 +437,8 @@ test('abilities: tap, place, confirm; cancel; blocked during GET READY, while pa
   const at = await page.evaluate(() => {
     game.countdown = 0; hideCountdown(); game.t = 200; game.sides[0].ab = { shield: 0, strike: 0, repair: 0 };
     for (const s of game.sides) s.aiT = 1e9;
+    game.sides[0].res.c = game.sides[0].res.e = 5000;
+    for (const k of ['barracks', 'factory']) { tryBuild(game, 0, k); for (const b of game.ents) if (b.type === k) { b.built = true; b.progress = 1; } } // so the Strike is unlocked too
     for (let i = 0; i < 6; i++) { const e = spawnUnit(game, 0, 'rifle', 500 + i * 12, 0); e.holdU = e.u; e.holdV = 0; }
     update(game, 1 / 30); updateIntro(); cam.x = 600; clampCam(); refreshUI(true);
     const w = P(530, 0); return { x: V.cw / 2 + (w.x - cam.x) * V.S, y: V.A + (w.y - Y_BOT) * V.S };
@@ -460,8 +462,17 @@ test('abilities: tap, place, confirm; cancel; blocked during GET READY, while pa
   await page.mouse.click(at.x + 4, at.y);
   const r = await page.evaluate(() => ({ e: game.sides[0].res.e, shielded: game.ents.filter(e => e.side === 0 && e.shT > game.t).length, aim, cd: game.sides[0].ab.shield - game.t }));
   assert.ok(Math.abs(e0 - r.e - 75) < 1, `paid ${e0 - r.e} energy`); assert.strictEqual(r.shielded, 6); assert.strictEqual(r.aim, null); assert.ok(r.cd > 49);
-  // paused: pausing cancels targeting and the buttons do nothing
+  // the shared cooldown: one ring and one timer on all three buttons; the Shield, which started it, is outlined
+  const ring = await page.evaluate(() => { refreshAbil(); return [...$('abil').children].map(el => ({ k: el.dataset.k, cool: el.classList.contains('cool'), src: el.classList.contains('src'), p: el.style.getPropertyValue('--p'), t: el.querySelector('small').textContent })); });
+  assert.ok(ring.every(b => b.cool && b.p === ring[0].p && b.t === ring[0].t && +b.p > 0.95), JSON.stringify(ring));
+  assert.deepStrictEqual(ring.map(b => b.src), [true, false, false]);
   await page.click('#abil .ab[data-k="repair"]');
+  assert.ok((await toasts()).some(t => /^Shared cooldown: abilities ready in 50 s$/.test(t)));
+  assert.ok(await page.evaluate(() => aim === null));
+  // paused: pausing cancels targeting and the buttons do nothing
+  await page.evaluate(() => { game.sides[0].ab = { shield: 0, strike: 0, repair: 0 }; refreshUI(true); });
+  await page.click('#abil .ab[data-k="repair"]');
+  assert.ok(await page.evaluate(() => aim && aim.k === 'repair'));
   await page.evaluate(() => pauseGame());
   assert.ok(await page.evaluate(() => aim === null && $('aim').classList.contains('hide')));
   await page.evaluate(() => onAbil('repair', $('abil').children[2]));

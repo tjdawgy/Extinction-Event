@@ -124,6 +124,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .ab .ring{position:absolute;inset:0;border-radius:50%;background:conic-gradient(rgba(0,0,0,.62) calc(var(--p,0) * 1turn),transparent 0);pointer-events:none}
 .ab.ready{border-color:var(--ac)} .ab.cool svg,.ab.poor svg,.ab.lock svg,.ab.wait svg{opacity:.4}
 .ab.on{border-color:#fff;box-shadow:0 0 0 3px var(--ac)}
+.ab.src{border-color:var(--ac);border-style:dashed} /* the ability that started the shared cooldown */
 .ab.shake{animation:shake .3s}
 #aim{position:fixed;z-index:3;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 90px);display:flex;align-items:center;gap:0;padding:6px 6px 6px 12px;border-radius:12px;background:rgba(12,18,34,.92);border:1px solid var(--ac);color:#e6eefc;font-size:13px;white-space:nowrap;pointer-events:auto}
 #aim b{color:#fff} #aimX{margin-left:10px;height:32px;padding:0 12px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.1);font-weight:700}
@@ -236,7 +237,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.7'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.8'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -395,9 +396,28 @@ function aiAbility(g, s, P, ctx) {
   };
   const spare = k => abilityCheck(g, s, k).ok && side.res.c >= ABIL[k].cost.c + (ctx.threat ? 0 : 60);
   if (kind === 'economist' && !ctx.threat && g.t < 480 && side.res.c < 900) return; // the Economist keeps its money in the economy unless defending, flush, or later on
-  if (lvl > 0 && spare('strike') && use('strike', aiStrikeTarget(g, s, kind, lvl, seen, ctx))) return;
-  if (spare('shield') && use('shield', aiShieldTarget(g, s, kind, lvl, seen, ctx))) return;
-  if (spare('repair')) use('repair', aiRepairTarget(g, s, kind, lvl, ctx));
+  // One shared cooldown: using any ability locks all three, so weigh the options. Each target's score is measured
+  // against its own threshold (1 = just worth it), scaled by the lock it costs and by the personality's priorities.
+  const opts = [];
+  if (lvl > 0 && spare('strike')) opts.push(['strike', aiStrikeTarget(g, s, kind, lvl, seen, ctx)]);
+  if (spare('shield')) opts.push(['shield', aiShieldTarget(g, s, kind, lvl, seen, ctx)]);
+  if (spare('repair')) opts.push(['repair', aiRepairTarget(g, s, kind, lvl, ctx)]);
+  // The Aggressor saves the cooldown for a Strike on known defences while it builds up to a push; only a fight it is losing gets a Shield
+  const hold = kind === 'aggressor' && lvl > 0 && !ctx.threat && aiFortified(g, s) && hasBuilt(g, s, 'factory') && ctx.myV >= 300;
+  let best = null, bv = 0;
+  for (const [k, t] of opts) {
+    if (!t) continue;
+    if (lvl === 0) { best = [k, t]; break; } // Easy takes the first option that is worth it
+    if (hold && k !== 'strike' && !(k === 'shield' && t.losing)) continue;
+    let w = 1;
+    if (kind === 'aggressor') w = k === 'strike' ? (t.def ? 1.6 : 1) : k === 'repair' ? 0.6 : 1;
+    else if (kind === 'turtle') w = k === 'repair' ? (ctx.threat ? 1.6 : 1) : k === 'strike' ? 0.8 : 1;
+    else if (kind === 'economist') w = k === 'repair' ? 1.2 : 1;
+    else if (kind === 'trickster') w = (k === 'shield' && (side.stance === 'attack' || side.feintUntil > g.t)) || (k === 'strike' && side.feintUntil > g.t) ? 1.3 : 1;
+    const v = t.score * w * Math.sqrt(50 / ABIL[k].cd);
+    if (v > bv) { bv = v; best = [k, t]; }
+  }
+  if (best) use(best[0], best[1]);
 }
 function aiStrikeTarget(g, s, kind, lvl, seen, ctx) {
   const A = ABIL.strike, f = g.fog[s], side = g.sides[s], front = g.front[s], home = hqU(s);
@@ -435,7 +455,7 @@ function aiStrikeTarget(g, s, kind, lvl, seen, ctx) {
       if (kind === 'turtle') w *= 0.4;
       sc += w * hit(d, live ? live.hp : bd.hp * hpMul(bd, gh.tier || 1));
     }
-    if (sc > bs) { bs = sc; best = { u: clamp(p.u, 0, L), v: clamp(p.v, -200, 200), def }; }
+    if (sc > bs) { bs = sc; best = { u: clamp(p.u, 0, L), v: clamp(p.v, -200, 200), def, score: sc / [Infinity, 340, 300][lvl] }; }
   }
   return best;
 }
@@ -451,11 +471,12 @@ function aiShieldTarget(g, s, kind, lvl, seen, ctx) {
     let foe = 0;
     for (const e of seen) if (Math.abs(e.u - m.u) < 230) foe += e.kind === 'u' ? UDEF[e.type].cost.c : (BDEF[e.type].gun ? 300 : 0);
     if (foe < 200) continue; // not in a fight
-    let near = 0; if (lvl === 2) { for (const o of ctx.mine) if (Math.abs(o.u - m.u) < 230) near += UDEF[o.type].cost.c; if (near > foe * 1.6) continue; } // Hard: a fight already won needs no shield
+    let near = 0; for (const o of ctx.mine) if (Math.abs(o.u - m.u) < 230) near += UDEF[o.type].cost.c;
+    if (lvl === 2 && near > foe * 1.6) continue; // Hard: a fight already won needs no shield
     if (kind === 'turtle' && Math.abs(m.u - home) > 650) continue;
     let mineV = 0;
     for (const o of ctx.mine) if (!(o.shT > g.t) && Math.hypot(o.u - m.u, o.v - m.v) <= A.r) mineV += UDEF[o.type].cost.c + UDEF[o.type].cost.e * 1.5;
-    if (mineV > bs) { bs = mineV; best = { u: m.u, v: m.v }; }
+    if (mineV > bs) { bs = mineV; best = { u: m.u, v: m.v, score: mineV / need, losing: near < foe }; }
   }
   return best;
 }
@@ -463,7 +484,8 @@ function aiRepairTarget(g, s, kind, lvl, ctx) {
   const A = ABIL.repair, side = g.sides[s];
   if (kind === 'aggressor' && side.stance === 'attack' && !side.fails) return null; // it repairs after a failed push, not during one
   const own = g.ents.filter(e => e.side === s && e.hp > 0 && e.hp < e.maxHp && !(e.kind === 'b' && (!e.built || e.repair > 0)));
-  let best = null, bs = [900, 850, 750][lvl];
+  const need = [900, 850, 750][lvl];
+  let best = null, bs = need;
   for (const c of own) {
     let miss = 0;
     for (const e of own) {
@@ -472,7 +494,7 @@ function aiRepairTarget(g, s, kind, lvl, ctx) {
       if (e.kind === 'b') w = kind === 'turtle' && (e.type === 'turret' || e.type === 'hq') ? 1.5 : kind === 'economist' && e.type === 'refinery' ? 2 : kind === 'aggressor' ? 0.3 : 0.8;
       miss += Math.min(e.maxHp - e.hp, e.maxHp * A.rate * A.dur) * w;
     }
-    if (miss > bs) { bs = miss; best = { u: c.u, v: c.v }; }
+    if (miss > bs) { bs = miss; best = { u: c.u, v: c.v, score: miss / need }; }
   }
   return best;
 }
@@ -498,7 +520,7 @@ function newGame(diffKey, opts = {}) {
     nodes: NODE_U.map((u, i) => ({ id: i, u, v: 0, prog: 0, owner: null, c: [0, 0] })) };
   for (let s = 0; s < 2; s++) {
     g.sides.push({ res: { c: 300, e: 60 }, stance: s === 0 ? 'hold' : 'retreat', stanceAt: 0, pushTo: null, slots: new Array(SLOT_COUNT).fill(null),
-      hq: null, aiT: 1 + s * 0.5, stats: { built: 0, kills: 0, lost: 0, earned: 0 }, lastAlert: -99, buff: false, ab: newAb(0) });
+      hq: null, aiT: 1 + s * 0.5, stats: { built: 0, kills: 0, lost: 0, earned: 0 }, lastAlert: -99, buff: false, ab: newAb(0), abK: null, abEnd: 0 });
     const hq = mkBuilding(g, s, 'hq', -1);
     hq.built = true; hq.progress = 1; hq.hp = hq.maxHp;
     g.sides[s].hq = hq;
@@ -929,13 +951,14 @@ function fire(g, src, t, def) {
 
 /* ---------- Commander abilities (Step 6) ----------
    Both sides use them under the same rules: cost, cooldown, unlock and what may be targeted. Cooldowns are stored
-   as the game time an ability is ready again (side.ab), so they survive save and resume. */
+   as the game time an ability is ready again (side.ab), so they survive save and resume.
+   v2.8: one shared cooldown. Using any ability locks all three for the used ability's cooldown (side.abK, side.abEnd). */
 const ABIL = {
   shield: { name: 'Emergency Shield', cost: { c: 75, e: 75 }, cd: 50, first: 60, r: 110, dur: 7, cut: 0.4,
     tip: 'Your units inside the circle take 40% less damage for 7 s. The shield moves with them and never stacks.' },
   strike: { name: 'Orbital Strike', cost: { c: 150, e: 150 }, cd: 100, first: 120, r: 70, delay: 3, dmg: 280, edge: 140, req: 'factory',
     tip: 'After a 3 s warning: 280 damage at the centre, 140 at the edge, to enemy ground units and buildings. Not aircraft or a shielded HQ. Target any explored ground.' },
-  repair: { name: 'Repair Pulse', cost: { c: 100, e: 75 }, cd: 60, first: 60, r: 120, dur: 6, rate: 0.06,
+  repair: { name: 'Repair Pulse', cost: { c: 100, e: 75 }, cd: 50, first: 60, r: 120, dur: 6, rate: 0.06,
     tip: 'Your units and finished buildings inside the circle regain 6% of their HP per second for 6 s. Where paid Repair is also running, the faster one applies.' },
 };
 const ABIL_ORDER = ['shield', 'strike', 'repair'];
@@ -948,7 +971,7 @@ function abilityCheck(g, s, k, u, v) {
   if (g.countdown > 0) return WAIT_GO;
   if (A.req && !hasBuilt(g, s, A.req)) return { ok: false, msg: `${A.name} needs a ${BDEF[A.req].name}` };
   const wait = side.ab[k] - g.t;
-  if (wait > 0) return { ok: false, msg: `${A.name} is ready in ${Math.ceil(wait)} s` };
+  if (wait > 0) return { ok: false, msg: side.abK && Math.abs(side.ab[k] - side.abEnd) < 1e-6 ? `Shared cooldown: abilities ready in ${Math.ceil(wait)} s` : `${A.name} is ready in ${Math.ceil(wait)} s` };
   if (side.res.c < A.cost.c) return { ok: false, msg: `Need ${Math.ceil(A.cost.c - side.res.c)} more credits` };
   if (side.res.e < A.cost.e) return { ok: false, msg: `Need ${Math.ceil(A.cost.e - side.res.e)} more energy` };
   if (u === undefined) return { ok: true };
@@ -961,7 +984,9 @@ function useAbility(g, s, k, u, v) {
   const r = abilityCheck(g, s, k, u, v);
   if (!r.ok) return r;
   const A = ABIL[k], side = g.sides[s];
-  side.res.c -= A.cost.c; side.res.e -= A.cost.e; side.ab[k] = g.t + A.cd;
+  side.res.c -= A.cost.c; side.res.e -= A.cost.e;
+  for (const k2 of ABIL_ORDER) side.ab[k2] = Math.max(side.ab[k2], g.t + A.cd); // the shared cooldown
+  side.abK = k; side.abEnd = g.t + A.cd;
   if (k === 'shield') {
     let n = 0;
     for (const e of g.ents) if (e.kind === 'u' && e.side === s && e.hp > 0 && inAbil(e, u, v, A.r) && !(e.shT > g.t)) { e.shT = g.t + A.dur; n++; } // never extended
@@ -1405,8 +1430,8 @@ function aiSpotter(g, s) {
 }
 
 /* ---------- Save and resume ---------- */
-// v6 adds fog of war; v7 the AI's personality (kept on its side record). Older saves are migrated.
-const SAVE_VER = 9, SAVE_OK = [5, 6, 7, 8, 9];
+// v6 adds fog of war; v7 the AI's personality (kept on its side record); v10 the shared ability cooldown. Older saves are migrated.
+const SAVE_VER = 10, SAVE_OK = [5, 6, 7, 8, 9, 10];
 function serialize(g, extra) {
   const live = g.ents.filter(e => e.hp > 0);
   for (const sd of g.sides) if (sd.hq.hp <= 0 && !live.includes(sd.hq)) live.push(sd.hq); // a fallen HQ inside the storm's 5 s end window
@@ -1436,6 +1461,12 @@ function deserialize(str) {
   });
   if (!g.sides[1].persona) g.sides[1].persona = rollPersona(); // a save from before personalities: pick one now
   for (const sd of g.sides) if (!sd.ab) sd.ab = newAb(g.t); // a save from before abilities: each starts its first cooldown now
+  if (o.v >= 8 && o.v < 10) for (const sd of g.sides) { // separate cooldowns: the longest one still running now locks all three (never a free use)
+    let end = 0, k0 = null;
+    for (const k of ABIL_ORDER) if (sd.ab[k] > g.t && sd.ab[k] !== ABIL[k].first && sd.ab[k] > end) { end = sd.ab[k]; k0 = k; }
+    for (const k of ABIL_ORDER) sd.ab[k] = Math.max(sd.ab[k], end);
+    sd.abK = k0; sd.abEnd = end;
+  }
   g.abil = o.abil || [];
   g.endHold = o.endHold || null; // the 5-second end window of a storm match (v9)
   updateVision(g);
@@ -3134,6 +3165,7 @@ function showInfo(kind, type) {
     name = A.name; sub = 'Commander ability';
     body = `<div class="istats">${stat('Credits', A.cost.c)}${stat('Energy', A.cost.e)}${stat('Cooldown', A.cd + 's')}${stat('Radius', A.r)}</div>
       <div class="irow">${A.tip}</div>
+      <div class="irow"><em>Shared cooldown</em> Using any ability locks all three for the used one's cooldown (Shield and Repair Pulse 50 s, Orbital Strike 100 s).</div>
       <div class="irow"><em>Available</em> ${A.first} s after GO${A.req ? `, with a ${BDEF[A.req].name}` : ''}. Tap the button, tap the battlefield, then tap inside the circle to confirm.</div>`;
   } else {
     const d = BDEF[type];
@@ -3247,14 +3279,15 @@ function refreshAbil() {
   for (const el of box.children) {
     const k = el.dataset.k, A = ABIL[k], wait = s.ab[k] - game.t, locked = !!(A.req && !hasBuilt(game, 0, A.req));
     const cool = wait > 0, poorC = s.res.c < A.cost.c, poorE = s.res.e < A.cost.e, gate = game.countdown > 0;
-    const total = s.ab[k] <= A.first + 1e-6 ? A.first : A.cd;
+    const shared = s.abK && Math.abs(s.ab[k] - s.abEnd) < 1e-6, total = shared ? ABIL[s.abK].cd : A.first; // one shared ring on all three
     el.classList.toggle('lock', locked); el.classList.toggle('cool', !locked && cool); el.classList.toggle('wait', gate);
     el.classList.toggle('poor', !locked && !cool && (poorC || poorE));
     el.classList.toggle('ready', !locked && !cool && !gate && !poorC && !poorE);
     el.classList.toggle('on', !!aim && aim.k === k);
+    el.classList.toggle('src', !locked && cool && shared && s.abK === k);
     el.style.setProperty('--p', cool ? clamp(wait / total, 0, 1).toFixed(3) : 0);
     setHTML(el.querySelector('small'), locked ? 'Factory' : cool ? fmtCd(wait) : `<span class="${poorC ? 'no' : ''}">${A.cost.c}</span>·<span class="${poorE ? 'no' : 'e'}">${A.cost.e}</span>`);
-    el.setAttribute('aria-label', `${A.name}: ${locked ? `needs a ${BDEF[A.req].name}` : cool ? `ready in ${Math.ceil(wait)} seconds` : `${A.cost.c} credits, ${A.cost.e} energy`}`);
+    el.setAttribute('aria-label', `${A.name}: ${locked ? `needs a ${BDEF[A.req].name}` : cool ? `ready in ${Math.ceil(wait)} seconds${shared ? ` (shared cooldown from ${ABIL[s.abK].name})` : ''}` : `${A.cost.c} credits, ${A.cost.e} energy`}`);
   }
 }
 function refreshUI(force) {
