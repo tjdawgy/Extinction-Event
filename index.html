@@ -109,6 +109,10 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 #bpHp{color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
 #info{position:fixed;z-index:4;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 90px);width:min(420px,calc(100vw - 2 * (env(safe-area-inset-right,0px) + 70px)));background:rgba(10,17,33,.95);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:12px;padding:9px 12px 10px;font-size:12.5px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
 #info.hide{display:none}
+/* Extinction Event warning: under the top bar, takes no taps; toasts move down while it shows */
+#ext{position:fixed;z-index:3;top:calc(env(safe-area-inset-top,0px) + 50px);left:50%;transform:translateX(-50%);padding:5px 14px;border-radius:10px;background:rgba(120,14,8,.9);border:1px solid #ff6a4d;color:#fff;font-weight:800;font-size:13px;letter-spacing:.3px;white-space:nowrap;pointer-events:none}
+#ext.hide{display:none}
+.ext-on #toasts{top:calc(env(safe-area-inset-top,0px) + 84px)}
 .info-open #bp{visibility:hidden} /* the building panel waits behind the info panel instead of overlapping it */
 /* Commander abilities: a column on the right edge of the battlefield, clear of the top bar, the cards and both panels */
 #abil{position:fixed;z-index:2;right:calc(env(safe-area-inset-right,0px) + 6px);top:calc(env(safe-area-inset-top,0px) + 50px);display:flex;flex-direction:column;gap:8px;pointer-events:auto}
@@ -217,6 +221,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
       <div id="bpNext"></div>
       <div class="bpr"><button id="bpUp">Upgrade</button><button id="bpRep">Repair</button><button id="bpSell">Sell</button></div>
     </div>
+    <div id="ext" class="hide" aria-live="assertive"></div>
     <div id="abil" class="hide" aria-label="Commander abilities"></div>
     <div id="aim" class="hide" role="status"><b id="aimName"></b><span id="aimTxt"></span><button id="aimX">Cancel</button></div>
     <div id="info" class="hide"><div class="ih"><b id="infoName"></b><small id="infoSub"></small><button id="infoX" aria-label="Close">×</button></div><div id="infoBody"></div></div>
@@ -231,7 +236,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.5'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.6'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -493,7 +498,7 @@ function newGame(diffKey, opts = {}) {
     nodes: NODE_U.map((u, i) => ({ id: i, u, v: 0, prog: 0, owner: null, c: [0, 0] })) };
   for (let s = 0; s < 2; s++) {
     g.sides.push({ res: { c: 300, e: 60 }, stance: s === 0 ? 'hold' : 'retreat', stanceAt: 0, pushTo: null, slots: new Array(SLOT_COUNT).fill(null),
-      hq: null, aiT: 1 + s * 0.5, stats: { built: 0, kills: 0, lost: 0 }, lastAlert: -99, buff: false, ab: newAb(0) });
+      hq: null, aiT: 1 + s * 0.5, stats: { built: 0, kills: 0, lost: 0, earned: 0 }, lastAlert: -99, buff: false, ab: newAb(0) });
     const hq = mkBuilding(g, s, 'hq', -1);
     hq.built = true; hq.progress = 1; hq.hp = hq.maxHp;
     g.sides[s].hq = hq;
@@ -706,10 +711,11 @@ function update(g, dt) {
     if (g.countdown === 0) ev(g, { type: 'go' });
     return;
   }
+  const t0 = g.t;
   g.t += dt;
   for (let s = 0; s < 2; s++) {
     const inc = income(g, s), side = g.sides[s];
-    side.res.c += inc.c * dt; side.res.e += inc.e * dt;
+    side.res.c += inc.c * dt; side.res.e += inc.e * dt; side.stats.earned = (side.stats.earned || 0) + inc.c * dt;
     side.buff = hasTier(g, s, 'techlab', 3);
   }
   updateNodes(g, dt);
@@ -731,9 +737,11 @@ function update(g, dt) {
   }
   updateProjs(g, dt);
   updateAbilities(g, dt);
+  updateStorm(g, dt, t0);
   aiUpdate(g, 1, dt); aiSpotter(g, 1);
   if (g.auto) { aiUpdate(g, 0, dt); aiSpotter(g, 0); }
   if (g.ents.some(e => e.hp <= 0)) g.ents = g.ents.filter(e => e.hp > 0);
+  resolveEnd(g);
 }
 
 function updateNodes(g, dt) {
@@ -777,11 +785,11 @@ function updateBuilding(g, b, foes, dt) {
   }
   // Paid repair is fast; after a quiet spell every building also slowly patches itself up
   if (b.repair > 0) {
-    const h = Math.min(b.repair, b.maxHp * 0.06 * dt, b.maxHp - b.hp);
+    const h = Math.min(b.repair, b.maxHp * 0.06 * (g.t >= EXT.start ? EXT.repairMul : 1) * dt, b.maxHp - b.hp); // half rate in the storm
     b.hp += h; b.repair -= h;
     if (b.hp >= b.maxHp - 0.01) b.repair = 0;
     if (Math.random() < dt * 6) { const w = P(b.u + rand(-b.half, b.half) * 0.6, b.v + rand(-b.half, b.half) * 0.6, b.h * rand(0.2, 0.9)); addPart(g, { x: w.x, y: w.y, vx: rand(-8, 8), vy: rand(-30, -10), life: 0.5, size: 1.6, color: '#7dffb0', grav: 0 }); }
-  } else if (g.t - (b.lastHit ?? -99) > REGEN_DELAY && b.hp < b.maxHp) b.hp = Math.min(b.maxHp, b.hp + b.maxHp * 0.01 * dt);
+  } else if (g.t < EXT.start && g.t - (b.lastHit ?? -99) > REGEN_DELAY && b.hp < b.maxHp) b.hp = Math.min(b.maxHp, b.hp + b.maxHp * 0.01 * dt);
   if (b.upgrading) {
     const up = d.up[b.tier + 1];
     b.upProg = Math.min(1, b.upProg + dt / up.time);
@@ -968,7 +976,7 @@ function updateAbilities(g, dt) {
     if (a.k === 'repair' && g.t <= a.end) {
       const A = ABIL.repair;
       for (const e of g.ents) {
-        if (e.side !== a.side || e.hp <= 0 || e.hp >= e.maxHp || (e.kind === 'b' && !e.built) || !inAbil(e, a.u, a.v, A.r)) continue;
+        if (e.side !== a.side || e.hp <= 0 || e.hp >= e.maxHp || (e.kind === 'b' && (!e.built || g.t >= EXT.start)) || !inAbil(e, a.u, a.v, A.r)) continue; // in the storm it heals units only
         const paid = e.kind === 'b' && e.repair > 0 ? 0.06 : 0; // paid Repair heals 6%/s: the faster one applies
         const rate = Math.max(0, A.rate - paid);
         if (rate > 0) e.hp = Math.min(e.maxHp, e.hp + e.maxHp * rate * dt);
@@ -985,6 +993,52 @@ function updateAbilities(g, dt) {
     }
   }
   if (g.abil.some(a => g.t > a.end)) g.abil = g.abil.filter(a => g.t <= a.end);
+}
+
+/* ---------- The Extinction Event (v2.6) ----------
+   From 20:00 a storm burns every building on both sides: a share of its max HP per second, 0.3% at first and
+   0.75% more each minute. It ignores the HQ shield (it is no weapon), stops self-repair and Repair Pulse on
+   buildings, and halves paid Repair, which it outpaces at 23:36. Before 20:00 a fallen HQ ends the match at once;
+   from 20:00 the match runs 5 more seconds, and if the other HQ falls too, the score decides. At 27:00 the score
+   decides anyway. Score: HP of every standing building plus army value. */
+const EXT = { show: 1080, warn: 1170, start: 1200, base: 0.003, ramp: 0.0075, repairMul: 0.5, window: 5, limit: 1620 };
+const stormRate = t => t < EXT.start ? 0 : EXT.base + EXT.ramp * (t - EXT.start) / 60; // share of max HP lost per second
+function updateStorm(g, dt, t0) {
+  if (t0 < EXT.warn && g.t >= EXT.warn) ev(g, { type: 'extWarn' });
+  if (t0 < EXT.start && g.t >= EXT.start) ev(g, { type: 'extStart' });
+  const r = stormRate(g.t);
+  if (!r) return;
+  for (const b of g.ents) if (b.kind === 'b' && b.hp > 0) {
+    b.hp -= b.maxHp * r * dt;
+    if (b.hp <= 0) kill(g, b, -1);
+  }
+}
+const sideScore = (g, s) => g.ents.reduce((a, e) => a + (e.side !== s || e.hp <= 0 ? 0 : e.kind === 'b' ? e.hp : (UDEF[e.type].cost.c + UDEF[e.type].cost.e * 1.5)), 0);
+function finish(g, winner, how, extra = {}) {
+  g.over = true; g.winner = winner; g.endHold = null;
+  g.result = { how, ...extra };
+  ev(g, { type: 'over', winner, how });
+}
+function tieBreak(g, reason) { // score, then kills, then credits earned; equal on all three is a draw
+  const sc = [0, 1].map(s => Math.round(sideScore(g, s))), k = g.sides.map(sd => sd.stats.kills), c = g.sides.map(sd => Math.round(sd.stats.earned || 0));
+  const pick = (a) => a[0] > a[1] ? 0 : a[1] > a[0] ? 1 : -1;
+  let w = pick(sc), by = 'score';
+  if (w < 0) { w = pick(k); by = 'kills'; }
+  if (w < 0) { w = pick(c); by = 'credits'; }
+  finish(g, w, w < 0 ? 'draw' : 'score', { reason, by, score: sc });
+}
+function resolveEnd(g) {
+  if (g.over) return;
+  const fell = [0, 1].filter(s => g.sides[s].hq.hp <= 0);
+  if (fell.length === 2) return tieBreak(g, 'both');
+  if (fell.length === 1) {
+    const loser = fell[0], how = g.sides[loser].hqBy === -1 ? 'storm' : 'hq';
+    if (g.t < EXT.start) return finish(g, 1 - loser, how);
+    if (!g.endHold) g.endHold = { loser, until: g.t + EXT.window };
+    if (g.t >= g.endHold.until) return finish(g, 1 - loser, how);
+    return;
+  }
+  if (g.t >= EXT.limit) tieBreak(g, 'limit');
 }
 
 function updateProjs(g, dt) {
@@ -1062,9 +1116,8 @@ function kill(g, e, by) {
   for (let i = 0; i < 3; i++) { const w = P(e.u + rand(-e.half, e.half) * 0.6, e.v + rand(-e.half, e.half) * 0.6, rand(10, e.h * 0.7)); fxBoom(g, w.x, w.y, rand(36, 56)); }
   ev(g, { type: 'destroyed', side: e.side, name: BDEF[e.type].name, hq: e.type === 'hq', seen: visibleTo(g, 1 - e.side, e) });
   if (e.type === 'hq') {
-    g.over = true; g.winner = 1 - e.side;
+    side.hqBy = by; side.hqT = g.t; // the match result is settled at the end of this tick (resolveEnd), never by code order
     for (let i = 0; i < 6; i++) { const w = P(e.u + rand(-50, 50), e.v + rand(-50, 50), rand(0, 100)); fxBoom(g, w.x, w.y, rand(50, 80)); }
-    ev(g, { type: 'over', winner: g.winner });
   }
 }
 
@@ -1185,6 +1238,8 @@ function aiUpdate(g, s, dt) {
     }
   }
 
+  // The Extinction Event: keep the HQ standing first (paid Repair is all that works in the storm)
+  if (g.t >= EXT.start && side.hq.hp > 0 && side.hq.hp < side.hq.maxHp * 0.9 && !(side.hq.repair > 0) && side.res.c > 150) tryRepair(g, s, side.hq);
   // Repair a badly damaged building when the coast is clear
   if (!threat && side.res.c > 600) {
     const hurt = g.ents.find(b => b.kind === 'b' && b.side === s && b.built && b.hp > 0 && !(b.repair > 0) && b.hp < b.maxHp * 0.6);
@@ -1299,7 +1354,8 @@ function aiUpdate(g, s, dt) {
   const punish = P.opportunist && side.lastDanger !== undefined && g.t - side.lastDanger < 20 && !threat && myV >= 300 && myV >= thV * 1.2;
   // The Aggressor against a fortified base: if its Orbital Strike is only seconds away, wait for it rather than walk in head-on
   const strikeWait = side.ab.strike - g.t, holdForStrike = P.kind === 'aggressor' && D !== DIFF.easy && !threat && !late && strikeWait > 0 && strikeWait < 12 && aiFortified(g, s) && hasBuilt(g, s, 'factory');
-  if (side.stance !== 'attack' && holdForStrike) { /* wait */ }
+  if (side.stance !== 'attack' && g.t >= EXT.warn && myV >= 200 && myV >= thV * 0.7) go(null, 'all'); // the storm is coming: everything in
+  else if (side.stance !== 'attack' && holdForStrike) { /* wait */ }
   else if (side.stance !== 'attack') {
     if (bold && myV >= 300 && ((myV >= (thV + hqVal) * 1.35 * ae && myV >= wave * 0.6) || (full && myV > (thV + hqVal) * 1.05 * ae))) go(null, 'all');
     else if (bold && nSiege >= 2 && myV >= thV * 0.95 * ae && (myV >= wave * 0.7 || full)) go(siegeLine, 'siege');
@@ -1350,13 +1406,15 @@ function aiSpotter(g, s) {
 
 /* ---------- Save and resume ---------- */
 // v6 adds fog of war; v7 the AI's personality (kept on its side record). Older saves are migrated.
-const SAVE_VER = 8, SAVE_OK = [5, 6, 7, 8];
+const SAVE_VER = 9, SAVE_OK = [5, 6, 7, 8, 9];
 function serialize(g, extra) {
-  const ents = g.ents.filter(e => e.hp > 0).map(e => { const o = Object.assign({}, e); if (o.queue) o.queue = o.queue.slice(); return o; });
+  const live = g.ents.filter(e => e.hp > 0);
+  for (const sd of g.sides) if (sd.hq.hp <= 0 && !live.includes(sd.hq)) live.push(sd.hq); // a fallen HQ inside the storm's 5 s end window
+  const ents = live.map(e => { const o = Object.assign({}, e); if (o.queue) o.queue = o.queue.slice(); return o; });
   const projs = g.projs.map(p => Object.assign({}, p, { target: p.target ? p.target.id : null }));
   const sides = g.sides.map(sd => Object.assign({}, sd, { hq: sd.hq.id, slots: sd.slots.map(b => b ? b.id : null), res: Object.assign({}, sd.res), stats: Object.assign({}, sd.stats) }));
   const fog = g.fog.map(f => ({ exp: Array.from(f.exp).join(''), ghosts: f.ghosts, intel: f.intel, lastHQ: f.lastHQ, lastSpot: f.lastSpot, seenUnits: f.seenUnits }));
-  return JSON.stringify({ v: SAVE_VER, t: g.t, nid: g.nid, diffKey: g.diffKey, ents, projs, sides, nodes: g.nodes, fog, abil: g.abil, extra });
+  return JSON.stringify({ v: SAVE_VER, t: g.t, nid: g.nid, diffKey: g.diffKey, ents, projs, sides, nodes: g.nodes, fog, abil: g.abil, endHold: g.endHold || null, extra });
 }
 function deserialize(str) {
   const o = JSON.parse(str);
@@ -1379,6 +1437,7 @@ function deserialize(str) {
   if (!g.sides[1].persona) g.sides[1].persona = rollPersona(); // a save from before personalities: pick one now
   for (const sd of g.sides) if (!sd.ab) sd.ab = newAb(g.t); // a save from before abilities: each starts its first cooldown now
   g.abil = o.abil || [];
+  g.endHold = o.endHold || null; // the 5-second end window of a storm match (v9)
   updateVision(g);
   g.events.length = 0;
   g.extra = o.extra || {};
@@ -1898,7 +1957,7 @@ function buildGroundCache() {
 // The sky's gradients and the planet are drawn once into canvases and stamped while the view holds still
 // (during the intro zoom they are drawn live); the stars still twinkle and drift every frame.
 const SKY = { key: '', last: '', bg: null, pkey: '', planet: null };
-function skyLayer(c, cw, ch, hy) {
+function skyLayer(c, cw, ch, hy, tint = 0) {
   const g = c.createLinearGradient(0, 0, 0, Math.max(hy, 10));
   g.addColorStop(0, '#04060f'); g.addColorStop(0.55, '#0e1532'); g.addColorStop(1, '#30255a');
   c.fillStyle = g; c.fillRect(0, 0, cw, Math.max(0, hy) + 2);
@@ -1906,6 +1965,7 @@ function skyLayer(c, cw, ch, hy) {
   const nb = c.createRadialGradient(cw * 0.35, hy * 0.45, 10, cw * 0.35, hy * 0.45, cw * 0.4);
   nb.addColorStop(0, 'rgba(110,70,170,0.16)'); nb.addColorStop(1, 'rgba(110,70,170,0)');
   c.fillStyle = nb; c.fillRect(0, 0, cw, hy);
+  if (tint) { c.fillStyle = `rgba(150,32,12,${(0.3 * tint / 12).toFixed(3)})`; c.fillRect(0, 0, cw, Math.max(0, hy)); } // storm red, in 12 steps so the cached sky is rebuilt only 12 times
 }
 function planetLayer(c, px, py, pr) {
   const pg = c.createRadialGradient(px - pr * 0.35, py - pr * 0.35, pr * 0.1, px, py, pr);
@@ -1917,12 +1977,12 @@ function cached(key, w, h, dpr, draw) { // a canvas the size of w×h points, dra
   const cv = document.createElement('canvas'); cv.width = Math.ceil(w * dpr); cv.height = Math.ceil(h * dpr);
   const k = cv.getContext('2d'); k.setTransform(dpr, 0, 0, dpr, 0, 0); draw(k); return cv;
 }
-function drawSky(c, time, hy) {
+function drawSky(c, time, hy, tint = 0) {
   const { cw, ch, S, dpr } = V;
-  const key = `${cw}|${ch}|${hy}|${dpr}`, still = key === SKY.last;
-  SKY.last = key;
-  if (SKY.key !== key && still) { SKY.key = key; SKY.bg = cached(key, cw, ch, dpr, k => skyLayer(k, cw, ch, hy)); }
-  if (SKY.key === key) c.drawImage(SKY.bg, 0, 0, cw, ch); else skyLayer(c, cw, ch, hy);
+  const key = `${cw}|${ch}|${hy}|${dpr}|${tint}`, geo = `${cw}|${ch}|${hy}|${dpr}`, still = geo === SKY.lastGeo;
+  SKY.lastGeo = geo;
+  if (SKY.key !== key && still) { SKY.key = key; SKY.bg = cached(key, cw, ch, dpr, k => skyLayer(k, cw, ch, hy, tint)); }
+  if (SKY.key === key) c.drawImage(SKY.bg, 0, 0, cw, ch); else skyLayer(c, cw, ch, hy, tint);
   const sw = cw * 1.5;
   for (const s of BG.stars) {
     const y = s.y * hy * 0.95;
@@ -2144,6 +2204,7 @@ function vfxStep(g) {
   }
   for (let i = VFX.decals.length - 1; i >= 0; i--) if ((VFX.decals[i].t += dt) > VFX.decals[i].life) VFX.decals.splice(i, 1);
   for (let i = VFX.wrecks.length - 1; i >= 0; i--) if ((VFX.wrecks[i].t += dt) > 1.2) VFX.wrecks.splice(i, 1);
+  if (dt > 0 && g.t >= EXT.start && !g.over) vfxMeteors(g, dt);
   for (let i = VFX.smokers.length - 1; i >= 0; i--) {
     const s = VFX.smokers[i];
     s.t += dt; s.acc += dt;
@@ -2400,6 +2461,19 @@ function drawStrikeAlerts(c, g, lit, time) {
   }
   return n;
 }
+// The Extinction Event: meteors fall on buildings the player can see (own base always; enemy buildings only in view)
+function vfxMeteors(g, dt) {
+  VFX.metAcc = (VFX.metAcc || 0) + dt * (1.6 + (g.t - EXT.start) / 60) * QMUL[VFX.q]; // more as the storm grows
+  if (VFX.metAcc < 1) return;
+  VFX.metAcc -= 1;
+  const F = g.fog[0], bs = g.ents.filter(e => e.kind === 'b' && e.hp > 0 && F.vis[cellOf(e.u)] && onView(e.u));
+  if (!bs.length) return;
+  const b = bs[Math.floor(VFX.rnd() * bs.length)], w = P(b.u + vr(-b.half, b.half) * 0.6, b.v + vr(-b.half, b.half) * 0.6, vr(4, b.h * 0.5));
+  vFx('meteor', w.x + vr(60, 120), w.y - 320, 0, 0.5, null, 3, w.x, w.y, 3.5);
+  vFx('boom', w.x, w.y, vr(24, 36), 0.6, null, 2, 0, 0, 1, 0.5);
+  vFx('ring', w.x, w.y, 4, 0.4, '#ffb070', 1, 30, 1, 1.6, 0.45);
+  sfx('meteor', w.x);
+}
 function addDecal(x, y, r, life) { if (VFX.decals.length >= VFX_DECALS) VFX.decals.shift(); VFX.decals.push({ x, y, r, t: 0, life }); }
 
 // Quality fallback: if over 30% of frames take longer than 33 ms for 2 seconds, step down a level;
@@ -2479,6 +2553,11 @@ function drawVfx(c) {
       c.strokeStyle = '#e8fbff'; c.lineWidth = f.w * (1 - k * 0.6); c.stroke();
       c.lineCap = 'butt';
     } else if (f.k === 'boom') drawBoom(c, f.x, f.y, f.r, k);
+    else if (f.k === 'meteor') { // a burning rock streaking down to its target
+      const hx = f.x + (f.x2 - f.x) * k, hy = f.y + (f.y2 - f.y) * k, k0 = Math.max(0, k - 0.3), tx = f.x + (f.x2 - f.x) * k0, ty = f.y + (f.y2 - f.y) * k0;
+      c.globalAlpha = 0.85; c.strokeStyle = '#ffb070'; c.lineWidth = f.w; c.lineCap = 'round'; c.beginPath(); c.moveTo(tx, ty); c.lineTo(hx, hy); c.stroke(); c.lineCap = 'butt';
+      c.globalCompositeOperation = 'lighter'; stamp(c, GLOW.fire, hx, hy, 11, 1); stamp(c, GLOW.white, hx, hy, 4, 1); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
+    }
   }
   c.globalAlpha = 1;
 }
@@ -2489,7 +2568,7 @@ function render(c, g, time, sel, selPad) {
   SPR.budget = 16;
   const hy = (HORIZON - Y_BOT) * S + A;
   c.setTransform(dpr, 0, 0, dpr, 0, 0);
-  drawSky(c, time, hy);
+  drawSky(c, time, hy, g && g.t >= EXT.warn ? Math.round(12 * clamp((g.t - EXT.warn) / (EXT.start + 60 - EXT.warn), 0, 1)) : 0); // the sky reddens for the Extinction Event
   let sx = 0, sy = 0;
   if (g) vfxStep(g);
   const shake = g && VFX.q > 0 ? g.shake + VFX.shake : 0; // no shake at the lowest quality level
@@ -2646,6 +2725,16 @@ function drawMinimap(c, g, w, h) {
   const x0 = clamp(mx(cam.x - hw), 1, w - 1), x1 = clamp(mx(cam.x + hw), 1, w - 1);
   c.strokeStyle = 'rgba(255,255,255,0.85)'; c.lineWidth = 1.2;
   rr(c, x0, 2, Math.max(4, x1 - x0), h - 4, 4); c.stroke();
+  if (g && g.t >= EXT.show && !g.over) { // the Extinction Event countdown, inside the minimap frame (the top bar has no room)
+    const left = EXT.start - g.t, time = left > 0 ? fmtTime(Math.ceil(left)) : '+' + fmtTime(-left);
+    c.font = '800 9.5px -apple-system,system-ui,sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    const txt = [`EXTINCTION ${time}`, `STORM ${time}`, time].find(t => c.measureText(t).width + 10 <= w - 6) || time; // shorter where the minimap is narrow
+    const tw = c.measureText(txt).width + 10, px = w / 2 - tw / 2, warn = left <= EXT.start - EXT.warn;
+    c.fillStyle = left > 0 && !warn ? 'rgba(40,6,6,0.82)' : `rgba(150,20,10,${0.75 + 0.25 * Math.sin(performance.now() / 160)})`;
+    rr(c, px, 1.5, tw, 12, 5); c.fill();
+    c.fillStyle = left > 0 && !warn ? '#ff8a7a' : '#fff'; c.fillText(txt, w / 2, 8);
+    c.textBaseline = 'alphabetic';
+  }
 }
 function clampCam() {
   const hw = V.cw / 2 / V.S, x0 = UMIN - 40, x1 = UMAX + 40;
@@ -2958,7 +3047,14 @@ function refreshUI(force) {
     el.querySelector('.bar i').style.width = (prog * 100).toFixed(1) + '%';
   }
   refreshAbil();
+  refreshExt();
   refreshPanel();
+}
+function refreshExt() {
+  const t = game.t, el = $('ext');
+  const txt = game.over ? '' : t >= EXT.warn && t < EXT.start ? `Extinction event in ${fmtTime(Math.ceil(EXT.start - t))}` : t >= EXT.start && t < EXT.start + 4 ? 'THE EXTINCTION EVENT HAS BEGUN' : '';
+  if (el.textContent !== txt) el.textContent = txt;
+  el.classList.toggle('hide', !txt); document.body.classList.toggle('ext-on', !!txt);
 }
 
 /* ---------- Building panel: tap a building to upgrade or sell it ---------- */
@@ -3038,12 +3134,14 @@ function handleEvents() {
     if (e.type === 'built' && e.side === 0) { toast(`${e.name} is ready`, 'ok'); sndPlay('built'); }
     else if (e.type === 'upgraded' && e.side === 0) { toast(`${e.name} reached T${e.tier}`, 'ok'); sndPlay('upgrade'); }
     else if (e.type === 'alert' && e.side === 0) { toast(e.hq ? 'Your HQ is under attack' : 'Your base is under attack', 'warn'); sndPlay('alarm'); }
-    else if (e.type === 'over') sndPlay(e.winner === 0 ? 'victory' : 'defeat');
+    else if (e.type === 'over') sndPlay(e.winner === 0 ? 'victory' : 'defeat'); // a draw sounds like a defeat
     else if (e.type === 'destroyed' && e.side === 1 && !e.seen && !e.hq) continue; // happened out of sight
     else if (e.type === 'destroyed') toast(e.side === 0 ? `${e.name} destroyed` : `Enemy ${e.name} destroyed`, e.side === 0 ? 'bad' : 'ok');
     else if (e.type === 'spotted' && e.side === 0) { toast('Enemy units spotted', 'warn'); sndPlay('ping'); }
     else if (e.type === 'node') { if (e.side === 0 && !e.lost) sndPlay('node'); toast(e.lost ? (e.side === 0 ? 'You lost a field node' : 'Enemy lost a field node') : (e.side === 0 ? 'Field node captured: +3 credits, +1 energy per second' : 'Enemy captured a field node'), (e.side === 0) === !e.lost ? 'ok' : 'warn'); }
     else if (e.type === 'go') showGo();
+    else if (e.type === 'extWarn') { sndPlay('siren'); toast('The Extinction Event starts in 30 seconds: finish it or lose your base', 'bad'); }
+    else if (e.type === 'extStart') sndPlay('rumble');
     else if (e.type === 'shieldDown' && e.side === 1 && !e.seen) continue;
     else if (e.type === 'shieldDown') toast(e.side === 1 ? 'Enemy HQ shield is down. Finish it!' : 'Your HQ shield is down', e.side === 1 ? 'ok' : 'bad');
   }
@@ -3138,7 +3236,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden && run
 window.addEventListener('pagehide', saveGame);
 
 /* ---------- Menus ---------- */
-function overlay(html) { $('box').innerHTML = html; $('ov').classList.remove('hide'); }
+function overlay(html) { $('box').innerHTML = html; $('ov').classList.remove('hide'); $('box').scrollTop = 0; } // each screen starts at its top (set once shown: a hidden box ignores it)
 function hideOverlay() { $('ov').classList.add('hide'); }
 function diffSeg() {
   return `<div class="seg" id="diffSeg">${Object.keys(DIFF).map(k => `<button data-d="${k}" class="${k === diffKey ? 'on' : ''}">${DIFF[k].label}</button>`).join('')}</div>`;
@@ -3161,7 +3259,7 @@ function peekSave() {
   try { const s = localStorage.getItem(SAVE_KEY); if (!s) return null; const o = JSON.parse(s); return o && SAVE_OK.includes(o.v) ? { t: o.t, diffKey: o.diffKey } : null; } catch (e) { return null; }
 }
 function showStart() {
-  clearTimeout(endTimer); endTimer = null; endAim(); $('abil').classList.add('hide');
+  clearTimeout(endTimer); endTimer = null; endAim(); $('abil').classList.add('hide'); $('ext').classList.add('hide'); document.body.classList.remove('ext-on');
   running = false; paused = false; game = null; closePanel(); hideInfo(); hideCountdown(); applyZoom(1);
   const sv = peekSave();
   overlay(`<span class="ver">v${VERSION}</span><h1>Extinction <span>Event</span></h1>
@@ -3217,10 +3315,16 @@ function pauseGame(restored) {
 }
 function fmtTime(t) { t = Math.floor(t); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; }
 function showEnd() {
-  const win = game.winner === 0, st = game.sides[0].stats;
+  const win = game.winner === 0, st = game.sides[0].stats, R = game.result || { how: 'hq' };
+  const title = R.how === 'draw' ? 'Mutual extinction' : win ? 'Victory' : 'Defeat';
+  const line = R.how === 'draw' ? 'Both commands fell to the Extinction Event and nothing could separate them.'
+    : R.how === 'score' ? `${win ? 'Survived the Extinction Event' : 'Lost to the Extinction Event'}: ${R.reason === 'limit' ? 'the storm reached its peak' : 'both Command HQs fell together'}, and the stronger side remains.`
+    : R.how === 'storm' ? (win ? 'The enemy base fell to the Extinction Event. The valley is yours.' : 'Your Command HQ fell to the Extinction Event.')
+    : win ? 'The enemy Command HQ has fallen. The valley is yours.' : 'Your Command HQ was destroyed. Regroup and try a new strategy.';
+  const score = R.score ? `<p class="faced">Remaining strength (buildings + army): <b>you ${R.score[0].toLocaleString()}</b> · enemy ${R.score[1].toLocaleString()}${R.by !== 'score' ? ` (decided by ${R.by})` : ''}</p>` : '';
   closePanel();
-  overlay(`<p class="kicker">${GAME_NAME}</p><h1 class="${win ? 'win' : 'lose'}">${win ? 'Victory' : 'Defeat'}</h1>
-    <p>${win ? 'The enemy Command HQ has fallen. The valley is yours.' : 'Your Command HQ was destroyed. Regroup and try a new strategy.'}</p>
+  overlay(`<p class="kicker">${GAME_NAME}</p><h1 class="${win ? 'win' : 'lose'}">${title}</h1>
+    <p>${line}</p>${score}
     <p class="faced">You faced: <b>${PERSONA_NAME[(game.sides[1].persona || {}).kind] || 'an unknown commander'}</b></p>
     <div class="stats"><div><b>${fmtTime(game.t)}</b><small>Match time</small></div><div><b>${st.built}</b><small>Units built</small></div>
     <div><b>${st.kills}</b><small>Enemies destroyed</small></div><div><b>${st.lost}</b><small>Units lost</small></div></div>
@@ -3350,6 +3454,8 @@ const SFX = {
   uplink:   [2, 1, 1, 1, v => { tone(v, 'square', 220, 880, 0.5, 0.08); tone(v, 'sine', 440, 1760, 0.5, 0.15, 0.05); }],
   siren:    [2, 1, 1.5, 1, v => { tone(v, 'sawtooth', 600, 900, 0.35, 0.12); tone(v, 'sawtooth', 900, 600, 0.35, 0.12, 0.35); tone(v, 'sawtooth', 600, 900, 0.35, 0.12, 0.7); }],
   orbital:  [2, 2, 0.3, 0, v => { hiss(v, 'highpass', 2500, 800, 0.7, 0.12, 0.6); tone(v, 'sine', 80, 26, 1.1, 1); hiss(v, 'lowpass', 900, 80, 0.7, 1.3, 0.9); }],
+  rumble:   [2, 1, 3, 1, v => { hiss(v, 'lowpass', 160, 60, 0.7, 1.5, 0.9); tone(v, 'sine', 42, 30, 1.5, 0.7); }],
+  meteor:   [1, 1, 0.7, 0, v => { hiss(v, 'bandpass', 2400, 500, 1.2, 0.35, 0.35); tone(v, 'sine', 70, 35, 0.35, 0.6, 0.3); }],
   defeat:   [2, 1, 2, 1, v => { [440, 349, 294, 220].forEach((f, i) => tone(v, 'triangle', f, f, i === 3 ? 0.7 : 0.22, 0.45, i * 0.2)); }],
 };
 const SND_VOL = { 0: 0.22, 1: 0.32, 2: 0.4 };

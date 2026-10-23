@@ -1,12 +1,12 @@
 // The SIM must not change by accident: the same seeded AI-vs-AI match must end in exactly the same state,
 // particles and screen shake included. When a rules change is intended, re-record the fingerprint
-// (node tests/determinism.test.js --print) and say so in the commit. Recorded at v2.5 (commander abilities).
+// (node tests/determinism.test.js --print) and say so in the commit. Recorded at v2.6 (the Extinction Event).
 const test = require('node:test');
 const assert = require('node:assert');
 const crypto = require('crypto');
 const { loadSim } = require('./load-sim');
 
-const FINGERPRINT = '123b3ee7ea72ff09d58d5fbea24604c72a4679856e65891f68485db348b2a9b4';
+const FINGERPRINT = 'eb6be5a02d6be2e8746a6f86bc17ba5709dba68a0f328d8bc10447c51b3286ab';
 
 function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 

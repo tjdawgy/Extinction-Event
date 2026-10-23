@@ -26,11 +26,11 @@ function track(g, ai, botFn) {
     g.events.length = 0;
   }
   const log = g.sides[ai].aiLog || {};
-  return { ...m, over: g.over, winner: g.winner, t: g.t, firstAttack: log.firstAttack, attacks: log.attacks || 0, feints: log.feints || 0, firstUpgrade: log.firstUpgrade, trained: log.trained || {}, abil: log.abil || {} };
+  return { ...m, over: g.over, winner: g.winner, how: g.result && g.result.how, t: g.t, firstAttack: log.firstAttack, attacks: log.attacks || 0, feints: log.feints || 0, firstUpgrade: log.firstUpgrade, trained: log.trained || {}, abil: log.abil || {} };
 }
 for (const row of process.argv.slice(3)) {
   const [opp, diff, persona] = row.split(':');
-  const R = { aiWins: 0, oppWins: 0, to: 0, longest: 0, firstAttack: [], attacks: [], feints: [], ref: [], tur: [], node: [], up: [], mix: {}, ab: { shield: [], strike: [], repair: [], strikeDef: [] } };
+  const R = { aiWins: 0, oppWins: 0, to: 0, draws: 0, score: 0, after26: 0, longest: 0, firstAttack: [], attacks: [], feints: [], ref: [], tur: [], node: [], up: [], mix: {}, ab: { shield: [], strike: [], repair: [], strikeDef: [] } };
   for (let i = 0; i < n; i++) {
     let r, aiSide;
     if (opp === 'ai') {
@@ -42,7 +42,9 @@ for (const row of process.argv.slice(3)) {
       const g = sim.newGame(diff, { persona }); const [bot, opts] = BOT[opp];
       aiSide = 1; r = track(g, 1, BOTS[bot](sim, opts));
     }
-    if (!r.over) R.to++; else if (r.winner === aiSide) R.aiWins++; else R.oppWins++;
+    if (!r.over) R.to++; else if (r.winner < 0) R.draws++; else if (r.winner === aiSide) R.aiWins++; else R.oppWins++;
+    if (r.how === 'score' || r.how === 'draw') R.score++;
+    if (r.t > 1560) R.after26++;
     R.longest = Math.max(R.longest, r.t);
     if (r.firstAttack != null) R.firstAttack.push(r.firstAttack);
     for (const k in R.ab) R.ab[k].push(r.abil[k] || 0);
@@ -52,5 +54,5 @@ for (const row of process.argv.slice(3)) {
   const tot = Object.values(R.mix).reduce((a, b) => a + b, 0) || 1;
   const mix = Object.entries(R.mix).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, v]) => `${k} ${Math.round(100 * v / tot)}%`).join(' ');
   const who = opp === 'ai' ? `${diff.split('-')[0]} ${R.aiWins}-${R.oppWins} ${diff.split('-')[1]}` : `AI ${R.aiWins}-${R.oppWins} ${opp}`;
-  console.log(`${row.padEnd(26)} ${who.padEnd(20)} timeouts ${R.to} longest ${fmt(R.longest)} | first attack ${fmt(avg(R.firstAttack))} attacks ${avg(R.attacks).toFixed(1)} feints ${avg(R.feints).toFixed(1)} refineries ${avg(R.ref).toFixed(1)} turrets ${avg(R.tur).toFixed(1)} node ${fmt(avg(R.node))} first upgrade ${fmt(avg(R.up))} | abilities shield ${avg(R.ab.shield).toFixed(1)} strike ${avg(R.ab.strike).toFixed(1)} (on defences ${avg(R.ab.strikeDef).toFixed(1)}) repair ${avg(R.ab.repair).toFixed(1)} | ${mix}`);
+  console.log(`${row.padEnd(26)} ${who.padEnd(20)} timeouts ${R.to} longest ${fmt(R.longest)} score-decided ${R.score} draws ${R.draws} after 26:00 ${R.after26} | first attack ${fmt(avg(R.firstAttack))} attacks ${avg(R.attacks).toFixed(1)} feints ${avg(R.feints).toFixed(1)} refineries ${avg(R.ref).toFixed(1)} turrets ${avg(R.tur).toFixed(1)} node ${fmt(avg(R.node))} first upgrade ${fmt(avg(R.up))} | abilities shield ${avg(R.ab.shield).toFixed(1)} strike ${avg(R.ab.strike).toFixed(1)} (on defences ${avg(R.ab.strikeDef).toFixed(1)}) repair ${avg(R.ab.repair).toFixed(1)} | ${mix}`);
 }

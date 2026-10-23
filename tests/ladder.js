@@ -22,21 +22,24 @@ const ROWS = process.argv.slice(3).length ? process.argv.slice(3) : ['ai:easy-no
 const fmt = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
 for (const row of ROWS) {
   const [kind, arg] = row.split(':');
-  let a = 0, b = 0, to = 0, longest = 0;
+  let a = 0, b = 0, to = 0, longest = 0, draw = 0, byScore = 0, storm = 0, after26 = 0; // v2.6: how the Extinction Event ended matches
   for (let i = 0; i < n; i++) {
-    let winner, t;
+    let winner, t, res;
     if (kind === 'ai') {
       const [x, y] = arg.split('-'), swap = i % 2 === 1; // x is "a"; alternate sides
       const g = sim.newGame(swap ? x : y, { autoPlayer: true, autoDiff: swap ? y : x });
       while (!g.over && g.t < 1800) sim.update(g, STEP);
-      t = g.t; winner = !g.over ? -1 : (g.winner === (swap ? 1 : 0) ? 0 : 1); // 0 = x won
+      t = g.t; res = g; winner = !g.over ? -1 : g.winner < 0 ? -2 : (g.winner === (swap ? 1 : 0) ? 0 : 1); // 0 = x won, -2 = draw
     } else {
       const [bot, opts] = BOT[kind];
-      const r = playMatch(sim, arg, bot, { botOpts: opts }); winner = r.winner; t = r.t;
+      const r = playMatch(sim, arg, bot, { botOpts: opts }); winner = r.g.over && r.winner < 0 ? -2 : r.winner; t = r.t; res = r.g;
     }
-    if (winner === 0) a++; else if (winner === 1) b++; else to++;
+    if (winner === 0) a++; else if (winner === 1) b++; else if (winner === -2) draw++; else to++;
+    const how = res.result && res.result.how;
+    if (how === 'score' || how === 'draw') byScore++; else if (how === 'storm') storm++;
+    if (t > 1560) after26++;
     longest = Math.max(longest, t);
   }
   const [la, lb] = kind === 'ai' ? arg.split('-') : [kind, `AI ${arg}`];
-  console.log(`${row.padEnd(18)} ${la} ${a} - ${b} ${lb}   timeouts ${to}   longest ${fmt(longest)}`);
+  console.log(`${row.padEnd(18)} ${la} ${a} - ${b} ${lb}   timeouts ${to}   longest ${fmt(longest)}   storm-ended ${storm} score-decided ${byScore} draws ${draw} after 26:00 ${after26}`);
 }
