@@ -236,7 +236,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.6'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.7'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -1516,109 +1516,193 @@ function mast(c, u, v, z0, h, T, t) {
   c.strokeStyle = M.h; c.lineWidth = 1.4; c.beginPath(); c.moveTo(x, y); c.lineTo(x, y - h); c.stroke();
   glow(c, x, y - h, 2, T.glow, 0.55 + 0.45 * Math.sin(t * 4 + u));
 }
+// Buildings (v2.7): each type has a static body, drawn once per tier and team into a cached bitmap (see BCACHE),
+// and a few light animated parts drawn live on top (lights, guns, flags, crystal, flame). T1 is basic, T2 visibly
+// reinforced, T3 a fortress. Every part stays on the building's pad and below its health bar (top ≥ −(half + h)).
 const plinth = (c, half) => box(c, 0, 0, half + 2, half + 2, 0, 6, MAT.dark);
+function trim(c, half, T, tier) { if (tier >= 2) sides(c, 0, 0, half + 2.2, half + 2.2, 1.5, tier >= 3 ? 3 : 1.6, T.face); } // team trim on the plinth
+function pipe(c, a, b, w, col) { c.strokeStyle = col; c.lineWidth = w; c.beginPath(); c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]); c.stroke(); }
+function lamp(c, u, v, z, rgb, a, r = 1.8) { const [x, y] = pt(u, v, z); glow(c, x, y, r, rgb, a); }
+const blink = (t, ph) => 0.5 + 0.5 * Math.sin(t * 4 + ph);
+function gunAngle(b, x, y, def) { // screen angle from a gun's pivot (building-local x, y) to its target
+  if (b && b.aim) { const s0 = P(b.u, b.v), d = P(b.aim.u, b.aim.v, b.aim.z); return Math.atan2(d.y - (s0.y + y * BS), d.x - (s0.x + x * BS)); }
+  return b && b.side === 1 ? Math.PI - def : def;
+}
+function barrels(c, n, x0, len, gap, w) { for (let i = 0; i < n; i++) c.fillRect(x0, (i - (n - 1) / 2) * gap - w / 2, len, w); }
 
-function drawHQ(c, T, t, b, tier) {
+/* ---------- Command HQ ---------- */
+const HQG = [null, { H: 32, TH: 26 }, { H: 36, TH: 30 }, { H: 42, TH: 32 }].map(g => g && { ...g, roof: 8 + g.H, tz: 8 + g.H + 3 + g.TH + 4 });
+function hqBody(c, T, tier) {
+  const { H, TH, roof, tz } = HQG[tier];
   box(c, 0, 0, 46, 46, 0, 8, MAT.dark);
-  if (tier >= 2) { box(c, 28, -28, 13, 13, 8, 22, MAT.metal); winR(c, 28, -28, 13, 13, 16, 4, 3, T.light); }
-  box(c, 0, 0, 36, 36, 8, 32, MAT.metal);
-  sides(c, 0, 0, 36.2, 36.2, 28, 4, T.face);
-  c.globalAlpha = 0.55 + 0.25 * Math.sin(t * 2);
-  winL(c, 0, 0, 36.3, 36.3, 15, 6, 5, T.light); winR(c, 0, 0, 36.3, 36.3, 15, 6, 5, T.light);
-  c.globalAlpha = 1;
-  poly(c, [pt(-36.3, 6, 8), pt(-36.3, 22, 8), pt(-36.3, 22, 24), pt(-36.3, 6, 24)]); c.fillStyle = M.d; c.fill();
-  poly(c, [pt(-36.4, 9, 9), pt(-36.4, 19, 9), pt(-36.4, 19, 21), pt(-36.4, 9, 21)]); c.fillStyle = `rgba(${T.glow},0.35)`; c.fill();
-  box(c, 0, 0, 31, 31, 40, 3, MAT.light);
-  mast(c, 22, -22, 43, 30, T, t);
-  if (tier >= 3) mast(c, -20, -24, 43, 22, T, t + 1);
-  box(c, 4, -4, 14, 14, 43, 26, MAT.metal);
-  winL(c, 4, -4, 14.2, 14.2, 58, 4, 3, T.light); winR(c, 4, -4, 14.2, 14.2, 58, 4, 3, T.light);
-  box(c, 4, -4, 17, 17, 69, 4, MAT.light);
-  // turret: barrel points at the current target
-  const [tx, ty] = pt(4, -4, 76);
-  let a = -0.5;
-  if (b && b.aim) { const s0 = P(b.u, b.v), tp = pt(4, -4, 79), d = P(b.aim.u, b.aim.v, b.aim.z); a = Math.atan2(d.y - (s0.y + tp[1] * BS), d.x - (s0.x + tp[0] * BS)); }
-  else if (b && b.side === 1) a = Math.PI + 0.5;
-  dome(c, 4, -4, 8, 73, M.h, M.m);
-  c.save(); c.translate(tx, ty - 4); c.rotate(a);
-  c.fillStyle = M.h; c.fillRect(0, -2.2, 20, 4.4); c.fillStyle = T.main; c.fillRect(14, -2.4, 3, 4.8);
-  if (tier >= 2) { c.fillStyle = M.l; c.fillRect(2, 2.4, 14, 2.4); }
+  trim(c, 44, T, tier);
+  if (tier >= 2) { // rear annex tower
+    box(c, 30, -30, 10, 10, 8, H + 14, MAT.metal);
+    sides(c, 30, -30, 10.2, 10.2, H + 14, 3, T.face);
+    box(c, 30, -30, 12, 12, H + 22, 3, MAT.light);
+  }
+  if (tier >= 3) for (const [u, v] of [[-39, -39], [39, 39]]) { // side bastions
+    cyl(c, u, v, 6.5, 6, 40, '#7383a0', '#2c374b', null);
+    ring(c, u, v, 6.5, 34, T.main, 2);
+    cyl(c, u, v, 7.5, 46, 4, '#97a7c1', '#4c5a72', `rgba(${T.glow},0.75)`);
+  }
+  if (tier >= 2) { box(c, 0, 0, 40, 40, 8, 12, MAT.dark); sides(c, 0, 0, 40.2, 40.2, 15, 2.2, T.face); } // armour skirt
+  box(c, 0, 0, 36, 36, 8, H, MAT.metal);
+  sides(c, 0, 0, 36.2, 36.2, roof - 4, 4, T.face);
+  const wz = tier >= 2 ? 23 : 15;
+  c.globalAlpha = 0.7; winL(c, 0, 0, 36.3, 36.3, wz, 6, 5, T.light); winR(c, 0, 0, 36.3, 36.3, wz, 6, 5, T.light); c.globalAlpha = 1;
+  if (tier >= 3) { winL(c, 0, 0, 36.3, 36.3, roof - 13, 5, 6, `rgba(${T.glow},0.45)`); winR(c, 0, 0, 36.3, 36.3, roof - 13, 5, 6, `rgba(${T.glow},0.45)`); }
+  const du = tier >= 2 ? -40.3 : -36.3; // the door, on the outermost face
+  poly(c, [pt(du, 5, 8), pt(du, 23, 8), pt(du, 23, 25), pt(du, 5, 25)]); c.fillStyle = M.d; c.fill();
+  poly(c, [pt(du - 0.1, 8, 9), pt(du - 0.1, 20, 9), pt(du - 0.1, 20, 22), pt(du - 0.1, 8, 22)]); c.fillStyle = `rgba(${T.glow},0.35)`; c.fill();
+  if (tier >= 2) { c.strokeStyle = '#ffd34d'; c.lineWidth = 1.2; poly(c, [pt(du - 0.2, 5, 8), pt(du - 0.2, 23, 8), pt(du - 0.2, 23, 25), pt(du - 0.2, 5, 25)]); c.stroke(); }
+  box(c, 0, 0, 31, 31, roof, 3, MAT.light);
+  pipe(c, pt(22, -22, roof + 3), pt(22, -22, roof + 33), 1.4, M.h); // radar mast
+  box(c, 4, -4, 14, 14, roof + 3, TH, MAT.metal);
+  winL(c, 4, -4, 14.2, 14.2, roof + TH - 8, 4, 3, T.light); winR(c, 4, -4, 14.2, 14.2, roof + TH - 8, 4, 3, T.light);
+  if (tier >= 3) sides(c, 4, -4, 14.3, 14.3, roof + 6, 3, T.face);
+  box(c, 4, -4, 17, 17, roof + 3 + TH, 4, MAT.light);
+  dome(c, 4, -4, tier >= 3 ? 9 : 8, tz, M.h, M.m);
+  if (tier >= 3) { // command spire
+    cyl(c, -20, -22, 5, roof + 3, 6, '#7383a0', '#2c374b', '#8794ab');
+    cone(c, -20, -22, 4, 0.8, roof + 9, 32, '#97a7c1', '#2c374b', null);
+  }
+  if (tier >= 3) { cyl(c, -39, 39, 6.5, 6, 20, '#7383a0', '#2c374b', null); cyl(c, -39, 39, 7.5, 26, 4, '#97a7c1', '#4c5a72', `rgba(${T.glow},0.75)`); } // front bastion
+}
+function hqLive(c, T, t, b, tier) {
+  const { roof, tz } = HQG[tier];
+  if (tier >= 3) { // the core window band pulses
+    const a = 0.25 + 0.25 * Math.sin(t * 2);
+    winL(c, 0, 0, 36.4, 36.4, roof - 13, 5, 6, `rgba(${T.glow},${a})`); winR(c, 0, 0, 36.4, 36.4, roof - 13, 5, 6, `rgba(${T.glow},${a})`);
+  }
+  const [mx, my] = pt(22, -22, roof + 33);
+  if (tier >= 2) { // rotating radar dish
+    const w = 8 * Math.cos(t * 1.6);
+    c.fillStyle = w > 0 ? M.h : M.l; c.beginPath(); c.ellipse(mx, my + 1, Math.abs(w) + 1, 4.5, 0, 0, 7); c.fill();
+    c.strokeStyle = M.d; c.lineWidth = 0.8; c.stroke();
+  }
+  glow(c, mx, my - 2, 2, T.glow, 0.3 + 0.7 * blink(t, 0));
+  if (tier >= 3) {
+    lamp(c, -20, -22, roof + 43, T.glow, 0.35 + 0.65 * blink(t, 1), 2.4);
+    for (const [u, v, z, ph] of [[-39, -39, 52, 0], [39, 39, 52, 2], [-39, 39, 32, 4]]) lamp(c, u, v, z, T.glow, 0.3 + 0.6 * blink(t, ph), 1.6);
+  }
+  // main gun: one, two or three barrels, pointing at the current target
+  const [tx, ty] = pt(4, -4, tz + 4), a = gunAngle(b, tx, ty, -0.5);
+  c.save(); c.translate(tx, ty); c.rotate(a);
+  c.fillStyle = M.h; barrels(c, tier, 0, 18 + tier * 2, 3.6, tier === 1 ? 4.4 : 2.8);
+  c.fillStyle = T.main; c.fillRect(13, -1.2 - tier * 1.8, 3, 2.4 + tier * 3.6);
+  if (tier >= 2) { c.fillStyle = M.l; c.fillRect(-6, -2.5 - tier * 1.5, 9, 5 + tier * 3); c.fillStyle = T.main; c.fillRect(-6, -0.8, 9, 1.6); }
   c.restore();
-  if (tier >= 3) { ring(c, 0, 0, 50, 46 + Math.sin(t * 2) * 3, `rgba(${T.glow},${0.35 + 0.2 * Math.sin(t * 3)})`, 2); }
+  if (tier >= 3) ring(c, 0, 0, 50, 46 + Math.sin(t * 2) * 3, `rgba(${T.glow},${0.35 + 0.2 * Math.sin(t * 3)})`, 2);
 }
-function drawRefinery(c, T, t, b, tier) {
-  plinth(c, 32);
-  const ch = 44 + (tier >= 3 ? 10 : 0);
-  cyl(c, 16, -16, 4.5, 6, ch, M.h, M.m, '#9aa7ba');
-  if (tier >= 2) cyl(c, 4, -24, 3.5, 6, 34, M.h, M.m, '#9aa7ba');
-  box(c, 12, -2, 13, 13, 6, 18, MAT.metal);
-  const [gx, gy] = pt(12, -2, 24);
-  c.fillStyle = `rgba(255,211,77,${0.55 + 0.35 * Math.sin(t * 3)})`; c.beginPath(); c.ellipse(gx, gy, 12, 6, 0, 0, 7); c.fill();
-  if (tier >= 3) glow(c, gx, gy - 3, 3, '255,211,77', 0.8);
-  for (const [u, v, h] of [[-14, -12, 34], [-10, 14, 40]]) {
-    cyl(c, u, v, 10, 6, h, '#6e7e98', '#2c374b', '#7d8ca3');
-    ring(c, u, v, 10, 22, T.main, 2.2);
-    if (tier >= 2) ring(c, u, v, 10, 32, T.main, 1.4);
+
+/* ---------- Turret: the head (gun) is live; it stays below the health bar at any angle ---------- */
+const TURZ = [0, 32, 34, 36]; // gun pivot height
+function turretBody(c, T, tier) {
+  plinth(c, 26); trim(c, 24, T, tier);
+  if (tier >= 3) { // thick armour skirt with a sensor mast behind
+    box(c, 0, 0, 23, 23, 6, 7, MAT.dark);
+    sides(c, 0, 0, 23.2, 23.2, 8, 2.2, T.face);
+    pipe(c, pt(15, -15, 13), pt(15, -15, 44), 1.6, M.h);
+    pipe(c, pt(15, -15, 36), pt(11, -19, 38), 1.2, M.h);
   }
-  if (tier >= 3) { cyl(c, 16, 16, 7, 6, 26, '#6e7e98', '#2c374b', '#7d8ca3'); ring(c, 16, 16, 7, 18, T.main, 2); }
+  box(c, 0, 0, 20, 20, tier >= 3 ? 13 : 6, tier >= 3 ? 5 : 10, MAT.dark);
+  sides(c, 0, 0, 20.2, 20.2, tier >= 3 ? 13 : 12, 3, T.face);
+  if (tier >= 2) { cyl(c, 0, 0, 15, 15, 5, '#5e6d88', '#232c3d', '#6e7e98'); ring(c, 0, 0, 15, 17.5, T.main, 1.6); } // armour collar
+  const r = [0, 11, 12, 13.5][tier];
+  cyl(c, 0, 0, r, 18, TURZ[tier] - 18 - 2, '#7383a0', '#2c374b', '#8794ab');
+  if (tier >= 2) ring(c, 0, 0, r, 24, 'rgba(255,255,255,0.25)', 1);
+  if (tier >= 2) { box(c, -12, 14, 4.5, 4, 6, 7, MAT.metal); sides(c, -12, 14, 4.6, 4.1, 9, 1.4, T.face); } // ammo box
+  if (tier >= 3) { box(c, 14, 12, 4, 4.5, 6, 6, MAT.metal); sides(c, 14, 12, 4.1, 4.6, 8, 1.4, T.face); }
+  dome(c, 0, 0, r - 1, TURZ[tier] - 2, '#a3b1c6', M.m);
 }
-function hyper(c, u, v, r, z, h) {
-  cone(c, u, v, r, r * 0.68, z, h * 0.6, '#6a7a95', '#2a3448', null);
-  cone(c, u, v, r * 0.68, r * 0.84, z + h * 0.6, h * 0.4, '#6a7a95', '#2a3448', '#1a2130');
-}
-function drawReactor(c, T, t, b, tier) {
-  plinth(c, 30);
-  if (tier >= 3) hyper(c, 14, -16, 10, 6, 36);
-  hyper(c, -6, -6, 16, 6, 48);
-  const p = 0.5 + 0.5 * Math.sin(t * 4);
-  if (tier >= 2) { ring(c, -6, -6, 13, 22, `rgba(93,255,176,${0.4 + 0.4 * p})`, 2); ring(c, -6, -6, 12, 32, `rgba(93,255,176,${0.3 + 0.3 * p})`, 1.5); }
-  box(c, 12, 14, 10, 10, 6, 14, MAT.metal);
-  sides(c, 12, 14, 10.2, 10.2, 14, 3, T.face);
-  const [x, y] = pt(12, 14, 28);
-  glow(c, x, y, 6, '93,255,176', 0.45 + 0.5 * p);
-  c.strokeStyle = `rgba(93,255,176,${0.5 * (tier >= 3 ? 1 : 0.6)})`; c.lineWidth = 1.2; c.beginPath(); c.arc(x, y, 9 + p * 2, 0, 7); c.stroke();
-}
-function drawHabitat(c, T, t, b, tier) {
-  plinth(c, 32);
-  const domes = [[12, -12, 12], [-12, 10, 15]];
-  if (tier >= 2) domes.splice(1, 0, [14, 14, 10]);
-  if (tier >= 3) domes.unshift([-16, -14, 9]);
-  for (const [u, v, r] of domes) {
-    ring(c, u, v, r + 1, 6, T.main, 2);
-    dome(c, u, v, r, 6, '#8a9ab3', '#2c374b');
-    const [x, y] = pt(u, v, 6 + r * 0.45);
-    c.fillStyle = T.light; c.globalAlpha = 0.75;
-    for (let i = -1; i <= 1; i++) c.fillRect(x + i * r * 0.5 - 1.5, y, 3, 2.4);
-    c.globalAlpha = 1;
+function turretLive(c, T, t, b, tier) {
+  if (tier >= 3) lamp(c, 15, -15, 45, '255,90,90', 0.25 + 0.75 * (Math.sin(t * 5) > 0.3 ? 1 : 0), 1.6);
+  const [hx, hy] = pt(0, 0, TURZ[tier] + 2), a = gunAngle(b, hx, hy, -0.3);
+  c.save(); c.translate(hx, hy); c.rotate(a);
+  if (tier === 1) {
+    c.fillStyle = M.h; c.fillRect(3, -1.6, 17, 3.2); c.fillStyle = M.d; c.fillRect(18, -2.6, 3, 5.2);
+    c.fillStyle = T.main; c.fillRect(-5, -3.5, 9, 7);
+  } else if (tier === 2) {
+    c.fillStyle = M.h; barrels(c, 2, 4, 19, 5, 2.4);
+    c.fillStyle = M.d; c.fillRect(19, -4.6, 3.5, 3); c.fillRect(19, 1.6, 3.5, 3); // muzzle brakes
+    c.fillStyle = M.l; c.fillRect(-6, -5, 11, 10); c.fillStyle = T.main; c.fillRect(-6, -1.2, 11, 2.4);
+  } else { // shrouded rotary cannon: four barrels that spin while it fires
+    const spin = b && b.aim ? t * 14 : 0;
+    c.fillStyle = M.h;
+    for (let k = 0; k < 4; k++) { const o = Math.sin(spin + k * Math.PI / 2) * 3; c.fillRect(8, o - 1, 15, 2); }
+    c.fillStyle = M.d; c.fillRect(20, -4, 3.5, 8);
+    c.fillStyle = M.l; c.beginPath(); c.moveTo(-7, -6.5); c.lineTo(8, -5); c.lineTo(10, 0); c.lineTo(8, 5); c.lineTo(-7, 6.5); c.closePath(); c.fill();
+    c.fillStyle = T.main; c.fillRect(-7, -1.4, 15, 2.8);
+    c.fillStyle = M.d; c.fillRect(-7, -6.5, 3, 13);
   }
-  mast(c, 12, -12, 6 + 12 * 1.05, 14, T, t);
-  if (tier >= 3) mast(c, -12, 10, 6 + 15 * 1.05, 10, T, t + 2);
+  c.restore();
 }
-function drawBarracks(c, T, t, b, tier) {
-  plinth(c, 32);
-  if (tier >= 2) { box(c, 20, -20, 7, 7, 6, 40, MAT.metal); box(c, 20, -20, 10, 10, 46, 4, MAT.light); const [x, y] = pt(20, -20, 54); glow(c, x, y, 2.5, '255,240,190', 0.7); }
+
+/* ---------- Barracks ---------- */
+function tower(c, u, v, h, top) { // a lattice watchtower with a platform
+  box(c, u, v, 4.5, 4.5, 6, h, MAT.metal);
+  box(c, u, v, 7, 7, 6 + h, 4, MAT.light);
+  if (top) { cone(c, u, v, 6, 1, 10 + h, 5, '#66779a', '#2a3448', null); }
+}
+function barracksBody(c, T, tier) {
+  plinth(c, 32); trim(c, 30, T, tier);
+  if (tier >= 2) tower(c, 22, -22, 36, true);
+  if (tier >= 3) tower(c, -22, -25, 30, true);
   box(c, -2, 4, 26, 22, 6, 24, MAT.metal);
   sides(c, -2, 4, 26.2, 22.2, 20, 3, T.face);
-  poly(c, [pt(-28.3, 2, 6), pt(-28.3, 18, 6), pt(-28.3, 18, 20), pt(-28.3, 2, 20)]); c.fillStyle = M.d; c.fill();
+  // door: armoured frame from T2
+  if (tier >= 2) { poly(c, [pt(-28.3, 0, 6), pt(-28.3, 20, 6), pt(-28.3, 20, 22), pt(-28.3, 0, 22)]); c.fillStyle = M.l; c.fill(); }
+  poly(c, [pt(-28.4, 2, 6), pt(-28.4, 18, 6), pt(-28.4, 18, 20), pt(-28.4, 2, 20)]); c.fillStyle = M.d; c.fill();
   c.fillStyle = `rgba(${T.glow},0.5)`;
-  for (let i = 0; i < 3; i++) { poly(c, [pt(-28.4, 2, 8 + i * 4), pt(-28.4, 18, 8 + i * 4), pt(-28.4, 18, 9.4 + i * 4), pt(-28.4, 2, 9.4 + i * 4)]); c.fill(); }
+  for (let i = 0; i < 3; i++) { poly(c, [pt(-28.5, 2, 8 + i * 4), pt(-28.5, 18, 8 + i * 4), pt(-28.5, 18, 9.4 + i * 4), pt(-28.5, 2, 9.4 + i * 4)]); c.fill(); }
+  if (tier >= 2) { c.strokeStyle = '#ffd34d'; c.lineWidth = 1.2; poly(c, [pt(-28.6, 0, 6), pt(-28.6, 20, 6), pt(-28.6, 20, 22), pt(-28.6, 0, 22)]); c.stroke(); }
   winR(c, -2, 4, 26.2, 22.2, 12, 4, 4, `rgba(196,243,255,0.6)`);
   box(c, -2, 4, 22, 18, 30, 4, MAT.light);
-  const flag = (u, v, ph) => {
-    const [x, y] = pt(u, v, 34);
-    c.strokeStyle = M.h; c.lineWidth = 1.4; c.beginPath(); c.moveTo(x, y); c.lineTo(x, y - 24); c.stroke();
-    c.fillStyle = T.main; c.beginPath(); c.moveTo(x, y - 24);
-    for (let i = 0; i <= 6; i++) c.lineTo(x + i * 3, y - 24 + Math.sin(t * 5 + i + ph) * 1.4);
-    for (let i = 6; i >= 0; i--) c.lineTo(x + i * 3, y - 16 + Math.sin(t * 5 + i + ph) * 1.4);
+  if (tier === 2) { // roof satellite dish
+    pipe(c, pt(8, 12, 34), pt(8, 12, 40), 1.4, M.h);
+    const [x, y] = pt(8, 12, 42); c.fillStyle = '#d3dbe8'; c.beginPath(); c.ellipse(x, y, 7.5, 4.5, -0.5, 0, 7); c.fill(); c.strokeStyle = M.m; c.lineWidth = 1.2; c.stroke(); c.fillStyle = M.m; c.beginPath(); c.arc(x, y, 1.4, 0, 7); c.fill();
+  }
+  if (tier >= 3) { // second storey with a lit team window band and a gold insignia
+    box(c, -2, 4, 17, 13, 34, 14, MAT.metal);
+    sides(c, -2, 4, 17.2, 13.2, 40, 3, T.face);
+    winL(c, -2, 4, 17.3, 13.3, 40.5, 2, 4, T.light); winR(c, -2, 4, 17.3, 13.3, 40.5, 2, 5, T.light);
+    box(c, -2, 4, 19, 15, 48, 3, MAT.light);
+    const [x, y] = pt(-2, 4, 51); c.fillStyle = '#ffd34d'; c.beginPath(); c.moveTo(x - 9, y); c.lineTo(x, y - 4.5); c.lineTo(x + 9, y); c.lineTo(x, y + 4.5); c.closePath(); c.fill();
+    c.fillStyle = '#8a6a10'; c.beginPath(); c.moveTo(x - 4, y); c.lineTo(x, y - 2); c.lineTo(x + 4, y); c.lineTo(x, y + 2); c.closePath(); c.fill();
+  }
+}
+function barracksLive(c, T, t, b, tier) {
+  if (tier >= 2) { // sweeping spotlight from the watchtower
+    const [x, y] = pt(22, -22, 46), sw = Math.sin(t * 0.9) * 0.9 + 2.2;
+    c.fillStyle = 'rgba(255,240,190,0.2)'; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(sw - 0.16) * 30, y + Math.sin(sw - 0.16) * 30 * 0.5 + 16); c.lineTo(x + Math.cos(sw + 0.16) * 30, y + Math.sin(sw + 0.16) * 30 * 0.5 + 16); c.closePath(); c.fill();
+    glow(c, x, y, 2.4, '255,240,190', 0.7);
+  }
+  if (tier >= 3) lamp(c, -22, -25, 40, T.glow, 0.3 + 0.6 * blink(t, 2), 1.6);
+  const flag = (u, v, z, ph) => {
+    const [x, y] = pt(u, v, z);
+    c.strokeStyle = M.h; c.lineWidth = 1.4; c.beginPath(); c.moveTo(x, y); c.lineTo(x, y - 22); c.stroke();
+    c.fillStyle = T.main; c.beginPath(); c.moveTo(x, y - 22);
+    for (let i = 0; i <= 6; i++) c.lineTo(x + i * 3, y - 22 + Math.sin(t * 5 + i + ph) * 1.4);
+    for (let i = 6; i >= 0; i--) c.lineTo(x + i * 3, y - 14 + Math.sin(t * 5 + i + ph) * 1.4);
     c.closePath(); c.fill();
   };
-  flag(-16, -8, 0);
-  if (tier >= 3) { flag(10, -8, 2); const [x, y] = pt(-2, 4, 34); c.fillStyle = '#ffd34d'; c.beginPath(); c.moveTo(x - 8, y); c.lineTo(x, y - 4); c.lineTo(x + 8, y); c.lineTo(x, y + 4); c.closePath(); c.fill(); }
+  if (tier >= 3) { flag(-14, -6, 51, 0); flag(10, -6, 51, 2); } else flag(-16, -8, 34, 0);
 }
-function drawFactory(c, T, t, b, tier) {
-  plinth(c, 36);
+
+/* ---------- War Factory ---------- */
+function gantry(c, u0, u1, v, z, h) { // a portal crane frame over the roof
+  const col = M.h;
+  pipe(c, pt(u0, v, z), pt(u0, v, z + h), 2, col); pipe(c, pt(u1, v, z), pt(u1, v, z + h), 2, col);
+  pipe(c, pt(u0, v, z + h), pt(u1, v, z + h), 2.4, col);
+  c.fillStyle = '#ffd34d'; const [x, y] = pt((u0 + u1) / 2, v, z + h); c.fillRect(x - 2, y - 1.5, 4, 3);
+}
+function factoryBody(c, T, tier) {
+  plinth(c, 36); trim(c, 34, T, tier);
   cyl(c, -24, -24, 4.5, 6, 44, M.h, M.m, '#9aa7ba');
-  if (tier >= 2) cyl(c, -10, -28, 4, 6, 36, M.h, M.m, '#9aa7ba');
+  if (tier >= 2) cyl(c, -10, -29, 4, 6, 38, M.h, M.m, '#9aa7ba');
+  if (tier >= 3) cyl(c, -30, -10, 4, 6, 34, M.h, M.m, '#9aa7ba');
+  for (const [u, v, z] of tier >= 2 ? [[-24, -24, 40], [-10, -29, 34]] : [[-24, -24, 40]]) ring(c, u, v, 4.6, z, T.main, 1.6);
   box(c, 0, 2, 32, 28, 6, 28, MAT.metal);
   sides(c, 0, 2, 32.2, 28.2, 24, 3, T.face);
   for (let i = 0; i < 3; i++) {
@@ -1626,46 +1710,193 @@ function drawFactory(c, T, t, b, tier) {
     const [x, y] = pt(-12 + i * 18, 2, 37);
     c.fillStyle = `rgba(196,243,255,0.35)`; c.fillRect(x - 6, y - 2, 12, 3);
   }
-  const busy = b && b.queue.length;
   poly(c, [pt(-16, 30.3, 6), pt(16, 30.3, 6), pt(16, 30.3, 26), pt(-16, 30.3, 26)]); c.fillStyle = M.d; c.fill();
+  if (tier >= 2) { // side assembly bay with a conveyor
+    box(c, 24, 18, 8, 10, 6, 14, MAT.metal); sides(c, 24, 18, 8.2, 10.2, 16, 2, T.face);
+    poly(c, [pt(17, 28.4, 6), pt(31, 28.4, 6), pt(31, 28.4, 13), pt(17, 28.4, 13)]); c.fillStyle = M.d; c.fill();
+    c.strokeStyle = '#ffd34d'; c.lineWidth = 1.2; poly(c, [pt(-16.5, 30.5, 6), pt(16.5, 30.5, 6), pt(16.5, 30.5, 26.5), pt(-16.5, 30.5, 26.5)]); c.stroke();
+  }
+  const gz = 40, gh = tier >= 2 ? 22 : 18, gl = [0, 26, 34, 34][tier];
+  if (tier >= 3) { // a half-built tank hull under twin gantries
+    box(c, 4, -12, 12, 8, 40, 5, MAT.dark); sides(c, 4, -12, 12.2, 8.2, 42, 2, T.face);
+    cyl(c, 6, -12, 5, 45, 3, '#5e6d88', '#232c3d', null);
+    c.strokeStyle = 'rgba(196,243,255,0.5)'; c.lineWidth = 0.8; ring(c, 6, -12, 5, 51, 'rgba(196,243,255,0.45)', 0.8);
+    gantry(c, -12, 20, -22, gz, 22); gantry(c, -12, 20, -2, gz, 22);
+  }
+  const [x, y] = pt(20, -20, gz); // crane arm
+  c.strokeStyle = M.h; c.lineWidth = 2; c.beginPath(); c.moveTo(x, y); c.lineTo(x, y - gh); c.lineTo(x - gl, y - gh); c.stroke();
+  if (tier >= 2) { c.lineWidth = 1; c.beginPath(); c.moveTo(x, y - gh + 6); c.lineTo(x - 10, y - gh); c.stroke(); }
+}
+function factoryLive(c, T, t, b, tier) {
+  const busy = b && b.queue.length;
   c.fillStyle = busy ? `rgba(255,190,90,${0.35 + 0.25 * Math.sin(t * 9)})` : M.l;
   for (let i = 0; i < 5; i++) { poly(c, [pt(-14, 30.4, 8 + i * 3.6), pt(14, 30.4, 8 + i * 3.6), pt(14, 30.4, 9.6 + i * 3.6), pt(-14, 30.4, 9.6 + i * 3.6)]); c.fill(); }
-  if (tier >= 3) { winL(c, 0, 2, 32.3, 28.3, 12, 6, 3, `rgba(255,170,80,${0.55 + 0.3 * Math.sin(t * 6)})`); }
-  const [x, y] = pt(20, -20, 40);
-  c.strokeStyle = M.h; c.lineWidth = 2; c.beginPath(); c.moveTo(x, y); c.lineTo(x, y - 18); c.lineTo(x - 26 - (tier >= 3 ? 10 : 0), y - 18); c.stroke();
-  c.lineWidth = 1; c.beginPath(); const hx = x - 16 + Math.sin(t * 0.7) * 6; c.moveTo(hx, y - 18); c.lineTo(hx, y - 8); c.stroke();
+  if (tier >= 2) { // conveyor lights run toward the bay
+    for (let i = 0; i < 3; i++) { const k = ((t * 0.8 + i / 3) % 1), [lx, ly] = pt(18 + k * 12, 28.5, 8); c.fillStyle = busy ? '#ffbe5a' : 'rgba(255,190,90,0.45)'; c.fillRect(lx - 1.2, ly - 1, 2.4, 2); }
+  }
+  if (tier >= 3) {
+    winL(c, 0, 2, 32.3, 28.3, 10, 7, 3, `rgba(255,150,60,${0.55 + 0.3 * Math.sin(t * 6)})`); // furnace windows
+    if (busy && Math.sin(t * 13) > 0.2) lamp(c, 2 + Math.sin(t * 3) * 6, -12, 47, '255,240,190', 0.9, 1.4); // welding sparks
+  }
+  const gh = tier >= 2 ? 22 : 18, [x, y] = pt(20, -20, 40);
+  c.strokeStyle = M.h; c.lineWidth = 1; c.beginPath(); const hx = x - 16 + Math.sin(t * 0.7) * 6; c.moveTo(hx, y - gh); c.lineTo(hx, y - gh + 10); c.stroke();
+  c.fillStyle = '#ffd34d'; c.fillRect(hx - 1.5, y - gh + 10, 3, 2);
 }
-function drawTechLab(c, T, t, b, tier) {
-  plinth(c, 30);
-  if (tier >= 3) for (const [u, v] of [[22, -22], [-22, 22]]) { cyl(c, u, v, 3, 6, 18, M.h, M.m, '#c49bff'); }
+
+/* ---------- Tech Lab ---------- */
+const TLZ = [0, 78, 80, 88]; // crystal height
+function techlabBody(c, T, tier) {
+  plinth(c, 30); trim(c, 28, T, tier);
+  if (tier >= 2) for (const [u, k] of [[12, 0], [18, 1], [24, 2]]) pipe(c, pt(u, -24 + k * 3, 32), pt(u, -24 + k * 3, 46 + k * 4), 1.1, M.h); // antenna array
+  if (tier >= 3) cyl(c, 22, -22, 3, 6, 40, M.h, M.m, '#c49bff');
   box(c, 0, 0, 24, 24, 6, 26, MAT.metal);
   sides(c, 0, 0, 24.2, 24.2, 26, 3, T.face);
   c.globalAlpha = 0.55; winL(c, 0, 0, 24.2, 24.2, 12, 5, 4, T.light); winR(c, 0, 0, 24.2, 24.2, 12, 5, 4, T.light); c.globalAlpha = 1;
-  cone(c, 0, 0, 14, 4, 32, 32, '#7484a0', '#2a3448', '#9aa7ba');
-  const zc = 78 + Math.sin(t * 1.5) * 3, [x, y] = pt(0, 0, zc), sp = Math.abs(Math.cos(t * 1.8));
-  glow(c, x, y, 5, '196,155,255', 0.25 + (tier >= 3 ? 0.25 : 0));
-  c.fillStyle = '#c49bff'; c.beginPath(); c.moveTo(x, y - 10); c.lineTo(x + 5 * sp + 1.5, y); c.lineTo(x, y + 10); c.lineTo(x - 5 * sp - 1.5, y); c.closePath(); c.fill();
+  if (tier >= 3) { // bigger, ribbed cone
+    cone(c, 0, 0, 17, 4, 32, 38, '#7484a0', '#2a3448', '#9aa7ba');
+    const [x0, y0] = pt(0, 0, 32), [x1, y1] = pt(0, 0, 70);
+    for (const k of [-0.7, -0.25, 0.25, 0.7]) { const s = Math.sqrt(1 - k * k) * 0.7071; pipe(c, [x0 + k * 17 * 1.2247, y0 + s * 17], [x1 + k * 4 * 1.2247, y1 + s * 4], 1, 'rgba(255,255,255,0.2)'); }
+    ring(c, 0, 0, 12, 46, T.main, 1.6);
+  } else cone(c, 0, 0, 14, 4, 32, 32, '#7484a0', '#2a3448', '#9aa7ba');
+  if (tier >= 2) { // glass dome module
+    dome(c, -15, 14, 7.5, 32, 'rgba(196,243,255,0.95)', 'rgba(60,110,150,0.9)');
+    ring(c, -15, 14, 7.5, 32, T.main, 1.3);
+  }
+  if (tier >= 3) cyl(c, -22, 22, 3, 6, 40, M.h, M.m, '#c49bff');
+}
+function techlabLive(c, T, t, b, tier) {
+  const zc = TLZ[tier] + Math.sin(t * 1.5) * 3, [x, y] = pt(0, 0, zc), sp = Math.abs(Math.cos(t * 1.8));
+  if (tier >= 2) for (const [u, k] of [[12, 0], [18, 1], [24, 2]]) lamp(c, u, -24 + k * 3, 46 + k * 4, T.glow, 0.3 + 0.6 * blink(t, k * 2), 1.2);
+  if (tier >= 3) for (const [u, v] of [[22, -22], [-22, 22]]) { // pylons arc to the crystal
+    const [px, py] = pt(u, v, 46);
+    c.strokeStyle = `rgba(196,155,255,${0.35 + 0.35 * Math.abs(Math.sin(t * 7 + u))})`; c.lineWidth = 1.4;
+    c.beginPath(); c.moveTo(px, py); c.quadraticCurveTo((px + x) / 2 + Math.sin(t * 9 + u) * 4, Math.min(py, y) - 8, x, y); c.stroke();
+    glow(c, px, py, 2, '196,155,255', 0.7);
+  }
+  glow(c, x, y, tier >= 3 ? 6 : 5, '196,155,255', 0.25 + (tier >= 3 ? 0.25 : 0));
+  const s = tier >= 3 ? 1.2 : 1;
+  c.fillStyle = '#c49bff'; c.beginPath(); c.moveTo(x, y - 10 * s); c.lineTo(x + (5 * sp + 1.5) * s, y); c.lineTo(x, y + 10 * s); c.lineTo(x - (5 * sp + 1.5) * s, y); c.closePath(); c.fill();
   if (tier >= 2) { c.strokeStyle = T.main; c.lineWidth = 1.3; c.beginPath(); c.ellipse(x, y, 15, 4 + 2 * Math.sin(t * 2), 0, 0, 7); c.stroke(); }
-  if (tier >= 3) { c.strokeStyle = '#c49bff'; c.beginPath(); c.ellipse(x, y, 10, 13, t * 0.8, 0, 7); c.stroke(); }
+  if (tier >= 3) {
+    c.strokeStyle = '#c49bff'; c.beginPath(); c.ellipse(x, y, 10, 14, t * 0.8, 0, 7); c.stroke();
+    c.strokeStyle = `rgba(${T.glow},0.6)`; c.beginPath(); c.ellipse(x, y, 19, 6 + 2 * Math.sin(t * 2 + 1), 0, 0, 7); c.stroke();
+  }
 }
-function drawTurret(c, T, t, b, tier) {
-  plinth(c, 26);
-  box(c, 0, 0, 20, 20, 6, 10, MAT.dark);
-  sides(c, 0, 0, 20.2, 20.2, 12, 3, T.face);
-  cyl(c, 0, 0, 11, 16, 14, '#7383a0', '#2c374b', '#8794ab');
-  if (tier >= 2) { ring(c, 0, 0, 13, 20, T.main, 2); ring(c, 0, 0, 13, 26, 'rgba(255,255,255,0.25)', 1); }
-  let a = -0.3;
-  if (b && b.aim) { const s0 = P(b.u, b.v), d = P(b.aim.u, b.aim.v, b.aim.z); a = Math.atan2(d.y - (s0.y - 36 * BS), d.x - s0.x); }
-  else if (b && b.side === 1) a = Math.PI + 0.3;
-  dome(c, 0, 0, 10, 30, '#a3b1c6', M.m);
-  const [hx, hy] = pt(0, 0, 36), n = tier >= 3 ? 3 : 2;
-  c.save(); c.translate(hx, hy); c.rotate(a);
-  c.fillStyle = M.h; for (let i = 0; i < n; i++) c.fillRect(4, -4 + i * (8 / (n - 1)), 19, 2.2);
-  c.fillStyle = M.d; c.fillRect(20, -5, 3, 10);
-  c.fillStyle = T.main; c.fillRect(-5, -3.5, 9, 7);
-  c.restore();
-  if (tier >= 3) { const [x, y] = pt(0, 0, 46); glow(c, x, y, 2, T.glow, 0.5 + 0.4 * Math.sin(t * 4)); }
+
+/* ---------- Reactor ---------- */
+function hyper(c, u, v, r, z, h) {
+  cone(c, u, v, r, r * 0.68, z, h * 0.6, '#6a7a95', '#2a3448', null);
+  cone(c, u, v, r * 0.68, r * 0.84, z + h * 0.6, h * 0.4, '#6a7a95', '#2a3448', '#1a2130');
 }
+const RH = [0, 48, 50, 54]; // main cooling tower height
+function reactorBody(c, T, tier) {
+  plinth(c, 30); trim(c, 28, T, tier);
+  if (tier >= 3) { hyper(c, 20, -4, 11, 6, 40); ring(c, 20, -4, 9.5, 20, T.main, 1.6); }
+  hyper(c, -6, -6, 16, 6, RH[tier]);
+  ring(c, -6, -6, 14.2, 14, T.main, 2);
+  if (tier >= 3) { pipe(c, pt(12, -4, 14), pt(6, -4, 14), 3, M.l); pipe(c, pt(18, 4, 12), pt(14, 6, 12), 3, M.l); }
+  if (tier >= 2) { // coolant tank with a pipe to the core
+    cyl(c, -19, 17, 7, 6, 18, '#6e7e98', '#2c374b', '#7d8ca3'); ring(c, -19, 17, 7, 16, T.main, 1.6);
+    pipe(c, pt(-12, 17, 12), pt(2, 14, 12), 2.6, M.l);
+  }
+  box(c, 12, 14, 10, 10, 6, 14, MAT.metal);
+  sides(c, 12, 14, 10.2, 10.2, 14, 3, T.face);
+  if (tier >= 3) { box(c, 12, 14, 8, 8, 20, 3, MAT.light); }
+}
+function reactorLive(c, T, t, b, tier) {
+  const p = 0.5 + 0.5 * Math.sin(t * 4);
+  if (tier >= 2) { ring(c, -6, -6, 12.5, 24, `rgba(93,255,176,${0.4 + 0.4 * p})`, 2); ring(c, -6, -6, 11.5, 34, `rgba(93,255,176,${0.3 + 0.3 * p})`, 1.5); }
+  const z = tier >= 3 ? 32 : 28, [x, y] = pt(12, 14, z), r = tier >= 3 ? 7 : 6;
+  if (tier >= 3) { // plasma-core sphere
+    glow(c, x, y, r + p * 1.5, '93,255,176', 0.35 + 0.35 * p);
+    c.fillStyle = `rgba(210,255,235,${0.6 + 0.3 * p})`; c.beginPath(); c.arc(x, y, 3.2, 0, 7); c.fill();
+    c.strokeStyle = 'rgba(93,255,176,0.7)'; c.lineWidth = 1; c.beginPath(); c.ellipse(x, y, r + 3, 3, t * 1.3, 0, 7); c.stroke();
+  } else glow(c, x, y, r, '93,255,176', 0.45 + 0.5 * p);
+  c.strokeStyle = `rgba(93,255,176,${0.5 * (tier >= 2 ? 1 : 0.6)})`; c.lineWidth = 1.2; c.beginPath(); c.arc(x, y, 9 + p * 2, 0, 7); c.stroke();
+}
+
+/* ---------- Refinery ---------- */
+function refineryBody(c, T, tier) {
+  plinth(c, 32); trim(c, 30, T, tier);
+  const fl = tier >= 3 ? 54 : 44;
+  if (tier >= 3) { // distillation column with platforms
+    cyl(c, 4, -26, 5, 6, 60, '#8a98ae', '#3a465c', '#9aa7ba');
+    for (const z of [22, 38, 54]) ring(c, 4, -26, 6.5, z, M.h, 1.4);
+  } else if (tier >= 2) cyl(c, 4, -24, 3.5, 6, 34, M.h, M.m, '#9aa7ba');
+  cyl(c, 16, -16, 4.5, 6, fl, M.h, M.m, '#9aa7ba'); // chimney / flare stack
+  if (tier >= 3) ring(c, 16, -16, 4.6, fl - 4, '#ffd34d', 1.4);
+  box(c, 12, -2, 13, 13, 6, 18, MAT.metal);
+  sides(c, 12, -2, 13.2, 13.2, 18, 2, T.face);
+  const big = tier >= 3;
+  for (const [u, v, h, r] of [[-14, -12, big ? 40 : 34, big ? 12 : 10], [-10, 14, 40, 10]]) {
+    cyl(c, u, v, r, 6, h, '#6e7e98', '#2c374b', '#7d8ca3');
+    ring(c, u, v, r, 22, T.main, 2.2);
+    if (tier >= 2) ring(c, u, v, r, 32, T.main, 1.4);
+    if (tier >= 2) pipe(c, pt(u + r * 0.7, v, 14), pt(5, v * 0.3 - 2, 14), 2.2, M.l); // pipe rack to the plant
+  }
+  if (tier >= 2) { // third tank, ore hopper and conveyor
+    cyl(c, 18, 18, 7, 6, 26, '#6e7e98', '#2c374b', '#7d8ca3'); ring(c, 18, 18, 7, 18, T.main, 2);
+    poly(c, [pt(1, 24, 8), pt(5, 24, 8), pt(5, 12, 13), pt(1, 12, 13)]); c.fillStyle = M.d; c.fill();
+    cone(c, 3, 28, 3, 5.5, 8, 8, '#8a6a10', '#4a3a08', '#c79a2a');
+  }
+}
+function refineryLive(c, T, t, b, tier) {
+  const [gx, gy] = pt(12, -2, 24);
+  c.fillStyle = `rgba(255,211,77,${0.55 + 0.35 * Math.sin(t * 3)})`; c.beginPath(); c.ellipse(gx, gy, 12, 6, 0, 0, 7); c.fill();
+  if (tier >= 2) for (let i = 0; i < 2; i++) { const k = (t * 0.6 + i / 2) % 1, [x, y] = pt(3, 24 - k * 12, 8.5 + k * 5); c.fillStyle = '#c79a2a'; c.fillRect(x - 1.5, y - 1.2, 3, 2.4); } // ore on the belt
+  if (tier >= 3) {
+    glow(c, gx, gy - 3, 3, '255,211,77', 0.8);
+    for (const [z, ph] of [[24, 0], [40, 2], [56, 4]]) lamp(c, 4, -26, z, '255,211,77', 0.3 + 0.6 * blink(t, ph), 1.3);
+    const [fx, fy] = pt(16, -16, 60), f = 0.75 + 0.25 * Math.sin(t * 17) * Math.sin(t * 7); // flare flame
+    c.fillStyle = `rgba(255,150,40,${0.8 * f})`; c.beginPath(); c.moveTo(fx - 3.5, fy); c.quadraticCurveTo(fx - 2, fy - 7 * f, fx + Math.sin(t * 6) * 1.5, fy - 12 * f); c.quadraticCurveTo(fx + 2, fy - 7 * f, fx + 3.5, fy); c.closePath(); c.fill();
+    c.fillStyle = `rgba(255,235,160,${0.9 * f})`; c.beginPath(); c.ellipse(fx, fy - 2.5, 1.6, 3.2 * f, 0, 0, 7); c.fill();
+  }
+}
+
+/* ---------- Habitat ---------- */
+const HAB = [null, [[12, -12, 12], [-12, 10, 15]], [[14, -14, 11], [16, 15, 9], [-13, 12, 13]], [[16, -16, 10], [-16, -14, 9], [16, 16, 9], [-15, 15, 11]]];
+function habitatBody(c, T, tier) {
+  plinth(c, 32); trim(c, 30, T, tier);
+  const domes = HAB[tier];
+  if (tier >= 2) { // glass tubes between the domes, a garden glow at their feet
+    c.lineCap = 'round';
+    for (let i = 0; i < domes.length; i++) { const a = domes[i], d = tier >= 3 ? [0, 0] : domes[(i + 1) % domes.length]; pipe(c, pt(a[0], a[1], 9), pt(d[0], d[1], 9), 4, 'rgba(196,243,255,0.35)'); }
+    c.lineCap = 'butt';
+    for (const [u, v, r] of domes) { const [x, y] = pt(u, v, 6); c.fillStyle = 'rgba(120,255,150,0.16)'; c.beginPath(); c.ellipse(x, y, r * 1.5, r * 0.8, 0, 0, 7); c.fill(); }
+  }
+  const back = tier >= 3 ? domes.filter(d => d[1] - d[0] < 0) : domes;
+  const domeAt = ([u, v, r], k) => {
+    ring(c, u, v, r + 1, 6, T.main, 2);
+    const green = tier >= 3 && k % 2 === 1;
+    dome(c, u, v, r, 6, green ? '#a8f0b8' : '#8a9ab3', green ? '#24503a' : '#2c374b');
+    const [x, y] = pt(u, v, 6 + r * 0.45);
+    c.fillStyle = green ? 'rgba(160,255,180,0.8)' : T.light; c.globalAlpha = 0.75;
+    for (let i = -1; i <= 1; i++) c.fillRect(x + i * r * 0.5 - 1.5, y, 3, 2.4);
+    c.globalAlpha = 1;
+  };
+  back.forEach(d => domeAt(d, domes.indexOf(d)));
+  if (tier >= 3) { // central beacon tower
+    cyl(c, 0, 0, 5, 6, 32, '#8a98ae', '#3a465c', '#9aa7ba');
+    ring(c, 0, 0, 5, 24, T.main, 1.6);
+    cyl(c, 0, 0, 7, 38, 3, '#97a7c1', '#4c5a72', '#b6c2d4');
+    domes.filter(d => !(d[1] - d[0] < 0)).forEach(d => domeAt(d, domes.indexOf(d)));
+  }
+  const [mu, mv, mr] = domes[0];
+  pipe(c, pt(mu, mv, 6 + mr * 1.05), pt(mu, mv, 6 + mr * 1.05 + 14), 1.4, M.h);
+}
+function habitatLive(c, T, t, b, tier) {
+  const [mu, mv, mr] = HAB[tier][0];
+  lamp(c, mu, mv, 6 + mr * 1.05 + 14, T.glow, 0.55 + 0.45 * Math.sin(t * 4 + mu), 2);
+  if (tier >= 3) { const [x, y] = pt(0, 0, 44); glow(c, x, y, 2.6, T.glow, 0.45 + 0.45 * blink(t, 1)); }
+}
+
+// Static bodies and live parts, per type
+const BART = {
+  hq: [hqBody, hqLive], turret: [turretBody, turretLive], barracks: [barracksBody, barracksLive], factory: [factoryBody, factoryLive],
+  techlab: [techlabBody, techlabLive], reactor: [reactorBody, reactorLive], refinery: [refineryBody, refineryLive], habitat: [habitatBody, habitatLive],
+};
+const DRAW_B = {}; // the whole building, drawn live (card icons, and while the cache fills)
+for (const k in BART) DRAW_B[k] = (c, T, t, b, tier) => { BART[k][0](c, T, tier); BART[k][1](c, T, t, b, tier); };
 function drawNodeZone(c, n, time, inView = true) { // ownership is public; progress and contest only when in view
   const w = P(n.u, 0), col = n.owner === null ? '210,195,255' : TEAM[n.owner].glow, ry = (LANE_V + 18) * DY;
   c.fillStyle = `rgba(${col},0.05)`; c.beginPath(); c.ellipse(w.x, w.y, NODE_R, ry, 0, 0, 7); c.fill();
@@ -1689,7 +1920,6 @@ function drawNode(c, n, time) {
   c.fillStyle = main; c.beginPath(); c.moveTo(x, y - 12); c.lineTo(x + 6 * sp + 1.5, y); c.lineTo(x, y + 12); c.lineTo(x - 6 * sp - 1.5, y); c.closePath(); c.fill();
   c.restore();
 }
-const DRAW_B = { turret: drawTurret, hq: drawHQ, refinery: drawRefinery, reactor: drawReactor, habitat: drawHabitat, barracks: drawBarracks, factory: drawFactory, techlab: drawTechLab };
 // Unit sprites: side view facing +x, feet on y = 0. Gun tips sit on the SIM's muzzle points (MUZ) so shots leave the barrel.
 // Flat fills only (no gradients) and a handful of paths each, so a full battle stays cheap to draw.
 function limb(c, x0, y0, x1, y1, x2, y2) { c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.lineTo(x2, y2); c.stroke(); }
@@ -2035,23 +2265,49 @@ function bar(c, x, y, w, f, h, lost = f) { // lost: health just lost, shown as a
 const lostF = e => { const r = VFX.rec.get(e); return r ? r.ghost / e.maxHp : 0; };
 const bTop = b => P(b.u, b.v).y - (BDEF[b.type].half + BDEF[b.type].h) * BS;
 
+// Building cache: like unit sprites, each static body is drawn once per type, tier and team at the current zoom step,
+// then stamped with one drawImage; only the light animated parts are drawn every frame.
+const BCACHE = { scale: 0, map: new Map(), budget: 0, made: 0 };
+const bBox = type => { const d = BDEF[type], w = 2 * d.half * IX + 14; return [-w, -(d.half + d.h + 8), 2 * w, 2 * d.half + d.h + 22]; };
+function bodyCanvas(type, side, tier) {
+  const b = 2 ** (Math.ceil(Math.log2(V.dpr * V.S * BS) * 4) / 4); // device pixels per art unit, in quarter-octave steps
+  if (b !== BCACHE.scale) { BCACHE.scale = b; BCACHE.map.clear(); }
+  const key = type + side + tier;
+  let cv = BCACHE.map.get(key);
+  if (!cv && BCACHE.budget > 0) { // a few new bodies per frame at most, so a zoom change never stalls a frame
+    BCACHE.budget--; BCACHE.made++;
+    const box = bBox(type);
+    cv = document.createElement('canvas'); cv.width = Math.ceil(box[2] * b); cv.height = Math.ceil(box[3] * b);
+    const k = cv.getContext('2d'); k.setTransform(b, 0, 0, b, -box[0] * b, -box[1] * b);
+    BART[type][0](k, TEAM[side], tier);
+    cv.box = box; cv.b = b;
+    BCACHE.map.set(key, cv);
+  }
+  return cv;
+}
+function drawArt(c, b, T, t, tier) { // the cached body (drawn live until it is cached) plus the live parts
+  const art = BART[b.type], cv = bodyCanvas(b.type, b.side, tier);
+  if (cv) c.drawImage(cv, cv.box[0], cv.box[1], cv.width / cv.b, cv.height / cv.b);
+  else art[0](c, T, tier);
+  art[1](c, T, t, b, tier);
+}
 function drawBuilding(c, b, time) {
-  const T = TEAM[b.side], w = P(b.u, b.v), d = BDEF[b.type], draw = DRAW_B[b.type];
+  const T = TEAM[b.side], w = P(b.u, b.v), d = BDEF[b.type];
   c.save(); c.translate(w.x, w.y); c.scale(BS, BS);
   c.fillStyle = 'rgba(0,0,0,0.28)'; c.beginPath(); c.ellipse(6, d.half * 0.35, d.half * 1.7, d.half * 0.7, 0, 0, 7); c.fill();
   const bottom = d.half + 8, top = -d.half - d.h - 12;
   if (!b.built) {
     c.save(); c.globalAlpha = 0.88;
     c.beginPath(); c.rect(-200, bottom - (bottom - top) * b.progress, 400, (bottom - top) * b.progress + 20); c.clip();
-    draw(c, T, b.anim, b, 1); c.restore();
+    drawArt(c, b, T, b.anim, 1); c.restore();
     scaffold(c, b, T, b.progress, bottom, top);
   } else if (b.upgrading) {
-    draw(c, T, b.anim, b, b.tier);
+    drawArt(c, b, T, b.anim, b.tier);
     c.save(); c.globalAlpha = 0.9;
     c.beginPath(); c.rect(-200, bottom - (bottom - top) * b.upProg, 400, (bottom - top) * b.upProg + 20); c.clip();
-    draw(c, T, b.anim, b, b.tier + 1); c.restore();
+    drawArt(c, b, T, b.anim, b.tier + 1); c.restore();
     scaffold(c, b, T, b.upProg, bottom, top);
-  } else draw(c, T, b.anim, b, b.tier);
+  } else drawArt(c, b, T, b.anim, b.tier);
   if (b.shielded) {
     const a = 0.3 + 0.15 * Math.sin(time * 2.5 + b.side);
     c.beginPath(); c.ellipse(0, 12, 96, 158, 0, Math.PI, Math.PI * 2); c.ellipse(0, 12, 96, 40, 0, 0, Math.PI);
@@ -2565,7 +2821,7 @@ function drawVfx(c) {
 function render(c, g, time, sel, selPad) {
   const { cw, ch, dpr, S, A } = V;
   if (!cw) return;
-  SPR.budget = 16;
+  SPR.budget = 16; BCACHE.budget = 6;
   const hy = (HORIZON - Y_BOT) * S + A;
   c.setTransform(dpr, 0, 0, dpr, 0, 0);
   drawSky(c, time, hy, g && g.t >= EXT.warn ? Math.round(12 * clamp((g.t - EXT.warn) / (EXT.start + 60 - EXT.warn), 0, 1)) : 0); // the sky reddens for the Extinction Event

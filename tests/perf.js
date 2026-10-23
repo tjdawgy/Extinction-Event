@@ -1,5 +1,5 @@
 // Performance measurement in headless Chromium at iPhone landscape size (858×396, 2× pixels).
-//   node tests/perf.js [battle] [memory] [--secs=15] [--rates=1,4,6] [--quality=2|1|0|auto] [--abilities | --abilities-spam] [--storm] [--json=out.json]
+//   node tests/perf.js [battle] [memory] [--secs=15] [--rates=1,4,6] [--quality=2|1|0|auto] [--abilities | --abilities-spam] [--storm] [--bases] [--json=out.json]
 // battle: both armies kept near the 80-population cap and fighting mid-map in full view, measured
 //         at each CPU throttle rate (Chromium DevTools CPU throttling simulates a slower phone).
 //         Reports the script time per frame (update + render) and the time between frames.
@@ -32,7 +32,13 @@ const BATTLE = army => {
   for (const s of [0, 1]) { game.sides[s].aiT = 1e9; game.sides[s].stance = 'attack'; game.sides[s].res.c = game.sides[s].res.e = 0; }
   // --storm (v2.6): the fight moves next to the player's base, both sides get buildings, and the clock is at 21:40,
   // inside the Extinction Event (meteors on every building in view); buildings are kept standing so the match goes on
-  const storm = !!window.__storm, mid = storm ? hqPos(0).u + 420 : L / 2;
+  const storm = !!window.__storm, bases = !!window.__bases, mid = storm || bases ? hqPos(0).u + 420 : L / 2;
+  // --bases (v2.7 baseline): every pad on both sides holds a T3 building and the fight is next to the player's base
+  if (bases) {
+    const kinds = ['refinery', 'reactor', 'habitat', 'barracks', 'turret', 'factory', 'techlab', 'refinery'];
+    for (const s of [0, 1]) { game.sides[s].res.c = game.sides[s].res.e = 1e6; for (let i = 0; i < 8; i++) { tryBuild(game, s, kinds[i], i); for (const b of game.ents) if (b.kind === 'b') { b.built = true; b.progress = 1; } } game.sides[s].res.c = game.sides[s].res.e = 0; }
+    for (const b of game.ents) if (b.kind === 'b') { b.tier = 3; b.maxHp = BDEF[b.type].hp * hpMul(BDEF[b.type], 3); b.hp = b.maxHp; }
+  }
   if (storm) {
     for (const s of [0, 1]) { game.sides[s].res.c = game.sides[s].res.e = 1e5; for (const k of ['refinery', 'reactor', 'barracks', 'turret']) { tryBuild(game, s, k); for (const b of game.ents) if (b.type === k && b.side === s) { b.built = true; b.progress = 1; } } game.sides[s].res.c = game.sides[s].res.e = 0; }
     game.t = 1300;
@@ -41,7 +47,8 @@ const BATTLE = army => {
   const topUp = () => {
     for (const s of [0, 1]) {
       game.sides[s].hq.hp = game.sides[s].hq.maxHp;
-      if (storm) { for (const b of game.ents) if (b.kind === 'b') b.hp = b.maxHp; game.t = Math.min(game.t, 1300); }
+      if (storm || bases) for (const b of game.ents) if (b.kind === 'b') b.hp = b.maxHp;
+      if (storm) game.t = Math.min(game.t, 1300);
       for (const [type, n] of Object.entries(army)) {
         const have = game.ents.filter(e => e.kind === 'u' && e.side === s && e.type === type && e.hp > 0).length;
         for (let i = have; i < n; i++) spawnUnit(game, s, type, mid + (s ? 1 : -1) * (140 + Math.random() * 120), (Math.random() - 0.5) * 200);
@@ -74,14 +81,14 @@ const stats = a => {
   return { frames: s.length, avg: +(s.reduce((x, y) => x + y, 0) / n).toFixed(2), p95: +(s[Math.floor(n * 0.95)] || 0).toFixed(2), max: +(s[s.length - 1] || 0).toFixed(1), over50: s.filter(x => x > 50).length, over33: s.filter(x => x > 33.4).length };
 };
 
-async function battle(browser, rates, secs, quality, abil, storm) {
+async function battle(browser, rates, secs, quality, abil, storm, bases) {
   const out = {};
   for (const rate of rates) {
     const { page, errors } = await openPage(browser, PHONE, { init: SEED });
     await page.click('#bPlay');
     await page.waitForTimeout(300);
     await page.evaluate(PROBE);
-    await page.evaluate(([a, st]) => { window.__abil = a; window.__storm = st; }, [abil, storm]);
+    await page.evaluate(([a, st, bs]) => { window.__abil = a; window.__storm = st; window.__bases = bs; }, [abil, storm, bases]);
     await page.evaluate(BATTLE, ARMY);
     await page.evaluate(q => { if (typeof VFX !== 'undefined') VFX.lock = q === 'auto' ? null : +q; }, quality); // effect quality (v2.3+): a level, or auto
     const cdp = await page.context().newCDPSession(page);
@@ -141,7 +148,7 @@ async function main() {
   const args = process.argv.slice(2);
   const opt = k => (args.find(a => a.startsWith(`--${k}=`)) || '').split('=')[1];
   const which = args.filter(a => !a.startsWith('--'));
-  const secs = +(opt('secs') || 15), rates = (opt('rates') || '1,4,6').split(',').map(Number), quality = opt('quality') || '2', abil = args.includes('--abilities-spam') ? 'spam' : args.includes('--abilities'), storm = args.includes('--storm');
+  const secs = +(opt('secs') || 15), rates = (opt('rates') || '1,4,6').split(',').map(Number), quality = opt('quality') || '2', abil = args.includes('--abilities-spam') ? 'spam' : args.includes('--abilities'), storm = args.includes('--storm'), bases = args.includes('--bases');
   const pw = findPlaywright();
   if (!pw) { console.error('Playwright is not installed'); process.exit(1); }
   const browser = await pw.chromium.launch();
@@ -150,7 +157,7 @@ async function main() {
     const { page } = await openPage(browser, PHONE);
     res.version = await page.evaluate(() => VERSION); await page.close();
     console.log('version', res.version);
-    if (!which.length || which.includes('battle')) res.battle = await battle(browser, rates, secs, quality, abil, storm);
+    if (!which.length || which.includes('battle')) res.battle = await battle(browser, rates, secs, quality, abil, storm, bases);
     if (!which.length || which.includes('memory')) res.memory = await memory(browser, storm);
   } finally { await browser.close(); }
   if (opt('json')) fs.writeFileSync(opt('json'), JSON.stringify(res, null, 1));
