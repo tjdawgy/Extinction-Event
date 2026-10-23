@@ -220,8 +220,8 @@ test('the AI personality is never shown during a match, only on the post-match s
     });
     assert.doesNotMatch(seen, words, `${p}: nothing in the UI names or hints at the personality during play`);
     await page.evaluate(() => { kill(game, game.sides[1].hq, 0); });
-    await page.waitForSelector('#box .faced', { timeout: 4000 });
-    assert.match(await page.textContent('#box .faced'), new RegExp(`You faced: The ${p}`, 'i'));
+    await page.waitForSelector('#box p.sub', { timeout: 4000 });
+    assert.match(await page.textContent('#box p.sub'), new RegExp(`You faced The ${p}`, 'i'));
     assert.deepStrictEqual(errors, []);
     await page.close();
   }
@@ -512,7 +512,7 @@ test('abilities and the fog: an enemy strike on ground the player cannot see sho
   await page.close();
 });
 
-test('Extinction Event: warning banner (no taps), meteors only on ground the player can see, end-screen wording', { skip }, async () => {
+test('Extinction Event: warning banner (no taps), meteors only on ground the player can see, end-screen wording and flavor lines', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
   await page.click('#bPlay'); await page.waitForTimeout(300);
   const r = await page.evaluate(() => {
@@ -525,22 +525,31 @@ test('Extinction Event: warning banner (no taps), meteors only on ground the pla
     for (let i = 0; i < 30 * 20; i++) { update(game, 1 / 30); render(ctx, game, game.t, null, -1); if (game.over) break; }
     const meteors = spawned;
     // end screens
-    const shot = res => { game.over = true; game.result = res.result; game.winner = res.winner; showEnd(); return document.querySelector('#box h1').textContent + ' | ' + document.querySelector('#box p:nth-of-type(2)').textContent; };
+    const shot = res => { game.over = true; game.result = res.result; game.winner = res.winner; showEnd(); return document.querySelector('#box h1').textContent + ' | ' + document.querySelector('#box p.sub').textContent; };
     const texts = [
       shot({ winner: 0, result: { how: 'score', reason: 'both', by: 'score', score: [5200, 3100] } }),
       shot({ winner: 1, result: { how: 'storm' } }),
       shot({ winner: -1, result: { how: 'draw', reason: 'limit', by: 'credits', score: [1000, 1000] } }),
+      shot({ winner: 0, result: { how: 'hq' } }),
+      shot({ winner: 1, result: { how: 'hq' } }),
+      shot({ winner: 0, result: { how: 'storm' } }),
+      shot({ winner: 1, result: { how: 'score', reason: 'limit', by: 'score', score: [3100, 5200] } }),
     ];
-    $('box').scrollTop = 1e4; const g0 = game; showEnd(); const atTop = $('box').scrollTop === 0; // a scrolled screen before must not hide the title
+    repShow('Lessons'); $('box').scrollTop = 1e4; $('repPane').scrollTop = 1e4; showEnd(); // a scrolled screen before must not hide the title
+    const atTop = $('box').scrollTop === 0 && $('repPane').scrollTop === 0 && repTab === 'Summary';
     return { atTop, banner, bad, meteors, texts, scoreLine: (shot({ winner: 0, result: { how: 'score', reason: 'limit', by: 'score', score: [5200, 3100] } }), document.body.innerText.includes('Remaining strength')) };
   });
   assert.ok(r.banner.shown && /Extinction event in 0:2\d/.test(r.banner.text), JSON.stringify(r.banner));
   assert.strictEqual(r.banner.taps, 'none');
   assert.ok(r.meteors > 5, `meteors fell on the player's base (${r.meteors})`);
   assert.deepStrictEqual(r.bad, [], 'no meteors drawn on hidden enemy buildings');
-  assert.match(r.texts[0], /^Victory \| Survived the Extinction Event/);
-  assert.match(r.texts[1], /^Defeat \| Your Command HQ fell to the Extinction Event/);
-  assert.match(r.texts[2], /^Mutual extinction/);
+  assert.match(r.texts[0], /^Victory \| Survived the Extinction Event.* You won\. Barely\. Live to die another day\. /);
+  assert.match(r.texts[1], /^Defeat \| Your Command HQ fell to the Extinction Event\. You lost\. The extinction came for you first\. /);
+  assert.match(r.texts[2], /^Mutual extinction \| Both commands fell.* Nobody won\. Nothing survives\. /);
+  assert.match(r.texts[3], /^Victory \| The enemy Command HQ has fallen\. You won\. Live to die another day\. /);
+  assert.match(r.texts[4], /^Defeat \| Your Command HQ was destroyed\. You lost\. Your colony went extinct\. /);
+  assert.match(r.texts[5], /^Victory \| The enemy base fell to the Extinction Event\. You won\. Outlasted the extinction\. /);
+  assert.match(r.texts[6], /^Defeat \| Lost to the Extinction Event.* You lost\. Your colony went extinct\. /);
   assert.ok(r.scoreLine, 'scores are shown');
   assert.ok(r.atTop, 'the end screen opens at its top');
   assert.deepStrictEqual(errors, []);

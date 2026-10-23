@@ -20,7 +20,8 @@ function loadSim(opts = {}) {
     'repairCost', 'sellValue', 'setStance', 'income', 'popCap', 'popUsed', 'spawnUnit', 'damage', 'kill', 'hqStatus',
     'rallyU', 'hqU', 'countB', 'hasBuilt', 'serialize', 'deserialize', 'SAVE_OK', 'FOG_CELL', 'FOG_N', 'SIGHT', 'B_SIGHT', 'B_SIGHT_DEF',
     'NODE_SIGHT', 'INTEL_TTL', 'cellOf', 'visibleTo', 'updateVision', 'aiUpdate', 'aiSpotter',
-    'knownDefense', 'attackBar', 'FAIL_MARGIN', 'FAIL_MEMORY', 'TURRET_VAL', 'HQ_VAL', 'armyValue', 'PERSONAS', 'PERSONA_NAME', 'rollPersona', 'aiAbility', 'ABIL', 'ABIL_ORDER', 'abilityCheck', 'useAbility', 'hqPos', 'EXT', 'stormRate', 'sideScore', 'tieBreak', 'resolveEnd'];
+    'knownDefense', 'attackBar', 'FAIL_MARGIN', 'FAIL_MEMORY', 'TURRET_VAL', 'HQ_VAL', 'armyValue', 'PERSONAS', 'PERSONA_NAME', 'rollPersona', 'aiAbility', 'ABIL', 'ABIL_ORDER', 'abilityCheck', 'useAbility', 'hqPos', 'EXT', 'stormRate', 'sideScore', 'tieBreak', 'resolveEnd',
+    'LOG_CAP', 'LOG_SPAN', 'LOG_N', 'LOG_GAP', 'LINE_MAX', 'newLog', 'lg', 'lgUnit', 'logCompact', 'logEvText', 'logLines', 'logText', 'logMoments', 'logLessons', 'logBattles', 'mmss'];
   const M = Object.create(Math); if (opts.random) M.random = opts.random;
   const sandbox = { Math: M, JSON, Object, Array, Map, Set, Uint8Array, Float32Array, console };
   vm.createContext(sandbox);

@@ -1,0 +1,177 @@
+Extinction Event v2.9 · Normal · vs The Turtle
+Result: Victory, enemy HQ destroyed · 09:44
+You: credits 13,337 earned / 13,485 spent; energy 4,679 / 4,180
+  Units built 67, lost 54: Rifleman 28 (27 lost), Heavy 14 (10 lost), Sniper 1 (0 lost), Tank 10 (8 lost), Artillery 3 (0 lost), Gunship 8 (7 lost), Interceptor 3 (2 lost)
+Enemy: credits 7,692 earned / 7,905 spent; energy 2,273 / 2,020
+  Units built 31, lost 31: Rifleman 18 (18 lost), Heavy 10 (10 lost), Tank 2 (2 lost), Artillery 1 (1 lost)
+TIMELINE
+00:01 [ME] Refinery started
+00:01 [ENEMY] Barracks started
+00:02 [ME] Barracks started
+00:02 [ENEMY] Refinery started
+00:11 [ME] Refinery finished
+00:12 [ENEMY] Refinery finished
+00:15 [ENEMY] Barracks finished
+00:16 [ME] Barracks finished
+00:28 [ME] Refinery started
+00:28 [ENEMY] Refinery started
+00:38 [ME] Refinery finished
+00:38 [ENEMY] Refinery finished
+00:43 [ME] Reactor started
+00:51 [ENEMY] Turret started
+00:53 [ME] Habitat started
+00:55 [ME] Reactor finished
+01:01 [ME] Habitat finished
+01:02 [ENEMY] Reactor started
+01:03 [ENEMY] Turret finished
+01:11 [ENEMY] Habitat started
+01:14 [ENEMY] Reactor finished
+01:19 [ENEMY] Habitat finished
+01:20 [ME] War Factory started
+01:30 [ME] Refinery upgrade to T2 started
+01:38 [ENEMY] War Factory started
+01:39 [ME] Rifleman ×14, 01:39–06:02
+01:40 [ME] War Factory finished
+01:42 [ME] Refinery upgraded to T2
+01:52 [ENEMY] Turret upgrade to T2 started
+01:58 [ENEMY] War Factory finished
+02:01 [ENEMY] Rifleman ×7, 02:01–03:43
+02:04 [ENEMY] Turret upgraded to T2
+02:06 [ME] Tech Lab started
+02:16 [ME] Refinery upgrade to T2 started
+02:28 [ME] Refinery upgraded to T2
+02:28 [ENEMY] Tech Lab started
+02:33 [ME] Tech Lab finished
+02:41 [ME] Tech Lab upgrade to T2 started
+02:54 [ENEMY] Tech Lab finished
+02:56 [ME] Attack launched
+03:00 [ENEMY] Command HQ upgrade to T2 started
+03:01 [ME] Tech Lab upgraded to T2
+03:04 [ME] Captured the west field node
+03:05 [ME] Refinery upgrade to T3 started
+03:09 [ME] Captured the centre field node
+03:20 [ENEMY] Command HQ upgraded to T2
+03:23 [ME] Refinery upgraded to T3
+03:28 [ENEMY] Barracks upgrade to T2 started
+03:28 [ME] Tank ×6, 03:28–06:31
+03:28 [ME] Refinery upgrade to T3 started
+03:38 [ENEMY] Attack launched
+03:42 [ENEMY] Barracks upgraded to T2
+03:44 [ME] Lost Rifleman ×16, 03:44–07:14
+03:46 [ENEMY] Reactor upgrade to T2 started
+03:46 [ME] Refinery upgraded to T3
+03:46 [ENEMY] Captured the east field node
+03:46 [ME] Barracks upgrade to T2 started
+03:49 [ENEMY] Lost Rifleman ×7, 03:49–05:15
+03:57 [ME] Interceptor
+03:58 [ENEMY] Reactor upgraded to T2
+03:58 [ENEMY] Refinery upgrade to T2 started
+04:01 [ME] Barracks upgraded to T2
+04:02 [ME] Reactor upgrade to T2 started
+04:10 [ENEMY] Refinery upgraded to T2
+04:11 [ENEMY] Refinery upgrade to T2 started
+04:14 [ME] Reactor upgraded to T2
+04:14 [ME] War Factory upgrade to T2 started
+04:15 [ENEMY] Heavy
+04:23 [ENEMY] Refinery upgraded to T2
+04:23 [ENEMY] War Factory upgrade to T2 started
+04:25 [ME] Reactor started
+04:32 [ME] War Factory upgraded to T2
+04:33 [ME] Habitat upgrade to T2 started
+04:37 [ME] Reactor finished
+04:41 [ENEMY] War Factory upgraded to T2
+04:42 [ENEMY] Habitat upgrade to T2 started
+04:43 [ME] Habitat upgraded to T2
+04:43 [ME] Reactor upgrade to T2 started
+04:45 [ENEMY] Tank ×2, 04:45–05:01
+04:52 [ENEMY] Habitat upgraded to T2
+04:55 [ME] Reactor upgraded to T2
+04:55 [ME] Reactor upgrade to T3 started
+04:56 [ME] Gunship ×8, 04:56–09:26
+05:01 [ENEMY] Reactor upgrade to T3 started
+05:02 [ENEMY] Attack launched
+05:05 [ENEMY] Emergency Shield: 120 damage blocked
+05:13 [ME] Reactor upgraded to T3
+05:14 [ME] Reactor upgrade to T3 started
+05:15 [ME] Heavy ×14, 05:15–09:43
+05:16 [ME] Lost Tank ×8, 05:16–09:06
+05:17 [ENEMY] Heavy ×7, 05:17–07:15
+05:19 [ENEMY] Reactor upgraded to T3
+05:21 [ENEMY] Lost Heavy ×6, 05:21–06:33
+05:30 [ENEMY] Tech Lab upgrade to T2 started
+05:32 [ME] Reactor upgraded to T3
+05:33 [ENEMY] Lost Tank ×2, 05:33–05:39
+05:39 [ME] Command HQ upgrade to T2 started
+05:43 [ME] Lost Gunship ×7, 05:43–09:28
+05:49 [ME] Lost Heavy ×10, 05:49–09:36
+05:50 [ENEMY] Tech Lab upgraded to T2
+05:50 [ENEMY] Lost the east field node
+05:59 [ME] Command HQ upgraded to T2
+06:00 [ME] Captured the east field node
+06:01 [ME] Attack launched
+06:12 [ME] War Factory upgrade to T3 started
+06:14 [ME] Rifleman ×14, 06:14–09:32
+06:16 [ENEMY] War Factory upgrade to T3 started
+06:20 [ENEMY] Rifleman ×5, 06:20–07:07
+06:21 [ENEMY] Attack launched
+06:31 [ENEMY] Lost Rifleman ×10, 06:31–08:31
+06:36 [ME] War Factory upgraded to T3
+06:38 [ME] Attack launched
+06:40 [ENEMY] War Factory upgraded to T3
+06:41 [ME] Barracks upgrade to T3 started
+06:43 [ENEMY] Artillery
+06:44 [ENEMY] Attack launched
+06:45 [ME] Artillery ×3, 06:45–08:41
+06:54 [ENEMY] Barracks upgrade to T3 started
+07:01 [ME] Barracks upgraded to T3
+07:01 [ME] Habitat upgrade to T3 started
+07:02 [ME] Attack launched (siege)
+07:14 [ENEMY] Barracks upgraded to T3
+07:15 [ME] Habitat upgraded to T3
+07:15 [ENEMY] Emergency Shield: 61 damage blocked
+07:18 [ME] Tech Lab upgrade to T3 started
+07:23 [ENEMY] Habitat upgrade to T3 started
+07:27 [ENEMY] Lost Heavy ×4, 07:27–08:44
+07:31 [ENEMY] Rifleman ×6, 07:31–08:43
+07:31 [ENEMY] Lost Artillery
+07:37 [ENEMY] Habitat upgraded to T3
+07:46 [ME] Tech Lab upgraded to T3
+07:46 [ENEMY] Refinery upgrade to T3 started
+07:47 [ME] Lost Rifleman ×11, 07:47–09:43
+07:49 [ME] Tank ×4, 07:49–09:40
+07:54 [ME] Attack launched
+08:00 [ENEMY] Turret destroyed
+08:02 [ME] Command HQ upgrade to T3 started
+08:03 [ENEMY] Turret started
+08:04 [ENEMY] Refinery upgraded to T3
+08:14 [ENEMY] Refinery upgrade to T3 started
+08:15 [ENEMY] Turret finished
+08:28 [ME] Attack launched (siege)
+08:30 [ME] Command HQ upgraded to T3
+08:30 [ME] Interceptor ×2, 08:30–09:13
+08:30 [ENEMY] Heavy ×2, 08:30–08:38
+08:32 [ENEMY] Refinery upgraded to T3
+08:36 [ENEMY] Turret upgrade to T2 started
+08:36 [ME] Lost Interceptor ×2, 08:36–09:40
+08:41 [ENEMY] Turret destroyed
+08:43 [ME] Sniper
+08:44 [ENEMY] Reactor started
+08:44 [ENEMY] Reactor destroyed
+08:44 [ENEMY] Refinery destroyed
+08:48 [ENEMY] Lost Rifleman
+08:51 [ENEMY] War Factory destroyed
+08:57 [ENEMY] Refinery started
+08:58 [ENEMY] Refinery destroyed
+09:00 [ENEMY] Reactor destroyed
+09:05 [ENEMY] Tech Lab destroyed
+09:09 [ENEMY] Refinery started
+09:12 [ENEMY] Refinery destroyed
+09:15 [ENEMY] Habitat destroyed
+09:18 [ME] Orbital Strike: 344 damage, 1 destroyed
+09:20 [ENEMY] Barracks destroyed
+09:21 [ENEMY] Barracks started
+09:21 [ENEMY] Barracks destroyed
+09:23 [ENEMY] Refinery destroyed
+09:23 [ENEMY] HQ shield down
+09:44 [ENEMY] Command HQ destroyed
+09:44 [ALL] Match ended: you won
