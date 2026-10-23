@@ -78,3 +78,20 @@ test('Train tab: path tags and Mass ×2; units no building of yours can make go 
   assert.deepStrictEqual(errors, []);
   await page.close();
 });
+
+test('War Factory (v2.14): Siege or Assault in the picker; Assault puts Flame Tank on the Train tab and Artillery under "Other paths"', { skip }, async () => {
+  const { page, errors } = await openPage(browser, PHONE);
+  await page.click('#bPlay'); await page.waitForTimeout(300);
+  await page.evaluate(SETUP);
+  await page.evaluate(() => { for (const k of ['refinery', 'factory']) { tryBuild(game, 0, k); for (const b of game.ents) if (b.kind === 'b') { b.built = true; b.progress = 1; } } openPanel(game.ents.find(e => e.type === 'factory')); });
+  assert.match(await page.textContent('#bpPick [data-p="A"]'), /Siege.*Artillery.*Titans/);
+  assert.match(await page.textContent('#bpPick [data-p="B"]'), /Assault.*Flame Tanks.*Hydras/);
+  await page.click('#bpPick [data-p="B"]'); await page.click('#bpUp');
+  await page.evaluate(() => { sel.upProg = 0.9999; update(game, 0.2); closePanel(); });
+  await page.click('.tabs [data-tab="train"]');
+  const t = await page.$$eval('#cards .card', c => c.map(x => x.dataset.type));
+  assert.ok(t.includes('flame') && t.includes('tank') && !t.includes('artillery') && !t.includes('titan') && t.at(-1) === 'other', JSON.stringify(t));
+  assert.match(await page.textContent('#cards .card.other'), /Artillery, Titan/);
+  assert.deepStrictEqual(errors, []);
+  await page.close();
+});

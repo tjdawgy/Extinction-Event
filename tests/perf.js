@@ -1,5 +1,5 @@
 // Performance measurement in headless Chromium at iPhone landscape size (858×396, 2× pixels).
-//   node tests/perf.js [battle] [memory] [--secs=15] [--rates=1,4,6] [--quality=2|1|0|auto] [--abilities | --abilities-spam] [--storm] [--bases] [--json=out.json]
+//   node tests/perf.js [battle] [memory] [--army=rifle:20,flame:3,...] [--secs=15] [--rates=1,4,6] [--quality=2|1|0|auto] [--abilities | --abilities-spam] [--storm] [--bases] [--json=out.json]
 // battle: both armies kept near the 80-population cap and fighting mid-map in full view, measured
 //         at each CPU throttle rate (Chromium DevTools CPU throttling simulates a slower phone).
 //         Reports the script time per frame (update + render) and the time between frames.
@@ -27,6 +27,9 @@ const PROBE = () => {
 
 // 78 population per side: every unit type in a mix
 const ARMY = { rifle: 20, heavy: 8, sniper: 4, tank: 4, artillery: 2, titan: 1, aircraft: 2, interceptor: 2 };
+// --army (v2.14): a different mix per side, e.g. to measure Flame Tanks and Hydras (only on a copy that has them)
+const armyArg = (process.argv.find(a => a.startsWith('--army=')) || '').slice(7);
+const army = armyArg ? Object.fromEntries(armyArg.split(',').map(x => { const [k, n] = x.split(':'); return [k, +n]; })) : ARMY;
 const BATTLE = army => {
   game.countdown = 0; hideCountdown();
   for (const s of [0, 1]) { game.sides[s].aiT = 1e9; game.sides[s].stance = 'attack'; game.sides[s].res.c = game.sides[s].res.e = 0; }
@@ -89,7 +92,7 @@ async function battle(browser, rates, secs, quality, abil, storm, bases) {
     await page.waitForTimeout(300);
     await page.evaluate(PROBE);
     await page.evaluate(([a, st, bs]) => { window.__abil = a; window.__storm = st; window.__bases = bs; }, [abil, storm, bases]);
-    await page.evaluate(BATTLE, ARMY);
+    await page.evaluate(BATTLE, army);
     await page.evaluate(q => { if (typeof VFX !== 'undefined') VFX.lock = q === 'auto' ? null : +q; }, quality); // effect quality (v2.3+): a level, or auto
     const cdp = await page.context().newCDPSession(page);
     await cdp.send('Emulation.setCPUThrottlingRate', { rate });

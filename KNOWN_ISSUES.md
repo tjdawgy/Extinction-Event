@@ -10,6 +10,26 @@ Issues found during testing that are deliberately deferred. Each lists the step 
 
 ## Open
 
+### War Factory tree: numbers for the later balance and AI audit (v2.14)
+v2.14 was implementation only: no tuning, and the AI got minimal path support. Measured, not tuned:
+- **Forced-path matrix** (Hard, each personality against itself, one side forced onto Siege and the other onto Assault, 40 matches each, zero timeouts, longest 23:09). Siege beat Assault 133–27 overall (83%). Per personality, Siege–Assault: Aggressor 23–17, Economist 38–2, Trickster 35–5, Turtle 37–3.
+- **Likely main cause: the AI's base-attack logic.** The AI only launches a siege push with at least 2 Artillery or Titans (`aiUpdate`, strategy section: `nSiege >= 2`), so an Assault AI never sieges. It has to win field fights or wait for the late all-in.
+- **Units trained, share by value** (per personality: Aggressor, Economist, Trickster, Turtle):
+  - On Assault: Flame Tanks 6%, 6%, 16%, 6%; Hydras 0–1%. Hydras are rare at T3 (360/140).
+  - On Siege: Artillery 2%, 9%, 11%, 10%; Titans 0%, 5%, 1%, 9%.
+  - Riflemen: 47–48% for the Aggressor (both paths), 9–27% for the others.
+- **Ladder sanity check:**
+  - Easy lost 0–20 to Normal and 0–20 to Hard.
+  - Normal vs Hard was 13–27 over 40 matches (main v2.13: 15–25).
+  - The calibrated Rifleman rush won 9 of 20 on Normal (main: 16 of 40) and 1 of 20 on Hard.
+  - Turtle and Eco bots lost 0–20.
+  - Zero timeouts throughout.
+- **For the audit:**
+  - let an Assault AI siege with Flame Tanks and Hydras (or count Tanks), or add path-aware attack rules;
+  - Hydra cost and T3 timing;
+  - the default paths (Aggressor and Trickster on Assault);
+  - re-check the Barracks matrix (Mass vs Specialists) now that Flame Tanks exist.
+
 ### Upgrade trees: re-check after the War Factory and Tech Lab trees (v2.13)
 - **Mass Deployment sits near the top of the range.** In the forced-path matrix (Hard, each personality against itself, 40 matches each, 160 in total), Mass Deployment beat Specialists 94–66: a 58.8% win rate, inside the 40–60% target. Per personality (information only): Aggressor 24–16, Economist 17–23, Trickster 27–13, Turtle 26–14 for Mass.
 - **Riflemen are about 37% of credits spent on units,** pooled over both paths, against a target of about 35%. That's about 50% on the Mass path alone, and 26% on main before trees. The figure is an estimate converted from value shares, weighting personalities equally.
