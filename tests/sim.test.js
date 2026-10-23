@@ -11,7 +11,7 @@ function run(g, seconds) { for (let t = 0; t < seconds && !g.over; t += STEP) si
 test('branding and version', () => {
   const html = readHtml();
   assert.strictEqual(sim.GAME_NAME, 'Extinction Event');
-  assert.match(sim.VERSION, /^\d+\.\d+$/);
+  assert.match(sim.VERSION, /^\d+\.\d+(\.\d+)?$/);
   assert.match(html, /<title>Extinction Event<\/title>/);
   assert.match(html, /<h1>Extinction <span>Event<\/span><\/h1>/);
   assert.match(html, /v\$\{VERSION\}/, 'title screen shows the version');

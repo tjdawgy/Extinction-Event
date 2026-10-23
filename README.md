@@ -52,6 +52,7 @@ Other tools:
 - `node tests/tree-shots.js [outDir] [--narrow] [--tag=name]`: the path picker, a chosen path, the Train tab with path tags and "Other paths", Mass pairs, and a path badge on an enemy ghost.
 - `node tests/factory-shots.js [outDir] [--narrow] [--tag=name]`: the War Factory picker, Assault at T3, the Train tab, Flame Tanks burning infantry, Hydras firing at aircraft, and the flame badge on an enemy War Factory.
 - `node tests/techlab-shots.js [outDir] [--narrow] [--tag=name]`: the Tech Lab picker, Support at T3, the Train tab, a Leviathan with an Interceptor escort, a Medicopter healing next to a Recon Drone, the Army tab's Support group, and the cross badge on an enemy Tech Lab.
+- `node tests/toast-shots.js [outDir] [--narrow] [--tag=name]`: three toasts while the Barracks and Tech Lab panels are open (T1 picker and T2); prints whether any toast covers the panel title and exits 1 if one does.
 - `node tests/unit-sheet.js [outDir] [--tag=name] [--narrow]`: a sheet of all eight units (both teams, idle and walking, enlarged and at game size) and a large-battle screenshot. Also honours `EE_HTML`.
 - `node tests/screenshot.js [outDir] [--narrow]`: PNGs of the title, intro, countdown, play, HQ states and victory at 858×396 (or 667×375). The default output folder, `tests/screenshots/`, is git-ignored.
 

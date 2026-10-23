@@ -14,7 +14,7 @@ test('title screen: name and version', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
   assert.strictEqual(await page.title(), 'Extinction Event');
   assert.match(await page.textContent('#box h1'), /Extinction\s*Event/);
-  assert.match(await page.textContent('#box .ver'), /^v\d+\.\d+$/);
+  assert.match(await page.textContent('#box .ver'), /^v\d+\.\d+(\.\d+)?$/);
   assert.deepStrictEqual(errors, []);
   await page.close();
 });

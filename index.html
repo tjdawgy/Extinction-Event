@@ -86,6 +86,9 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .t.warn{border-color:rgba(255,211,77,.75);color:#ffeab0}
 .t.out{opacity:0}
 @keyframes tin{from{transform:translateY(-6px);opacity:0}}
+/* While a building panel is open, toasts move to the column left of it so they never cover its title (placeToasts) */
+#toasts.side{transform:none;align-items:flex-start}
+#toasts.side .t{white-space:normal;border-radius:12px;line-height:1.25;padding:4px 11px}
 #bp{position:absolute;right:58px;bottom:6px;width:264px;background:var(--glass);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:12px;padding:8px 9px 9px 11px;font-size:12px;box-shadow:0 10px 30px rgba(0,0,0,.4)}
 #bp.hide{display:none}
 .bph{display:flex;align-items:center;gap:7px}
@@ -307,7 +310,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.15'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.15.1'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -3746,8 +3749,17 @@ function showGo() {
 }
 function hideCountdown() { clearTimeout(goTimer); goTimer = null; cdShown = ''; $('cd').className = 'hide'; }
 
+// Toasts sit centered under the top bar, or left of the building panel while it shows (v2.15.1)
+function placeToasts() {
+  const box = $('toasts'), bp = $('bp');
+  const r = bp.classList.contains('hide') || getComputedStyle(bp).visibility === 'hidden' ? null : bp.getBoundingClientRect();
+  const l = $('hud').getBoundingClientRect().left;
+  box.classList.toggle('side', !!r);
+  box.style.left = r ? `${l}px` : ''; box.style.width = r ? `${Math.max(120, r.left - 8 - l)}px` : '';
+}
 function toast(msg, kind = '') {
   const box = $('toasts');
+  placeToasts();
   while (box.children.length > 2) box.firstChild.remove();
   const el = document.createElement('div');
   el.className = 't ' + kind; el.textContent = msg; box.appendChild(el);
@@ -4104,13 +4116,13 @@ function refreshExt() {
 }
 
 /* ---------- Building panel: tap a building to upgrade or sell it ---------- */
-function openPanel(b) { sel = b; selPad = -1; sellArm = 0; bpPath = null; $('bp').classList.remove('hide'); refreshPanel(); }
+function openPanel(b) { sel = b; selPad = -1; sellArm = 0; bpPath = null; $('bp').classList.remove('hide'); refreshPanel(); placeToasts(); }
 function openPad(k) {
   sel = null; selPad = k; sellArm = 0; $('bp').classList.remove('hide');
   if (tab !== 'build') document.querySelector('.tabs [data-tab="build"]').click();
-  refreshPanel();
+  refreshPanel(); placeToasts();
 }
-function closePanel() { sel = null; selPad = -1; sellArm = 0; $('bp').classList.add('hide'); }
+function closePanel() { sel = null; selPad = -1; sellArm = 0; $('bp').classList.add('hide'); placeToasts(); }
 function refreshPanel() {
   $('bpPick').classList.add('hide'); $('bp').classList.remove('wide'); // shown again below for a building choosing its path
   if (selPad >= 0) {

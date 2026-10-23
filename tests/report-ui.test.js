@@ -87,7 +87,7 @@ test('the numbers and lines on screen are the recorded ones; Copy match log copi
   await page.click('#bCopy'); await page.waitForTimeout(100);
   const c1 = await page.evaluate(() => ({ same: window.__copied === repText(game), msg: $('copyMsg').textContent, text: window.__copied }));
   assert.ok(c1.same); assert.strictEqual(c1.msg, 'Copied');
-  assert.match(c1.text, /^Extinction Event v\d+\.\d+ · Normal · vs The Turtle\nResult: (Victory|Defeat|Draw)/);
+  assert.match(c1.text, /^Extinction Event v\d+\.\d+(\.\d+)? · Normal · vs The Turtle\nResult: (Victory|Defeat|Draw)/);
   assert.match(c1.text, /\nTIMELINE\n\d\d:\d\d \[(ME|ENEMY)\] /);
   // copy: clipboard blocked (as some iPhone Safari cases): the text is shown selected
   await page.click('#repTabs [data-t="Timeline"]');

@@ -139,7 +139,8 @@ test('endings: HQ kill, the Extinction Event, a score decision and a draw are ea
 
 test('save and resume keep the log; a v10 save starts an empty log and the report says what was missed', () => {
   const g = sim.newGame('hard', { autoPlayer: true, autoDiff: 'normal', persona: 'economist' });
-  step(g, 400);
+  step(g, 300);
+  assert.ok(!g.over, 'saved mid-match');
   const before = JSON.stringify(g.log), g2 = sim.deserialize(sim.serialize(g, {}));
   assert.strictEqual(JSON.stringify(g2.log), before, 'identical after loading');
   step(g2, 60);
@@ -148,5 +149,5 @@ test('save and resume keep the log; a v10 save starts an empty log and the repor
   const g3 = sim.deserialize(JSON.stringify(o));
   assert.ok(g3.log && g3.log.from === g.t && g3.log.ev.length === 0);
   step(g3, 30);
-  assert.match(sim.logText(g3, META), /Recorded from 06:40 \(resumed from an older save\); earlier events are not included\./);
+  assert.match(sim.logText(g3, META), /Recorded from 05:00 \(resumed from an older save\); earlier events are not included\./);
 });

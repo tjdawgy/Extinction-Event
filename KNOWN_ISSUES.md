@@ -8,6 +8,18 @@ Issues found during testing that are deliberately deferred. Each lists the step 
 - The Extinction Event (from 20:00) and the 27:00 limit end every match. v2.6, 20 matches per row: zero timeouts in the AI ladder, the same-personality ladder and every bot row; the longest match was 23:12, none ran past 26:00, and the score decided 0–3 matches per row.
 - This also removes the flake in `AI vs AI match on <difficulty> plays to a finish` (`tests/sim.test.js`): the match can no longer reach 30 minutes.
 
+## Audit
+Items for the strategy explorer and full balance audit. Logged only, nothing tuned. Details are in the version sections under Open.
+- **AI siege push needs 2+ Artillery or Titans** (`aiUpdate`, `nSiege >= 2`), so a War Factory AI on Assault can never push. Likely cause of Siege beating Assault 83% (v2.14).
+- **Leviathan almost never trained.** The AI sits near the 34-unit cap holding 100–300 credits, so a 7-slot unit rarely fits. Supply is the problem, not only cost (v2.15).
+- **Hydra under 1% of units trained** (v2.14).
+- **Recon Drones lost and retrained:** 13–21% of Support units (v2.15).
+- **Hard ≈ Normal on the ladder:** 19–21 over 40 at v2.15, 18–22 at main (v2.14).
+- **Test bots always take path A** (Barracks, War Factory) **and Support** (Tech Lab), so bot data never covers Mass Deployment, Assault or Air Power.
+- **Tech Lab AI default paths are provisional:** Economist and Trickster on Air Power, Aggressor and Turtle on Support.
+- **Bot rows from v2.13–v2.14 are not comparable with later rows** (the bots never upgraded before the v2.15 fix).
+- **Mass Deployment near the top of its win range** (58.8%, target 40–60%); **Riflemen about 37% of unit spending** (target about 35%) (v2.13).
+
 ## Open
 
 ### Tech Lab tree: numbers for the later balance and AI audit (v2.15)
