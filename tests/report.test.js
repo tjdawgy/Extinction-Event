@@ -62,8 +62,9 @@ function checkExact(g, label) {
   const txt = sim.logText(g, META).split('\n'), at = txt.indexOf('TIMELINE'), tl = txt.slice(at + 1).filter(l => !l.startsWith('('));
   assert.ok(txt[0].includes(`v${sim.VERSION}`) && txt[0].includes('Normal') && txt[0].includes('The Turtle') && txt[1].includes(META.result) && txt[1].includes(sim.mmss(g.t)), txt.slice(0, 2).join(' / '));
   for (const l of tl) assert.match(l, /^\d\d:\d\d \[(ME|ENEMY|ALL)\] \S/);
-  const glob = sim.logLines(g, 0).filter(l => ['W', 'X', 'E'].includes(l.code)).length;
-  assert.strictEqual(tl.length, sim.logLines(g, 0).length + sim.logLines(g, 1).length - glob, `${label}: copied lines match the screen`);
+  const raw = s => sim.logLines(g, s, false), glob = raw(0).filter(l => ['W', 'X', 'E'].includes(l.code)).length;
+  assert.strictEqual(tl.length, raw(0).length + raw(1).length - glob, `${label}: copied lines = every line, unit groups never widened`);
+  for (const l of tl) { const m = l.match(/×(\d+), (\d\d):(\d\d)–(\d\d):(\d\d)$/); if (m) assert.ok(+m[1] <= 10 && (m[4] * 60 + +m[5]) - (m[2] * 60 + +m[3]) <= 61, `${label}: copied group within 60 s / 10 units: ${l}`); }
   for (let i = 1; i < tl.length; i++) assert.ok(tl[i].slice(0, 5) >= tl[i - 1].slice(0, 5), `${label}: copied text in time order`);
 }
 
@@ -89,14 +90,18 @@ test('a build or upgrade and its finish share one line, matched by building (two
   assert.match(sim.logText(g, META), /\n00:02 \[ME\] Refinery 00:02 → 00:16\n00:05 \[ME\] Refinery 00:05 → 00:14\n05:10 \[ME\] Refinery T2 05:10 → 05:22\n/);
 });
 
-test('the log is capped: past 600 events unit groups merge and key events are kept', () => {
+test('the log is capped at 1200 events; unit groups never grow past 60 s / 10 units, and key events are kept', () => {
   const g = sim.newGame('normal'), L = g.log;
-  for (let i = 0; i < 900; i++) { g.t = i * 50; if (i % 3 === 0) sim.lg(g, i % 2, 'B', 'refinery'); else sim.lgUnit(g, i % 2, 'T', i % 4 < 2 ? 'rifle' : 'heavy'); }
-  assert.ok(L.ev.length <= sim.LOG_CAP);
-  assert.strictEqual(L.ev.filter(e => e[2] === 'B').length, 300, 'every key event kept');
-  assert.ok(L.merged > 0);
-  assert.strictEqual(L.dropped, 0);
-  assert.strictEqual(L.ev.filter(e => e[2] === 'T').reduce((a, e) => a + e[4], 0), 600, 'no unit lost from the counts while merging');
+  for (let i = 0; i < 2000; i++) { g.t = i * 50; if (i % 3 === 0) sim.lg(g, i % 2, 'B', 'refinery'); else sim.lgUnit(g, i % 2, 'T', i % 4 < 2 ? 'rifle' : 'heavy'); }
+  assert.ok(L.ev.length <= sim.LOG_CAP, `${L.ev.length} events`);
+  assert.strictEqual(L.ev.filter(e => e[2] === 'B').length, 667, 'every key event kept');
+  assert.ok(L.dropped > 0, 'the oldest unit lines go first');
+  for (const e of L.ev) if (e[2] === 'T') assert.ok(e[4] <= 10 && e[5] - e[0] <= 60, JSON.stringify(e));
+  // neighbouring groups that still fit are joined before anything is dropped
+  const h = sim.newGame('normal'), M = h.log;
+  for (let i = 0; i < 1300; i++) { h.t = i; if (i % 2) sim.lg(h, 0, 'G', 'all'); else { sim.lgUnit(h, 1, 'T', 'rifle'); M.open = {}; } } // each unit its own group
+  assert.ok(M.ev.length <= sim.LOG_CAP && M.merged > 0);
+  for (const e of M.ev) if (e[2] === 'T') assert.ok(e[4] <= 10 && e[5] - e[0] <= 60, JSON.stringify(e));
 });
 
 test('full matches: every recorded number matches the game (AI personalities, rush, turtle and eco bots)', () => {

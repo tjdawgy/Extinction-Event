@@ -274,7 +274,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.10'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.11'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -520,7 +520,7 @@ function aiShieldTarget(g, s, kind, lvl, seen, ctx) {
 function aiRepairTarget(g, s, kind, lvl, ctx) {
   const A = ABIL.repair, side = g.sides[s];
   if (kind === 'aggressor' && side.stance === 'attack' && !side.fails) return null; // it repairs after a failed push, not during one
-  const own = g.ents.filter(e => e.side === s && e.hp > 0 && e.hp < e.maxHp && !(e.kind === 'b' && (!e.built || e.repair > 0)));
+  const own = g.ents.filter(e => e.side === s && e.hp > 0 && e.hp < e.maxHp && !(e.kind === 'b' && (!e.built || e.repair > 0 || g.t >= EXT.start))); // v2.11: buildings don't heal in the storm
   const need = [900, 850, 750][lvl];
   let best = null, bs = need;
   for (const c of own) {
@@ -701,7 +701,7 @@ function spawnUnit(g, s, type, u, v) {
 // The HQ is shielded while any other building on that side still stands
 function refreshShields(g) {
   for (let s = 0; s < 2; s++) {
-    const hq = g.sides[s].hq, sh = g.ents.some(b => b.kind === 'b' && b.side === s && b.type !== 'hq' && b.hp > 0);
+    const hq = g.sides[s].hq, sh = g.ents.some(b => b.kind === 'b' && b.side === s && b.type !== 'hq' && b.hp > 0 && b.built); // v2.11: finished buildings only (no shield from construction starts)
     if (hq.shielded && !sh) { ev(g, { type: 'shieldDown', side: s, seen: !!g.fog && visibleTo(g, 1 - s, hq) }); lg(g, s, 'H'); }
     hq.shielded = sh;
   }
@@ -1047,6 +1047,12 @@ function useAbility(g, s, k, u, v) {
   else g.abil.push({ k, side: s, u, v, t0: g.t, end: g.t + A.dur });
   ev(g, { type: 'ability', side: s, k, u, v });
   return { ok: true, msg: k === 'strike' ? 'Orbital Strike inbound' : `${A.name} active` };
+}
+// How many of side s's units and buildings a Repair Pulse at (u, v) would heal now (the same rules as updateAbilities)
+function repairHealable(g, s, u, v) {
+  let n = 0;
+  for (const e of g.ents) if (e.side === s && e.hp > 0 && e.hp < e.maxHp && !(e.kind === 'b' && (!e.built || g.t >= EXT.start || e.repair > 0)) && inAbil(e, u, v, ABIL.repair.r)) n++;
+  return n;
 }
 function updateAbilities(g, dt) {
   for (const a of g.abil) {
@@ -1495,7 +1501,7 @@ function aiSpotter(g, s) {
    (type, tier, by), N/L node captured/lost (node), A ability (k, a, b: its recorded effect), H HQ shield down,
    G AI attack (mode), W/X storm warning/start, E end (how, winner); T/K units trained/lost (type, n, last t),
    grouped while production continues: a group closes after 60 s or 10 units, or a 45 s pause. */
-const LOG_CAP = 600, LOG_GAP = 45, LOG_SPAN = 60, LOG_N = 10, LOG_SAMPLE = 15, LOG_BUCKET = 10;
+const LOG_CAP = 1200, LOG_GAP = 45, LOG_SPAN = 60, LOG_N = 10, LOG_SAMPLE = 15, LOG_BUCKET = 10;
 const newTot = () => ({ earn: [0, 0], sold: [0, 0], spent: { b: [0, 0], u: [0, 0], up: [0, 0], rep: [0, 0], ab: [0, 0] }, trained: {}, lost: {}, killed: {},
   bBuilt: {}, bUp: 0, bLost: {}, bSold: 0, nodeCap: 0, nodeLost: 0, nodeTime: 0, ab: { shield: [0, 0], strike: [0, 0, 0], repair: [0, 0] }, storm: 0, peak: 0 });
 const newLog = t0 => ({ from: t0, ev: [], open: {}, cur: [null, null], army: [[], []], bank: [[], []], next: Math.ceil(t0 / LOG_SAMPLE) * LOG_SAMPLE,
@@ -1514,19 +1520,17 @@ function lgUnit(g, s, code, type) { // a unit trained (T) or lost (K): extends t
   L.ev.push([t, s, code, type, 1, t]); L.open[key] = L.ev.length - 1;
   if (L.ev.length > LOG_CAP) logCompact(L);
 }
-function logCompact(L) { // over the cap: merge unit groups in wider windows; key events are kept
-  for (const win of [120, 300, 900, 1e9]) {
-    const last = {}, out = [];
-    for (const e of L.ev) {
-      if (e[2] !== 'T' && e[2] !== 'K') { out.push(e); continue; }
-      const k = e[1] + e[2] + e[3], p = last[k];
-      if (p && e[0] - p[5] <= win) { p[4] += e[4]; p[5] = e[5]; L.merged++; continue; }
-      last[k] = e; out.push(e);
-    }
-    L.ev = out;
-    if (L.ev.length <= LOG_CAP * 0.9) break;
+function logCompact(L) { // over the cap: first join neighbouring unit groups that still fit 60 s / 10 units; key events are kept
+  const last = {}, out = [];
+  for (const e of L.ev) {
+    if (e[2] !== 'T' && e[2] !== 'K') { out.push(e); continue; }
+    const k = e[1] + e[2] + e[3], p = last[k];
+    if (p && e[5] - p[0] <= LOG_SPAN && p[4] + e[4] <= LOG_N) { p[4] += e[4]; p[5] = e[5]; L.merged++; continue; }
+    last[k] = e; out.push(e);
   }
-  while (L.ev.length > LOG_CAP * 0.9) { const i = L.ev.findIndex(e => e[2] === 'T' || e[2] === 'K'); L.ev.splice(i < 0 ? 0 : i, 1); L.dropped++; }
+  L.ev = out;
+  // still over (only in an extreme match): drop the oldest unit groups (their totals stay in tot) and say so in the report
+  while (L.ev.length > LOG_CAP * 0.9) { const i = L.ev.findIndex(e => e[2] === 'T' || e[2] === 'K'); if (i < 0) { L.ev.shift(); } else L.ev.splice(i, 1); L.dropped++; }
   L.open = {};
 }
 function logAbilityDone(L, s) { // an ability's effect builds up until the side's next cast (one at a time under the shared cooldown)
@@ -1640,7 +1644,7 @@ function logEvText(e, me) { // one log event as a line of text (me: written from
 // would have more than LINE_MAX lines; key events are never merged or cut. When key events alone nearly fill the list,
 // unit groups are widened only until about 20 unit lines are left, so the pace of production still shows.
 // Storm and end lines appear on both sides.
-function logLines(g, s) {
+function logLines(g, s, widen = true) { // widen: the screen may widen unit groups; the copied text never does
   const L = g.log, ev = [];
   if (L) L.ev.forEach((e, i) => { if (e[1] === s || e[1] === -1) { const c = e.slice(); c.i = i; ev.push(c); } }); // c.i: log order, for ties
   // v2.10: a build or upgrade and its finish share one line ('Refinery 00:02 → 00:12', 'Refinery T2 05:10 → 05:22'),
@@ -1656,7 +1660,7 @@ function logLines(g, s) {
   }
   for (let i = ev.length - 1; i >= 0; i--) if (!ev[i]) ev.splice(i, 1);
   const keys = ev.filter(e => e[2] !== 'T' && e[2] !== 'K').length, target = Math.max(LINE_MAX, keys + 20);
-  for (const [gap, span, n] of [[90, 120, 20], [180, 300, 50], [600, 900, 200], [1e9, 1e9, 1e9]]) {
+  for (const [gap, span, n] of widen ? [[90, 120, 20], [180, 300, 50], [600, 900, 200], [1e9, 1e9, 1e9]] : []) {
     if (ev.length <= target) break;
     const open = {};
     for (let i = 0; i < ev.length; i++) {
@@ -1735,10 +1739,10 @@ function logText(g, meta) {
   for (const s of [0, 1]) { lines.push(`${s ? 'Enemy' : 'You'}: ${res(s)}`); lines.push(`  Units built ${sum(T[s].trained)}, lost ${sum(T[s].lost)}: ${units(T[s].trained, T[s].lost)}`); }
   lines.push('TIMELINE');
   const all = [];
-  for (const s of [0, 1]) for (const l of logLines(g, s)) if (s === 0 || !['W', 'X', 'E'].includes(l.code)) all.push({ ...l, tag: ['W', 'X', 'E'].includes(l.code) ? 'ALL' : s ? 'ENEMY' : 'ME' });
+  for (const s of [0, 1]) for (const l of logLines(g, s, false)) if (s === 0 || !['W', 'X', 'E'].includes(l.code)) all.push({ ...l, tag: ['W', 'X', 'E'].includes(l.code) ? 'ALL' : s ? 'ENEMY' : 'ME' });
   all.sort((a, b) => a.t - b.t || a.i - b.i);
   for (const l of all) lines.push(`${mmss(l.t)} [${l.tag}] ${l.txt}`);
-  if (L.merged || L.dropped) lines.push(`(Long match: ${L.dropped ? 'some early unit lines were dropped' : 'unit lines were merged into wider groups'} to keep the log small.)`);
+  if (L.dropped) lines.push(`(Very long match: ${L.dropped} early unit lines were dropped to keep the log small; the totals above still count them.)`);
   return lines.join('\n');
 }
 /* ===================== SIM END ===================== */
@@ -3535,7 +3539,8 @@ function aimTap(x, y) {
   }
   const r = abilityCheck(game, 0, aim.k, u, v);
   Object.assign(aim, { placed: true, u, v, ok: r.ok, msg: r.msg || '' });
-  $('aimTxt').textContent = r.ok ? ': tap inside the circle to confirm' : `: ${r.msg}`;
+  const idle = r.ok && aim.k === 'repair' && !repairHealable(game, 0, u, v); // v2.11: warn before a Repair Pulse that would heal nothing
+  $('aimTxt').textContent = !r.ok ? `: ${r.msg}` : idle ? `: nothing here can be healed${game.t >= EXT.start ? ' (buildings can\'t be repaired during the storm)' : ''}. Tap inside to cast anyway` : ': tap inside the circle to confirm';
 }
 const fmtCd = t => t >= 60 ? `${Math.floor(t / 60)}:${String(Math.ceil(t % 60) % 60).padStart(2, '0')}` : `${Math.ceil(t)}s`;
 function refreshAbil() {

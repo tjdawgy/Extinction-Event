@@ -116,7 +116,7 @@ test('Orbital Strike: 3 s warning, 280 at the centre to 140 at the edge, ground 
   assert.strictEqual(air.hp, hp[2], 'aircraft are not hit');
   assert.strictEqual(mine.hp, hp[3], 'own units are not hit');
   // the enemy HQ is shielded while its other buildings stand
-  ready(g); g.sides[1].res.c = 1e4; sim.tryBuild(g, 1, 'refinery'); step(g, 0.1);
+  ready(g); g.sides[1].res.c = 1e4; sim.tryBuild(g, 1, 'refinery'); for (const b of g.ents) if (b.type === 'refinery') { b.built = true; b.progress = 1; } step(g, 0.1);
   const hq = g.sides[1].hq, hqHp = hq.hp;
   assert.ok(hq.shielded);
   assert.ok(sim.useAbility(g, 0, 'strike', hq.u, hq.v).ok); step(g, 3.2);
@@ -195,4 +195,22 @@ test('the AI uses abilities under the same rules (one shared cooldown), each per
   const gE = sim.newGame('easy', { autoPlayer: true, autoDiff: 'easy' });
   for (let i = 0; i < 30 * 900 && !gE.over; i++) sim.update(gE, 1 / 30);
   assert.strictEqual((gE.sides[1].aiLog.abil || {}).strike || 0, 0);
+});
+
+test('v2.11: Repair Pulse is never wasted by the AI; repairHealable tells the player when nothing in range can be healed', () => {
+  // in the storm buildings can't be healed: a base full of damaged buildings and no hurt units gives nothing to heal
+  const g = quiet(1250); g.sides[0].res.c = g.sides[0].res.e = 5000;
+  sim.tryBuild(g, 0, 'refinery'); const ref = g.ents.find(e => e.type === 'refinery'); ref.built = true; ref.progress = 1; ref.hp = ref.maxHp * 0.3;
+  sim.updateVision(g);
+  assert.strictEqual(sim.repairHealable(g, 0, ref.u, ref.v), 0, 'buildings don\'t heal in the storm');
+  const u = sim.spawnUnit(g, 0, 'tank', ref.u, ref.v); u.hp = 100;
+  assert.strictEqual(sim.repairHealable(g, 0, ref.u, ref.v), 1);
+  const g2 = quiet(130); sim.tryBuild(g2, 0, 'refinery'); const r2 = g2.ents.find(e => e.type === 'refinery'); r2.built = true; r2.progress = 1; r2.hp = 100;
+  assert.strictEqual(sim.repairHealable(g2, 0, r2.u, r2.v), 1, 'before the storm a damaged building can be healed');
+  // AI matches into the storm: no Repair Pulse heals 0 HP
+  for (const d of ['normal', 'hard']) for (let m = 0; m < 2; m++) {
+    const h = sim.newGame(d, { autoPlayer: true, autoDiff: d, persona: 'turtle', autoPersona: 'economist' });
+    for (let i = 0; i < 30 * 1800 && !h.over; i++) sim.update(h, 1 / 30);
+    for (const e of h.log.ev) if (e[2] === 'A' && e[3] === 'repair') assert.ok(e[4] > 0, `${d}: Repair Pulse at ${e[0]} healed ${e[4]}`);
+  }
 });

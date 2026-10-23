@@ -86,7 +86,9 @@ test('HQ readouts: exposed, shielded, damaged and destroyed', () => {
   for (const s of [0, 1]) assert.deepStrictEqual({ ...sim.hqStatus(g, s) }, { hp: 2800, maxHp: 2800, frac: 1, state: 'exposed' }, 'no other buildings yet');
   g.sides[1].aiT = 1e9;
   sim.tryBuild(g, 0, 'refinery'); sim.update(g, STEP);
-  assert.strictEqual(sim.hqStatus(g, 0).state, 'shielded', 'shield goes up as soon as another building stands');
+  assert.strictEqual(sim.hqStatus(g, 0).state, 'exposed', 'a building under construction gives no shield (v2.11)');
+  const ref = g.ents.find(e => e.type === 'refinery'); ref.built = true; ref.progress = 1; sim.update(g, STEP);
+  assert.strictEqual(sim.hqStatus(g, 0).state, 'shielded', 'shield goes up as soon as another building is finished');
   assert.strictEqual(sim.hqStatus(g, 1).state, 'exposed');
   const hq1 = g.sides[1].hq;
   sim.damage(g, hq1, 700, 'cannon', 0); // 700 × 1.3 vs buildings

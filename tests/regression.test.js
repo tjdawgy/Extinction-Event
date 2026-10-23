@@ -142,3 +142,15 @@ test('old or broken saves never load into a bad state', () => {
   assert.throws(() => sim.deserialize('{not json'), 'garbage throws; resumeGame() and peekSave() wrap it in try/catch');
   assert.match(readHtml(), /try \{ g = deserialize\(localStorage\.getItem\(SAVE_KEY\)\); \} catch \(e\) \{ g = null; \}/);
 });
+
+test('v2.11: spamming construction starts never shields the HQ: only finished buildings count', () => {
+  const g = sim.newGame('normal'); for (const s of [0, 1]) g.sides[s].aiT = 1e9;
+  g.sides[0].res.c = g.sides[0].res.e = 1e5;
+  for (let i = 0; i < 6; i++) sim.tryBuild(g, 0, 'habitat');
+  sim.update(g, 1 / 30);
+  const hq = g.sides[0].hq;
+  assert.strictEqual(hq.shielded, false, 'six buildings under construction: no shield');
+  const hp = hq.hp; sim.damage(g, hq, 500, 'cannon', 1); assert.ok(hq.hp < hp, 'the HQ takes damage');
+  for (let i = 0; i < 30 * 9; i++) sim.update(g, 1 / 30); // a Habitat takes 8 s
+  assert.strictEqual(hq.shielded, true, 'once one is finished the shield is up');
+});
