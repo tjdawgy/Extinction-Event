@@ -3608,7 +3608,7 @@ const selCount = (k, c) => !k ? 0 : k[0] === 'g' ? UGROUPS[k.slice(2)].reduce((a
 const selName = k => !k ? 'the whole army' : k[0] === 'g' ? GROUP_NAME[k.slice(2)] : PLURAL[k.slice(2)];
 function buildArmy() {
   const wrap = $('cards'), c = game ? armyCounts() : {}, box = document.createElement('div'), cmd = document.createElement('div');
-  box.className = 'asel'; box.id = 'asel'; cmd.className = 'acmd'; cmd.id = 'acmd';
+  wrap.innerHTML = ''; box.className = 'asel'; box.id = 'asel'; cmd.className = 'acmd'; cmd.id = 'acmd';
   const items = [];
   for (const k of ['inf', 'arm', 'air']) { const n = UGROUPS[k].reduce((a, t) => a + (c[t] || 0), 0); if (n) items.push({ key: 'g:' + k, name: GROUP_NAME[k], icon: UGROUPS[k].find(t => c[t]), grp: true }); }
   for (const t of UNIT_ORDER) if (c[t]) items.push({ key: 't:' + t, name: UDEF[t].name, icon: t });
