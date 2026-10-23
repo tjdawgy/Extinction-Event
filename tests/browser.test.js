@@ -220,8 +220,8 @@ test('the AI personality is never shown during a match, only on the post-match s
     });
     assert.doesNotMatch(seen, words, `${p}: nothing in the UI names or hints at the personality during play`);
     await page.evaluate(() => { kill(game, game.sides[1].hq, 0); });
-    await page.waitForSelector('#box .faced', { timeout: 4000 });
-    assert.match(await page.textContent('#box .faced'), new RegExp(`You faced: The ${p}`, 'i'));
+    await page.waitForSelector('#box p.sub', { timeout: 4000 });
+    assert.match(await page.textContent('#box p.sub'), new RegExp(`You faced The ${p}`, 'i'));
     assert.deepStrictEqual(errors, []);
     await page.close();
   }
