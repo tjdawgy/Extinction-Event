@@ -315,7 +315,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.17'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.18'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -676,7 +676,8 @@ const rallyU = s => hqU(s) + dirOf(s) * 300;
 function newGame(diffKey, opts = {}) {
   const g = { t: 0, ents: [], projs: [], fx: [], parts: [], sides: [], abil: [], over: false, winner: -1, nid: 1,
     diff: DIFF[diffKey] || DIFF.normal, diffKey, events: [], auto: !!opts.autoPlayer, autoDiff: opts.autoDiff || 'normal', shake: 0, front: [null, null], countdown: opts.countdown || 0,
-    nodes: NODE_U.map((u, i) => ({ id: i, u, v: 0, prog: 0, owner: null, c: [0, 0] })), log: null, forcePath: opts.forcePath || null };
+    nodes: NODE_U.map((u, i) => ({ id: i, u, v: 0, prog: 0, owner: null, c: [0, 0] })), log: null, forcePath: opts.forcePath || null,
+    creep: [[], []] }; // creep patches per side (v2.18; Bloomhost only)
   for (let s = 0; s < 2; s++) {
     g.sides.push({ faction: (opts.factions && opts.factions[s]) || DEFAULT_FACTION, res: { c: 300, e: 60 }, stance: s === 0 ? 'hold' : 'retreat', stanceAt: 0, pushTo: null, slots: new Array(SLOT_COUNT).fill(null),
       hq: null, aiT: 1 + s * 0.5, stats: { built: 0, kills: 0, lost: 0, earned: 0 }, lastAlert: -99, buff: false, ab: newAb(0), abK: null, abEnd: 0, orders: newOrders(), sel: null });
@@ -821,7 +822,7 @@ function spawnUnit(g, s, type, u, v) {
   const d = UDEF[type];
   const unit = { id: g.nid++, kind: 'u', type, side: s, u, v, z: d.air ? (type === 'interceptor' ? rand(100, 124) : type === 'leviathan' ? rand(88, 98) : type === 'drone' ? rand(104, 114) : type === 'razorwing' ? rand(56, 72) : rand(70, 94)) : 0,
     laneV: rand(-LANE_V, LANE_V), hp: d.hp, maxHp: d.hp, cd: Math.random() * 0.5, face: dirOf(s), anim: Math.random() * 10,
-    moving: false, rallyOff: -Math.random() * 100, recoil: 0, hitT: 0, shT: 0, vet: 0, aimAir: 0, medAt: -1, tgt: 0, braceT: 0, braceCd: 0 }; // tgt: what it last attacked; braceT/braceCd: the Bulwark's brace (v2.17) // vet: a Drilled Rifleman (v2.13); aimAir: where a Hydra's guns point (v2.14); medAt: last healed by a Medicopter (v2.15) // shT (shield until) set from the start keeps every unit the same shape for the JS engine
+    moving: false, rallyOff: -Math.random() * 100, recoil: 0, hitT: 0, shT: 0, vet: 0, aimAir: 0, medAt: -1, tgt: 0, braceT: 0, braceCd: 0, lastHurt: -99, lastAct: -99, creepAt: -1 }; // tgt: what it last attacked; braceT/braceCd: the Bulwark's brace (v2.17); lastHurt/lastAct: last damage taken/dealt, creepAt: last creep regen (v2.18) // vet: a Drilled Rifleman (v2.13); aimAir: where a Hydra's guns point (v2.14); medAt: last healed by a Medicopter (v2.15) // shT (shield until) set from the start keeps every unit the same shape for the JS engine
   g.ents.push(unit);
   g.sides[s].stats.built++;
   return unit;
@@ -857,7 +858,7 @@ const cellOf = u => clamp(Math.floor(u / FOG_CELL), 0, FOG_N - 1);
 const sightOf = e => e.kind === 'u' ? SIGHT[e.type] : (B_SIGHT[e.type] || B_SIGHT_DEF);
 const ghostOf = b => ({ id: b.id, type: b.type, fac: b.fac, side: b.side, slot: b.slot, tier: b.tier, path: b.path, u: b.u, v: b.v, half: b.half }); // path: the last-seen upgrade-tree path; fac: its faction (v2.17)
 function newFog(g, s) {
-  const ehq = g.sides[1 - s].hq, f = { vis: new Uint8Array(FOG_N), exp: new Uint8Array(FOG_N), seen: new Uint8Array(FOG_N), ghosts: {}, intel: {},
+  const ehq = g.sides[1 - s].hq, f = { vis: new Uint8Array(FOG_N), exp: new Uint8Array(FOG_N), seen: new Uint8Array(FOG_N), ghosts: {}, intel: {}, creep: {}, // creep: the enemy's creep as last seen (v2.18)
     lastHQ: { hp: ehq.hp, maxHp: ehq.maxHp, shielded: false, tier: 1 }, lastSpot: -99, seenUnits: 0 };
   // Start positions are known: the enemy HQ begins as a ghost on explored ground, but not what it looks like (v2.17: its
   // faction stays hidden until seen). seen: ground actually in view at some point; explored-only ground shows no pads.
@@ -889,6 +890,10 @@ function updateVision(g) {
       } else { seenU.add(e.id); f.intel[e.id] = { type: e.type, u: e.u, t: g.t }; }
     }
     for (const id in f.ghosts) { const gh = f.ghosts[id]; if (!seenB.has(gh.id) && cellsLit(vis, gh.u, gh.half)) delete f.ghosts[id]; }
+    // Enemy creep: remembered as last seen; any part of a patch in view updates it, a patch gone from a spot in view is forgotten
+    const ec = g.creep[1 - s], live = new Set();
+    for (const p of ec) { live.add(p.k); if (p.r > 0 && cellsLit(vis, p.u, p.r)) f.creep[p.k] = { u: p.u, v: p.v, r: p.r }; }
+    for (const k in f.creep) { const m = f.creep[k]; if (!live.has(k) && cellsLit(vis, m.u, m.r)) delete f.creep[k]; }
     for (const id in f.intel) { const m = f.intel[id]; if (g.t - m.t > INTEL_TTL || (!seenU.has(+id) && vis[cellOf(m.u)])) delete f.intel[id]; }
     if (!f.seenUnits && seenU.size && g.t - f.lastSpot >= SPOT_GAP) { f.lastSpot = g.t; ev(g, { type: 'spotted', side: s }); }
     f.seenUnits = seenU.size;
@@ -933,6 +938,7 @@ function update(g, dt) {
   }
   updateProjs(g, dt);
   updateMedics(g, dt);
+  updateCreep(g, dt);
   updateAbilities(g, dt);
   if (Math.floor(g.t * 2) !== Math.floor(t0 * 2)) updateOrders(g);
   updateStorm(g, dt, t0);
@@ -1067,11 +1073,11 @@ function acquire(g, src, def, foes) {
    overrides the global stance for the units it covers; where a group and a type order both cover a unit, the most
    recent wins (order.n counts up). A global stance clears them all. 'move' (Regroup) walks to a point, fighting what
    it meets on the way like any stance, then holds there; its flag is done once every unit it covers has arrived. */
-const UGROUPS = { inf: ['rifle', 'heavy', 'sniper'], arm: ['tank', 'artillery', 'titan', 'flame', 'hydra'], air: ['aircraft', 'interceptor', 'leviathan'], sup: ['medic', 'drone'] };
+const UGROUPS = { inf: ['rifle', 'heavy', 'sniper', 'skitterling'], arm: ['tank', 'artillery', 'titan', 'flame', 'hydra', 'bulwark'], air: ['aircraft', 'interceptor', 'leviathan', 'razorwing'], sup: ['medic', 'drone'] }; // v2.18: Bloomhost units join the groups
 const GROUP_NAME = { inf: 'Infantry', arm: 'Armor', air: 'Air', sup: 'Support' };
 const GROUP_OF = {}; for (const k in UGROUPS) for (const t of UGROUPS[k]) GROUP_OF[t] = k;
 const ORDER_NAME = { hold: 'Hold', attack: 'Attack', retreat: 'Retreat', move: 'Regroup' };
-const PLURAL = { rifle: 'Riflemen', heavy: 'Heavies', sniper: 'Snipers', tank: 'Tanks', artillery: 'Artillery', titan: 'Titans', flame: 'Flame Tanks', hydra: 'Hydras', aircraft: 'Gunships', interceptor: 'Interceptors', leviathan: 'Leviathans', medic: 'Medicopters', drone: 'Recon Drones' };
+const PLURAL = { rifle: 'Riflemen', heavy: 'Heavies', sniper: 'Snipers', tank: 'Tanks', artillery: 'Artillery', titan: 'Titans', flame: 'Flame Tanks', hydra: 'Hydras', aircraft: 'Gunships', interceptor: 'Interceptors', leviathan: 'Leviathans', medic: 'Medicopters', drone: 'Recon Drones', skitterling: 'Skitterlings', bulwark: 'Bulwarks', razorwing: 'Razorwings' };
 const newOrders = () => ({ all: null, groups: {}, types: {}, n: 0 });
 function unitOrder(side, type) { // the order a unit of this type follows, or null for the global stance
   const O = side.orders; if (!O) return null;
@@ -1129,11 +1135,11 @@ function setStance(g, s, v) {
   }
 }
 
-function moveToward(u, d, tu, tv, dt) {
+function moveToward(u, d, tu, tv, dt, mul = 1) { // mul: speed multiplier (creep, v2.18)
   const du = tu - u.u, dv = tv - u.v;
   if (Math.abs(du) < 2 && Math.abs(dv) < 2) { u.moving = false; return false; }
-  if (Math.abs(du) >= 2) { u.u = clamp(u.u + Math.sign(du) * Math.min(Math.abs(du), d.speed * dt), 0, L); u.face = Math.sign(du); }
-  if (Math.abs(dv) >= 1) u.v += Math.sign(dv) * Math.min(Math.abs(dv), d.speed * 0.45 * dt);
+  if (Math.abs(du) >= 2) { u.u = clamp(u.u + Math.sign(du) * Math.min(Math.abs(du), d.speed * mul * dt), 0, L); u.face = Math.sign(du); }
+  if (Math.abs(dv) >= 1) u.v += Math.sign(dv) * Math.min(Math.abs(dv), d.speed * mul * 0.45 * dt);
   u.moving = true;
   return true;
 }
@@ -1147,10 +1153,11 @@ function updateUnit(g, u, foes, dt) {
   const side = g.sides[u.side], dir = dirOf(u.side), home = rallyU(u.side) + u.rallyOff * dir;
   const ord = unitOrder(side, u.type), st = ord ? ord.o : side.stance; // a group or type order overrides the global stance
   const { best, close } = d.weapon ? acquire(g, u, d, foes) : NO_TARGET; // Medicopters and Recon Drones carry no weapon
+  const sp = d.fac === 'bloomhost' && !d.air && onCreep(g, u.side, u.u, u.v) ? CREEP.speed : 1; // creep: Bloomhost ground units move faster (v2.18)
   // Retreat: keep running home, firing on the move, until back at the rally flag
   if (st === 'retreat' && Math.abs(home - u.u) > 12) {
     if (best && u.cd <= 0) { fire(g, u, best, d); u.cd = d.cd * rand(0.9, 1.1); }
-    moveToward(u, d, home, u.laneV, dt);
+    moveToward(u, d, home, u.laneV, dt, sp);
     return;
   }
   u.tgt = best ? best.id : 0;
@@ -1164,7 +1171,7 @@ function updateUnit(g, u, foes, dt) {
   if (close) { u.moving = false; return; } // artillery: enemy is inside minimum range
   if (d.chase && st !== 'move' && !(st === 'hold' && u.holdU !== undefined)) { // melee (v2.17): close on the nearest enemy it can see and hurt
     const prey = acquire(g, u, { ...d, range: d.chase }, foes).best;
-    if (prey) { moveToward(u, d, prey.u, prey.v, dt); return; }
+    if (prey) { moveToward(u, d, prey.u, prey.v, dt, sp); return; }
   }
   let tu = home, tv = u.laneV;
   if (st === 'move') [tu, tv] = slotOf(u, ord); // Regroup: walk to the flag, then hold there
@@ -1182,7 +1189,7 @@ function updateUnit(g, u, foes, dt) {
     }
     else tu = end;
   }
-  if (!moveToward(u, d, tu, tv, dt)) u.face = dir;
+  if (!moveToward(u, d, tu, tv, dt, sp)) u.face = dir;
 }
 
 const NO_TARGET = { best: null, close: false };
@@ -1224,6 +1231,50 @@ function updateMedics(g, dt) {
     if (g.log) g.log.tot[e.side].healed = (g.log.tot[e.side].healed || 0) + e.hp - h0;
   }
 }
+/* ---------- Creep (v2.18): Bloomhost's organic ground layer ----------
+   Distance-based: each source owns one circular patch (world u, v) whose radius grows toward its target and recedes
+   to nothing once the source is gone. Sources: the Hive, every other finished Bloomhost building, and each field
+   node Bloomhost holds (creep there spreads faster). Creep only helps Bloomhost's own ground units: faster movement,
+   and out-of-combat regeneration. It grants no vision and does nothing to enemies. All numbers live here. */
+const CREEP = {
+  hiveR: 260,    // target radius around the Hive
+  bldR: 110,     // around every other finished Bloomhost building
+  nodeR: 150,    // around a field node Bloomhost holds
+  grow: 6,       // radius growth per second
+  nodeGrow: 2,   // growth multiplier for a held node's creep
+  recede: 9,     // radius lost per second once the source is sold, destroyed or the node is lost
+  speed: 1.2,    // movement multiplier for Bloomhost ground units on their own creep
+  regen: 0.015,  // share of max HP regained per second on creep, out of combat only
+  calm: 5,       // out of combat: no damage taken and no attack made for this many seconds
+};
+const onCreep = (g, s, u, v) => { for (const p of g.creep[s]) { const du = u - p.u, dv = v - p.v; if (du * du + dv * dv <= p.r * p.r) return true; } return false; };
+function updateCreep(g, dt) {
+  for (let s = 0; s < 2; s++) {
+    const bh = facOf(g.sides[s].faction) === 'bloomhost', list = g.creep[s];
+    if (!bh && !list.length) continue;
+    const want = new Map();
+    if (bh) {
+      for (const b of g.ents) if (b.kind === 'b' && b.side === s && b.built && b.hp > 0) want.set('b' + b.id, { u: b.u, v: b.v, R: b.type === 'hq' ? CREEP.hiveR : CREEP.bldR, node: false });
+      for (const n of g.nodes) if (n.owner === s) want.set('n' + n.id, { u: n.u, v: n.v, R: CREEP.nodeR, node: true });
+    }
+    for (const p of list) { const w = want.get(p.k); p.R = w ? w.R : 0; want.delete(p.k); }
+    for (const [k, w] of want) list.push({ k, u: w.u, v: w.v, r: 0, R: w.R, node: w.node });
+    let gone = false;
+    for (const p of list) {
+      if (p.r < p.R) p.r = Math.min(p.R, p.r + CREEP.grow * (p.node ? CREEP.nodeGrow : 1) * dt);
+      else if (p.r > p.R) { p.r = Math.max(p.R, p.r - CREEP.recede * dt); if (p.r <= 0) gone = true; }
+    }
+    if (gone) g.creep[s] = list.filter(p => p.r > 0 || p.R > 0);
+  }
+  // Out-of-combat regeneration on creep; never stacks: with a faster heal running (a Medicopter), that one applies
+  for (const e of g.ents) {
+    if (e.kind !== 'u' || e.hp <= 0 || e.hp >= e.maxHp || UDEF[e.type].fac !== 'bloomhost' || UDEF[e.type].air) continue;
+    if (g.t - e.lastHurt < CREEP.calm || g.t - e.lastAct < CREEP.calm || !onCreep(g, e.side, e.u, e.v)) continue;
+    const other = e.medAt === g.t ? UDEF.medic.heal : 0;
+    e.creepAt = g.t;
+    if (CREEP.regen > other) e.hp = Math.min(e.maxHp, e.hp + e.maxHp * (CREEP.regen - other) * dt);
+  }
+}
 // The Flame Tank: every enemy on the ground in a strip ahead of it (range × 2 · strip wide) takes the burst; nothing lingers
 function flameBurst(g, src, def) {
   const dir = src.face || dirOf(src.side), dmg = def.dmg * (g.sides[src.side].buff ? 1.2 : 1);
@@ -1258,6 +1309,7 @@ function meleeHit(g, src, t, def) {
   if (src.kind === 'u') src.recoil = 1;
 }
 function fire(g, src, t, def) {
+  if (src.kind === 'u') src.lastAct = g.t; // in combat (creep regen waits, v2.18)
   if (def.weapon === 'flame') { flameBurst(g, src, def); return; }
   if (def.melee) { meleeHit(g, src, t, def); return; }
   const m = muzzle(src);
@@ -1340,7 +1392,7 @@ function updateAbilities(g, dt) {
       const A = ABIL.repair;
       for (const e of g.ents) {
         if (e.side !== a.side || e.hp <= 0 || e.hp >= e.maxHp || (e.kind === 'b' && (!e.built || g.t >= EXT.start)) || !inAbil(e, a.u, a.v, A.r)) continue; // in the storm it heals units only
-        const paid = e.kind === 'b' && e.repair > 0 ? 0.06 : e.kind === 'u' && e.medAt === g.t ? UDEF.medic.heal : 0; // paid Repair (6%/s) or a Medicopter: the faster one applies
+        const paid = e.kind === 'b' && e.repair > 0 ? 0.06 : e.kind === 'u' ? Math.max(e.medAt === g.t ? UDEF.medic.heal : 0, e.creepAt === g.t ? CREEP.regen : 0) : 0; // paid Repair (6%/s), a Medicopter or creep regen: the fastest one applies
         const rate = Math.max(0, A.rate - paid);
         if (rate > 0) { const h0 = e.hp; e.hp = Math.min(e.maxHp, e.hp + e.maxHp * rate * dt); logEffect(g, a.side, 'repair', e.hp - h0); }
       }
@@ -1466,6 +1518,7 @@ function damage(g, e, amt, weapon, fromSide) {
   if (e.shT > g.t) { e.hp -= dmg * (1 - ABIL.shield.cut); logEffect(g, e.side, 'shield', dmg * ABIL.shield.cut); } // Emergency Shield
   else e.hp -= dmg;
   e.hitT = 0.12;
+  if (e.kind === 'u') e.lastHurt = g.t;
   if (e.kind === 'b') {
     e.lastHit = g.t;
     const side = g.sides[e.side];
@@ -1890,15 +1943,15 @@ const logSpend = (g, s, kind, c, e) => { if (g.log) { const a = g.log.tot[s].spe
 
 /* ---------- Save and resume ---------- */
 // v6 adds fog of war; v7 the AI's personality (kept on its side record); v10 the shared ability cooldown; v11 the match log; v12 group orders, the selection and Regroup flags; v13 upgrade-tree paths; v14 War Factory paths. Older saves are migrated.
-const SAVE_VER = 17, SAVE_OK = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
+const SAVE_VER = 18, SAVE_OK = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
 function serialize(g, extra) {
   const live = g.ents.filter(e => e.hp > 0);
   for (const sd of g.sides) if (sd.hq.hp <= 0 && !live.includes(sd.hq)) live.push(sd.hq); // a fallen HQ inside the storm's 5 s end window
   const ents = live.map(e => { const o = Object.assign({}, e); if (o.queue) o.queue = o.queue.slice(); return o; });
   const projs = g.projs.map(p => Object.assign({}, p, { target: p.target ? p.target.id : null }));
   const sides = g.sides.map(sd => Object.assign({}, sd, { hq: sd.hq.id, slots: sd.slots.map(b => b ? b.id : null), res: Object.assign({}, sd.res), stats: Object.assign({}, sd.stats) }));
-  const fog = g.fog.map(f => ({ exp: Array.from(f.exp).join(''), seen: Array.from(f.seen).join(''), ghosts: f.ghosts, intel: f.intel, lastHQ: f.lastHQ, lastSpot: f.lastSpot, seenUnits: f.seenUnits }));
-  return JSON.stringify({ v: SAVE_VER, t: g.t, nid: g.nid, diffKey: g.diffKey, ents, projs, sides, nodes: g.nodes, fog, abil: g.abil, endHold: g.endHold || null, log: g.log, extra });
+  const fog = g.fog.map(f => ({ exp: Array.from(f.exp).join(''), seen: Array.from(f.seen).join(''), ghosts: f.ghosts, creep: f.creep, intel: f.intel, lastHQ: f.lastHQ, lastSpot: f.lastSpot, seenUnits: f.seenUnits }));
+  return JSON.stringify({ v: SAVE_VER, t: g.t, nid: g.nid, diffKey: g.diffKey, ents, projs, sides, nodes: g.nodes, fog, abil: g.abil, endHold: g.endHold || null, log: g.log, creep: g.creep, extra });
 }
 function deserialize(str) {
   const o = JSON.parse(str);
@@ -1914,7 +1967,7 @@ function deserialize(str) {
     const f = newFog(g, k), sf = o.fog && o.fog[k];
     if (sf) {
       for (let i = 0; i < FOG_N; i++) { f.exp[i] = sf.exp[i] === '1' ? 1 : 0; f.seen[i] = (sf.seen || sf.exp)[i] === '1' ? 1 : 0; } // v17: older saves count explored ground as seen
-      Object.assign(f, { ghosts: sf.ghosts || {}, intel: sf.intel || {}, lastHQ: sf.lastHQ || f.lastHQ, lastSpot: sf.lastSpot ?? -99, seenUnits: sf.seenUnits || 0 });
+      Object.assign(f, { ghosts: sf.ghosts || {}, intel: sf.intel || {}, creep: sf.creep || {}, lastHQ: sf.lastHQ || f.lastHQ, lastSpot: sf.lastSpot ?? -99, seenUnits: sf.seenUnits || 0 });
     }
     return f;
   });
@@ -1934,6 +1987,8 @@ function deserialize(str) {
     if (e.kind === 'b') { if (!FACTIONS[e.fac]) e.fac = g.sides[e.side].faction; }
     else { if (e.tgt === undefined) e.tgt = 0; if (e.braceT === undefined) { e.braceT = 0; e.braceCd = 0; } }
   }
+  g.creep = Array.isArray(o.creep) && o.creep.length === 2 ? o.creep : [[], []]; // v18: older saves start without creep and grow it
+  for (const e of g.ents) if (e.kind === 'u' && e.lastHurt === undefined) { e.lastHurt = -99; e.lastAct = -99; e.creepAt = -1; }
   for (const f of g.fog) for (const id in f.ghosts) if (f.ghosts[id].fac === undefined) f.ghosts[id].fac = o.v < 17 ? DEFAULT_FACTION : null;
   for (const e of g.ents) { // v13: before upgrade trees, a T2 or T3 building is on path A (it keeps what it had: Heavies, Snipers)
     if (e.kind === 'u') { if (e.vet === undefined) e.vet = 0; if (e.aimAir === undefined) e.aimAir = 0; if (e.medAt === undefined) e.medAt = -1; continue; }
@@ -3189,6 +3244,64 @@ function drawPadBH(c, x, y, h, s, empty, time, selected) {
     c.fillStyle = `rgba(${TEAM[s].glow},${al})`; c.beginPath(); c.ellipse(x, y - 4, 1.6, 3, 0, 0, 7); c.fill();
   }
 }
+/* ---------- Creep layer (v2.18) ----------
+   Each side's creep is painted into its own offscreen canvas only when it changes (radii in 8-unit steps, at most once a second unless a patch appears or goes), then stamped
+   under the pads, buildings and units with one drawImage. Fleshy patches, branching veins in the team colour, a faint
+   glow; each patch's veins come from a seed made from its key, so they never jitter between redraws. Enemy creep is
+   drawn from what the player last saw of it (fog.creep), and only on ground the player has seen, like enemy pads. */
+const creepSeed = k => [...k].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) | 0, 7);
+const CRV = { x0: -60, y0: HORIZON + 4, w: L + 120, h: 180 - HORIZON - 4, k: 1, cv: [null, null], sig: ['', ''], keys: ['', ''], at: [0, 0], gap: 1000 }; // gap: ms between repaints while it only grows or shrinks
+function creepCanvas(side, patches) {
+  const sig = patches.map(p => p.k + ':' + Math.round(p.r / 8)).join('|'), keys = patches.map(p => p.k).join('|'), now = performance.now();
+  if (CRV.cv[side] && (CRV.sig[side] === sig || (CRV.keys[side] === keys && now - CRV.at[side] < CRV.gap))) return CRV.cv[side]; // a new or lost patch repaints at once; growth at most once a second
+  CRV.keys[side] = keys; CRV.at[side] = now;
+  let cv = CRV.cv[side];
+  if (!cv) { cv = CRV.cv[side] = document.createElement('canvas'); cv.width = Math.ceil(CRV.w * CRV.k); cv.height = Math.ceil(CRV.h * CRV.k); }
+  CRV.sig[side] = sig;
+  const c = cv.getContext('2d'), T = TEAM[side];
+  c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height);
+  c.setTransform(CRV.k, 0, 0, CRV.k, -CRV.x0 * CRV.k, -CRV.y0 * CRV.k);
+  for (const p of patches) { // fleshy ground first, all patches, so overlaps read as one growth
+    if (p.r < 2) continue;
+    const x = p.u, y = p.v * DY, rx = p.r, rnd = mulberry(creepSeed(p.k));
+    const gr = c.createRadialGradient(x, y, 0, x, y, rx);
+    gr.addColorStop(0, 'rgba(88,36,76,0.46)'); gr.addColorStop(0.75, 'rgba(72,30,64,0.36)'); gr.addColorStop(1, 'rgba(66,26,58,0)');
+    c.save(); c.translate(x, y); c.scale(1, DY); c.translate(-x, -y);
+    c.fillStyle = gr; c.beginPath(); c.arc(x, y, rx, 0, 7); c.fill();
+    c.fillStyle = 'rgba(104,44,86,0.18)'; // lumps along the edge
+    for (let i = 0, n = 6 + (p.r / 30 | 0); i < n; i++) { const a = rnd() * 7, d = rx * (0.55 + rnd() * 0.3); c.beginPath(); c.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, rx * (0.12 + rnd() * 0.12), 0, 7); c.fill(); }
+    c.restore();
+  }
+  c.lineCap = 'round';
+  for (const p of patches) { // veins: branching lines from the centre, dark with a faint team-coloured glow
+    if (p.r < 8) continue;
+    const x = p.u, y = p.v * DY, rx = p.r, ry = p.r * DY, rnd = mulberry(creepSeed(p.k) + 1); // its own seed: veins stay put as the patch grows
+    for (let i = 0, n = 5 + (p.r / 40 | 0); i < n; i++) {
+      const a = (i + rnd() * 0.6) / n * Math.PI * 2, len = 0.6 + rnd() * 0.35, bend = (rnd() - 0.5) * 0.8;
+      const ex = x + Math.cos(a) * rx * len, ey = y + Math.sin(a) * ry * len, mx = x + Math.cos(a + bend) * rx * len * 0.5, my = y + Math.sin(a + bend) * ry * len * 0.5;
+      c.strokeStyle = 'rgba(40,14,34,0.55)'; c.lineWidth = 2.2; c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(mx, my, ex, ey); c.stroke();
+      c.strokeStyle = `rgba(${T.glow},0.2)`; c.lineWidth = 1; c.stroke();
+      const bx = mx + (ex - mx) * 0.4, by = my + (ey - my) * 0.4, b2 = a + (rnd() - 0.5) * 1.6; // one branch
+      c.strokeStyle = 'rgba(40,14,34,0.45)'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(bx, by); c.lineTo(bx + Math.cos(b2) * rx * 0.25, by + Math.sin(b2) * ry * 0.25); c.stroke();
+      c.fillStyle = `rgba(${T.glow},0.28)`; c.beginPath(); c.arc(ex, ey, 1.4, 0, 7); c.fill(); // a glowing node at the tip
+    }
+  }
+  return cv;
+}
+function drawCreep(c, g, F) {
+  for (let s = 0; s < 2; s++) {
+    const patches = s === 0 ? g.creep[0] : Object.keys(F.creep).sort().map(k => ({ k, ...F.creep[k] }));
+    if (!patches.length) { CRV.sig[s] = ''; continue; }
+    const cv = creepCanvas(s, patches);
+    if (s === 1) { // only on ground the player has seen, as with enemy pads
+      c.save(); c.beginPath();
+      for (let i = 0; i < FOG_N; i++) if (F.seen[i]) { let j = i; while (j + 1 < FOG_N && F.seen[j + 1]) j++; c.rect(i * FOG_CELL, CRV.y0, (j - i + 1) * FOG_CELL, CRV.h); i = j; }
+      c.clip();
+    }
+    c.drawImage(cv, CRV.x0, CRV.y0, CRV.w, CRV.h);
+    if (s === 1) c.restore();
+  }
+}
 function hpColor(f) { return f > 0.6 ? '#5dff8a' : f > 0.3 ? '#ffd34d' : '#ff5a5a'; }
 function bar(c, x, y, w, f, h, lost = f) { // lost: health just lost, shown as a white chunk that drains away
   c.fillStyle = 'rgba(0,0,0,0.65)'; c.fillRect(x - w / 2 - 1, y - 1, w + 2, h + 2);
@@ -3854,6 +3967,7 @@ function render(c, g, time, sel, selPad) {
   // Everything below is drawn from the player's point of view: enemies only inside friendly vision
   const F = g.fog[0], seen = e => e.side === 0 || visibleTo(g, 0, e), lit = x => F.vis[cellOf(x)] === 1;
   const ghosts = Object.values(F.ghosts).filter(gh => !cellsLit(F.vis, gh.u, gh.half));
+  drawCreep(c, g, F); // under everything on the field (v2.18)
 
   for (let s = 0; s < 2; s++) {
     const fac = g.sides[s].faction, hpos = hqPos(s), hp = P(hpos.u, hpos.v);

@@ -54,6 +54,12 @@ test('a match as Bloomhost: names and cards, Train after a Larva Pit, production
   assert.deepStrictEqual(up, { name: 'Larva Pit', txt: 'Evolution paths coming soon', dis: true, pick: true });
   await page.evaluate(() => { for (let i = 0; i < 30 * 20; i++) update(game, 1 / 30); render(ctx, game, game.t, sel, selPad); refreshUI(true); });
   assert.ok(await page.evaluate(() => game.ents.some(e => e.type === 'skitterling' && e.side === 0)), 'a Skitterling hatched');
+  // v2.18: Bloomhost units appear in the Army tab's groups and types
+  await page.evaluate(() => { for (const t of ['bulwark', 'razorwing']) spawnUnit(game, 0, t, hqPos(0).u + 220, 0); closePanel(); });
+  await page.click('.tabs [data-tab="army"]'); await page.waitForTimeout(700);
+  const chips = await page.$$eval('#asel .chip', c => c.map(x => x.dataset.k));
+  for (const k of ['g:inf', 'g:arm', 'g:air', 't:skitterling', 't:bulwark', 't:razorwing']) assert.ok(chips.includes(k), `${k} in ${chips}`);
+  assert.doesNotMatch(await page.textContent('#asel'), /undefined/);
   assert.deepStrictEqual(errors, []);
   await page.close();
 });

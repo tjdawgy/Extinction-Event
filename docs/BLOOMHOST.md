@@ -880,6 +880,8 @@ E. MATCH SETUP AND HIDDEN ENEMY FACTION
 - The post-match report and match log reveal both factions.
 - Old saves load as Last Fist vs Last Fist.
 
+F. ANTI-AIR (decided, implement in v2.19): Bloomhost needs mobile anti-air. Spitters (Acidic path) and Razorwings (Bloomspire base unit) both hit air and ground targets. Do not implement before v2.19.
+
 === v2.17 FIRST-PASS STATS (implementation record; not tuned) ===
 
 Set by comparing with the Last Fist equivalent of each role (cost per supply, damage per credit), as amendment C asks. These are starting numbers for the audit, not balanced values. Code: `BDEF_BH` and the Bloomhost entries of `UDEF` in index.html.
@@ -912,3 +914,23 @@ Ratios: credits+energy per supply: Skitterling 40 (Rifleman 50), Bulwark 77 (Tan
 New weapon damage tables (multiplier by target armor: light / heavy / vehicle / air / building): claw (Skitterling) 1.0 / 0.7 / 0.45 / 0 / 0.5; slam (Bulwark) 1.1 / 1.0 / 0.8 / 0 / 0.9; talon (Razorwing) 1.1 / 0.9 / 0.9 / 0 / 0.6; spine (Maw) 1.0 / 0.8 / 0.8 / 1.0 / 0.
 
 Not in v2.17 (per amendment D): creep (v2.18), the Larva Pit and Evolution Chamber trees (v2.19), commander abilities (v2.20, shown as "Coming soon"), the Bloomspire tree (v2.21). Deferred by amendment C: the Skitterling approach-defense window, the creep vision bonus, directional bracing, the Emergency Brood creep bonus.
+
+=== v2.18 CREEP (implementation record; not tuned) ===
+
+All numbers are in the `CREEP` constant in index.html (SIM section, next to `updateCreep`).
+
+| Constant | Value | Meaning |
+|---|---|---|
+| hiveR | 260 | creep radius around the Hive (world units; the lane is 1,700 long) |
+| bldR | 110 | around every other finished Bloomhost building |
+| nodeR | 150 | around a field node Bloomhost holds |
+| grow | 6 per second | how fast a patch's radius grows toward its target (the Hive's takes about 43 s) |
+| nodeGrow | ×2 | growth multiplier around a held node |
+| recede | 9 per second | how fast a patch shrinks once its building is sold or destroyed, or its node is lost |
+| speed | ×1.2 | movement for Bloomhost ground units on their own creep |
+| regen | 1.5% of max HP per second | on creep, out of combat only |
+| calm | 5 s | out of combat = no damage taken and no attack made for this long |
+
+Model: one circular patch per source, on the existing u/v coordinates (no grid, no pathfinding). A unit is on creep when it stands inside any of its side's patches. Aircraft get nothing (they are not on the ground). Regeneration never stacks: with a faster heal running on the same unit (a Medicopter), only that one applies, and a Repair Pulse uses the faster of its own rate and the creep's. No vision bonus (deferred), no effect on enemy units, no change to the storm.
+
+Fog: the enemy's creep is remembered as last seen (like building ghosts) and drawn only on ground the player has had in view, like enemy pads. Creep grants no vision. Saves v18 store both; older saves start with no creep and grow it.

@@ -25,9 +25,15 @@ Items for the strategy explorer and full balance audit. Logged only, nothing tun
 - **Bloomhost first-pass numbers (v2.17)** are copies or ratio-matched versions of Last Fist's (table in docs/BLOOMHOST.md). Nothing measured: Skitterling melee and swarm bonus, Bulwark brace, Razorwing, the Maw's shorter range, and the AI's Bloomhost unit scores (copied from their Last Fist counterparts; personality tastes read through `AI_TWIN`).
 - **Bloomhost has no mobile anti-air yet (v2.17):** Skitterling, Bulwark and Razorwing are ground-only, as the design doc describes them; only the Maw and the Hive hit aircraft. Check once the trees (v2.19, v2.21) are in.
 - **Melee chase (v2.17):** melee units walk toward any enemy they can see within 150 (Razorwing 200) instead of only along their lane. Watch whether this lures swarms into Turrets or splits armies.
+- **Creep numbers (v2.18)** are first guesses (table in docs/BLOOMHOST.md): radii 260 / 110 / 150, growth 6/s (×2 at nodes), recede 9/s, +20% speed, 1.5%/s regen after 5 s out of combat. The AI doesn't plan around creep yet (no AI changes this batch).
 - **Mass Deployment near the top of its win range** (58.8%, target 40–60%); **Riflemen about 37% of unit spending** (target about 35%) (v2.13).
 
 ## Open
+
+### Creep: interface notes (v2.18)
+- **Frame time with creep (one run each, 4× CPU throttle, Bloomhost vs Last Fist, both Hard AI):** first 2 game minutes 5.87 ms mean script time per frame, p95 11.2 (v2.17: 5.5, p95 9.5); minute 3 8.2 ms mean, p95 23.1 (no v2.17 figure for minute 3). A first v2.18 build that repainted the creep layer up to twice a second measured 6.8 ms mean and p95 19.7 over 3 minutes; it now repaints at most once a second. Single runs: not separated from noise.
+- **Remembered enemy creep ends in a hard vertical edge** where the player's seen ground ends (it is clipped to seen fog cells, like the pad rule).
+- **Fixed in v2.18:** Skitterlings, Bulwarks and Razorwings were missing from the Army tab's Infantry, Armor and Air groups and type names (v2.17), so group orders skipped them.
 
 ### Bloomhost framework: interface notes (v2.17)
 - **The how-to text on the start screen is hidden on screens 440 points tall or less** (most phones in landscape), so Difficulty, You, Opponent and Start fit without scrolling. The same tips remain in the long-press card info.
