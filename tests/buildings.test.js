@@ -92,7 +92,7 @@ test('the drawn tier is always the gameplay tier: built, upgrading, under constr
     let log = frameAt(at, 4);
     const wrong = l => l.filter(x => { const e = game.ents.find(e => e.id === x.id); return e && e.kind === 'b' && !e.upgrading && e.built && x.tier !== e.tier; });
     r.built = { drawn: log.filter(x => x.side === 0).length, wrong: wrong(log).length };
-    r.cached = log.filter(x => x.side === 0).every(x => BCACHE.map.has(x.type + x.side + x.tier));
+    r.cached = log.filter(x => x.side === 0).every(x => BCACHE.map.has(x.type + x.side + x.tier + 'lastfist')); // v2.17: the cache key includes the faction
     // mid-upgrade: the current tier, plus the next one rising under the scaffold
     const up = mine.find(b => b.type === 'barracks'); up.tier = 1; tryUpgrade(game, 0, up, 'A'); up.upProg = 0.5;
     log = frameAt(at); r.upgrading = log.filter(x => x.id === up.id).map(x => x.tier);
@@ -126,7 +126,7 @@ test('the drawn tier is always the gameplay tier: built, upgrading, under constr
   assert.ok(r.wreck.length && r.wreck.every(t => t === 3), `wreck ${r.wreck}`);
   assert.ok(r.sold.every(t => t === 2), `sold ${r.sold}`);
   assert.deepStrictEqual(r.rebuilt, [false, [1]]);
-  assert.ok(r.loaded.drawn > 8 && r.loaded.wrong === 0, JSON.stringify(r.loaded));
+  assert.ok(r.loaded.drawn >= 8 && r.loaded.wrong === 0, JSON.stringify(r.loaded)); // v2.17: the never-seen enemy HQ is a neutral marker, not a drawn body
   assert.ok(r.ghost.length && r.ghost.every(t => t === 2), `ghost ${r.ghost}`);
   assert.ok(r.cacheSize <= 48);
   assert.deepStrictEqual(errors, []);

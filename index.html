@@ -104,6 +104,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .bpr button{flex:1;height:34px;border-radius:9px;font-weight:800;font-size:12.5px}
 #bpUp{border:0;background:linear-gradient(#4fd3ff,#1b8fd0);color:#001522}
 #bpUp.poor,#bpUp[disabled]{background:var(--panel3);color:var(--muted)}
+#bpUp.soon{flex:1.8;font-size:11px;line-height:1.15;padding:0 4px} /* Bloomhost production: "Evolution paths coming soon" (v2.17) */
 #bpSell{border:1px solid rgba(255,90,110,.45);background:rgba(255,77,77,.08);color:#ffc7cf}
 #bpSell.arm{background:#5a1c22;border-color:var(--bad);color:#fff}
 #bpSell.hide,#bpUp.hide,#bpRep.hide{display:none}
@@ -213,6 +214,11 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .how b{display:block;color:var(--text);font-size:13px;margin-bottom:2px}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
 .row .lbl{color:var(--muted);font-size:13px}
+/* Match setup (v2.17): difficulty, your faction, opponent faction */
+.setup{display:grid;grid-template-columns:auto auto;justify-content:start;align-items:center;gap:6px 10px;margin-top:10px}
+.setup .lbl{color:var(--muted);font-size:13px}
+.setup .seg button{height:30px}
+@media (max-height:440px){.box .how{display:none}.box:not(.rep){padding:12px 16px}.box h1{font-size:24px}.box p{margin-top:4px}.setup{margin-top:8px;gap:5px 10px}.setup .seg button{height:28px}.box:not(.rep) .row{margin-top:10px}.box:not(.rep) .big,.box:not(.rep) .ghost{height:42px}} /* phones in landscape: the setup fits without scrolling */
 .big{height:48px;padding:0 26px;border-radius:12px;border:0;background:linear-gradient(#4fd3ff,#1b8fd0);color:#001522;font-weight:800;font-size:16px}
 .ghost{height:48px;padding:0 18px;border-radius:12px;border:1px solid var(--line);background:rgba(30,46,76,.6);font-weight:700}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
@@ -309,7 +315,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.16'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.17'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -344,9 +350,15 @@ const DIFF = {
 // Seconds of "GET READY" at match start. The world is frozen and the clock (g.t) starts at GO.
 const COUNTDOWN = 3;
 
-// Factions (v2.16): each side plays one. Last Fist is the only one so far; more slot in here later.
-const FACTIONS = { lastfist: { name: 'Last Fist' } }, DEFAULT_FACTION = 'lastfist';
+// Factions (v2.16): each side plays one. Both use the same building roles (hq, refinery, reactor, habitat, barracks,
+// turret, factory, techlab); a faction has its own names, stats, art and units for them (BDEFS, UDEF.fac).
+// abilities: has commander abilities; trees: its production buildings pick upgrade paths (TREES).
+const FACTIONS = {
+  lastfist: { name: 'Last Fist', abilities: true, trees: true },
+  bloomhost: { name: 'Bloomhost', abilities: false, trees: false }, // v2.17 framework: abilities (v2.20) and trees (v2.19, v2.21) come later
+}, DEFAULT_FACTION = 'lastfist', FACTION_KEYS = Object.keys(FACTIONS);
 const factionName = k => (FACTIONS[k] || FACTIONS[DEFAULT_FACTION]).name;
+const facOf = k => FACTIONS[k] ? k : DEFAULT_FACTION;
 
 const HPMUL = [1, 1, 1.25, 1.5];
 const BDEF = {
@@ -385,6 +397,32 @@ const BDEF = {
     up: [null, null, { c: 150, e: 60, time: 12 }, { c: 250, e: 120, time: 16 }],
     tiers: [null, 'Gun 27 damage/s, 250 range, hits air', 'Gun 42 damage/s, 280 range, hits air', 'Gun 63 damage/s, 310 range, hits air'] },
 };
+// Bloomhost (v2.17): the same roles; first-pass numbers mirror Last Fist (docs/BLOOMHOST.md has the table). The Hive keeps
+// the HQ's stats and gun, so nothing about the enemy's faction leaks into the AI's estimate of a base it hasn't seen.
+const BDEF_BH = (() => {
+  const o = {}, re = (k, x) => { o[k] = Object.assign({}, BDEF[k], x); };
+  re('hq', { name: 'Hive', tiers: [null, 'Spine launcher 32 damage, 390 range, 2,800 HP', 'Spine launcher 42 damage, 430 range, 3,640 HP', 'Spine launcher 55 damage, 470 range, 4,480 HP'] });
+  re('refinery', { name: 'Goremound' });
+  re('reactor', { name: 'Pulse Organ' });
+  re('habitat', { name: 'Hatchery' });
+  re('barracks', { name: 'Larva Pit', tiers: [null, 'Spawns Skitterlings', 'Evolution paths coming soon', 'Evolution paths coming soon'] });
+  re('factory', { name: 'Evolution Chamber', req: 'barracks', tiers: [null, 'Grows Bulwarks', 'Evolution paths coming soon', 'Evolution paths coming soon'] });
+  re('techlab', { name: 'Bloomspire', req: 'barracks', tiers: [null, 'Grows Razorwings', 'Evolution paths coming soon', 'Evolution paths coming soon'] });
+  // The Maw: a living defence. Turret damage per second, a little more HP, a shorter reach; it spits spines at ground and air
+  re('turret', { name: 'Maw', hp: 1000,
+    gun: [null, { weapon: 'spine', dmg: 16, cd: 0.6, range: 220, hitsAir: true },
+                { weapon: 'spine', dmg: 22, cd: 0.55, range: 245, hitsAir: true },
+                { weapon: 'spine', dmg: 29, cd: 0.5, range: 270, hitsAir: true }],
+    tiers: [null, 'Spines 27 damage/s, 220 range, hits air', 'Spines 40 damage/s, 245 range, hits air', 'Spines 58 damage/s, 270 range, hits air'] });
+  // drawn heights: living structures are lower than Last Fist's towers (health bars, aim points and smoke follow h)
+  for (const [k, h] of Object.entries({ hq: 56, refinery: 30, reactor: 24, habitat: 6, barracks: 12, factory: 16, turret: 18, techlab: 52 })) o[k].h = h;
+  return o;
+})();
+const BDEFS = { lastfist: BDEF, bloomhost: BDEF_BH };
+const BD = (fac, type) => (BDEFS[fac] || BDEF)[type];     // a faction's definition of a building role
+const bdOf = e => BD(e.fac, e.type);                        // a building's own definition
+const bdS = (g, s, type) => BD(g.sides[s].faction, type);   // side s's definition of a role
+const treeOf = (fac, type) => FACTIONS[facOf(fac)].trees ? TREES[type] : null; // the upgrade tree a faction's building of this role has
 const hpMul = (d, t) => (d.hpMul || HPMUL)[t];
 /* ---------- Upgrade trees (v2.13) ----------
    A production building with a tree picks a path when it upgrades to T2 (per building: a second Barracks can take
@@ -401,9 +439,9 @@ const TREES = {
 const DRILL = { hp: 1.35, dmg: 1.1, capture: 1.5 }, PAIR_TIME = 1.5; // a Mass Deployment pair takes 1.5× a Rifleman's training time
 const UNIT_PATH = {}; // unit type → { b: building type, p: path } for units a path unlocks
 for (const bt in TREES) for (const p in TREES[bt]) for (const st of TREES[bt][p].steps) if (st && st.unlock) for (const u of st.unlock) UNIT_PATH[u] = { b: bt, p };
-const pathMod = (b, mod) => { const T = TREES[b.type]; if (!T || !b.path || !b.built) return false; const st = T[b.path].steps; for (let t = 2; t <= b.tier; t++) if (st[t] && st[t].mod === mod) return true; return false; };
+const pathMod = (b, mod) => { const T = treeOf(b.fac, b.type); if (!T || !b.path || !b.built) return false; const st = T[b.path].steps; for (let t = 2; t <= b.tier; t++) if (st[t] && st[t].mod === mod) return true; return false; };
 // Can this building train this unit now? (type, finished, tier, and the path that unlocks it)
-const canMake = (b, type) => { const d = UDEF[type], q = UNIT_PATH[type]; return b.kind === 'b' && b.type === d.from && b.built && b.hp > 0 && b.tier >= d.tier && (!q || b.path === q.p); };
+const canMake = (b, type) => { const d = UDEF[type], q = UNIT_PATH[type]; return b.kind === 'b' && b.type === d.from && facOf(b.fac) === (d.fac || DEFAULT_FACTION) && b.built && b.hp > 0 && b.tier >= d.tier && (!q || b.path === q.p); };
 const canTrain = (g, s, type) => g.ents.some(e => e.side === s && canMake(e, type));
 
 const UDEF = {
@@ -425,6 +463,12 @@ const UDEF = {
   // Hydra: twin rotary guns, one target at a time, prefers aircraft; swinging between ground and air takes 0.4 s.
   flame:     { name: 'Flame Tank', from: 'factory', tier: 2, cost: { c: 190, e: 50 }, pop: 3, hp: 520, dmg: 10, cd: 0.25, range: 95, speed: 34, hitsAir: false, armor: 'vehicle', weapon: 'flame', time: 12, h: 18, strip: 24 },
   hydra:     { name: 'Hydra', from: 'factory', tier: 3, cost: { c: 360, e: 140 }, pop: 5, hp: 1100, dmg: 22, cd: 0.3, range: 200, airRange: 240, speed: 22, hitsAir: true, armor: 'vehicle', weapon: 'hydra', time: 16, h: 28, preferAir: true, swing: 0.4 },
+  // Bloomhost base units (v2.17). melee: strikes land at once (no projectile); chase: it closes on a visible enemy within
+  // this range instead of walking past it in its own lane. Skitterling swarm: +15% damage for each other Skitterling on the
+  // same target, up to +45%. Bulwark brace: the first hit after its cooldown hardens it (40% less damage for 3 s, every 12 s).
+  skitterling: { name: 'Skitterling', fac: 'bloomhost', from: 'barracks', tier: 1, cost: { c: 40, e: 0 }, pop: 1, hp: 60, dmg: 6, cd: 0.5, range: 20, speed: 52, hitsAir: false, armor: 'light', weapon: 'claw', time: 3, h: 10, melee: true, chase: 150, swarm: { per: 0.15, max: 0.45 } },
+  bulwark:   { name: 'Bulwark', fac: 'bloomhost', from: 'factory', tier: 1, cost: { c: 190, e: 40 }, pop: 3, hp: 760, dmg: 26, cd: 1.6, range: 34, speed: 24, hitsAir: false, armor: 'vehicle', weapon: 'slam', time: 11, h: 20, melee: true, chase: 150, brace: { cut: 0.4, dur: 3, cd: 12 } },
+  razorwing: { name: 'Razorwing', fac: 'bloomhost', from: 'techlab', tier: 1, cost: { c: 170, e: 70 }, pop: 2, hp: 170, dmg: 15, cd: 0.75, range: 50, speed: 95, hitsAir: false, armor: 'air', air: true, weapon: 'talon', time: 10, h: 10, melee: true, chase: 200 },
 };
 
 // Damage multiplier: weapon → target armor. 0 means the weapon can't touch it.
@@ -443,14 +487,20 @@ const DMG = {
   hydra:   { light: 1.0, heavy: 0.8,  vehicle: 0.5,  air: 1.5,  building: 0.3 }, // helps a push, can't take a base alone
   bomb:    { light: 0.6, heavy: 0.8,  vehicle: 1.0,  air: 0,    building: 2.0 }, // the Leviathan: a base-wrecker
   orbital: { light: 1.0, heavy: 1.0,  vehicle: 1.0,  air: 1.0,  building: 1.0 }, // commander ability: every unit (v2.16) and buildings
+  claw:    { light: 1.0, heavy: 0.7,  vehicle: 0.45, air: 0,    building: 0.5 }, // Skitterling (v2.17)
+  slam:    { light: 1.1, heavy: 1.0,  vehicle: 0.8,  air: 0,    building: 0.9 }, // Bulwark
+  talon:   { light: 1.1, heavy: 0.9,  vehicle: 0.9,  air: 0,    building: 0.6 }, // Razorwing: diving strikes on the ground
+  spine:   { light: 1.0, heavy: 0.8,  vehicle: 0.8,  air: 1.0,  building: 0 },   // the Maw, like the Turret's gun
 };
-const PSPEED = { rifle: 1100, rocket: 430, hqgun: 430, rail: 1700, cannon: 820, siege: 700, missile: 470, flak: 950, gatling: 1200, hydra: 1200, bomb: 260 };
-const MUZ = { rifle: [10, 13], heavy: [12, 27], sniper: [17, 14], tank: [27, 18], artillery: [28, 31], titan: [38, 27], flame: [26, 12], hydra: [30, 33], aircraft: [16, -5], interceptor: [20, 0], leviathan: [0, -10] };
+const PSPEED = { rifle: 1100, rocket: 430, hqgun: 430, rail: 1700, cannon: 820, siege: 700, missile: 470, flak: 950, gatling: 1200, hydra: 1200, bomb: 260, spine: 1100 };
+const MUZ = { rifle: [10, 13], heavy: [12, 27], sniper: [17, 14], tank: [27, 18], artillery: [28, 31], titan: [38, 27], flame: [26, 12], hydra: [30, 33], aircraft: [16, -5], interceptor: [20, 0], leviathan: [0, -10], skitterling: [9, 5], bulwark: [17, 11], razorwing: [12, 1] };
 
 const BUILD_ORDER = ['refinery', 'reactor', 'habitat', 'barracks', 'turret', 'factory', 'techlab'];
-const UNIT_ORDER = ['rifle', 'heavy', 'sniper', 'tank', 'artillery', 'titan', 'flame', 'hydra', 'aircraft', 'interceptor', 'leviathan', 'medic', 'drone'];
+const UNIT_ORDER = ['rifle', 'heavy', 'sniper', 'tank', 'artillery', 'titan', 'flame', 'hydra', 'aircraft', 'interceptor', 'leviathan', 'medic', 'drone', 'skitterling', 'bulwark', 'razorwing'];
 // Credits first (Refineries before tech); Reactors are skipped while energy is plentiful
-const AI_PLAN = ['barracks', 'refinery', 'refinery', 'reactor', 'habitat', 'factory', 'reactor', 'techlab'];
+const AI_PLAN = ['barracks', 'refinery', 'refinery', 'reactor', 'habitat', 'factory', 'reactor', 'techlab']; // roles: the same plan builds either faction's base
+// Bloomhost units read the personalities' Last Fist tastes (bias) through their counterpart (v2.17)
+const AI_TWIN = { skitterling: 'rifle', bulwark: 'tank', razorwing: 'aircraft' };
 const ENERGY_PLENTY = 250;
 /* ---------- AI personalities ----------
    Strategic priorities, rolled secretly at the start of each match and independent of difficulty
@@ -493,6 +543,7 @@ const AB_BVAL = { hq: 300, turret: 320, refinery: 220 };
 // A fortified enemy, as this side knows it: Turrets seen, or an attack on its base that already failed
 const aiFortified = (g, s) => !!g.sides[s].failV || Object.values(g.fog[s].ghosts).some(gh => gh.side !== s && gh.type === 'turret');
 function aiAbility(g, s, P, ctx) {
+  if (!FACTIONS[facOf(g.sides[s].faction)].abilities) return; // none yet (Bloomhost, v2.17)
   const D = s === 1 ? g.diff : (DIFF[g.autoDiff] || DIFF.normal), lvl = D === DIFF.easy ? 0 : D === DIFF.hard ? 2 : 1;
   const side = g.sides[s], f = g.fog[s], log = side.aiLog, kind = P.kind;
   if (g.t < ABIL.shield.first || Math.random() > [0.2, 0.5, 1][lvl]) return; // slower to react on lower difficulties
@@ -553,7 +604,7 @@ function aiStrikeTarget(g, s, kind, lvl, seen, ctx) {
     for (const gh of known) {
       const d = Math.max(0, Math.hypot(gh.u - p.u, gh.v - p.v) - gh.half);
       if (d > A.r) continue;
-      const live = g.ents.find(e => e.id === gh.id && e.hp > 0 && visibleTo(g, s, e)), bd = BDEF[gh.type];
+      const live = g.ents.find(e => e.id === gh.id && e.hp > 0 && visibleTo(g, s, e)), bd = BD(gh.fac, gh.type);
       let w = AB_BVAL[gh.type] || 150;
       if (kind === 'aggressor' && (gh.type === 'turret' || gh.type === 'hq')) { // crack the defence just ahead of the army
         const close = front !== null && Math.abs(front - gh.u) < 450 && ctx.myV >= 300;
@@ -577,7 +628,7 @@ function aiShieldTarget(g, s, kind, lvl, seen, ctx) {
   for (const m of ctx.mine) {
     if (m.shT > g.t) continue;
     let foe = 0;
-    for (const e of seen) if (Math.abs(e.u - m.u) < 230) foe += e.kind === 'u' ? UDEF[e.type].cost.c : (BDEF[e.type].gun ? 300 : 0);
+    for (const e of seen) if (Math.abs(e.u - m.u) < 230) foe += e.kind === 'u' ? UDEF[e.type].cost.c : (bdOf(e).gun ? 300 : 0);
     if (foe < 200) continue; // not in a fight
     let near = 0; for (const o of ctx.mine) if (Math.abs(o.u - m.u) < 230) near += UDEF[o.type].cost.c;
     if (lvl === 2 && near > foe * 1.6) continue; // Hard: a fight already won needs no shield
@@ -642,8 +693,8 @@ function newGame(diffKey, opts = {}) {
 }
 
 function mkBuilding(g, s, type, slot) {
-  const d = BDEF[type], pos = slot < 0 ? hqPos(s) : slotPos(s, slot);
-  const b = { id: g.nid++, kind: 'b', type, side: s, slot, u: pos.u, v: pos.v, half: d.half, h: d.h * BS, tier: 1,
+  const fac = facOf(g.sides[s].faction), d = BD(fac, type), pos = slot < 0 ? hqPos(s) : slotPos(s, slot);
+  const b = { id: g.nid++, kind: 'b', type, fac, side: s, slot, u: pos.u, v: pos.v, half: d.half, h: d.h * BS, tier: 1,
     hp: d.hp * 0.15, maxHp: d.hp, built: false, progress: 0, upgrading: false, upProg: 0, queue: [], prodT: 0,
     cd: 0, aim: null, hitT: 0, anim: Math.random() * 10, spent: { c: 0, e: 0 }, path: null, upPath: null }; // path: its upgrade-tree path (v2.13)
   g.ents.push(b);
@@ -660,7 +711,7 @@ const countB = (g, s, type) => alive(g, s, type).length;
 
 function popCap(g, s) {
   let c = 0;
-  for (const e of g.ents) if (e.kind === 'b' && e.side === s && e.built && e.hp > 0 && BDEF[e.type].pop) c += BDEF[e.type].pop[e.tier];
+  for (const e of g.ents) if (e.kind === 'b' && e.side === s && e.built && e.hp > 0 && bdOf(e).pop) c += bdOf(e).pop[e.tier];
   return Math.min(POP_MAX, c);
 }
 function popUsed(g, s) {
@@ -675,21 +726,21 @@ function popUsed(g, s) {
 function income(g, s) {
   let c = 0, e = 0;
   for (const b of g.ents) {
-    if (b.kind !== 'b' || b.side !== s || !b.built || b.hp <= 0 || !BDEF[b.type].inc) continue;
-    const inc = BDEF[b.type].inc[b.tier]; c += inc.c; e += inc.e;
+    if (b.kind !== 'b' || b.side !== s || !b.built || b.hp <= 0 || !bdOf(b).inc) continue;
+    const inc = bdOf(b).inc[b.tier]; c += inc.c; e += inc.e;
   }
   for (const n of g.nodes) if (n.owner === s) { c += NODE_INC.c; e += NODE_INC.e; }
   return { c, e };
 }
 // Army strength for AI decisions; Interceptors count for a quarter, since they can't fight ground units or buildings
 function armyValue(list) { let v = 0; for (const u of list) { const d = UDEF[u.type]; v += (d.cost.c + d.cost.e * 1.5) * (u.w === undefined ? 1 : u.w) * (d.hitsGround === false ? 0.25 : 1); } return v; }
-const unitLockMsg = d => { if (!d) return ''; const q = UNIT_PATH[Object.keys(UDEF).find(k => UDEF[k] === d)]; return q ? `Requires ${BDEF[d.from].name} T${d.tier} · ${TREES[q.b][q.p].name}` : d.tier > 1 ? `Requires ${BDEF[d.from].name} T${d.tier}` : `Requires ${BDEF[d.from].name}`; };
+const unitLockMsg = d => { if (!d) return ''; const q = UNIT_PATH[Object.keys(UDEF).find(k => UDEF[k] === d)], B = BD(d.fac, d.from); return q ? `Requires ${B.name} T${d.tier} · ${TREES[q.b][q.p].name}` : d.tier > 1 ? `Requires ${B.name} T${d.tier}` : `Requires ${B.name}`; };
 
 function tryBuild(g, s, type, want = -1) {
-  const d = BDEF[type], side = g.sides[s];
+  const d = bdS(g, s, type), side = g.sides[s];
   if (g.over) return { ok: false, msg: 'The match is over' };
   if (g.countdown > 0) return WAIT_GO;
-  if (d.req && !hasBuilt(g, s, d.req)) return { ok: false, msg: `Requires a finished ${BDEF[d.req].name}` };
+  if (d.req && !hasBuilt(g, s, d.req)) return { ok: false, msg: `Requires a finished ${bdS(g, s, d.req).name}` };
   const slot = want >= 0 && !side.slots[want] ? want : side.slots.findIndex(x => !x);
   if (slot < 0) return { ok: false, msg: 'All 8 building pads are in use' };
   if (side.res.c < d.cost.c) return { ok: false, msg: `Need ${Math.ceil(d.cost.c - side.res.c)} more credits` };
@@ -705,10 +756,10 @@ function tryBuild(g, s, type, want = -1) {
 const SELL_RATE = 0.5;
 function sellValue(b) { return { c: Math.floor(b.spent.c * SELL_RATE), e: Math.floor(b.spent.e * SELL_RATE) }; }
 function trySell(g, s, b) {
-  const d = BDEF[b.type], side = g.sides[s];
+  const d = bdOf(b), side = g.sides[s];
   if (g.over) return { ok: false, msg: 'The match is over' };
   if (g.countdown > 0) return WAIT_GO;
-  if (b.type === 'hq') return { ok: false, msg: 'The Command HQ can’t be sold' };
+  if (b.type === 'hq') return { ok: false, msg: `The ${d.name} can’t be sold` };
   if (b.hp <= 0) return { ok: false, msg: 'That building is gone' };
   const r = sellValue(b);
   side.res.c += r.c; side.res.e += r.e;
@@ -724,13 +775,14 @@ function trySell(g, s, b) {
 }
 
 function tryUpgrade(g, s, b, path) { // path: 'A' or 'B' when a building with a tree goes to T2
-  const d = BDEF[b.type], side = g.sides[s];
+  const d = bdOf(b), side = g.sides[s];
   if (g.over) return { ok: false, msg: 'The match is over' };
   if (g.countdown > 0) return WAIT_GO;
   if (!b.built) return { ok: false, msg: `${d.name} is still under construction` };
   if (b.upgrading) return { ok: false, msg: 'Upgrade already in progress' };
   if (b.tier >= 3) return { ok: false, msg: `${d.name} is fully upgraded` };
-  const T = TREES[b.type];
+  if (TREES[b.type] && !treeOf(b.fac, b.type)) return { ok: false, msg: `${d.name}: evolution paths coming soon` }; // Bloomhost production stays T1 for now (v2.17)
+  const T = treeOf(b.fac, b.type);
   if (T && b.tier === 1 && !T[path]) return { ok: false, msg: `Choose a path for this ${d.name}` };
   const up = d.up[b.tier + 1];
   if (side.res.c < up.c) return { ok: false, msg: `Need ${Math.ceil(up.c - side.res.c)} more credits` };
@@ -767,9 +819,9 @@ function tryTrain(g, s, type) {
 
 function spawnUnit(g, s, type, u, v) {
   const d = UDEF[type];
-  const unit = { id: g.nid++, kind: 'u', type, side: s, u, v, z: d.air ? (type === 'interceptor' ? rand(100, 124) : type === 'leviathan' ? rand(88, 98) : type === 'drone' ? rand(104, 114) : rand(70, 94)) : 0,
+  const unit = { id: g.nid++, kind: 'u', type, side: s, u, v, z: d.air ? (type === 'interceptor' ? rand(100, 124) : type === 'leviathan' ? rand(88, 98) : type === 'drone' ? rand(104, 114) : type === 'razorwing' ? rand(56, 72) : rand(70, 94)) : 0,
     laneV: rand(-LANE_V, LANE_V), hp: d.hp, maxHp: d.hp, cd: Math.random() * 0.5, face: dirOf(s), anim: Math.random() * 10,
-    moving: false, rallyOff: -Math.random() * 100, recoil: 0, hitT: 0, shT: 0, vet: 0, aimAir: 0, medAt: -1 }; // vet: a Drilled Rifleman (v2.13); aimAir: where a Hydra's guns point (v2.14); medAt: last healed by a Medicopter (v2.15) // shT (shield until) set from the start keeps every unit the same shape for the JS engine
+    moving: false, rallyOff: -Math.random() * 100, recoil: 0, hitT: 0, shT: 0, vet: 0, aimAir: 0, medAt: -1, tgt: 0, braceT: 0, braceCd: 0 }; // tgt: what it last attacked; braceT/braceCd: the Bulwark's brace (v2.17) // vet: a Drilled Rifleman (v2.13); aimAir: where a Hydra's guns point (v2.14); medAt: last healed by a Medicopter (v2.15) // shT (shield until) set from the start keeps every unit the same shape for the JS engine
   g.ents.push(unit);
   g.sides[s].stats.built++;
   return unit;
@@ -798,17 +850,18 @@ function hqStatus(g, s, viewer = s) {
    Each side sees full-depth strips of the lane around its own units, buildings and held field nodes.
    Depth counts for little in range (DV_W), so strips match how far things can actually shoot. */
 const FOG_CELL = 10, FOG_N = Math.ceil(L / FOG_CELL) + 1;
-const SIGHT = { rifle: 170, heavy: 180, sniper: 220, tank: 210, artillery: 200, titan: 240, flame: 190, hydra: 260, aircraft: 260, interceptor: 280, leviathan: 220, medic: 220, drone: 420 };
+const SIGHT = { rifle: 170, heavy: 180, sniper: 220, tank: 210, artillery: 200, titan: 240, flame: 190, hydra: 260, aircraft: 260, interceptor: 280, leviathan: 220, medic: 220, drone: 420, skitterling: 170, bulwark: 190, razorwing: 250 };
 const B_SIGHT = { hq: 520, turret: 340 }, B_SIGHT_DEF = 200, NODE_SIGHT = 220; // HQ 520 ≥ its T3 range (470)
 const INTEL_TTL = 45, THREAT_MEMORY = 5, SPOT_GAP = 10;
 const cellOf = u => clamp(Math.floor(u / FOG_CELL), 0, FOG_N - 1);
 const sightOf = e => e.kind === 'u' ? SIGHT[e.type] : (B_SIGHT[e.type] || B_SIGHT_DEF);
-const ghostOf = b => ({ id: b.id, type: b.type, side: b.side, slot: b.slot, tier: b.tier, path: b.path, u: b.u, v: b.v, half: b.half }); // path: the last-seen upgrade-tree path
+const ghostOf = b => ({ id: b.id, type: b.type, fac: b.fac, side: b.side, slot: b.slot, tier: b.tier, path: b.path, u: b.u, v: b.v, half: b.half }); // path: the last-seen upgrade-tree path; fac: its faction (v2.17)
 function newFog(g, s) {
-  const ehq = g.sides[1 - s].hq, f = { vis: new Uint8Array(FOG_N), exp: new Uint8Array(FOG_N), ghosts: {}, intel: {},
+  const ehq = g.sides[1 - s].hq, f = { vis: new Uint8Array(FOG_N), exp: new Uint8Array(FOG_N), seen: new Uint8Array(FOG_N), ghosts: {}, intel: {},
     lastHQ: { hp: ehq.hp, maxHp: ehq.maxHp, shielded: false, tier: 1 }, lastSpot: -99, seenUnits: 0 };
-  // Start positions are known: the enemy HQ begins as a ghost on explored ground
-  f.ghosts[ehq.id] = ghostOf(ehq);
+  // Start positions are known: the enemy HQ begins as a ghost on explored ground, but not what it looks like (v2.17: its
+  // faction stays hidden until seen). seen: ground actually in view at some point; explored-only ground shows no pads.
+  f.ghosts[ehq.id] = Object.assign(ghostOf(ehq), { fac: null });
   for (let i = cellOf(ehq.u - ehq.half - 40); i <= cellOf(ehq.u + ehq.half + 40); i++) f.exp[i] = 1;
   return f;
 }
@@ -825,7 +878,7 @@ function updateVision(g) {
     const reveal = (u, r) => { for (let i = cellOf(u - r), b = cellOf(u + r); i <= b; i++) vis[i] = 1; };
     for (const e of g.ents) if (e.side === s && e.hp > 0) reveal(e.u, sightOf(e));
     for (const n of g.nodes) if (n.owner === s) reveal(n.u, NODE_SIGHT);
-    for (let i = 0; i < FOG_N; i++) if (vis[i]) exp[i] = 1;
+    for (let i = 0; i < FOG_N; i++) if (vis[i]) exp[i] = f.seen[i] = 1;
     // Remember what is in view; forget remembered things whose spot is in view but empty
     const seenB = new Set(), seenU = new Set();
     for (const e of g.ents) {
@@ -909,7 +962,7 @@ function updateNodes(g, dt) {
 }
 
 function tryRepair(g, s, b) {
-  const d = BDEF[b.type], side = g.sides[s];
+  const d = bdOf(b), side = g.sides[s];
   if (g.over) return { ok: false, msg: 'The match is over' };
   if (g.countdown > 0) return WAIT_GO;
   if (!b.built) return { ok: false, msg: `${d.name} is still under construction` };
@@ -924,7 +977,7 @@ function tryRepair(g, s, b) {
 const repairCost = b => Math.ceil(Math.max(0, b.maxHp - b.hp - (b.repair || 0)) * 0.3);
 
 function updateBuilding(g, b, foes, dt) {
-  const d = BDEF[b.type];
+  const d = bdOf(b);
   b.anim += dt;
   if (b.hitT > 0) b.hitT -= dt;
   if (!b.built) {
@@ -1100,6 +1153,7 @@ function updateUnit(g, u, foes, dt) {
     moveToward(u, d, home, u.laneV, dt);
     return;
   }
+  u.tgt = best ? best.id : 0;
   if (best) {
     u.moving = false;
     if (Math.abs(best.u - u.u) > 1) u.face = best.u >= u.u ? 1 : -1;
@@ -1108,6 +1162,10 @@ function updateUnit(g, u, foes, dt) {
     return;
   }
   if (close) { u.moving = false; return; } // artillery: enemy is inside minimum range
+  if (d.chase && st !== 'move' && !(st === 'hold' && u.holdU !== undefined)) { // melee (v2.17): close on the nearest enemy it can see and hurt
+    const prey = acquire(g, u, { ...d, range: d.chase }, foes).best;
+    if (prey) { moveToward(u, d, prey.u, prey.v, dt); return; }
+  }
   let tu = home, tv = u.laneV;
   if (st === 'move') [tu, tv] = slotOf(u, ord); // Regroup: walk to the flag, then hold there
   else if (st === 'hold' && u.holdU !== undefined) { tu = u.holdU; tv = u.holdV; }
@@ -1188,8 +1246,20 @@ function aimZ(e) {
   return d.air ? e.z : d.h * 0.5 * US;
 }
 
+// Melee (v2.17): the blow lands at once. A Skitterling hits harder for every other Skitterling on the same target.
+function meleeHit(g, src, t, def) {
+  let mul = 1;
+  if (def.swarm) {
+    let n = 0;
+    for (const e of g.ents) if (e !== src && e.kind === 'u' && e.side === src.side && e.type === src.type && e.tgt === t.id && e.hp > 0) n++;
+    mul += Math.min(def.swarm.max, n * def.swarm.per);
+  }
+  damage(g, t, def.dmg * mul, def.weapon, src.side);
+  if (src.kind === 'u') src.recoil = 1;
+}
 function fire(g, src, t, def) {
   if (def.weapon === 'flame') { flameBurst(g, src, def); return; }
+  if (def.melee) { meleeHit(g, src, t, def); return; }
   const m = muzzle(src);
   const p = { u: m.u, v: m.v, z: m.z, pu: m.u, pv: m.v, pz: m.z, tu: t.u, tv: t.v, tz: aimZ(t), target: t, side: src.side,
     weapon: def.weapon, dmg: def.dmg * (g.sides[src.side].buff ? 1.2 : 1) * (src.vet ? DRILL.dmg : 1), splash: def.splash || 0, t: 0 };
@@ -1229,6 +1299,7 @@ function abilityCheck(g, s, k, u, v) {
   const A = ABIL[k], side = g.sides[s];
   if (!A || g.over) return { ok: false, msg: 'The match is over' };
   if (g.countdown > 0) return WAIT_GO;
+  if (!FACTIONS[facOf(side.faction)].abilities) return { ok: false, msg: `${factionName(side.faction)} commander abilities are coming soon` }; // v2.17
   if (!abilUnlocked(g, s, A)) return { ok: false, msg: `${A.name} needs ${A.reqTier ? 'your' : 'a'} ${abilReqText(A)}` };
   const wait = side.ab[k] - g.t;
   if (wait > 0) return { ok: false, msg: side.abK && Math.abs(side.ab[k] - side.abEnd) < 1e-6 ? `Shared cooldown: abilities ready in ${Math.ceil(wait)} s` : `${A.name} is ready in ${Math.ceil(wait)} s` };
@@ -1386,7 +1457,12 @@ function damage(g, e, amt, weapon, fromSide) {
   const armor = e.kind === 'b' ? 'building' : UDEF[e.type].armor;
   const mult = DMG[weapon][armor];
   if (!mult) return;
-  const dmg = amt * mult * (g.sides[e.side].buff ? 0.85 : 1);
+  let dmg = amt * mult * (g.sides[e.side].buff ? 0.85 : 1);
+  const br = e.kind === 'u' && UDEF[e.type].brace;
+  if (br) { // the Bulwark braces on the first hit after its cooldown (v2.17)
+    if (!(e.braceT > g.t) && g.t >= e.braceCd) { e.braceT = g.t + br.dur; e.braceCd = g.t + br.cd; }
+    if (e.braceT > g.t) dmg *= 1 - br.cut;
+  }
   if (e.shT > g.t) { e.hp -= dmg * (1 - ABIL.shield.cut); logEffect(g, e.side, 'shield', dmg * ABIL.shield.cut); } // Emergency Shield
   else e.hp -= dmg;
   e.hitT = 0.12;
@@ -1407,12 +1483,12 @@ function kill(g, e, by, weapon) {
     if (by >= 0) g.sides[by].stats.kills++;
     if (g.log) { const T = g.log.tot[e.side]; logAdd(T.lost, e.type); if (weapon) logAdd(T.lostTo || (T.lostTo = {}), weapon); if (by >= 0) logAdd(g.log.tot[by].killed, e.type); lgUnit(g, e.side, 'K', e.type); logLoss(g, e); }
     const d = UDEF[e.type], w = P(e.u, e.v, aimZ(e));
-    fxBoom(g, w.x, w.y, d.air ? 28 : e.type === 'rifle' || e.type === 'sniper' ? 9 : e.type === 'heavy' ? 15 : e.type === 'titan' ? 46 : 30);
+    fxBoom(g, w.x, w.y, e.type === 'skitterling' ? 6 : e.type === 'bulwark' ? 18 : d.air ? (e.type === 'razorwing' ? 12 : 28) : e.type === 'rifle' || e.type === 'sniper' ? 9 : e.type === 'heavy' ? 15 : e.type === 'titan' ? 46 : 30);
     return;
   }
   if (e.slot >= 0 && side.slots[e.slot] === e) side.slots[e.slot] = null;
   for (let i = 0; i < 3; i++) { const w = P(e.u + rand(-e.half, e.half) * 0.6, e.v + rand(-e.half, e.half) * 0.6, rand(10, e.h * 0.7)); fxBoom(g, w.x, w.y, rand(36, 56)); }
-  ev(g, { type: 'destroyed', side: e.side, name: BDEF[e.type].name, hq: e.type === 'hq', seen: visibleTo(g, 1 - e.side, e) });
+  ev(g, { type: 'destroyed', side: e.side, name: bdOf(e).name, hq: e.type === 'hq', seen: visibleTo(g, 1 - e.side, e) });
   if (g.log) { logAdd(g.log.tot[e.side].bLost, e.type); lg(g, e.side, 'D', e.type, e.tier, by); }
   if (e.type === 'hq') {
     side.hqBy = by; side.hqT = g.t; // the match result is settled at the end of this tick (resolveEnd), never by code order
@@ -1533,9 +1609,9 @@ function aiUpdate(g, s, dt) {
     }
   }
   // A fortified enemy: the Aggressor gets HQ T2 at once, which unlocks the Orbital Strike (until v2.16 it built a War Factory)
-  if (P.kind === 'aggressor' && D !== DIFF.easy && !threat && side.hq.tier < 2 && !side.hq.upgrading && aiFortified(g, s)) {
+  if (P.kind === 'aggressor' && D !== DIFF.easy && FACTIONS[facOf(side.faction)].abilities && !threat && side.hq.tier < 2 && !side.hq.upgrading && aiFortified(g, s)) {
     const r = tryUpgrade(g, s, side.hq);
-    if (!r.ok) { const up = BDEF.hq.up[2]; reserve.c = Math.max(reserve.c, up.c); reserve.e = Math.max(reserve.e, up.e); }
+    if (!r.ok) { const up = bdS(g, s, 'hq').up[2]; reserve.c = Math.max(reserve.c, up.c); reserve.e = Math.max(reserve.e, up.e); }
   }
   // No Habitat and no free pad: the army is stuck at the HQ's 12. Sell a spare Reactor or extra Refinery to make room.
   if (!freePad && countB(g, s, 'habitat') === 0 && cap < POP_MAX && D.eco) {
@@ -1551,7 +1627,7 @@ function aiUpdate(g, s, dt) {
     if (bar.length && bar.length < 2 && bar.every(b => (b.path || b.upPath) === 'B')) want = 'barracks'; // then its T2 upgrade takes Specialists
   }
   if (want && side.slots.some(x => !x) && constructing.length < 2) {
-    const d = BDEF[want];
+    const d = bdS(g, s, want);
     if (!d.req || hasBuilt(g, s, d.req)) {
       const r = tryBuild(g, s, want, wantPad);
       if (!r.ok && (!threat || saving) && !(P.unitsFirst && planIdx >= 4 && !threat)) reserve.c = d.cost.c, reserve.e = d.cost.e;
@@ -1575,11 +1651,12 @@ function aiUpdate(g, s, dt) {
     for (const [type, tier] of [...(energyShort ? [['reactor', 2], ['reactor', 3]] : []), ...P.upgFirst, ...AI_UPG]) {
       if (tier > D.maxTier) continue;
       if (type === 'reactor' && side.res.e > ENERGY_PLENTY) continue;
+      if (TREES[type] && !treeOf(side.faction, type)) continue; // no evolution paths yet (Bloomhost, v2.17)
       const b = alive(g, s, type).find(x => x.built && x.tier < tier);
       if (!b) continue;
       const r = tryUpgrade(g, s, b, b.tier === 1 && TREES[type] ? aiPickPath(g, s, b, P, theirs) : undefined);
       if (r.ok && log.firstUpgrade === null) log.firstUpgrade = g.t;
-      if (!r.ok && !floating) { const up = BDEF[type].up[b.tier + 1]; reserve.c = Math.max(reserve.c, up.c * 0.8); reserve.e = Math.max(reserve.e, up.e * 0.8); }
+      if (!r.ok && !floating) { const up = bdOf(b).up[b.tier + 1]; reserve.c = Math.max(reserve.c, up.c * 0.8); reserve.e = Math.max(reserve.e, up.e * 0.8); }
       break;
     }
   }
@@ -1619,8 +1696,12 @@ function aiUpdate(g, s, dt) {
       leviathan: 1.7 + comp.vehicle * 0.5 + (turtle ? 0.8 : 0) - antiAir * 1.2, // simple scoring for now (v2.15)
       medic: nInf >= 6 && nMed < nInf / 8 ? 0.9 + nInf / Math.max(1, mine.length) * 1.2 : 0.05,
       drone: nDrone < 1 ? 1.0 : 0.05,
+      // Bloomhost (v2.17): scored like their Last Fist counterparts; Skitterlings can't hit aircraft
+      skitterling: 0.9 + comp.light * 0.5 - comp.vehicle * 0.6 - comp.heavy * 0.3 - comp.air * 0.4 - (types.length > 2 ? 0.3 : 0),
+      bulwark: 1.3 + comp.light * 1.0 + comp.heavy * 0.7 - comp.air * 0.9,
+      razorwing: 1.2 + comp.vehicle * 1.0 + comp.light * 0.4 - comp.air * 0.3 + (antiAir < 0.45 ? 0.9 : 0),
     };
-    if (!threat) for (const t in P.bias) if (sc[t] > 0) sc[t] *= P.bias[t]; // the personality's taste in units (threats are answered on merit)
+    if (!threat) for (const t of types) { const b = P.bias[t] || P.bias[AI_TWIN[t]]; if (b && sc[t] > 0) sc[t] *= b; } // the personality's taste in units (threats are answered on merit)
     const fits = t => used + UDEF[t].pop <= cap * fillNow && freeProducer(g, s, t);
     const top = types.filter(fits).sort((a, b) => sc[b] - sc[a])[0];
     // Save for the better unit unless the enemy is already in the base (a calm AI keeps saving while merely threatened)
@@ -1809,14 +1890,14 @@ const logSpend = (g, s, kind, c, e) => { if (g.log) { const a = g.log.tot[s].spe
 
 /* ---------- Save and resume ---------- */
 // v6 adds fog of war; v7 the AI's personality (kept on its side record); v10 the shared ability cooldown; v11 the match log; v12 group orders, the selection and Regroup flags; v13 upgrade-tree paths; v14 War Factory paths. Older saves are migrated.
-const SAVE_VER = 16, SAVE_OK = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+const SAVE_VER = 17, SAVE_OK = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
 function serialize(g, extra) {
   const live = g.ents.filter(e => e.hp > 0);
   for (const sd of g.sides) if (sd.hq.hp <= 0 && !live.includes(sd.hq)) live.push(sd.hq); // a fallen HQ inside the storm's 5 s end window
   const ents = live.map(e => { const o = Object.assign({}, e); if (o.queue) o.queue = o.queue.slice(); return o; });
   const projs = g.projs.map(p => Object.assign({}, p, { target: p.target ? p.target.id : null }));
   const sides = g.sides.map(sd => Object.assign({}, sd, { hq: sd.hq.id, slots: sd.slots.map(b => b ? b.id : null), res: Object.assign({}, sd.res), stats: Object.assign({}, sd.stats) }));
-  const fog = g.fog.map(f => ({ exp: Array.from(f.exp).join(''), ghosts: f.ghosts, intel: f.intel, lastHQ: f.lastHQ, lastSpot: f.lastSpot, seenUnits: f.seenUnits }));
+  const fog = g.fog.map(f => ({ exp: Array.from(f.exp).join(''), seen: Array.from(f.seen).join(''), ghosts: f.ghosts, intel: f.intel, lastHQ: f.lastHQ, lastSpot: f.lastSpot, seenUnits: f.seenUnits }));
   return JSON.stringify({ v: SAVE_VER, t: g.t, nid: g.nid, diffKey: g.diffKey, ents, projs, sides, nodes: g.nodes, fog, abil: g.abil, endHold: g.endHold || null, log: g.log, extra });
 }
 function deserialize(str) {
@@ -1832,7 +1913,7 @@ function deserialize(str) {
   g.fog = [0, 1].map(k => {
     const f = newFog(g, k), sf = o.fog && o.fog[k];
     if (sf) {
-      for (let i = 0; i < FOG_N; i++) f.exp[i] = sf.exp[i] === '1' ? 1 : 0;
+      for (let i = 0; i < FOG_N; i++) { f.exp[i] = sf.exp[i] === '1' ? 1 : 0; f.seen[i] = (sf.seen || sf.exp)[i] === '1' ? 1 : 0; } // v17: older saves count explored ground as seen
       Object.assign(f, { ghosts: sf.ghosts || {}, intel: sf.intel || {}, lastHQ: sf.lastHQ || f.lastHQ, lastSpot: sf.lastSpot ?? -99, seenUnits: sf.seenUnits || 0 });
     }
     return f;
@@ -1849,6 +1930,11 @@ function deserialize(str) {
   g.endHold = o.endHold || null; // the 5-second end window of a storm match (v9)
   for (const sd of g.sides) { if (!sd.orders) sd.orders = newOrders(); if (sd.sel === undefined) sd.sel = null; } // v12: older saves start with no group orders
   for (const sd of g.sides) if (!FACTIONS[sd.faction]) sd.faction = DEFAULT_FACTION; // v16: older saves are Last Fist vs Last Fist
+  for (const e of g.ents) { // v17: buildings carry their faction; units their attack target and brace timers
+    if (e.kind === 'b') { if (!FACTIONS[e.fac]) e.fac = g.sides[e.side].faction; }
+    else { if (e.tgt === undefined) e.tgt = 0; if (e.braceT === undefined) { e.braceT = 0; e.braceCd = 0; } }
+  }
+  for (const f of g.fog) for (const id in f.ghosts) if (f.ghosts[id].fac === undefined) f.ghosts[id].fac = o.v < 17 ? DEFAULT_FACTION : null;
   for (const e of g.ents) { // v13: before upgrade trees, a T2 or T3 building is on path A (it keeps what it had: Heavies, Snipers)
     if (e.kind === 'u') { if (e.vet === undefined) e.vet = 0; if (e.aimAir === undefined) e.aimAir = 0; if (e.medAt === undefined) e.medAt = -1; continue; }
     if (e.path === undefined) { e.path = TREES[e.type] && e.tier >= 2 ? 'A' : null; e.upPath = TREES[e.type] && e.upgrading && e.tier === 1 ? 'A' : null; }
@@ -1865,8 +1951,10 @@ function deserialize(str) {
 const mmss = t => { t = Math.max(0, Math.floor(t)); return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`; };
 const NODE_NAME = ['west', 'centre', 'east'];
 const LINE_MAX = 80; // per side; unit groups are widened only past this
-function logEvText(e, me) { // one log event as a line of text (me: written from the player's point of view)
-  const [, , c, a, b, x] = e, B = t => BDEF[t] ? BDEF[t].name : t;
+// A building role's name as side s's faction calls it (the log is read only after the match, when factions are revealed)
+const logBName = (g, s, t) => { const d = BD(g && g.sides[s] ? g.sides[s].faction : DEFAULT_FACTION, t); return d ? d.name : t; };
+function logEvText(e, me, g) { // one log event as a line of text (me: written from the player's point of view; g: for faction names)
+  const [, , c, a, b, x] = e, B = t => logBName(g, e[1], t);
   switch (c) {
     case 'B': return `${B(a)} started (not finished)`; // a finished one shares the line with its finish (logLines)
     case 'F': return `${B(a)} finished`;
@@ -1918,7 +2006,7 @@ function logLines(g, s, widen = true) { // widen: the screen may widen unit grou
     }
     for (let i = ev.length - 1; i >= 0; i--) if (!ev[i]) ev.splice(i, 1);
   }
-  const B = t => BDEF[t] ? BDEF[t].name : t, txt = e => e.done === undefined ? logEvText(e, s === 0) : e[2] === 'B' ? `${B(e[3])} ${mmss(e[0])} → ${mmss(e.done)}` : `${B(e[3])} T${e[4]}${e[6] && TREES[e[3]] ? ` · ${TREES[e[3]][e[6]].name}` : ''} ${mmss(e[0])} → ${mmss(e.done)}`;
+  const B = t => logBName(g, s, t), txt = e => e.done === undefined ? logEvText(e, s === 0, g) : e[2] === 'B' ? `${B(e[3])} ${mmss(e[0])} → ${mmss(e.done)}` : `${B(e[3])} T${e[4]}${e[6] && TREES[e[3]] ? ` · ${TREES[e[3]][e[6]].name}` : ''} ${mmss(e[0])} → ${mmss(e.done)}`;
   return ev.map(e => { const u = e[2] === 'T' || e[2] === 'K'; return { t: e[0], i: e.i, key: !u, code: e[2], txt: txt(e), type: u ? e[3] : null, n: u ? e[4] : 0, t1: u ? e[5] : e.done ?? e[0], paired: e.done !== undefined }; });
 }
 function logBattles(g) { // runs of 10-s buckets with unit losses; value = credits + energy of the units lost
@@ -1942,8 +2030,8 @@ function logMoments(g) { // up to 8 recorded turning points, in time order
   for (const e of L.ev) {
     const [t, s, k, a, b] = e;
     if (k === 'H') { if (!c.some(m => m.h === s && t - m.t < 60)) c.push({ t, p: 9, h: s, txt: `${who(s)} HQ shield went down` }); } // once a minute: it can flicker as buildings fall and rise
-    else if (k === 'D' && a === 'hq') c.push({ t, p: 10, txt: `${who(s)} Command HQ destroyed${e[5] === -1 ? ' by the storm' : ''}` });
-    else if (k === 'D' && ['factory', 'techlab', 'turret', 'refinery'].includes(a)) c.push({ t, p: 5, txt: `${who(s)} ${BDEF[a].name} destroyed` });
+    else if (k === 'D' && a === 'hq') c.push({ t, p: 10, txt: `${who(s)} ${logBName(g, s, 'hq')} destroyed${e[5] === -1 ? ' by the storm' : ''}` });
+    else if (k === 'D' && ['factory', 'techlab', 'turret', 'refinery'].includes(a)) c.push({ t, p: 5, txt: `${who(s)} ${logBName(g, s, a)} destroyed` });
     else if (k === 'N' || k === 'L') c.push({ t, p: k === 'L' ? 4 : 3, txt: `${s === 0 ? 'You' : 'The enemy'} ${k === 'N' ? 'captured' : 'lost'} the ${NODE_NAME[a]} field node` });
     else if (k === 'A' && a === 'strike' && b >= 400) c.push({ t, p: 5 + b / 1000, txt: `${s === 0 ? 'Your' : 'Enemy'} Orbital Strike: ${b} damage, ${e[5]} destroyed` });
     else if (k === 'T' && ['titan', 'aircraft', 'artillery'].includes(a) && !firstUnit[s + a]) { firstUnit[s + a] = 1; c.push({ t, p: 2, txt: `${s === 0 ? 'Your' : 'Enemy'} first ${UDEF[a].name}` }); }
@@ -1957,7 +2045,7 @@ function logLessons(g) {
   const T = L.tot, me = T[0], foe = T[1], sum = o => Object.values(o).reduce((a, b) => a + b, 0);
   const worst = logBattles(g).filter(b => b.v[0] >= 600 && b.v[0] > b.v[1] * 1.3).sort((a, b) => (b.v[0] - b.v[1]) - (a.v[0] - a.v[1]))[0];
   if (worst) {
-    const z = zoneOf(worst.u), lostB = L.ev.filter(e => e[2] === 'D' && e[1] === 0 && e[0] >= worst.t0 && e[0] <= worst.t1).map(e => BDEF[e[3]].name);
+    const z = zoneOf(worst.u), lostB = L.ev.filter(e => e[2] === 'D' && e[1] === 0 && e[0] >= worst.t0 && e[0] <= worst.t1).map(e => logBName(g, 0, e[3]));
     out.push({ fact: `${mmss(worst.t0)}–${mmss(worst.t1)}, ${z}: you lost ${worst.n[0]} units (${worst.v[0]})${lostB.length ? ` and your ${lostB.join(', ')}` : ''}; the enemy lost ${worst.n[1]} (${worst.v[1]}).`,
       why: 'That fight cost you far more than it cost them.',
       next: z === 'near the enemy base' ? 'Attack with a bigger army, or bring Artillery or an Orbital Strike against their defences first.' : z === 'near your base' ? 'Keep a Turret or a group of Heavies at home before the enemy pushes.' : 'Fight closer to your Turrets, or pull back and regroup before engaging.' });
@@ -1966,7 +2054,7 @@ function logLessons(g) {
     why: 'The enemy earned more from field nodes (each gives +3 credits and +1 energy per second).', next: 'Capture a node earlier and keep a few units on it.' });
   const casts = L.ev.filter(e => e[2] === 'A' && e[1] === 0), weak = casts.find(e => (e[3] === 'shield' && e[4] < 100) || (e[3] === 'strike' && e[4] < 150) || (e[3] === 'repair' && e[4] < 150));
   if (!casts.length && g.t - L.from > 300) out.push({ fact: 'You used no commander abilities.', why: 'An Emergency Shield, Orbital Strike or Repair Pulse can swing a close fight.', next: 'Use one per big fight: they share one cooldown, so pick the one that fits the moment.' });
-  else if (weak) out.push({ fact: `At ${mmss(weak[0])}: ${logEvText(weak, true)}.`, why: 'It spent the shared cooldown on a small effect.', next: 'Save the cooldown for a big fight or a Strike on a clump of units.' });
+  else if (weak) out.push({ fact: `At ${mmss(weak[0])}: ${logEvText(weak, true, g)}.`, why: 'It spent the shared cooldown on a small effect.', next: 'Save the cooldown for a big fight or a Strike on a clump of units.' });
   const burned = (me.lostTo && me.lostTo.flame) || 0, inf = ['rifle', 'heavy', 'sniper'].reduce((a, k) => a + (me.lost[k] || 0), 0);
   if (burned >= 12) out.push({ fact: `Enemy Flame Tanks destroyed ${burned} of your units (you lost ${inf} infantry in all).`, why: 'Massed infantry is what Flame Tanks are built to burn.', next: 'Answer them with Tanks, Artillery or Heavies, and keep infantry out of their short range.' });
   const bank = L.bank[0], avg = bank.length ? bank.reduce((a, b) => a + b, 0) / bank.length : 0;
@@ -2449,6 +2537,168 @@ const BART = {
 };
 const DRAW_B = {}; // the whole building, drawn live (card icons, and while the cache fills)
 for (const k in BART) DRAW_B[k] = (c, T, t, b, tier) => { BART[k][0](c, T, tier); BART[k][1](c, T, t, b, tier); };
+/* ---------- Bloomhost buildings (v2.17): living structures on organic pads ----------
+   Original designs: chitin plates, fleshy mounds, membranes and sacs, with the team colour as bioluminescent veins and
+   glands. Same rules as Last Fist art: a cached body per tier, a few live parts (pulses), everything below the bar. */
+const BHC = { chit: ['#6f5f8c', '#4a3d63', '#2f2742'], flesh: ['#a5566f', '#73374b', '#4d2333'], bone: '#e2d6bf', dark: '#1c1524', skin: '#3a2a3f' };
+// a squat organic mound: a curved hump of height h over an ellipse of radius r, shaded left to right
+function mound(c, u, v, r, z, h, c0, c1) {
+  const [x, y] = pt(u, v, z), rx = r * 1.2247, ry = r * 0.7071;
+  c.beginPath(); c.moveTo(x - rx, y); c.ellipse(x, y, rx, ry, 0, Math.PI, 0, true);
+  c.bezierCurveTo(x + rx, y - h * 0.9, x + rx * 0.45, y - h, x, y - h);
+  c.bezierCurveTo(x - rx * 0.45, y - h, x - rx, y - h * 0.9, x - rx, y);
+  const g = c.createLinearGradient(x - rx, 0, x + rx, 0); g.addColorStop(0, c0); g.addColorStop(1, c1);
+  c.fillStyle = g; c.fill();
+}
+// chitin plate bands across a mound: arcs that read as overlapping carapace
+function plates(c, u, v, r, z, h, n, col) {
+  const [x, y] = pt(u, v, z), rx = r * 1.2247;
+  c.strokeStyle = col; c.lineWidth = 1.3;
+  for (let i = 1; i <= n; i++) { const k = i / (n + 1); c.beginPath(); c.ellipse(x, y - h * k, rx * Math.sqrt(1 - k * k) * 0.98, h * 0.18 * (1 - k * 0.5), 0, 0.1, Math.PI - 0.1); c.stroke(); }
+}
+// a curved spike from (u, v, z) leaning out; w: base width
+function spike(c, u, v, z, h, w, lean, col) {
+  const [x, y] = pt(u, v, z);
+  c.fillStyle = col; c.beginPath(); c.moveTo(x - w, y); c.quadraticCurveTo(x - w * 0.2 + lean * 0.4, y - h * 0.6, x + lean, y - h); c.quadraticCurveTo(x + w * 0.4 + lean * 0.3, y - h * 0.5, x + w, y); c.closePath(); c.fill();
+}
+// a glowing sac or egg
+function sac(c, u, v, z, r, fill, rgb, a) {
+  const [x, y] = pt(u, v, z);
+  c.fillStyle = fill; c.beginPath(); c.ellipse(x, y - r * 0.9, r * 0.8, r, 0, 0, 7); c.fill();
+  if (rgb) { c.fillStyle = `rgba(${rgb},${a})`; c.beginPath(); c.ellipse(x, y - r * 0.9, r * 0.45, r * 0.62, 0, 0, 7); c.fill(); }
+  c.fillStyle = 'rgba(255,255,255,0.18)'; c.beginPath(); c.ellipse(x - r * 0.3, y - r * 1.3, r * 0.18, r * 0.28, -0.4, 0, 7); c.fill();
+}
+// a vein: a wobbly line through building-local points
+function vein(c, pts, col, w) {
+  c.strokeStyle = col; c.lineWidth = w; c.lineCap = 'round'; c.beginPath();
+  const p0 = pt(...pts[0]); c.moveTo(p0[0], p0[1]);
+  for (let i = 1; i < pts.length; i++) { const a = pt(...pts[i - 1]), b = pt(...pts[i]); c.quadraticCurveTo(a[0] + (b[0] - a[0]) * 0.5 + 2, a[1] + (b[1] - a[1]) * 0.5 - 2, b[0], b[1]); }
+  c.stroke();
+}
+// the creep-like root bed every Bloomhost building grows from (instead of a concrete plinth)
+function rootBed(c, half, T, tier) {
+  const [x, y] = pt(0, 0, 0), rx = (half + 4) * 1.2247, ry = (half + 4) * 0.7071;
+  c.fillStyle = BHC.skin; c.beginPath(); c.ellipse(x, y + 2, rx, ry, 0, 0, 7); c.fill();
+  c.fillStyle = BHC.flesh[2]; c.beginPath(); c.ellipse(x, y, rx * 0.92, ry * 0.9, 0, 0, 7); c.fill();
+  const n = 5 + tier * 2;
+  for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + 0.3; vein(c, [[0, 0, 1], [Math.cos(a) * half * 0.55, Math.sin(a) * half * 0.55, 1], [Math.cos(a + 0.25) * (half + 2), Math.sin(a + 0.25) * (half + 2), 0]], `rgba(${T.glow},${0.18 + tier * 0.06})`, 1.2); }
+}
+const pulse = (t, ph = 0, sp = 2.4) => 0.5 + 0.5 * Math.sin(t * sp + ph);
+
+// Hive (HQ): a great chitin mound with a glowing core, fleshy lobes at T2, a crown of spines at T3; a spine launcher on top
+const HIVEZ = [0, 74, 80, 88]; // launcher height
+function hiveBody(c, T, tier) {
+  rootBed(c, 44, T, tier);
+  if (tier >= 2) for (const [u, v] of [[-28, 22], [26, -26]]) { mound(c, u, v, 14, 0, 28, BHC.flesh[0], BHC.flesh[2]); plates(c, u, v, 14, 0, 28, 2, 'rgba(0,0,0,0.25)'); }
+  mound(c, 0, 0, 38, 0, HIVEZ[tier] - 18, BHC.chit[0], BHC.chit[2]);
+  plates(c, 0, 0, 38, 0, HIVEZ[tier] - 18, 3 + tier, 'rgba(20,10,30,0.45)');
+  mound(c, 2, -2, 22, HIVEZ[tier] - 36, 26, BHC.chit[0], BHC.chit[1]); // upper lobe
+  if (tier >= 3) for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; spike(c, Math.cos(a) * 30, Math.sin(a) * 30, 30, 26, 4, Math.cos(a) * 6, BHC.bone); }
+  for (const [u, v, z] of [[-30, -6, 8], [-10, 30, 6], [24, 16, 10]]) sac(c, u, v, z, 5 + tier, BHC.flesh[1], T.glow, 0.35);
+}
+function hiveLive(c, T, t, b, tier) {
+  const z = HIVEZ[tier], [cx, cy] = pt(0, 0, z * 0.45);
+  glow(c, cx, cy, 6 + tier, T.glow, 0.25 + 0.3 * pulse(t, 0, 1.6)); // the core beats
+  const [hx, hy] = pt(0, 0, z), a = gunAngle(b, hx, hy, -0.4);
+  c.save(); c.translate(hx, hy); c.rotate(a); // spine launcher: a tube of chitin with a glowing throat
+  c.fillStyle = BHC.chit[1]; c.beginPath(); c.ellipse(5, 0, 12, 5.5, 0, 0, 7); c.fill();
+  c.fillStyle = BHC.bone; c.beginPath(); c.moveTo(14, -3); c.lineTo(22, 0); c.lineTo(14, 3); c.closePath(); c.fill();
+  c.fillStyle = `rgba(${T.glow},${0.5 + 0.4 * pulse(t, 1, 5)})`; c.beginPath(); c.arc(13, 0, 2.2, 0, 7); c.fill();
+  c.restore();
+}
+// Goremound (refinery): a bulging digestion mound with a vent that breathes spores
+function goreBody(c, T, tier) {
+  rootBed(c, 32, T, tier);
+  const H = [0, 34, 42, 50][tier];
+  mound(c, 0, 0, 26, 0, H, BHC.flesh[0], BHC.flesh[2]);
+  plates(c, 0, 0, 26, 0, H, 2 + tier, 'rgba(40,10,20,0.35)');
+  if (tier >= 2) mound(c, 16, 16, 10, 0, 22, BHC.flesh[1], BHC.flesh[2]);
+  if (tier >= 3) mound(c, -18, 14, 9, 0, 18, BHC.flesh[1], BHC.flesh[2]);
+  cyl(c, 0, -6, 6, H - 6, 10, BHC.chit[1], BHC.chit[2], BHC.dark); // the vent
+  for (const [u, v] of [[-14, -10], [10, 6], [-6, 16]].slice(0, tier + 1)) sac(c, u, v, 6, 4, '#c98a4a', null, 0);
+}
+function goreLive(c, T, t, b, tier) { const H = [0, 34, 42, 50][tier], [x, y] = pt(0, -6, H + 4); glow(c, x, y, 3, T.glow, 0.25 + 0.35 * pulse(t, 0, 3)); }
+// Pulse Organ (reactor): a translucent heart on a stalk, veins brightening with tier
+function pulseBody(c, T, tier) {
+  rootBed(c, 30, T, tier);
+  cone(c, 0, 0, 13, 7, 0, 22, BHC.chit[1], BHC.chit[2], null); // stalk
+  for (let i = 0; i < 3 + tier; i++) { const a = i / (3 + tier) * Math.PI * 2; vein(c, [[0, 0, 20], [Math.cos(a) * 14, Math.sin(a) * 14, 8], [Math.cos(a) * 26, Math.sin(a) * 26, 0]], `rgba(${T.glow},0.45)`, 1.6); }
+  if (tier >= 2) for (const [u, v] of [[-18, 12], [16, -16]]) sac(c, u, v, 2, 6, BHC.flesh[1], T.glow, 0.4);
+  if (tier >= 3) for (const [u, v] of [[18, 14], [-16, -18]]) spike(c, u, v, 0, 22, 3, 0, BHC.bone);
+}
+function pulseLive(c, T, t, b, tier) {
+  const k = pulse(t, 0, 3.2), r = [0, 11, 12.5, 14][tier] * (0.94 + 0.08 * k), [x, y] = pt(0, 0, 22 + r);
+  c.fillStyle = BHC.flesh[1]; c.beginPath(); c.ellipse(x, y, r * 0.95, r, 0, 0, 7); c.fill();
+  c.fillStyle = `rgba(${T.glow},${0.35 + 0.45 * k})`; c.beginPath(); c.ellipse(x, y, r * 0.55, r * 0.62, 0, 0, 7); c.fill();
+  glow(c, x, y, 3 + tier, T.glow, 0.2 + 0.3 * k);
+}
+// Hatchery (habitat): a nest of eggs in a fleshy cradle; more and bigger eggs per tier
+const HATCH = [null, [[-8, 6], [8, -6], [6, 10]], [[-10, 8], [10, -8], [8, 12], [-12, -10]], [[-12, 10], [12, -10], [10, 14], [-14, -12], [0, 0]]];
+function hatchBody(c, T, tier) {
+  rootBed(c, 32, T, tier);
+  mound(c, 0, 0, 28, 0, 12, BHC.flesh[1], BHC.flesh[2]);
+  for (const [u, v] of HATCH[tier]) sac(c, u, v, 10, 6 + tier, '#d9c7a6', T.glow, 0.28);
+  if (tier >= 3) for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2 + 0.6; spike(c, Math.cos(a) * 26, Math.sin(a) * 26, 6, 18, 3, -Math.cos(a) * 4, BHC.chit[0]); }
+}
+function hatchLive(c, T, t, b, tier) { const [u, v] = HATCH[tier][0], [x, y] = pt(u, v, 18); glow(c, x, y, 2.5, T.glow, 0.15 + 0.3 * pulse(t, 2, 1.8)); }
+// Larva Pit (barracks): a ringed pit with mandible-like ribs; larvae glow in its throat
+function larvaBody(c, T, tier) {
+  rootBed(c, 32, T, tier);
+  mound(c, 0, 0, 28, 0, 14, BHC.chit[1], BHC.chit[2]);
+  const [x, y] = pt(0, 0, 14); c.fillStyle = BHC.dark; c.beginPath(); c.ellipse(x, y, 16 * 1.2247, 16 * 0.7071, 0, 0, 7); c.fill(); // the pit
+  for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; spike(c, Math.cos(a) * 20, Math.sin(a) * 20, 12, 22 + (i % 2) * 6, 3, -Math.cos(a) * 7, BHC.bone); }
+  if (tier >= 2) mound(c, -22, 20, 8, 0, 16, BHC.flesh[0], BHC.flesh[2]);
+}
+function larvaLive(c, T, t, b, tier) { const [x, y] = pt(0, 0, 14); c.fillStyle = `rgba(${T.glow},${0.25 + 0.3 * pulse(t, 0, 2.2)})`; c.beginPath(); c.ellipse(x, y, 12, 6, 0, 0, 7); c.fill(); }
+// Evolution Chamber (factory): a long ribbed cocoon split by a glowing seam, where heavy organisms grow
+function evoBody(c, T, tier) {
+  rootBed(c, 36, T, tier);
+  mound(c, -6, 6, 30, 0, 40, BHC.chit[0], BHC.chit[2]);
+  plates(c, -6, 6, 30, 0, 40, 4, 'rgba(20,10,30,0.4)');
+  for (const k of [-16, 0, 16]) { const [x, y] = pt(-6 + k * 0.5, 6 - k * 0.5, 0); c.strokeStyle = BHC.bone; c.lineWidth = 2.2; c.beginPath(); c.ellipse(x, y - 18, 7, 22, 0, Math.PI * 1.05, Math.PI * 1.95); c.stroke(); } // ribs
+  if (tier >= 2) mound(c, 22, -18, 11, 0, 24, BHC.flesh[0], BHC.flesh[2]);
+  if (tier >= 3) for (const [u, v] of [[24, 18], [-28, -22]]) spike(c, u, v, 0, 26, 3.5, 0, BHC.bone);
+}
+function evoLive(c, T, t, b, tier) { const [x, y] = pt(-6, 6, 22); c.strokeStyle = `rgba(${T.glow},${0.35 + 0.4 * pulse(t, 0, 1.4)})`; c.lineWidth = 2.4; c.beginPath(); c.moveTo(x - 8, y - 16); c.quadraticCurveTo(x, y - 2, x + 10, y + 10); c.stroke(); }
+// Maw (turret): a fanged mouth rising out of the ground on a fleshy neck; its jaws turn to the target
+const MAWZ = [0, 26, 28, 31];
+function mawBody(c, T, tier) {
+  rootBed(c, 26, T, tier);
+  mound(c, 0, 0, 20, 0, 12, BHC.flesh[1], BHC.flesh[2]);
+  if (tier >= 2) for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2; spike(c, Math.cos(a) * 18, Math.sin(a) * 18, 6, 14 + tier * 2, 2.5, Math.cos(a) * 3, BHC.chit[0]); }
+  cone(c, 0, 0, 10, 8, 10, MAWZ[tier] - 12, BHC.flesh[0], BHC.flesh[2], null); // the neck
+}
+function mawLive(c, T, t, b, tier) {
+  const [hx, hy] = pt(0, 0, MAWZ[tier]), a = gunAngle(b, hx, hy, -0.3), open = 0.25 + 0.2 * pulse(t, 0, b && b.aim ? 9 : 1.5);
+  c.save(); c.translate(hx, hy); c.rotate(a);
+  const L0 = 13 + tier * 1.5;
+  c.fillStyle = BHC.chit[1];
+  c.beginPath(); c.moveTo(-6, 0); c.quadraticCurveTo(4, -9 - open * 6, L0, -3 - open * 4); c.lineTo(L0 - 3, 0); c.closePath(); c.fill(); // upper jaw
+  c.beginPath(); c.moveTo(-6, 0); c.quadraticCurveTo(4, 9 + open * 6, L0, 3 + open * 4); c.lineTo(L0 - 3, 0); c.closePath(); c.fill(); // lower jaw
+  c.fillStyle = `rgba(${T.glow},0.75)`; c.beginPath(); c.ellipse(3, 0, 4, 1.6 + open * 3, 0, 0, 7); c.fill(); // throat
+  c.fillStyle = BHC.bone; for (const s of [-1, 1]) for (let i = 0; i < 3; i++) { const x = 2 + i * 4; c.beginPath(); c.moveTo(x, s * (2 + open * 3)); c.lineTo(x + 1.5, s * 0.5); c.lineTo(x + 3, s * (2 + open * 3)); c.fill(); }
+  c.restore();
+}
+// Bloomspire (techlab): a tall stalk of membrane chambers where flyers grow; more chambers per tier
+const SPIREZ = [0, 74, 80, 88];
+function spireBody(c, T, tier) {
+  rootBed(c, 30, T, tier);
+  cone(c, 0, 0, 16, 6, 0, SPIREZ[tier] - 14, BHC.chit[0], BHC.chit[2], null);
+  plates(c, 0, 0, 16, 0, SPIREZ[tier] - 14, 4, 'rgba(20,10,30,0.4)');
+  const pods = [[12, -4, 22], [-12, 6, 36], [10, 8, 50], [-8, -10, 62]].slice(0, 1 + tier);
+  for (const [u, v, z] of pods) sac(c, u, v, z, 7, 'rgba(160,120,190,0.75)', T.glow, 0.25);
+  if (tier >= 3) for (const s of [-1, 1]) spike(c, s * 14, -s * 14, 6, 30, 3, s * 4, BHC.bone);
+}
+function spireLive(c, T, t, b, tier) { const [x, y] = pt(0, 0, SPIREZ[tier] - 6); glow(c, x, y, 4 + tier, T.glow, 0.3 + 0.35 * pulse(t, 0, 2)); }
+const BART_BH = {
+  hq: [hiveBody, hiveLive], refinery: [goreBody, goreLive], reactor: [pulseBody, pulseLive], habitat: [hatchBody, hatchLive],
+  barracks: [larvaBody, larvaLive], factory: [evoBody, evoLive], turret: [mawBody, mawLive], techlab: [spireBody, spireLive],
+};
+const BARTS = { lastfist: BART, bloomhost: BART_BH };
+const artOf = (fac, type) => (BARTS[fac] || BART)[type];
+const DRAW_B_BH = {};
+for (const k in BART_BH) DRAW_B_BH[k] = (c, T, t, b, tier) => { BART_BH[k][0](c, T, tier); BART_BH[k][1](c, T, t, b, tier); };
+const drawBOf = fac => fac === 'bloomhost' ? DRAW_B_BH : DRAW_B;
 function drawNodeZone(c, n, time, inView = true) { // ownership is public; progress and contest only when in view
   const w = P(n.u, 0), col = n.owner === null ? '210,195,255' : TEAM[n.owner].glow, ry = (LANE_V + 18) * DY;
   c.fillStyle = `rgba(${col},0.05)`; c.beginPath(); c.ellipse(w.x, w.y, NODE_R, ry, 0, 0, 7); c.fill();
@@ -2688,14 +2938,61 @@ function dHydra(c, T, u) { // Hydra: a smaller four-legged walker with rotary gu
   }
   c.restore();
 }
-const DRAW_U = { rifle: dRifle, heavy: dHeavy, sniper: dSniper, tank: dTank, artillery: dArt, titan: dTitan, flame: dFlame, hydra: dHydra, aircraft: dAir, interceptor: dInter, leviathan: dLev, medic: dMedic, drone: dDrone };
+// Bloomhost units (v2.17): side view facing +x, feet on y = 0, team colour as glowing eyes and glands.
+function bugLegs(c, ph, xs, hip, len, w, col) { // jointed insect legs along the body; ph = walk phase
+  c.strokeStyle = col; c.lineWidth = w; c.lineCap = 'round'; c.lineJoin = 'round';
+  xs.forEach((x, i) => { const s = Math.sin(ph + i * 2.1) * 2.2, lift = Math.max(0, Math.cos(ph + i * 2.1)) * 1.6; limb(c, x, -hip, x + 2 + s * 0.5, -hip - len * 0.35, x + 3 + s, -lift); });
+}
+function dSkitter(c, T, u) { // Skitterling: a low, fast six-legged biter
+  const ph = u.moving ? u.anim * 14 : 0, bite = u.recoil * 2.5;
+  bugLegs(c, ph + Math.PI, [-6, -1, 4], 4, 6, 1.4, BHC.chit[2]);
+  c.fillStyle = BHC.chit[1]; c.beginPath(); c.ellipse(-6, -6, 7, 4.2, -0.15, 0, 7); c.fill();         // abdomen
+  c.fillStyle = BHC.chit[0]; c.beginPath(); c.ellipse(2, -6.5, 5, 3.6, 0, 0, 7); c.fill();            // thorax
+  c.strokeStyle = 'rgba(20,10,30,0.5)'; c.lineWidth = 0.9; for (const x of [-9, -5]) { c.beginPath(); c.moveTo(x, -10); c.lineTo(x + 1, -2.6); c.stroke(); }
+  c.fillStyle = BHC.chit[1]; c.beginPath(); c.ellipse(7.5, -6, 3.4, 2.8, 0.2, 0, 7); c.fill();        // head
+  c.strokeStyle = BHC.bone; c.lineWidth = 1.3; c.lineCap = 'round';                                   // mandibles
+  c.beginPath(); c.moveTo(9.5, -7); c.quadraticCurveTo(12.5 + bite, -8.5, 13 + bite, -5.5); c.stroke();
+  c.beginPath(); c.moveTo(9.5, -5); c.quadraticCurveTo(12 + bite, -3, 12.5 + bite, -5); c.stroke();
+  c.fillStyle = T.light; c.fillRect(7.6, -7.6, 1.6, 1.2);                                              // eye
+  c.fillStyle = T.main; c.fillRect(-9, -9.6, 6, 1.2);                                                  // gland stripe
+  bugLegs(c, ph, [-5, 0, 5], 4, 6, 1.6, BHC.chit[2]);
+}
+function dBulwark(c, T, u) { // Bulwark: a heavy plated crawler with a bony brow, built to take hits
+  const ph = u.moving ? u.anim * 6 : 0, ram = u.recoil * 2.5;
+  bugLegs(c, ph + Math.PI, [-12, -2, 8], 8, 9, 3, BHC.chit[2]);
+  c.fillStyle = BHC.flesh[2]; c.beginPath(); c.ellipse(-2, -9, 18, 7, 0, 0, 7); c.fill();             // underbelly
+  c.fillStyle = BHC.chit[1]; c.beginPath(); c.moveTo(-20, -8); c.bezierCurveTo(-18, -26, 10, -28, 16, -12); c.lineTo(14, -6); c.lineTo(-18, -5); c.closePath(); c.fill(); // carapace
+  c.strokeStyle = BHC.chit[0]; c.lineWidth = 2;                                                         // plate ridges
+  for (const x of [-12, -4, 4]) { c.beginPath(); c.moveTo(x - 2, -6); c.quadraticCurveTo(x, -21, x + 5, -22); c.stroke(); }
+  c.save(); c.translate(ram, 0);
+  c.fillStyle = BHC.chit[0]; c.beginPath(); c.moveTo(12, -18); c.quadraticCurveTo(24, -16, 24, -8); c.lineTo(20, -4); c.lineTo(12, -6); c.closePath(); c.fill(); // brow shield
+  c.fillStyle = BHC.bone; c.beginPath(); c.moveTo(22, -9); c.lineTo(28, -6); c.lineTo(21, -5); c.closePath(); c.fill(); // tusk
+  c.fillStyle = T.light; c.fillRect(17, -12, 2.2, 1.6);                                                // eye
+  c.restore();
+  c.fillStyle = T.main; c.fillRect(-14, -14, 16, 1.4);                                                 // gland stripe
+  bugLegs(c, ph, [-10, 0, 10], 8, 9, 3.4, BHC.chit[2]);
+}
+function dRazor(c, T, u) { // Razorwing: a sleek flyer with membrane wings and a hooked tail
+  const fl = Math.sin(u.anim * 16), dive = u.recoil * 3;
+  c.fillStyle = 'rgba(150,110,180,0.55)';                                                              // far wing
+  c.beginPath(); c.moveTo(-2, -2); c.quadraticCurveTo(-8, -14 - fl * 6, -16, -10 - fl * 8); c.quadraticCurveTo(-10, -4, -2, 0); c.fill();
+  c.fillStyle = BHC.chit[1]; c.beginPath(); c.moveTo(18 + dive, 1); c.quadraticCurveTo(8, -5, -10, -2); c.quadraticCurveTo(-18, 0, -24, 5); c.quadraticCurveTo(-12, 4, 0, 4); c.quadraticCurveTo(10, 5, 18 + dive, 1); c.fill(); // body and tail
+  c.strokeStyle = BHC.bone; c.lineWidth = 1.2; c.beginPath(); c.moveTo(-24, 5); c.quadraticCurveTo(-27, 2, -25, -1); c.stroke(); // tail hook
+  c.fillStyle = BHC.bone; c.beginPath(); c.moveTo(16 + dive, 0); c.lineTo(22 + dive, 2); c.lineTo(15 + dive, 3); c.closePath(); c.fill(); // beak
+  c.fillStyle = 'rgba(180,140,210,0.7)';                                                               // near wing
+  c.beginPath(); c.moveTo(4, -1); c.quadraticCurveTo(-2, -16 + fl * 7, -14, -14 + fl * 9); c.quadraticCurveTo(-6, -5, 4, 2); c.fill();
+  c.strokeStyle = BHC.chit[0]; c.lineWidth = 0.9; c.beginPath(); c.moveTo(4, -1); c.quadraticCurveTo(-2, -16 + fl * 7, -14, -14 + fl * 9); c.stroke();
+  c.fillStyle = T.light; c.fillRect(11 + dive, -0.8, 2, 1.4);                                          // eye
+  c.fillStyle = T.main; c.fillRect(-8, 0.6, 12, 1.2);                                                  // gland stripe
+}
+const DRAW_U = { skitterling: dSkitter, bulwark: dBulwark, razorwing: dRazor, rifle: dRifle, heavy: dHeavy, sniper: dSniper, tank: dTank, artillery: dArt, titan: dTitan, flame: dFlame, hydra: dHydra, aircraft: dAir, interceptor: dInter, leviathan: dLev, medic: dMedic, drone: dDrone };
 // Drawn size where it differs from the SIM height (the Titan walker stands taller than its hitbox): health bars and shadows follow the art
 const UVIS = { titan: { h: 50, w: 17 }, hydra: { h: 42, w: 15 } };
 const visH = type => (UVIS[type] || UDEF[type]).h;
 // Sprite cache: a ground unit's pose is drawn once into a small canvas at the current zoom, then stamped with one
 // drawImage. Walk cycles are cut into a few poses; a unit mid-recoil and aircraft (few, always animating) draw live.
-const SPR_BOX = { rifle: [-9, -26, 22, 30], heavy: [-14, -33, 29, 36], sniper: [-11, -26, 31, 30], tank: [-25, -34, 55, 37], artillery: [-30, -38, 64, 41], titan: [-22, -56, 64, 62], flame: [-23, -24, 52, 27], hydra: [-22, -50, 62, 54] };
-const SPR_STEP = { rifle: [11, 8], heavy: [8, 8], sniper: [10, 8], titan: [3.2, 12], hydra: [3.6, 12] }; // [phase speed, poses per cycle]
+const SPR_BOX = { skitterling: [-14, -12, 30, 14], bulwark: [-24, -30, 55, 32], rifle: [-9, -26, 22, 30], heavy: [-14, -33, 29, 36], sniper: [-11, -26, 31, 30], tank: [-25, -34, 55, 37], artillery: [-30, -38, 64, 41], titan: [-22, -56, 64, 62], flame: [-23, -24, 52, 27], hydra: [-22, -50, 62, 54] };
+const SPR_STEP = { skitterling: [14, 6], bulwark: [6, 8], rifle: [11, 8], heavy: [8, 8], sniper: [10, 8], titan: [3.2, 12], hydra: [3.6, 12] }; // [phase speed, poses per cycle]
 const SPR = { scale: 0, map: new Map(), budget: 0 };
 function sprPose(u) { // a stand-in unit snapped to one of the cached poses, with its cache key; null = draw live
   const box = SPR_BOX[u.type];
@@ -2856,7 +3153,8 @@ function drawRidge(c, pts, p, fill, rim) {
   c.restore();
 }
 
-function drawPad(c, x, y, h, s, empty, time, selected) {
+function drawPad(c, x, y, h, s, empty, time, selected, fac) {
+  if (fac === 'bloomhost') { drawPadBH(c, x, y, h, s, empty, time, selected); return; }
   const P4 = [pt(-h, -h), pt(h, -h), pt(h, h), pt(-h, h)].map(([a, b]) => [x + a, y + b]);
   // thin slab edge, then the plate
   c.fillStyle = '#0a0f18';
@@ -2875,6 +3173,22 @@ function drawPad(c, x, y, h, s, empty, time, selected) {
   }
 }
 
+// Bloomhost pads (v2.17): a fleshy root bed in the shape of the pad, veined in the team colour; an empty one holds a
+// dormant bud that slowly pulses
+function drawPadBH(c, x, y, h, s, empty, time, selected) {
+  const P4 = [pt(-h, -h), pt(h, -h), pt(h, h), pt(-h, h)].map(([a, b]) => [x + a, y + b]);
+  c.beginPath(); c.moveTo((P4[0][0] + P4[1][0]) / 2, (P4[0][1] + P4[1][1]) / 2);
+  for (let i = 1; i <= 4; i++) { const p = P4[i % 4], q = P4[(i + 1) % 4]; c.quadraticCurveTo(p[0] + (p[0] - x) * 0.08, p[1] + (p[1] - y) * 0.08, (p[0] + q[0]) / 2, (p[1] + q[1]) / 2); }
+  c.closePath(); c.fillStyle = 'rgba(58,36,58,0.95)'; c.fill();
+  c.strokeStyle = selected ? 'rgba(255,211,77,0.9)' : `rgba(${TEAM[s].glow},0.22)`; c.lineWidth = selected ? 2 : 1; c.stroke();
+  const al = empty ? 0.35 + 0.25 * Math.sin(time * 1.6 + x * 0.02) : 0.3;
+  c.strokeStyle = `rgba(${TEAM[s].glow},${al})`; c.lineWidth = 1.1; c.lineCap = 'round';
+  for (let i = 0; i < 4; i++) { const p = P4[i]; c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + (p[0] - x) * 0.5 + 3, y + (p[1] - y) * 0.5 - 2, x + (p[0] - x) * 0.82, y + (p[1] - y) * 0.82); c.stroke(); }
+  if (empty) { // the dormant bud
+    c.fillStyle = '#4a3352'; c.beginPath(); c.ellipse(x, y - 3, 7, 5, 0, 0, 7); c.fill();
+    c.fillStyle = `rgba(${TEAM[s].glow},${al})`; c.beginPath(); c.ellipse(x, y - 4, 1.6, 3, 0, 0, 7); c.fill();
+  }
+}
 function hpColor(f) { return f > 0.6 ? '#5dff8a' : f > 0.3 ? '#ffd34d' : '#ff5a5a'; }
 function bar(c, x, y, w, f, h, lost = f) { // lost: health just lost, shown as a white chunk that drains away
   c.fillStyle = 'rgba(0,0,0,0.65)'; c.fillRect(x - w / 2 - 1, y - 1, w + 2, h + 2);
@@ -2883,36 +3197,36 @@ function bar(c, x, y, w, f, h, lost = f) { // lost: health just lost, shown as a
   c.fillStyle = hpColor(f); c.fillRect(x - w / 2, y, w * f, h);
 }
 const lostF = e => { const r = VFX.rec.get(e); return r ? r.ghost / e.maxHp : 0; };
-const bTop = b => P(b.u, b.v).y - (BDEF[b.type].half + BDEF[b.type].h) * BS;
+const bTop = b => P(b.u, b.v).y - (bdOf(b).half + bdOf(b).h) * BS;
 
 // Building cache: like unit sprites, each static body is drawn once per type, tier and team at the current zoom step,
 // then stamped with one drawImage; only the light animated parts are drawn every frame.
 const BCACHE = { scale: 0, map: new Map(), budget: 0, made: 0 };
 const bBox = type => { const d = BDEF[type], w = 2 * d.half * IX + 14; return [-w, -(d.half + d.h + 8), 2 * w, 2 * d.half + d.h + 22]; };
-function bodyCanvas(type, side, tier) {
+function bodyCanvas(type, side, tier, fac) {
   const b = 2 ** (Math.ceil(Math.log2(V.dpr * V.S * BS) * 4) / 4); // device pixels per art unit, in quarter-octave steps
   if (b !== BCACHE.scale) { BCACHE.scale = b; BCACHE.map.clear(); }
-  const key = type + side + tier;
+  const key = type + side + tier + (fac || '');
   let cv = BCACHE.map.get(key);
   if (!cv && BCACHE.budget > 0) { // a few new bodies per frame at most, so a zoom change never stalls a frame
     BCACHE.budget--; BCACHE.made++;
     const box = bBox(type);
     cv = document.createElement('canvas'); cv.width = Math.ceil(box[2] * b); cv.height = Math.ceil(box[3] * b);
     const k = cv.getContext('2d'); k.setTransform(b, 0, 0, b, -box[0] * b, -box[1] * b);
-    BART[type][0](k, TEAM[side], tier);
+    artOf(fac, type)[0](k, TEAM[side], tier);
     cv.box = box; cv.b = b;
     BCACHE.map.set(key, cv);
   }
   return cv;
 }
 function drawArt(c, b, T, t, tier) { // the cached body (drawn live until it is cached) plus the live parts
-  const art = BART[b.type], cv = bodyCanvas(b.type, b.side, tier);
+  const art = artOf(b.fac, b.type), cv = bodyCanvas(b.type, b.side, tier, b.fac);
   if (cv) c.drawImage(cv, cv.box[0], cv.box[1], cv.width / cv.b, cv.height / cv.b);
   else art[0](c, T, tier);
   art[1](c, T, t, b, tier);
 }
 function drawBuilding(c, b, time) {
-  const T = TEAM[b.side], w = P(b.u, b.v), d = BDEF[b.type];
+  const T = TEAM[b.side], w = P(b.u, b.v), d = bdOf(b);
   c.save(); c.translate(w.x, w.y); c.scale(BS, BS);
   c.fillStyle = 'rgba(0,0,0,0.28)'; c.beginPath(); c.ellipse(6, d.half * 0.35, d.half * 1.7, d.half * 0.7, 0, 0, 7); c.fill();
   const bottom = d.half + 8, top = -d.half - d.h - 12;
@@ -2928,7 +3242,7 @@ function drawBuilding(c, b, time) {
     drawArt(c, b, T, b.anim, b.tier + 1); c.restore();
     scaffold(c, b, T, b.upProg, bottom, top);
   } else drawArt(c, b, T, b.anim, b.tier);
-  if (b.path && TREES[b.type] && b.built) drawPathMark(c, b.path, T, d); // which path this building took (v2.13; ghosts remember it)
+  if (b.path && treeOf(b.fac, b.type) && b.built) drawPathMark(c, b.path, T, d); // which path this building took (v2.13; ghosts remember it)
   if (b.shielded) {
     const a = 0.3 + 0.15 * Math.sin(time * 2.5 + b.side);
     c.beginPath(); c.ellipse(0, 12, 96, 158, 0, Math.PI, Math.PI * 2); c.ellipse(0, 12, 96, 40, 0, 0, Math.PI);
@@ -2957,7 +3271,16 @@ function drawPathMark(c, path, T, d) {
   c.stroke();
 }
 function scaffold(c, b, T, prog, bottom, top) {
-  const d = BDEF[b.type], a = d.half, h = d.h;
+  const d = bdOf(b), a = d.half, h = d.h;
+  if (b.fac === 'bloomhost') { // a growing organism: a membrane cocoon and a glowing growth line instead of a frame
+    const [x, y] = pt(0, 0, h * 0.45);
+    c.strokeStyle = `rgba(${T.glow},0.45)`; c.lineWidth = 1.3; c.setLineDash([3, 5]);
+    c.beginPath(); c.ellipse(x, y, a * 1.25, h * 0.55 + a * 0.3, 0, 0, 7); c.stroke(); c.setLineDash([]);
+    const yy = bottom - (bottom - top) * prog;
+    c.strokeStyle = `rgba(${T.glow},${0.5 + 0.4 * Math.sin(b.anim * 5)})`; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(-2 * a * IX, yy); c.quadraticCurveTo(0, yy - 5, 2 * a * IX, yy); c.stroke();
+    return;
+  }
   c.strokeStyle = `rgba(${T.glow},0.55)`; c.lineWidth = 1.3; c.setLineDash([4, 4]);
   for (const [du, dv] of [[-1, -1], [-1, 1], [1, 1]]) { c.beginPath(); c.moveTo(...pt(du * a, dv * a, 0)); c.lineTo(...pt(du * a, dv * a, h)); c.stroke(); }
   poly(c, [pt(-a, -a, h), pt(a, -a, h), pt(a, a, h), pt(-a, a, h)]); c.stroke();
@@ -2969,7 +3292,19 @@ function scaffold(c, b, T, prog, bottom, top) {
 
 // Last-known enemy building: frozen (no animation, aim, shield or bars), shown under the fog tint
 function drawGhost(c, gh) {
+  if (!gh.fac) { drawUnknownBase(c, gh); return; } // never seen: where it is, not what it is (v2.17)
   drawBuilding(c, { ...gh, kind: 'b', built: true, upgrading: false, anim: 0, aim: null, queue: [], shielded: false }, 0);
+}
+// The enemy HQ before anyone has seen it: a neutral marker that gives nothing away about the enemy's faction
+function drawUnknownBase(c, gh) {
+  const w = P(gh.u, gh.v);
+  c.save(); c.translate(w.x, w.y); c.scale(BS, BS);
+  const rx = gh.half * 1.2247, ry = gh.half * 0.7071;
+  c.strokeStyle = 'rgba(200,190,230,0.35)'; c.lineWidth = 2; c.setLineDash([6, 6]);
+  c.beginPath(); c.ellipse(0, 0, rx, ry, 0, 0, 7); c.stroke();
+  c.beginPath(); c.moveTo(-rx * 0.6, -4); c.lineTo(0, -60); c.lineTo(rx * 0.6, -4); c.stroke(); c.setLineDash([]);
+  c.fillStyle = 'rgba(220,210,245,0.55)'; c.font = '700 26px -apple-system,system-ui,sans-serif'; c.textAlign = 'center'; c.fillText('?', 0, -22);
+  c.restore();
 }
 // Fog: unexplored ground is dark, explored ground dimmed, visible ground clear; soft edges; the sky stays clear
 const FOG_EXP = 0.45, FOG_DARK = 0.74, FOG_RGB = '5,8,20';
@@ -3014,6 +3349,7 @@ function drawUnit(c, u) {
   c.globalCompositeOperation = 'lighter';
   if (u.hitT > 0) { c.globalAlpha = 0.6 * Math.min(1, u.hitT / 0.12); drawUnitArt(c, u, TEAM[u.side]); } // hit: the unit itself flashes
   if (u.type === 'sniper' && u.cd > 0 && u.cd < 0.35) stamp(c, GLOW.cyan, MUZ.sniper[0], -MUZ.sniper[1], 2 + (0.35 - u.cd) * 14, 0.9); // rail charging
+  if (u.braceT > VFX.lastT) { c.globalAlpha = 0.55; c.strokeStyle = TEAM[u.side].light; c.lineWidth = 1.6; c.beginPath(); c.moveTo(-21, -7); c.bezierCurveTo(-19, -30, 12, -32, 19, -13); c.stroke(); } // a bracing Bulwark: its plates lock and glow
   c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
   c.restore();
   if (u.shT > VFX.lastT) drawShield(c, u, VFX.lastT);
@@ -3163,10 +3499,10 @@ function vfxScan(g, dt) {
 }
 const titanStep = u => Math.floor((u.anim * 3.2 - Math.PI / 2) / Math.PI);
 
-const MUZ_COL = { rifle: 'warm', gatling: 'warm', flak: 'warm', rail: 'cyan', rocket: 'fire', missile: 'fire', cannon: 'warm', siege: 'white', shell: 'fire', hqgun: null, flame: 'fire', hydra: 'warm', bomb: 'fire' };
+const MUZ_COL = { spine: null, claw: null, talon: null, slam: null, rifle: 'warm', gatling: 'warm', flak: 'warm', rail: 'cyan', rocket: 'fire', missile: 'fire', cannon: 'warm', siege: 'white', shell: 'fire', hqgun: null, flame: 'fire', hydra: 'warm', bomb: 'fire' };
 const FLAME_COL = ['#ffd27a', '#ff9a3c', '#ff5a24'];
 function onFire(g, e, lit) {
-  const gun = e.kind === 'b' ? BDEF[e.type].gun && BDEF[e.type].gun[e.tier] : UDEF[e.type];
+  const gun = e.kind === 'b' ? bdOf(e).gun && bdOf(e).gun[e.tier] : UDEF[e.type];
   if (!gun) return;
   const m = muzzle(e), w = P(m.u, m.v, m.z), wpn = gun.weapon;
   if (VFX.nshots < VFX.shots.length) { const s = VFX.shots[VFX.nshots++]; s.e = e; s.u = m.u; s.v = m.v; s.z = m.z; s.w = wpn; }
@@ -3204,6 +3540,9 @@ function onFire(g, e, lit) {
     case 'hqgun':
       vFx('flash', w.x, w.y, 14, 0.12, col, 2); vFx('ring', w.x, w.y, 4, 0.3, TEAM[e.side].main, 1, 18, 0, 2);
       break;
+    case 'spine': vFx('flash', w.x, w.y, 6, 0.07, GLOW['t' + e.side], 1); break; // the Maw spits
+    case 'claw': case 'talon': case 'slam': // a bite or a blow: a short bright snap at the jaws
+      vFx('flash', w.x + face * 3, w.y, wpn === 'slam' ? 10 : 5, 0.08, GLOW['t' + e.side], 1); break;
   }
 }
 function onShot(g, p, r, lit) { // pair a new projectile with the shot that made it, for beams and trails
@@ -3277,6 +3616,7 @@ function onDeath(g, e, lit) {
     return;
   }
   const d = UDEF[e.type];
+  if (d.fac === 'bloomhost') { for (let i = vCount(d.air ? 5 : 4); i > 0; i--) vPart(w.x, w.y - (e.z || 0) - 4, vr(-45, 45), vr(-50, -5), vr(0.5, 0.9), vr(1.4, 2.6), 2, i % 2 ? '#6e3448' : '#4a3d63', 260, 1, w.y); addDecal(w.x, w.y, d.pop >= 3 ? 14 : 7, 10); return; } // organisms burst, no wreckage
   if (d.air) { for (let i = vCount(5); i > 0; i--) vPart(w.x, w.y - e.z, vr(-50, 50), vr(-40, 10), vr(0.8, 1.4), vr(1.6, 2.8), 2, '#3e4b65', 260, 1, w.y); return; }
   if (e.type === 'titan') { // the walker goes down in stages
     for (let i = 0; i < 2; i++) vFx('boom', w.x + vr(-14, 14), w.y - vr(20, 50), 40, 0.7, null, 3, 0, 0, 1, 0.2 + i * 0.3);
@@ -3516,13 +3856,15 @@ function render(c, g, time, sel, selPad) {
   const ghosts = Object.values(F.ghosts).filter(gh => !cellsLit(F.vis, gh.u, gh.half));
 
   for (let s = 0; s < 2; s++) {
-    const hp = P(hqPos(s).u, hqPos(s).v);
-    drawPad(c, hp.x, hp.y, HQ_PAD_H, s, false, time, sel && sel.type === 'hq' && sel.side === s);
+    const fac = g.sides[s].faction, hpos = hqPos(s), hp = P(hpos.u, hpos.v);
+    // v2.17: enemy pads stay hidden until their ground has been in view (their look would give the faction away)
+    if (s === 0 || cellsLit(F.seen, hpos.u, HQ_PAD_H)) drawPad(c, hp.x, hp.y, HQ_PAD_H, s, false, time, sel && sel.type === 'hq' && sel.side === s, fac);
     for (let i = 0; i < SLOT_COUNT; i++) {
       const p = slotPos(s, i), w = P(p.u, p.v), b = g.sides[s].slots[i];
+      if (s === 1 && !cellsLit(F.seen, p.u, PAD_H)) continue;
       // enemy pads look occupied only as far as the player knows (in view, or a remembered ghost)
       const known = s === 0 ? b : (b && seen(b)) || ghosts.some(gh => gh.slot === i);
-      drawPad(c, w.x, w.y, PAD_H, s, !known, time, s === 0 && (selPad === i || (sel && sel === b)));
+      drawPad(c, w.x, w.y, PAD_H, s, !known, time, s === 0 && (selPad === i || (sel && sel === b)), fac);
     }
   }
   for (const n of g.nodes) drawNodeZone(c, n, time, lit(n.u));
@@ -3553,8 +3895,8 @@ function render(c, g, time, sel, selPad) {
   for (const p of g.projs) {
     if (p.side !== 0 && !lit(p.u)) continue;
     const a = P(p.pu, p.pv, p.pz), b = P(p.u, p.v, p.z), wp = p.weapon;
-    if (wp === 'rifle' || wp === 'flak' || wp === 'gatling' || wp === 'rail') {
-      c.strokeStyle = wp === 'rail' ? '#bff4ff' : wp === 'flak' ? '#ffe9a8' : wp === 'gatling' ? '#ffd38a' : '#fff3b0';
+    if (wp === 'rifle' || wp === 'flak' || wp === 'gatling' || wp === 'rail' || wp === 'spine') {
+      c.strokeStyle = wp === 'rail' ? '#bff4ff' : wp === 'flak' ? '#ffe9a8' : wp === 'gatling' ? '#ffd38a' : wp === 'spine' ? '#d6ff9a' : '#fff3b0';
       c.lineWidth = wp === 'rail' ? 2 : wp === 'gatling' ? 1.5 : 1.2;
       c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
       if (wp === 'rail') { c.globalCompositeOperation = 'lighter'; stamp(c, GLOW.cyan, b.x, b.y, 5, 0.9); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1; }
@@ -3684,6 +4026,10 @@ const $ = id => document.getElementById(id);
 const cv = $('cv'), ctx = cv.getContext('2d'), mm = $('mm'), mctx = mm.getContext('2d');
 let game = null, running = false, paused = false, speed = 1, last = 0, tab = 'build', endTimer = null, sel = null, selPad = -1, sellArm = 0, tapCycle = null;
 let diffKey = 'normal';
+// Match setup (v2.17): the last faction choices, remembered between visits. 'random' is picked at the start of the match.
+const FACTION_KEY = 'extinctionEvent.factions', FAC_PICKS = [...FACTION_KEYS, 'random'];
+let facPick = { me: DEFAULT_FACTION, foe: DEFAULT_FACTION };
+try { const o = JSON.parse(localStorage.getItem(FACTION_KEY) || 'null'); if (o && FAC_PICKS.includes(o.me) && FAC_PICKS.includes(o.foe)) facPick = { me: o.me, foe: o.foe }; } catch (e) {}
 try { diffKey = localStorage.getItem('colonyMobile.diff') || 'normal'; if (!DIFF[diffKey]) diffKey = 'normal'; } catch (e) {}
 groundCache = buildGroundCache();
 
@@ -3780,13 +4126,13 @@ function toast(msg, kind = '') {
   setTimeout(() => el.remove(), 2050);
 }
 
-function drawIcon(cvs, kind, type) {
+function drawIcon(cvs, kind, type, fac) {
   const dpr = Math.min(2, window.devicePixelRatio || 1), W = 56, H = 32;
   cvs.width = W * dpr; cvs.height = H * dpr;
   const c = cvs.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
   if (kind === 'b') {
     const d = BDEF[type], s = Math.min(54 / (d.half * 3.6), 31 / (d.half * 2 + d.h + 4));
-    c.translate(W / 2, H - 1 - d.half * s); c.scale(s, s); DRAW_B[type](c, TEAM[0], 1.2, null, 1);
+    c.translate(W / 2, H - 1 - d.half * s); c.scale(s, s); drawBOf(fac)[type](c, TEAM[0], 1.2, null, 1);
   } else {
     const d = UDEF[type], s = d.air ? 1.1 : Math.min(1.45, 28 / (visH(type) + 4));
     c.translate(W / 2 - (type === 'artillery' || type === 'titan' ? 3 : 0), d.air ? H / 2 : H - 2); c.scale(s, s);
@@ -3809,14 +4155,18 @@ const UNIT_TIPS = {
   drone: ['No weapon: sees 420 far, spots for Artillery (at most 3)', 'Anything that hits air'],
   flame: ['Massed infantry at close range, anyone on a node', 'Tanks, Artillery, Heavies, Titans'],
   hydra: ['Aircraft first, then infantry swarms; slowly chips buildings', 'Tanks, Titans, Artillery'],
+  skitterling: ['Lone ranged units and nodes; hits harder when several bite the same target (up to +45%)', 'Splash damage, Flame Tanks, Turrets; it can\'t hit aircraft'],
+  bulwark: ['Soaking up fire at the front; braces when hit (40% less damage for 3 s, every 12 s)', 'Heavies, Tanks; being surrounded'],
+  razorwing: ['Exposed ground units; dives from the air', 'Anything that hits air; it can\'t hit aircraft'],
 };
+const pFac = () => game ? game.sides[0].faction : DEFAULT_FACTION; // the player's faction (cards, panel and info)
 const stat = (label, val) => `<div><small>${label}</small><b>${val}</b></div>`;
 function showInfo(kind, type) {
   let name, sub, body;
   if (kind === 'u') {
     const d = UDEF[type], arm = { light: 'Light', heavy: 'Heavy', vehicle: 'Vehicle', air: 'Air' }[d.armor];
     const hits = d.hitsGround === false ? 'Air only' : d.hitsAir ? 'Ground, air' : 'Ground only';
-    name = d.name; sub = `${BDEF[d.from].name} T${d.tier}`;
+    name = d.name; sub = `${BD(d.fac, d.from).name} T${d.tier}`;
     body = `<div class="istats">${stat('HP', d.hp)}${d.weapon ? stat('Damage/s', Math.round(d.dmg / d.cd)) + stat('Range', d.range + (d.minRange ? ` (min ${d.minRange})` : '')) : d.heal ? stat('Heals', `${d.heal * 100}%/s`) + stat('Radius', d.healR) : stat('Sight', SIGHT[type]) + stat('Max', d.max)}${stat('Speed', d.speed)}
       ${stat('Armor', arm)}${stat('Shoots', hits)}${stat('Army size', d.pop)}${stat('Build time', d.time + 's')}</div>
       <div class="irow"><em>Cost</em> ${d.cost.c} credits${d.cost.e ? `, ${d.cost.e} energy` : ''}${d.splash ? ', splash damage' : ''}</div>
@@ -3829,15 +4179,18 @@ function showInfo(kind, type) {
       <div class="irow">${A.tip}</div>
       <div class="irow"><em>Shared cooldown</em> Using any ability locks all three for the used one's cooldown (Shield and Repair Pulse 50 s, Orbital Strike 100 s).</div>
       <div class="irow"><em>Available</em> ${A.first} s after GO${A.req ? `, with ${A.reqTier ? 'your' : 'a'} ${abilReqText(A)}` : ''}. Tap the button, tap the battlefield, then tap inside the circle to confirm.</div>`;
-  } else if (TREES[type]) { // a building with an upgrade tree
-    const d = BDEF[type], T = TREES[type];
-    name = d.name; sub = (d.req ? `Requires ${BDEF[d.req].name} · ` : '') + 'picks a path at T2';
+  } else if (kind === 'soon') { // a Bloomhost ability that isn't in yet (v2.17)
+    name = type; sub = 'Commander ability';
+    body = `<div class="irow">${factionName(pFac())} commander abilities are coming soon: Frenzy Bloom, Emergency Brood and Corrosive Bloom.</div>`;
+  } else if (treeOf(pFac(), type)) { // a building with an upgrade tree
+    const d = BD(pFac(), type), T = TREES[type];
+    name = d.name; sub = (d.req ? `Requires ${BD(pFac(), d.req).name} · ` : '') + 'picks a path at T2';
     body = `<div class="istats">${stat('HP', d.hp)}${stat('Build time', d.time + 's')}${stat('Credits', d.cost.c)}${stat('Energy', d.cost.e)}</div><div class="irow"><em>T1</em> ${d.tiers[1]}</div>` +
       Object.keys(T).map(k => `<div class="irow"><em>Path ${k} · ${T[k].name}</em> T2 (${d.up[2].c}/${d.up[2].e}): ${T[k].steps[2].txt}. T3 (${d.up[3].c}/${d.up[3].e}): ${T[k].steps[3].txt}.</div>`).join('') +
       `<div class="irow">Each ${d.name} picks its own path; a second one can take the other. Selling resets it.</div>`;
   } else {
-    const d = BDEF[type];
-    name = d.name; sub = d.req ? `Requires ${BDEF[d.req].name}` : '';
+    const d = BD(pFac(), type);
+    name = d.name; sub = d.req ? `Requires ${BD(pFac(), d.req).name}` : '';
     body = `<div class="istats">${stat('HP', d.hp)}${stat('Build time', d.time + 's')}${stat('Credits', d.cost.c)}${stat('Energy', d.cost.e)}</div>` +
       [1, 2, 3].map(t => `<div class="irow"><em>T${t}${t > 1 ? ` (${d.up[t].c} credits, ${d.up[t].e} energy)` : ''}</em> ${d.tiers[t]}</div>`).join('');
   }
@@ -3855,12 +4208,12 @@ function buildCards() {
   const list = tab === 'build' ? BUILD_ORDER : UNIT_ORDER.filter(t => !game || unitVisible(game, t));
   trainSig = game ? trainSigOf(game) : '';
   for (const type of list) {
-    const d = tab === 'build' ? BDEF[type] : UDEF[type];
+    const d = tab === 'build' ? BD(pFac(), type) : UDEF[type];
     const el = document.createElement('button');
     el.className = 'card'; el.dataset.type = type;
     el.innerHTML = '<canvas class="ic"></canvas><span class="nm"></span><span class="cost"></span><span class="badge"></span><span class="bar"><i></i></span>';
     el.querySelector('.nm').textContent = d.name;
-    drawIcon(el.querySelector('.ic'), tab === 'build' ? 'b' : 'u', type);
+    drawIcon(el.querySelector('.ic'), tab === 'build' ? 'b' : 'u', type, pFac());
     const kind = tab === 'build' ? 'b' : 'u';
     el.addEventListener('pointerdown', () => { if (lp) clearTimeout(lp.timer); lp = { el, fired: false, timer: setTimeout(() => { lp.fired = true; showInfo(kind, type); }, 420) }; });
     for (const n of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(n, () => { if (lp && lp.el === el) clearTimeout(lp.timer); });
@@ -3884,7 +4237,7 @@ function buildCards() {
 let trainSig = '';
 const unitVisible = (g, type) => canTrain(g, 0, type);
 const hiddenUnits = g => UNIT_ORDER.filter(t => !unitVisible(g, t));
-const trainHint = g => g.ents.some(e => e.kind === 'b' && e.side === 0 && e.type === 'barracks' && e.hp > 0) ? 'Units unlock when your Barracks is finished' : 'Build a Barracks to train units';
+const trainHint = g => { const n = BD(g.sides[0].faction, 'barracks').name; return g.ents.some(e => e.kind === 'b' && e.side === 0 && e.type === 'barracks' && e.hp > 0) ? `Units unlock when your ${n} is finished` : `Build a ${n} to train units`; };
 const trainSigOf = g => { const h = hiddenUnits(g); return h.join(',') + (h.length === UNIT_ORDER.length ? '|' + trainHint(g) : ''); };
 
 function shake(el) { el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
@@ -3994,9 +4347,30 @@ const AB_ICON = {
   repair: '<svg viewBox="0 0 24 24"><path d="M9.5 3h5v6.5H21v5h-6.5V21h-5v-6.5H3v-5h6.5z" fill="#5dff8a"/></svg>',
 };
 const AB_COL = { shield: '#39c8ff', strike: '#ff7a5c', repair: '#5dff8a' };
+// Bloomhost's three abilities come in v2.20; until then their buttons sit locked as "Soon" (v2.17)
+const AB_SOON = { frenzy: 'Frenzy Bloom', brood: 'Emergency Brood', corrosive: 'Corrosive Bloom' };
+const AB_SOON_ICON = {
+  frenzy: '<svg viewBox="0 0 24 24"><path d="M12 2c3 4 7 6 7 12a7 7 0 0 1-14 0c0-6 4-8 7-12z" fill="#ff8ad8"/></svg>',
+  brood: '<svg viewBox="0 0 24 24"><ellipse cx="12" cy="13" rx="6.5" ry="8.5" fill="#d9c7a6"/><path d="M8 9c2 2 6 2 8 0" stroke="#7a5a3a" stroke-width="1.6" fill="none"/></svg>',
+  corrosive: '<svg viewBox="0 0 24 24"><circle cx="8" cy="14" r="4" fill="#b6ff5a"/><circle cx="15" cy="10" r="5" fill="#8ad63a"/><circle cx="16" cy="17" r="3" fill="#b6ff5a"/></svg>',
+};
 let aim = null; // { k, placed, u, v, ok, msg }
 function buildAbil() {
   const box = $('abil'); box.innerHTML = '';
+  if (game && !FACTIONS[facOf(game.sides[0].faction)].abilities) { // locked placeholders (v2.17)
+    for (const k in AB_SOON) {
+      const el = document.createElement('button');
+      el.className = 'ab lock'; el.dataset.k = k; el.dataset.soon = '1'; el.style.setProperty('--ac', '#b48ad6'); el.setAttribute('aria-label', `${AB_SOON[k]}: coming soon`);
+      el.innerHTML = `<span class="ring"></span>${AB_SOON_ICON[k]}<small>Soon</small>`;
+      el.addEventListener('click', () => { if (lp && lp.el === el && lp.fired) { lp.fired = false; return; } if (!game || paused || !running) return; toast(`${AB_SOON[k]}: ${factionName(game.sides[0].faction)} commander abilities are coming soon`, 'bad'); shake(el); });
+      el.addEventListener('pointerdown', () => { if (lp) clearTimeout(lp.timer); lp = { el, fired: false, timer: setTimeout(() => { lp.fired = true; closePanel(); showInfo('soon', AB_SOON[k]); }, 420) }; });
+      for (const n of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(n, () => { if (lp && lp.el === el) clearTimeout(lp.timer); });
+      el.addEventListener('contextmenu', e => e.preventDefault());
+      el.addEventListener('animationend', () => el.classList.remove('shake'));
+      box.appendChild(el);
+    }
+    return;
+  }
   for (const k of ABIL_ORDER) {
     const el = document.createElement('button');
     el.className = 'ab'; el.dataset.k = k; el.style.setProperty('--ac', AB_COL[k]); el.setAttribute('aria-label', ABIL[k].name);
@@ -4048,6 +4422,7 @@ function refreshAbil() {
   if (!show) { if (aim) endAim(); return; }
   const s = game.sides[0];
   for (const el of box.children) {
+    if (el.dataset.soon) continue; // Bloomhost placeholders stay locked
     const k = el.dataset.k, A = ABIL[k], wait = s.ab[k] - game.t, locked = !abilUnlocked(game, 0, A);
     const cool = wait > 0, poorC = s.res.c < A.cost.c, poorE = s.res.e < A.cost.e, gate = game.countdown > 0;
     const shared = s.abK && Math.abs(s.ab[k] - s.abEnd) < 1e-6, total = shared ? ABIL[s.abK].cd : A.first; // one shared ring on all three
@@ -4083,13 +4458,13 @@ function refreshUI(force) {
     if (type === 'other') continue;
     let html, locked, poor, badge = 0, prog = 0;
     if (tab === 'build') {
-      const d = BDEF[type];
+      const d = BD(pFac(), type);
       locked = !!(d.req && !hasBuilt(game, 0, d.req));
       poor = s.res.c < d.cost.c || s.res.e < d.cost.e;
       const mine = alive(game, 0, type);
       badge = mine.length;
       for (const b of mine) if (!b.built) prog = Math.max(prog, b.progress);
-      html = locked ? `<span class="lock">Requires ${BDEF[d.req].name}</span>` : costHTML(d.cost, s.res);
+      html = locked ? `<span class="lock">Requires ${BD(pFac(), d.req).name}</span>` : costHTML(d.cost, s.res);
     } else {
       const d = UDEF[type];
       const prods = alive(game, 0, d.from).filter(b => canMake(b, type));
@@ -4142,7 +4517,7 @@ function refreshPanel() {
   $('bpUp').classList.remove('hide');
   if (!sel) return;
   if (!game || sel.hp <= 0 || !game.ents.includes(sel)) { closePanel(); return; }
-  const b = sel, d = BDEF[b.type], res = game.sides[0].res, up = $('bpUp'), sell = $('bpSell');
+  const b = sel, d = bdOf(b), res = game.sides[0].res, up = $('bpUp'), sell = $('bpSell');
   $('bpName').textContent = d.name;
   setHTML($('bpPips'), [1, 2, 3].map(i => `<i class="${i <= b.tier && b.built ? 'on' : ''}"></i>`).join(''));
   $('bpHp').textContent = `${Math.ceil(b.hp)}/${Math.round(b.maxHp)}`;
@@ -4164,6 +4539,11 @@ function refreshPanel() {
     up.disabled = true; up.textContent = 'Building…'; up.classList.remove('poor');
     return;
   }
+  if (TREES[b.type] && !treeOf(b.fac, b.type)) { // Bloomhost production stays T1 until its evolution trees arrive (v2.17)
+    $('bpNow').textContent = `T1: ${d.tiers[1]}`; setHTML($('bpNext'), '');
+    up.disabled = true; up.textContent = 'Evolution paths coming soon'; up.classList.remove('poor'); up.classList.add('soon'); $('bp').classList.add('wide'); return;
+  }
+  up.classList.remove('soon');
   const T = TREES[b.type], P = T && (b.path || b.upPath) ? T[b.path || b.upPath] : null, pick = T && b.tier === 1 && !b.upgrading;
   const tierTxt = (t, named) => P && t >= 2 ? (named ? `${P.name}: ` : '') + P.steps[t].short : d.tiers[t];
   $('bp').classList.toggle('wide', !!pick);
@@ -4190,8 +4570,9 @@ for (const el of $('bpPick').children) el.addEventListener('click', () => { if (
 $('bpX').addEventListener('click', closePanel);
 $('bpUp').addEventListener('click', () => {
   if (!sel || !game || paused) return;
-  if (TREES[sel.type] && sel.tier === 1 && !bpPath) { toast('Pick a path first: tap A or B', 'bad'); shake($('bp')); return; }
-  const r = tryUpgrade(game, 0, sel, TREES[sel.type] && sel.tier === 1 ? bpPath : undefined);
+  const T = treeOf(sel.fac, sel.type);
+  if (T && sel.tier === 1 && !bpPath) { toast('Pick a path first: tap A or B', 'bad'); shake($('bp')); return; }
+  const r = tryUpgrade(game, 0, sel, T && sel.tier === 1 ? bpPath : undefined);
   if (r.ok) bpPath = null;
   if (r.ok) toast(r.msg, 'ok'); else { toast(r.msg, 'bad'); shake($('bp')); }
   refreshUI(true);
@@ -4219,7 +4600,7 @@ function handleEvents() {
     else if (e.type === 'alert' && e.side === 0) { toast(e.hq ? 'Your HQ is under attack' : 'Your base is under attack', 'warn'); sndPlay('alarm'); }
     else if (e.type === 'over') sndPlay(e.winner === 0 ? 'victory' : 'defeat'); // a draw sounds like a defeat
     else if (e.type === 'destroyed' && e.side === 1 && !e.seen && !e.hq) continue; // happened out of sight
-    else if (e.type === 'destroyed') toast(e.side === 0 ? `${e.name} destroyed` : `Enemy ${e.name} destroyed`, e.side === 0 ? 'bad' : 'ok');
+    else if (e.type === 'destroyed') toast(e.side === 0 ? `${e.name} destroyed` : `Enemy ${e.seen ? e.name : 'HQ'} destroyed`, e.side === 0 ? 'bad' : 'ok'); // an unseen enemy HQ isn't named (v2.17: the name would tell its faction)
     else if (e.type === 'spotted' && e.side === 0) { toast('Enemy units spotted', 'warn'); sndPlay('ping'); }
     else if (e.type === 'node') { if (e.side === 0 && !e.lost) sndPlay('node'); toast(e.lost ? (e.side === 0 ? 'You lost a field node' : 'Enemy lost a field node') : (e.side === 0 ? 'Field node captured: +3 credits, +1 energy per second' : 'Enemy captured a field node'), (e.side === 0) === !e.lost ? 'ok' : 'warn'); }
     else if (e.type === 'go') showGo();
@@ -4327,6 +4708,17 @@ function hideOverlay() { $('ov').classList.add('hide'); }
 function diffSeg() {
   return `<div class="seg" id="diffSeg">${Object.keys(DIFF).map(k => `<button data-d="${k}" class="${k === diffKey ? 'on' : ''}">${DIFF[k].label}</button>`).join('')}</div>`;
 }
+function facSeg(id, who) {
+  return `<div class="seg" id="${id}">${FAC_PICKS.map(k => `<button data-f="${k}" class="${facPick[who] === k ? 'on' : ''}">${k === 'random' ? 'Random' : factionName(k)}</button>`).join('')}</div>`;
+}
+function wireFactions() {
+  for (const [id, who] of [['meSeg', 'me'], ['foeSeg', 'foe']]) for (const b of $(id).children) b.addEventListener('click', () => {
+    facPick[who] = b.dataset.f;
+    try { localStorage.setItem(FACTION_KEY, JSON.stringify(facPick)); } catch (e) {}
+    for (const x of $(id).children) x.classList.toggle('on', x === b);
+  });
+}
+const pickFaction = k => k === 'random' ? FACTION_KEYS[Math.floor(Math.random() * FACTION_KEYS.length)] : facOf(k);
 function wireSound() { $('bSound').addEventListener('click', () => { sndSet(!SND.on); $('bSound').textContent = sndLabel(); }); }
 function wireDiff() {
   for (const b of $('diffSeg').children) b.addEventListener('click', () => {
@@ -4349,15 +4741,15 @@ function showStart() {
   running = false; paused = false; game = null; closePanel(); hideInfo(); hideCountdown(); applyZoom(1);
   const sv = peekSave();
   overlay(`<span class="ver">v${VERSION}</span><h1>Extinction <span>Event</span></h1>
-    <p>Command the <b>${factionName(DEFAULT_FACTION)}</b>: grow an outpost, field an army and destroy the enemy Command HQ before it destroys yours.</p>
+    <p>Pick a side, grow an outpost, field an army and destroy the enemy HQ before it destroys yours.</p>
     <div class="how">
       <div><b>Build and upgrade</b>Tap an empty pad then a building card, or just tap a card. Tap a building to upgrade, repair or sell it. Hold any card for details.</div>
       <div><b>Control the field</b>Ground troops standing on a field node capture it for extra income. Your HQ is shielded while any other building stands.</div>
       <div><b>Command your army</b>Attack pushes forward, Hold stops everyone where they stand, Retreat pulls back to your flag. Drag sideways to look around.</div>
     </div>
-    <div class="row"><span class="lbl">Difficulty</span>${diffSeg()}</div>
+    <div class="setup"><span class="lbl">Difficulty</span>${diffSeg()}<span class="lbl">You</span>${facSeg('meSeg', 'me')}<span class="lbl">Opponent</span>${facSeg('foeSeg', 'foe')}</div>
     <div class="row">${sv ? `<button class="big" id="bResume">Resume match</button><button class="ghost" id="bPlay">New match</button><span class="lbl">${DIFF[sv.diffKey] ? DIFF[sv.diffKey].label : ''}, ${fmtTime(sv.t)} in</span>` : '<button class="big" id="bPlay">Start match</button>'}<button class="ghost" id="bSound">${sndLabel()}</button></div>`);
-  wireDiff(); wireSound();
+  wireDiff(); wireFactions(); wireSound();
   $('bPlay').addEventListener('click', startGame);
   if (sv) $('bResume').addEventListener('click', resumeGame);
 }
@@ -4366,7 +4758,7 @@ function resumeGame() {
   try { g = deserialize(localStorage.getItem(SAVE_KEY)); } catch (e) { g = null; }
   if (!g) { clearSave(); toast('That save could not be loaded', 'bad'); showStart(); return; }
   clearTimeout(endTimer); endTimer = null;
-  game = g; diffKey = g.diffKey;
+  game = g; diffKey = g.diffKey; buildAbil();
   hideCountdown(); applyZoom(1);
   resize(); closePanel(); hideInfo();
   if (typeof g.extra.camX === 'number') { cam.x = g.extra.camX; cam.vx = 0; clampCam(); } else homeCamera();
@@ -4379,7 +4771,9 @@ function resumeGame() {
 }
 function startGame() {
   clearTimeout(endTimer); endTimer = null;
-  game = newGame(diffKey, { countdown: INTRO_T + COUNTDOWN });
+  const me = pickFaction(facPick.me), foe = pickFaction(facPick.foe); // the opponent's pick is never shown during the match
+  game = newGame(diffKey, { countdown: INTRO_T + COUNTDOWN, factions: [me, foe] });
+  buildAbil();
   hideCountdown(); camTouched = false;
   resize(); introCamera(0); closePanel();
   running = true; paused = false; speed = 1; $('bSpeed').textContent = '1×';
@@ -4388,7 +4782,7 @@ function startGame() {
   hideOverlay(); buildCards(); hideInfo(); endAim();
   saveGame();
   updateIntro(); refreshUI(true);
-  toast('Start with a Barracks and a Refinery', 'ok');
+  toast(`You command ${factionName(me)}: start with a ${BD(me, 'barracks').name} and a ${BD(me, 'refinery').name}`, 'ok');
 }
 function pauseGame(restored) {
   paused = true; endAim(); saveGame();
@@ -4442,16 +4836,17 @@ const repFrom = L => L.from > 0 ? `<p class="note">Recorded from ${mmss(L.from)}
 function repSummary(g) {
   const L = g.log, T = L.tot, R = g.result || {}, sum = o => Object.values(o).reduce((a, b) => a + b, 0), sp = (t, i) => Object.values(t.spent).reduce((a, b) => a + b[i], 0);
   const units = t => { const ks = Object.keys(UDEF).filter(k => t.trained[k] || t.lost[k]); return `${sum(t.trained)} (${sum(t.lost)})${ks.length ? ': ' + ks.map(k => `${UDEF[k].name} ${t.trained[k] || 0} (${t.lost[k] || 0})`).join(', ') : ''}`; };
-  const blds = t => `${sum(t.bBuilt)} · ${t.bUp} · ${sum(t.bLost)}${sum(t.bLost) ? ` (${Object.keys(t.bLost).map(k => `${BDEF[k].name}${t.bLost[k] > 1 ? ' ×' + t.bLost[k] : ''}`).join(', ')})` : ''}${t.bSold ? ` · ${t.bSold} sold` : ''}`;
+  const blds = t => `${sum(t.bBuilt)} · ${t.bUp} · ${sum(t.bLost)}${sum(t.bLost) ? ` (${Object.keys(t.bLost).map(k => `${logBName(g, T.indexOf(t), k)}${t.bLost[k] > 1 ? ' ×' + t.bLost[k] : ''}`).join(', ')})` : ''}${t.bSold ? ` · ${t.bSold} sold` : ''}`;
   const abil = t => ABIL_ORDER.filter(k => t.ab[k][0]).map(k => k === 'strike' ? `Strike ×${t.ab.strike[0]}: ${fmtN(t.ab.strike[1])} damage, ${t.ab.strike[2]} destroyed` : k === 'shield' ? `Shield ×${t.ab.shield[0]}: ${fmtN(t.ab.shield[1])} blocked` : `Repair ×${t.ab.repair[0]}: ${fmtN(t.ab.repair[1])} HP`).join(' · ') || 'none';
   const PATHS = [0, 1].map(s => [...new Set(L.ev.filter(e => e[2] === 'U' && e[1] === s && e[6] && TREES[e[3]]).map(e => `${BDEF[e[3]].name}: ${TREES[e[3]][e[6]].name}`))].join(', ')); // from the recorded path choices
   const row = (h, f) => `<tr><th>${h}</th><td>${f(T[0])}</td><td class="e">${f(T[1])}</td></tr>`;
   const att = L.ev.filter(e => e[2] === 'G' && e[1] === 1), real = att.filter(e => !e[4]), aiLog = g.sides[1].aiLog || {};
   const behave = [`${real.length} attack${real.length === 1 ? '' : 's'}${real.length ? ` (first at ${mmss(real[0][0])})` : ''}`, `${att.length - real.length} feint${att.length - real.length === 1 ? '' : 's'}`,
-    `${T[1].bBuilt.turret || 0} Turret${T[1].bBuilt.turret === 1 ? '' : 's'} built`, ...(T[1].micro ? [`Artillery pulled back ${T[1].micro} time${T[1].micro === 1 ? '' : 's'}`] : []), aiLog.firstUpgrade != null ? `first upgrade at ${mmss(aiLog.firstUpgrade)}` : 'no upgrades'].join(' · ');
+    `${T[1].bBuilt.turret || 0} ${logBName(g, 1, 'turret')}${T[1].bBuilt.turret === 1 ? '' : 's'} built`, ...(T[1].micro ? [`Artillery pulled back ${T[1].micro} time${T[1].micro === 1 ? '' : 's'}`] : []), aiLog.firstUpgrade != null ? `first upgrade at ${mmss(aiLog.firstUpgrade)}` : 'no upgrades'].join(' · ');
   const ext = L.ev.some(e => e[2] === 'X') ? `Reached at 20:00${R.how === 'storm' || R.how === 'score' || R.how === 'draw' ? '; it decided the match' : ''}` : `Not reached (the match ended at ${mmss(g.t)})`;
   const score = R.score ? `<p class="note">Remaining strength (buildings + army): <b>you ${R.score[0].toLocaleString('en')}</b> · enemy ${R.score[1].toLocaleString('en')}${R.by !== 'score' ? ` (decided by ${R.by})` : ''}</p>` : '';
   return `${score}<table><tr><th></th><td><b>You</b></td><td class="e"><b>Enemy</b></td></tr>
+    ${row('Faction', t => factionName(g.sides[T.indexOf(t)].faction))}
     ${row('Credits earned / spent', t => `${fmtN(t.earn[0])} / ${fmtN(sp(t, 0))}${t.sold[0] ? ` (+${fmtN(t.sold[0])} from sales)` : ''}`)}
     ${row('Energy earned / spent', t => `${fmtN(t.earn[1])} / ${fmtN(sp(t, 1))}`)}
     ${row('Units built (lost)', units)}

@@ -14,7 +14,7 @@ test('every side has a faction, Last Fist by default; it survives save and resum
   const g = sim.newGame('normal');
   assert.deepStrictEqual([...g.sides.map(s => s.faction)], ['lastfist', 'lastfist']);
   const o = JSON.parse(sim.serialize(g, {}));
-  assert.strictEqual(o.v, 16);
+  assert.strictEqual(o.v, sim.SAVE_VER);
   assert.deepStrictEqual(o.sides.map(s => s.faction), ['lastfist', 'lastfist']);
   assert.deepStrictEqual([...sim.deserialize(JSON.stringify(o)).sides.map(s => s.faction)], ['lastfist', 'lastfist']);
 });
@@ -27,7 +27,7 @@ test('a v15 save (no faction) loads as Last Fist vs Last Fist', () => {
   assert.ok(g2, 'v15 save loads');
   assert.deepStrictEqual([...g2.sides.map(s => s.faction)], ['lastfist', 'lastfist']);
   for (let i = 0; i < 30 * 10; i++) sim.update(g2, 1 / 30); // and keeps playing
-  assert.strictEqual(JSON.parse(sim.serialize(g2, {})).v, 16);
+  assert.strictEqual(JSON.parse(sim.serialize(g2, {})).v, sim.SAVE_VER);
 });
 
 test('the match log names both factions', () => {
