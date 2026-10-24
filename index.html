@@ -189,8 +189,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .card .bar i{display:block;height:100%;width:0;background:var(--blue)}
 .card .path{position:absolute;left:4px;top:3px;font-size:9px;font-weight:800;letter-spacing:.04em;color:#ffd34d;pointer-events:none}
 .card .path.pr:empty{display:none}
-.card.other{border-style:dashed;justify-content:center}
-.card.other .oc{font-size:18px;font-weight:900;color:var(--muted)}
+.trainHint{align-self:center;padding:0 14px;color:var(--muted);font-size:13px;font-weight:600;white-space:nowrap} /* empty Train tab (v2.16) */
 .card.locked{opacity:.5}
 .card.poor .nm{color:var(--muted)}
 .shake{animation:shake .3s}
@@ -310,7 +309,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.15.1'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.16'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -345,6 +344,10 @@ const DIFF = {
 // Seconds of "GET READY" at match start. The world is frozen and the clock (g.t) starts at GO.
 const COUNTDOWN = 3;
 
+// Factions (v2.16): each side plays one. Last Fist is the only one so far; more slot in here later.
+const FACTIONS = { lastfist: { name: 'Last Fist' } }, DEFAULT_FACTION = 'lastfist';
+const factionName = k => (FACTIONS[k] || FACTIONS[DEFAULT_FACTION]).name;
+
 const HPMUL = [1, 1, 1.25, 1.5];
 const BDEF = {
   hq: { name: 'Command HQ', cost: { c: 0, e: 0 }, hp: 2800, half: 44, h: 104, time: 1,
@@ -372,7 +375,7 @@ const BDEF = {
   factory: { name: 'War Factory', cost: { c: 300, e: 50 }, hp: 820, half: 36, h: 50, time: 20, req: 'barracks',
     up: [null, null, { c: 200, e: 100, time: 18 }, { c: 350, e: 200, time: 24 }],
     tiers: [null, 'Builds Tanks', 'Unlocks Artillery', 'Unlocks Titans'] },
-  techlab: { name: 'Tech Lab', cost: { c: 350, e: 150 }, hp: 700, half: 30, h: 96, time: 26, req: 'factory',
+  techlab: { name: 'Tech Lab', cost: { c: 350, e: 150 }, hp: 700, half: 30, h: 96, time: 26, req: 'barracks', // v2.16: a Barracks is enough
     up: [null, null, { c: 250, e: 150, time: 20 }, { c: 400, e: 300, time: 28 }],
     tiers: [null, 'Builds Gunships', 'Unlocks Interceptors', 'Nanoweave: your units and defenses deal 20% more damage and take 15% less'] },
   turret: { name: 'Turret', cost: { c: 200, e: 50 }, hp: 900, half: 26, h: 46, time: 12,
@@ -439,7 +442,7 @@ const DMG = {
   flame:   { light: 1.7, heavy: 1.1,  vehicle: 0.35, air: 0,    building: 0.6 }, // the Flame Tank: no lingering burn
   hydra:   { light: 1.0, heavy: 0.8,  vehicle: 0.5,  air: 1.5,  building: 0.3 }, // helps a push, can't take a base alone
   bomb:    { light: 0.6, heavy: 0.8,  vehicle: 1.0,  air: 0,    building: 2.0 }, // the Leviathan: a base-wrecker
-  orbital: { light: 1.0, heavy: 1.0,  vehicle: 1.0,  air: 0,    building: 1.0 }, // commander ability: ground only
+  orbital: { light: 1.0, heavy: 1.0,  vehicle: 1.0,  air: 1.0,  building: 1.0 }, // commander ability: every unit (v2.16) and buildings
 };
 const PSPEED = { rifle: 1100, rocket: 430, hqgun: 430, rail: 1700, cannon: 820, siege: 700, missile: 470, flak: 950, gatling: 1200, hydra: 1200, bomb: 260 };
 const MUZ = { rifle: [10, 13], heavy: [12, 27], sniper: [17, 14], tank: [27, 18], artillery: [28, 31], titan: [38, 27], flame: [26, 12], hydra: [30, 33], aircraft: [16, -5], interceptor: [20, 0], leviathan: [0, -10] };
@@ -508,7 +511,7 @@ function aiAbility(g, s, P, ctx) {
   if (spare('shield')) opts.push(['shield', aiShieldTarget(g, s, kind, lvl, seen, ctx)]);
   if (spare('repair')) opts.push(['repair', aiRepairTarget(g, s, kind, lvl, ctx)]);
   // The Aggressor saves the cooldown for a Strike on known defences while it builds up to a push; only a fight it is losing gets a Shield
-  const hold = kind === 'aggressor' && lvl > 0 && !ctx.threat && aiFortified(g, s) && hasBuilt(g, s, 'factory') && ctx.myV >= 300;
+  const hold = kind === 'aggressor' && lvl > 0 && !ctx.threat && aiFortified(g, s) && abilUnlocked(g, s, ABIL.strike) && ctx.myV >= 300;
   let best = null, bv = 0;
   for (const [k, t] of opts) {
     if (!t) continue;
@@ -526,7 +529,7 @@ function aiAbility(g, s, P, ctx) {
 }
 function aiStrikeTarget(g, s, kind, lvl, seen, ctx) {
   const A = ABIL.strike, f = g.fog[s], side = g.sides[s], front = g.front[s], home = hqU(s);
-  const ground = seen.filter(e => e.kind === 'u' && !UDEF[e.type].air);
+  const ground = seen.filter(e => e.kind === 'u'); // v2.16: the Strike hits aircraft too
   const known = Object.values(f.ghosts).filter(gh => gh.side !== s && !(gh.type === 'hq' && f.lastHQ.shielded));
   const hit = (d, hp) => Math.min(1, (A.dmg - (A.dmg - A.edge) * Math.min(1, d / A.r)) / hp);
   const pts = ground.map(e => ({ u: e.u, v: e.v })).concat(known.map(gh => ({ u: gh.u, v: gh.v, b: gh })));
@@ -624,7 +627,7 @@ function newGame(diffKey, opts = {}) {
     diff: DIFF[diffKey] || DIFF.normal, diffKey, events: [], auto: !!opts.autoPlayer, autoDiff: opts.autoDiff || 'normal', shake: 0, front: [null, null], countdown: opts.countdown || 0,
     nodes: NODE_U.map((u, i) => ({ id: i, u, v: 0, prog: 0, owner: null, c: [0, 0] })), log: null, forcePath: opts.forcePath || null };
   for (let s = 0; s < 2; s++) {
-    g.sides.push({ res: { c: 300, e: 60 }, stance: s === 0 ? 'hold' : 'retreat', stanceAt: 0, pushTo: null, slots: new Array(SLOT_COUNT).fill(null),
+    g.sides.push({ faction: (opts.factions && opts.factions[s]) || DEFAULT_FACTION, res: { c: 300, e: 60 }, stance: s === 0 ? 'hold' : 'retreat', stanceAt: 0, pushTo: null, slots: new Array(SLOT_COUNT).fill(null),
       hq: null, aiT: 1 + s * 0.5, stats: { built: 0, kills: 0, lost: 0, earned: 0 }, lastAlert: -99, buff: false, ab: newAb(0), abK: null, abEnd: 0, orders: newOrders(), sel: null });
     const hq = mkBuilding(g, s, 'hq', -1);
     hq.built = true; hq.progress = 1; hq.hp = hq.maxHp;
@@ -1210,12 +1213,15 @@ function fire(g, src, t, def) {
 const ABIL = {
   shield: { name: 'Emergency Shield', cost: { c: 75, e: 75 }, cd: 50, first: 60, r: 110, dur: 7, cut: 0.4,
     tip: 'Your units inside the circle take 40% less damage for 7 s. The shield moves with them and never stacks.' },
-  strike: { name: 'Orbital Strike', cost: { c: 150, e: 150 }, cd: 100, first: 120, r: 70, delay: 3, dmg: 280, edge: 140, req: 'factory',
-    tip: 'After a 3 s warning: 280 damage at the centre, 140 at the edge, to enemy ground units and buildings. Not aircraft or a shielded HQ. Target any explored ground.' },
+  strike: { name: 'Orbital Strike', cost: { c: 150, e: 150 }, cd: 100, first: 120, r: 70, delay: 3, dmg: 280, edge: 140, req: 'hq', reqTier: 2, // v2.16: HQ T2, hits aircraft too
+    tip: 'After a 3 s warning: 280 damage at the centre, 140 at the edge, to every enemy unit (infantry, vehicles and aircraft) and building. Not a shielded HQ. Target any explored ground.' },
   repair: { name: 'Repair Pulse', cost: { c: 100, e: 75 }, cd: 50, first: 60, r: 120, dur: 6, rate: 0.06,
     tip: 'Your units and finished buildings inside the circle regain 6% of their HP per second for 6 s. Where paid Repair is also running, the faster one applies.' },
 };
 const ABIL_ORDER = ['shield', 'strike', 'repair'];
+// An ability's unlock: a finished building, at a tier for reqTier (the Orbital Strike needs HQ T2)
+const abilUnlocked = (g, s, A) => !A.req || (A.reqTier ? g.ents.some(b => b.kind === 'b' && b.side === s && b.type === A.req && b.built && b.hp > 0 && b.tier >= A.reqTier) : hasBuilt(g, s, A.req));
+const abilReqText = A => `${BDEF[A.req].name}${A.reqTier ? ' T' + A.reqTier : ''}`;
 const newAb = t0 => ({ shield: t0 + ABIL.shield.first, strike: t0 + ABIL.strike.first, repair: t0 + ABIL.repair.first });
 const inAbil = (e, u, v, r) => { const du = e.u - u, dv = e.v - v, R = r + (e.kind === 'b' ? e.half : 0); return du * du + dv * dv <= R * R; };
 // Can side s use ability k on (u, v) now? Without a target, only the cost, cooldown and unlock are checked.
@@ -1223,7 +1229,7 @@ function abilityCheck(g, s, k, u, v) {
   const A = ABIL[k], side = g.sides[s];
   if (!A || g.over) return { ok: false, msg: 'The match is over' };
   if (g.countdown > 0) return WAIT_GO;
-  if (A.req && !hasBuilt(g, s, A.req)) return { ok: false, msg: `${A.name} needs a ${BDEF[A.req].name}` };
+  if (!abilUnlocked(g, s, A)) return { ok: false, msg: `${A.name} needs ${A.reqTier ? 'your' : 'a'} ${abilReqText(A)}` };
   const wait = side.ab[k] - g.t;
   if (wait > 0) return { ok: false, msg: side.abK && Math.abs(side.ab[k] - side.abEnd) < 1e-6 ? `Shared cooldown: abilities ready in ${Math.ceil(wait)} s` : `${A.name} is ready in ${Math.ceil(wait)} s` };
   if (side.res.c < A.cost.c) return { ok: false, msg: `Need ${Math.ceil(A.cost.c - side.res.c)} more credits` };
@@ -1272,7 +1278,7 @@ function updateAbilities(g, dt) {
       a.done = true;
       const A = ABIL.strike;
       for (const e of g.ents) {
-        if (e.side === a.side || e.hp <= 0 || (e.kind === 'u' && UDEF[e.type].air)) continue;
+        if (e.side === a.side || e.hp <= 0) continue; // v2.16: aircraft too
         const d = Math.max(0, Math.hypot(e.u - a.u, e.v - a.v) - (e.kind === 'b' ? e.half : 0));
         if (d <= A.r) { const h0 = e.hp; damage(g, e, A.dmg - (A.dmg - A.edge) * d / A.r, 'orbital', a.side); logEffect(g, a.side, 'strike', h0 - Math.max(0, e.hp), e.hp <= 0 ? 1 : 0); }
       }
@@ -1511,7 +1517,7 @@ function aiUpdate(g, s, dt) {
   if (cap < POP_MAX && used >= cap - 3 && !constructing.some(b => b.type === 'habitat') && freePad) want = 'habitat';
   else if (side.spotsRush && infantryRush && countB(g, s, 'turret') < (armyValue(near) > 800 ? 2 : 1)) { want = 'turret'; wantPad = side.slots[4] ? -1 : 4; } // front pad
   else if (calm && hasBuilt(g, s, 'barracks') && countB(g, s, 'factory') < 1) want = 'factory'; // the Tank counter to an infantry rush
-  else if (P.kind === 'aggressor' && D !== DIFF.easy && !threat && hasBuilt(g, s, 'barracks') && countB(g, s, 'factory') < 1 && aiFortified(g, s)) want = 'factory'; // a fortified enemy: the Orbital Strike needs a War Factory
+  else if (P.kind === 'aggressor' && D !== DIFF.easy && !threat && hasBuilt(g, s, 'barracks') && countB(g, s, 'factory') < 1 && aiFortified(g, s)) want = 'factory'; // a fortified enemy: Tanks to crack it (HQ T2 for the Orbital Strike, below)
   else if (D.eco && !defend && side.res.e > ENERGY_PLENTY * 2 && side.res.c < 300 && countB(g, s, 'refinery') < 4 &&
     (countB(g, s, 'habitat') > 0 || side.slots.filter(x => !x).length >= 2)) want = 'refinery'; // turn spare energy into credits (leaving room for a Habitat)
   else if (D.eco && side.res.e < 120 && side.res.c > 800 && countB(g, s, 'reactor') < 3 &&
@@ -1525,6 +1531,11 @@ function aiUpdate(g, s, dt) {
       need[t] = (need[t] || 0) + 1;
       if (countB(g, s, t) < need[t]) { want = t; planIdx = plan.indexOf(t); if (t === 'turret' && !side.slots[4]) wantPad = 4; break; }
     }
+  }
+  // A fortified enemy: the Aggressor gets HQ T2 at once, which unlocks the Orbital Strike (until v2.16 it built a War Factory)
+  if (P.kind === 'aggressor' && D !== DIFF.easy && !threat && side.hq.tier < 2 && !side.hq.upgrading && aiFortified(g, s)) {
+    const r = tryUpgrade(g, s, side.hq);
+    if (!r.ok) { const up = BDEF.hq.up[2]; reserve.c = Math.max(reserve.c, up.c); reserve.e = Math.max(reserve.e, up.e); }
   }
   // No Habitat and no free pad: the army is stuck at the HQ's 12. Sell a spare Reactor or extra Refinery to make room.
   if (!freePad && countB(g, s, 'habitat') === 0 && cap < POP_MAX && D.eco) {
@@ -1574,7 +1585,7 @@ function aiUpdate(g, s, dt) {
   }
 
   // The Aggressor's answer to a fortified enemy: keep enough back for an Orbital Strike on its known defences
-  if (P.kind === 'aggressor' && D !== DIFF.easy && !threat && hasBuilt(g, s, 'factory') && side.ab.strike - g.t < 15 && aiFortified(g, s) && (side.stance === 'attack' || side.ab.strike > g.t)) {
+  if (P.kind === 'aggressor' && D !== DIFF.easy && !threat && abilUnlocked(g, s, ABIL.strike) && side.ab.strike - g.t < 15 && aiFortified(g, s) && (side.stance === 'attack' || side.ab.strike > g.t)) {
     reserve.c = Math.max(reserve.c, ABIL.strike.cost.c); reserve.e = Math.max(reserve.e, ABIL.strike.cost.e);
   }
   // 3) Army: counter what the opponent fields, bring siege guns against a turtle
@@ -1798,7 +1809,7 @@ const logSpend = (g, s, kind, c, e) => { if (g.log) { const a = g.log.tot[s].spe
 
 /* ---------- Save and resume ---------- */
 // v6 adds fog of war; v7 the AI's personality (kept on its side record); v10 the shared ability cooldown; v11 the match log; v12 group orders, the selection and Regroup flags; v13 upgrade-tree paths; v14 War Factory paths. Older saves are migrated.
-const SAVE_VER = 15, SAVE_OK = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+const SAVE_VER = 16, SAVE_OK = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
 function serialize(g, extra) {
   const live = g.ents.filter(e => e.hp > 0);
   for (const sd of g.sides) if (sd.hq.hp <= 0 && !live.includes(sd.hq)) live.push(sd.hq); // a fallen HQ inside the storm's 5 s end window
@@ -1837,6 +1848,7 @@ function deserialize(str) {
   g.abil = o.abil || [];
   g.endHold = o.endHold || null; // the 5-second end window of a storm match (v9)
   for (const sd of g.sides) { if (!sd.orders) sd.orders = newOrders(); if (sd.sel === undefined) sd.sel = null; } // v12: older saves start with no group orders
+  for (const sd of g.sides) if (!FACTIONS[sd.faction]) sd.faction = DEFAULT_FACTION; // v16: older saves are Last Fist vs Last Fist
   for (const e of g.ents) { // v13: before upgrade trees, a T2 or T3 building is on path A (it keeps what it had: Heavies, Snipers)
     if (e.kind === 'u') { if (e.vet === undefined) e.vet = 0; if (e.aimAir === undefined) e.aimAir = 0; if (e.medAt === undefined) e.medAt = -1; continue; }
     if (e.path === undefined) { e.path = TREES[e.type] && e.tier >= 2 ? 'A' : null; e.upPath = TREES[e.type] && e.upgrading && e.tier === 1 ? 'A' : null; }
@@ -1972,6 +1984,7 @@ function logText(g, meta) {
   const sum = o => Object.values(o).reduce((a, b) => a + b, 0);
   lines.push(`Extinction Event v${meta.version} · ${meta.diff} · vs ${meta.persona}`);
   lines.push(`Result: ${meta.result} · ${mmss(g.t)}`);
+  lines.push(`Factions: you ${factionName(g.sides[0].faction)}, enemy ${factionName(g.sides[1].faction)}`);
   if (L.from > 0) lines.push(`Recorded from ${mmss(L.from)} (resumed from an older save); earlier events are not included.`);
   for (const s of [0, 1]) { lines.push(`${s ? 'Enemy' : 'You'}: ${res(s)}`); lines.push(`  Units built ${sum(T[s].trained)}, lost ${sum(T[s].lost)}: ${units(T[s].trained, T[s].lost)}`); }
   lines.push('TIMELINE');
@@ -3815,11 +3828,7 @@ function showInfo(kind, type) {
     body = `<div class="istats">${stat('Credits', A.cost.c)}${stat('Energy', A.cost.e)}${stat('Cooldown', A.cd + 's')}${stat('Radius', A.r)}</div>
       <div class="irow">${A.tip}</div>
       <div class="irow"><em>Shared cooldown</em> Using any ability locks all three for the used one's cooldown (Shield and Repair Pulse 50 s, Orbital Strike 100 s).</div>
-      <div class="irow"><em>Available</em> ${A.first} s after GO${A.req ? `, with a ${BDEF[A.req].name}` : ''}. Tap the button, tap the battlefield, then tap inside the circle to confirm.</div>`;
-  } else if (kind === 'o') { // the Train tab's "Other paths" card
-    const hid = type.split(',');
-    name = 'Other paths'; sub = 'Units none of your buildings can make on its path';
-    body = hid.map(t => { const q = UNIT_PATH[t]; return `<div class="irow"><em>${UDEF[t].name}</em> ${BDEF[q.b].name} on ${TREES[q.b][q.p].name} (T${UDEF[t].tier}). Build another ${BDEF[q.b].name} and choose ${TREES[q.b][q.p].name}, or sell one and rebuild it.</div>`; }).join('');
+      <div class="irow"><em>Available</em> ${A.first} s after GO${A.req ? `, with ${A.reqTier ? 'your' : 'a'} ${abilReqText(A)}` : ''}. Tap the button, tap the battlefield, then tap inside the circle to confirm.</div>`;
   } else if (TREES[type]) { // a building with an upgrade tree
     const d = BDEF[type], T = TREES[type];
     name = d.name; sub = (d.req ? `Requires ${BDEF[d.req].name} · ` : '') + 'picks a path at T2';
@@ -3844,7 +3853,7 @@ function buildCards() {
   wrap.classList.toggle('army', tab === 'army');
   if (tab === 'army') { buildArmy(); return; }
   const list = tab === 'build' ? BUILD_ORDER : UNIT_ORDER.filter(t => !game || unitVisible(game, t));
-  trainSig = game ? hiddenUnits(game).join(',') : '';
+  trainSig = game ? trainSigOf(game) : '';
   for (const type of list) {
     const d = tab === 'build' ? BDEF[type] : UDEF[type];
     const el = document.createElement('button');
@@ -3862,24 +3871,21 @@ function buildCards() {
     if (tab === 'train' && type === 'rifle') el.insertAdjacentHTML('beforeend', '<span class="path pr"></span>');
     wrap.appendChild(el);
   }
-  const hid = tab === 'train' && game ? hiddenUnits(game) : [];
-  if (hid.length) { // units on paths none of your buildings has: one card that explains where they come from
-    const el = document.createElement('button');
-    el.className = 'card other'; el.dataset.type = 'other';
-    el.innerHTML = `<span class="oc">+${hid.length}</span><span class="nm">Other paths</span><span class="cost"><span class="lock">${hid.map(t => UDEF[t].name).join(', ')}</span></span>`;
-    el.addEventListener('click', () => showInfo('o', hid.join(',')));
+  if (tab === 'train' && game && !list.length) { // nothing to train yet: one line that says what unlocks it
+    const el = document.createElement('div');
+    el.className = 'trainHint'; el.dataset.type = 'other';
+    el.textContent = trainHint(game);
     wrap.appendChild(el);
   }
   refreshUI(true);
 }
-// Train tab (v2.13): a unit a path unlocks shows while one of your buildings has, or can still choose, that path
+// Train tab (v2.16): only units you can train now (a finished building, its tier and its chosen path). Units you can't
+// afford still show, greyed out. The tab rebuilds when that set changes.
 let trainSig = '';
-function unitVisible(g, type) {
-  const q = UNIT_PATH[type]; if (!q) return true;
-  const own = g.ents.filter(e => e.kind === 'b' && e.side === 0 && e.type === q.b && e.hp > 0);
-  return !own.length || own.some(e => (e.path || e.upPath || null) === null ? e.tier === 1 : (e.path || e.upPath) === q.p);
-}
+const unitVisible = (g, type) => canTrain(g, 0, type);
 const hiddenUnits = g => UNIT_ORDER.filter(t => !unitVisible(g, t));
+const trainHint = g => g.ents.some(e => e.kind === 'b' && e.side === 0 && e.type === 'barracks' && e.hp > 0) ? 'Units unlock when your Barracks is finished' : 'Build a Barracks to train units';
+const trainSigOf = g => { const h = hiddenUnits(g); return h.join(',') + (h.length === UNIT_ORDER.length ? '|' + trainHint(g) : ''); };
 
 function shake(el) { el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
 function onCard(type, el) {
@@ -4042,7 +4048,7 @@ function refreshAbil() {
   if (!show) { if (aim) endAim(); return; }
   const s = game.sides[0];
   for (const el of box.children) {
-    const k = el.dataset.k, A = ABIL[k], wait = s.ab[k] - game.t, locked = !!(A.req && !hasBuilt(game, 0, A.req));
+    const k = el.dataset.k, A = ABIL[k], wait = s.ab[k] - game.t, locked = !abilUnlocked(game, 0, A);
     const cool = wait > 0, poorC = s.res.c < A.cost.c, poorE = s.res.e < A.cost.e, gate = game.countdown > 0;
     const shared = s.abK && Math.abs(s.ab[k] - s.abEnd) < 1e-6, total = shared ? ABIL[s.abK].cd : A.first; // one shared ring on all three
     el.classList.toggle('lock', locked); el.classList.toggle('cool', !locked && cool); el.classList.toggle('wait', gate);
@@ -4051,8 +4057,8 @@ function refreshAbil() {
     el.classList.toggle('on', !!aim && aim.k === k);
     el.classList.toggle('src', !locked && cool && shared && s.abK === k);
     el.style.setProperty('--p', cool ? clamp(wait / total, 0, 1).toFixed(3) : 0);
-    setHTML(el.querySelector('small'), locked ? 'Factory' : cool ? fmtCd(wait) : `<span class="${poorC ? 'no' : ''}">${A.cost.c}</span>·<span class="${poorE ? 'no' : 'e'}">${A.cost.e}</span>`);
-    el.setAttribute('aria-label', `${A.name}: ${locked ? `needs a ${BDEF[A.req].name}` : cool ? `ready in ${Math.ceil(wait)} seconds${shared ? ` (shared cooldown from ${ABIL[s.abK].name})` : ''}` : `${A.cost.c} credits, ${A.cost.e} energy`}`);
+    setHTML(el.querySelector('small'), locked ? (A.req === 'hq' ? `HQ T${A.reqTier}` : BDEF[A.req].name.split(' ').pop()) : cool ? fmtCd(wait) : `<span class="${poorC ? 'no' : ''}">${A.cost.c}</span>·<span class="${poorE ? 'no' : 'e'}">${A.cost.e}</span>`);
+    el.setAttribute('aria-label', `${A.name}: ${locked ? `needs ${A.reqTier ? 'your' : 'a'} ${abilReqText(A)}` : cool ? `ready in ${Math.ceil(wait)} seconds${shared ? ` (shared cooldown from ${ABIL[s.abK].name})` : ''}` : `${A.cost.c} credits, ${A.cost.e} energy`}`);
   }
 }
 function refreshUI(force) {
@@ -4071,7 +4077,7 @@ function refreshUI(force) {
   $('resP').classList.toggle('full', used >= cap);
   for (const b of $('stance').children) b.classList.toggle('on', b.dataset.s === s.stance);
   if (tab === 'army') refreshArmy();
-  else if (tab === 'train' && hiddenUnits(game).join(',') !== trainSig) { buildCards(); return; } // a path was chosen or lost
+  else if (tab === 'train' && trainSigOf(game) !== trainSig) { buildCards(); return; } // what you can train changed
   else for (const el of $('cards').children) {
     const type = el.dataset.type;
     if (type === 'other') continue;
@@ -4343,7 +4349,7 @@ function showStart() {
   running = false; paused = false; game = null; closePanel(); hideInfo(); hideCountdown(); applyZoom(1);
   const sv = peekSave();
   overlay(`<span class="ver">v${VERSION}</span><h1>Extinction <span>Event</span></h1>
-    <p>Grow an outpost, field an army and destroy the enemy Command HQ before it destroys yours.</p>
+    <p>Command the <b>${factionName(DEFAULT_FACTION)}</b>: grow an outpost, field an army and destroy the enemy Command HQ before it destroys yours.</p>
     <div class="how">
       <div><b>Build and upgrade</b>Tap an empty pad then a building card, or just tap a card. Tap a building to upgrade, repair or sell it. Hold any card for details.</div>
       <div><b>Control the field</b>Ground troops standing on a field node capture it for extra income. Your HQ is shielded while any other building stands.</div>
@@ -4412,7 +4418,7 @@ function showEnd() {
   const persona = PERSONA_NAME[(g.sides[1].persona || {}).kind] || 'an unknown commander';
   closePanel(); repTab = 'Summary';
   overlay(`<div class="top"><h1 class="${win ? 'win' : 'lose'}">${title}</h1><div class="seg rtabs" id="repTabs">${REP_TABS.map(t => `<button data-t="${t}">${t}</button>`).join('')}</div></div>
-    <p class="sub">${line} <b>${fmtTime(g.t)}</b> · ${(DIFF[g.diffKey] || DIFF.normal).label} · You faced <b>${persona}</b></p>
+    <p class="sub">${line} <b>${fmtTime(g.t)}</b> · ${(DIFF[g.diffKey] || DIFF.normal).label} · You faced <b>${persona}</b> · ${factionName(g.sides[0].faction)} vs ${factionName(g.sides[1].faction)}</p>
     <div class="pane" id="repPane"></div>
     <div class="foot"><button class="big" id="bAgain">Play again</button><button class="ghost" id="bMenu2">Main menu</button><span style="flex:1"></span>${diffSeg()}</div>`);
   $('box').classList.add('rep');

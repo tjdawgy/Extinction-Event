@@ -25,7 +25,7 @@ test('tabs: Build, Train (the old Army tab) and Army; the Army tab lists only ow
   await page.click('#bPlay'); await page.waitForTimeout(300);
   assert.deepStrictEqual(await page.$$eval('.tabs button', b => b.map(x => x.textContent)), ['Build', 'Train', 'Army']);
   await page.click('.tabs [data-tab="train"]');
-  assert.ok((await page.$$eval('#cards .card', c => c.map(x => x.dataset.type))).includes('rifle'), 'Train has the unit cards');
+  assert.match(await page.textContent('#cards .trainHint'), /Build a Barracks to train units/, 'Train: nothing to train yet (v2.16), one-line hint');
   await page.click('.tabs [data-tab="army"]');
   assert.match(await page.textContent('#asel'), /No units yet/);
   await page.evaluate(SETUP);

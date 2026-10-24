@@ -12,7 +12,7 @@ const SETUP = () => {
     running = true; paused = true; camTouched = true;
     for (const s of [0, 1]) { game.sides[s].aiT = 1e9; game.sides[s].stance = 'hold'; game.sides[s].res.c = game.sides[s].res.e = 3000; }
     game.t = 200; for (const s of [0, 1]) game.sides[s].ab = { shield: 0, strike: 0, repair: 0 };
-    for (const k of ['barracks', 'factory', 'refinery']) { tryBuild(game, 0, k); for (const b of game.ents) if (b.type === k) { b.built = true; b.progress = 1; } }
+    for (const k of ['barracks', 'factory', 'refinery']) { tryBuild(game, 0, k); for (const b of game.ents) if (b.type === k) { b.built = true; b.progress = 1; } } for (const s of game.sides) s.hq.tier = 2; // the Strike unlocks with HQ T2 (v2.16)
     const hold = (e, u, v) => { e.holdU = u; e.holdV = v; e.cd = 1e6; return e; };
     for (let i = 0; i < 12; i++) { const e = hold(spawnUnit(game, 0, i < 7 ? 'rifle' : i < 10 ? 'tank' : 'heavy', 560 + (i % 6) * 18, (Math.floor(i / 6) - 0.5) * 60), 0, 0); e.holdU = e.u; e.holdV = e.v; e.hp *= 0.55; }
     for (let i = 0; i < 8; i++) { const e = hold(spawnUnit(game, 1, i < 5 ? 'rifle' : 'tank', 800 + (i % 4) * 16, (Math.floor(i / 4) - 0.5) * 60), 0, 0); e.holdU = e.u; e.holdV = e.v; }

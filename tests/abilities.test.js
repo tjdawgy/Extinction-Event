@@ -13,7 +13,7 @@ function quiet(t = 130) {
   return g;
 }
 const hold = (e, u, v) => { e.holdU = u; e.holdV = v; e.cd = 1e6; return e; }; // units stay put and hold fire
-const factory = g => { for (const k of ['barracks', 'factory']) { sim.tryBuild(g, 0, k); for (const b of g.ents) if (b.type === k) { b.built = true; b.progress = 1; } } };
+const hqT2 = (g, s = 0) => { g.sides[s].hq.tier = 2; }; // v2.16: the Orbital Strike unlocks with HQ T2
 const seeAll = g => { for (const f of g.fog) { f.vis.fill(1); f.exp.fill(1); } };
 const ready = (g, s = 0) => { for (const k of ['shield', 'strike', 'repair']) g.sides[s].ab[k] = 0; }; // skip the (shared) cooldown
 
@@ -29,7 +29,11 @@ test('cost, cooldown, unlock, countdown and resources are enforced', () => {
   assert.match(sim.abilityCheck(g, 0, 'shield').msg, /Need 65 more energy/);
   g.sides[0].res.e = 500;
   assert.ok(sim.abilityCheck(g, 0, 'shield').ok);
-  assert.match(sim.abilityCheck(g, 0, 'strike').msg, /needs a War Factory/);
+  assert.match(sim.abilityCheck(g, 0, 'strike').msg, /needs your Command HQ T2/);
+  for (const k of ['barracks', 'factory']) { sim.tryBuild(g, 0, k); for (const b of g.ents) if (b.type === k) { b.built = true; b.progress = 1; } }
+  assert.match(sim.abilityCheck(g, 0, 'strike').msg, /needs your Command HQ T2/, 'a War Factory no longer unlocks it');
+  g.sides[0].hq.tier = 2; assert.match(sim.abilityCheck(g, 0, 'strike').msg, /Orbital Strike is ready in/, 'HQ T2 unlocks it (its own 2:00 unlock time still applies)');
+  g.sides[0].hq.tier = 1; g.sides[0].res.c = g.sides[0].res.e = 500;
   const r = sim.useAbility(g, 0, 'shield', 400, 0);
   assert.ok(r.ok, r.msg);
   assert.strictEqual(g.sides[0].res.c, 425); assert.strictEqual(g.sides[0].res.e, 425);
@@ -40,7 +44,7 @@ test('targeting: Shield and Repair only on ground in view; Orbital Strike on exp
   const g = quiet();
   assert.match(sim.useAbility(g, 0, 'shield', 1000, 0).msg, /needs ground you can see/);
   assert.match(sim.useAbility(g, 0, 'repair', 1000, 0).msg, /needs ground you can see/);
-  factory(g); g.sides[0].res.c = g.sides[0].res.e = 5000;
+  hqT2(g); g.sides[0].res.c = g.sides[0].res.e = 5000;
   assert.match(sim.useAbility(g, 0, 'strike', 1000, 0).msg, /explored ground/);
   g.fog[0].exp[sim.cellOf(1000)] = 1; // explored but not in view: allowed
   assert.ok(sim.useAbility(g, 0, 'strike', 1000, 0).ok);
@@ -66,7 +70,7 @@ test('Emergency Shield: 40% less damage for 7 s, follows the unit, never extende
 });
 
 test('one shared cooldown: any ability locks all three for its own cooldown (Shield and Repair 50 s, Strike 100 s); unlock times still apply', () => {
-  const g = quiet(); seeAll(g); factory(g); g.sides[0].res.c = g.sides[0].res.e = 5000;
+  const g = quiet(); seeAll(g); hqT2(g); g.sides[0].res.c = g.sides[0].res.e = 5000;
   assert.deepStrictEqual([sim.ABIL.shield.cd, sim.ABIL.repair.cd, sim.ABIL.strike.cd], [50, 50, 100]);
   assert.ok(sim.useAbility(g, 0, 'shield', 400, 0).ok);
   for (const k of ['shield', 'strike', 'repair']) assert.match(sim.abilityCheck(g, 0, k).msg, /Shared cooldown: abilities ready in 50 s/, k);
@@ -79,13 +83,13 @@ test('one shared cooldown: any ability locks all three for its own cooldown (Shi
   step(g, 1.1);
   assert.ok(sim.abilityCheck(g, 0, 'repair').ok);
   // before 2:00 a Shield doesn't unlock the Strike early: each ability's own unlock time still holds
-  const g2 = sim.newGame('normal'); g2.sides[0].aiT = g2.sides[1].aiT = 1e9; g2.t = 61; g2.sides[0].res.c = g2.sides[0].res.e = 5000; factory(g2); sim.updateVision(g2);
+  const g2 = sim.newGame('normal'); g2.sides[0].aiT = g2.sides[1].aiT = 1e9; g2.t = 61; g2.sides[0].res.c = g2.sides[0].res.e = 5000; hqT2(g2); sim.updateVision(g2);
   assert.ok(sim.useAbility(g2, 0, 'shield', 300, 0).ok);
   assert.strictEqual(g2.sides[0].ab.strike, 120); assert.strictEqual(g2.sides[0].ab.repair, 111);
 });
 
 test('a v9 save (separate cooldowns) migrates: the longest cooldown still running locks all three; no free use', () => {
-  const g = quiet(300); seeAll(g); factory(g); g.sides[0].res.c = g.sides[0].res.e = 5000;
+  const g = quiet(300); seeAll(g); hqT2(g); g.sides[0].res.c = g.sides[0].res.e = 5000;
   const o = JSON.parse(sim.serialize(g, {})); o.v = 9;
   for (const sd of o.sides) { delete sd.abK; delete sd.abEnd; }
   o.sides[0].ab = { shield: 330, strike: 380, repair: 0 }; // shield and strike used earlier, repair ready
@@ -100,11 +104,11 @@ test('a v9 save (separate cooldowns) migrates: the longest cooldown still runnin
   assert.deepStrictEqual(['shield', 'strike', 'repair'].map(k => g3.sides[0].ab[k]), [60, 120, 60]);
 });
 
-test('Orbital Strike: 3 s warning, 280 at the centre to 140 at the edge, ground only, enemies only, shielded HQ immune', () => {
+test('Orbital Strike: 3 s warning, 280 at the centre to 140 at the edge, every enemy unit (aircraft too), enemies only, shielded HQ immune', () => {
   const g = quiet(); seeAll(g);
-  factory(g); g.sides[0].res.c = g.sides[0].res.e = 5000;
+  hqT2(g); g.sides[0].res.c = g.sides[0].res.e = 5000;
   const c = hold(sim.spawnUnit(g, 1, 'titan', 1000, 0), 1000, 0), e = hold(sim.spawnUnit(g, 1, 'titan', 1060, 0), 1060, 0);
-  const air = hold(sim.spawnUnit(g, 1, 'aircraft', 1000, 0), 1000, 0), mine = hold(sim.spawnUnit(g, 0, 'titan', 1000, 20), 1000, 20);
+  const air = hold(sim.spawnUnit(g, 1, 'aircraft', 1000, 0), 1000, 0); air.hp = air.maxHp = 1000; const mine = hold(sim.spawnUnit(g, 0, 'titan', 1000, 20), 1000, 20);
   const hp = [c.hp, e.hp, air.hp, mine.hp];
   assert.ok(sim.useAbility(g, 0, 'strike', 1000, 0).ok);
   step(g, 2.9);
@@ -113,7 +117,10 @@ test('Orbital Strike: 3 s warning, 280 at the centre to 140 at the edge, ground 
   const dc = hp[0] - c.hp, de = hp[1] - e.hp;
   assert.ok(Math.abs(dc - 280) < 1, `centre ${dc}`);
   assert.ok(de > 140 && de < 190, `near the edge ${de}`);
-  assert.strictEqual(air.hp, hp[2], 'aircraft are not hit');
+  assert.ok(Math.abs(hp[2] - air.hp - 280) < 1, `aircraft are hit too (v2.16): ${hp[2] - air.hp}`);
+  const inf = hold(sim.spawnUnit(g, 1, 'heavy', 1000, 0), 1000, 0); inf.hp = inf.maxHp = 1000; const lev = hold(sim.spawnUnit(g, 1, 'leviathan', 1000, 0), 1000, 0), ih = [inf.hp, lev.hp];
+  ready(g); assert.ok(sim.useAbility(g, 0, 'strike', 1000, 0).ok); step(g, 3.1);
+  assert.ok(Math.abs(ih[0] - inf.hp - 280) < 1 && Math.abs(ih[1] - lev.hp - 280) < 1, `infantry ${ih[0] - inf.hp}, Leviathan ${ih[1] - lev.hp}`);
   assert.strictEqual(mine.hp, hp[3], 'own units are not hit');
   // the enemy HQ is shielded while its other buildings stand
   ready(g); g.sides[1].res.c = 1e4; sim.tryBuild(g, 1, 'refinery'); for (const b of g.ents) if (b.type === 'refinery') { b.built = true; b.progress = 1; } step(g, 0.1);
@@ -146,7 +153,7 @@ test('Repair Pulse: 6%/s for 6 s on units and finished buildings; paid Repair is
 
 test('save and resume mid-cooldown and mid-effect; a v7 save starts each ability on its first cooldown', () => {
   const g = quiet(); seeAll(g);
-  factory(g); g.sides[0].res.c = g.sides[0].res.e = 5000;
+  hqT2(g); g.sides[0].res.c = g.sides[0].res.e = 5000;
   const u = hold(sim.spawnUnit(g, 0, 'tank', 400, 0), 400, 0), foe = hold(sim.spawnUnit(g, 1, 'titan', 1000, 0), 1000, 0);
   sim.useAbility(g, 0, 'shield', 400, 0); ready(g); sim.useAbility(g, 0, 'strike', 1000, 0);
   step(g, 1);

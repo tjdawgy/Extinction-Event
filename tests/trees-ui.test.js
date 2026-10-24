@@ -1,5 +1,5 @@
 // Upgrade trees in headless Chromium (v2.13): the path picker (tap a path, then confirm), the panel clear of the top bar
-// and the ability buttons at both phone sizes, and the Train tab (path tags, Mass ×2, the "Other paths" card).
+// and the ability buttons at both phone sizes, and the Train tab (v2.16: only trainable units, path tags, Mass ×2).
 const test = require('node:test');
 const assert = require('node:assert');
 const { findPlaywright, PHONE, NARROW, openPage } = require('./browser-kit');
@@ -59,27 +59,36 @@ for (const dev of [PHONE, NARROW]) {
   });
 }
 
-test('Train tab: path tags and Mass ×2; units no building of yours can make go under "Other paths", which explains them', { skip }, async () => {
+test('Train tab (v2.16): only units you can train now; unaffordable ones stay, greyed out; a hint when nothing is trainable', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
   await page.click('#bPlay'); await page.waitForTimeout(300);
-  await page.evaluate(SETUP);
+  await page.evaluate(() => { game.countdown = 0; hideCountdown(); updateIntro(); for (const s of game.sides) { s.aiT = 1e9; s.res.c = s.res.e = 5000; } refreshUI(true); });
   await page.click('.tabs [data-tab="train"]');
   const types = () => page.$$eval('#cards .card', c => c.map(x => x.dataset.type));
-  assert.ok((await types()).includes('heavy') && !(await types()).includes('other'), 'undecided Barracks: Heavy still on offer');
+  const hint = () => page.$eval('#cards', w => (w.querySelector('.trainHint') || {}).textContent || '');
+  assert.deepStrictEqual(await types(), []); assert.strictEqual(await hint(), 'Build a Barracks to train units');
+  await page.evaluate(() => { tryBuild(game, 0, 'barracks'); refreshUI(false); });
+  assert.deepStrictEqual(await types(), []); assert.strictEqual(await hint(), 'Units unlock when your Barracks is finished');
+  await page.evaluate(() => { for (const b of game.ents) if (b.type === 'barracks') { b.built = true; b.progress = 1; } refreshUI(false); });
+  assert.deepStrictEqual(await types(), ['rifle'], 'T1 Barracks: Riflemen only (no Heavy before a path, no vehicles without a War Factory)');
+  assert.strictEqual(await hint(), '');
   await page.evaluate(() => { for (const b of game.ents.filter(e => e.type === 'barracks')) { tryUpgrade(game, 0, b, 'B'); b.upProg = 0.9999; } update(game, 0.2); refreshUI(false); });
-  const t = await types();
-  assert.ok(!t.includes('heavy') && !t.includes('sniper') && t.at(-1) === 'other', JSON.stringify(t));
-  assert.match(await page.textContent('#cards .card.other'), /Other paths.*Heavy, Sniper/);
+  assert.deepStrictEqual(await types(), ['rifle'], 'Mass Deployment: no Heavy or Sniper');
   assert.match(await page.textContent('#cards .card[data-type="rifle"] .pr'), /MASS ×2/);
-  await page.click('#cards .card.other');
-  assert.match(await page.textContent('#info'), /Heavy.*Barracks on Specialists/);
-  await page.evaluate(() => { hideInfo(); const b = game.ents.find(e => e.type === 'barracks'); trySell(game, 0, b); update(game, 1 / 30); tryBuild(game, 0, 'barracks', b.slot); for (const x of game.ents) if (x.type === 'barracks') { x.built = true; x.progress = 1; } refreshUI(false); });
-  assert.ok((await types()).includes('heavy'), 'a new undecided Barracks brings them back');
+  assert.match(await page.textContent('#cards .card[data-type="rifle"] .path'), /MASS/);
+  await page.evaluate(() => { tryBuild(game, 0, 'barracks'); const b = game.ents.filter(e => e.type === 'barracks').at(-1); b.built = true; b.progress = 1; tryUpgrade(game, 0, b, 'A'); b.upProg = 0.9999; update(game, 0.2); refreshUI(false); });
+  assert.deepStrictEqual(await types(), ['rifle', 'heavy'], 'a second Barracks on Specialists T2 adds Heavies');
+  assert.match(await page.textContent('#cards .card[data-type="heavy"] .path'), /SPEC/);
+  await page.evaluate(() => { game.sides[0].res.c = 0; refreshUI(false); });
+  assert.deepStrictEqual(await types(), ['rifle', 'heavy'], 'the list does not jump when credits run out');
+  assert.deepStrictEqual(await page.$$eval('#cards .card', c => c.map(x => x.classList.contains('poor'))), [true, true], 'greyed out');
+  await page.evaluate(() => { for (const b of game.ents.filter(e => e.type === 'barracks')) { trySell(game, 0, b); } update(game, 1 / 30); refreshUI(false); });
+  assert.deepStrictEqual(await types(), []); assert.strictEqual(await hint(), 'Build a Barracks to train units');
   assert.deepStrictEqual(errors, []);
   await page.close();
 });
 
-test('War Factory (v2.14): Siege or Assault in the picker; Assault puts Flame Tank on the Train tab and Artillery under "Other paths"', { skip }, async () => {
+test('War Factory (v2.14): Siege or Assault in the picker; Assault puts Flame Tank on the Train tab, Artillery and Titans stay hidden', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
   await page.click('#bPlay'); await page.waitForTimeout(300);
   await page.evaluate(SETUP);
@@ -90,25 +99,23 @@ test('War Factory (v2.14): Siege or Assault in the picker; Assault puts Flame Ta
   await page.evaluate(() => { sel.upProg = 0.9999; update(game, 0.2); closePanel(); });
   await page.click('.tabs [data-tab="train"]');
   const t = await page.$$eval('#cards .card', c => c.map(x => x.dataset.type));
-  assert.ok(t.includes('flame') && t.includes('tank') && !t.includes('artillery') && !t.includes('titan') && t.at(-1) === 'other', JSON.stringify(t));
-  assert.match(await page.textContent('#cards .card.other'), /Artillery, Titan/);
+  assert.deepStrictEqual(t, ['rifle', 'tank', 'flame']);
   assert.deepStrictEqual(errors, []);
   await page.close();
 });
 
-test('Tech Lab (v2.15): Air Power or Support in the picker; Support units on the Train tab; Army tab gets a Support group', { skip }, async () => {
+test('Tech Lab (v2.15): needs only a Barracks (v2.16); Air Power or Support in the picker; Support units on the Train tab; Army tab gets a Support group', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
   await page.click('#bPlay'); await page.waitForTimeout(300);
   await page.evaluate(SETUP);
-  await page.evaluate(() => { for (const k of ['refinery', 'factory', 'techlab']) { tryBuild(game, 0, k); for (const b of game.ents) if (b.kind === 'b') { b.built = true; b.progress = 1; } } openPanel(game.ents.find(e => e.type === 'techlab')); });
+  await page.evaluate(() => { for (const k of ['refinery', 'techlab']) { tryBuild(game, 0, k); for (const b of game.ents) if (b.kind === 'b') { b.built = true; b.progress = 1; } } openPanel(game.ents.find(e => e.type === 'techlab')); });
   assert.match(await page.textContent('#bpPick [data-p="A"]'), /Air Power.*Interceptors.*Leviathans/);
   assert.match(await page.textContent('#bpPick [data-p="B"]'), /Support.*Medicopters, Recon Drones.*Nanoweave/);
   await page.click('#bpPick [data-p="B"]'); await page.click('#bpUp');
   await page.evaluate(() => { sel.upProg = 0.9999; update(game, 0.2); closePanel(); });
   await page.click('.tabs [data-tab="train"]');
   const t = await page.$$eval('#cards .card', c => c.map(x => x.dataset.type));
-  assert.ok(t.includes('medic') && t.includes('drone') && t.includes('aircraft') && !t.includes('interceptor') && !t.includes('leviathan'), JSON.stringify(t));
-  assert.match(await page.textContent('#cards .card.other'), /Interceptor, Leviathan/);
+  assert.deepStrictEqual(t, ['rifle', 'aircraft', 'medic', 'drone'], 'no War Factory: no Tanks; Support: no Interceptor or Leviathan');
   await page.evaluate(() => { spawnUnit(game, 0, 'medic', hqPos(0).u + 200, 0); spawnUnit(game, 0, 'drone', hqPos(0).u + 220, 0); spawnUnit(game, 0, 'rifle', hqPos(0).u + 200, 0); });
   await page.click('.tabs [data-tab="army"]'); await page.waitForTimeout(700);
   const k = await page.$$eval('#asel .chip', c => c.map(x => x.dataset.k));

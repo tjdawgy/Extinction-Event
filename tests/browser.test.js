@@ -438,7 +438,7 @@ test('abilities: tap, place, confirm; cancel; one shared cooldown ring; blocked 
     game.countdown = 0; hideCountdown(); game.t = 200; game.sides[0].ab = { shield: 0, strike: 0, repair: 0 };
     for (const s of game.sides) s.aiT = 1e9;
     game.sides[0].res.c = game.sides[0].res.e = 5000;
-    for (const k of ['barracks', 'factory']) { tryBuild(game, 0, k); for (const b of game.ents) if (b.type === k) { b.built = true; b.progress = 1; } } // so the Strike is unlocked too
+    game.sides[0].hq.tier = 2; // so the Strike is unlocked too (v2.16: HQ T2)
     for (let i = 0; i < 6; i++) { const e = spawnUnit(game, 0, 'rifle', 500 + i * 12, 0); e.holdU = e.u; e.holdV = 0; }
     update(game, 1 / 30); updateIntro(); cam.x = 600; clampCam(); refreshUI(true);
     const w = P(530, 0); return { x: V.cw / 2 + (w.x - cam.x) * V.S, y: V.A + (w.y - Y_BOT) * V.S };
@@ -487,7 +487,7 @@ test('abilities and the fog: an enemy strike on ground the player cannot see sho
   const r = await page.evaluate(() => {
     paused = true; game.countdown = 0; hideCountdown(); updateIntro(); game.t = 300; // play zoom, not the intro's whole-map view
     for (const s of game.sides) { s.aiT = 1e9; s.ab = { shield: 0, strike: 0, repair: 0 }; s.res.c = s.res.e = 5000; }
-    for (const k of ['barracks', 'factory']) { tryBuild(game, 1, k); for (const b of game.ents) if (b.type === k && b.side === 1) { b.built = true; b.progress = 1; } }
+    game.sides[1].hq.tier = 2; // the Strike unlocks with HQ T2 (v2.16)
     const calls = []; const sf = sfx; window.sfx = (n, x) => { calls.push(n); return sf(n, x); };
     const tt = toast; window.toast = (m, k) => { calls.push('toast:' + m); return tt(m, k); };
     const F = game.fog[0], lit = u => F.vis[cellOf(u)] === 1;

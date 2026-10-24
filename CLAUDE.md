@@ -1,10 +1,12 @@
 # Extinction Event — working rules for Claude Code
 
 ## Current state
-- Version: v2.15.1.
-- Upgrade trees done: Barracks (v2.13), War Factory (v2.14), Tech Lab (v2.15).
-- Roadmap, in order: finish all upgrade trees → new faction(s) → strategy explorer and full balance audit → AI training → campaign, multiplayer, App Store.
-- Until the audit, implementation only: no balance tuning, no tactical AI work, and no matrices or ladders unless a prompt asks for them. The only AI changes allowed are the minimum the AI needs to build and use new content. Log balance and AI findings under "Audit" in KNOWN_ISSUES.md.
+- Version: v2.16.
+- The current faction is **Last Fist**. Its upgrade trees done: Barracks (v2.13), War Factory (v2.14), Tech Lab (v2.15).
+- Roadmap, in order: finish all Last Fist upgrade trees → Bloomhost faction → third faction → strategy explorer + full balance audit + matchup testing → AI training → campaign, multiplayer, App Store.
+- Until the audit, implementation only: no balance tuning, no tactical AI work, and no matrices or ladders unless a prompt asks for them. The only AI changes allowed are the minimum the AI needs to build and use new content.
+- No balance tuning, matchup testing, or tactical AI work until all three factions are in. Log findings under Audit in KNOWN_ISSUES.md.
+- Next: Bloomhost faction, built in batches per docs/BLOOMHOST.md amendment D.
 - Workflow: each batch is a new session that starts by reading CLAUDE.md and KNOWN_ISSUES.md.
 
 ## What this is

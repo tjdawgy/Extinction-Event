@@ -39,10 +39,10 @@ async function main() {
     await snap('Assault at T3: Flame Tanks and Hydras', 'chosen');
     await page.evaluate(() => { closePanel(); document.querySelector('.tabs [data-tab="train"]').click(); });
     await snap('Train tab: Siege and Assault units, each tagged with its path', 'train');
-    await page.evaluate(() => { // sell the Siege War Factory: Artillery and Titan go under "Other paths"
+    await page.evaluate(() => { // sell the Siege War Factory: Artillery and Titan leave the Train tab (v2.16)
       const a = game.ents.find(e => e.type === 'factory' && e.side === 0 && e.path === 'A'); trySell(game, 0, a); __frames(2); refreshUI(true);
     });
-    await snap('Only Assault left: Artillery and Titan under "Other paths"', 'other-paths');
+    await snap('Only Assault left: Artillery and Titan are hidden', 'other-paths');
     await page.evaluate(() => { // Flame Tanks meet an infantry push in mid-field
       game.fog[0].exp.fill(1);
       const mid = L / 2; setStance(game, 0, 'hold'); setStance(game, 1, 'hold');

@@ -1,12 +1,12 @@
 // The SIM must not change by accident: the same seeded AI-vs-AI match must end in exactly the same state,
 // particles and screen shake included. When a rules change is intended, re-record the fingerprint
-// (node tests/determinism.test.js --print) and say so in the commit. Recorded at v2.13 (upgrade trees: Barracks paths, Mass Deployment pairs in 1.5× time, Drilled Riflemen, the AI's path choice).
+// (node tests/determinism.test.js --print) and say so in the commit. Recorded at v2.16 (the side's faction field; Tech Lab needs only a Barracks; Orbital Strike at HQ T2, hitting aircraft; the Aggressor takes HQ T2 against a fortified enemy).
 const test = require('node:test');
 const assert = require('node:assert');
 const crypto = require('crypto');
 const { loadSim } = require('./load-sim');
 
-const FINGERPRINT = '3c36acc88839bff01a7258bd2226936a89fa702dd0818eadd7ffd5b9fecedc6e';
+const FINGERPRINT = 'dd2b947eaafa098d00e33a1c19a93fb54d692129413da39c4ea92f61278edbfd';
 
 function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 
