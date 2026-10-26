@@ -119,7 +119,7 @@ test('Nanoweave description matches what it does (units and defenses)', () => {
   assert.strictEqual(sim.BDEF.techlab.tiers[3], 'Nanoweave: your units and defenses deal 20% more damage and take 15% less');
 });
 
-test('save keys stay colonyMobile.save and colonyMobile.diff (plus the separate sound key); plus the faction picks key (v2.17); save format is v18 and still reads v5–v17', () => {
+test('save keys stay colonyMobile.save and colonyMobile.diff (plus the separate sound key); plus the faction picks key (v2.17); save format is v19 and still reads v5–v18', () => {
   const html = readHtml();
   assert.match(html, /const SAVE_KEY = 'colonyMobile\.save';/);
   assert.match(html, /localStorage\.getItem\('colonyMobile\.diff'\)/);
@@ -128,11 +128,11 @@ test('save keys stay colonyMobile.save and colonyMobile.diff (plus the separate 
   assert.deepStrictEqual([...keys].sort(), ["'colonyMobile.diff'", 'FACTION_KEY', 'SAVE_KEY', 'SOUND_KEY']); // v2.4 adds the sound setting, v2.17 the faction picks
   assert.match(html, /const FACTION_KEY = 'extinctionEvent\.factions'/);
   assert.match(html, /const SOUND_KEY = 'extinctionEvent\.sound';/);
-  assert.strictEqual(sim.SAVE_VER, 18);
-  assert.deepStrictEqual([...sim.SAVE_OK], [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]);
+  assert.strictEqual(sim.SAVE_VER, 19);
+  assert.deepStrictEqual([...sim.SAVE_OK], [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]);
   const o = JSON.parse(sim.serialize(sim.newGame('easy'), {}));
-  assert.strictEqual(o.v, 18);
-  assert.deepStrictEqual(Object.keys(o).sort(), ['abil', 'creep', 'diffKey', 'endHold', 'ents', 'extra', 'fog', 'log', 'nid', 'nodes', 'projs', 'sides', 't', 'v']);
+  assert.strictEqual(o.v, 19);
+  assert.deepStrictEqual(Object.keys(o).sort(), ['abil', 'acid', 'creep', 'diffKey', 'endHold', 'ents', 'extra', 'fog', 'log', 'nid', 'nodes', 'projs', 'sides', 't', 'v']);
 });
 
 test('old or broken saves never load into a bad state', () => {

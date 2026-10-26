@@ -111,5 +111,5 @@ test('saves keep creep and the remembered enemy creep; a v17 save starts with no
   assert.deepStrictEqual(JSON.parse(JSON.stringify(g3.creep)), [[], []]);
   step(g3, 5);
   assert.ok(g3.creep[0].length && g3.creep[0].every(p => p.r > 0 && p.r <= C.grow * 5 + 1), 'grows from nothing');
-  assert.strictEqual(sim.SAVE_VER, 18);
+  assert.ok(sim.SAVE_VER >= 18);
 });

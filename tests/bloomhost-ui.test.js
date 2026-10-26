@@ -28,7 +28,7 @@ for (const dev of [NARROW, PHONE]) {
   });
 }
 
-test('a match as Bloomhost: names and cards, Train after a Larva Pit, production upgrades locked, abilities "Soon"', { skip }, async () => {
+test('a match as Bloomhost: names and cards, Train after a Larva Pit, Larva Pit path picker, Bloomspire locked, abilities "Soon"', { skip }, async () => {
   const { page, errors } = await openPage(browser, NARROW);
   await page.click('#meSeg [data-f="bloomhost"]'); await page.click('#foeSeg [data-f="lastfist"]');
   await page.click('#bPlay'); await page.waitForTimeout(300);
@@ -51,7 +51,13 @@ test('a match as Bloomhost: names and cards, Train after a Larva Pit, production
   assert.ok(await page.evaluate(() => game.ents.some(e => e.type === 'barracks' && e.queue.includes('skitterling'))));
   await page.evaluate(() => openPanel(game.ents.find(e => e.type === 'barracks')));
   const up = await page.evaluate(() => ({ name: $('bpName').textContent, txt: $('bpUp').textContent, dis: $('bpUp').disabled, pick: $('bpPick').classList.contains('hide') }));
-  assert.deepStrictEqual(up, { name: 'Larva Pit', txt: 'Evolution paths coming soon', dis: true, pick: true });
+  assert.deepStrictEqual({ name: up.name, pick: up.pick }, { name: 'Larva Pit', pick: false }, 'v2.19: the Larva Pit picks a path');
+  assert.match(await page.textContent('#bpPick [data-p="A"]'), /Predatory Evolution.*Leapers.*Ravagers/);
+  assert.match(await page.textContent('#bpPick [data-p="B"]'), /Acidic Evolution.*Spitters.*Bilecasters/);
+  await page.evaluate(() => { tryBuild(game, 0, 'techlab'); for (const b of game.ents) if (b.type === 'techlab') { b.built = true; b.progress = 1; } openPanel(game.ents.find(e => e.type === 'techlab')); });
+  const sp = await page.evaluate(() => ({ name: $('bpName').textContent, txt: $('bpUp').textContent, dis: $('bpUp').disabled, pick: $('bpPick').classList.contains('hide') }));
+  assert.deepStrictEqual(sp, { name: 'Bloomspire', txt: 'Evolution paths coming soon', dis: true, pick: true });
+  await page.evaluate(() => openPanel(game.ents.find(e => e.type === 'barracks')));
   await page.evaluate(() => { for (let i = 0; i < 30 * 20; i++) update(game, 1 / 30); render(ctx, game, game.t, sel, selPad); refreshUI(true); });
   assert.ok(await page.evaluate(() => game.ents.some(e => e.type === 'skitterling' && e.side === 0)), 'a Skitterling hatched');
   // v2.18: Bloomhost units appear in the Army tab's groups and types
@@ -60,6 +66,11 @@ test('a match as Bloomhost: names and cards, Train after a Larva Pit, production
   const chips = await page.$$eval('#asel .chip', c => c.map(x => x.dataset.k));
   for (const k of ['g:inf', 'g:arm', 'g:air', 't:skitterling', 't:bulwark', 't:razorwing']) assert.ok(chips.includes(k), `${k} in ${chips}`);
   assert.doesNotMatch(await page.textContent('#asel'), /undefined/);
+  // v2.19: every unit of both factions has a sprite, an info card, a group and a name (catches a unit missing anywhere)
+  const missing = await page.evaluate(() => Object.keys(UDEF).filter(t => !DRAW_U[t] || !UNIT_TIPS[t] || !GROUP_OF[t] || !PLURAL[t] || !SIGHT[t] || (!UDEF[t].air && !SPR_BOX[t] && UDEF[t].fac === 'bloomhost')));
+  assert.deepStrictEqual(missing, []);
+  const icons = await page.evaluate(() => { const bad = []; for (const t of Object.keys(UDEF)) { try { drawIcon(document.createElement('canvas'), 'u', t); showInfo('u', t); } catch (e) { bad.push(t + ': ' + e.message); } } hideInfo(); return bad; });
+  assert.deepStrictEqual(icons, []);
   assert.deepStrictEqual(errors, []);
   await page.close();
 });

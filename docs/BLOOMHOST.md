@@ -934,3 +934,33 @@ All numbers are in the `CREEP` constant in index.html (SIM section, next to `upd
 Model: one circular patch per source, on the existing u/v coordinates (no grid, no pathfinding). A unit is on creep when it stands inside any of its side's patches. Aircraft get nothing (they are not on the ground). Regeneration never stacks: with a faster heal running on the same unit (a Medicopter), only that one applies, and a Repair Pulse uses the faster of its own rate and the creep's. No vision bonus (deferred), no effect on enemy units, no change to the storm.
 
 Fog: the enemy's creep is remembered as last seen (like building ghosts) and drawn only on ground the player has had in view, like enemy pads. Creep grants no vision. Saves v18 store both; older saves start with no creep and grow it.
+
+=== v2.19 LARVA PIT AND EVOLUTION CHAMBER TREES (implementation record; not tuned) ===
+
+Paths (same rules as Last Fist: chosen at the T1 → T2 upgrade, locked per building, reset by selling). The base unit stays on both paths. The Bloomspire keeps "Evolution paths coming soon" until v2.21. Upgrade costs and times are the Last Fist Barracks and War Factory ones.
+
+| Building | Path A | Path B |
+|---|---|---|
+| Larva Pit | Predatory Evolution: T2 Leaper, T3 Ravager | Acidic Evolution: T2 Spitter, T3 Bilecaster |
+| Evolution Chamber | Siege Evolution: T2 Bile Lobber, T3 Ruinmaw | Predator Evolution: T2 Thornback, T3 Dreadthorn |
+
+Units (first-pass numbers set against the Last Fist unit in the same tree slot):
+
+| Unit | Slot | Cost | Supply | HP | Damage / cooldown (dps) | Range | Speed | Armor | Hits | Trait | Last Fist slot equivalent |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Leaper | Larva Pit T2, Predatory | 90/20 | 2 | 150 | 14 / 0.8 s (17.5) | 22 (melee) | 46 | light | ground | Leaps onto a target 45–140 away at 280/s, then waits 7 s | Heavy 100/25, 2, 240 HP |
+| Ravager | Larva Pit T3, Predatory | 160/50 | 3 | 340 | 30 / 1.0 s (30) | 24 (melee) | 44 | heavy | ground | Maul: 1.6× against light armor | Sniper 150/60, 2, 110 HP |
+| Spitter | Larva Pit T2, Acidic | 90/30 | 2 | 110 | 11 / 1.0 s (11) | 150 | 34 | light | air and ground | Corrosion 12% for 5 s | Heavy 100/25, 2, 240 HP |
+| Bilecaster | Larva Pit T3, Acidic | 170/70 | 3 | 160 | 26 / 2.2 s (12), splash 40 | 220 | 28 | light | ground | Corrosion 20% for 6 s, also on splash | Sniper 150/60, 2, 110 HP |
+| Bile Lobber | Evolution Chamber T2, Siege | 170/60 | 3 | 160 | 55 / 3.4 s, splash 55 | 420 (min 110) | 22 | heavy | ground, buildings | Artillery's arcing shot; needs spotters like Artillery | Artillery 175/60, 3, 150 HP |
+| Ruinmaw | Evolution Chamber T3, Siege | 400/150 | 6 | 1,300 | 70 / 2.8 s, splash 34 | 200 | 18 | vehicle | ground, buildings (1.7×) | Each hit leaves an acid pool: radius 40, 12 damage/s to enemy ground units, 4 s; at most 6 pools at once | Titan 420/160, 6, 1,500 HP |
+| Thornback | Evolution Chamber T2, Predator | 180/40 | 3 | 700 | 22 / 1.1 s (20) | 30 (melee) | 28 | heavy | ground | Melee attackers within 60 take 20% of the damage back; retaliation never retaliates | Flame Tank 190/50, 3, 520 HP |
+| Dreadthorn | Evolution Chamber T3, Predator | 380/140 | 5 | 1,350 | 34 / 1.2 s (28) | 34 (melee) | 24 | heavy | ground | A single hit of 60+ releases spines: 45 damage to enemy ground units within 80, every 15 s | Hydra 360/140, 5, 1,100 HP |
+
+Changed in v2.19 (amendment F): Razorwings and Spitters hit aircraft as well as ground. The Razorwing's talon does 0.8× to aircraft.
+
+Corrosion: a corroded unit takes 1 + corrosion times the damage. A new acid hit keeps the stronger level and the later end; levels never add up, and never pass `CORR.cap` (25%). Units only, not buildings.
+
+New weapon tables (light / heavy / vehicle / air / building): rend 1.1 / 0.9 / 0.5 / 0 / 0.5; maul 1.6 / 1.0 / 0.6 / 0 / 0.6; acid 1.0 / 0.9 / 0.8 / 1.1 / 0.4; bile 1.2 / 1.0 / 0.8 / 0 / 0.5; lob 1.1 / 1.0 / 0.75 / 0 / 1.6; ruin 0.9 / 1.1 / 1.0 / 0 / 1.7; gore 1.2 / 1.0 / 0.7 / 0 / 0.7; acid pool 1 / 1 / 1 / 0 / 0; thorns 1 / 1 / 1 / 1 / 0; spines 1.3 / 1.0 / 0.6 / 0 / 0.
+
+AI path choice, translated from each personality's Last Fist choice: Barracks Specialists → Larva Pit Acidic, Mass Deployment → Predatory; War Factory Siege → Siege Evolution, Assault → Predator Evolution.

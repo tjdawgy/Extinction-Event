@@ -315,7 +315,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.18'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.19'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -355,7 +355,7 @@ const COUNTDOWN = 3;
 // abilities: has commander abilities; trees: its production buildings pick upgrade paths (TREES).
 const FACTIONS = {
   lastfist: { name: 'Last Fist', abilities: true, trees: true },
-  bloomhost: { name: 'Bloomhost', abilities: false, trees: false }, // v2.17 framework: abilities (v2.20) and trees (v2.19, v2.21) come later
+  bloomhost: { name: 'Bloomhost', abilities: false, trees: true }, // trees: Larva Pit and Evolution Chamber (v2.19), Bloomspire later (v2.21); abilities v2.20
 }, DEFAULT_FACTION = 'lastfist', FACTION_KEYS = Object.keys(FACTIONS);
 const factionName = k => (FACTIONS[k] || FACTIONS[DEFAULT_FACTION]).name;
 const facOf = k => FACTIONS[k] ? k : DEFAULT_FACTION;
@@ -405,8 +405,8 @@ const BDEF_BH = (() => {
   re('refinery', { name: 'Goremound' });
   re('reactor', { name: 'Pulse Organ' });
   re('habitat', { name: 'Hatchery' });
-  re('barracks', { name: 'Larva Pit', tiers: [null, 'Spawns Skitterlings', 'Evolution paths coming soon', 'Evolution paths coming soon'] });
-  re('factory', { name: 'Evolution Chamber', req: 'barracks', tiers: [null, 'Grows Bulwarks', 'Evolution paths coming soon', 'Evolution paths coming soon'] });
+  re('barracks', { name: 'Larva Pit', tiers: [null, 'Spawns Skitterlings', 'Predatory or Acidic Evolution', 'Predatory or Acidic Evolution'] });
+  re('factory', { name: 'Evolution Chamber', req: 'barracks', tiers: [null, 'Grows Bulwarks', 'Siege or Predator Evolution', 'Siege or Predator Evolution'] });
   re('techlab', { name: 'Bloomspire', req: 'barracks', tiers: [null, 'Grows Razorwings', 'Evolution paths coming soon', 'Evolution paths coming soon'] });
   // The Maw: a living defence. Turret damage per second, a little more HP, a shorter reach; it spits spines at ground and air
   re('turret', { name: 'Maw', hp: 1000,
@@ -422,7 +422,7 @@ const BDEFS = { lastfist: BDEF, bloomhost: BDEF_BH };
 const BD = (fac, type) => (BDEFS[fac] || BDEF)[type];     // a faction's definition of a building role
 const bdOf = e => BD(e.fac, e.type);                        // a building's own definition
 const bdS = (g, s, type) => BD(g.sides[s].faction, type);   // side s's definition of a role
-const treeOf = (fac, type) => FACTIONS[facOf(fac)].trees ? TREES[type] : null; // the upgrade tree a faction's building of this role has
+const treeOf = (fac, type) => FACTIONS[facOf(fac)].trees ? (TREE_SETS[facOf(fac)] || TREES)[type] || null : null; // the upgrade tree a faction's building of this role has (none: locked at T1)
 const hpMul = (d, t) => (d.hpMul || HPMUL)[t];
 /* ---------- Upgrade trees (v2.13) ----------
    A production building with a tree picks a path when it upgrades to T2 (per building: a second Barracks can take
@@ -436,9 +436,18 @@ const TREES = {
   techlab:  { A: { name: 'Air Power', short: 'AIR', steps: [null, null, { unlock: ['interceptor'], short: 'Interceptors', txt: 'Unlocks Interceptors: hunt aircraft, escort your own' }, { unlock: ['leviathan'], short: 'Leviathans', txt: 'Unlocks Leviathans: heavy bombers that wreck bases' }] },
               B: { name: 'Support', short: 'SUPPORT', steps: [null, null, { unlock: ['medic', 'drone'], short: 'Medicopters, Recon Drones', txt: 'Unlocks Medicopters (heal infantry) and Recon Drones (scouts, at most 3)' }, { mod: 'nanoweave', short: 'Nanoweave', txt: 'Nanoweave: your units and defenses deal 20% more damage and take 15% less' }] } },
 };
+// Bloomhost trees (v2.19): the Larva Pit and the Evolution Chamber; the Bloomspire has none yet (stays T1)
+const TREES_BH = {
+  barracks: { A: { name: 'Predatory Evolution', short: 'HUNT', steps: [null, null, { unlock: ['leaper'], short: 'Leapers', txt: 'Unlocks Leapers: hunters that leap onto ranged units' }, { unlock: ['ravager'], short: 'Ravagers', txt: 'Unlocks Ravagers: heavy hunters that shred light armor' }] },
+              B: { name: 'Acidic Evolution', short: 'ACID', steps: [null, null, { unlock: ['spitter'], short: 'Spitters', txt: 'Unlocks Spitters: acid that hits air and ground and corrodes armor' }, { unlock: ['bilecaster'], short: 'Bilecasters', txt: 'Unlocks Bilecasters: acid splash that corrodes ground units' }] } },
+  factory:  { A: { name: 'Siege Evolution', short: 'SIEGE', steps: [null, null, { unlock: ['bilelobber'], short: 'Bile Lobbers', txt: 'Unlocks Bile Lobbers: long-range bile artillery' }, { unlock: ['ruinmaw'], short: 'Ruinmaws', txt: 'Unlocks Ruinmaws: base-breakers that leave acid pools' }] },
+              B: { name: 'Predator Evolution', short: 'BRUTE', steps: [null, null, { unlock: ['thornback'], short: 'Thornbacks', txt: 'Unlocks Thornbacks: armored brawlers that hurt melee attackers' }, { unlock: ['dreadthorn'], short: 'Dreadthorns', txt: 'Unlocks Dreadthorns: a spine burst when hit hard' }] } },
+};
+const TREE_SETS = { lastfist: TREES, bloomhost: TREES_BH };
 const DRILL = { hp: 1.35, dmg: 1.1, capture: 1.5 }, PAIR_TIME = 1.5; // a Mass Deployment pair takes 1.5× a Rifleman's training time
-const UNIT_PATH = {}; // unit type → { b: building type, p: path } for units a path unlocks
-for (const bt in TREES) for (const p in TREES[bt]) for (const st of TREES[bt][p].steps) if (st && st.unlock) for (const u of st.unlock) UNIT_PATH[u] = { b: bt, p };
+const UNIT_PATH = {}; // unit type → { b: building type, p: path, path: the path's entry } for units a path unlocks (both factions)
+for (const fac in TREE_SETS) { const S = TREE_SETS[fac]; for (const bt in S) for (const p in S[bt]) for (const st of S[bt][p].steps) if (st && st.unlock) for (const u of st.unlock) UNIT_PATH[u] = { b: bt, p, path: S[bt][p] }; }
+const prodLocked = (fac, type) => !!TREES[type] && !treeOf(fac, type); // a production building with no evolution paths yet (the Bloomspire)
 const pathMod = (b, mod) => { const T = treeOf(b.fac, b.type); if (!T || !b.path || !b.built) return false; const st = T[b.path].steps; for (let t = 2; t <= b.tier; t++) if (st[t] && st[t].mod === mod) return true; return false; };
 // Can this building train this unit now? (type, finished, tier, and the path that unlocks it)
 const canMake = (b, type) => { const d = UDEF[type], q = UNIT_PATH[type]; return b.kind === 'b' && b.type === d.from && facOf(b.fac) === (d.fac || DEFAULT_FACTION) && b.built && b.hp > 0 && b.tier >= d.tier && (!q || b.path === q.p); };
@@ -468,8 +477,25 @@ const UDEF = {
   // same target, up to +45%. Bulwark brace: the first hit after its cooldown hardens it (40% less damage for 3 s, every 12 s).
   skitterling: { name: 'Skitterling', fac: 'bloomhost', from: 'barracks', tier: 1, cost: { c: 40, e: 0 }, pop: 1, hp: 60, dmg: 6, cd: 0.5, range: 20, speed: 52, hitsAir: false, armor: 'light', weapon: 'claw', time: 3, h: 10, melee: true, chase: 150, swarm: { per: 0.15, max: 0.45 } },
   bulwark:   { name: 'Bulwark', fac: 'bloomhost', from: 'factory', tier: 1, cost: { c: 190, e: 40 }, pop: 3, hp: 760, dmg: 26, cd: 1.6, range: 34, speed: 24, hitsAir: false, armor: 'vehicle', weapon: 'slam', time: 11, h: 20, melee: true, chase: 150, brace: { cut: 0.4, dur: 3, cd: 12 } },
-  razorwing: { name: 'Razorwing', fac: 'bloomhost', from: 'techlab', tier: 1, cost: { c: 170, e: 70 }, pop: 2, hp: 170, dmg: 15, cd: 0.75, range: 50, speed: 95, hitsAir: false, armor: 'air', air: true, weapon: 'talon', time: 10, h: 10, melee: true, chase: 200 },
+  razorwing: { name: 'Razorwing', fac: 'bloomhost', from: 'techlab', tier: 1, cost: { c: 170, e: 70 }, pop: 2, hp: 170, dmg: 15, cd: 0.75, range: 50, speed: 95, hitsAir: true, armor: 'air', air: true, weapon: 'talon', time: 10, h: 10, melee: true, chase: 200 }, // v2.19: hits air too (amendment F)
+  // Bloomhost tree units (v2.19). Larva Pit, Predatory Evolution: Leaper (leap: closes up to 140 in one jump, every 7 s),
+  // Ravager (its maul does 1.6x to light armor). Acidic Evolution: Spitter (hits air and ground; corrodes), Bilecaster
+  // (ground splash, stronger corrosion). Corrosion: the target takes more damage for a few seconds; a new hit keeps the
+  // strongest level and the later end, never adding up, and never past CORR.cap.
+  leaper:    { name: 'Leaper', fac: 'bloomhost', from: 'barracks', tier: 2, cost: { c: 90, e: 20 }, pop: 2, hp: 150, dmg: 14, cd: 0.8, range: 22, speed: 46, hitsAir: false, armor: 'light', weapon: 'rend', time: 6, h: 14, melee: true, chase: 160, leap: { range: 140, min: 45, speed: 280, cd: 7 } },
+  ravager:   { name: 'Ravager', fac: 'bloomhost', from: 'barracks', tier: 3, cost: { c: 160, e: 50 }, pop: 3, hp: 340, dmg: 30, cd: 1.0, range: 24, speed: 44, hitsAir: false, armor: 'heavy', weapon: 'maul', time: 9, h: 22, melee: true, chase: 170 },
+  spitter:   { name: 'Spitter', fac: 'bloomhost', from: 'barracks', tier: 2, cost: { c: 90, e: 30 }, pop: 2, hp: 110, dmg: 11, cd: 1.0, range: 150, speed: 34, hitsAir: true, armor: 'light', weapon: 'acid', time: 6, h: 16, corrode: { amt: 0.12, dur: 5 } },
+  bilecaster: { name: 'Bilecaster', fac: 'bloomhost', from: 'barracks', tier: 3, cost: { c: 170, e: 70 }, pop: 3, hp: 160, dmg: 26, cd: 2.2, range: 220, speed: 28, hitsAir: false, armor: 'light', weapon: 'bile', time: 9, h: 20, splash: 40, corrode: { amt: 0.2, dur: 6 } },
+  // Evolution Chamber, Siege Evolution: Bile Lobber (Artillery's mechanics: arcing shot, minimum range, splash), Ruinmaw
+  // (heavy building damage; each hit leaves a short acid pool). Predator Evolution: Thornback (melee attackers take 20% of
+  // the damage back), Dreadthorn (a hit of 60+ releases a spine burst around it, every 15 s).
+  bilelobber: { name: 'Bile Lobber', fac: 'bloomhost', from: 'factory', tier: 2, cost: { c: 170, e: 60 }, pop: 3, hp: 160, dmg: 55, cd: 3.4, range: 420, minRange: 110, speed: 22, hitsAir: false, armor: 'heavy', weapon: 'lob', lob: true, time: 12, h: 20, splash: 55 },
+  ruinmaw:   { name: 'Ruinmaw', fac: 'bloomhost', from: 'factory', tier: 3, cost: { c: 400, e: 150 }, pop: 6, hp: 1300, dmg: 70, cd: 2.8, range: 200, speed: 18, hitsAir: false, armor: 'vehicle', weapon: 'ruin', time: 18, h: 28, splash: 34, acid: true },
+  thornback: { name: 'Thornback', fac: 'bloomhost', from: 'factory', tier: 2, cost: { c: 180, e: 40 }, pop: 3, hp: 700, dmg: 22, cd: 1.1, range: 30, speed: 28, hitsAir: false, armor: 'heavy', weapon: 'gore', time: 11, h: 20, melee: true, chase: 150, thorns: { frac: 0.2, range: 60 } },
+  dreadthorn: { name: 'Dreadthorn', fac: 'bloomhost', from: 'factory', tier: 3, cost: { c: 380, e: 140 }, pop: 5, hp: 1350, dmg: 34, cd: 1.2, range: 34, speed: 24, hitsAir: false, armor: 'heavy', weapon: 'gore', time: 16, h: 28, melee: true, chase: 150, burst: { trigger: 60, r: 80, dmg: 45, cd: 15 } },
 };
+const CORR = { cap: 0.25 }; // corrosion: at most +25% damage taken, however many acid hits land
+const ACID = { max: 6, r: 40, dps: 12, dur: 4 }; // Ruinmaw acid pools: at most 6 at once (the oldest goes), 12 damage/s to enemy ground units, 4 s
 
 // Damage multiplier: weapon → target armor. 0 means the weapon can't touch it.
 const DMG = {
@@ -489,18 +515,33 @@ const DMG = {
   orbital: { light: 1.0, heavy: 1.0,  vehicle: 1.0,  air: 1.0,  building: 1.0 }, // commander ability: every unit (v2.16) and buildings
   claw:    { light: 1.0, heavy: 0.7,  vehicle: 0.45, air: 0,    building: 0.5 }, // Skitterling (v2.17)
   slam:    { light: 1.1, heavy: 1.0,  vehicle: 0.8,  air: 0,    building: 0.9 }, // Bulwark
-  talon:   { light: 1.1, heavy: 0.9,  vehicle: 0.9,  air: 0,    building: 0.6 }, // Razorwing: diving strikes on the ground
+  talon:   { light: 1.1, heavy: 0.9,  vehicle: 0.9,  air: 0.8,  building: 0.6 }, // Razorwing: diving strikes; hits aircraft too (v2.19)
   spine:   { light: 1.0, heavy: 0.8,  vehicle: 0.8,  air: 1.0,  building: 0 },   // the Maw, like the Turret's gun
+  rend:    { light: 1.1, heavy: 0.9,  vehicle: 0.5,  air: 0,    building: 0.5 }, // Leaper (v2.19)
+  maul:    { light: 1.6, heavy: 1.0,  vehicle: 0.6,  air: 0,    building: 0.6 }, // Ravager: bonus against light armor
+  acid:    { light: 1.0, heavy: 0.9,  vehicle: 0.8,  air: 1.1,  building: 0.4 }, // Spitter
+  bile:    { light: 1.2, heavy: 1.0,  vehicle: 0.8,  air: 0,    building: 0.5 }, // Bilecaster
+  lob:     { light: 1.1, heavy: 1.0,  vehicle: 0.75, air: 0,    building: 1.6 }, // Bile Lobber (Artillery's table)
+  ruin:    { light: 0.9, heavy: 1.1,  vehicle: 1.0,  air: 0,    building: 1.7 }, // Ruinmaw
+  gore:    { light: 1.2, heavy: 1.0,  vehicle: 0.7,  air: 0,    building: 0.7 }, // Thornback, Dreadthorn
+  acidpool: { light: 1.0, heavy: 1.0, vehicle: 1.0,  air: 0,    building: 0 },   // the Ruinmaw's acid pools
+  thorns:  { light: 1.0, heavy: 1.0,  vehicle: 1.0,  air: 1.0,  building: 0 },   // Thornback retaliation
+  spines:  { light: 1.3, heavy: 1.0,  vehicle: 0.6,  air: 0,    building: 0 },   // Dreadthorn burst
 };
-const PSPEED = { rifle: 1100, rocket: 430, hqgun: 430, rail: 1700, cannon: 820, siege: 700, missile: 470, flak: 950, gatling: 1200, hydra: 1200, bomb: 260, spine: 1100 };
-const MUZ = { rifle: [10, 13], heavy: [12, 27], sniper: [17, 14], tank: [27, 18], artillery: [28, 31], titan: [38, 27], flame: [26, 12], hydra: [30, 33], aircraft: [16, -5], interceptor: [20, 0], leviathan: [0, -10], skitterling: [9, 5], bulwark: [17, 11], razorwing: [12, 1] };
+const PSPEED = { rifle: 1100, rocket: 430, hqgun: 430, rail: 1700, cannon: 820, siege: 700, missile: 470, flak: 950, gatling: 1200, hydra: 1200, bomb: 260, spine: 1100, acid: 520, bile: 460, ruin: 600 };
+const MUZ = { rifle: [10, 13], heavy: [12, 27], sniper: [17, 14], tank: [27, 18], artillery: [28, 31], titan: [38, 27], flame: [26, 12], hydra: [30, 33], aircraft: [16, -5], interceptor: [20, 0], leviathan: [0, -10], skitterling: [9, 5], bulwark: [17, 11], razorwing: [12, 1], leaper: [12, 7], ravager: [18, 14], spitter: [14, 15], bilecaster: [16, 20], bilelobber: [12, 26], ruinmaw: [24, 16], thornback: [18, 10], dreadthorn: [22, 14] };
 
 const BUILD_ORDER = ['refinery', 'reactor', 'habitat', 'barracks', 'turret', 'factory', 'techlab'];
-const UNIT_ORDER = ['rifle', 'heavy', 'sniper', 'tank', 'artillery', 'titan', 'flame', 'hydra', 'aircraft', 'interceptor', 'leviathan', 'medic', 'drone', 'skitterling', 'bulwark', 'razorwing'];
+const UNIT_ORDER = ['rifle', 'heavy', 'sniper', 'tank', 'artillery', 'titan', 'flame', 'hydra', 'aircraft', 'interceptor', 'leviathan', 'medic', 'drone', 'skitterling', 'leaper', 'ravager', 'spitter', 'bilecaster', 'bulwark', 'bilelobber', 'ruinmaw', 'thornback', 'dreadthorn', 'razorwing'];
 // Credits first (Refineries before tech); Reactors are skipped while energy is plentiful
 const AI_PLAN = ['barracks', 'refinery', 'refinery', 'reactor', 'habitat', 'factory', 'reactor', 'techlab']; // roles: the same plan builds either faction's base
 // Bloomhost units read the personalities' Last Fist tastes (bias) through their counterpart (v2.17)
-const AI_TWIN = { skitterling: 'rifle', bulwark: 'tank', razorwing: 'aircraft' };
+const AI_TWIN = { skitterling: 'rifle', bulwark: 'tank', razorwing: 'aircraft', leaper: 'rifle', ravager: 'sniper', spitter: 'heavy', bilecaster: 'sniper', bilelobber: 'artillery', ruinmaw: 'titan', thornback: 'flame', dreadthorn: 'hydra' };
+// The AI's path choice is made in Last Fist terms and translated (v2.19): Specialists → Acidic, Mass Deployment → Predatory;
+// Siege → Siege Evolution, Assault → Predator Evolution
+const AI_PATH_MAP = { bloomhost: { barracks: { A: 'B', B: 'A' }, factory: { A: 'A', B: 'B' } } };
+const aiPathTo = (fac, type, p) => { const m = AI_PATH_MAP[facOf(fac)]; return m && m[type] ? m[type][p] : p; };
+const aiPathFrom = (fac, type, p) => { const m = AI_PATH_MAP[facOf(fac)]; if (!m || !m[type] || !p) return p; for (const k in m[type]) if (m[type][k] === p) return k; return p; };
 const ENERGY_PLENTY = 250;
 /* ---------- AI personalities ----------
    Strategic priorities, rolled secretly at the start of each match and independent of difficulty
@@ -677,7 +718,7 @@ function newGame(diffKey, opts = {}) {
   const g = { t: 0, ents: [], projs: [], fx: [], parts: [], sides: [], abil: [], over: false, winner: -1, nid: 1,
     diff: DIFF[diffKey] || DIFF.normal, diffKey, events: [], auto: !!opts.autoPlayer, autoDiff: opts.autoDiff || 'normal', shake: 0, front: [null, null], countdown: opts.countdown || 0,
     nodes: NODE_U.map((u, i) => ({ id: i, u, v: 0, prog: 0, owner: null, c: [0, 0] })), log: null, forcePath: opts.forcePath || null,
-    creep: [[], []] }; // creep patches per side (v2.18; Bloomhost only)
+    creep: [[], []], acid: [] }; // creep patches per side (v2.18; Bloomhost only); acid: Ruinmaw pools (v2.19)
   for (let s = 0; s < 2; s++) {
     g.sides.push({ faction: (opts.factions && opts.factions[s]) || DEFAULT_FACTION, res: { c: 300, e: 60 }, stance: s === 0 ? 'hold' : 'retreat', stanceAt: 0, pushTo: null, slots: new Array(SLOT_COUNT).fill(null),
       hq: null, aiT: 1 + s * 0.5, stats: { built: 0, kills: 0, lost: 0, earned: 0 }, lastAlert: -99, buff: false, ab: newAb(0), abK: null, abEnd: 0, orders: newOrders(), sel: null });
@@ -735,7 +776,7 @@ function income(g, s) {
 }
 // Army strength for AI decisions; Interceptors count for a quarter, since they can't fight ground units or buildings
 function armyValue(list) { let v = 0; for (const u of list) { const d = UDEF[u.type]; v += (d.cost.c + d.cost.e * 1.5) * (u.w === undefined ? 1 : u.w) * (d.hitsGround === false ? 0.25 : 1); } return v; }
-const unitLockMsg = d => { if (!d) return ''; const q = UNIT_PATH[Object.keys(UDEF).find(k => UDEF[k] === d)], B = BD(d.fac, d.from); return q ? `Requires ${B.name} T${d.tier} · ${TREES[q.b][q.p].name}` : d.tier > 1 ? `Requires ${B.name} T${d.tier}` : `Requires ${B.name}`; };
+const unitLockMsg = d => { if (!d) return ''; const q = UNIT_PATH[Object.keys(UDEF).find(k => UDEF[k] === d)], B = BD(d.fac, d.from); return q ? `Requires ${B.name} T${d.tier} · ${q.path.name}` : d.tier > 1 ? `Requires ${B.name} T${d.tier}` : `Requires ${B.name}`; };
 
 function tryBuild(g, s, type, want = -1) {
   const d = bdS(g, s, type), side = g.sides[s];
@@ -782,7 +823,7 @@ function tryUpgrade(g, s, b, path) { // path: 'A' or 'B' when a building with a 
   if (!b.built) return { ok: false, msg: `${d.name} is still under construction` };
   if (b.upgrading) return { ok: false, msg: 'Upgrade already in progress' };
   if (b.tier >= 3) return { ok: false, msg: `${d.name} is fully upgraded` };
-  if (TREES[b.type] && !treeOf(b.fac, b.type)) return { ok: false, msg: `${d.name}: evolution paths coming soon` }; // Bloomhost production stays T1 for now (v2.17)
+  if (prodLocked(b.fac, b.type)) return { ok: false, msg: `${d.name}: evolution paths coming soon` }; // the Bloomspire stays T1 for now (v2.21) (v2.17)
   const T = treeOf(b.fac, b.type);
   if (T && b.tier === 1 && !T[path]) return { ok: false, msg: `Choose a path for this ${d.name}` };
   const up = d.up[b.tier + 1];
@@ -822,7 +863,7 @@ function spawnUnit(g, s, type, u, v) {
   const d = UDEF[type];
   const unit = { id: g.nid++, kind: 'u', type, side: s, u, v, z: d.air ? (type === 'interceptor' ? rand(100, 124) : type === 'leviathan' ? rand(88, 98) : type === 'drone' ? rand(104, 114) : type === 'razorwing' ? rand(56, 72) : rand(70, 94)) : 0,
     laneV: rand(-LANE_V, LANE_V), hp: d.hp, maxHp: d.hp, cd: Math.random() * 0.5, face: dirOf(s), anim: Math.random() * 10,
-    moving: false, rallyOff: -Math.random() * 100, recoil: 0, hitT: 0, shT: 0, vet: 0, aimAir: 0, medAt: -1, tgt: 0, braceT: 0, braceCd: 0, lastHurt: -99, lastAct: -99, creepAt: -1 }; // tgt: what it last attacked; braceT/braceCd: the Bulwark's brace (v2.17); lastHurt/lastAct: last damage taken/dealt, creepAt: last creep regen (v2.18) // vet: a Drilled Rifleman (v2.13); aimAir: where a Hydra's guns point (v2.14); medAt: last healed by a Medicopter (v2.15) // shT (shield until) set from the start keeps every unit the same shape for the JS engine
+    moving: false, rallyOff: -Math.random() * 100, recoil: 0, hitT: 0, shT: 0, vet: 0, aimAir: 0, medAt: -1, tgt: 0, braceT: 0, braceCd: 0, lastHurt: -99, lastAct: -99, creepAt: -1, leapCd: 0, leaping: 0, lu: 0, lv: 0, ld: 0, corr: 0, corrT: 0, burstCd: 0 }; // tgt: what it last attacked; braceT/braceCd: the Bulwark's brace (v2.17); lastHurt/lastAct: last damage taken/dealt, creepAt: last creep regen (v2.18); leap*: the Leaper's jump, corr/corrT: corrosion, burstCd: the Dreadthorn's spines (v2.19) // vet: a Drilled Rifleman (v2.13); aimAir: where a Hydra's guns point (v2.14); medAt: last healed by a Medicopter (v2.15) // shT (shield until) set from the start keeps every unit the same shape for the JS engine
   g.ents.push(unit);
   g.sides[s].stats.built++;
   return unit;
@@ -851,7 +892,7 @@ function hqStatus(g, s, viewer = s) {
    Each side sees full-depth strips of the lane around its own units, buildings and held field nodes.
    Depth counts for little in range (DV_W), so strips match how far things can actually shoot. */
 const FOG_CELL = 10, FOG_N = Math.ceil(L / FOG_CELL) + 1;
-const SIGHT = { rifle: 170, heavy: 180, sniper: 220, tank: 210, artillery: 200, titan: 240, flame: 190, hydra: 260, aircraft: 260, interceptor: 280, leviathan: 220, medic: 220, drone: 420, skitterling: 170, bulwark: 190, razorwing: 250 };
+const SIGHT = { rifle: 170, heavy: 180, sniper: 220, tank: 210, artillery: 200, titan: 240, flame: 190, hydra: 260, aircraft: 260, interceptor: 280, leviathan: 220, medic: 220, drone: 420, skitterling: 170, bulwark: 190, razorwing: 250, leaper: 180, ravager: 190, spitter: 190, bilecaster: 230, bilelobber: 200, ruinmaw: 240, thornback: 190, dreadthorn: 220 };
 const B_SIGHT = { hq: 520, turret: 340 }, B_SIGHT_DEF = 200, NODE_SIGHT = 220; // HQ 520 ≥ its T3 range (470)
 const INTEL_TTL = 45, THREAT_MEMORY = 5, SPOT_GAP = 10;
 const cellOf = u => clamp(Math.floor(u / FOG_CELL), 0, FOG_N - 1);
@@ -939,6 +980,7 @@ function update(g, dt) {
   updateProjs(g, dt);
   updateMedics(g, dt);
   updateCreep(g, dt);
+  updateAcid(g, dt);
   updateAbilities(g, dt);
   if (Math.floor(g.t * 2) !== Math.floor(t0 * 2)) updateOrders(g);
   updateStorm(g, dt, t0);
@@ -1073,11 +1115,11 @@ function acquire(g, src, def, foes) {
    overrides the global stance for the units it covers; where a group and a type order both cover a unit, the most
    recent wins (order.n counts up). A global stance clears them all. 'move' (Regroup) walks to a point, fighting what
    it meets on the way like any stance, then holds there; its flag is done once every unit it covers has arrived. */
-const UGROUPS = { inf: ['rifle', 'heavy', 'sniper', 'skitterling'], arm: ['tank', 'artillery', 'titan', 'flame', 'hydra', 'bulwark'], air: ['aircraft', 'interceptor', 'leviathan', 'razorwing'], sup: ['medic', 'drone'] }; // v2.18: Bloomhost units join the groups
+const UGROUPS = { inf: ['rifle', 'heavy', 'sniper', 'skitterling', 'leaper', 'ravager', 'spitter', 'bilecaster'], arm: ['tank', 'artillery', 'titan', 'flame', 'hydra', 'bulwark', 'bilelobber', 'ruinmaw', 'thornback', 'dreadthorn'], air: ['aircraft', 'interceptor', 'leviathan', 'razorwing'], sup: ['medic', 'drone'] }; // v2.18: Bloomhost units join the groups
 const GROUP_NAME = { inf: 'Infantry', arm: 'Armor', air: 'Air', sup: 'Support' };
 const GROUP_OF = {}; for (const k in UGROUPS) for (const t of UGROUPS[k]) GROUP_OF[t] = k;
 const ORDER_NAME = { hold: 'Hold', attack: 'Attack', retreat: 'Retreat', move: 'Regroup' };
-const PLURAL = { rifle: 'Riflemen', heavy: 'Heavies', sniper: 'Snipers', tank: 'Tanks', artillery: 'Artillery', titan: 'Titans', flame: 'Flame Tanks', hydra: 'Hydras', aircraft: 'Gunships', interceptor: 'Interceptors', leviathan: 'Leviathans', medic: 'Medicopters', drone: 'Recon Drones', skitterling: 'Skitterlings', bulwark: 'Bulwarks', razorwing: 'Razorwings' };
+const PLURAL = { rifle: 'Riflemen', heavy: 'Heavies', sniper: 'Snipers', tank: 'Tanks', artillery: 'Artillery', titan: 'Titans', flame: 'Flame Tanks', hydra: 'Hydras', aircraft: 'Gunships', interceptor: 'Interceptors', leviathan: 'Leviathans', medic: 'Medicopters', drone: 'Recon Drones', skitterling: 'Skitterlings', bulwark: 'Bulwarks', razorwing: 'Razorwings', leaper: 'Leapers', ravager: 'Ravagers', spitter: 'Spitters', bilecaster: 'Bilecasters', bilelobber: 'Bile Lobbers', ruinmaw: 'Ruinmaws', thornback: 'Thornbacks', dreadthorn: 'Dreadthorns' };
 const newOrders = () => ({ all: null, groups: {}, types: {}, n: 0 });
 function unitOrder(side, type) { // the order a unit of this type follows, or null for the global stance
   const O = side.orders; if (!O) return null;
@@ -1117,13 +1159,17 @@ function updateOrders(g) { // twice a second: a Regroup flag is done once every 
   }
 }
 // The AI's only micro so far (Normal and Hard): pull Artillery back when enemy ground units it can see get close
+const AI_ART = ['artillery', 'bilelobber'], AI_SIEGE = ['artillery', 'titan', 'bilelobber', 'ruinmaw']; // units the AI's siege rules count (v2.19: Bloomhost's too)
 function aiMicro(g, s, D, mine) {
   if (D === DIFF.easy) return;
-  const side = g.sides[s], O = side.orders || (side.orders = newOrders()), art = mine.filter(u => u.type === 'artillery');
-  const near = art.some(a => g.ents.some(e => e.kind === 'u' && e.side !== s && e.hp > 0 && !UDEF[e.type].air && Math.abs(e.u - a.u) < 160 && visibleTo(g, s, e)));
-  const cur = O.types.artillery;
-  if (near && !cur) giveOrder(g, s, 'type', 'artillery', 'retreat', undefined, undefined, true);
-  else if (!near && cur && cur.o === 'retreat' && g.t - cur.t > 6) { delete O.types.artillery; for (const a of art) { a.holdU = undefined; a.holdV = undefined; } }
+  const side = g.sides[s], O = side.orders || (side.orders = newOrders());
+  for (const at of AI_ART) { // Artillery, and the Bile Lobber the same way (v2.19)
+    const art = mine.filter(u => u.type === at);
+    const near = art.some(a => g.ents.some(e => e.kind === 'u' && e.side !== s && e.hp > 0 && !UDEF[e.type].air && Math.abs(e.u - a.u) < 160 && visibleTo(g, s, e)));
+    const cur = O.types[at];
+    if (near && !cur) giveOrder(g, s, 'type', at, 'retreat', undefined, undefined, true);
+    else if (!near && cur && cur.o === 'retreat' && g.t - cur.t > 6) { delete O.types[at]; for (const a of art) { a.holdU = undefined; a.holdV = undefined; } }
+  }
 }
 
 function setStance(g, s, v) {
@@ -1154,6 +1200,12 @@ function updateUnit(g, u, foes, dt) {
   const ord = unitOrder(side, u.type), st = ord ? ord.o : side.stance; // a group or type order overrides the global stance
   const { best, close } = d.weapon ? acquire(g, u, d, foes) : NO_TARGET; // Medicopters and Recon Drones carry no weapon
   const sp = d.fac === 'bloomhost' && !d.air && onCreep(g, u.side, u.u, u.v) ? CREEP.speed : 1; // creep: Bloomhost ground units move faster (v2.18)
+  if (u.leaping) { // mid-leap (v2.19): fly to the landing spot, nothing else
+    const du = u.lu - u.u, dv = u.lv - u.v, dd = Math.hypot(du, dv), st = d.leap.speed * dt;
+    if (dd <= st) { u.u = u.lu; u.v = u.lv; u.z = 0; u.leaping = 0; u.leapCd = g.t + d.leap.cd; }
+    else { u.u += du / dd * st; u.v += dv / dd * st; u.z = Math.sin(Math.PI * clamp(1 - dd / u.ld, 0, 1)) * Math.min(26, u.ld * 0.18); u.face = du >= 0 ? 1 : -1; }
+    u.moving = true; return;
+  }
   // Retreat: keep running home, firing on the move, until back at the rally flag
   if (st === 'retreat' && Math.abs(home - u.u) > 12) {
     if (best && u.cd <= 0) { fire(g, u, best, d); u.cd = d.cd * rand(0.9, 1.1); }
@@ -1171,6 +1223,10 @@ function updateUnit(g, u, foes, dt) {
   if (close) { u.moving = false; return; } // artillery: enemy is inside minimum range
   if (d.chase && st !== 'move' && !(st === 'hold' && u.holdU !== undefined)) { // melee (v2.17): close on the nearest enemy it can see and hurt
     const prey = acquire(g, u, { ...d, range: d.chase }, foes).best;
+    if (prey && d.leap && g.t >= u.leapCd) { // the Leaper jumps the last stretch (v2.19), never further than leap.range
+      const dist = effDist(u, prey);
+      if (dist <= d.leap.range && dist >= d.leap.min) { const k = Math.max(0, (Math.hypot(prey.u - u.u, prey.v - u.v) - d.range * 0.7) / Math.max(1, Math.hypot(prey.u - u.u, prey.v - u.v))); u.lu = u.u + (prey.u - u.u) * k; u.lv = u.v + (prey.v - u.v) * k; u.ld = Math.max(1, Math.hypot(u.lu - u.u, u.lv - u.v)); u.leaping = 1; return; }
+    }
     if (prey) { moveToward(u, d, prey.u, prey.v, dt, sp); return; }
   }
   let tu = home, tv = u.laneV;
@@ -1282,7 +1338,7 @@ function flameBurst(g, src, def) {
     if (e.side === src.side || e.hp <= 0 || (e.kind === 'u' && UDEF[e.type].air) || e.shielded) continue;
     const ahead = (e.u - src.u) * dir, reach = def.range + (e.kind === 'b' ? e.half : 0);
     if (ahead < -6 || ahead > reach || Math.abs(e.v - src.v) > def.strip + (e.kind === 'b' ? e.half : 0)) continue;
-    damage(g, e, dmg, 'flame', src.side);
+    damage(g, e, dmg, 'flame', src.side, src);
   }
   if (src.kind === 'u') src.recoil = 1;
 }
@@ -1305,7 +1361,7 @@ function meleeHit(g, src, t, def) {
     for (const e of g.ents) if (e !== src && e.kind === 'u' && e.side === src.side && e.type === src.type && e.tgt === t.id && e.hp > 0) n++;
     mul += Math.min(def.swarm.max, n * def.swarm.per);
   }
-  damage(g, t, def.dmg * mul, def.weapon, src.side);
+  damage(g, t, def.dmg * mul, def.weapon, src.side, src);
   if (src.kind === 'u') src.recoil = 1;
 }
 function fire(g, src, t, def) {
@@ -1316,7 +1372,9 @@ function fire(g, src, t, def) {
   const p = { u: m.u, v: m.v, z: m.z, pu: m.u, pv: m.v, pz: m.z, tu: t.u, tv: t.v, tz: aimZ(t), target: t, side: src.side,
     weapon: def.weapon, dmg: def.dmg * (g.sides[src.side].buff ? 1.2 : 1) * (src.vet ? DRILL.dmg : 1), splash: def.splash || 0, t: 0 };
   if (def.weapon === 'bomb') { p.target = null; p.tz = 0; p.tu = t.u + rand(-6, 6); p.tv = t.v + rand(-5, 5); } // falls where the target is now
-  if (def.weapon === 'shell') {
+  if (def.corrode) p.corr = def.corrode; // v2.19: acid corrodes what it hits
+  if (def.acid) p.acid = 1;
+  if (def.weapon === 'shell' || def.lob) { // the Bile Lobber reuses the Artillery shell (v2.19)
     p.su = m.u; p.sv = m.v; p.sz = m.z;
     p.tu = t.u + rand(-14, 14); p.tv = t.v + rand(-12, 12); p.tz = 0;
     const dd = Math.hypot(p.tu - p.su, p.tv - p.sv);
@@ -1462,7 +1520,7 @@ function updateProjs(g, dt) {
   for (const p of g.projs) {
     p.t += dt;
     p.pu = p.u; p.pv = p.v; p.pz = p.z;
-    if (p.weapon === 'shell') {
+    if (p.weapon === 'shell' || p.weapon === 'lob') {
       const k = Math.min(1, p.t / p.T);
       p.u = lerp(p.su, p.tu, k); p.v = lerp(p.sv, p.tv, k);
       p.z = lerp(p.sz, 0, k) + p.arc * 4 * k * (1 - k);
@@ -1488,28 +1546,50 @@ function splashHit(g, p, hit, scale, falloffFloor) {
   for (const e of g.ents) {
     if (e === hit || e.side === p.side || e.hp <= 0 || (e.kind === 'u' && UDEF[e.type].air)) continue;
     const dx = Math.max(0, Math.hypot(e.u - p.u, (e.v - p.v) * 0.6) - (e.kind === 'b' ? e.half : 0));
-    if (dx < p.splash) damage(g, e, p.dmg * scale * (1 - falloffFloor * dx / p.splash), p.weapon, p.side);
+    if (dx < p.splash) { damage(g, e, p.dmg * scale * (1 - falloffFloor * dx / p.splash), p.weapon, p.side); if (p.corr) corrode(g, e, p.corr); }
   }
 }
 
 function impact(g, p, hit) {
   const w = P(p.u, p.v, p.z);
-  if (p.weapon === 'shell') { splashHit(g, p, null, 1, 0.5); fxBoom(g, w.x, w.y, 30); return; }
+  if (p.weapon === 'shell' || p.weapon === 'lob') { splashHit(g, p, null, 1, 0.5); fxBoom(g, w.x, w.y, 30); return; }
   if (p.weapon === 'bomb') { splashHit(g, p, null, 1, 0.5); fxBoom(g, w.x, w.y, 40); return; } // full damage at the centre, half at the edge
-  if (hit && hit.hp > 0) damage(g, hit, p.dmg, p.weapon, p.side);
+  if (hit && hit.hp > 0) { damage(g, hit, p.dmg, p.weapon, p.side); if (p.corr) corrode(g, hit, p.corr); }
   if (p.splash > 0) splashHit(g, p, hit, 0.5, 1);
+  if (p.acid) addAcid(g, p.side, p.u, p.v);
   if (p.weapon === 'rifle' || p.weapon === 'rail' || p.weapon === 'gatling') {
     for (let i = 0; i < (p.weapon === 'rail' ? 5 : 2); i++)
       addPart(g, { x: w.x, y: w.y, vx: rand(-40, 40), vy: rand(-50, 0), life: 0.18, size: 1.3, color: p.weapon === 'rail' ? '#c9f6ff' : '#fff3b0', grav: 200 });
   } else fxBoom(g, w.x, w.y, p.weapon === 'siege' ? 26 : p.weapon === 'cannon' ? 18 : p.weapon === 'flak' ? 8 : 12);
 }
 
-function damage(g, e, amt, weapon, fromSide) {
+// Corrosion (v2.19): the strongest level and the later end win; levels never add up and never pass CORR.cap
+function corrode(g, e, c) {
+  if (e.kind !== 'u' || e.hp <= 0) return;
+  const live = e.corrT > g.t;
+  e.corr = Math.min(CORR.cap, Math.max(live ? e.corr : 0, c.amt)); e.corrT = Math.max(live ? e.corrT : 0, g.t + c.dur);
+}
+// Ruinmaw acid pools (v2.19): at most ACID.max at once; a new one replaces the oldest
+function addAcid(g, side, u, v) {
+  if (g.acid.length >= ACID.max) g.acid.shift();
+  g.acid.push({ side, u, v, end: g.t + ACID.dur });
+}
+function updateAcid(g, dt) {
+  if (!g.acid.length) return;
+  g.acid = g.acid.filter(a => a.end > g.t);
+  for (const a of g.acid) for (const e of g.ents) {
+    if (e.kind !== 'u' || e.side === a.side || e.hp <= 0 || UDEF[e.type].air) continue;
+    if (Math.hypot(e.u - a.u, (e.v - a.v) * 0.6) <= ACID.r) damage(g, e, ACID.dps * dt, 'acidpool', a.side);
+  }
+}
+// src: the attacking unit for blows at close range (melee, flame), so a Thornback can answer; retaliation passes no src,
+// so it can never set off more retaliation
+function damage(g, e, amt, weapon, fromSide, src) {
   if (e.shielded) return;
   const armor = e.kind === 'b' ? 'building' : UDEF[e.type].armor;
   const mult = DMG[weapon][armor];
   if (!mult) return;
-  let dmg = amt * mult * (g.sides[e.side].buff ? 0.85 : 1);
+  let dmg = amt * mult * (g.sides[e.side].buff ? 0.85 : 1) * (e.corrT > g.t ? 1 + e.corr : 1); // corroded: takes more (v2.19)
   const br = e.kind === 'u' && UDEF[e.type].brace;
   if (br) { // the Bulwark braces on the first hit after its cooldown (v2.17)
     if (!(e.braceT > g.t) && g.t >= e.braceCd) { e.braceT = g.t + br.dur; e.braceCd = g.t + br.cd; }
@@ -1518,7 +1598,15 @@ function damage(g, e, amt, weapon, fromSide) {
   if (e.shT > g.t) { e.hp -= dmg * (1 - ABIL.shield.cut); logEffect(g, e.side, 'shield', dmg * ABIL.shield.cut); } // Emergency Shield
   else e.hp -= dmg;
   e.hitT = 0.12;
-  if (e.kind === 'u') e.lastHurt = g.t;
+  if (e.kind === 'u') {
+    e.lastHurt = g.t;
+    const ud = UDEF[e.type];
+    if (ud.thorns && src && src.kind === 'u' && src.hp > 0 && effDist(src, e) <= ud.thorns.range) damage(g, src, dmg * ud.thorns.frac, 'thorns', e.side); // Thornback: no src, so no loop
+    if (ud.burst && dmg >= ud.burst.trigger && weapon !== 'spines' && g.t >= e.burstCd && e.hp > 0) { // Dreadthorn: a spine burst on a big hit
+      e.burstCd = g.t + ud.burst.cd; const bw = P(e.u, e.v, 12); fxBoom(g, bw.x, bw.y, 22);
+      for (const f of g.ents) if (f.kind === 'u' && f.side !== e.side && f.hp > 0 && !UDEF[f.type].air && Math.hypot(f.u - e.u, (f.v - e.v) * 0.6) <= ud.burst.r) damage(g, f, ud.burst.dmg, 'spines', e.side);
+    }
+  }
   if (e.kind === 'b') {
     e.lastHit = g.t;
     const side = g.sides[e.side];
@@ -1536,7 +1624,7 @@ function kill(g, e, by, weapon) {
     if (by >= 0) g.sides[by].stats.kills++;
     if (g.log) { const T = g.log.tot[e.side]; logAdd(T.lost, e.type); if (weapon) logAdd(T.lostTo || (T.lostTo = {}), weapon); if (by >= 0) logAdd(g.log.tot[by].killed, e.type); lgUnit(g, e.side, 'K', e.type); logLoss(g, e); }
     const d = UDEF[e.type], w = P(e.u, e.v, aimZ(e));
-    fxBoom(g, w.x, w.y, e.type === 'skitterling' ? 6 : e.type === 'bulwark' ? 18 : d.air ? (e.type === 'razorwing' ? 12 : 28) : e.type === 'rifle' || e.type === 'sniper' ? 9 : e.type === 'heavy' ? 15 : e.type === 'titan' ? 46 : 30);
+    fxBoom(g, w.x, w.y, e.type === 'skitterling' ? 6 : e.type === 'bulwark' || e.type === 'ruinmaw' || e.type === 'dreadthorn' || e.type === 'thornback' ? 18 : d.fac === 'bloomhost' && !d.air ? 10 : d.air ? (e.type === 'razorwing' ? 12 : 28) : e.type === 'rifle' || e.type === 'sniper' ? 9 : e.type === 'heavy' ? 15 : e.type === 'titan' ? 46 : 30);
     return;
   }
   if (e.slot >= 0 && side.slots[e.slot] === e) side.slots[e.slot] = null;
@@ -1591,12 +1679,13 @@ function attackBar(g, s) {
 // enemy (as this side has seen it) calls for Specialists (Heavies); a second copy takes the path the first lacks.
 function aiPickPath(g, s, b, P, theirs) {
   if (g.forcePath && g.forcePath[s] && g.forcePath[s][b.type]) return g.forcePath[s][b.type]; // test hook (forced-path matrix)
+  const fac = g.sides[s].faction, to = p => aiPathTo(fac, b.type, p); // decided in Last Fist terms, then translated (Bloomhost, v2.19)
   const D = s === 1 ? g.diff : (DIFF[g.autoDiff] || DIFF.normal), def = (P.paths && P.paths[b.type]) || 'A';
-  if (D === DIFF.easy) return def;
-  const have = g.ents.filter(e => e !== b && e.side === s && e.type === b.type && e.hp > 0).map(e => e.path || e.upPath).filter(Boolean);
-  if (b.type === 'barracks' && aiArmorShare(theirs) > 0.35 && !have.includes('A')) return 'A';
-  if (have.length && have.includes(def)) return def === 'A' ? 'B' : 'A';
-  return def;
+  if (D === DIFF.easy) return to(def);
+  const have = g.ents.filter(e => e !== b && e.side === s && e.type === b.type && e.hp > 0).map(e => aiPathFrom(fac, b.type, e.path || e.upPath)).filter(Boolean);
+  if (b.type === 'barracks' && aiArmorShare(theirs) > 0.35 && !have.includes('A')) return to('A');
+  if (have.length && have.includes(def)) return to(def === 'A' ? 'B' : 'A');
+  return to(def);
 }
 const aiArmorShare = theirs => { let a = 0, t = 0; for (const u of theirs) { const d = UDEF[u.type], v = (d.cost.c + d.cost.e) * u.w; t += v; if (d.armor === 'vehicle' || (d.air && d.hitsGround !== false)) a += v; } return t ? a / t : 0; };
 function freeProducer(g, s, unit) { return g.ents.some(e => e.side === s && canMake(e, unit) && e.queue.length < 1); }
@@ -1677,7 +1766,7 @@ function aiUpdate(g, s, dt) {
   }
   if (!want && D === DIFF.hard && !g.forcePath && freePad && !constructing.length && income(g, s).c >= 25 && aiArmorShare(theirs) > 0.35) {
     const bar = alive(g, s, 'barracks');
-    if (bar.length && bar.length < 2 && bar.every(b => (b.path || b.upPath) === 'B')) want = 'barracks'; // then its T2 upgrade takes Specialists
+    if (bar.length && bar.length < 2 && bar.every(b => aiPathFrom(side.faction, 'barracks', b.path || b.upPath) === 'B')) want = 'barracks'; // then its T2 upgrade takes Specialists
   }
   if (want && side.slots.some(x => !x) && constructing.length < 2) {
     const d = bdS(g, s, want);
@@ -1704,7 +1793,7 @@ function aiUpdate(g, s, dt) {
     for (const [type, tier] of [...(energyShort ? [['reactor', 2], ['reactor', 3]] : []), ...P.upgFirst, ...AI_UPG]) {
       if (tier > D.maxTier) continue;
       if (type === 'reactor' && side.res.e > ENERGY_PLENTY) continue;
-      if (TREES[type] && !treeOf(side.faction, type)) continue; // no evolution paths yet (Bloomhost, v2.17)
+      if (prodLocked(side.faction, type)) continue; // no evolution paths yet (the Bloomspire)
       const b = alive(g, s, type).find(x => x.built && x.tier < tier);
       if (!b) continue;
       const r = tryUpgrade(g, s, b, b.tier === 1 && TREES[type] ? aiPickPath(g, s, b, P, theirs) : undefined);
@@ -1731,8 +1820,8 @@ function aiUpdate(g, s, dt) {
     const antiAir = theirs.length ? theirs.filter(u => UDEF[u.type].hitsAir).length / theirs.length : 0.5;
     const airV = theirs.reduce((a, u) => a + (UDEF[u.type].air && UDEF[u.type].hitsGround !== false ? (UDEF[u.type].cost.c + UDEF[u.type].cost.e) * u.w : 0), 0);
     const myInterceptV = mine.reduce((a, u) => a + (u.type === 'interceptor' ? UDEF.interceptor.cost.c + UDEF.interceptor.cost.e : 0), 0);
-    const nArt = mine.filter(u => u.type === 'artillery').length;
-    const nFront = mine.filter(u => !UDEF[u.type].air && u.type !== 'artillery').length;
+    const nArt = mine.filter(u => AI_ART.includes(u.type)).length;
+    const nFront = mine.filter(u => !UDEF[u.type].air && !AI_ART.includes(u.type)).length;
     const nInf = mine.filter(u => GROUP_OF[u.type] === 'inf').length, nMed = mine.filter(u => u.type === 'medic').length, nDrone = mine.filter(u => u.type === 'drone').length;
     const sc = {
       rifle: 0.9 + comp.light * 0.6 + comp.air * 0.8 - comp.vehicle * 0.7 - comp.heavy * 0.5 - (types.length > 3 ? 0.4 : 0),
@@ -1752,7 +1841,16 @@ function aiUpdate(g, s, dt) {
       // Bloomhost (v2.17): scored like their Last Fist counterparts; Skitterlings can't hit aircraft
       skitterling: 0.9 + comp.light * 0.5 - comp.vehicle * 0.6 - comp.heavy * 0.3 - comp.air * 0.4 - (types.length > 2 ? 0.3 : 0),
       bulwark: 1.3 + comp.light * 1.0 + comp.heavy * 0.7 - comp.air * 0.9,
-      razorwing: 1.2 + comp.vehicle * 1.0 + comp.light * 0.4 - comp.air * 0.3 + (antiAir < 0.45 ? 0.9 : 0),
+      razorwing: 1.2 + comp.vehicle * 1.0 + comp.light * 0.4 + comp.air * 0.6 + (antiAir < 0.45 ? 0.9 : 0), // v2.19: it hits aircraft too
+      // Bloomhost tree units (v2.19): simple scores in the style of their Last Fist counterparts
+      leaper: 1.0 + comp.light * 0.8 - comp.vehicle * 0.6 - comp.air * 0.4,
+      ravager: 1.2 + comp.light * 1.2 + comp.heavy * 0.3 - comp.vehicle * 0.6 - comp.air * 0.5,
+      spitter: 1.0 + comp.air * 2.0 + comp.heavy * 0.5 + comp.vehicle * 0.3,
+      bilecaster: 1.1 + comp.light * 1.4 + comp.heavy * 0.6 - comp.air * 0.6,
+      bilelobber: (nFront >= 3 && nArt < Math.max(2, nFront / 2.5)) ? 1.1 + comp.light * 0.5 + (turtle ? 0.8 : 0) + (oppTier - 1) * 0.3 : 0.1,
+      ruinmaw: 1.2 + comp.vehicle * 0.8 + comp.heavy * 0.8 + comp.light * 0.4 - comp.air * 1.2 + (turtle ? 0.4 : 0),
+      thornback: 1.3 + comp.light * 1.0 + comp.heavy * 0.6 - comp.air * 0.8,
+      dreadthorn: 1.4 + comp.light * 1.4 + comp.heavy * 0.6 - comp.air * 0.9,
     };
     if (!threat) for (const t of types) { const b = P.bias[t] || P.bias[AI_TWIN[t]]; if (b && sc[t] > 0) sc[t] *= b; } // the personality's taste in units (threats are answered on merit)
     const fits = t => used + UDEF[t].pop <= cap * fillNow && freeProducer(g, s, t);
@@ -1780,7 +1878,7 @@ function aiUpdate(g, s, dt) {
   // 4) Strategy: hold the near node, take the field, siege just outside the enemy guns, or go all in
   const hqGun = BDEF.hq.gun[oppTier], hqVal = knownDefense(g, s);
   const rich = side.res.c > 2500;
-  const nSiege = mine.filter(u => u.type === 'artillery' || u.type === 'titan').length;
+  const nSiege = mine.filter(u => AI_SIEGE.includes(u.type)).length;
   const ae = P.attackEdge * (ecoMood ? 1.2 : 1); // how much of an edge this personality wants before a base attack
   const wave = Math.min(3600, 400 + g.t * 4) * D.wave * P.wave * (ecoMood ? 1.3 : 1);
   const full = used >= cap * fill - 2, since = g.t - side.stanceAt; // full by its own army limit
@@ -1849,12 +1947,12 @@ function aiUpdate(g, s, dt) {
 // Spotters: siege guns can't fire at what their side can't see, so while sieging, one unit walks up until
 // its sight reaches the front of the enemy base (as far as this side knows where that is). Seeing the base
 // means entering its HQ's range, so sturdy units go first; a fallen spotter is replaced on the next tick.
-const SPOTTER_PREF = ['drone', 'titan', 'tank', 'heavy', 'aircraft', 'interceptor', 'rifle', 'sniper'];
+const SPOTTER_PREF = ['drone', 'titan', 'tank', 'heavy', 'aircraft', 'interceptor', 'rifle', 'sniper', 'ruinmaw', 'dreadthorn', 'bulwark', 'thornback', 'razorwing', 'ravager', 'skitterling', 'leaper'];
 function aiSpotter(g, s) {
   const side = g.sides[s], dir = dirOf(s), opp = 1 - s;
   const sieging = side.stance === 'attack' && side.pushTo !== null && side.pushMode === 'siege';
   const mine = sieging ? g.ents.filter(e => e.kind === 'u' && e.side === s && e.hp > 0) : [];
-  if (!sieging || !mine.some(u => u.type === 'artillery')) { side.spotter = null; side.spotU = null; return; }
+  if (!sieging || !mine.some(u => AI_ART.includes(u.type))) { side.spotter = null; side.spotU = null; return; }
   let sp = mine.find(u => u.id === side.spotter);
   if (!sp) for (const t of SPOTTER_PREF) { sp = mine.find(u => u.type === t); if (sp) break; }
   if (!sp) { side.spotter = null; side.spotU = null; return; }
@@ -1943,7 +2041,7 @@ const logSpend = (g, s, kind, c, e) => { if (g.log) { const a = g.log.tot[s].spe
 
 /* ---------- Save and resume ---------- */
 // v6 adds fog of war; v7 the AI's personality (kept on its side record); v10 the shared ability cooldown; v11 the match log; v12 group orders, the selection and Regroup flags; v13 upgrade-tree paths; v14 War Factory paths. Older saves are migrated.
-const SAVE_VER = 18, SAVE_OK = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+const SAVE_VER = 19, SAVE_OK = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
 function serialize(g, extra) {
   const live = g.ents.filter(e => e.hp > 0);
   for (const sd of g.sides) if (sd.hq.hp <= 0 && !live.includes(sd.hq)) live.push(sd.hq); // a fallen HQ inside the storm's 5 s end window
@@ -1951,7 +2049,7 @@ function serialize(g, extra) {
   const projs = g.projs.map(p => Object.assign({}, p, { target: p.target ? p.target.id : null }));
   const sides = g.sides.map(sd => Object.assign({}, sd, { hq: sd.hq.id, slots: sd.slots.map(b => b ? b.id : null), res: Object.assign({}, sd.res), stats: Object.assign({}, sd.stats) }));
   const fog = g.fog.map(f => ({ exp: Array.from(f.exp).join(''), seen: Array.from(f.seen).join(''), ghosts: f.ghosts, creep: f.creep, intel: f.intel, lastHQ: f.lastHQ, lastSpot: f.lastSpot, seenUnits: f.seenUnits }));
-  return JSON.stringify({ v: SAVE_VER, t: g.t, nid: g.nid, diffKey: g.diffKey, ents, projs, sides, nodes: g.nodes, fog, abil: g.abil, endHold: g.endHold || null, log: g.log, creep: g.creep, extra });
+  return JSON.stringify({ v: SAVE_VER, t: g.t, nid: g.nid, diffKey: g.diffKey, ents, projs, sides, nodes: g.nodes, fog, abil: g.abil, endHold: g.endHold || null, log: g.log, creep: g.creep, acid: g.acid, extra });
 }
 function deserialize(str) {
   const o = JSON.parse(str);
@@ -1989,6 +2087,8 @@ function deserialize(str) {
   }
   g.creep = Array.isArray(o.creep) && o.creep.length === 2 ? o.creep : [[], []]; // v18: older saves start without creep and grow it
   for (const e of g.ents) if (e.kind === 'u' && e.lastHurt === undefined) { e.lastHurt = -99; e.lastAct = -99; e.creepAt = -1; }
+  g.acid = Array.isArray(o.acid) ? o.acid : []; // v19: acid pools, leaps, corrosion and spine bursts; older saves start without
+  for (const e of g.ents) if (e.kind === 'u' && e.leapCd === undefined) Object.assign(e, { leapCd: 0, leaping: 0, lu: 0, lv: 0, ld: 0, corr: 0, corrT: 0, burstCd: 0 });
   for (const f of g.fog) for (const id in f.ghosts) if (f.ghosts[id].fac === undefined) f.ghosts[id].fac = o.v < 17 ? DEFAULT_FACTION : null;
   for (const e of g.ents) { // v13: before upgrade trees, a T2 or T3 building is on path A (it keeps what it had: Heavies, Snipers)
     if (e.kind === 'u') { if (e.vet === undefined) e.vet = 0; if (e.aimAir === undefined) e.aimAir = 0; if (e.medAt === undefined) e.medAt = -1; continue; }
@@ -2013,7 +2113,7 @@ function logEvText(e, me, g) { // one log event as a line of text (me: written f
   switch (c) {
     case 'B': return `${B(a)} started (not finished)`; // a finished one shares the line with its finish (logLines)
     case 'F': return `${B(a)} finished`;
-    case 'U': return `${B(a)} upgrade to T${b}${e[6] && TREES[a] ? ` · ${TREES[a][e[6]].name}` : ''} started (not finished)`;
+    case 'U': { const T = treeOf(g && g.sides[e[1]] ? g.sides[e[1]].faction : DEFAULT_FACTION, a); return `${B(a)} upgrade to T${b}${e[6] && T ? ` · ${T[e[6]].name}` : ''} started (not finished)`; }
     case 'V': return `${B(a)} upgraded to T${b}`;
     case 'S': return `${B(a)} sold`;
     case 'D': return `${B(a)} destroyed${x === -1 ? ' by the storm' : ''}`;
@@ -2061,7 +2161,7 @@ function logLines(g, s, widen = true) { // widen: the screen may widen unit grou
     }
     for (let i = ev.length - 1; i >= 0; i--) if (!ev[i]) ev.splice(i, 1);
   }
-  const B = t => logBName(g, s, t), txt = e => e.done === undefined ? logEvText(e, s === 0, g) : e[2] === 'B' ? `${B(e[3])} ${mmss(e[0])} → ${mmss(e.done)}` : `${B(e[3])} T${e[4]}${e[6] && TREES[e[3]] ? ` · ${TREES[e[3]][e[6]].name}` : ''} ${mmss(e[0])} → ${mmss(e.done)}`;
+  const B = t => logBName(g, s, t), txt = e => e.done === undefined ? logEvText(e, s === 0, g) : e[2] === 'B' ? `${B(e[3])} ${mmss(e[0])} → ${mmss(e.done)}` : `${B(e[3])} T${e[4]}${e[6] && treeOf(g.sides[s].faction, e[3]) ? ` · ${treeOf(g.sides[s].faction, e[3])[e[6]].name}` : ''} ${mmss(e[0])} → ${mmss(e.done)}`;
   return ev.map(e => { const u = e[2] === 'T' || e[2] === 'K'; return { t: e[0], i: e.i, key: !u, code: e[2], txt: txt(e), type: u ? e[3] : null, n: u ? e[4] : 0, t1: u ? e[5] : e.done ?? e[0], paired: e.done !== undefined }; });
 }
 function logBattles(g) { // runs of 10-s buckets with unit losses; value = credits + energy of the units lost
@@ -3040,14 +3140,102 @@ function dRazor(c, T, u) { // Razorwing: a sleek flyer with membrane wings and a
   c.fillStyle = T.light; c.fillRect(11 + dive, -0.8, 2, 1.4);                                          // eye
   c.fillStyle = T.main; c.fillRect(-8, 0.6, 12, 1.2);                                                  // gland stripe
 }
-const DRAW_U = { skitterling: dSkitter, bulwark: dBulwark, razorwing: dRazor, rifle: dRifle, heavy: dHeavy, sniper: dSniper, tank: dTank, artillery: dArt, titan: dTitan, flame: dFlame, hydra: dHydra, aircraft: dAir, interceptor: dInter, leviathan: dLev, medic: dMedic, drone: dDrone };
+// Bloomhost tree units (v2.19): side view facing +x, feet on y = 0; acid parts in ACID_COL, team colour on eyes and glands
+const ACID_COL = '#9be15d', ACID_DARK = '#4f7a2a';
+function dLeaper(c, T, u) { // Leaper: a lean hunter crouched on long, folded hind legs
+  const ph = u.moving ? u.anim * 12 : 0, bite = u.recoil * 2, s = Math.sin(ph) * 1.5;
+  c.strokeStyle = BHC.chit[2]; c.lineWidth = 2.2; c.lineCap = 'round'; c.lineJoin = 'round';
+  limb(c, -7, -9, -15 + s, -15, -11 - s, 0);                                                        // far hind leg
+  c.fillStyle = BHC.chit[1]; c.beginPath(); c.ellipse(-3, -10, 9, 4.6, -0.25, 0, 7); c.fill();          // body
+  c.fillStyle = BHC.chit[0]; c.beginPath(); c.ellipse(6, -13, 4.4, 3.4, -0.2, 0, 7); c.fill();          // head
+  c.strokeStyle = BHC.bone; c.lineWidth = 1.2; c.beginPath(); c.moveTo(9.5, -13); c.quadraticCurveTo(13 + bite, -13, 13 + bite, -9); c.stroke(); // fang
+  c.strokeStyle = BHC.chit[2]; c.lineWidth = 1.5; limb(c, 3, -9, 6 + s, -5, 5 - s, 0);                // forelegs
+  c.lineWidth = 2.8; limb(c, -6, -9, -16 - s, -17, -9 + s, 0);                                          // near hind leg, the big one
+  c.fillStyle = T.light; c.fillRect(6.6, -14.6, 1.6, 1.2); c.fillStyle = T.main; c.fillRect(-9, -13.6, 8, 1.2);
+}
+function dRavager(c, T, u) { // Ravager: a hunched brute with two scythe arms
+  const ph = u.moving ? u.anim * 8 : 0, sw = u.recoil * 0.6, s = Math.sin(ph) * 2;
+  c.strokeStyle = BHC.chit[2]; c.lineWidth = 3.2; c.lineCap = 'round'; limb(c, -6, -10, -8 + s, -5, -6 - s, 0); limb(c, 4, -10, 6 - s, -5, 4 + s, 0);
+  c.fillStyle = BHC.chit[1]; c.beginPath(); c.moveTo(-14, -10); c.quadraticCurveTo(-12, -26, 4, -24); c.quadraticCurveTo(14, -22, 12, -12); c.lineTo(-12, -8); c.closePath(); c.fill(); // hunched back
+  c.strokeStyle = 'rgba(20,10,30,0.45)'; c.lineWidth = 1.2; for (const x of [-8, -2, 4]) { c.beginPath(); c.moveTo(x - 2, -10); c.quadraticCurveTo(x, -22, x + 3, -23); c.stroke(); }
+  c.fillStyle = BHC.chit[0]; c.beginPath(); c.ellipse(13, -16, 4.6, 3.8, 0, 0, 7); c.fill();            // head
+  c.save(); c.translate(8, -20); c.rotate(-0.6 + sw);                                                      // scythe arm
+  c.strokeStyle = BHC.chit[2]; c.lineWidth = 2.4; c.beginPath(); c.moveTo(0, 0); c.lineTo(9, -2); c.stroke();
+  c.fillStyle = BHC.bone; c.beginPath(); c.moveTo(9, -3); c.quadraticCurveTo(18, -2, 16, 9); c.quadraticCurveTo(14, 2, 8, 0); c.closePath(); c.fill();
+  c.restore();
+  c.fillStyle = T.light; c.fillRect(14, -17.5, 1.8, 1.4); c.fillStyle = T.main; c.fillRect(-10, -18, 12, 1.4);
+}
+function dSpitter(c, T, u) { // Spitter: thin legs, a glowing acid sac on its back, a long neck that aims up and forward
+  const ph = u.moving ? u.anim * 10 : 0, s = Math.sin(ph) * 1.6, rk = u.recoil * 1.5;
+  bugLegs(c, ph, [-5, 0, 4], 5, 6, 1.4, BHC.chit[2]);
+  c.fillStyle = BHC.chit[1]; c.beginPath(); c.ellipse(-2, -7, 7, 3.6, 0, 0, 7); c.fill();
+  c.fillStyle = ACID_DARK; c.beginPath(); c.ellipse(-4, -12, 6, 5, 0, 0, 7); c.fill();                  // acid sac
+  c.fillStyle = 'rgba(155,225,93,0.85)'; c.beginPath(); c.ellipse(-4.5, -12.5, 4, 3.4, 0, 0, 7); c.fill();
+  c.strokeStyle = BHC.chit[0]; c.lineWidth = 2.6; c.beginPath(); c.moveTo(3, -8); c.quadraticCurveTo(8 - rk, -11, 12 - rk, -15); c.stroke(); // neck
+  c.fillStyle = BHC.chit[0]; c.beginPath(); c.ellipse(13 - rk, -15, 2.6, 2.1, -0.5, 0, 7); c.fill();
+  c.fillStyle = ACID_COL; c.beginPath(); c.arc(14.5 - rk, -15.5, 1, 0, 7); c.fill();                    // mouth, the muzzle at (14, -15)
+  c.fillStyle = T.main; c.fillRect(-6, -6, 7, 1.1);
+}
+function dBilecaster(c, T, u) { // Bilecaster: a squat four-legged spitter with twin bile sacs and a wide throat
+  const ph = u.moving ? u.anim * 7 : 0, rk = u.recoil * 2;
+  bugLegs(c, ph, [-8, -2, 4, 9], 7, 8, 2.2, BHC.chit[2]);
+  c.fillStyle = BHC.chit[1]; c.beginPath(); c.ellipse(0, -10, 11, 5, 0, 0, 7); c.fill();
+  for (const [x, r] of [[-6, 6], [2, 5]]) { c.fillStyle = ACID_DARK; c.beginPath(); c.ellipse(x, -16, r, r * 0.9, 0, 0, 7); c.fill(); c.fillStyle = 'rgba(155,225,93,0.8)'; c.beginPath(); c.ellipse(x - 0.5, -16.5, r * 0.65, r * 0.55, 0, 0, 7); c.fill(); }
+  c.fillStyle = BHC.chit[0]; c.beginPath(); c.moveTo(9, -14); c.quadraticCurveTo(17 - rk, -22, 18 - rk, -18); c.quadraticCurveTo(18 - rk, -14, 11, -9); c.closePath(); c.fill(); // throat, muzzle at (16, -20)
+  c.fillStyle = ACID_COL; c.beginPath(); c.arc(17 - rk, -19.5, 1.4, 0, 7); c.fill();
+  c.fillStyle = T.light; c.fillRect(11, -14, 1.6, 1.2); c.fillStyle = T.main; c.fillRect(-9, -8, 14, 1.2);
+}
+function dLobber(c, T, u) { // Bile Lobber: a slow quadruped with a great throat sac and an upturned launching gullet
+  const ph = u.moving ? u.anim * 5 : 0, rk = u.recoil * 2.5, pulse = 0.85 + 0.15 * Math.sin(u.anim * 3);
+  bugLegs(c, ph, [-12, -5, 3, 10], 8, 9, 3, BHC.chit[2]);
+  c.fillStyle = BHC.chit[1]; c.beginPath(); c.ellipse(-1, -12, 14, 6, 0, 0, 7); c.fill();
+  c.fillStyle = ACID_DARK; c.beginPath(); c.ellipse(-4, -18, 9 * pulse, 7 * pulse, 0, 0, 7); c.fill();  // throat sac
+  c.fillStyle = 'rgba(155,225,93,0.75)'; c.beginPath(); c.ellipse(-4.5, -18.5, 6 * pulse, 4.5 * pulse, 0, 0, 7); c.fill();
+  c.save(); c.translate(6, -18); c.rotate(-0.9 + rk * 0.05);                                               // gullet tube, muzzle at about (12, -26)
+  c.fillStyle = BHC.chit[0]; c.beginPath(); c.moveTo(0, -3); c.lineTo(11, -2.4); c.lineTo(11, 2.4); c.lineTo(0, 3); c.closePath(); c.fill();
+  c.fillStyle = BHC.bone; c.fillRect(10, -3, 2, 6);
+  c.restore();
+  c.fillStyle = T.main; c.fillRect(-12, -10, 16, 1.4);
+}
+function dRuinmaw(c, T, u) { // Ruinmaw: a massive low beast that is mostly jaw
+  const ph = u.moving ? u.anim * 4 : 0, open = 0.3 + u.recoil * 0.7;
+  bugLegs(c, ph + Math.PI, [-16, -6, 4], 9, 10, 4, BHC.chit[2]);
+  c.fillStyle = BHC.chit[1]; c.beginPath(); c.moveTo(-22, -10); c.bezierCurveTo(-20, -30, 4, -32, 12, -22); c.lineTo(10, -8); c.lineTo(-20, -6); c.closePath(); c.fill(); // back
+  c.strokeStyle = BHC.chit[0]; c.lineWidth = 2; for (const x of [-14, -6, 2]) { c.beginPath(); c.moveTo(x - 2, -8); c.quadraticCurveTo(x, -25, x + 5, -27); c.stroke(); }
+  c.fillStyle = BHC.chit[0]; c.beginPath(); c.moveTo(8, -24); c.quadraticCurveTo(26, -26 - open * 6, 30, -18 - open * 4); c.lineTo(10, -15); c.closePath(); c.fill(); // upper jaw
+  c.fillStyle = BHC.flesh[1]; c.beginPath(); c.moveTo(10, -14); c.lineTo(30, -16 + open * 4); c.quadraticCurveTo(26, -6 + open * 3, 8, -7); c.closePath(); c.fill(); // lower jaw
+  c.fillStyle = ACID_COL; c.beginPath(); c.ellipse(16, -15, 5, 1 + open * 3, 0, 0, 7); c.fill();          // acid in its mouth, muzzle at (24, -16)
+  c.fillStyle = BHC.bone; for (let i = 0; i < 4; i++) { const x = 14 + i * 4; c.beginPath(); c.moveTo(x, -18 - open * 3); c.lineTo(x + 1.5, -15); c.lineTo(x + 3, -18 - open * 3); c.fill(); }
+  c.fillStyle = T.light; c.fillRect(12, -22, 2.2, 1.6); c.fillStyle = T.main; c.fillRect(-16, -16, 16, 1.4);
+  bugLegs(c, ph, [-14, -4, 6], 9, 10, 4.4, BHC.chit[2]);
+}
+function dThornback(c, T, u) { // Thornback: a stocky armored crawler covered in back spines
+  const ph = u.moving ? u.anim * 7 : 0, ram = u.recoil * 2;
+  bugLegs(c, ph + Math.PI, [-9, -1, 7], 6, 7, 2.6, BHC.chit[2]);
+  c.fillStyle = BHC.chit[1]; c.beginPath(); c.moveTo(-15, -6); c.bezierCurveTo(-14, -20, 8, -21, 13, -9); c.lineTo(-14, -4); c.closePath(); c.fill(); // shell
+  c.fillStyle = BHC.bone; for (let i = 0; i < 6; i++) { const x = -12 + i * 4.5, y = -10 - Math.sin((i + 0.5) / 6 * Math.PI) * 9; c.beginPath(); c.moveTo(x - 1.6, y + 2); c.lineTo(x - 2.5, y - 7 - (i % 2) * 2); c.lineTo(x + 1.6, y + 2); c.fill(); } // spines
+  c.save(); c.translate(ram, 0); c.fillStyle = BHC.chit[0]; c.beginPath(); c.ellipse(15, -9, 4.5, 3.6, 0, 0, 7); c.fill(); c.fillStyle = T.light; c.fillRect(16, -10.5, 1.8, 1.4); c.restore();
+  c.fillStyle = T.main; c.fillRect(-11, -7, 14, 1.2);
+  bugLegs(c, ph, [-8, 0, 8], 6, 7, 3, BHC.chit[2]);
+}
+function dDreadthorn(c, T, u) { // Dreadthorn: a towering spined horror on four thick legs
+  const ph = u.moving ? u.anim * 5 : 0, ram = u.recoil * 2.5;
+  bugLegs(c, ph + Math.PI, [-13, 7], 10, 11, 4.4, BHC.chit[2]);
+  c.fillStyle = BHC.chit[1]; c.beginPath(); c.moveTo(-18, -10); c.bezierCurveTo(-18, -30, 10, -32, 16, -14); c.lineTo(-16, -8); c.closePath(); c.fill();
+  c.fillStyle = BHC.bone; for (let i = 0; i < 7; i++) { const a = Math.PI * (0.15 + i * 0.11), x = -2 + Math.cos(Math.PI - a) * 16, y = -14 - Math.sin(a) * 13; c.beginPath(); c.moveTo(x - 2, y + 2); c.lineTo(x + Math.cos(Math.PI - a) * 9, y - Math.sin(a) * 11); c.lineTo(x + 2, y + 2); c.fill(); }
+  c.save(); c.translate(ram, 0); c.fillStyle = BHC.chit[0]; c.beginPath(); c.moveTo(13, -20); c.quadraticCurveTo(25, -18, 24, -10); c.lineTo(14, -8); c.closePath(); c.fill();
+  c.fillStyle = BHC.bone; c.beginPath(); c.moveTo(22, -12); c.lineTo(29, -9); c.lineTo(22, -9); c.fill(); c.fillStyle = T.light; c.fillRect(18, -16, 2.2, 1.6); c.restore();
+  c.fillStyle = T.main; c.fillRect(-14, -16, 18, 1.4);
+  bugLegs(c, ph, [-11, 9], 10, 11, 5, BHC.chit[2]);
+}
+const DRAW_U = { skitterling: dSkitter, bulwark: dBulwark, razorwing: dRazor, leaper: dLeaper, ravager: dRavager, spitter: dSpitter, bilecaster: dBilecaster, bilelobber: dLobber, ruinmaw: dRuinmaw, thornback: dThornback, dreadthorn: dDreadthorn, rifle: dRifle, heavy: dHeavy, sniper: dSniper, tank: dTank, artillery: dArt, titan: dTitan, flame: dFlame, hydra: dHydra, aircraft: dAir, interceptor: dInter, leviathan: dLev, medic: dMedic, drone: dDrone };
 // Drawn size where it differs from the SIM height (the Titan walker stands taller than its hitbox): health bars and shadows follow the art
 const UVIS = { titan: { h: 50, w: 17 }, hydra: { h: 42, w: 15 } };
 const visH = type => (UVIS[type] || UDEF[type]).h;
 // Sprite cache: a ground unit's pose is drawn once into a small canvas at the current zoom, then stamped with one
 // drawImage. Walk cycles are cut into a few poses; a unit mid-recoil and aircraft (few, always animating) draw live.
-const SPR_BOX = { skitterling: [-14, -12, 30, 14], bulwark: [-24, -30, 55, 32], rifle: [-9, -26, 22, 30], heavy: [-14, -33, 29, 36], sniper: [-11, -26, 31, 30], tank: [-25, -34, 55, 37], artillery: [-30, -38, 64, 41], titan: [-22, -56, 64, 62], flame: [-23, -24, 52, 27], hydra: [-22, -50, 62, 54] };
-const SPR_STEP = { skitterling: [14, 6], bulwark: [6, 8], rifle: [11, 8], heavy: [8, 8], sniper: [10, 8], titan: [3.2, 12], hydra: [3.6, 12] }; // [phase speed, poses per cycle]
+const SPR_BOX = { skitterling: [-14, -12, 30, 14], bulwark: [-24, -30, 55, 32], leaper: [-20, -20, 36, 22], ravager: [-18, -34, 44, 36], spitter: [-12, -20, 30, 22], bilecaster: [-14, -26, 36, 28], bilelobber: [-18, -32, 38, 34], ruinmaw: [-26, -36, 60, 38], thornback: [-18, -30, 38, 32], dreadthorn: [-24, -46, 58, 48], rifle: [-9, -26, 22, 30], heavy: [-14, -33, 29, 36], sniper: [-11, -26, 31, 30], tank: [-25, -34, 55, 37], artillery: [-30, -38, 64, 41], titan: [-22, -56, 64, 62], flame: [-23, -24, 52, 27], hydra: [-22, -50, 62, 54] };
+const SPR_STEP = { skitterling: [14, 6], bulwark: [6, 8], leaper: [12, 6], ravager: [8, 6], spitter: [10, 6], bilecaster: [7, 6], bilelobber: [5, 8], ruinmaw: [4, 8], thornback: [7, 8], dreadthorn: [5, 8], rifle: [11, 8], heavy: [8, 8], sniper: [10, 8], titan: [3.2, 12], hydra: [3.6, 12] }; // [phase speed, poses per cycle]
 const SPR = { scale: 0, map: new Map(), budget: 0 };
 function sprPose(u) { // a stand-in unit snapped to one of the cached poses, with its cache key; null = draw live
   const box = SPR_BOX[u.type];
@@ -3355,7 +3543,7 @@ function drawBuilding(c, b, time) {
     drawArt(c, b, T, b.anim, b.tier + 1); c.restore();
     scaffold(c, b, T, b.upProg, bottom, top);
   } else drawArt(c, b, T, b.anim, b.tier);
-  if (b.path && treeOf(b.fac, b.type) && b.built) drawPathMark(c, b.path, T, d); // which path this building took (v2.13; ghosts remember it)
+  if (b.path && treeOf(b.fac, b.type) && b.built) drawPathMark(c, b.path, T, d, b.fac); // which path this building took (v2.13; ghosts remember it)
   if (b.shielded) {
     const a = 0.3 + 0.15 * Math.sin(time * 2.5 + b.side);
     c.beginPath(); c.ellipse(0, 12, 96, 158, 0, Math.PI, Math.PI * 2); c.ellipse(0, 12, 96, 40, 0, 0, Math.PI);
@@ -3369,13 +3557,17 @@ function drawBuilding(c, b, time) {
 }
 // A small team-colored badge on the building's front: Barracks crosshair (Specialists) or chevrons (Mass Deployment);
 // War Factory shell (Siege) or flame (Assault)
-function drawPathMark(c, path, T, d) {
+function drawPathMark(c, path, T, d, fac) {
   const x = -d.half * 1.15, y = -d.h * 0.42 - 4, r = 8;
   c.fillStyle = 'rgba(8,14,26,0.85)'; c.strokeStyle = T.main; c.lineWidth = 1.6;
   c.beginPath(); c.moveTo(x - r, y - r); c.lineTo(x + r, y - r); c.lineTo(x + r, y + r * 0.4); c.lineTo(x, y + r * 1.25); c.lineTo(x - r, y + r * 0.4); c.closePath(); c.fill(); c.stroke();
   c.strokeStyle = T.light; c.lineWidth = 1.5; c.beginPath();
-  const k = (d === BDEF.factory ? 'f' : d === BDEF.techlab ? 't' : 'b') + path;
-  if (k === 'bA') { c.arc(x, y - 1, 4, 0, 7); c.moveTo(x - 6.5, y - 1); c.lineTo(x + 6.5, y - 1); c.moveTo(x, y - 7.5); c.lineTo(x, y + 5.5); }
+  const k = (fac === 'bloomhost' ? 'x' : '') + (d === BD(fac, 'factory') ? 'f' : d === BD(fac, 'techlab') ? 't' : 'b') + path;
+  if (k === 'xbA') { for (const j of [-4, 0, 4]) { c.moveTo(x + j - 2, y - 6); c.quadraticCurveTo(x + j + 1, y - 1, x + j - 1, y + 5); } } // Predatory: claw marks (v2.19)
+  else if (k === 'xbB') { c.moveTo(x, y - 7); c.quadraticCurveTo(x + 6, y + 1, x, y + 5); c.quadraticCurveTo(x - 6, y + 1, x, y - 7); } // Acidic: a drop
+  else if (k === 'xfA') { c.moveTo(x - 6, y + 4); c.quadraticCurveTo(x, y - 10, x + 6, y + 4); c.moveTo(x + 7, y + 4); c.arc(x + 6, y + 4, 1.5, 0, 7); } // Siege: a lobbed arc
+  else if (k === 'xfB') { for (const j of [-5, 0, 5]) { c.moveTo(x + j - 2.5, y + 4); c.lineTo(x + j, y - 6); c.lineTo(x + j + 2.5, y + 4); } } // Predator: spines
+  else if (k === 'bA') { c.arc(x, y - 1, 4, 0, 7); c.moveTo(x - 6.5, y - 1); c.lineTo(x + 6.5, y - 1); c.moveTo(x, y - 7.5); c.lineTo(x, y + 5.5); }
   else if (k === 'bB') for (const j of [0, 5]) { c.moveTo(x - 5, y - 5 + j); c.lineTo(x, y - 1 + j); c.lineTo(x + 5, y - 5 + j); }
   else if (k === 'tA') { c.moveTo(x, y - 7); c.lineTo(x + 6.5, y + 3); c.lineTo(x, y); c.lineTo(x - 6.5, y + 3); c.closePath(); } // a wing
   else if (k === 'tB') { c.moveTo(x - 5.5, y - 1); c.lineTo(x + 5.5, y - 1); c.moveTo(x, y - 6.5); c.lineTo(x, y + 4.5); } // a cross
@@ -3466,6 +3658,22 @@ function drawUnit(c, u) {
   c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
   c.restore();
   if (u.shT > VFX.lastT) drawShield(c, u, VFX.lastT);
+  if (u.corrT > VFX.lastT) drawCorrosion(c, u, w); // v2.19
+}
+// Corroded (v2.19): a green acid ring at the feet with drips; brighter for stronger corrosion
+function drawCorrosion(c, u, w) {
+  const k = clamp(u.corr / CORR.cap, 0.3, 1), r = (UDEF[u.type].air ? 12 : Math.max(8, visH(u.type) * 0.6)) * US, y = w.y - u.z;
+  c.strokeStyle = `rgba(155,225,93,${0.35 + 0.4 * k})`; c.lineWidth = 1.4; c.beginPath(); c.ellipse(w.x, y, r, r * 0.35, 0, 0, 7); c.stroke();
+  c.fillStyle = `rgba(155,225,93,${0.5 + 0.4 * k})`;
+  for (let i = 0; i < 3; i++) { const ph = (VFX.lastT * 1.5 + i / 3 + u.id * 0.37) % 1, x = w.x + (i - 1) * r * 0.6, yy = y - visH(u.type) * US * (0.8 - ph * 0.7); c.beginPath(); c.arc(x, yy, 1.4, 0, 7); c.fill(); }
+}
+// Ruinmaw acid pools (v2.19): a bubbling green puddle that fades in its last second
+function drawAcidPool(c, a, t) {
+  const w = P(a.u, a.v), left = a.end - t, al = clamp(left, 0, 1);
+  c.fillStyle = `rgba(110,180,60,${0.42 * al})`; c.beginPath(); c.ellipse(w.x, w.y, ACID.r, ACID.r * DY * 0.6, 0, 0, 7); c.fill();
+  c.strokeStyle = `rgba(155,225,93,${0.55 * al})`; c.lineWidth = 1.2; c.stroke();
+  c.fillStyle = `rgba(190,245,130,${0.6 * al})`;
+  for (let i = 0; i < 5; i++) { const a2 = i * 1.26 + a.u, rr = ACID.r * (0.25 + (i % 3) * 0.2), b = (t * 2 + i * 0.3) % 1; c.beginPath(); c.arc(w.x + Math.cos(a2) * rr, w.y + Math.sin(a2) * rr * DY * 0.6, 1 + b * 2, 0, 7); c.fill(); }
 }
 
 // Soft green beams from a Medicopter to the infantry it is healing this tick (render only)
@@ -3505,7 +3713,7 @@ function makeGlow(rgb) {
   gr.addColorStop(0, `rgba(${rgb},1)`); gr.addColorStop(0.35, `rgba(${rgb},0.55)`); gr.addColorStop(1, `rgba(${rgb},0)`);
   k.fillStyle = gr; k.fillRect(0, 0, 64, 64); return cv;
 }
-const GLOW = { warm: makeGlow('255,214,140'), white: makeGlow('255,255,255'), cyan: makeGlow('150,235,255'), fire: makeGlow('255,150,60'), t0: makeGlow(TEAM[0].glow), t1: makeGlow(TEAM[1].glow) };
+const GLOW = { warm: makeGlow('255,214,140'), white: makeGlow('255,255,255'), cyan: makeGlow('150,235,255'), fire: makeGlow('255,150,60'), t0: makeGlow(TEAM[0].glow), t1: makeGlow(TEAM[1].glow), acid: makeGlow('155,225,93') };
 function stamp(c, img, x, y, r, a) { if (a <= 0.01 || r <= 0) return; c.globalAlpha = Math.min(1, a); c.drawImage(img, x - r, y - r, r * 2, r * 2); }
 
 // Pools. Particle kinds: 0 smoke, 1 spark, 2 debris (falls and settles), 3 dust. pri 1 = may push out pri 0.
@@ -3612,7 +3820,7 @@ function vfxScan(g, dt) {
 }
 const titanStep = u => Math.floor((u.anim * 3.2 - Math.PI / 2) / Math.PI);
 
-const MUZ_COL = { spine: null, claw: null, talon: null, slam: null, rifle: 'warm', gatling: 'warm', flak: 'warm', rail: 'cyan', rocket: 'fire', missile: 'fire', cannon: 'warm', siege: 'white', shell: 'fire', hqgun: null, flame: 'fire', hydra: 'warm', bomb: 'fire' };
+const MUZ_COL = { spine: null, claw: null, talon: null, slam: null, rend: null, maul: null, gore: null, acid: null, bile: null, lob: null, ruin: null, rifle: 'warm', gatling: 'warm', flak: 'warm', rail: 'cyan', rocket: 'fire', missile: 'fire', cannon: 'warm', siege: 'white', shell: 'fire', hqgun: null, flame: 'fire', hydra: 'warm', bomb: 'fire' };
 const FLAME_COL = ['#ffd27a', '#ff9a3c', '#ff5a24'];
 function onFire(g, e, lit) {
   const gun = e.kind === 'b' ? bdOf(e).gun && bdOf(e).gun[e.tier] : UDEF[e.type];
@@ -3654,7 +3862,8 @@ function onFire(g, e, lit) {
       vFx('flash', w.x, w.y, 14, 0.12, col, 2); vFx('ring', w.x, w.y, 4, 0.3, TEAM[e.side].main, 1, 18, 0, 2);
       break;
     case 'spine': vFx('flash', w.x, w.y, 6, 0.07, GLOW['t' + e.side], 1); break; // the Maw spits
-    case 'claw': case 'talon': case 'slam': // a bite or a blow: a short bright snap at the jaws
+    case 'acid': case 'bile': case 'lob': case 'ruin': vFx('flash', w.x, w.y, wpn === 'acid' ? 5 : 9, 0.1, GLOW.acid, 1); break; // a spray of acid (v2.19)
+    case 'claw': case 'talon': case 'slam': case 'rend': case 'maul': case 'gore': // a bite or a blow: a short bright snap at the jaws
       vFx('flash', w.x + face * 3, w.y, wpn === 'slam' ? 10 : 5, 0.08, GLOW['t' + e.side], 1); break;
   }
 }
@@ -3696,6 +3905,10 @@ function onImpact(g, p, lit) {
       vFx('flash', w.x, ground - 6, 22, 0.16, GLOW.fire, 2);
       for (let i = vCount(6); i > 0; i--) vPart(w.x + vr(-10, 10), ground - 1, vr(-34, 34), vr(-22, -6), vr(0.9, 1.5), vr(5, 9), 3, '', -2, 0);
       for (let i = vCount(4); i > 0; i--) vPart(w.x, ground - 2, vr(-80, 80), vr(-110, -40), vr(0.7, 1.2), vr(1.8, 3), 2, '#2a3648', 320, 1, ground);
+      break;
+    case 'acid': case 'bile': case 'ruin': case 'lob': // a splash of acid (v2.19)
+      vFx('ring', w.x, p.weapon === 'lob' ? ground : w.y, 3, 0.3, '#9be15d', 1, p.weapon === 'acid' ? 10 : 24, p.weapon === 'lob' ? 1 : 0, 1.4);
+      for (let i = vCount(p.weapon === 'acid' ? 2 : 4); i > 0; i--) vPart(w.x, w.y, vr(-30, 30), vr(-40, -5), vr(0.3, 0.6), vr(1.4, 2.4), 1, '#9be15d', 200, 0, ground);
       break;
     case 'flak': // anti-air airburst
       for (let i = vCount(3); i > 0; i--) vPart(w.x + vr(-4, 4), w.y + vr(-4, 4), vr(-10, 10), vr(-8, 4), vr(0.5, 0.8), vr(2.5, 4), 0, 'light', -2, 0);
@@ -3982,6 +4195,7 @@ function render(c, g, time, sel, selPad) {
     }
   }
   for (const n of g.nodes) drawNodeZone(c, n, time, lit(n.u));
+  for (const a of g.acid) if (lit(a.u)) drawAcidPool(c, a, g.t);
   drawDecals(c);
   if (g) drawSelection(c, g, time);
   drawWrecks(c, time);
@@ -4019,6 +4233,15 @@ function render(c, g, time, sel, selPad) {
       c.strokeStyle = 'rgba(255,220,140,0.75)'; c.lineWidth = big ? 3.2 : 2.2; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
       c.globalCompositeOperation = 'lighter'; stamp(c, big ? GLOW.white : GLOW.warm, b.x, b.y, big ? 8 : 6, 0.85); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
       c.fillStyle = '#fff6d0'; c.beginPath(); c.arc(b.x, b.y, big ? 3 : 2.2, 0, 7); c.fill();
+    } else if (wp === 'acid' || wp === 'bile' || wp === 'ruin') { // Bloomhost acid (v2.19): a green glob with a short trail
+      const big = wp === 'ruin' ? 3.2 : wp === 'bile' ? 2.6 : 1.8;
+      c.strokeStyle = 'rgba(155,225,93,0.55)'; c.lineWidth = big; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
+      c.fillStyle = wp === 'ruin' ? '#6fae3a' : '#c4f58e'; c.beginPath(); c.arc(b.x, b.y, big, 0, 7); c.fill();
+    } else if (wp === 'lob') { // the Bile Lobber's arcing glob, with the same landing ring as a shell
+      const gp = P(p.u, p.v, 0);
+      if (showLanding(p, lit)) { const t = P(p.tu, p.tv, 0), k = clamp(p.t / p.T, 0, 1); c.strokeStyle = TEAM[p.side].main; c.globalAlpha = 0.2 + 0.5 * k; c.lineWidth = 1.2; c.beginPath(); c.ellipse(t.x, t.y, 26 - 8 * k, (26 - 8 * k) * 0.42, 0, 0, 7); c.stroke(); c.globalAlpha = 1; }
+      c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.ellipse(gp.x, gp.y, 4, 1.6, 0, 0, 7); c.fill();
+      c.fillStyle = '#9be15d'; c.beginPath(); c.arc(b.x, b.y, 3.4, 0, 7); c.fill(); c.fillStyle = '#e4ffc8'; c.beginPath(); c.arc(b.x - 1, b.y - 1, 1.2, 0, 7); c.fill();
     } else if (wp === 'shell') {
       const gp = P(p.u, p.v, 0);
       if (showLanding(p, lit)) {
@@ -4271,7 +4494,15 @@ const UNIT_TIPS = {
   hydra: ['Aircraft first, then infantry swarms; slowly chips buildings', 'Tanks, Titans, Artillery'],
   skitterling: ['Lone ranged units and nodes; hits harder when several bite the same target (up to +45%)', 'Splash damage, Flame Tanks, Turrets; it can\'t hit aircraft'],
   bulwark: ['Soaking up fire at the front; braces when hit (40% less damage for 3 s, every 12 s)', 'Heavies, Tanks; being surrounded'],
-  razorwing: ['Exposed ground units; dives from the air', 'Anything that hits air; it can\'t hit aircraft'],
+  razorwing: ['Exposed ground units and aircraft; dives from the air', 'Anything that hits air, Turrets'],
+  leaper: ['Snipers, Artillery and other ranged units: it leaps up to 140 onto them (every 7 s)', 'Splash, Flame Tanks, focused fire'],
+  ravager: ['Light armor (its maul does 1.6×): infantry, Snipers, support', 'Tanks, Turrets, focused fire'],
+  spitter: ['Aircraft and ground from range; its acid makes targets take more damage (corrosion)', 'Anything that reaches it, splash'],
+  bilecaster: ['Clumps of ground units: acid splash and stronger corrosion', 'Anything that reaches it, aircraft (it can\'t hit them)'],
+  bilelobber: ['Buildings and clumps from 420 range, like Artillery (minimum range 110)', 'Anything that gets close, aircraft'],
+  ruinmaw: ['Buildings above all; every hit leaves a short acid pool', 'Fast attackers, aircraft, Heavies'],
+  thornback: ['The front line; anyone who hits it up close takes 20% of the damage back', 'Ranged focus, Tanks, aircraft'],
+  dreadthorn: ['Packed infantry: a hit of 60+ releases a spine burst around it (every 15 s)', 'Ranged focus, Tanks, aircraft'],
 };
 const pFac = () => game ? game.sides[0].faction : DEFAULT_FACTION; // the player's faction (cards, panel and info)
 const stat = (label, val) => `<div><small>${label}</small><b>${val}</b></div>`;
@@ -4297,7 +4528,7 @@ function showInfo(kind, type) {
     name = type; sub = 'Commander ability';
     body = `<div class="irow">${factionName(pFac())} commander abilities are coming soon: Frenzy Bloom, Emergency Brood and Corrosive Bloom.</div>`;
   } else if (treeOf(pFac(), type)) { // a building with an upgrade tree
-    const d = BD(pFac(), type), T = TREES[type];
+    const d = BD(pFac(), type), T = treeOf(pFac(), type);
     name = d.name; sub = (d.req ? `Requires ${BD(pFac(), d.req).name} · ` : '') + 'picks a path at T2';
     body = `<div class="istats">${stat('HP', d.hp)}${stat('Build time', d.time + 's')}${stat('Credits', d.cost.c)}${stat('Energy', d.cost.e)}</div><div class="irow"><em>T1</em> ${d.tiers[1]}</div>` +
       Object.keys(T).map(k => `<div class="irow"><em>Path ${k} · ${T[k].name}</em> T2 (${d.up[2].c}/${d.up[2].e}): ${T[k].steps[2].txt}. T3 (${d.up[3].c}/${d.up[3].e}): ${T[k].steps[3].txt}.</div>`).join('') +
@@ -4334,7 +4565,7 @@ function buildCards() {
     el.addEventListener('contextmenu', e => e.preventDefault());
     el.addEventListener('click', () => { if (lp && lp.el === el && lp.fired) { lp.fired = false; return; } hideInfo(); onCard(type, el); });
     el.addEventListener('animationend', () => el.classList.remove('shake'));
-    if (tab === 'train' && UNIT_PATH[type]) el.insertAdjacentHTML('beforeend', `<span class="path">${TREES[UNIT_PATH[type].b][UNIT_PATH[type].p].short}</span>`);
+    if (tab === 'train' && UNIT_PATH[type]) el.insertAdjacentHTML('beforeend', `<span class="path">${UNIT_PATH[type].path.short}</span>`);
     if (tab === 'train' && type === 'rifle') el.insertAdjacentHTML('beforeend', '<span class="path pr"></span>');
     wrap.appendChild(el);
   }
@@ -4653,12 +4884,12 @@ function refreshPanel() {
     up.disabled = true; up.textContent = 'Building…'; up.classList.remove('poor');
     return;
   }
-  if (TREES[b.type] && !treeOf(b.fac, b.type)) { // Bloomhost production stays T1 until its evolution trees arrive (v2.17)
+  if (prodLocked(b.fac, b.type)) { // the Bloomspire stays T1 until its evolution tree arrives (v2.21)
     $('bpNow').textContent = `T1: ${d.tiers[1]}`; setHTML($('bpNext'), '');
     up.disabled = true; up.textContent = 'Evolution paths coming soon'; up.classList.remove('poor'); up.classList.add('soon'); $('bp').classList.add('wide'); return;
   }
   up.classList.remove('soon');
-  const T = TREES[b.type], P = T && (b.path || b.upPath) ? T[b.path || b.upPath] : null, pick = T && b.tier === 1 && !b.upgrading;
+  const T = treeOf(b.fac, b.type), P = T && (b.path || b.upPath) ? T[b.path || b.upPath] : null, pick = T && b.tier === 1 && !b.upgrading;
   const tierTxt = (t, named) => P && t >= 2 ? (named ? `${P.name}: ` : '') + P.steps[t].short : d.tiers[t];
   $('bp').classList.toggle('wide', !!pick);
   $('bpPick').classList.toggle('hide', !pick);
@@ -4952,7 +5183,7 @@ function repSummary(g) {
   const units = t => { const ks = Object.keys(UDEF).filter(k => t.trained[k] || t.lost[k]); return `${sum(t.trained)} (${sum(t.lost)})${ks.length ? ': ' + ks.map(k => `${UDEF[k].name} ${t.trained[k] || 0} (${t.lost[k] || 0})`).join(', ') : ''}`; };
   const blds = t => `${sum(t.bBuilt)} · ${t.bUp} · ${sum(t.bLost)}${sum(t.bLost) ? ` (${Object.keys(t.bLost).map(k => `${logBName(g, T.indexOf(t), k)}${t.bLost[k] > 1 ? ' ×' + t.bLost[k] : ''}`).join(', ')})` : ''}${t.bSold ? ` · ${t.bSold} sold` : ''}`;
   const abil = t => ABIL_ORDER.filter(k => t.ab[k][0]).map(k => k === 'strike' ? `Strike ×${t.ab.strike[0]}: ${fmtN(t.ab.strike[1])} damage, ${t.ab.strike[2]} destroyed` : k === 'shield' ? `Shield ×${t.ab.shield[0]}: ${fmtN(t.ab.shield[1])} blocked` : `Repair ×${t.ab.repair[0]}: ${fmtN(t.ab.repair[1])} HP`).join(' · ') || 'none';
-  const PATHS = [0, 1].map(s => [...new Set(L.ev.filter(e => e[2] === 'U' && e[1] === s && e[6] && TREES[e[3]]).map(e => `${BDEF[e[3]].name}: ${TREES[e[3]][e[6]].name}`))].join(', ')); // from the recorded path choices
+  const PATHS = [0, 1].map(s => [...new Set(L.ev.filter(e => e[2] === 'U' && e[1] === s && e[6] && treeOf(g.sides[s].faction, e[3])).map(e => `${logBName(g, s, e[3])}: ${treeOf(g.sides[s].faction, e[3])[e[6]].name}`))].join(', ')); // from the recorded path choices
   const row = (h, f) => `<tr><th>${h}</th><td>${f(T[0])}</td><td class="e">${f(T[1])}</td></tr>`;
   const att = L.ev.filter(e => e[2] === 'G' && e[1] === 1), real = att.filter(e => !e[4]), aiLog = g.sides[1].aiLog || {};
   const behave = [`${real.length} attack${real.length === 1 ? '' : 's'}${real.length ? ` (first at ${mmss(real[0][0])})` : ''}`, `${att.length - real.length} feint${att.length - real.length === 1 ? '' : 's'}`,

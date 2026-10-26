@@ -31,13 +31,14 @@ test('the eight Bloomhost buildings fill the Last Fist roles; the Hive keeps the
   assert.deepStrictEqual({ ...sim.income(g, 0) }, { c: 3 + 4, e: 1 + 2 });
 });
 
-test('each faction trains only its own units; Bloomhost production stays at T1 ("evolution paths coming soon"); the rest upgrade', () => {
+test('each faction trains only its own units; the Bloomspire stays at T1 ("evolution paths coming soon"); the rest upgrade (v2.19: Larva Pit and Evolution Chamber pick paths)', () => {
   const g = quiet(); g.countdown = 0;
   const pit = finish(g, 0, 'barracks'), evo = finish(g, 0, 'factory'), spire = finish(g, 0, 'techlab'), gore = finish(g, 0, 'refinery'), maw = finish(g, 0, 'turret');
   finish(g, 0, 'habitat'); finish(g, 1, 'barracks');
   for (const [t, ok] of [['skitterling', true], ['bulwark', true], ['razorwing', true], ['rifle', false], ['tank', false], ['aircraft', false]]) assert.strictEqual(sim.tryTrain(g, 0, t).ok, ok, t);
   assert.ok(sim.tryTrain(g, 1, 'rifle').ok); assert.ok(!sim.tryTrain(g, 1, 'skitterling').ok, 'a Last Fist Barracks makes no Skitterlings');
-  for (const b of [pit, evo, spire]) { const r = sim.tryUpgrade(g, 0, b, 'A'); assert.ok(!r.ok); assert.match(r.msg, /evolution paths coming soon/); }
+  { const r = sim.tryUpgrade(g, 0, spire, 'A'); assert.ok(!r.ok); assert.match(r.msg, /evolution paths coming soon/); }
+  assert.match(sim.tryUpgrade(g, 0, pit).msg, /Choose a path/); assert.ok(sim.tryUpgrade(g, 0, pit, 'B').ok); assert.ok(sim.tryUpgrade(g, 0, evo, 'A').ok);
   assert.ok(sim.tryUpgrade(g, 0, gore).ok); assert.ok(sim.tryUpgrade(g, 0, maw).ok); assert.ok(sim.tryUpgrade(g, 0, g.sides[0].hq).ok);
   step(g, 30);
   assert.strictEqual(gore.tier, 2); assert.strictEqual(sim.income(g, 0).c >= 3 + 6, true);
