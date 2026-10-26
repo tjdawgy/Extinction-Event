@@ -19,6 +19,29 @@ test('title screen: name and version', { skip }, async () => {
   await page.close();
 });
 
+test('title image: shows first, covers the screen uncropped-centered, tap goes to the main menu', { skip }, async () => {
+  for (const dev of [PHONE, { width: 396, height: 858, insets: { top: 59, bottom: 34, left: 0, right: 0 } }]) { // landscape and portrait
+    const { page, errors } = await openPage(browser, dev, { title: true });
+    await page.waitForFunction(() => { const i = new Image(); i.src = 'assets/title-screen.jpg'; return i.decode().then(() => i.naturalWidth > 0, () => false); });
+    const r = await page.evaluate(() => { const t = $('title'), cs = getComputedStyle(t), b = t.getBoundingClientRect(), hit = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
+      return { size: cs.backgroundSize, pos: cs.backgroundPosition, img: cs.backgroundImage, w: b.width, h: b.height, top: hit === t || t.contains(hit), text: t.textContent, anim: getComputedStyle(t.querySelector('b')).animationName }; });
+    assert.strictEqual(r.size, 'cover');
+    assert.strictEqual(r.pos, '50% 50%');
+    assert.match(r.img, /assets\/title-screen\.jpg/);
+    assert.deepStrictEqual([r.w, r.h], [dev.width, dev.height]);
+    assert.ok(r.top, 'title screen is on top of the menu');
+    assert.strictEqual(r.text, 'TAP TO PLAY');
+    assert.strictEqual(r.anim, 'tapPulse');
+    await page.mouse.click(dev.width * 0.3, dev.height * 0.5);
+    await page.waitForTimeout(500);
+    assert.strictEqual(await page.evaluate(() => !!$('title')), false, 'title screen removed after the tap');
+    assert.ok(await page.isVisible('#bPlay'), 'main menu is showing');
+    assert.strictEqual(await page.evaluate(() => game), null, 'the tap did not start a match');
+    assert.deepStrictEqual(errors, []);
+    await page.close();
+  }
+});
+
 test('match start: wide view, GET READY 3-2-1, GO; taps wait for GO', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
   await page.click('#bPlay');

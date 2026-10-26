@@ -1,7 +1,7 @@
 # Extinction Event — working rules for Claude Code
 
 ## Current state
-- Version: v2.22.
+- Version: v2.23 (title screen, assets/title-screen.jpg).
 - Factions: **Last Fist** (upgrade trees done: Barracks v2.13, War Factory v2.14, Tech Lab v2.15) and **Bloomhost** (framework v2.17, creep v2.18, Larva Pit and Evolution Chamber trees + anti-air v2.19, commander abilities + temporary units v2.20, Bloomspire tree v2.21; complete at v2.22).
 - Roadmap, in order: finish all Last Fist upgrade trees → Bloomhost faction → third faction → strategy explorer + full balance audit + matchup testing → AI training → campaign, multiplayer, App Store.
 - Until the audit, implementation only: no balance tuning, no tactical AI work, and no matrices or ladders unless a prompt asks for them. The only AI changes allowed are the minimum the AI needs to build and use new content.

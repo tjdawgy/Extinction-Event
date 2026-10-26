@@ -30,15 +30,18 @@ const COUNT_CANVAS_RESIZES = `(() => {
   Object.defineProperty(HTMLCanvasElement.prototype, 'height', { get: h.get, set(v) { bump(this); h.set.call(this, v); }, configurable: true });
 })();`;
 
-async function openPage(browser, device = PHONE, { countCanvasResizes = false, init = null } = {}) {
+async function openPage(browser, device = PHONE, { countCanvasResizes = false, init = null, title = false } = {}) {
   const page = await browser.newPage({ viewport: { width: device.width, height: device.height }, deviceScaleFactor: 2 });
   if (countCanvasResizes) await page.addInitScript(COUNT_CANVAS_RESIZES);
   if (init) await page.addInitScript(init);
+  // Most tests start at the main menu, including after a reload; title: true keeps the title screen
+  if (!title) await page.addInitScript(() => document.addEventListener('DOMContentLoaded', () => { const t = document.getElementById('title'); if (t) t.remove(); }));
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
   // Serve the patched page from a file:// URL next to index.html so relative paths behave the same
   await page.route('**/__phone.html', route => route.fulfill({ contentType: 'text/html', body: htmlWithInsets(device.insets) }));
+  await page.route('**/assets/**', route => route.fulfill({ path: path.join(path.dirname(process.env.EE_HTML || HTML_PATH), 'assets', path.basename(new URL(route.request().url()).pathname)) }));
   await page.goto('http://phone.test/__phone.html');
   await page.waitForTimeout(300);
   return { page, errors };

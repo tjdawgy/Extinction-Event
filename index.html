@@ -200,6 +200,10 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .dot.p{background:var(--pop);border-radius:50%}
 #ov{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(3,6,14,.72);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);z-index:10;padding:calc(env(safe-area-inset-top,0px) + 10px) calc(env(safe-area-inset-right,0px) + 16px) calc(env(safe-area-inset-bottom,0px) + 10px) calc(env(safe-area-inset-left,0px) + 16px)}
 #ov.hide{display:none}
+#title{position:fixed;inset:0;z-index:60;display:flex;align-items:flex-end;justify-content:center;background:#05070d url('assets/title-screen.jpg') center/cover no-repeat;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 7vh);cursor:pointer;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;transition:opacity .35s}
+#title.out{opacity:0;pointer-events:none}
+#title b{font-size:clamp(18px,4.4vmin,30px);font-weight:900;letter-spacing:.22em;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.9),0 0 22px rgba(255,80,60,.55);animation:tapPulse 2.4s ease-in-out infinite}
+@keyframes tapPulse{0%,100%{opacity:1}50%{opacity:.25}}
 .box{position:relative;width:min(620px,100%);max-height:100%;overflow:auto;background:linear-gradient(#111c33,#0a1222);border:1px solid var(--line);border-radius:16px;padding:16px 18px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
 .box h1{margin:0;font-size:28px;line-height:1.05;font-weight:900;letter-spacing:.02em;color:var(--text)}
 .box h1 span{color:var(--blue)}
@@ -310,11 +314,12 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
   </footer>
 </div>
 <div id="ov"><div class="box" id="box"></div></div>
+<div id="title" role="button" aria-label="Tap to play"><b>TAP TO PLAY</b></div>
 <div id="rotate"><div class="ph"></div><b>Turn your phone sideways</b><small>Extinction Event plays in landscape. If it won’t rotate, switch off Portrait Orientation Lock in Control Center.</small></div>
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.22'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.23'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -5597,6 +5602,8 @@ buildAbil();
 resize();
 homeCamera();
 showStart();
+// Title screen covers the main menu on load; a tap (click, so no ghost tap reaches the menu) fades it away
+$('title').addEventListener('click', () => { const t = $('title'); t.classList.add('out'); setTimeout(() => t.remove(), 400); });
 requestAnimationFrame(frame);
 </script>
 </body>
