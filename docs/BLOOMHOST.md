@@ -868,7 +868,7 @@ D. BUILD ORDER — one batch per session, each with its own prompt. Never implem
 3. v2.19 Larva Pit and Evolution Chamber trees.
 4. v2.20 Commander abilities, including the temporary-unit system (Cloudwing reuses it later).
 5. v2.21 Bloomspire tree.
-6. v2.22 Bloomhost AI pass plus smoke tests.
+6. ~~v2.22 Bloomhost AI pass plus smoke tests.~~ Moved to the AI training phase (decided at v2.22). The open AI items are listed under Audit in KNOWN_ISSUES.md. v2.22 closed out Bloomhost with docs only (see the Definition of Done check below).
 Each batch's finish line: npm test passes, a short AI smoke test with no errors or timeouts, and performance within noise of the previous version.
 
 E. MATCH SETUP AND HIDDEN ENEMY FACTION
@@ -1007,3 +1007,28 @@ Temporary units now record their lifetime (`tLife`) and source (`tSrc`: 'brood' 
 AI (minimal): the Bloomspire path is translated from each personality's Tech Lab choice: Air Power → Apex Bloom (Economist, Trickster), Support → Swarm Bloom (Aggressor, Turtle). A Bloomspire path unit the AI has never trained gets the top score once, so it saves up for it. Without that rule the simple scores kept the Razorwing on top and the AI never trained a Brood Tyrant.
 
 Frenzy Bloom (v2.20) glow: larger and brighter, with a pulsing ring at the unit's feet (visual only).
+
+=== v2.22 DEFINITION OF DONE CHECK (section 15; docs only, no new matches) ===
+
+Evidence is the existing code, tests (`npm test`, 208 of 208 at v2.21), screenshots in docs/screenshots/ and the batch reports for v2.17–v2.21.
+
+| # | Section 15 item | Status | Evidence / where it went |
+|---|---|---|---|
+| 1 | The player can select Bloomhost and start a new match | Done | Setup menu (v2.17): tests/bloomhost-ui.test.js (setup menu at 667x375 and 858x396; a match as Bloomhost); browser checks v2.17–v2.21; screenshot bloomhost-setup-667x375.png |
+| 2 | Last Fist remains fully functional | Done | Full regression suite passes; the determinism check showed Last Fist play move for move unchanged at v2.18–v2.21 before each fingerprint re-record |
+| 3 | Bloomhost's buildings have the correct roles and upgrade paths | Done | tests/bloomhost.test.js (the eight buildings fill the Last Fist roles; every production building picks a path); v2.17 stats table |
+| 4 | All three production buildings have independent two-branch evolution trees | Done | Larva Pit and Evolution Chamber (v2.19, tests/bh-trees.test.js), Bloomspire (v2.21, tests/bh-spire.test.js): path at T2, locked per building, reset by selling |
+| 5 | Creep spreads, is visually readable, and provides the intended bonuses | Done | tests/creep.test.js (gradual growth, recede, +20% speed, out-of-combat regeneration); screenshots creep-early, creep-mid-node. The numbers are untuned (Audit) |
+| 6 | Creep does not reveal hidden enemies through fog of war | Done | tests/creep.test.js (enemy creep hidden in the fog, remembered only as last seen; no vision); screenshot creep-enemy-fog |
+| 7 | Melee units can realistically reach ranged targets under appropriate conditions | Deferred (amendment C: section 8G matchup tests go to the audit) | The mechanics are in (creep speed, Leaper leap, Bulwark brace, melee chase, Frenzy Bloom). Whether melee units really reach ranged targets has not been measured |
+| 8 | Swarm units have clear strengths and weaknesses | Deferred (amendment C; audit) | Roles, counters and info-card text exist (UNIT_TIPS; swarm bonuses tested); strengths and weaknesses not measured in matchups |
+| 9 | The Maw works as a defensive building | Done | v2.17: Turret role with the Maw's own gun (tests/bloomhost.test.js); the AI builds Maws in a Hard match. Its numbers are untuned (Audit) |
+| 10 | All three commander abilities work and share the correct cooldown pool | Done | tests/bh-abilities.test.js (shared cooldown locks all three; each effect); cast through the UI in the v2.20 browser check |
+| 11 | Temporary units and effects are cleaned up correctly | Done | Emergency Brood and Cloudwing offspring: expiry, separate caps, match end, save/load, new match (tests/bh-abilities.test.js, tests/bh-spire.test.js); acid pools capped and expiring (tests/bh-trees.test.js) |
+| 12 | Bloomhost AI functions without cheating | Done (minimal AI); AI quality deferred to the AI training phase | It uses the same build, train, upgrade and ability calls as Last Fist, and the same vision (`visibleTo`), with no resource or combat bonuses. Seeded Hard matches play to the end (tests/bloomhost.test.js, bh-trees, bh-abilities, bh-spire). Open AI items are under Audit in KNOWN_ISSUES.md (Emergency Brood unused, production T3 rarely reached, content coverage) |
+| 13 | Existing saves still work | Done | Save versions v17–v21 each with migration tests; old saves load as Last Fist vs Last Fist (tests/faction.test.js, tests/regression.test.js); keys unchanged |
+| 14 | The game remains usable and performant on an iPhone in landscape mode | Deferred (performance check before the App Store; KNOWN_ISSUES Audit) | Usable at 667x375 and 858x396 in browser checks and screenshots. Performance: one throttled run at v2.18 only (KNOWN_ISSUES); no late-game or real-iPhone measurement |
+| 15 | The Extinction Event endgame still works correctly | Done | The storm code is faction-independent (`updateStorm` burns every building of either side); tests/extinction.test.js passes. No Bloomhost-specific storm test |
+| 16 | Match reporting and other existing systems continue to function | Done | The match log and report name both factions and log Bloomhost abilities (tests/bloomhost.test.js, tests/faction.test.js, tests/report.test.js); the Army tab and info cards cover every Bloomhost unit (tests/bh-trees.test.js, tests/bloomhost-ui.test.js) |
+
+Summary: 13 Done (one of them with the AI's quality deferred), 3 Deferred, 0 Not done. Bloomhost is complete for this phase. Its balance, matchup and performance questions go to the audit, and its AI quality to the AI training phase.

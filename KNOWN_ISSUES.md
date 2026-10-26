@@ -30,7 +30,22 @@ Items for the strategy explorer and full balance audit. Logged only, nothing tun
 - **Bloomhost commander abilities (v2.20)** are first-pass numbers copied from their Last Fist counterparts (table in docs/BLOOMHOST.md). Unmeasured: Frenzy Bloom's +30% speed and +35% attack speed, Emergency Brood's 5 Skitterlings for 20 s (cap 8), Corrosive Bloom's 14 damage/s and 15% corrosion for 8 s, and the AI's timing through the Last Fist logic. In one Hard match the Bloomhost AI never cast Emergency Brood.
 - **Bloomspire tree (v2.21)** is first-pass numbers (table in docs/BLOOMHOST.md). Unmeasured: the Needlewing pack bonus, Cloudwing offspring (2 every 14 s, 12 s, half damage, cap 6), the Brood Tyrant's and Worldrender's building damage, and the AI's "train each new Bloomspire unit once" rule.
 - **The AI rarely reaches Bloomspire T3 (v2.21):** T3 Tech Lab/Bloomspire comes late in the shared upgrade order (`AI_UPG`). In the seed search for the AI test (Hard autoplayer Turtle vs a Bloomhost AI, 20 matches across all four personalities, then 26 more Turtle and Aggressor matches), the 4 matches that took Swarm Bloom never reached T3, so no Cloudwings were trained naturally. The Economist reached Apex T3 in 3 of 5. The Aggressor took a Bloomspire path in none of its 18 matches, the Turtle in 4 of 18.
+- **AI training: the Bloomhost AI never casts Emergency Brood in normal matches (v2.22).** It picks Brood targets with the Repair Pulse's logic (damaged units or buildings), so it rarely finds a reason to cast. Neither v2.20 SIM match had a Brood cast; only the hand-picked seeded test match (seed 4, Turtle) shows one.
+- **AI training: the Bloomhost AI rarely reaches production T3 (v2.22)**, so Cloudwings and other T3 units (Ravager, Bilecaster, Ruinmaw, Dreadthorn, Worldrender) are rarely trained. See the v2.21 Bloomspire T3 item. Even with a ready T3 Apex Bloomspire and 6,000 credits and energy, 3 of 40 seeded 90-second runs trained only one of the two Apex units, with Skitterlings filling the supply first (found at v2.22; the test now uses a fixed seed).
+- **AI training: run an AI content coverage check** that every Bloomhost unit, ability and path is used by the AI at least once.
+- **Before the App Store: run a Bloomhost performance check**, both in the early game and on a late-game save with large armies (creep, Cloudwing offspring and many units). The only measurement so far is one throttled run at v2.18.
+
 - **Mass Deployment near the top of its win range** (58.8%, target 40–60%); **Riflemen about 37% of unit spending** (target about 35%) (v2.13).
+
+### Bloomhost summary (v2.22)
+Every Bloomhost item for the audit and AI training, in one place (details in the Audit entries above, the Open sections below and docs/BLOOMHOST.md):
+- **Numbers to audit (all first-pass, untuned):** base units and the Maw (v2.17), creep (v2.18), the Larva Pit and Evolution Chamber tree units with corrosion and acid pools (v2.19), commander abilities (v2.20), the Bloomspire tree with Cloudwing offspring (v2.21).
+- **Matchups to measure (amendment C, section 8G):** whether melee units reach ranged targets, the swarm bonuses, splash against swarms, and creep's value.
+- **Anti-air:** Spitters and Razorwings (amendment F, v2.19). Check this once the matchup tests are run.
+- **Melee chase (v2.17):** check whether it lures swarms into Turrets or splits armies.
+- **AI:** the path mapping from Last Fist tastes (v2.19, v2.21); the "train each new Bloomspire unit once" rule (v2.21); Emergency Brood unused; production T3 rarely reached; the content coverage check. The Bloomhost AI pass (amendment D batch 6) moved to the AI training phase.
+- **Performance:** the early-game and late-game check before the App Store.
+- **Interface notes:** Bloomhost attacks are silent (v2.17); remembered enemy creep has a hard edge (v2.18).
 
 ## Open
 

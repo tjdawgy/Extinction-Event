@@ -132,7 +132,10 @@ test('the AI maps its Tech Lab taste onto the Bloomspire: Air Power → Apex Blo
 });
 
 test('the AI trains every unit on its Bloomspire path (a prepared T3 Bloomspire on each path)', () => {
+  const mul = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
   for (const [path, want] of [['A', ['needlewing', 'cloudwing']], ['B', ['broodtyrant', 'worldrender']]]) {
+    const sim = loadSim({ random: mul(7) }); // seeded (v2.22): unseeded, Skitterlings sometimes filled the supply first
+    const step = (g, secs) => { for (let i = 0; i < Math.round(secs * 30); i++) sim.update(g, 1 / 30); };
     const g = sim.newGame('hard', { factions: ['lastfist', 'bloomhost'] }); g.countdown = 0; g.sides[0].aiT = 1e9;
     const side = g.sides[1]; side.res.c = side.res.e = 6000;
     const fin = k => { assert.ok(sim.tryBuild(g, 1, k).ok, k); const b = g.ents.filter(e => e.side === 1 && e.type === k).at(-1); b.built = true; b.progress = 1; b.hp = b.maxHp; return b; };
