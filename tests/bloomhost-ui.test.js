@@ -1,5 +1,5 @@
 // Bloomhost in headless Chromium (v2.17): the match setup menu (order, fit at both phone sizes, remembered choices), a
-// match started as Bloomhost (names, cards, locked production upgrades, "Soon" abilities), and the enemy faction kept
+// match started as Bloomhost (names, cards, path pickers, its own abilities), and the enemy faction kept
 // out of the UI until the match is over.
 const test = require('node:test');
 const assert = require('node:assert');
@@ -28,7 +28,7 @@ for (const dev of [NARROW, PHONE]) {
   });
 }
 
-test('a match as Bloomhost: names and cards, Train after a Larva Pit, Larva Pit path picker, Bloomspire locked, abilities "Soon"', { skip }, async () => {
+test('a match as Bloomhost: names and cards, Train after a Larva Pit, Larva Pit path picker, Bloomspire locked, its own three abilities (v2.20)', { skip }, async () => {
   const { page, errors } = await openPage(browser, NARROW);
   await page.click('#meSeg [data-f="bloomhost"]'); await page.click('#foeSeg [data-f="lastfist"]');
   await page.click('#bPlay'); await page.waitForTimeout(300);
@@ -36,13 +36,13 @@ test('a match as Bloomhost: names and cards, Train after a Larva Pit, Larva Pit 
   assert.ok((await toasts()).some(t => /You command Bloomhost: start with a Larva Pit and a Goremound/.test(t)));
   const r = await page.evaluate(() => {
     game.countdown = 0; hideCountdown(); updateIntro(); for (const s of game.sides) { s.aiT = 1e9; s.res.c = s.res.e = 5000; } refreshUI(true);
-    return { fac: game.sides.map(s => s.faction), cards: [...$('cards').querySelectorAll('.card .nm')].map(x => x.textContent), abil: [...$('abil').children].map(b => b.querySelector('small').textContent) };
+    return { fac: game.sides.map(s => s.faction), cards: [...$('cards').querySelectorAll('.card .nm')].map(x => x.textContent), abil: [...$('abil').children].map(b => b.dataset.k) };
   });
   assert.deepStrictEqual(r.fac, ['bloomhost', 'lastfist']);
   assert.deepStrictEqual(r.cards, ['Goremound', 'Pulse Organ', 'Hatchery', 'Larva Pit', 'Maw', 'Evolution Chamber', 'Bloomspire']);
-  assert.deepStrictEqual(r.abil, ['Soon', 'Soon', 'Soon']);
+  assert.deepStrictEqual(r.abil, ['frenzy', 'brood', 'corrosive']);
   await page.click('#abil .ab[data-k="frenzy"]');
-  assert.ok((await toasts()).some(t => /Frenzy Bloom: Bloomhost commander abilities are coming soon/.test(t)));
+  assert.ok((await toasts()).some(t => /Frenzy Bloom is ready in/.test(t)), 'its first cooldown, like Last Fist');
   await page.click('.tabs [data-tab="train"]');
   assert.match(await page.textContent('#cards .trainHint'), /Build a Larva Pit to train units/);
   await page.evaluate(() => { tryBuild(game, 0, 'barracks'); for (const b of game.ents) if (b.type === 'barracks') { b.built = true; b.progress = 1; } refreshUI(false); });
@@ -94,6 +94,52 @@ test('the enemy faction stays out of the UI during the match (no name, toast or 
   await page.waitForFunction(() => !$('ov').classList.contains('hide') && /Victory|Defeat/.test($('box').textContent), null, { timeout: 8000 });
   assert.match(await page.textContent('#box p.sub'), /Last Fist vs Bloomhost/);
   assert.match(await page.evaluate(() => logText(game, { version: VERSION, diff: 'Normal', persona: 'x', result: 'Victory' })), /Factions: you Last Fist, enemy Bloomhost/);
+  assert.deepStrictEqual(errors, []);
+  await page.close();
+});
+
+test('v2.20: Bloomhost abilities cast through the buttons (tap, place, confirm); enemy Bloomhost casts in the fog show nothing, in view they do', { skip }, async () => {
+  const { page, errors } = await openPage(browser, NARROW);
+  await page.click('#meSeg [data-f="bloomhost"]'); await page.click('#foeSeg [data-f="bloomhost"]'); await page.click('#bPlay'); await page.waitForTimeout(300);
+  const at = await page.evaluate(() => {
+    game.countdown = 0; hideCountdown(); updateIntro(); game.t = 300;
+    for (const s of game.sides) { s.aiT = 1e9; s.res.c = s.res.e = 5000; s.hq.tier = 2; }
+    for (let i = 0; i < 4; i++) { const e = spawnUnit(game, 0, 'skitterling', 500 + i * 12, 0); e.holdU = e.u; e.holdV = 0; }
+    update(game, 1 / 30); cam.x = 560; clampCam(); refreshUI(true);
+    window.__xy = u => { const w = P(u, -60); return { x: V.cw / 2 + (w.x - cam.x) * V.S, y: V.A + (w.y - Y_BOT) * V.S }; };
+    return [__xy(510), __xy(620)]; // taps at depth -60: the targeting banner sits low in the middle of a 667-wide screen
+  });
+  const cast = async (k, p) => {
+    await page.evaluate(() => { for (const k2 in game.sides[0].ab) game.sides[0].ab[k2] = 0; refreshUI(true); });
+    await page.click(`#abil .ab[data-k="${k}"]`); await page.mouse.click(p.x, p.y); await page.mouse.click(p.x + 3, p.y);
+    return page.evaluate(k2 => game.sides[0].abK === k2 && game.sides[0].abEnd > game.t, k); // the game keeps running: a Frenzy Bloom's ring is gone after 0.6 s
+  };
+  assert.ok(await cast('frenzy', at[0]), 'Frenzy Bloom cast');
+  assert.ok(await page.evaluate(() => game.ents.filter(e => e.side === 0 && e.frzT > game.t).length === 4));
+  assert.ok(await cast('brood', at[1]), 'Emergency Brood cast');
+  await page.evaluate(() => { for (let i = 0; i < 70; i++) update(game, 1 / 30); });
+  assert.ok(await page.evaluate(() => game.ents.filter(e => e.side === 0 && e.temp).length === 5), 'the pod hatched');
+  await page.evaluate(() => { game.fog[0].exp.fill(1); const e = spawnUnit(game, 1, 'rifle', 640, 0); e.holdU = 640; e.holdV = 0; e.cd = 1e6; update(game, 1 / 30); });
+  assert.ok(await cast('corrosive', await page.evaluate(() => __xy(640))), 'Corrosive Bloom cast');
+  // the enemy (also Bloomhost) casts all three where the player can't see: no sound, no toast, nothing drawn
+  const r = await page.evaluate(() => {
+    paused = true; render(ctx, game, game.t, null, -1); // the player's own casts are registered first
+    const calls = []; const sf = sfx; window.sfx = (n, x) => { calls.push(n); return sf(n, x); };
+    const tt = toast; window.toast = (m, k) => { calls.push('toast:' + m); return tt(m, k); };
+    const F = game.fog[0], lit = u => F.vis[cellOf(u)] === 1, hidden = 1300; game.fog[1].vis.fill(1); game.fog[1].exp.fill(1);
+    const e = spawnUnit(game, 1, 'skitterling', hidden, 0); e.holdU = hidden; e.holdV = 0;
+    const ok = ['frenzy', 'brood', 'corrosive'].map(k => { for (const k2 in game.sides[1].ab) game.sides[1].ab[k2] = 0; return useAbility(game, 1, k, hidden + (k === 'brood' ? -80 : 0), 0).ok; });
+    for (let i = 0; i < 20; i++) { update(game, 1 / 30); render(ctx, game, game.t, null, -1); }
+    const hiddenCalls = calls.slice(), hiddenSeen = game.abil.filter(a => a.side === 1 && abilSeen(a, lit)).length;
+    // the same casts in the player's view show and sound
+    for (const k2 in game.sides[1].ab) game.sides[1].ab[k2] = 0; const okV = useAbility(game, 1, 'corrosive', 600, 0).ok;
+    for (let i = 0; i < 5; i++) { update(game, 1 / 30); render(ctx, game, game.t, null, -1); }
+    return { ok, hiddenCalls, hiddenSeen, okV, seenNow: game.abil.filter(a => a.side === 1 && abilSeen(a, lit)).length, calls: calls.slice(hiddenCalls.length) };
+  });
+  assert.deepStrictEqual(r.ok, [true, true, true]);
+  assert.deepStrictEqual(r.hiddenCalls, [], 'no sound or toast from casts in the fog');
+  assert.strictEqual(r.hiddenSeen, 0);
+  assert.ok(r.okV && r.seenNow >= 1 && r.calls.length > 0, JSON.stringify(r));
   assert.deepStrictEqual(errors, []);
   await page.close();
 });

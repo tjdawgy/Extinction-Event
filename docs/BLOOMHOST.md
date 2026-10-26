@@ -964,3 +964,19 @@ Corrosion: a corroded unit takes 1 + corrosion times the damage. A new acid hit 
 New weapon tables (light / heavy / vehicle / air / building): rend 1.1 / 0.9 / 0.5 / 0 / 0.5; maul 1.6 / 1.0 / 0.6 / 0 / 0.6; acid 1.0 / 0.9 / 0.8 / 1.1 / 0.4; bile 1.2 / 1.0 / 0.8 / 0 / 0.5; lob 1.1 / 1.0 / 0.75 / 0 / 1.6; ruin 0.9 / 1.1 / 1.0 / 0 / 1.7; gore 1.2 / 1.0 / 0.7 / 0 / 0.7; acid pool 1 / 1 / 1 / 0 / 0; thorns 1 / 1 / 1 / 1 / 0; spines 1.3 / 1.0 / 0.6 / 0 / 0.
 
 AI path choice, translated from each personality's Last Fist choice: Barracks Specialists → Larva Pit Acidic, Mass Deployment → Predatory; War Factory Siege → Siege Evolution, Assault → Predator Evolution.
+
+=== v2.20 COMMANDER ABILITIES AND TEMPORARY UNITS (implementation record; not tuned) ===
+
+One shared cooldown, Last Fist's system: casting any of the three locks all three for the cast ability's cooldown (`side.abK`, `side.abEnd`). Each ability takes its cost, cooldown, first-ready time and unlock from its Last Fist counterpart (`ABIL[k].like`).
+
+| Ability | Mirrors (Last Fist) | Cost | Cooldown | First ready | Unlock | Radius | Effect |
+|---|---|---|---|---|---|---|---|
+| Frenzy Bloom | Emergency Shield | 75/75 | 50 s | 1:00 | none | 110 | Bloomhost units inside when cast: +30% movement speed and +35% attack speed for 7 s (attack cooldown runs 1.35× as fast). No HP, no damage reduction. Pink glow and pulse ring. |
+| Emergency Brood | Repair Pulse | 100/75 | 50 s | 1:00 | none | 60 (landing ring) | Target visible open lane ground with no visible enemy ground unit within 60. A pod falls for 2 s (dashed ring that tightens, pod above it, whistle), then releases 5 temporary Skitterlings around the point, skipping any spot within 22 of an enemy ground unit. No creep bonus (deferred by amendment C). |
+| Corrosive Bloom | Orbital Strike | 150/150 | 100 s | 2:00 | HQ T2 | 85 | Spore cloud for 8 s on any explored ground: enemy ground units inside take 14 spores damage per second (all armor 1×, aircraft and buildings 0) and are corroded 15% for 1 s, refreshed while inside. Corrosion keeps the stronger level and never passes the 25% cap. Walking out ends it a second later. |
+
+Temporary units (reusable; Cloudwing offspring in v2.21): a unit with `temp` set to its expiry time. It uses no supply, at most `TEMP.max` (8) per side live at once, and otherwise uses normal targeting, movement, attacks, stances and Army orders. A small ring under its health bar shows the lifetime left. On expiry it is removed quietly (no death effects, not counted as a loss or kill). Match end removes all temporary units. Saves v20 store `temp` as a time and keep it across save/load; older saves get `temp: 0`.
+
+Hidden faction: enemy ability rings, clouds, pods, glows, sounds and toasts appear only where the viewer can see (`abilSeen`), like Last Fist's.
+
+AI timing (minimal; each ability uses its counterpart's logic): Frenzy Bloom is cast where the Shield would be (own units fighting enemies they can see); Emergency Brood where the Repair Pulse would be (own damaged units or buildings), moved back toward home up to three times to find a valid landing point; Corrosive Bloom where the Strike would be (units only: no building targets, no aircraft, scored on 60% of its total damage). Personality weights read the counterpart's name. The Aggressor's "save for a Strike" rule and its early HQ T2 apply only to Last Fist.

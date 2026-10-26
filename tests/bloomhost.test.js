@@ -44,11 +44,12 @@ test('each faction trains only its own units; the Bloomspire stays at T1 ("evolu
   assert.strictEqual(gore.tier, 2); assert.strictEqual(sim.income(g, 0).c >= 3 + 6, true);
 });
 
-test('Bloomhost has no commander abilities yet: every one is "coming soon"; Last Fist is unchanged', () => {
+test('each faction uses only its own three abilities (v2.20: Bloomhost has Frenzy Bloom, Emergency Brood, Corrosive Bloom)', () => {
   const g = quiet(); g.countdown = 0; g.t = 300;
-  for (const k of ['shield', 'strike', 'repair']) assert.match(sim.abilityCheck(g, 0, k).msg, /Bloomhost commander abilities are coming soon/);
-  g.sides[1].ab = { shield: 0, strike: 0, repair: 0 };
-  assert.ok(sim.abilityCheck(g, 1, 'shield').ok);
+  assert.deepStrictEqual(Object.keys(g.sides[0].ab), ['frenzy', 'brood', 'corrosive']); assert.deepStrictEqual(Object.keys(g.sides[1].ab), ['shield', 'strike', 'repair']);
+  for (const k of ['shield', 'strike', 'repair']) assert.match(sim.abilityCheck(g, 0, k).msg, /not a Bloomhost ability/);
+  for (const k of ['frenzy', 'brood', 'corrosive']) assert.match(sim.abilityCheck(g, 1, k).msg, /not a Last Fist ability/);
+  assert.ok(sim.abilityCheck(g, 0, 'frenzy').ok); assert.ok(sim.abilityCheck(g, 1, 'shield').ok);
 });
 
 test('Skitterlings: melee, +15% per other Skitterling on the same target (at most +45%); they close on enemies in other lanes', () => {
@@ -136,5 +137,5 @@ test('one Hard match, Bloomhost (Turtle) against Last Fist: it builds its econom
   for (const t of ['skitterling', 'bulwark', 'razorwing']) assert.ok(tr[t] > 0, `trained ${t}: ${JSON.stringify(tr)}`);
   assert.ok(g.log.tot[1].nodeCap > 0, 'captured a node');
   assert.ok(g.sides[1].aiLog.attacks > 0, 'attacked');
-  assert.ok(!(g.sides[1].aiLog.abil), 'used no abilities');
+  const ab = g.sides[1].aiLog.abil || {}; assert.ok(!ab.shield && !ab.strike && !ab.repair, 'never a Last Fist ability');
 });

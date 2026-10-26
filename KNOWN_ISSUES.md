@@ -27,6 +27,7 @@ Items for the strategy explorer and full balance audit. Logged only, nothing tun
 - **Melee chase (v2.17):** melee units walk toward any enemy they can see within 150 (Razorwing 200) instead of only along their lane. Watch whether this lures swarms into Turrets or splits armies.
 - **Creep numbers (v2.18)** are first guesses (table in docs/BLOOMHOST.md): radii 260 / 110 / 150, growth 6/s (×2 at nodes), recede 9/s, +20% speed, 1.5%/s regen after 5 s out of combat. The AI doesn't plan around creep yet (no AI changes this batch).
 - **Bloomhost tree units (v2.19)** are first-pass numbers (table in docs/BLOOMHOST.md), with simple AI scores. Unmeasured: Leaper leap range and cooldown, corrosion levels and the 25% cap, Thornback retaliation (Last Fist has almost no melee, so it mostly matters in mirrors), the Dreadthorn burst trigger, Ruinmaw acid pools, and the AI's path translation (Specialists → Acidic, Mass Deployment → Predatory, Siege → Siege, Assault → Predator).
+- **Bloomhost commander abilities (v2.20)** are first-pass numbers copied from their Last Fist counterparts (table in docs/BLOOMHOST.md). Unmeasured: Frenzy Bloom's +30% speed and +35% attack speed, Emergency Brood's 5 Skitterlings for 20 s (cap 8), Corrosive Bloom's 14 damage/s and 15% corrosion for 8 s, and the AI's timing through the Last Fist logic. In one Hard match the Bloomhost AI never cast Emergency Brood.
 - **Mass Deployment near the top of its win range** (58.8%, target 40–60%); **Riflemen about 37% of unit spending** (target about 35%) (v2.13).
 
 ## Open
