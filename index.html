@@ -104,7 +104,6 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .bpr button{flex:1;height:34px;border-radius:9px;font-weight:800;font-size:12.5px}
 #bpUp{border:0;background:linear-gradient(#4fd3ff,#1b8fd0);color:#001522}
 #bpUp.poor,#bpUp[disabled]{background:var(--panel3);color:var(--muted)}
-#bpUp.soon{flex:1.8;font-size:11px;line-height:1.15;padding:0 4px} /* Bloomhost production: "Evolution paths coming soon" (v2.17) */
 #bpSell{border:1px solid rgba(255,90,110,.45);background:rgba(255,77,77,.08);color:#ffc7cf}
 #bpSell.arm{background:#5a1c22;border-color:var(--bad);color:#fff}
 #bpSell.hide,#bpUp.hide,#bpRep.hide{display:none}
@@ -315,7 +314,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.20'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.21'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -355,7 +354,7 @@ const COUNTDOWN = 3;
 // abilities: has commander abilities; trees: its production buildings pick upgrade paths (TREES).
 const FACTIONS = {
   lastfist: { name: 'Last Fist', abilities: true, trees: true, abil: ['shield', 'strike', 'repair'] },
-  bloomhost: { name: 'Bloomhost', abilities: true, trees: true, abil: ['frenzy', 'brood', 'corrosive'] }, // trees: Larva Pit and Evolution Chamber (v2.19), Bloomspire later (v2.21); abilities v2.20
+  bloomhost: { name: 'Bloomhost', abilities: true, trees: true, abil: ['frenzy', 'brood', 'corrosive'] }, // trees: Larva Pit and Evolution Chamber (v2.19), Bloomspire (v2.21); abilities v2.20
 }, DEFAULT_FACTION = 'lastfist', FACTION_KEYS = Object.keys(FACTIONS);
 const factionName = k => (FACTIONS[k] || FACTIONS[DEFAULT_FACTION]).name;
 const facOf = k => FACTIONS[k] ? k : DEFAULT_FACTION;
@@ -407,7 +406,7 @@ const BDEF_BH = (() => {
   re('habitat', { name: 'Hatchery' });
   re('barracks', { name: 'Larva Pit', tiers: [null, 'Spawns Skitterlings', 'Predatory or Acidic Evolution', 'Predatory or Acidic Evolution'] });
   re('factory', { name: 'Evolution Chamber', req: 'barracks', tiers: [null, 'Grows Bulwarks', 'Siege or Predator Evolution', 'Siege or Predator Evolution'] });
-  re('techlab', { name: 'Bloomspire', req: 'barracks', tiers: [null, 'Grows Razorwings', 'Evolution paths coming soon', 'Evolution paths coming soon'] });
+  re('techlab', { name: 'Bloomspire', req: 'barracks', tiers: [null, 'Grows Razorwings', 'Swarm or Apex Bloom', 'Swarm or Apex Bloom'] }); // trees: v2.21
   // The Maw: a living defence. Turret damage per second, a little more HP, a shorter reach; it spits spines at ground and air
   re('turret', { name: 'Maw', hp: 1000,
     gun: [null, { weapon: 'spine', dmg: 16, cd: 0.6, range: 220, hitsAir: true },
@@ -436,18 +435,19 @@ const TREES = {
   techlab:  { A: { name: 'Air Power', short: 'AIR', steps: [null, null, { unlock: ['interceptor'], short: 'Interceptors', txt: 'Unlocks Interceptors: hunt aircraft, escort your own' }, { unlock: ['leviathan'], short: 'Leviathans', txt: 'Unlocks Leviathans: heavy bombers that wreck bases' }] },
               B: { name: 'Support', short: 'SUPPORT', steps: [null, null, { unlock: ['medic', 'drone'], short: 'Medicopters, Recon Drones', txt: 'Unlocks Medicopters (heal infantry) and Recon Drones (scouts, at most 3)' }, { mod: 'nanoweave', short: 'Nanoweave', txt: 'Nanoweave: your units and defenses deal 20% more damage and take 15% less' }] } },
 };
-// Bloomhost trees (v2.19): the Larva Pit and the Evolution Chamber; the Bloomspire has none yet (stays T1)
+// Bloomhost trees: the Larva Pit and the Evolution Chamber (v2.19), the Bloomspire (v2.21)
 const TREES_BH = {
   barracks: { A: { name: 'Predatory Evolution', short: 'HUNT', steps: [null, null, { unlock: ['leaper'], short: 'Leapers', txt: 'Unlocks Leapers: hunters that leap onto ranged units' }, { unlock: ['ravager'], short: 'Ravagers', txt: 'Unlocks Ravagers: heavy hunters that shred light armor' }] },
               B: { name: 'Acidic Evolution', short: 'ACID', steps: [null, null, { unlock: ['spitter'], short: 'Spitters', txt: 'Unlocks Spitters: acid that hits air and ground and corrodes armor' }, { unlock: ['bilecaster'], short: 'Bilecasters', txt: 'Unlocks Bilecasters: acid splash that corrodes ground units' }] } },
   factory:  { A: { name: 'Siege Evolution', short: 'SIEGE', steps: [null, null, { unlock: ['bilelobber'], short: 'Bile Lobbers', txt: 'Unlocks Bile Lobbers: long-range bile artillery' }, { unlock: ['ruinmaw'], short: 'Ruinmaws', txt: 'Unlocks Ruinmaws: base-breakers that leave acid pools' }] },
               B: { name: 'Predator Evolution', short: 'BRUTE', steps: [null, null, { unlock: ['thornback'], short: 'Thornbacks', txt: 'Unlocks Thornbacks: armored brawlers that hurt melee attackers' }, { unlock: ['dreadthorn'], short: 'Dreadthorns', txt: 'Unlocks Dreadthorns: a spine burst when hit hard' }] } },
+  techlab:  { A: { name: 'Swarm Bloom', short: 'SWARM', steps: [null, null, { unlock: ['needlewing'], short: 'Needlewings', txt: 'Unlocks Needlewings: cheap flyers that hit harder in a pack' }, { unlock: ['cloudwing'], short: 'Cloudwings', txt: 'Unlocks Cloudwings: swarm flyers that release short-lived offspring' }] },
+              B: { name: 'Apex Bloom', short: 'APEX', steps: [null, null, { unlock: ['broodtyrant'], short: 'Brood Tyrants', txt: 'Unlocks Brood Tyrants: heavy flyers that prefer buildings' }, { unlock: ['worldrender'], short: 'Worldrenders', txt: 'Unlocks Worldrenders: huge aerial base-breakers' }] } },
 };
 const TREE_SETS = { lastfist: TREES, bloomhost: TREES_BH };
 const DRILL = { hp: 1.35, dmg: 1.1, capture: 1.5 }, PAIR_TIME = 1.5; // a Mass Deployment pair takes 1.5× a Rifleman's training time
 const UNIT_PATH = {}; // unit type → { b: building type, p: path, path: the path's entry } for units a path unlocks (both factions)
 for (const fac in TREE_SETS) { const S = TREE_SETS[fac]; for (const bt in S) for (const p in S[bt]) for (const st of S[bt][p].steps) if (st && st.unlock) for (const u of st.unlock) UNIT_PATH[u] = { b: bt, p, path: S[bt][p] }; }
-const prodLocked = (fac, type) => !!TREES[type] && !treeOf(fac, type); // a production building with no evolution paths yet (the Bloomspire)
 const pathMod = (b, mod) => { const T = treeOf(b.fac, b.type); if (!T || !b.path || !b.built) return false; const st = T[b.path].steps; for (let t = 2; t <= b.tier; t++) if (st[t] && st[t].mod === mod) return true; return false; };
 // Can this building train this unit now? (type, finished, tier, and the path that unlocks it)
 const canMake = (b, type) => { const d = UDEF[type], q = UNIT_PATH[type]; return b.kind === 'b' && b.type === d.from && facOf(b.fac) === (d.fac || DEFAULT_FACTION) && b.built && b.hp > 0 && b.tier >= d.tier && (!q || b.path === q.p); };
@@ -493,7 +493,16 @@ const UDEF = {
   ruinmaw:   { name: 'Ruinmaw', fac: 'bloomhost', from: 'factory', tier: 3, cost: { c: 400, e: 150 }, pop: 6, hp: 1300, dmg: 70, cd: 2.8, range: 200, speed: 18, hitsAir: false, armor: 'vehicle', weapon: 'ruin', time: 18, h: 28, splash: 34, acid: true },
   thornback: { name: 'Thornback', fac: 'bloomhost', from: 'factory', tier: 2, cost: { c: 180, e: 40 }, pop: 3, hp: 700, dmg: 22, cd: 1.1, range: 30, speed: 28, hitsAir: false, armor: 'heavy', weapon: 'gore', time: 11, h: 20, melee: true, chase: 150, thorns: { frac: 0.2, range: 60 } },
   dreadthorn: { name: 'Dreadthorn', fac: 'bloomhost', from: 'factory', tier: 3, cost: { c: 380, e: 140 }, pop: 5, hp: 1350, dmg: 34, cd: 1.2, range: 34, speed: 24, hitsAir: false, armor: 'heavy', weapon: 'gore', time: 16, h: 28, melee: true, chase: 150, burst: { trigger: 60, r: 80, dmg: 45, cd: 15 } },
+  // Bloomspire tree (v2.21). Swarm Bloom: Needlewing (cheap, fast, ground only; the Skitterling's swarm bonus), Cloudwing
+  // (swarm flyer; while fighting it releases offspring: temporary Needlewings at half damage, see SPAWN). Apex Bloom:
+  // Brood Tyrant (slow, heavy globs, prefers buildings like the Leviathan), Worldrender (drops a crushing mass from above
+  // like the Leviathan's bomb: heavy building damage, splash on ground units). None of the four can hit aircraft.
+  needlewing: { name: 'Needlewing', fac: 'bloomhost', from: 'techlab', tier: 2, cost: { c: 70, e: 30 }, pop: 1, hp: 80, dmg: 8, cd: 0.6, range: 40, speed: 115, hitsAir: false, armor: 'air', air: true, weapon: 'needle', time: 5, h: 8, melee: true, chase: 200, swarm: { per: 0.12, max: 0.36 } },
+  cloudwing: { name: 'Cloudwing', fac: 'bloomhost', from: 'techlab', tier: 3, cost: { c: 220, e: 100 }, pop: 3, hp: 280, dmg: 14, cd: 0.6, range: 45, speed: 85, hitsAir: false, armor: 'air', air: true, weapon: 'needle', time: 12, h: 12, melee: true, chase: 200, swarm: { per: 0.12, max: 0.36 }, spawn: { n: 2, cd: 14, life: 12 } },
+  broodtyrant: { name: 'Brood Tyrant', fac: 'bloomhost', from: 'techlab', tier: 2, cost: { c: 320, e: 150 }, pop: 5, hp: 950, dmg: 60, cd: 2.4, range: 150, speed: 40, hitsAir: false, armor: 'air', air: true, weapon: 'glob', time: 16, h: 16, splash: 24, preferB: true },
+  worldrender: { name: 'Worldrender', fac: 'bloomhost', from: 'techlab', tier: 3, cost: { c: 520, e: 260 }, pop: 8, hp: 1700, dmg: 170, cd: 4.0, range: 50, speed: 20, hitsAir: false, armor: 'air', air: true, weapon: 'crush', drop: true, time: 22, h: 20, splash: 70, preferB: true },
 };
+const SPAWN = { max: 6, dmg: 0.5 }; // Cloudwing offspring: at most 6 per side at once (separate from Emergency Brood's TEMP.max), half damage
 const CORR = { cap: 0.25 }; // corrosion: at most +25% damage taken, however many acid hits land
 const ACID = { max: 6, r: 40, dps: 12, dur: 4 }; // Ruinmaw acid pools: at most 6 at once (the oldest goes), 12 damage/s to enemy ground units, 4 s
 
@@ -528,19 +537,23 @@ const DMG = {
   thorns:  { light: 1.0, heavy: 1.0,  vehicle: 1.0,  air: 1.0,  building: 0 },   // Thornback retaliation
   spores:  { light: 1.0, heavy: 1.0,  vehicle: 1.0,  air: 0,    building: 0 },   // Corrosive Bloom (v2.20)
   spines:  { light: 1.3, heavy: 1.0,  vehicle: 0.6,  air: 0,    building: 0 },   // Dreadthorn burst
+  needle:  { light: 1.1, heavy: 0.8,  vehicle: 0.7,  air: 0,    building: 0.5 }, // Needlewing, Cloudwing (v2.21)
+  glob:    { light: 0.8, heavy: 1.0,  vehicle: 1.1,  air: 0,    building: 1.6 }, // Brood Tyrant
+  crush:   { light: 0.6, heavy: 0.8,  vehicle: 1.0,  air: 0,    building: 2.1 }, // Worldrender (the Leviathan's table, a little heavier on buildings)
 };
-const PSPEED = { rifle: 1100, rocket: 430, hqgun: 430, rail: 1700, cannon: 820, siege: 700, missile: 470, flak: 950, gatling: 1200, hydra: 1200, bomb: 260, spine: 1100, acid: 520, bile: 460, ruin: 600 };
-const MUZ = { rifle: [10, 13], heavy: [12, 27], sniper: [17, 14], tank: [27, 18], artillery: [28, 31], titan: [38, 27], flame: [26, 12], hydra: [30, 33], aircraft: [16, -5], interceptor: [20, 0], leviathan: [0, -10], skitterling: [9, 5], bulwark: [17, 11], razorwing: [12, 1], leaper: [12, 7], ravager: [18, 14], spitter: [14, 15], bilecaster: [16, 20], bilelobber: [12, 26], ruinmaw: [24, 16], thornback: [18, 10], dreadthorn: [22, 14] };
+const PSPEED = { rifle: 1100, rocket: 430, hqgun: 430, rail: 1700, cannon: 820, siege: 700, missile: 470, flak: 950, gatling: 1200, hydra: 1200, bomb: 260, spine: 1100, acid: 520, bile: 460, ruin: 600, glob: 380, crush: 220 };
+const MUZ = { rifle: [10, 13], heavy: [12, 27], sniper: [17, 14], tank: [27, 18], artillery: [28, 31], titan: [38, 27], flame: [26, 12], hydra: [30, 33], aircraft: [16, -5], interceptor: [20, 0], leviathan: [0, -10], skitterling: [9, 5], bulwark: [17, 11], razorwing: [12, 1], leaper: [12, 7], ravager: [18, 14], spitter: [14, 15], bilecaster: [16, 20], bilelobber: [12, 26], ruinmaw: [24, 16], thornback: [18, 10], dreadthorn: [22, 14], needlewing: [10, 1], cloudwing: [14, 1], broodtyrant: [20, 2], worldrender: [0, -8] };
 
 const BUILD_ORDER = ['refinery', 'reactor', 'habitat', 'barracks', 'turret', 'factory', 'techlab'];
-const UNIT_ORDER = ['rifle', 'heavy', 'sniper', 'tank', 'artillery', 'titan', 'flame', 'hydra', 'aircraft', 'interceptor', 'leviathan', 'medic', 'drone', 'skitterling', 'leaper', 'ravager', 'spitter', 'bilecaster', 'bulwark', 'bilelobber', 'ruinmaw', 'thornback', 'dreadthorn', 'razorwing'];
+const UNIT_ORDER = ['rifle', 'heavy', 'sniper', 'tank', 'artillery', 'titan', 'flame', 'hydra', 'aircraft', 'interceptor', 'leviathan', 'medic', 'drone', 'skitterling', 'leaper', 'ravager', 'spitter', 'bilecaster', 'bulwark', 'bilelobber', 'ruinmaw', 'thornback', 'dreadthorn', 'razorwing', 'needlewing', 'cloudwing', 'broodtyrant', 'worldrender'];
 // Credits first (Refineries before tech); Reactors are skipped while energy is plentiful
 const AI_PLAN = ['barracks', 'refinery', 'refinery', 'reactor', 'habitat', 'factory', 'reactor', 'techlab']; // roles: the same plan builds either faction's base
 // Bloomhost units read the personalities' Last Fist tastes (bias) through their counterpart (v2.17)
-const AI_TWIN = { skitterling: 'rifle', bulwark: 'tank', razorwing: 'aircraft', leaper: 'rifle', ravager: 'sniper', spitter: 'heavy', bilecaster: 'sniper', bilelobber: 'artillery', ruinmaw: 'titan', thornback: 'flame', dreadthorn: 'hydra' };
+const AI_TWIN = { skitterling: 'rifle', bulwark: 'tank', razorwing: 'aircraft', leaper: 'rifle', ravager: 'sniper', spitter: 'heavy', bilecaster: 'sniper', bilelobber: 'artillery', ruinmaw: 'titan', thornback: 'flame', dreadthorn: 'hydra', needlewing: 'aircraft', cloudwing: 'aircraft', broodtyrant: 'leviathan', worldrender: 'leviathan' };
 // The AI's path choice is made in Last Fist terms and translated (v2.19): Specialists → Acidic, Mass Deployment → Predatory;
-// Siege → Siege Evolution, Assault → Predator Evolution
-const AI_PATH_MAP = { bloomhost: { barracks: { A: 'B', B: 'A' }, factory: { A: 'A', B: 'B' } } };
+// Siege → Siege Evolution, Assault → Predator Evolution; Tech Lab (v2.21): Air Power → Apex Bloom (heavy bombers, like the
+// Leviathan), Support → Swarm Bloom
+const AI_PATH_MAP = { bloomhost: { barracks: { A: 'B', B: 'A' }, factory: { A: 'A', B: 'B' }, techlab: { A: 'B', B: 'A' } } };
 const aiPathTo = (fac, type, p) => { const m = AI_PATH_MAP[facOf(fac)]; return m && m[type] ? m[type][p] : p; };
 const aiPathFrom = (fac, type, p) => { const m = AI_PATH_MAP[facOf(fac)]; if (!m || !m[type] || !p) return p; for (const k in m[type]) if (m[type][k] === p) return k; return p; };
 const ENERGY_PLENTY = 250;
@@ -835,7 +848,6 @@ function tryUpgrade(g, s, b, path) { // path: 'A' or 'B' when a building with a 
   if (!b.built) return { ok: false, msg: `${d.name} is still under construction` };
   if (b.upgrading) return { ok: false, msg: 'Upgrade already in progress' };
   if (b.tier >= 3) return { ok: false, msg: `${d.name} is fully upgraded` };
-  if (prodLocked(b.fac, b.type)) return { ok: false, msg: `${d.name}: evolution paths coming soon` }; // the Bloomspire stays T1 for now (v2.21) (v2.17)
   const T = treeOf(b.fac, b.type);
   if (T && b.tier === 1 && !T[path]) return { ok: false, msg: `Choose a path for this ${d.name}` };
   const up = d.up[b.tier + 1];
@@ -873,9 +885,9 @@ function tryTrain(g, s, type) {
 
 function spawnUnit(g, s, type, u, v) {
   const d = UDEF[type];
-  const unit = { id: g.nid++, kind: 'u', type, side: s, u, v, z: d.air ? (type === 'interceptor' ? rand(100, 124) : type === 'leviathan' ? rand(88, 98) : type === 'drone' ? rand(104, 114) : type === 'razorwing' ? rand(56, 72) : rand(70, 94)) : 0,
+  const unit = { id: g.nid++, kind: 'u', type, side: s, u, v, z: d.air ? (type === 'interceptor' ? rand(100, 124) : type === 'leviathan' ? rand(88, 98) : type === 'drone' ? rand(104, 114) : type === 'razorwing' ? rand(56, 72) : type === 'needlewing' ? rand(50, 64) : type === 'cloudwing' ? rand(62, 76) : type === 'broodtyrant' ? rand(78, 88) : type === 'worldrender' ? rand(84, 94) : rand(70, 94)) : 0,
     laneV: rand(-LANE_V, LANE_V), hp: d.hp, maxHp: d.hp, cd: Math.random() * 0.5, face: dirOf(s), anim: Math.random() * 10,
-    moving: false, rallyOff: -Math.random() * 100, recoil: 0, hitT: 0, shT: 0, vet: 0, aimAir: 0, medAt: -1, tgt: 0, braceT: 0, braceCd: 0, lastHurt: -99, lastAct: -99, creepAt: -1, temp: 0, frzT: 0, leapCd: 0, leaping: 0, lu: 0, lv: 0, ld: 0, corr: 0, corrT: 0, burstCd: 0 }; // tgt: what it last attacked; braceT/braceCd: the Bulwark's brace (v2.17); lastHurt/lastAct: last damage taken/dealt, creepAt: last creep regen (v2.18); leap*: the Leaper's jump, corr/corrT: corrosion, burstCd: the Dreadthorn's spines (v2.19) // vet: a Drilled Rifleman (v2.13); aimAir: where a Hydra's guns point (v2.14); medAt: last healed by a Medicopter (v2.15) // shT (shield until) set from the start keeps every unit the same shape for the JS engine
+    moving: false, rallyOff: -Math.random() * 100, recoil: 0, hitT: 0, shT: 0, vet: 0, aimAir: 0, medAt: -1, tgt: 0, braceT: 0, braceCd: 0, lastHurt: -99, lastAct: -99, creepAt: -1, temp: 0, tLife: 0, tSrc: null, kid: 0, spawnT: 0, frzT: 0, leapCd: 0, leaping: 0, lu: 0, lv: 0, ld: 0, corr: 0, corrT: 0, burstCd: 0 }; // tgt: what it last attacked; braceT/braceCd: the Bulwark's brace (v2.17); lastHurt/lastAct: last damage taken/dealt, creepAt: last creep regen (v2.18); leap*: the Leaper's jump, corr/corrT: corrosion, burstCd: the Dreadthorn's spines (v2.19) // vet: a Drilled Rifleman (v2.13); aimAir: where a Hydra's guns point (v2.14); medAt: last healed by a Medicopter (v2.15) // shT (shield until) set from the start keeps every unit the same shape for the JS engine
   g.ents.push(unit);
   g.sides[s].stats.built++;
   return unit;
@@ -904,7 +916,7 @@ function hqStatus(g, s, viewer = s) {
    Each side sees full-depth strips of the lane around its own units, buildings and held field nodes.
    Depth counts for little in range (DV_W), so strips match how far things can actually shoot. */
 const FOG_CELL = 10, FOG_N = Math.ceil(L / FOG_CELL) + 1;
-const SIGHT = { rifle: 170, heavy: 180, sniper: 220, tank: 210, artillery: 200, titan: 240, flame: 190, hydra: 260, aircraft: 260, interceptor: 280, leviathan: 220, medic: 220, drone: 420, skitterling: 170, bulwark: 190, razorwing: 250, leaper: 180, ravager: 190, spitter: 190, bilecaster: 230, bilelobber: 200, ruinmaw: 240, thornback: 190, dreadthorn: 220 };
+const SIGHT = { rifle: 170, heavy: 180, sniper: 220, tank: 210, artillery: 200, titan: 240, flame: 190, hydra: 260, aircraft: 260, interceptor: 280, leviathan: 220, medic: 220, drone: 420, skitterling: 170, bulwark: 190, razorwing: 250, leaper: 180, ravager: 190, spitter: 190, bilecaster: 230, bilelobber: 200, ruinmaw: 240, thornback: 190, dreadthorn: 220, needlewing: 220, cloudwing: 230, broodtyrant: 230, worldrender: 220 };
 const B_SIGHT = { hq: 520, turret: 340 }, B_SIGHT_DEF = 200, NODE_SIGHT = 220; // HQ 520 ≥ its T3 range (470)
 const INTEL_TTL = 45, THREAT_MEMORY = 5, SPOT_GAP = 10;
 const cellOf = u => clamp(Math.floor(u / FOG_CELL), 0, FOG_N - 1);
@@ -994,6 +1006,7 @@ function update(g, dt) {
   updateCreep(g, dt);
   updateAcid(g, dt);
   updateTemps(g);
+  updateSpawn(g);
   updateAbilities(g, dt);
   if (Math.floor(g.t * 2) !== Math.floor(t0 * 2)) updateOrders(g);
   updateStorm(g, dt, t0);
@@ -1128,11 +1141,11 @@ function acquire(g, src, def, foes) {
    overrides the global stance for the units it covers; where a group and a type order both cover a unit, the most
    recent wins (order.n counts up). A global stance clears them all. 'move' (Regroup) walks to a point, fighting what
    it meets on the way like any stance, then holds there; its flag is done once every unit it covers has arrived. */
-const UGROUPS = { inf: ['rifle', 'heavy', 'sniper', 'skitterling', 'leaper', 'ravager', 'spitter', 'bilecaster'], arm: ['tank', 'artillery', 'titan', 'flame', 'hydra', 'bulwark', 'bilelobber', 'ruinmaw', 'thornback', 'dreadthorn'], air: ['aircraft', 'interceptor', 'leviathan', 'razorwing'], sup: ['medic', 'drone'] }; // v2.18: Bloomhost units join the groups
+const UGROUPS = { inf: ['rifle', 'heavy', 'sniper', 'skitterling', 'leaper', 'ravager', 'spitter', 'bilecaster'], arm: ['tank', 'artillery', 'titan', 'flame', 'hydra', 'bulwark', 'bilelobber', 'ruinmaw', 'thornback', 'dreadthorn'], air: ['aircraft', 'interceptor', 'leviathan', 'razorwing', 'needlewing', 'cloudwing', 'broodtyrant', 'worldrender'], sup: ['medic', 'drone'] }; // v2.18: Bloomhost units join the groups
 const GROUP_NAME = { inf: 'Infantry', arm: 'Armor', air: 'Air', sup: 'Support' };
 const GROUP_OF = {}; for (const k in UGROUPS) for (const t of UGROUPS[k]) GROUP_OF[t] = k;
 const ORDER_NAME = { hold: 'Hold', attack: 'Attack', retreat: 'Retreat', move: 'Regroup' };
-const PLURAL = { rifle: 'Riflemen', heavy: 'Heavies', sniper: 'Snipers', tank: 'Tanks', artillery: 'Artillery', titan: 'Titans', flame: 'Flame Tanks', hydra: 'Hydras', aircraft: 'Gunships', interceptor: 'Interceptors', leviathan: 'Leviathans', medic: 'Medicopters', drone: 'Recon Drones', skitterling: 'Skitterlings', bulwark: 'Bulwarks', razorwing: 'Razorwings', leaper: 'Leapers', ravager: 'Ravagers', spitter: 'Spitters', bilecaster: 'Bilecasters', bilelobber: 'Bile Lobbers', ruinmaw: 'Ruinmaws', thornback: 'Thornbacks', dreadthorn: 'Dreadthorns' };
+const PLURAL = { rifle: 'Riflemen', heavy: 'Heavies', sniper: 'Snipers', tank: 'Tanks', artillery: 'Artillery', titan: 'Titans', flame: 'Flame Tanks', hydra: 'Hydras', aircraft: 'Gunships', interceptor: 'Interceptors', leviathan: 'Leviathans', medic: 'Medicopters', drone: 'Recon Drones', skitterling: 'Skitterlings', bulwark: 'Bulwarks', razorwing: 'Razorwings', leaper: 'Leapers', ravager: 'Ravagers', spitter: 'Spitters', bilecaster: 'Bilecasters', bilelobber: 'Bile Lobbers', ruinmaw: 'Ruinmaws', thornback: 'Thornbacks', dreadthorn: 'Dreadthorns', needlewing: 'Needlewings', cloudwing: 'Cloudwings', broodtyrant: 'Brood Tyrants', worldrender: 'Worldrenders' };
 const newOrders = () => ({ all: null, groups: {}, types: {}, n: 0 });
 function unitOrder(side, type) { // the order a unit of this type follows, or null for the global stance
   const O = side.orders; if (!O) return null;
@@ -1375,6 +1388,7 @@ function meleeHit(g, src, t, def) {
     for (const e of g.ents) if (e !== src && e.kind === 'u' && e.side === src.side && e.type === src.type && e.tgt === t.id && e.hp > 0) n++;
     mul += Math.min(def.swarm.max, n * def.swarm.per);
   }
+  if (src.kid) mul *= SPAWN.dmg; // a Cloudwing's offspring bites for half (v2.21)
   damage(g, t, def.dmg * mul, def.weapon, src.side, src);
   if (src.kind === 'u') src.recoil = 1;
 }
@@ -1385,7 +1399,7 @@ function fire(g, src, t, def) {
   const m = muzzle(src);
   const p = { u: m.u, v: m.v, z: m.z, pu: m.u, pv: m.v, pz: m.z, tu: t.u, tv: t.v, tz: aimZ(t), target: t, side: src.side,
     weapon: def.weapon, dmg: def.dmg * (g.sides[src.side].buff ? 1.2 : 1) * (src.vet ? DRILL.dmg : 1), splash: def.splash || 0, t: 0 };
-  if (def.weapon === 'bomb') { p.target = null; p.tz = 0; p.tu = t.u + rand(-6, 6); p.tv = t.v + rand(-5, 5); } // falls where the target is now
+  if (def.weapon === 'bomb' || def.drop) { p.target = null; p.tz = 0; p.tu = t.u + rand(-6, 6); p.tv = t.v + rand(-5, 5); } // falls where the target is now
   if (def.corrode) p.corr = def.corrode; // v2.19: acid corrodes what it hits
   if (def.acid) p.acid = 1;
   if (def.weapon === 'shell' || def.lob) { // the Bile Lobber reuses the Artillery shell (v2.19)
@@ -1476,16 +1490,33 @@ function useAbility(g, s, k, u, v) {
 // The brood pod lands: up to A.n temporary Skitterlings around it, never past TEMP.max for the side and never on an enemy
 function broodLand(g, a) {
   const A = ABIL.brood, w = P(a.u, a.v, 6); fxBoom(g, w.x, w.y, 16);
-  let room = TEMP.max - g.ents.filter(e => e.kind === 'u' && e.side === a.side && e.temp && e.hp > 0).length, n = 0;
+  let room = TEMP.max - g.ents.filter(e => e.kind === 'u' && e.side === a.side && e.temp && e.tSrc !== 'cloud' && e.hp > 0).length, n = 0; // v2.21: Cloudwing offspring have their own cap
   for (let i = 0; i < A.n && room > 0; i++) {
     const an = i / A.n * Math.PI * 2, pu = clamp(a.u + Math.cos(an) * 22, 0, L), pv = a.v + Math.sin(an) * 22;
     if (g.ents.some(e => e.kind === 'u' && e.side !== a.side && e.hp > 0 && !UDEF[e.type].air && Math.hypot(e.u - pu, e.v - pv) < 22)) continue; // never on top of an enemy
-    const sk = spawnUnit(g, a.side, 'skitterling', pu, pv); sk.temp = g.t + A.life; sk.laneV = clamp(pv, -LANE_V, LANE_V); room--; n++;
+    const sk = spawnUnit(g, a.side, 'skitterling', pu, pv); sk.temp = g.t + A.life; sk.tLife = A.life; sk.tSrc = 'brood'; sk.laneV = clamp(pv, -LANE_V, LANE_V); room--; n++;
   }
   logEffect(g, a.side, 'brood', n);
 }
 // Temporary units expire quietly (no loss, no kill); at the end of the match they all go
 function updateTemps(g) { for (const e of g.ents) if (e.kind === 'u' && e.temp && g.t >= e.temp && e.hp > 0) { e.hp = 0; e.dead = true; e.expired = true; } }
+// Cloudwing offspring (v2.21): a Cloudwing that is attacking releases spawn.n temporary Needlewings every spawn.cd seconds,
+// never past SPAWN.max live offspring per side (Emergency Brood's TEMP.max is separate). They live spawn.life seconds,
+// bite for SPAWN.dmg of a Needlewing's damage, use no supply, and go like any temporary unit.
+function updateSpawn(g) {
+  const live = [0, 0];
+  for (const e of g.ents) if (e.kind === 'u' && e.tSrc === 'cloud' && e.hp > 0) live[e.side]++;
+  for (const c of g.ents) {
+    if (c.kind !== 'u' || c.type !== 'cloudwing' || c.hp <= 0 || !c.tgt || g.t < c.spawnT) continue;
+    const S = UDEF.cloudwing.spawn;
+    c.spawnT = g.t + S.cd;
+    for (let i = 0; i < S.n && live[c.side] < SPAWN.max; i++) {
+      const k = spawnUnit(g, c.side, 'needlewing', c.u - c.face * 6, clamp(c.v + (i ? 10 : -10), -LANE_V - 40, LANE_V + 40));
+      Object.assign(k, { temp: g.t + S.life, tLife: S.life, tSrc: 'cloud', kid: 1, z: c.z - 6, face: c.face, laneV: c.laneV });
+      live[c.side]++;
+    }
+  }
+}
 // How many of side s's units and buildings a Repair Pulse at (u, v) would heal now (the same rules as updateAbilities)
 function repairHealable(g, s, u, v) {
   let n = 0;
@@ -1612,7 +1643,7 @@ function splashHit(g, p, hit, scale, falloffFloor) {
 function impact(g, p, hit) {
   const w = P(p.u, p.v, p.z);
   if (p.weapon === 'shell' || p.weapon === 'lob') { splashHit(g, p, null, 1, 0.5); fxBoom(g, w.x, w.y, 30); return; }
-  if (p.weapon === 'bomb') { splashHit(g, p, null, 1, 0.5); fxBoom(g, w.x, w.y, 40); return; } // full damage at the centre, half at the edge
+  if (p.weapon === 'bomb' || p.weapon === 'crush') { splashHit(g, p, null, 1, 0.5); fxBoom(g, w.x, w.y, p.weapon === 'crush' ? 48 : 40); return; } // full damage at the centre, half at the edge (the Worldrender too, v2.21)
   if (hit && hit.hp > 0) { damage(g, hit, p.dmg, p.weapon, p.side); if (p.corr) corrode(g, hit, p.corr); }
   if (p.splash > 0) splashHit(g, p, hit, 0.5, 1);
   if (p.acid) addAcid(g, p.side, p.u, p.v);
@@ -1683,7 +1714,7 @@ function kill(g, e, by, weapon) {
     if (by >= 0) g.sides[by].stats.kills++;
     if (g.log) { const T = g.log.tot[e.side]; logAdd(T.lost, e.type); if (weapon) logAdd(T.lostTo || (T.lostTo = {}), weapon); if (by >= 0) logAdd(g.log.tot[by].killed, e.type); lgUnit(g, e.side, 'K', e.type); logLoss(g, e); }
     const d = UDEF[e.type], w = P(e.u, e.v, aimZ(e));
-    fxBoom(g, w.x, w.y, e.type === 'skitterling' ? 6 : e.type === 'bulwark' || e.type === 'ruinmaw' || e.type === 'dreadthorn' || e.type === 'thornback' ? 18 : d.fac === 'bloomhost' && !d.air ? 10 : d.air ? (e.type === 'razorwing' ? 12 : 28) : e.type === 'rifle' || e.type === 'sniper' ? 9 : e.type === 'heavy' ? 15 : e.type === 'titan' ? 46 : 30);
+    fxBoom(g, w.x, w.y, e.type === 'skitterling' ? 6 : e.type === 'bulwark' || e.type === 'ruinmaw' || e.type === 'dreadthorn' || e.type === 'thornback' ? 18 : d.fac === 'bloomhost' && !d.air ? 10 : d.air ? (e.type === 'razorwing' || e.type === 'cloudwing' ? 12 : e.type === 'needlewing' ? 8 : e.type === 'worldrender' ? 44 : 28) : e.type === 'rifle' || e.type === 'sniper' ? 9 : e.type === 'heavy' ? 15 : e.type === 'titan' ? 46 : 30);
     return;
   }
   if (e.slot >= 0 && side.slots[e.slot] === e) side.slots[e.slot] = null;
@@ -1852,7 +1883,6 @@ function aiUpdate(g, s, dt) {
     for (const [type, tier] of [...(energyShort ? [['reactor', 2], ['reactor', 3]] : []), ...P.upgFirst, ...AI_UPG]) {
       if (tier > D.maxTier) continue;
       if (type === 'reactor' && side.res.e > ENERGY_PLENTY) continue;
-      if (prodLocked(side.faction, type)) continue; // no evolution paths yet (the Bloomspire)
       const b = alive(g, s, type).find(x => x.built && x.tier < tier);
       if (!b) continue;
       const r = tryUpgrade(g, s, b, b.tier === 1 && TREES[type] ? aiPickPath(g, s, b, P, theirs) : undefined);
@@ -1910,8 +1940,16 @@ function aiUpdate(g, s, dt) {
       ruinmaw: 1.2 + comp.vehicle * 0.8 + comp.heavy * 0.8 + comp.light * 0.4 - comp.air * 1.2 + (turtle ? 0.4 : 0),
       thornback: 1.3 + comp.light * 1.0 + comp.heavy * 0.6 - comp.air * 0.8,
       dreadthorn: 1.4 + comp.light * 1.4 + comp.heavy * 0.6 - comp.air * 0.9,
+      // Bloomspire tree (v2.21): simple scores; none of the four hits aircraft
+      needlewing: 1.0 + comp.light * 0.6 + comp.vehicle * 0.4 - comp.air * 0.6 + (antiAir < 0.45 ? 0.7 : 0),
+      cloudwing: 1.3 + comp.light * 0.8 + comp.vehicle * 0.4 - comp.air * 0.6 + (antiAir < 0.45 ? 0.8 : 0),
+      broodtyrant: 1.5 + comp.vehicle * 0.6 + (turtle ? 0.8 : 0) - antiAir * 1.0 - comp.air * 0.5,
+      worldrender: 1.7 + comp.vehicle * 0.5 + (turtle ? 0.8 : 0) - antiAir * 1.2 - comp.air * 0.5,
     };
     if (!threat) for (const t of types) { const b = P.bias[t] || P.bias[AI_TWIN[t]]; if (b && sc[t] > 0) sc[t] *= b; } // the personality's taste in units (threats are answered on merit)
+    // Bloomspire path units (v2.21, minimal): one the AI has never trained goes to the top once, so it saves for it (its
+    // simple score sits below the Razorwing's, which would otherwise always win)
+    if (facOf(side.faction) === 'bloomhost') { const best = Math.max(...types.map(t => sc[t])); for (const t of types) if (UNIT_PATH[t] && UNIT_PATH[t].b === 'techlab' && !log.trained[t]) sc[t] = best + 0.1; }
     const fits = t => used + UDEF[t].pop <= cap * fillNow && freeProducer(g, s, t);
     const top = types.filter(fits).sort((a, b) => sc[b] - sc[a])[0];
     // Save for the better unit unless the enemy is already in the base (a calm AI keeps saving while merely threatened)
@@ -2102,7 +2140,7 @@ const logSpend = (g, s, kind, c, e) => { if (g.log) { const a = g.log.tot[s].spe
 
 /* ---------- Save and resume ---------- */
 // v6 adds fog of war; v7 the AI's personality (kept on its side record); v10 the shared ability cooldown; v11 the match log; v12 group orders, the selection and Regroup flags; v13 upgrade-tree paths; v14 War Factory paths. Older saves are migrated.
-const SAVE_VER = 20, SAVE_OK = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
+const SAVE_VER = 21, SAVE_OK = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
 function serialize(g, extra) {
   const live = g.ents.filter(e => e.hp > 0);
   for (const sd of g.sides) if (sd.hq.hp <= 0 && !live.includes(sd.hq)) live.push(sd.hq); // a fallen HQ inside the storm's 5 s end window
@@ -2155,6 +2193,8 @@ function deserialize(str) {
     const ab = {}; for (const k in BH_OF) ab[BH_OF[k]] = sd.ab[k] ?? g.t + ABIL[BH_OF[k]].first; sd.ab = ab; if (sd.abK) sd.abK = BH_OF[sd.abK] || null;
   }
   for (const e of g.ents) if (e.kind === 'u' && e.temp === undefined) { e.temp = 0; e.frzT = 0; }
+  // v21: a temporary unit records its lifetime and source (every one before v21 came from an Emergency Brood); Cloudwing timers
+  for (const e of g.ents) if (e.kind === 'u' && e.tLife === undefined) Object.assign(e, { tLife: e.temp ? ABIL.brood.life : 0, tSrc: e.temp ? 'brood' : null, kid: 0, spawnT: 0 });
   for (const e of g.ents) if (e.kind === 'u' && e.leapCd === undefined) Object.assign(e, { leapCd: 0, leaping: 0, lu: 0, lv: 0, ld: 0, corr: 0, corrT: 0, burstCd: 0 });
   for (const f of g.fog) for (const id in f.ghosts) if (f.ghosts[id].fac === undefined) f.ghosts[id].fac = o.v < 17 ? DEFAULT_FACTION : null;
   for (const e of g.ents) { // v13: before upgrade trees, a T2 or T3 building is on path A (it keeps what it had: Heavies, Snipers)
@@ -3298,7 +3338,63 @@ function dDreadthorn(c, T, u) { // Dreadthorn: a towering spined horror on four 
   c.fillStyle = T.main; c.fillRect(-14, -16, 18, 1.4);
   bugLegs(c, ph, [-11, 9], 10, 11, 5, BHC.chit[2]);
 }
-const DRAW_U = { skitterling: dSkitter, bulwark: dBulwark, razorwing: dRazor, leaper: dLeaper, ravager: dRavager, spitter: dSpitter, bilecaster: dBilecaster, bilelobber: dLobber, ruinmaw: dRuinmaw, thornback: dThornback, dreadthorn: dDreadthorn, rifle: dRifle, heavy: dHeavy, sniper: dSniper, tank: dTank, artillery: dArt, titan: dTitan, flame: dFlame, hydra: dHydra, aircraft: dAir, interceptor: dInter, leviathan: dLev, medic: dMedic, drone: dDrone };
+// Bloomspire tree units (v2.21): flyers drawn around their flight height, facing +x
+function dNeedle(c, T, u) { // Needlewing: a thin dart of a body, a long piercing proboscis, two pairs of buzzing glassy wings
+  const fl = Math.sin(u.anim * 40), jab = u.recoil * 3;
+  c.fillStyle = 'rgba(200,225,255,0.28)';                                                              // far wings (a blur)
+  c.beginPath(); c.ellipse(-3, -6 - fl * 2, 8, 2.4, -0.5 + fl * 0.2, 0, 7); c.fill(); c.beginPath(); c.ellipse(-8, -5 + fl * 2, 6, 2, -0.3, 0, 7); c.fill();
+  c.fillStyle = BHC.chit[1]; c.beginPath(); c.moveTo(6, -1); c.quadraticCurveTo(-4, -4, -14, -1); c.lineTo(-17, 1.5); c.quadraticCurveTo(-4, 2, 6, 1); c.closePath(); c.fill(); // segmented abdomen
+  c.strokeStyle = 'rgba(20,10,30,0.5)'; c.lineWidth = 0.7; for (const x of [-11, -7, -3]) { c.beginPath(); c.moveTo(x, -2.4); c.lineTo(x, 1.6); c.stroke(); }
+  c.fillStyle = BHC.chit[0]; c.beginPath(); c.ellipse(7, 0, 3.4, 2.6, 0, 0, 7); c.fill();               // head
+  c.strokeStyle = BHC.bone; c.lineWidth = 1.1; c.beginPath(); c.moveTo(10, 0.5); c.lineTo(19 + jab, 2.5); c.stroke(); // proboscis
+  c.strokeStyle = BHC.chit[2]; c.lineWidth = 0.8; limb(c, 2, 1, 4, 4, 6, 5); limb(c, -2, 1, -1, 4, 1, 5.5); // dangling legs
+  c.fillStyle = 'rgba(215,235,255,0.42)';                                                              // near wings
+  c.beginPath(); c.ellipse(-2, -7 + fl * 2.5, 9, 2.6, -0.6 - fl * 0.25, 0, 7); c.fill(); c.beginPath(); c.ellipse(-7, -6 - fl * 2, 7, 2.2, -0.35, 0, 7); c.fill();
+  c.fillStyle = T.light; c.fillRect(8, -1.4, 1.6, 1.2); c.fillStyle = T.main; c.fillRect(-12, -1.4, 6, 1);
+}
+function dCloudwing(c, T, u) { // Cloudwing: a drifting gas-bag with fin flaps, trailing tendrils and a cluster of brood sacs underneath
+  const ph = u.anim * 3, fl = Math.sin(u.anim * 9), sq = u.recoil * 1.5;
+  c.strokeStyle = BHC.flesh[1]; c.lineWidth = 1.2; c.lineCap = 'round';                                // tendrils
+  for (let i = 0; i < 4; i++) { const x = -8 + i * 4.5, w = Math.sin(ph + i) * 2.5; c.beginPath(); c.moveTo(x, 3); c.quadraticCurveTo(x - 3 + w, 9, x - 6 + w, 14 + i % 2 * 2); c.stroke(); }
+  c.fillStyle = 'rgba(165,86,111,0.55)'; c.beginPath(); c.moveTo(-6, -6); c.quadraticCurveTo(-14, -16 - fl * 4, -22, -10 - fl * 3); c.quadraticCurveTo(-14, -6, -6, -2); c.fill(); // far fin flap
+  c.fillStyle = BHC.flesh[0]; c.beginPath(); c.ellipse(0, -5, 13 + sq, 8 - sq * 0.5, -0.08, 0, 7); c.fill(); // the bag
+  c.fillStyle = 'rgba(255,220,235,0.18)'; c.beginPath(); c.ellipse(-2, -9, 8, 3.4, -0.1, 0, 7); c.fill();  // sheen on top
+  c.strokeStyle = BHC.flesh[2]; c.lineWidth = 0.9; for (const x of [-6, 0, 6]) { c.beginPath(); c.moveTo(x - 1, -12); c.quadraticCurveTo(x + 2, -5, x - 1, 2); c.stroke(); } // veins
+  c.fillStyle = BHC.flesh[1]; for (const [x, r] of [[-5, 2.6], [-1, 3], [3.5, 2.4]]) { c.beginPath(); c.arc(x, 3.5, r, 0, 7); c.fill(); } // brood sacs
+  c.fillStyle = T.main; for (const x of [-5, -1, 3.5]) c.fillRect(x - 0.7, 3, 1.4, 1.2);
+  c.fillStyle = BHC.chit[1]; c.beginPath(); c.ellipse(13, -4, 4, 3.2, 0.1, 0, 7); c.fill();               // beaked head
+  c.fillStyle = BHC.bone; c.beginPath(); c.moveTo(16, -4.5); c.lineTo(21, -2.5); c.lineTo(15.5, -1.8); c.closePath(); c.fill();
+  c.fillStyle = 'rgba(190,110,140,0.7)'; c.beginPath(); c.moveTo(-2, -8); c.quadraticCurveTo(-9, -20 + fl * 4, -18, -15 + fl * 4); c.quadraticCurveTo(-9, -9, -2, -4); c.fill(); // near fin flap
+  c.fillStyle = T.light; c.fillRect(13.5, -5.4, 1.8, 1.3);
+}
+function dTyrant(c, T, u) { // Brood Tyrant: a heavy armored beetle-flyer, wing cases spread over buzzing wings, a gaping spitting maw
+  const fl = Math.sin(u.anim * 30), gape = u.recoil * 2.5;
+  c.fillStyle = 'rgba(200,215,255,0.22)'; c.beginPath(); c.ellipse(-6, -15, 16, 4 + fl * 1.5, -0.35, 0, 7); c.fill(); // buzzing wing blur
+  c.fillStyle = BHC.chit[2]; poly(c, [[2, -8], [-14, -22], [-26, -18], [-12, -6]]); c.fill();             // far wing case
+  c.fillStyle = BHC.chit[1]; c.beginPath(); c.moveTo(-26, 2); c.bezierCurveTo(-26, -14, 10, -16, 16, -4); c.quadraticCurveTo(14, 6, 0, 7); c.quadraticCurveTo(-18, 8, -26, 2); c.fill(); // armored body
+  c.strokeStyle = BHC.chit[0]; c.lineWidth = 1.6; for (const x of [-16, -8, 0]) { c.beginPath(); c.moveTo(x - 3, 5); c.quadraticCurveTo(x, -9, x + 4, -11); c.stroke(); } // shell ridges
+  c.strokeStyle = BHC.chit[2]; c.lineWidth = 2.2; c.lineCap = 'round'; limb(c, -10, 6, -12, 12, -7, 16); limb(c, 0, 6, 1, 12, 6, 15); // hanging claws
+  c.fillStyle = BHC.chit[0]; c.beginPath(); c.ellipse(16, -3, 7, 6, 0.1, 0, 7); c.fill();                 // head
+  c.fillStyle = BHC.dark; c.beginPath(); c.moveTo(19, -2); c.lineTo(25 + gape, -4 - gape); c.lineTo(25 + gape, 2 + gape); c.closePath(); c.fill(); // maw
+  c.fillStyle = BHC.bone; c.beginPath(); c.moveTo(20, -4); c.lineTo(26 + gape, -6 - gape); c.lineTo(22, -2); c.fill(); c.beginPath(); c.moveTo(20, 1); c.lineTo(26 + gape, 4 + gape); c.lineTo(22, 0); c.fill(); // mandibles
+  c.fillStyle = BHC.chit[0]; poly(c, [[4, -9], [-10, -26], [-24, -24], [-12, -7]]); c.fill();             // near wing case, raised
+  c.strokeStyle = BHC.chit[2]; c.lineWidth = 1; c.beginPath(); c.moveTo(4, -9); c.lineTo(-17, -25); c.stroke();
+  c.fillStyle = T.light; c.fillRect(16, -6, 2.4, 1.8); c.fillRect(12, -6.5, 1.6, 1.3); c.fillStyle = T.main; c.fillRect(-20, -1, 18, 1.6);
+}
+function dWorld(c, T, u) { // Worldrender: a vast ray-like flyer, its broad wings rippling, a swollen crushing sac slung under its belly
+  const r = Math.sin(u.anim * 2.4), drop = u.recoil * 3;
+  c.fillStyle = BHC.chit[2]; c.beginPath(); c.moveTo(18, -4); c.quadraticCurveTo(0, -12, -30, -10 + r * 4); c.quadraticCurveTo(-14, -2, 0, 0); c.fill(); // far wing
+  c.fillStyle = BHC.flesh[1]; c.beginPath(); c.ellipse(-2, 7 + drop, 11, 8, 0, 0, 7); c.fill();            // the sac it drops from
+  c.strokeStyle = BHC.flesh[2]; c.lineWidth = 1; for (const a of [-0.9, 0, 0.9]) { c.beginPath(); c.moveTo(-2 + a * 6, 0 + drop); c.quadraticCurveTo(-2 + a * 12, 8 + drop, -2 + a * 4, 14 + drop); c.stroke(); }
+  c.fillStyle = T.main; c.globalAlpha = 0.5 + 0.3 * Math.sin(u.anim * 5); c.beginPath(); c.arc(-2, 8 + drop, 3.2, 0, 7); c.fill(); c.globalAlpha = 1;
+  c.fillStyle = BHC.chit[1]; c.beginPath(); c.moveTo(34, 0); c.quadraticCurveTo(22, -9, 0, -8); c.quadraticCurveTo(-26, -7, -40, -2); c.quadraticCurveTo(-24, 4, 0, 4); c.quadraticCurveTo(22, 5, 34, 0); c.fill(); // long body and tail
+  c.fillStyle = BHC.bone; for (let i = 0; i < 6; i++) { const x = 16 - i * 7; c.beginPath(); c.moveTo(x - 2, -7.5 + i * 0.3); c.lineTo(x, -12 + i * 0.4); c.lineTo(x + 2, -7.5 + i * 0.3); c.fill(); } // back ridge
+  c.fillStyle = BHC.chit[0]; c.beginPath(); c.moveTo(14, -6); c.quadraticCurveTo(-4, -26 - r * 6, -36, -24 - r * 8); c.quadraticCurveTo(-18, -12, -6, -3); c.closePath(); c.fill(); // near wing
+  c.strokeStyle = BHC.chit[2]; c.lineWidth = 1; c.beginPath(); c.moveTo(10, -6); c.quadraticCurveTo(-6, -22 - r * 5, -32, -22 - r * 7); c.stroke();
+  c.strokeStyle = BHC.bone; c.lineWidth = 1.4; c.beginPath(); c.moveTo(-40, -2); c.quadraticCurveTo(-46, -4, -48, 1); c.stroke(); // barbed tail tip
+  c.fillStyle = T.light; c.fillRect(27, -2.6, 2.4, 1.6); c.fillStyle = T.main; c.fillRect(-14, -3, 22, 1.6);
+}
+const DRAW_U = { skitterling: dSkitter, bulwark: dBulwark, razorwing: dRazor, leaper: dLeaper, ravager: dRavager, spitter: dSpitter, bilecaster: dBilecaster, bilelobber: dLobber, ruinmaw: dRuinmaw, thornback: dThornback, dreadthorn: dDreadthorn, needlewing: dNeedle, cloudwing: dCloudwing, broodtyrant: dTyrant, worldrender: dWorld, rifle: dRifle, heavy: dHeavy, sniper: dSniper, tank: dTank, artillery: dArt, titan: dTitan, flame: dFlame, hydra: dHydra, aircraft: dAir, interceptor: dInter, leviathan: dLev, medic: dMedic, drone: dDrone };
 // Drawn size where it differs from the SIM height (the Titan walker stands taller than its hitbox): health bars and shadows follow the art
 const UVIS = { titan: { h: 50, w: 17 }, hydra: { h: 42, w: 15 } };
 const visH = type => (UVIS[type] || UDEF[type]).h;
@@ -3716,10 +3812,10 @@ function drawFog(c, F) {
 function drawUnit(c, u) {
   const d = UDEF[u.type], w = P(u.u, u.v), bob = d.air ? Math.sin(u.anim * 2.2) * 3 : 0;
   c.fillStyle = d.air ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.32)';
-  const big = u.type === 'leviathan' ? 2.4 : u.type === 'drone' ? 0.5 : 1; // a Leviathan's shadow is seen coming
+  const big = u.type === 'leviathan' || u.type === 'worldrender' ? 2.4 : u.type === 'broodtyrant' ? 1.6 : u.type === 'drone' || u.type === 'needlewing' ? 0.5 : 1; // a Leviathan's shadow is seen coming
   c.beginPath(); c.ellipse(w.x, w.y, (d.air ? 16 * big : UVIS[u.type] ? UVIS[u.type].w : Math.max(8, d.h * 0.7)) * US, (d.air ? 3.5 * big : 2.6) * US, 0, 0, 7); c.fill();
   if (u.type === 'medic' && VFX.g) drawHealBeams(c, VFX.g, u, w);
-  c.save(); c.translate(w.x, w.y - u.z + bob); c.scale(u.face * US, US);
+  c.save(); c.translate(w.x, w.y - u.z + bob); c.scale(u.face * US * (u.kid ? 0.75 : 1), US * (u.kid ? 0.75 : 1)); // a Cloudwing's offspring is smaller (v2.21)
   drawUnitArt(c, u, TEAM[u.side]);
   c.globalCompositeOperation = 'lighter';
   if (u.hitT > 0) { c.globalAlpha = 0.6 * Math.min(1, u.hitT / 0.12); drawUnitArt(c, u, TEAM[u.side]); } // hit: the unit itself flashes
@@ -3729,7 +3825,11 @@ function drawUnit(c, u) {
   c.restore();
   if (u.shT > VFX.lastT) drawShield(c, u, VFX.lastT);
   if (u.corrT > VFX.lastT) drawCorrosion(c, u, w); // v2.19
-  if (u.frzT > VFX.lastT) { const h = visH(u.type) * US, p_ = 0.35 + 0.25 * Math.sin(VFX.lastT * 14 + u.id); c.globalCompositeOperation = 'lighter'; stamp(c, GLOW.frenzy, w.x, w.y - u.z - h * 0.5, Math.max(10, h * 0.8), p_); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1; } // Frenzy Bloom: a pulsing pink glow (v2.20)
+  if (u.frzT > VFX.lastT) { // Frenzy Bloom: a pulsing pink glow (v2.20), larger and brighter with a ring at the feet (v2.21)
+    const h = visH(u.type) * US, k = 0.5 + 0.5 * Math.sin(VFX.lastT * 12 + u.id), y = w.y - u.z, r = Math.max(9, h * 0.75) * (1 + 0.25 * k);
+    c.globalCompositeOperation = 'lighter'; stamp(c, GLOW.frenzy, w.x, y - h * 0.5, Math.max(16, h * 1.3) * (1 + 0.2 * k), 0.75 + 0.25 * k); c.globalCompositeOperation = 'source-over';
+    c.globalAlpha = 0.55 + 0.4 * k; c.strokeStyle = '#ff8ad8'; c.lineWidth = 1.8; c.beginPath(); c.ellipse(w.x, y, r, r * 0.38, 0, 0, 7); c.stroke(); c.globalAlpha = 1;
+  }
 }
 // Corroded (v2.19): a green acid ring at the feet with drips; brighter for stronger corrosion
 function drawCorrosion(c, u, w) {
@@ -3933,8 +4033,9 @@ function onFire(g, e, lit) {
       vFx('flash', w.x, w.y, 14, 0.12, col, 2); vFx('ring', w.x, w.y, 4, 0.3, TEAM[e.side].main, 1, 18, 0, 2);
       break;
     case 'spine': vFx('flash', w.x, w.y, 6, 0.07, GLOW['t' + e.side], 1); break; // the Maw spits
-    case 'acid': case 'bile': case 'lob': case 'ruin': vFx('flash', w.x, w.y, wpn === 'acid' ? 5 : 9, 0.1, GLOW.acid, 1); break; // a spray of acid (v2.19)
-    case 'claw': case 'talon': case 'slam': case 'rend': case 'maul': case 'gore': // a bite or a blow: a short bright snap at the jaws
+    case 'acid': case 'bile': case 'lob': case 'ruin': case 'glob': vFx('flash', w.x, w.y, wpn === 'acid' ? 5 : 9, 0.1, GLOW.acid, 1); break; // a spray of acid (v2.19); the Brood Tyrant's glob (v2.21)
+    case 'crush': vFx('flash', w.x, w.y, 10, 0.14, GLOW.acid, 1); break; // the Worldrender's sac opens
+    case 'claw': case 'talon': case 'slam': case 'rend': case 'maul': case 'gore': case 'needle': // a bite or a blow: a short bright snap at the jaws
       vFx('flash', w.x + face * 3, w.y, wpn === 'slam' ? 10 : 5, 0.08, GLOW['t' + e.side], 1); break;
   }
 }
@@ -3977,7 +4078,7 @@ function onImpact(g, p, lit) {
       for (let i = vCount(6); i > 0; i--) vPart(w.x + vr(-10, 10), ground - 1, vr(-34, 34), vr(-22, -6), vr(0.9, 1.5), vr(5, 9), 3, '', -2, 0);
       for (let i = vCount(4); i > 0; i--) vPart(w.x, ground - 2, vr(-80, 80), vr(-110, -40), vr(0.7, 1.2), vr(1.8, 3), 2, '#2a3648', 320, 1, ground);
       break;
-    case 'acid': case 'bile': case 'ruin': case 'lob': // a splash of acid (v2.19)
+    case 'acid': case 'bile': case 'ruin': case 'lob': case 'glob': // a splash of acid (v2.19)
       vFx('ring', w.x, p.weapon === 'lob' ? ground : w.y, 3, 0.3, '#9be15d', 1, p.weapon === 'acid' ? 10 : 24, p.weapon === 'lob' ? 1 : 0, 1.4);
       for (let i = vCount(p.weapon === 'acid' ? 2 : 4); i > 0; i--) vPart(w.x, w.y, vr(-30, 30), vr(-40, -5), vr(0.3, 0.6), vr(1.4, 2.4), 1, '#9be15d', 200, 0, ground);
       break;
@@ -4321,8 +4422,8 @@ function render(c, g, time, sel, selPad) {
       c.strokeStyle = 'rgba(255,220,140,0.75)'; c.lineWidth = big ? 3.2 : 2.2; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
       c.globalCompositeOperation = 'lighter'; stamp(c, big ? GLOW.white : GLOW.warm, b.x, b.y, big ? 8 : 6, 0.85); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
       c.fillStyle = '#fff6d0'; c.beginPath(); c.arc(b.x, b.y, big ? 3 : 2.2, 0, 7); c.fill();
-    } else if (wp === 'acid' || wp === 'bile' || wp === 'ruin') { // Bloomhost acid (v2.19): a green glob with a short trail
-      const big = wp === 'ruin' ? 3.2 : wp === 'bile' ? 2.6 : 1.8;
+    } else if (wp === 'acid' || wp === 'bile' || wp === 'ruin' || wp === 'glob' || wp === 'crush') { // Bloomhost acid (v2.19): a green glob with a short trail
+      const big = wp === 'crush' ? 4.4 : wp === 'ruin' || wp === 'glob' ? 3.2 : wp === 'bile' ? 2.6 : 1.8;
       c.strokeStyle = 'rgba(155,225,93,0.55)'; c.lineWidth = big; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
       c.fillStyle = wp === 'ruin' ? '#6fae3a' : '#c4f58e'; c.beginPath(); c.arc(b.x, b.y, big, 0, 7); c.fill();
     } else if (wp === 'lob') { // the Bile Lobber's arcing glob, with the same landing ring as a shell
@@ -4391,7 +4492,7 @@ function render(c, g, time, sel, selPad) {
         c.strokeStyle = TEAM[e.side].light; c.lineWidth = 1.6; c.beginPath(); c.arc(w.x - bw / 2 - 5, y + 1, 3.2, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * clamp((e.shT - g.t) / ABIL.shield.dur, 0, 1)); c.stroke();
       }
       if (e.temp) { // a temporary unit (v2.20): a ring that empties as its lifetime runs out
-        c.strokeStyle = '#e8d2a8'; c.lineWidth = 1.6; c.beginPath(); c.arc(w.x + bw / 2 + 5, y + 1, 3.2, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * clamp((e.temp - g.t) / ABIL.brood.life, 0, 1)); c.stroke();
+        c.strokeStyle = '#e8d2a8'; c.lineWidth = 1.6; c.beginPath(); c.arc(w.x + bw / 2 + 5, y + 1, 3.2, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * clamp((e.temp - g.t) / (e.tLife || ABIL.brood.life), 0, 1)); c.stroke();
       }
       if (e.hp >= e.maxHp) continue;
       bar(c, w.x, w.y - e.z - visH(e.type) * US - 9, d.air ? 28 : Math.max(18, d.h * 0.9 + 6), e.hp / e.maxHp, 2.4, lostF(e));
@@ -4594,6 +4695,10 @@ const UNIT_TIPS = {
   ruinmaw: ['Buildings above all; every hit leaves a short acid pool', 'Fast attackers, aircraft, Heavies'],
   thornback: ['The front line; anyone who hits it up close takes 20% of the damage back', 'Ranged focus, Tanks, aircraft'],
   dreadthorn: ['Packed infantry: a hit of 60+ releases a spine burst around it (every 15 s)', 'Ranged focus, Tanks, aircraft'],
+  needlewing: ['Exposed ground units in a pack: +12% damage for each other Needlewing on the target (up to +36%)', 'Anything that hits air, splash; it can\'t hit aircraft'],
+  cloudwing: ['Overwhelming ground targets; while fighting it releases 2 offspring every 14 s (12 s life, at most 6)', 'Anything that hits air; it can\'t hit aircraft'],
+  broodtyrant: ['Buildings first, then ground units, with heavy globs from 150 range', 'Interceptors, Heavies, Hydras, Turrets; it can\'t hit aircraft'],
+  worldrender: ['Buildings above all, from right above them, with splash on ground units', 'Interceptors, Heavies, Hydras, Turrets; it can\'t hit aircraft'],
 };
 const pFac = () => game ? game.sides[0].faction : DEFAULT_FACTION; // the player's faction (cards, panel and info)
 const stat = (label, val) => `<div><small>${label}</small><b>${val}</b></div>`;
@@ -4957,11 +5062,6 @@ function refreshPanel() {
     up.disabled = true; up.textContent = 'Building…'; up.classList.remove('poor');
     return;
   }
-  if (prodLocked(b.fac, b.type)) { // the Bloomspire stays T1 until its evolution tree arrives (v2.21)
-    $('bpNow').textContent = `T1: ${d.tiers[1]}`; setHTML($('bpNext'), '');
-    up.disabled = true; up.textContent = 'Evolution paths coming soon'; up.classList.remove('poor'); up.classList.add('soon'); $('bp').classList.add('wide'); return;
-  }
-  up.classList.remove('soon');
   const T = treeOf(b.fac, b.type), P = T && (b.path || b.upPath) ? T[b.path || b.upPath] : null, pick = T && b.tier === 1 && !b.upgrading;
   const tierTxt = (t, named) => P && t >= 2 ? (named ? `${P.name}: ` : '') + P.steps[t].short : d.tiers[t];
   $('bp').classList.toggle('wide', !!pick);

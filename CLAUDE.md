@@ -1,12 +1,12 @@
 # Extinction Event — working rules for Claude Code
 
 ## Current state
-- Version: v2.20.
-- Factions: **Last Fist** (upgrade trees done: Barracks v2.13, War Factory v2.14, Tech Lab v2.15) and **Bloomhost** (framework v2.17, creep v2.18, Larva Pit and Evolution Chamber trees + anti-air v2.19, commander abilities + temporary units v2.20).
+- Version: v2.21.
+- Factions: **Last Fist** (upgrade trees done: Barracks v2.13, War Factory v2.14, Tech Lab v2.15) and **Bloomhost** (framework v2.17, creep v2.18, Larva Pit and Evolution Chamber trees + anti-air v2.19, commander abilities + temporary units v2.20, Bloomspire tree v2.21).
 - Roadmap, in order: finish all Last Fist upgrade trees → Bloomhost faction → third faction → strategy explorer + full balance audit + matchup testing → AI training → campaign, multiplayer, App Store.
 - Until the audit, implementation only: no balance tuning, no tactical AI work, and no matrices or ladders unless a prompt asks for them. The only AI changes allowed are the minimum the AI needs to build and use new content.
 - No balance tuning, matchup testing, or tactical AI work until all three factions are in. Log findings under Audit in KNOWN_ISSUES.md.
-- Bloomhost: v2.17 framework done (setup menu, hidden enemy faction, 8 buildings, base units, minimal AI); v2.18 creep done; v2.19 Larva Pit and Evolution Chamber trees and anti-air done; v2.20 commander abilities and the temporary-unit system done. Next: v2.21 Bloomspire tree (Cloudwing reuses the temporary-unit system), then v2.22 Bloomhost AI pass per docs/BLOOMHOST.md amendment D.
+- Bloomhost: v2.17 framework done (setup menu, hidden enemy faction, 8 buildings, base units, minimal AI); v2.18 creep done; v2.19 Larva Pit and Evolution Chamber trees and anti-air done; v2.20 commander abilities and the temporary-unit system done; v2.21 Bloomspire tree done. Next: v2.22 Bloomhost AI pass plus smoke tests per docs/BLOOMHOST.md amendment D.
 - Until the audit, testing is functional only: npm test, one SIM match to confirm a full match runs, one browser check of anything with new UI, and screenshots of new visuals. No matrices, ladders, per-personality runs, or repeated performance runs unless a prompt asks for them. Performance runs only at the end of a faction or when a prompt asks.
 - Workflow: each batch is a new session that starts by reading CLAUDE.md and KNOWN_ISSUES.md.
 

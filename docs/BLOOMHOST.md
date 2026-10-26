@@ -980,3 +980,30 @@ Temporary units (reusable; Cloudwing offspring in v2.21): a unit with `temp` set
 Hidden faction: enemy ability rings, clouds, pods, glows, sounds and toasts appear only where the viewer can see (`abilSeen`), like Last Fist's.
 
 AI timing (minimal; each ability uses its counterpart's logic): Frenzy Bloom is cast where the Shield would be (own units fighting enemies they can see); Emergency Brood where the Repair Pulse would be (own damaged units or buildings), moved back toward home up to three times to find a valid landing point; Corrosive Bloom where the Strike would be (units only: no building targets, no aircraft, scored on 60% of its total damage). Personality weights read the counterpart's name. The Aggressor's "save for a Strike" rule and its early HQ T2 apply only to Last Fist.
+
+=== v2.21 BLOOMSPIRE TREE (implementation record; not tuned) ===
+
+Paths (same rules as the other trees: chosen at the T1 → T2 upgrade, locked per building, reset by selling). Razorwings stay on both paths. Upgrade costs and times are the Last Fist Tech Lab ones. "Evolution paths coming soon" is gone: every production building of both factions has a tree.
+
+| Building | Path A | Path B |
+|---|---|---|
+| Bloomspire | Swarm Bloom: T2 Needlewing, T3 Cloudwing | Apex Bloom: T2 Brood Tyrant, T3 Worldrender |
+
+Units (first-pass numbers set against the Last Fist unit in the nearest slot):
+
+| Unit | Slot | Cost | Supply | HP | Damage / cooldown (dps) | Range | Speed | Armor | Hits | Trait | Last Fist equivalent |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Needlewing | Bloomspire T2, Swarm | 70/30 | 1 | 80 | 8 / 0.6 s (13) | 40 (diving strikes) | 115 | air | ground only | Pack bonus: +12% damage per other Needlewing on the same target, up to +36% (the Skitterling's swarm code) | Interceptor 150/60, 2, 190 HP |
+| Cloudwing | Bloomspire T3, Swarm | 220/100 | 3 | 280 | 14 / 0.6 s (23) | 45 (diving strikes) | 85 | air | ground only | Same pack bonus. While attacking, releases 2 offspring every 14 s: temporary Needlewings (12 s life, half damage, no supply, drawn smaller). At most 6 offspring per side at once, a cap separate from Emergency Brood's 8 | Leviathan 480/240, 7, 1,400 HP |
+| Brood Tyrant | Bloomspire T2, Apex | 320/150 | 5 | 950 | 60 / 2.4 s (25), splash 24 | 150 | 40 | air | ground, buildings | Prefers buildings (the Leviathan's targeting bonus); heavy acid globs | Interceptor slot; role of the Leviathan |
+| Worldrender | Bloomspire T3, Apex | 520/260 | 8 | 1,700 | 170 / 4.0 s, splash 70 | 50 (from above) | 20 | air | ground, buildings | Prefers buildings; drops a crushing mass where the target stands, like the Leviathan's bomb (full damage at the centre, half at the edge) | Leviathan 480/240, 7, 1,400 HP |
+
+None of the four can hit aircraft. All of them skip a shielded Hive or HQ, like every unit. Player orders (Hold, Attack, Retreat, Regroup, group and type orders) decide where the Brood Tyrant and Worldrender fly. Within range they pick buildings first, as the Leviathan does.
+
+New weapon tables (light / heavy / vehicle / air / building): needle 1.1 / 0.8 / 0.7 / 0 / 0.5; glob 0.8 / 1.0 / 1.1 / 0 / 1.6; crush 0.6 / 0.8 / 1.0 / 0 / 2.1.
+
+Temporary units now record their lifetime (`tLife`) and source (`tSrc`: 'brood' or 'cloud'), so each source has its own cap and the lifetime ring is correct for both. Saves v21; v20 temporary units load as Emergency Brood Skitterlings.
+
+AI (minimal): the Bloomspire path is translated from each personality's Tech Lab choice: Air Power → Apex Bloom (Economist, Trickster), Support → Swarm Bloom (Aggressor, Turtle). A Bloomspire path unit the AI has never trained gets the top score once, so it saves up for it. Without that rule the simple scores kept the Razorwing on top and the AI never trained a Brood Tyrant.
+
+Frenzy Bloom (v2.20) glow: larger and brighter, with a pulsing ring at the unit's feet (visual only).

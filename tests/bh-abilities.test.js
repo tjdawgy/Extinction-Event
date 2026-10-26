@@ -121,7 +121,7 @@ test('saves v20 keep Bloomhost cooldowns and active effects; a v19 Bloomhost sav
   assert.deepStrictEqual({ ...g3.sides[0].ab }, { frenzy: 300, brood: 300, corrosive: 350 }); assert.strictEqual(g3.sides[0].abK, 'corrosive');
   assert.deepStrictEqual({ ...g3.sides[1].ab }, { ...g.sides[1].ab }, 'Last Fist untouched');
   ready(g3); assert.ok(sim.useAbility(g3, 0, 'frenzy', 400, 0).ok, 'and works after loading');
-  assert.strictEqual(sim.SAVE_VER, 20);
+  assert.ok(sim.SAVE_VER >= 20); // v21 (v2.21) loads the same way
 });
 
 test('the Bloomhost AI casts all three in a seeded Hard match (Turtle), under the same shared cooldown', () => {

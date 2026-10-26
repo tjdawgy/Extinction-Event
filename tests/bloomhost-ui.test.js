@@ -28,7 +28,7 @@ for (const dev of [NARROW, PHONE]) {
   });
 }
 
-test('a match as Bloomhost: names and cards, Train after a Larva Pit, Larva Pit path picker, Bloomspire locked, its own three abilities (v2.20)', { skip }, async () => {
+test('a match as Bloomhost: names and cards, Train after a Larva Pit, Larva Pit and Bloomspire path pickers (v2.21), its own three abilities (v2.20)', { skip }, async () => {
   const { page, errors } = await openPage(browser, NARROW);
   await page.click('#meSeg [data-f="bloomhost"]'); await page.click('#foeSeg [data-f="lastfist"]');
   await page.click('#bPlay'); await page.waitForTimeout(300);
@@ -56,7 +56,9 @@ test('a match as Bloomhost: names and cards, Train after a Larva Pit, Larva Pit 
   assert.match(await page.textContent('#bpPick [data-p="B"]'), /Acidic Evolution.*Spitters.*Bilecasters/);
   await page.evaluate(() => { tryBuild(game, 0, 'techlab'); for (const b of game.ents) if (b.type === 'techlab') { b.built = true; b.progress = 1; } openPanel(game.ents.find(e => e.type === 'techlab')); });
   const sp = await page.evaluate(() => ({ name: $('bpName').textContent, txt: $('bpUp').textContent, dis: $('bpUp').disabled, pick: $('bpPick').classList.contains('hide') }));
-  assert.deepStrictEqual(sp, { name: 'Bloomspire', txt: 'Evolution paths coming soon', dis: true, pick: true });
+  assert.deepStrictEqual({ name: sp.name, pick: sp.pick }, { name: 'Bloomspire', pick: false }, 'v2.21: the Bloomspire picks a path');
+  assert.match(await page.textContent('#bpPick [data-p="A"]'), /Swarm Bloom.*Needlewings.*Cloudwings/);
+  assert.match(await page.textContent('#bpPick [data-p="B"]'), /Apex Bloom.*Brood Tyrants.*Worldrenders/);
   await page.evaluate(() => openPanel(game.ents.find(e => e.type === 'barracks')));
   await page.evaluate(() => { for (let i = 0; i < 30 * 20; i++) update(game, 1 / 30); render(ctx, game, game.t, sel, selPad); refreshUI(true); });
   assert.ok(await page.evaluate(() => game.ents.some(e => e.type === 'skitterling' && e.side === 0)), 'a Skitterling hatched');
@@ -123,7 +125,8 @@ test('v2.20: Bloomhost abilities cast through the buttons (tap, place, confirm);
   assert.ok(await cast('corrosive', await page.evaluate(() => __xy(640))), 'Corrosive Bloom cast');
   // the enemy (also Bloomhost) casts all three where the player can't see: no sound, no toast, nothing drawn
   const r = await page.evaluate(() => {
-    paused = true; render(ctx, game, game.t, null, -1); // the player's own casts are registered first
+    paused = true; for (const e of game.ents) if (e.kind === 'u') e.cd = 1e6; // no fighting in view: only the casts can make a sound
+    update(game, 1 / 30); render(ctx, game, game.t, null, -1); // earlier shots and the player's own casts are registered first
     const calls = []; const sf = sfx; window.sfx = (n, x) => { calls.push(n); return sf(n, x); };
     const tt = toast; window.toast = (m, k) => { calls.push('toast:' + m); return tt(m, k); };
     const F = game.fog[0], lit = u => F.vis[cellOf(u)] === 1, hidden = 1300; game.fog[1].vis.fill(1); game.fog[1].exp.fill(1);

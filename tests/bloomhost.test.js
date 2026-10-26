@@ -1,5 +1,5 @@
 // Bloomhost framework (v2.17): the eight buildings in their roles, the three base units and their traits (swarm bonus,
-// melee chase, Bulwark brace), production locked at T1 for now, abilities "coming soon", saves v17, the hidden enemy
+// melee chase, Bulwark brace), abilities "coming soon", saves v17, the hidden enemy
 // faction in the fog, the match log, and the AI playing a whole match as Bloomhost. SIM only (Node).
 const test = require('node:test');
 const assert = require('node:assert');
@@ -31,13 +31,13 @@ test('the eight Bloomhost buildings fill the Last Fist roles; the Hive keeps the
   assert.deepStrictEqual({ ...sim.income(g, 0) }, { c: 3 + 4, e: 1 + 2 });
 });
 
-test('each faction trains only its own units; the Bloomspire stays at T1 ("evolution paths coming soon"); the rest upgrade (v2.19: Larva Pit and Evolution Chamber pick paths)', () => {
+test('each faction trains only its own units; every production building picks a path (v2.19: Larva Pit and Evolution Chamber; v2.21: Bloomspire); the rest upgrade', () => {
   const g = quiet(); g.countdown = 0;
   const pit = finish(g, 0, 'barracks'), evo = finish(g, 0, 'factory'), spire = finish(g, 0, 'techlab'), gore = finish(g, 0, 'refinery'), maw = finish(g, 0, 'turret');
   finish(g, 0, 'habitat'); finish(g, 1, 'barracks');
   for (const [t, ok] of [['skitterling', true], ['bulwark', true], ['razorwing', true], ['rifle', false], ['tank', false], ['aircraft', false]]) assert.strictEqual(sim.tryTrain(g, 0, t).ok, ok, t);
   assert.ok(sim.tryTrain(g, 1, 'rifle').ok); assert.ok(!sim.tryTrain(g, 1, 'skitterling').ok, 'a Last Fist Barracks makes no Skitterlings');
-  { const r = sim.tryUpgrade(g, 0, spire, 'A'); assert.ok(!r.ok); assert.match(r.msg, /evolution paths coming soon/); }
+  assert.match(sim.tryUpgrade(g, 0, spire).msg, /Choose a path/); assert.ok(sim.tryUpgrade(g, 0, spire, 'A').ok);
   assert.match(sim.tryUpgrade(g, 0, pit).msg, /Choose a path/); assert.ok(sim.tryUpgrade(g, 0, pit, 'B').ok); assert.ok(sim.tryUpgrade(g, 0, evo, 'A').ok);
   assert.ok(sim.tryUpgrade(g, 0, gore).ok); assert.ok(sim.tryUpgrade(g, 0, maw).ok); assert.ok(sim.tryUpgrade(g, 0, g.sides[0].hq).ok);
   step(g, 30);
