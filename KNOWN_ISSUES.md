@@ -36,6 +36,8 @@ Items for the strategy explorer and full balance audit. Logged only, nothing tun
 - **Before the App Store: run a Bloomhost performance check**, both in the early game and on a late-game save with large armies (creep, Cloudwing offspring and many units). The only measurement so far is one throttled run at v2.18.
 
 - **Mass Deployment near the top of its win range** (58.8%, target 40–60%); **Riflemen about 37% of unit spending** (target about 35%) (v2.13).
+- **Axiarch first-pass numbers (v2.25)** are ratio-matched against Last Fist (table in docs/AXIARCHS.md). Nothing has been measured: the shield values and regen rate (10%/s after 4 s), buildings at 80% HP plus 30% shields, no HP self-repair for Axiarch buildings, the Null Lance's three tiers, and the three base units' costs. The AI scores read through the Last Fist counterparts.
+- **Axiarch AI and Null Lances (v2.25):** the AI builds Null Lances by the unchanged Turret rules. In the seeded 10-minute test (one match per personality) only the Turtle built one, as with Last Fist's Turrets.
 
 ### Bloomhost summary (v2.22)
 Every Bloomhost item for the audit and AI training, in one place (details in the Audit entries above, the Open sections below and docs/BLOOMHOST.md):

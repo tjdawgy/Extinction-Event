@@ -16,7 +16,7 @@ for (const dev of [NARROW, PHONE]) {
     const { page, errors } = await openPage(browser, dev);
     const r = await page.evaluate(() => ({ labels: [...document.querySelectorAll('.setup .lbl')].map(x => x.textContent), me: [...$('meSeg').children].map(b => b.textContent), foe: [...$('foeSeg').children].map(b => b.textContent) }));
     assert.deepStrictEqual(r.labels, ['Difficulty', 'You', 'Opponent']);
-    assert.deepStrictEqual(r.me, ['Last Fist', 'Bloomhost', 'Random']); assert.deepStrictEqual(r.foe, ['Last Fist', 'Bloomhost', 'Random']);
+    assert.deepStrictEqual(r.me, ['Last Fist', 'Bloomhost', 'Axiarchs', 'Random']); assert.deepStrictEqual(r.foe, ['Last Fist', 'Bloomhost', 'Axiarchs', 'Random']);
     await page.click('#diffSeg [data-d="hard"]'); await page.click('#meSeg [data-f="bloomhost"]'); await page.click('#foeSeg [data-f="random"]');
     const fit = await page.evaluate(() => { const b = $('box'), inView = el => { const q = el.getBoundingClientRect(); return q.top >= 0 && q.bottom <= innerHeight && q.left >= 0 && q.right <= innerWidth; }; return { scroll: b.scrollHeight - b.clientHeight, all: [...document.querySelectorAll('.setup button, #bPlay')].every(inView) }; });
     assert.ok(fit.scroll <= 1, `box scrolls by ${fit.scroll}px`); assert.ok(fit.all, 'every setup button and Start are on screen');
@@ -69,7 +69,7 @@ test('a match as Bloomhost: names and cards, Train after a Larva Pit, Larva Pit 
   for (const k of ['g:inf', 'g:arm', 'g:air', 't:skitterling', 't:bulwark', 't:razorwing']) assert.ok(chips.includes(k), `${k} in ${chips}`);
   assert.doesNotMatch(await page.textContent('#asel'), /undefined/);
   // v2.19: every unit of both factions has a sprite, an info card, a group and a name (catches a unit missing anywhere)
-  const missing = await page.evaluate(() => Object.keys(UDEF).filter(t => !DRAW_U[t] || !UNIT_TIPS[t] || !GROUP_OF[t] || !PLURAL[t] || !SIGHT[t] || (!UDEF[t].air && !SPR_BOX[t] && UDEF[t].fac === 'bloomhost')));
+  const missing = await page.evaluate(() => Object.keys(UDEF).filter(t => !DRAW_U[t] || !UNIT_TIPS[t] || !GROUP_OF[t] || !PLURAL[t] || !SIGHT[t] || (!UDEF[t].air && !SPR_BOX[t] && UDEF[t].fac) || (UDEF[t].shp && !UDEF[t].fac)));
   assert.deepStrictEqual(missing, []);
   const icons = await page.evaluate(() => { const bad = []; for (const t of Object.keys(UDEF)) { try { drawIcon(document.createElement('canvas'), 'u', t); showInfo('u', t); } catch (e) { bad.push(t + ': ' + e.message); } } hideInfo(); return bad; });
   assert.deepStrictEqual(icons, []);
@@ -125,7 +125,7 @@ test('v2.20: Bloomhost abilities cast through the buttons (tap, place, confirm);
   assert.ok(await cast('corrosive', await page.evaluate(() => __xy(640))), 'Corrosive Bloom cast');
   // the enemy (also Bloomhost) casts all three where the player can't see: no sound, no toast, nothing drawn
   const r = await page.evaluate(() => {
-    paused = true; for (const e of game.ents) if (e.kind === 'u') e.cd = 1e6; // no fighting in view: only the casts can make a sound
+    paused = true; for (const e of game.ents) { e.cd = 1e6; if (e.kind === 'u') e.hp = e.maxHp = 1e6; } game.projs.length = 0; // no shots, impacts or deaths in view (the Hive's gun, shells in flight, the player's spore cloud): only the casts can make a sound
     update(game, 1 / 30); render(ctx, game, game.t, null, -1); // earlier shots and the player's own casts are registered first
     const calls = []; const sf = sfx; window.sfx = (n, x) => { calls.push(n); return sf(n, x); };
     const tt = toast; window.toast = (m, k) => { calls.push('toast:' + m); return tt(m, k); };

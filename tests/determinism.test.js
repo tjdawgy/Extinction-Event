@@ -1,12 +1,12 @@
 // The SIM must not change by accident: the same seeded AI-vs-AI match must end in exactly the same state,
 // particles and screen shake included. When a rules change is intended, re-record the fingerprint
-// (node tests/determinism.test.js --print) and say so in the commit. Recorded at v2.21 (new state fields only: a unit's temporary lifetime and source, offspring flag and Cloudwing release timer; Last Fist play itself matched v2.20 move for move).
+// (node tests/determinism.test.js --print) and say so in the commit. Recorded at v2.25 (new state fields only: shield points on every unit and building, zero outside the Axiarchs; Last Fist and Bloomhost vs Last Fist play matched v2.22 move for move).
 const test = require('node:test');
 const assert = require('node:assert');
 const crypto = require('crypto');
 const { loadSim } = require('./load-sim');
 
-const FINGERPRINT = '83f9304e7cee77acd9198e6eabe21b829b38ce7d4f7299a025a510845d0a0240';
+const FINGERPRINT = '796edcbc2ebe6838af9002474a48f10f3f08b1042fe2b35b7a259493c5753597';
 
 function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 

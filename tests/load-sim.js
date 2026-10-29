@@ -15,7 +15,7 @@ function loadSim(opts = {}) {
   const end = html.indexOf('/* ===================== SIM END');
   if (start < 0 || end < 0) throw new Error('Could not find the SIM section in index.html');
   const src = html.slice(start + '<script>'.length, end);
-  const exportsList = ['GAME_NAME', 'VERSION', 'FACTIONS', 'DEFAULT_FACTION', 'factionName', 'abilUnlocked', 'BD', 'BDEFS', 'bdOf', 'fire', 'CREEP', 'onCreep', 'TREES_BH', 'CORR', 'ACID', 'addAcid', 'TEMP', 'SPAWN', 'updateSpawn', 'finish', 'acquire', 'aiPathTo', 'GROUP_OF', 'PLURAL', 'UNIT_ORDER', 'COUNTDOWN', 'DIFF', 'BDEF', 'UDEF', 'DMG', 'PSPEED', 'L', 'NODE_U', 'NODE_R', 'NODE_INC',
+  const exportsList = ['GAME_NAME', 'VERSION', 'FACTIONS', 'DEFAULT_FACTION', 'factionName', 'abilUnlocked', 'BD', 'BDEFS', 'bdOf', 'fire', 'CREEP', 'onCreep', 'TREES_BH', 'CORR', 'ACID', 'addAcid', 'TEMP', 'SPAWN', 'updateSpawn', 'BDEF_AX', 'FACTION_KEYS', 'SHIELD', 'extraTargets', 'updateShields', 'prodLocked', 'updateStorm', 'finish', 'acquire', 'aiPathTo', 'GROUP_OF', 'PLURAL', 'UNIT_ORDER', 'COUNTDOWN', 'DIFF', 'BDEF', 'UDEF', 'DMG', 'PSPEED', 'L', 'NODE_U', 'NODE_R', 'NODE_INC',
     'REGEN_DELAY', 'SELL_RATE', 'SAVE_VER', 'newGame', 'update', 'tryBuild', 'tryTrain', 'tryUpgrade', 'trySell', 'tryRepair',
     'repairCost', 'sellValue', 'setStance', 'income', 'popCap', 'popUsed', 'spawnUnit', 'damage', 'kill', 'hqStatus',
     'rallyU', 'hqU', 'countB', 'hasBuilt', 'serialize', 'deserialize', 'SAVE_OK', 'FOG_CELL', 'FOG_N', 'SIGHT', 'B_SIGHT', 'B_SIGHT_DEF',

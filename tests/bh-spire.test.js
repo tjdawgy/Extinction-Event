@@ -115,7 +115,7 @@ test('Cloudwing offspring through save and load (same creatures, same expiry), g
 });
 
 test('saves v21; a v20 save loads (its Brood Skitterlings keep their lifetime; Cloudwing timers start at zero)', () => {
-  assert.strictEqual(sim.SAVE_VER, 21); assert.ok(sim.SAVE_OK.includes(20) && sim.SAVE_OK.includes(21));
+  assert.ok(sim.SAVE_VER >= 21); // v22 (v2.25) loads the same way assert.ok(sim.SAVE_OK.includes(20) && sim.SAVE_OK.includes(21));
   const g = quiet(); seeAll(g); g.t = 300; for (const k in g.sides[0].ab) g.sides[0].ab[k] = 0;
   assert.ok(sim.useAbility(g, 0, 'brood', 600, 0).ok); step(g, 2.2);
   const o = JSON.parse(sim.serialize(g, {})); o.v = 20;
