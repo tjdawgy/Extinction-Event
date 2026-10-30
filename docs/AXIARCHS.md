@@ -61,12 +61,12 @@ Architectum
 - Bastion (base): heavy, slow frontline with large shields. Timed distortion brace reducing incoming damage, reusing the Bulwark brace code. G, B.
 - Rift Mortar (Rupture T2): reuses Artillery mechanics: long range, minimum range, splash. G, B.
 - Worldbreaker (Rupture T3): heavy siege. Impacts leave a short distortion zone that deals light damage, reusing the Ruinmaw acid-patch system with its hard cap. G, B.
-- Gravemantle (Dominion T2): low damage. Aura slows nearby enemy ground units; capped and never stacks with other slows. G.
-- Eventide (Dominion T3): every so often, a visible gravity pulse pulls nearby enemy ground units a short distance inward. Long cooldown, never pulls units into buildings or invalid ground, no effect on aircraft. G.
+- Gravemantle (Dominion T2): low damage. Aura slows nearby enemy ground units; capped and never stacks with other slows. G, B (v2.31: was G; see the v2.31 note below).
+- Eventide (Dominion T3): every so often, a visible gravity pulse pulls nearby enemy ground units a short distance inward. Long cooldown, never pulls units into buildings or invalid ground, no effect on aircraft. Plus a low-damage basic attack. G, B (v2.31: was G).
 Celestial Array
 - Wraithwing (base): fast flyer. A, G, B. The base source of mobile anti-air, available on both paths. Countered by anti-air.
 - Prismwing (Swarm T2): fragile, cheaper flyer. Shield link: when a Prismwing's shield takes damage, half of it is spread evenly across the shields of up to 3 other Prismwings nearby. Shields only, never health. G, B.
-- Shardstorm (Swarm T3): swarm-killer flyer. Its beam chains from the target to up to 3 more enemies nearby, with reduced damage on each jump. Reuse the Split Lattice multi-target code. A, G.
+- Shardstorm (Swarm T3): swarm-killer flyer. Its beam chains from the target to up to 3 more enemies nearby, with reduced damage on each jump. Reuse the Split Lattice multi-target code. A, G, B (v2.31: was A, G; weak against buildings, and the chain never jumps to one).
 - Voidcarrier (Ascendant T2): heavy, slow flyer with slow powerful projectiles. Prefers buildings, reusing the Brood Tyrant targeting. G, B.
 - Astral Sovereign (Ascendant T3): huge, very slow flyer with heavy area damage, prioritizing structures. Modeled on the Worldrender. G, B.
 
@@ -185,10 +185,10 @@ Units (first-pass numbers set against the Last Fist unit in the same tree slot; 
 | Astral Marksman | Gate T3, Lattice | 240/110 | 4 | 140 + 120 | 85 / 3.0 s (+1.2 s charge) | 330 | 28 | light | ground, buildings | A visible 1.2 s charge-up on the same target before each shot (a line to the target, a light at the lens); 0.25× vs buildings | Sniper 150/60, 2, 110 HP |
 | Rift Mortar | Architectum T2, Rupture | 220/90 | 4 | 160 + 120 | 60 / 3.3 s, splash 55 | 430 (min 110) | 21 | vehicle | ground, buildings | Artillery's arcing shot and spotters | Artillery 175/60, 3, 150 HP |
 | Worldbreaker | Architectum T3, Rupture | 460/190 | 7 | 1,150 + 650 | 80 / 2.8 s, splash 34 | 210 | 17 | vehicle | ground, buildings (1.7×) | Each hit leaves a distortion zone in the Ruinmaw's acid-pool list: same 12 damage/s to enemy ground units, 4 s, and the same hard cap of 6 pools in all | Titan 420/160, 6, 1,500 HP |
-| Gravemantle | Architectum T2, Dominion | 230/100 | 4 | 520 + 380 | 14 / 1.2 s (11.7) | 120 | 24 | heavy | ground | Aura: enemy ground units within 110 are slowed 30%. Slows never stack: the strongest applies, capped at 35% (`SLOW`) | Flame Tank 190/50, 3, 520 HP |
-| Eventide | Architectum T3, Dominion | 420/180 | 6 | 1,000 + 650 | 24 / 1.3 s (18.5) | 140 | 20 | vehicle | ground | Gravity pulse every 14 s when an enemy ground unit is within 130: each is pulled up to 40 inward (never closer than 24). A pull that would end in a building or off the lane is halved, else skipped. No aircraft. A visible violet ring closes in | Hydra 360/140, 5, 1,100 HP |
+| Gravemantle | Architectum T2, Dominion | 230/100 | 4 | 520 + 380 | 14 / 1.2 s (11.7) | 120 | 24 | heavy | ground, buildings (0.5×, v2.31) | Aura: enemy ground units within 110 are slowed 30%. Slows never stack: the strongest applies, capped at 35% (`SLOW`) | Flame Tank 190/50, 3, 520 HP |
+| Eventide | Architectum T3, Dominion | 420/180 | 6 | 1,000 + 650 | 24 / 1.3 s (18.5) | 140 | 20 | vehicle | ground, buildings (0.5×, v2.31) | Gravity pulse every 14 s when an enemy ground unit is within 130: each is pulled up to 40 inward (never closer than 24). A pull that would end in a building or off the lane is halved, else skipped. No aircraft. A visible violet ring closes in | Hydra 360/140, 5, 1,100 HP |
 
-New weapon tables (light / heavy / vehicle / air / building): riftblade 1.5 / 0.9 / 0.6 / 0 / 0.6; parallax 1.3 / 1.1 / 0.8 / 0 / 0.6; bolt 1.0 / 1.0 / 0.9 / 1.2 / 0.6; astral 1.5 / 1.4 / 0.5 / 0 / 0.25; rift 1.1 / 1.0 / 0.75 / 0 / 1.6; breaker 0.9 / 1.2 / 1.2 / 0 / 1.7; grav 1.0 / 1.0 / 1.0 / 0 / 0.
+New weapon tables (light / heavy / vehicle / air / building): riftblade 1.5 / 0.9 / 0.6 / 0 / 0.6; parallax 1.3 / 1.1 / 0.8 / 0 / 0.6; bolt 1.0 / 1.0 / 0.9 / 1.2 / 0.6; astral 1.5 / 1.4 / 0.5 / 0 / 0.25; rift 1.1 / 1.0 / 0.75 / 0 / 1.6; breaker 0.9 / 1.2 / 1.2 / 0 / 1.7; grav 1.0 / 1.0 / 1.0 / 0 / 0.5 (v2.31; was 0).
 
 AI path choice, translated from each personality's Last Fist choice: Barracks Specialists → Genesis Gate Lattice, Mass Deployment → Riftwalk; War Factory Siege → Architectum Rupture, Assault → Dominion. The AI's siege and artillery lists (`AI_SIEGE`, `AI_ART`) now count Rift Mortars and Worldbreakers (artillery: the Rift Mortar).
 
@@ -225,11 +225,11 @@ Units (first-pass numbers set against the Bloomspire and Tech Lab unit in the sa
 | Unit | Slot | Cost | Supply | HP + shields | Damage / cooldown (dps) | Range | Speed | Armor | Hits | Trait (code reused) | Slot equivalents |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Prismwing | Array T2, Swarm | 120/50 | 2 | 100 + 90 | 11 / 0.7 s (15.7) | 120 | 100 | air | ground, buildings | Shield link (new code, `shieldLink` in `damage()`): when its shield takes damage, half of that is spread evenly over the shields of up to 3 other Prismwings within 110 (the nearest). Each takes at most what its shield holds; the rest stays on the struck one. Shields only, never health | Needlewing 70/30, 1, 80 HP; Interceptor 150/60, 2, 190 HP |
-| Shardstorm | Array T3, Swarm | 280/130 | 4 | 220 + 190 | 24 / 1.1 s (21.8) | 160 | 80 | air | aircraft, ground | Chain beam (`chainBeam`, the Null Lance's beam and Split Lattice target rules, `extraTargets`): from its target to the nearest enemy within 90 of the last one, up to 3 jumps, ×0.7 damage each jump (100% / 70% / 49% / 34%), never the same enemy twice, never buildings | Cloudwing 220/100, 3, 280 HP; Leviathan slot |
+| Shardstorm | Array T3, Swarm | 280/130 | 4 | 220 + 190 | 24 / 1.1 s (21.8) | 160 | 80 | air | aircraft, ground, buildings (0.4×, v2.31) | Chain beam (`chainBeam`, the Null Lance's beam and Split Lattice target rules, `extraTargets`): from its target to the nearest enemy within 90 of the last one, up to 3 jumps, ×0.7 damage each jump (100% / 70% / 49% / 34%), never the same enemy twice, never jumps to a building (v2.31: the first hit may be one) | Cloudwing 220/100, 3, 280 HP; Leviathan slot |
 | Voidcarrier | Array T2, Ascendant | 360/170 | 6 | 900 + 520 | 72 / 2.8 s (25.7), splash 24 | 170 | 34 | air | ground, buildings (1.6×) | Slow heavy orbs (projectile speed 300); prefers buildings with the Brood Tyrant's (Leviathan's) targeting, `preferB` | Brood Tyrant 320/150, 5, 950 HP |
 | Astral Sovereign | Array T3, Ascendant | 600/300 | 9 | 1,500 + 900 | 190 / 4.2 s, splash 75 | 50 (drops from above) | 17 | air | ground, buildings (2.1×) | Drops a heavy mass from above like the Worldrender (`drop`, full damage at the centre, half at the edge); structures first | Worldrender 520/260, 8, 1,700 HP; Leviathan 480/240, 7, 1,400 HP |
 
-New weapon tables (light / heavy / vehicle / air / building): prism 1.0 / 0.9 / 0.9 / 0 / 0.7; storm 1.2 / 1.0 / 0.8 / 1.2 / 0; void 0.8 / 1.0 / 1.1 / 0 / 1.6 (the Brood Tyrant's); sovereign 0.6 / 0.8 / 1.0 / 0 / 2.1 (the Worldrender's). Neither the Voidcarrier nor the Astral Sovereign can hit aircraft.
+New weapon tables (light / heavy / vehicle / air / building): prism 1.0 / 0.9 / 0.9 / 0 / 0.7; storm 1.2 / 1.0 / 0.8 / 1.2 / 0.4 (v2.31; was 0); void 0.8 / 1.0 / 1.1 / 0 / 1.6 (the Brood Tyrant's); sovereign 0.6 / 0.8 / 1.0 / 0 / 2.1 (the Worldrender's). Neither the Voidcarrier nor the Astral Sovereign can hit aircraft.
 
 AI path choice, translated from each personality's Tech Lab choice the way Bloomhost's Bloomspire is (`AI_PATH_MAP`): Air Power → Ascendant Calculus, Support → Swarm Calculus. So the Economist and the Trickster (Air Power) take Ascendant Calculus; the Aggressor and the Turtle (Support) take Swarm Calculus. The v2.28 "train each path unit once" rule reads every Axiarch path in `UNIT_PATH`, so it covers the Celestial Array's four units with no change; with a prepared T3 Celestial Array the AI trains both units of either path. AI unit scores: the Bloomspire's, by slot.
 
@@ -252,3 +252,12 @@ Saves v26. No new state: a v25 save loads unchanged, except that an Axiarch Cele
 | Usable at 667x375. | Done | Browser checks and screenshots at 667x375 in every batch (docs/screenshots/ax*-667x375.png). |
 
 Section 9's deferred items stay deferred: warping outside the field, building power-down, Shardlings phasing through units, separate Phase Anchors, special storm interactions, the Axiarch AI quality pass (AI training) and the performance check (before the App Store).
+
+=== v2.31 PLAYTEST FIXES (implementation record; not tuned) ===
+
+Section 6 design change: the Gravemantle and the Eventide now hit ground units and buildings (G, B); the Shardstorm aircraft, ground units and buildings (A, G, B).
+- Cause: their weapon tables (`grav`, `storm` in `DMG`) gave buildings 0. Targeting (`acquire`) skips anything its weapon can't hurt, so an enemy building never stopped them: on Attack they walked past every building to the end of the lane (`u` = L) and sat at the far end of the enemy base. They did fire at enemy units in range; with their low damage that was easy to miss.
+- Fix (first-pass damage only): `grav` building 0.5 (the Gravemantle 14 × 0.5 = 7 per 1.2 s, the Eventide 24 × 0.5 = 12 per 1.3 s against buildings), `storm` building 0.4 (24 × 0.4 = 9.6 per 1.1 s). The rest of each table, the slow aura, the pull pulse and the chain are unchanged; the chain still jumps to units only (`chainBeam`).
+
+Warp-in and orders: a unit that appears somewhere other than its own building (a warp-in, a Mass Warp arrival; for Bloomhost, Emergency Brood Skitterlings and Cloudwing offspring) takes the army's current orders (`arriveOrders`). On Hold (the stance, or a group or type order) it holds where it arrived. Cause: Hold works by giving each unit a hold spot (`holdU`, `holdV`) when the order is given; a unit made later had none and walked to the rally flag, which for a unit warped in at a forward warp point means walking back toward its base. Mass Warp kept the hold spot only for units that already had one.
+

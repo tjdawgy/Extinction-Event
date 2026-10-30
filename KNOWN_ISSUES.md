@@ -2,6 +2,21 @@
 
 Issues found during testing that are deliberately deferred. Each lists the step that should address it.
 
+## Resolved in v2.31 (playtest bugs)
+
+### Warped-in units ignored Hold
+- **Bug:** with the army on Hold, an Axiarch unit that warped in at the warp point walked back toward its base.
+- **Cause:** Hold works by giving each unit a hold spot (`holdU`, `holdV`) when the order is given (`setStance`, `giveOrder`). A unit that appears later has none, and a unit on Hold without a spot walks to the rally flag (`updateUnit`). For a trained Last Fist or Bloomhost unit that is next to its building; for a warp-in at a forward warp point it means walking back. Mass Warp kept a hold spot only for units that already had one; Emergency Brood Skitterlings and Cloudwing offspring had the same gap.
+- **Fix:** `arriveOrders` gives every unit that appears away from its own building (warp-in, Mass Warp arrival, Emergency Brood, Cloudwing offspring) the army's current orders: on Hold (stance, group or type order) it holds where it arrived. Tests: `tests/orders-weapons.test.js`.
+- **Bloomhost behaviour change:** brood and offspring on Hold now hold where they land instead of walking to the rally flag (and, being melee, no longer chase on Hold). The AI never sets Hold itself, but an autoplayer side (side 0 in tests) starts on the player's default Hold until its AI first changes stance (about 3 minutes in a seeded Hard match), so an autoplayer Axiarch side's early warp-ins now wait at the warp point. Seeded Hard comparisons against v2.30 (2 seeds each): Last Fist mirror, both Bloomhost-vs-Last-Fist orders, Bloomhost vs Axiarchs and Last Fist vs Axiarchs identical to the end; Axiarchs as the autoplayer side diverge from about 2:30. Last Fist is untouched (its fingerprint is unchanged).
+
+### Gravemantles and Eventides never attacked buildings (and walked the whole lane)
+- **Bug:** they walked the lane without stopping at enemy buildings, then sat at the far end of the enemy base.
+- **Cause:** their weapon table (`DMG.grav`) gave buildings 0. Targeting (`acquire`) skips any target its weapon can't hurt, so a building never stopped them, and on Attack a unit with nothing to shoot walks to the lane end. They did shoot enemy units in range (low damage, so easy to miss).
+- **Fix (design change, first-pass numbers):** `grav` building 0.5, so both now target ground units and buildings (G, B), keeping the slow aura and the pull pulse. docs/AXIARCHS.md section 6 and its stats table are updated.
+- **Found by the all-units check:** the **Shardstorm** had the same bug (`DMG.storm` building 0). Fixed the same way: `storm` building 0.4 (A, G, B); its chain still never jumps to a building.
+- **All-units check:** every unit of all three factions now has a weapon targeting can use and stops at enemy units and buildings, except the listed non-combat units (Medicopter, Recon Drone: no weapon, they stay with the army on Hold, Attack and Retreat) and the air-only Interceptor (it escorts its own aircraft or waits behind the front, never walking off alone). Tests: `tests/orders-weapons.test.js`.
+
 ## Resolved in v2.6
 
 ### Stalemates and timeouts
@@ -45,6 +60,7 @@ Items for the strategy explorer and full balance audit. Logged only, nothing tun
 - **Celestial Array tree (v2.29)** is first-pass numbers (table in docs/AXIARCHS.md). Unmeasured: the Prismwing shield link (half of its shield damage over up to 3 others within 110), the Shardstorm chain (3 jumps, ×0.7 each, within 90), the Voidcarrier's and Astral Sovereign's building damage (1.6× and 2.1×) and the Sovereign's 9 supply, and the AI's path mapping (Air Power → Ascendant, Support → Swarm). The AI trains all four in prepared scenes; how often it reaches the Celestial Array's T3 in normal matches is unmeasured (compare the Bloomspire T3 item).
 - **Salvage (v2.30)** is first-pass numbers (the SALVAGE block, docs/LASTFIST.md): 10% of a dead unit's credit cost within 200 of any Last Fist unit or building, at most 200 credits per side per game minute. Unmeasured: what it is worth per matchup (in the v2.30 SIM match, Hard Last Fist vs Hard Bloomhost, Last Fist salvaged 571 credits over 7:32, about 6% of the 9,943 it earned from income); how often the cap binds; whether cheap Riflemen dying in their own lines pay back too much; the Last Fist mirror, where both sides salvage the same fight. The AI does not plan around it (no AI changes).
 - **Seeded tests re-picked for Salvage (v2.30):** Salvage changes Last Fist play, so two hand-picked Bloomhost-vs-Last-Fist seeds no longer hit their scene. `the Bloomhost AI casts all three ...` (`tests/bh-abilities.test.js`) moved from seed 4 to 1 (10 of the first 30 seeds cast all three); `... picks a Bloomspire path ... and trains its units` (`tests/bh-spire.test.js`) from seed 3 to 23 (4 of 38 seeds trained a Worldrender, which fits the Bloomspire T3 item above).
+- **Building damage for the Gravemantle, Eventide and Shardstorm (v2.31)** is first-pass: weapon tables `grav` building 0.5 and `storm` building 0.4 (they were 0, so they ignored buildings). Unmeasured.
 
 ### Axiarchs summary (v2.29)
 Every Axiarch item for the audit and AI training, in one place (details in the Audit entries above and docs/AXIARCHS.md):
@@ -65,6 +81,11 @@ Every Bloomhost item for the audit and AI training, in one place (details in the
 - **Interface notes:** Bloomhost attacks are silent (v2.17); remembered enemy creep has a hard edge (v2.18).
 
 ## Open
+
+### Flame Tank: off-centre targets are never hit (found in v2.31, not fixed)
+- **Bug:** a Flame Tank picks targets by lane distance (`acquire`, sideways distance ×0.4), but its burst only hits within its 24-wide strip (`flameBurst`: sideways up to `strip`, plus half a building's width). A target it picks that sits further to the side takes nothing, and the Flame Tank stands still firing at it forever.
+- **Measured (scene tests, v2.31):** against a Tank 30, 50 or 70 to the side it dealt 0 in 20 s (186 at 0); against a Refinery on a pad 70 off the lane line it dealt 0 and never moved on.
+- **Not fixed in v2.31:** the fix changes Last Fist play (the batch requires Last Fist to play exactly as v2.30). Proposed fix: aim the burst's strip at the chosen target's sideways position, or always include the chosen target. Needs approval.
 
 ### Flaky test: the Aggressor's defence strike (seen at v2.29)
 - `the AI uses abilities under the same rules ... each personality in its own way` (`tests/abilities.test.js`) is unseeded: it plays 3 random Last Fist matches per personality and needs at least one Aggressor Orbital Strike on defences. It failed once in a v2.29 `npm test` run, then passed 3 of 3 on v2.29 and 3 of 3 on v2.28. Last Fist play is identical between the two versions, so the change didn't cause it. Fix: seed it, or count over more matches.

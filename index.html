@@ -325,7 +325,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.30'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.31'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -648,9 +648,9 @@ const DMG = {
   astral:  { light: 1.5, heavy: 1.4,  vehicle: 0.5,  air: 0,    building: 0.25 }, // Astral Marksman: weak vs buildings
   rift:    { light: 1.1, heavy: 1.0,  vehicle: 0.75, air: 0,    building: 1.6 }, // Rift Mortar (Artillery's table)
   breaker: { light: 0.9, heavy: 1.2,  vehicle: 1.2,  air: 0,    building: 1.7 }, // Worldbreaker
-  grav:    { light: 1.0, heavy: 1.0,  vehicle: 1.0,  air: 0,    building: 0 },   // Gravemantle, Eventide: ground units only
+  grav:    { light: 1.0, heavy: 1.0,  vehicle: 1.0,  air: 0,    building: 0.5 }, // Gravemantle, Eventide: ground units and buildings (v2.31: buildings 0.5, was 0)
   prism:   { light: 1.0, heavy: 0.9,  vehicle: 0.9,  air: 0,    building: 0.7 }, // Prismwing (v2.29): ground and buildings
-  storm:   { light: 1.2, heavy: 1.0,  vehicle: 0.8,  air: 1.2,  building: 0 },   // Shardstorm: aircraft and ground units
+  storm:   { light: 1.2, heavy: 1.0,  vehicle: 0.8,  air: 1.2,  building: 0.4 }, // Shardstorm: aircraft, ground units and buildings (v2.31: buildings 0.4, was 0); the chain never jumps to buildings
   void:    { light: 0.8, heavy: 1.0,  vehicle: 1.1,  air: 0,    building: 1.6 }, // Voidcarrier (the Brood Tyrant's table)
   sovereign: { light: 0.6, heavy: 0.8, vehicle: 1.0, air: 0,    building: 2.1 }, // Astral Sovereign (the Worldrender's table)
 };
@@ -1268,9 +1268,9 @@ function extraTargets(g, src, def, foes, first, n) {
   return out.sort((a, b) => a[0] - b[0]).slice(0, n).map(x => x[1]);
 }
 // The Shardstorm's chain (v2.29): from the struck target to the nearest enemy within chain.r of it that the beam may hit (the
-// Split Lattice target rules, extraTargets), up to chain.n jumps, each chain.fall weaker; never the same enemy twice
+// Split Lattice target rules, extraTargets), up to chain.n jumps, each chain.fall weaker; never the same enemy twice, never a building
 function chainBeam(g, src, first, def) {
-  const C = def.chain, hit = [first], foes = g.ents.filter(e => e.side !== src.side && e.hp > 0);
+  const C = def.chain, hit = [first], foes = g.ents.filter(e => e.side !== src.side && e.hp > 0 && e.kind === 'u'); // units only: the beam itself may hit a building (v2.31), its jumps never
   let cur = first, mul = 1;
   for (let i = 0; i < C.n; i++) {
     const next = extraTargets(g, { u: cur.u, v: cur.v, side: src.side }, { ...def, range: C.r }, foes.filter(e => !hit.includes(e)), cur, 1)[0];
@@ -1377,6 +1377,13 @@ function aiMicro(g, s, D, mine) {
   }
 }
 
+// A unit that appears somewhere other than its own building (a warp-in, a Mass Warp arrival, Emergency Brood, Cloudwing
+// offspring; v2.31) follows the army's current orders like a trained unit. On Hold (the stance or a group or type order) it
+// holds where it arrived; before v2.31 it had no hold spot and walked back to the rally flag.
+function arriveOrders(g, e) {
+  const side = g.sides[e.side], ord = unitOrder(side, e.type);
+  if ((ord ? ord.o : side.stance) === 'hold') { e.holdU = e.u; e.holdV = e.v; } else { e.holdU = undefined; e.holdV = undefined; }
+}
 function setStance(g, s, v) {
   const side = g.sides[s];
   side.stance = v; side.stanceAt = g.t; side.pushTo = null; side.pushMode = null;
@@ -1617,7 +1624,7 @@ function updateWarps(g) {
   g.warps = g.warps.filter(w => g.t < w.end);
   for (const w of done) {
     const p = warpOk(g, w.side, w.u, w.v) ? w : warpSpot(g, w.side, w.u, w.v); // something moved onto the spot: the nearest valid one, else the Axis
-    const nu = spawnUnit(g, w.side, w.type, p.u, p.v); nu.laneV = clamp(p.v, -LANE_V, LANE_V);
+    const nu = spawnUnit(g, w.side, w.type, p.u, p.v); nu.laneV = clamp(p.v, -LANE_V, LANE_V); arriveOrders(g, nu);
     if (g.log) { logAdd(g.log.tot[w.side].trained, w.type); lgUnit(g, w.side, 'T', w.type); }
   }
 }
@@ -1837,7 +1844,7 @@ function mwarpLand(g, a) {
     const e = g.ents.find(x => x.id === id && x.hp > 0); if (!e) continue;
     const p = warpSpot(g, a.side, wp.u, wp.v, taken); taken.push(p);
     e.u = p.u; e.v = p.v; e.laneV = clamp(p.v, -LANE_V, LANE_V); e.moving = false;
-    if (e.holdU !== undefined) { e.holdU = p.u; e.holdV = p.v; } // a unit on Hold holds where it arrived
+    arriveOrders(g, e); // a unit on Hold holds where it arrived (v2.31: also one that had no hold spot yet)
     if (e.leaping) { e.leaping = 0; e.z = 0; } // a phase-step in flight ends where the warp puts it
     n++;
   }
@@ -1864,7 +1871,7 @@ function broodLand(g, a) {
   for (let i = 0; i < A.n && room > 0; i++) {
     const an = i / A.n * Math.PI * 2, pu = clamp(a.u + Math.cos(an) * 22, 0, L), pv = a.v + Math.sin(an) * 22;
     if (g.ents.some(e => e.kind === 'u' && e.side !== a.side && e.hp > 0 && !UDEF[e.type].air && Math.hypot(e.u - pu, e.v - pv) < 22)) continue; // never on top of an enemy
-    const sk = spawnUnit(g, a.side, 'skitterling', pu, pv); sk.temp = g.t + A.life; sk.tLife = A.life; sk.tSrc = 'brood'; sk.laneV = clamp(pv, -LANE_V, LANE_V); room--; n++;
+    const sk = spawnUnit(g, a.side, 'skitterling', pu, pv); sk.temp = g.t + A.life; sk.tLife = A.life; sk.tSrc = 'brood'; sk.laneV = clamp(pv, -LANE_V, LANE_V); arriveOrders(g, sk); room--; n++;
   }
   logEffect(g, a.side, 'brood', n);
 }
@@ -1882,7 +1889,7 @@ function updateSpawn(g) {
     c.spawnT = g.t + S.cd;
     for (let i = 0; i < S.n && live[c.side] < SPAWN.max; i++) {
       const k = spawnUnit(g, c.side, 'needlewing', c.u - c.face * 6, clamp(c.v + (i ? 10 : -10), -LANE_V - 40, LANE_V + 40));
-      Object.assign(k, { temp: g.t + S.life, tLife: S.life, tSrc: 'cloud', kid: 1, z: c.z - 6, face: c.face, laneV: c.laneV });
+      Object.assign(k, { temp: g.t + S.life, tLife: S.life, tSrc: 'cloud', kid: 1, z: c.z - 6, face: c.face, laneV: c.laneV }); arriveOrders(g, k);
       live[c.side]++;
     }
   }
@@ -5769,10 +5776,10 @@ const UNIT_TIPS = {
   marksman: ['Infantry from very long range, after a visible charge-up on its target', 'Fast attackers, aircraft (it can\'t hit them); weak against buildings'],
   riftmortar: ['Buildings and clumps from 430 range, like Artillery (minimum range 110)', 'Anything that gets close, aircraft'],
   worldbreaker: ['Buildings and clumps; every hit leaves a short distortion zone', 'Fast attackers, aircraft, Heavies'],
-  gravemantle: ['Holding ground: enemy ground units near it are slowed 30%', 'Ranged focus, aircraft (it can\'t hit them)'],
-  eventide: ['Packed ground units: a gravity pulse pulls them in (every 14 s)', 'Ranged focus, aircraft (it can\'t hit them)'],
+  gravemantle: ['Holding ground: enemy ground units near it are slowed 30%; a weak shot at ground units and buildings', 'Ranged focus, aircraft (it can\'t hit them)'],
+  eventide: ['Packed ground units: a gravity pulse pulls them in (every 14 s); a weak shot at ground units and buildings', 'Ranged focus, aircraft (it can\'t hit them)'],
   prismwing: ['Ground units and buildings in numbers: linked Prismwings share half of the shield damage each one takes', 'Anything that hits air, splash on the pack; it can\'t hit aircraft'],
-  shardstorm: ['Swarms of aircraft and infantry: its beam chains to up to 3 more enemies, weaker each jump', 'Heavy single targets; it can\'t hit buildings'],
+  shardstorm: ['Swarms of aircraft and infantry: its beam chains to up to 3 more enemies, weaker each jump', 'Heavy single targets; weak against buildings'],
   voidcarrier: ['Buildings first, then ground units, with slow heavy orbs from 170 range', 'Interceptors, Lancers, Hydras, defences; it can\'t hit aircraft'],
   sovereign: ['Buildings above all, from right above them, with heavy damage across an area', 'Anti-air of every kind; very slow; it can\'t hit aircraft'],
   needlewing: ['Exposed ground units in a pack: +12% damage for each other Needlewing on the target (up to +36%)', 'Anything that hits air, splash; it can\'t hit aircraft'],
