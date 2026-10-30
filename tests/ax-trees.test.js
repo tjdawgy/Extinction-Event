@@ -16,12 +16,12 @@ const upTo = (g, b, path, tier) => { while (b.tier < tier) { assert.ok(sim.tryUp
 const put = (g, s, t, u, v = 0) => { const e = sim.spawnUnit(g, s, t, u, v); e.holdU = u; e.holdV = v; return e; };
 const seeAll = g => { for (const f of g.fog) { f.vis.fill(1); f.exp.fill(1); } };
 
-test('Genesis Gate and Architectum: a path at T2 locks the building; T3 deepens it; base units on both; selling resets; the Celestial Array stays T1', () => {
+test('Genesis Gate and Architectum: a path at T2 locks the building; T3 deepens it; base units on both; selling resets (the Celestial Array: tests/ax-array.test.js)', () => {
   const g = quiet();
   const gate = finish(g, 0, 'barracks'), arch = finish(g, 0, 'factory'), arr = finish(g, 0, 'techlab'); finish(g, 0, 'habitat'); finish(g, 0, 'habitat');
   assert.strictEqual(sim.TREES_AX.barracks.A.name, 'Riftwalk Doctrine'); assert.strictEqual(sim.TREES_AX.barracks.B.name, 'Lattice Doctrine');
   assert.strictEqual(sim.TREES_AX.factory.A.name, 'Rupture Doctrine'); assert.strictEqual(sim.TREES_AX.factory.B.name, 'Dominion Doctrine');
-  assert.match(sim.tryUpgrade(g, 0, gate).msg, /Choose a path/); assert.match(sim.tryUpgrade(g, 0, arr, 'A').msg, /Calculus paths coming soon/);
+  assert.match(sim.tryUpgrade(g, 0, gate).msg, /Choose a path/); assert.match(sim.tryUpgrade(g, 0, arr).msg, /Choose a path/); // v2.29
   upTo(g, gate, 'A', 2); assert.ok(sim.tryTrain(g, 0, 'riftstalker').ok && sim.tryTrain(g, 0, 'shardling').ok);
   assert.ok(!sim.tryTrain(g, 0, 'lancer').ok, 'not the other path'); assert.ok(!sim.tryTrain(g, 0, 'parallax').ok, 'T3 needed');
   upTo(g, gate, 'B', 3); assert.strictEqual(gate.path, 'A', 'the path never switches'); assert.ok(sim.tryTrain(g, 0, 'parallax').ok);

@@ -1,13 +1,13 @@
 # Extinction Event — working rules for Claude Code
 
 ## Current state
-- Version: v2.28 (Axiarch commander abilities; title screen since v2.23, assets/title-screen.jpg).
-- Factions: **Last Fist** (upgrade trees done: Barracks v2.13, War Factory v2.14, Tech Lab v2.15) and **Bloomhost** (framework v2.17, creep v2.18, Larva Pit and Evolution Chamber trees + anti-air v2.19, commander abilities + temporary units v2.20, Bloomspire tree v2.21; complete at v2.22).
-- Roadmap, in order: finish all Last Fist upgrade trees → Bloomhost faction → third faction → strategy explorer + full balance audit + matchup testing → AI training → campaign, multiplayer, App Store.
+- Version: v2.29 (Celestial Array tree; the Axiarchs are complete; title screen since v2.23, assets/title-screen.jpg).
+- Factions: all three are complete. **Last Fist** (upgrade trees: Barracks v2.13, War Factory v2.14, Tech Lab v2.15), **Bloomhost** (framework v2.17, creep v2.18, Larva Pit and Evolution Chamber trees + anti-air v2.19, commander abilities + temporary units v2.20, Bloomspire tree v2.21; complete at v2.22) and **Axiarchs** (framework v2.25, power field and warp-in v2.26, Genesis Gate and Architectum trees v2.27, commander abilities v2.28, Celestial Array tree v2.29; complete at v2.29).
+- Roadmap: done: Last Fist upgrade trees → Bloomhost → Axiarchs. Next, in order: strategy explorer + full balance audit + matchup testing → AI training (including the deferred Bloomhost and Axiarch AI items, AI coverage checks and performance checks) → campaign, multiplayer, App Store.
 - Until the audit, implementation only: no balance tuning, no tactical AI work, and no matrices or ladders unless a prompt asks for them. The only AI changes allowed are the minimum the AI needs to build and use new content.
 - No balance tuning, matchup testing, or tactical AI work until all three factions are in. Log findings under Audit in KNOWN_ISSUES.md.
 - Bloomhost: complete (v2.17–v2.21; v2.22 closed it out with a Definition of Done check at the end of docs/BLOOMHOST.md). Its AI pass moved to the AI training phase; its balance, matchup and performance items are grouped under "Bloomhost summary" in KNOWN_ISSUES.md.
-- Building the Axiarchs (third faction) per docs/AXIARCHS.md section 10. Done: v2.25 framework, v2.26 power field and warp-in, v2.27 Genesis Gate and Architectum trees, v2.28 commander abilities. Next: v2.29 Celestial Array tree and the close-out docs.
+- Axiarchs: complete (v2.25–v2.29; v2.29 closed it out with a Definition of Done check at the end of docs/AXIARCHS.md). Their AI quality pass and performance check moved to the AI training phase; their balance, matchup and AI items are grouped under "Axiarchs summary" in KNOWN_ISSUES.md.
 - Until the audit, testing is functional only: npm test, one SIM match to confirm a full match runs, one browser check of anything with new UI, and screenshots of new visuals. No matrices, ladders, per-personality runs, or repeated performance runs unless a prompt asks for them. Performance runs only at the end of a faction or when a prompt asks.
 - Workflow: each batch is a new session that starts by reading CLAUDE.md and KNOWN_ISSUES.md.
 

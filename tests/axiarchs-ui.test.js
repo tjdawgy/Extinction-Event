@@ -134,3 +134,30 @@ test('v2.28: enemy Axiarch casts in the fog show nothing, make no sound and give
   assert.deepStrictEqual(errors, []);
   await page.close();
 });
+
+test('v2.29: pick a Celestial Array path through the panel (Ascendant Calculus), train a Voidcarrier from its card, then 2 game minutes of play', { skip }, async () => {
+  const { page, errors } = await openPage(browser, NARROW);
+  await page.click('#meSeg [data-f="axiarchs"]'); await page.click('#foeSeg [data-f="lastfist"]'); await page.click('#bPlay'); await page.waitForTimeout(300);
+  await page.evaluate(() => {
+    game.countdown = 0; hideCountdown(); updateIntro(); // not paused: the panel's buttons work only in play
+    game.sides[0].aiT = 1e9; game.sides[0].res.c = game.sides[0].res.e = 6000; // the enemy AI plays normally
+    for (const k of ['barracks', 'techlab', 'habitat', 'habitat', 'habitat']) { tryBuild(game, 0, k); for (const b of game.ents) if (b.side === 0 && b.kind === 'b') { b.built = true; b.progress = 1; b.hp = b.maxHp; b.shp = b.maxShp; } }
+    update(game, 1 / 30); openPanel(game.ents.find(e => e.side === 0 && e.type === 'techlab')); refreshUI(true);
+  });
+  assert.match(await page.textContent('#bpPick [data-p="A"]'), /Swarm Calculus.*Prismwings.*Shardstorms/);
+  assert.match(await page.textContent('#bpPick [data-p="B"]'), /Ascendant Calculus.*Voidcarriers.*Astral Sovereigns/);
+  await page.click('#bpPick [data-p="B"]'); await page.click('#bpUp');
+  assert.deepStrictEqual(await page.evaluate(() => [sel.upgrading, sel.upPath]), [true, 'B']);
+  await page.evaluate(() => { for (let i = 0; i < 30 * 40 && sel.upgrading; i++) update(game, 1 / 30); refreshPanel(); closePanel(); refreshUI(true); });
+  assert.deepStrictEqual(await page.evaluate(() => { const a = game.ents.find(e => e.side === 0 && e.type === 'techlab'); return [a.tier, a.path]; }), [2, 'B']);
+  await page.click('.tabs [data-tab="train"]');
+  await page.click('#cards .card[data-type="voidcarrier"]');
+  const r = await page.evaluate(() => { // 2 game minutes, rendered the way the game loop does (one frame per update)
+    const t0 = game.t; let frames = 0;
+    while (game.t - t0 < 120 && !game.over) { update(game, 1 / 30); handleEvents(); if (++frames % 3 === 0) { render(ctx, game, game.t, sel, selPad); refreshUI(false); } }
+    return { played: game.t - t0, trained: game.log.tot[0].trained.voidcarrier || 0 };
+  });
+  assert.ok(r.played >= 120 && r.trained === 1, JSON.stringify(r));
+  assert.deepStrictEqual(errors, []);
+  await page.close();
+});

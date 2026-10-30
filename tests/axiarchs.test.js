@@ -99,11 +99,10 @@ test('base units: the Wraithwing hits aircraft, ground and buildings; Shardlings
   assert.ok(U.bastion.brace && U.shardling.melee);
 });
 
-test('the Celestial Array stays T1 ("Calculus paths coming soon"; v2.27: the Gate and Architectum pick paths); each faction trains only its own units; its own three abilities (v2.28; locked until then)', () => {
+test('all three production buildings pick paths (v2.27 Gate and Architectum, v2.29 Celestial Array); each faction trains only its own units; its own three abilities (v2.28; locked until then)', () => {
   const g = quiet(); seeAll(g); g.t = 300;
   const gate = finish(g, 0, 'barracks'), arch = finish(g, 0, 'factory'), arr = finish(g, 0, 'techlab'), loom = finish(g, 0, 'refinery'), nl = finish(g, 0, 'turret'); finish(g, 0, 'habitat'); finish(g, 0, 'habitat');
-  assert.match(sim.tryUpgrade(g, 0, arr, 'A').msg, /Calculus paths coming soon/);
-  for (const b of [gate, arch]) assert.match(sim.tryUpgrade(g, 0, b).msg, /Choose a path/);
+  for (const b of [gate, arch, arr]) assert.match(sim.tryUpgrade(g, 0, b).msg, /Choose a path/);
   for (const b of [loom, nl, g.sides[0].hq]) assert.ok(sim.tryUpgrade(g, 0, b).ok, b.type);
   for (const [t, ok] of [['shardling', true], ['bastion', true], ['wraithwing', true], ['rifle', false], ['skitterling', false]]) assert.strictEqual(sim.tryTrain(g, 0, t).ok, ok, t);
   assert.match(sim.abilityCheck(g, 0, 'strike').msg, /Orbital Strike is not a Axiarchs ability/);

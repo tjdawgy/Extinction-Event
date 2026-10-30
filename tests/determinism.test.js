@@ -1,12 +1,12 @@
 // The SIM must not change by accident: the same seeded AI-vs-AI match must end in exactly the same state,
 // particles and screen shake included. When a rules change is intended, re-record the fingerprint
-// (node tests/determinism.test.js --print) and say so in the commit. Recorded at v2.28 (new state only: the Shield Overcharge timer on every unit and save v25; Last Fist and Bloomhost vs Last Fist play matched v2.27 move for move).
+// (node tests/determinism.test.js --print) and say so in the commit. Recorded at v2.29 (only the save version changed, to v26; Last Fist and Bloomhost vs Last Fist play matched v2.28 move for move).
 const test = require('node:test');
 const assert = require('node:assert');
 const crypto = require('crypto');
 const { loadSim } = require('./load-sim');
 
-const FINGERPRINT = '68bc3e21eae704728d8046bd619b41838d8a63617e91775967a632ef30ffe73f';
+const FINGERPRINT = 'ea320d36b76df310499a58172fefab7121eb18981b46392214446b89e95d9d08';
 
 function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 

@@ -211,3 +211,44 @@ Match log and report: the same 'A' timeline line as the other factions (filled i
 AI (minimal): Shield Overcharge uses Emergency Shield's logic (`aiShieldTarget`), the Purification Beam the Orbital Strike's (`aiStrikeTarget`, scored on the strip, without aircraft). Mass Warp (`aiMassWarpTarget`): cast when 4 or more of its units below 40% health are within the circle of one of them, at least 200 from the warp point; weighed like the Repair Pulse. Production: the Bloomspire "train each path unit once" rule now applies to every Axiarch production path (`UNIT_PATH`, so the Celestial Array's units once it has a tree), so the AI trains Gravemantles and Eventides on Dominion.
 
 Saves v25: `unit.ovT`; Mass Warp channels and Beams in progress are in the ability list. A v22–v24 Axiarch side (no abilities, an empty timer list) gets its three on the match's own schedule (first use 60 s / 120 s after the start), with no shared cooldown running.
+
+=== v2.29 CELESTIAL ARRAY TREE (implementation record; not tuned) ===
+
+The Celestial Array's "Calculus paths coming soon" lock is gone: it picks a path at the T1 → T2 upgrade like the other two (locked per building, reset by selling), with the Last Fist Tech Lab's upgrade costs and times. The Wraithwing stays on both paths. Path units warp in like the others.
+
+| Building | Path A | Path B |
+|---|---|---|
+| Celestial Array | Swarm Calculus: T2 Prismwing, T3 Shardstorm | Ascendant Calculus: T2 Voidcarrier, T3 Astral Sovereign |
+
+Units (first-pass numbers set against the Bloomspire and Tech Lab unit in the same slot; Axiarch units cost more and carry shields):
+
+| Unit | Slot | Cost | Supply | HP + shields | Damage / cooldown (dps) | Range | Speed | Armor | Hits | Trait (code reused) | Slot equivalents |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Prismwing | Array T2, Swarm | 120/50 | 2 | 100 + 90 | 11 / 0.7 s (15.7) | 120 | 100 | air | ground, buildings | Shield link (new code, `shieldLink` in `damage()`): when its shield takes damage, half of that is spread evenly over the shields of up to 3 other Prismwings within 110 (the nearest). Each takes at most what its shield holds; the rest stays on the struck one. Shields only, never health | Needlewing 70/30, 1, 80 HP; Interceptor 150/60, 2, 190 HP |
+| Shardstorm | Array T3, Swarm | 280/130 | 4 | 220 + 190 | 24 / 1.1 s (21.8) | 160 | 80 | air | aircraft, ground | Chain beam (`chainBeam`, the Null Lance's beam and Split Lattice target rules, `extraTargets`): from its target to the nearest enemy within 90 of the last one, up to 3 jumps, ×0.7 damage each jump (100% / 70% / 49% / 34%), never the same enemy twice, never buildings | Cloudwing 220/100, 3, 280 HP; Leviathan slot |
+| Voidcarrier | Array T2, Ascendant | 360/170 | 6 | 900 + 520 | 72 / 2.8 s (25.7), splash 24 | 170 | 34 | air | ground, buildings (1.6×) | Slow heavy orbs (projectile speed 300); prefers buildings with the Brood Tyrant's (Leviathan's) targeting, `preferB` | Brood Tyrant 320/150, 5, 950 HP |
+| Astral Sovereign | Array T3, Ascendant | 600/300 | 9 | 1,500 + 900 | 190 / 4.2 s, splash 75 | 50 (drops from above) | 17 | air | ground, buildings (2.1×) | Drops a heavy mass from above like the Worldrender (`drop`, full damage at the centre, half at the edge); structures first | Worldrender 520/260, 8, 1,700 HP; Leviathan 480/240, 7, 1,400 HP |
+
+New weapon tables (light / heavy / vehicle / air / building): prism 1.0 / 0.9 / 0.9 / 0 / 0.7; storm 1.2 / 1.0 / 0.8 / 1.2 / 0; void 0.8 / 1.0 / 1.1 / 0 / 1.6 (the Brood Tyrant's); sovereign 0.6 / 0.8 / 1.0 / 0 / 2.1 (the Worldrender's). Neither the Voidcarrier nor the Astral Sovereign can hit aircraft.
+
+AI path choice, translated from each personality's Tech Lab choice the way Bloomhost's Bloomspire is (`AI_PATH_MAP`): Air Power → Ascendant Calculus, Support → Swarm Calculus. So the Economist and the Trickster (Air Power) take Ascendant Calculus; the Aggressor and the Turtle (Support) take Swarm Calculus. The v2.28 "train each path unit once" rule reads every Axiarch path in `UNIT_PATH`, so it covers the Celestial Array's four units with no change; with a prepared T3 Celestial Array the AI trains both units of either path. AI unit scores: the Bloomspire's, by slot.
+
+Saves v26. No new state: a v25 save loads unchanged, except that an Axiarch Celestial Array below T2 that isn't upgrading is made sure to carry no path (before v26 it could never have one), so it picks at its next upgrade.
+
+=== DEFINITION OF DONE (section 11), checked at v2.29 ===
+
+| Item | Status | Evidence |
+|---|---|---|
+| Axiarchs can be selected and played; Last Fist and Bloomhost are unchanged. | Done | Setup menu (v2.25). Each batch v2.26–v2.29 checked that a fixed Last Fist match and a fixed Bloomhost vs Last Fist match play identically to the previous version before re-recording the fingerprint. |
+| All 8 buildings work in their roles; all three production buildings have two-path trees. | Done | Roles v2.25; Genesis Gate and Architectum trees v2.27; Celestial Array tree v2.29 (`tests/ax-trees.test.js`, `tests/ax-array.test.js`). |
+| Shields work as in section 2. | Done | Shields first, overflow to HP, modifiers before the split, regen after a delay and faster in the field, never restoring HP, cyan bar and shimmer, kept apart from the HQ shield and Emergency Shield (v2.25–v2.26; `tests/axiarchs.test.js`). |
+| The power field grows, recedes and is hidden by fog. | Done | v2.26 (`tests/axiarchs-field.test.js`, `tests/axiarchs-ui.test.js`). |
+| Warp-in is always valid and never duplicates units or skips costs. | Done | v2.26 warp-in tests; Mass Warp never changes the unit count (v2.28). |
+| All three abilities work and share one cooldown. | Done | v2.28 (`tests/ax-abilities.test.js`, cast through the UI in `tests/axiarchs-ui.test.js`). |
+| Temporary effects clean up correctly. | Done | Warps in progress dropped at match end; Overcharge, disrupt, slow, charge and pulse timers on game time and through saves; distortion zones under the acid-pool cap and expiring; Mass Warp channels and Beams complete after loading. |
+| Every unit's targets match section 6. | Done | All 15 units checked against section 6 in one test (`tests/ax-array.test.js`). |
+| Saves load correctly, old saves included. | Done | Saves v22–v26, each with a migration test. |
+| The minimal AI plays all content without cheating. | Done (minimal) | It builds every building, picks every path, trains every unit (prepared-scene tests per path), captures nodes, attacks and casts all three abilities under the same rules and vision as the player. In normal matches it almost never casts Mass Warp and rarely reaches T3; that quality work is deferred to AI training (KNOWN_ISSUES.md, Axiarchs summary). |
+| Usable at 667x375. | Done | Browser checks and screenshots at 667x375 in every batch (docs/screenshots/ax*-667x375.png). |
+
+Section 9's deferred items stay deferred: warping outside the field, building power-down, Shardlings phasing through units, separate Phase Anchors, special storm interactions, the Axiarch AI quality pass (AI training) and the performance check (before the App Store).
