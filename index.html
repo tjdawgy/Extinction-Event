@@ -227,7 +227,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .box h1.lose{color:var(--bad)}
 .box .kicker{margin:0 0 4px;font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--blue)}
 .box .ver{position:absolute;top:10px;right:14px;margin:0;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;cursor:pointer;padding:6px 0 6px 10px} /* tap: the dev menu (v2.38) */
-.spectate #panel, .spectate #abil{display:none} .setup.dev .seg button{height:28px;font-size:12px} /* spectating (v2.38): no build tray, no abilities */
+.spectate #panel{visibility:hidden} .spectate #abil{display:none} .setup.dev{grid-template-columns:auto 1fr} .dvsub{font-size:12px;font-weight:500;color:var(--muted);margin-left:8px} .setup.dev .dvrow .big,.setup.dev .dvrow .ghost{height:34px;padding:0 16px;font-size:14px} .setup.dev .dvrow{display:flex;flex-wrap:wrap;gap:4px 6px} .setup.dev .seg button{height:28px;font-size:12px;padding:0 9px} /* spectating (v2.38): no build tray, no abilities */
 .box p{margin:6px 0 0;color:var(--muted);font-size:13.5px;max-width:64ch}
 .how{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
 .how div{background:rgba(30,46,76,.6);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:12.5px;color:var(--muted)}
@@ -7693,10 +7693,9 @@ const devPick = { a: { f: 'lastfist', ai: 'default', p: 'random' }, b: { f: 'blo
 function showDev() {
   const seg = (id, opts, cur) => `<div class="seg" id="${id}">${opts.map(([k, n]) => `<button data-k="${k}" class="${k === cur ? 'on' : ''}">${n}</button>`).join('')}</div>`;
   const F = FACTION_KEYS.map(k => [k, factionName(k)]), A = AI_PRESET_KEYS.map(k => [k, AI_PRESETS[k].name]), Pn = [['random', 'Random'], ...PERSONAS.map(k => [k, PERSONA_NAME[k].replace('The ', '')])];
-  const side = (w, lbl) => `<span class="lbl">${lbl}</span>${seg('dv' + w + 'f', F, devPick[w].f)}${seg('dv' + w + 'a', A, devPick[w].ai)}${seg('dv' + w + 'p', Pn, devPick[w].p)}`;
-  overlay(`<span class="ver">v${VERSION}</span><h1>Spectate</h1><p>Dev menu: watch the AI play both sides.</p>
-    <div class="setup dev">${side('a', 'Side A (blue)')}${side('b', 'Side B (red)')}<span class="lbl">Speed</span>${seg('dvs', [[1, '1×'], [2, '2×'], [4, '4×']], devPick.speed)}</div>
-    <div class="row"><button class="big" id="bSpec">Spectate</button><button class="ghost" id="bDevBack">Back</button></div>`);
+  const side = (w, lbl) => `<span class="lbl">${lbl}</span><div class="dvrow">${seg('dv' + w + 'f', F, devPick[w].f)}${seg('dv' + w + 'a', A, devPick[w].ai)}${seg('dv' + w + 'p', Pn, devPick[w].p)}</div>`;
+  overlay(`<span class="ver">v${VERSION}</span><h1>Spectate <small class="dvsub">dev menu: the AI plays both sides</small></h1>
+    <div class="setup dev">${side('a', 'Side A (blue)')}${side('b', 'Side B (red)')}<span class="lbl">Speed</span><div class="dvrow">${seg('dvs', [[1, '1×'], [2, '2×'], [4, '4×']], devPick.speed)}<button class="big" id="bSpec">Spectate</button><button class="ghost" id="bDevBack">Back</button></div></div>`);
   for (const [id, set] of [['dvaf', k => devPick.a.f = k], ['dvaa', k => devPick.a.ai = k], ['dvap', k => devPick.a.p = k], ['dvbf', k => devPick.b.f = k], ['dvba', k => devPick.b.ai = k], ['dvbp', k => devPick.b.p = k], ['dvs', k => devPick.speed = +k]])
     for (const b of $(id).children) b.addEventListener('click', () => { set(b.dataset.k); for (const x of $(id).children) x.classList.toggle('on', x === b); });
   $('bSpec').addEventListener('click', startSpectate);
@@ -7707,13 +7706,13 @@ function startSpectate() {
   const per = p => p === 'random' ? undefined : p;
   game = newGame('hard', { countdown: 0, autoPlayer: true, autoDiff: 'hard', factions: [devPick.a.f, devPick.b.f], autoAi: devPick.a.ai, ai: devPick.b.ai, autoPersona: per(devPick.a.p), persona: per(devPick.b.p) });
   game.spectate = true;
-  buildAbil(); hideCountdown(); camTouched = true; resize(); applyZoom(1); closePanel(); hideInfo(); endAim();
+  document.body.classList.add('spectate'); // first: the build tray goes, so the field is sized without it
+  buildAbil(); hideCountdown(); camTouched = true; applyZoom(1); resize(); closePanel(); hideInfo(); endAim();
   cam.x = L / 2; cam.vx = 0; clampCam();
   running = true; paused = false; speed = devPick.speed; $('bSpeed').textContent = speed + '×';
   tab = 'army';
   for (const x of document.querySelectorAll('.tabs button')) x.classList.toggle('on', x.dataset.tab === 'army');
   hideOverlay(); buildCards(); refreshUI(true); updateIntro();
-  document.body.classList.add('spectate');
   const nm = w => `${factionName(devPick[w].f)} (${AI_PRESETS[devPick[w].ai].name}, ${devPick[w].p === 'random' ? 'random' : PERSONA_NAME[devPick[w].p].replace('The ', '')})`;
   toast(`Spectating: ${nm('a')} vs ${nm('b')}`, 'ok');
 }
