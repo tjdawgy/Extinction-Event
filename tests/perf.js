@@ -1,5 +1,5 @@
 // Performance measurement in headless Chromium at iPhone landscape size (858×396, 2× pixels).
-//   node tests/perf.js [battle] [memory] [--army=rifle:20,flame:3,...] [--secs=15] [--rates=1,4,6] [--quality=2|1|0|auto] [--abilities | --abilities-spam] [--storm] [--bases] [--json=out.json]
+//   node tests/perf.js [battle] [memory] [--settle=4] [--army=rifle:20,flame:3,...] [--secs=15] [--rates=1,4,6] [--quality=2|1|0|auto] [--abilities | --abilities-spam] [--storm] [--bases] [--json=out.json]
 // battle: both armies kept near the 80-population cap and fighting mid-map in full view, measured
 //         at each CPU throttle rate (Chromium DevTools CPU throttling simulates a slower phone).
 //         Reports the script time per frame (update + render) and the time between frames.
@@ -28,6 +28,7 @@ const PROBE = () => {
 // 78 population per side: every unit type in a mix
 const ARMY = { rifle: 20, heavy: 8, sniper: 4, tank: 4, artillery: 2, titan: 1, aircraft: 2, interceptor: 2 };
 // --army (v2.14): a different mix per side, e.g. to measure Flame Tanks and Hydras (only on a copy that has them)
+const settle = +((process.argv.find(a => a.startsWith('--settle=')) || '--settle=4').slice(9)); // seconds before measuring (v2.36)
 const armyArg = (process.argv.find(a => a.startsWith('--army=')) || '').slice(7);
 const army = armyArg ? Object.fromEntries(armyArg.split(',').map(x => { const [k, n] = x.split(':'); return [k, +n]; })) : ARMY;
 const BATTLE = army => {
@@ -96,7 +97,7 @@ async function battle(browser, rates, secs, quality, abil, storm, bases) {
     await page.evaluate(q => { if (typeof VFX !== 'undefined') VFX.lock = q === 'auto' ? null : +q; }, quality); // effect quality (v2.3+): a level, or auto
     const cdp = await page.context().newCDPSession(page);
     await cdp.send('Emulation.setCPUThrottlingRate', { rate });
-    await page.waitForTimeout(4000); // let the armies meet
+    await page.waitForTimeout(settle * 1000); // let the armies meet (--settle, v2.36: longer lets the sounds finish baking first)
     await page.evaluate(() => { window.__perf.on = true; });
     const sample = [];
     for (let i = 0; i < secs; i++) {

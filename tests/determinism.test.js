@@ -11,19 +11,24 @@
 // v2.35 (audit): retreating units hold their fire. The two replays pinned to older versions run with RETREAT.fire true (the
 // v2.34 rule), so they still prove nothing else changed; the main fingerprint plays the new rule (unchanged: in that match no
 // retreating unit had a target in range).
+// v2.36 (audit phase 2): the Flame Tank burns along its target's line (FLAME.aim). The old replays run with FLAME.aim false; the
+// main fingerprint is re-recorded and, with FLAME.aim false, still matches v2.35 (FP_V235). The Axis beam changes only matches
+// with an Axiarch side, which none of these are.
 const test = require('node:test');
 const assert = require('node:assert');
 const crypto = require('crypto');
 const { loadSim } = require('./load-sim');
 
-const FINGERPRINT = '4be0c9891986796cd10fa32ce44a5d76cf81a0ce0d42ca9e878d919deca11535'; // v2.34: only the save version changed (29 → 30); the match state is the same as v2.32's
+const FINGERPRINT = '27e6859083378eec966f493c37ea4a9065532b70465c737bf62579b3e4021a9a'; // v2.36: the Flame Tank aims its strip at its target (FLAME.aim); with FLAME.aim false the match is v2.35's (FP_V235)
+const FP_V235 = '4be0c9891986796cd10fa32ce44a5d76cf81a0ce0d42ca9e878d919deca11535'; // v2.34: only the save version changed (29 → 30); the match state is the same as v2.32's
 const LF_BH_V233 = '014ce26817d31591d24561ac3daf04b1cdfe852fcac44485795c3e4043d6cbb6'; // recorded on v2.33 without the save version (ends 12:23, Last Fist wins)
 const V229_OFF = '856b576e7c8dfa7ee14e35e1bf1c6629c1705e40513c942a3eed7070700779b4'; // v2.29's state hash, the same way (v2.30, Salvage off)
 
 function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 
-function fingerprint(salvageOff) {
+function fingerprint(salvageOff, aimOff) {
   const sim = loadSim({ random: mulberry(2024) });
+  if (salvageOff || aimOff) sim.FLAME.aim = false;
   if (salvageOff) { sim.SALVAGE.pct = 0; sim.SIG.on = false; sim.RETREAT.fire = true; }
   const g = sim.newGame('hard', { autoPlayer: true, autoDiff: 'hard', persona: 'trickster', autoPersona: 'turtle' });
   for (let i = 0; i < 30 * 480 && !g.over; i++) sim.update(g, 1 / 30);
@@ -34,7 +39,7 @@ function fingerprint(salvageOff) {
 }
 
 function lfBh() { // Last Fist (autoplayer, Turtle) vs Bloomhost (Aggressor), Hard, to the end of the match
-  const sim = loadSim({ random: mulberry(2024) }); sim.RETREAT.fire = true; // v2.35: the v2.34 retreat rule
+  const sim = loadSim({ random: mulberry(2024) }); sim.RETREAT.fire = true; sim.FLAME.aim = false; // v2.35: the v2.34 retreat rule; v2.36: the v2.35 Flame Tank
   const g = sim.newGame('hard', { autoPlayer: true, autoDiff: 'hard', persona: 'aggressor', autoPersona: 'turtle', factions: ['lastfist', 'bloomhost'] });
   for (let i = 0; i < 30 * 1700 && !g.over; i++) sim.update(g, 1 / 30);
   const o = JSON.parse(sim.serialize(g, {})); delete o.log; delete o.v; // the save version
@@ -48,6 +53,10 @@ test('a fixed Last Fist vs Bloomhost match plays exactly as v2.33 did, apart fro
 
 test('seeded AI-vs-AI match matches the recorded SIM fingerprint (rules change only on purpose)', () => {
   assert.strictEqual(fingerprint(), FINGERPRINT);
+});
+
+test('with FLAME.aim false the same match plays exactly as v2.35 did (the Flame Tank fix is the only Last Fist change)', () => {
+  assert.strictEqual(fingerprint(false, true), FP_V235);
 });
 
 test('with Salvage and signature buildings switched off (SALVAGE.pct 0, SIG.on false) the same match plays exactly as v2.29 did', () => {

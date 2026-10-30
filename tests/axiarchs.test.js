@@ -63,18 +63,20 @@ test('buildings: shields charge once built, grow with the tier; the storm hits s
   assert.ok(b.shp < 50 && b.hp === h, 'the storm takes the shields first');
 });
 
+// v2.36: the Axis fires a beam too (f.hq); only the Null Lance's beams are counted here
 test('Null Lance: T1 one beam; T2 Split Lattice across up to 3 targets at lower damage each; T3 heavy, longer range, more building damage', () => {
   const g = quiet(); seeAll(g);
   const nl = finish(g, 0, 'turret'), G = sim.BD('axiarchs', 'turret').gun;
+  g.sides[0].hq.cd = 1e9; // v2.36: the Axis's beam lands at once too; held so only the Null Lance's shots are measured
   const foes = [];
   for (let i = 0; i < 5; i++) { const r = put(g, 1, 'heavy', nl.u + 90 + i * 12, (i - 2) * 14); r.hp = r.maxHp = 1e5; foes.push(r); }
   const hit = () => foes.filter(f => f.hp < f.maxHp).length, reset = () => { for (const f of foes) f.hp = f.maxHp; g.fx.length = 0; };
   sim.updateVision(g);
   const fireOnce = () => { nl.cd = 0; sim.update(g, 1 / 30); };
-  fireOnce(); assert.strictEqual(hit(), 1, 'T1: one target'); assert.strictEqual(g.fx.filter(f => f.k === 'beam').length, 1);
+  fireOnce(); assert.strictEqual(hit(), 1, 'T1: one target'); assert.strictEqual(g.fx.filter(f => f.k === 'beam' && !f.hq).length, 1);
   const d1 = foes.find(f => f.hp < f.maxHp); assert.ok(Math.abs((d1.maxHp - d1.hp) - G[1].dmg * sim.DMG.lance.heavy) < 1e-6);
   reset(); nl.tier = 2; fireOnce();
-  assert.strictEqual(hit(), 3, 'T2: three of the five'); assert.strictEqual(g.fx.filter(f => f.k === 'beam').length, 3);
+  assert.strictEqual(hit(), 3, 'T2: three of the five'); assert.strictEqual(g.fx.filter(f => f.k === 'beam' && !f.hq).length, 3);
   for (const f of foes.filter(f => f.hp < f.maxHp)) assert.ok(Math.abs((f.maxHp - f.hp) - G[2].dmg * sim.DMG.lance.heavy) < 1e-6, 'each at the lower damage');
   assert.ok(G[2].dmg < G[1].dmg && G[2].split === 3);
   reset(); foes.slice(1).forEach(f => { f.hp = 0; }); g.ents = g.ents.filter(e => e.hp > 0); foes.splice(1); fireOnce();

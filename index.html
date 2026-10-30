@@ -114,9 +114,10 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 #bpRep[disabled]{opacity:.6}
 #cards .card.warpc svg.ic{width:30px;height:30px;margin:2px auto 0;display:block} /* Set warp point (v2.26) */
 #bpUp.soon{flex:1.8;font-size:11px;line-height:1.15;padding:0 4px} /* Axiarch production: "Doctrine paths coming soon" (v2.25) */
-#bpHp{color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
+#bpHp{color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap} /* v2.36: one line, shields included */
 /* Upgrade-tree path picker (v2.13): two path cards, then the Upgrade button confirms */
 #bp.wide{width:344px}
+#bp.shp:not(.wide){width:316px} /* v2.36: Axiarch shields need room for "819/819 · 308 sh" beside the name */
 #bp.wide #bpUp{flex:1.6}
 #bpNext:empty,#bpNow:empty{display:none}
 #bpPick{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:5px}
@@ -336,7 +337,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.35'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.36'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -475,7 +476,8 @@ BDEF_BH.sigB = sigDef(BDEF_BH.barracks, { name: 'Rootheart', h: 30,
 // lower damage) at T2, Event Horizon (longer range, heavy hits, more building damage, slower) at T3.
 const BDEF_AX = (() => {
   const o = {}, re = (k, x) => { o[k] = Object.assign({}, BDEF[k], x); o[k].shp = Math.round(BDEF[k].hp * 0.3); o[k].hp = Math.round((x.hp || BDEF[k].hp) * 0.8); };
-  re('hq', { name: 'Axis', tiers: [null, 'Axis lance 32 damage, 390 range; 2,240 HP + 840 shields', 'Axis lance 42 damage, 430 range; 2,912 HP + 1,092 shields', 'Axis lance 55 damage, 470 range; 3,584 HP + 1,344 shields'] });
+  re('hq', { name: 'Axis', gun: BDEF.hq.gun.map(x => x && Object.assign({}, x, { weapon: 'hqbeam', beam: true })), // v2.36: the Axis lance is a beam (same damage, rate and range; lands at once)
+    tiers: [null, 'Axis lance 32 damage, 390 range; 2,240 HP + 840 shields', 'Axis lance 42 damage, 430 range; 2,912 HP + 1,092 shields', 'Axis lance 55 damage, 470 range; 3,584 HP + 1,344 shields'] });
   re('refinery', { name: 'Matter Loom' });
   re('reactor', { name: 'Singularity Well' });
   re('habitat', { name: 'Continuum Spire' });
@@ -678,6 +680,7 @@ const DMG = {
   rifle:   { light: 1.0, heavy: 0.45, vehicle: 0.3,  air: 0.75, building: 0.45 },
   rocket:  { light: 0.6, heavy: 1.0,  vehicle: 1.6,  air: 1.3,  building: 1.0 },
   hqgun:   { light: 0.9, heavy: 1.0,  vehicle: 1.6,  air: 1.3,  building: 1.0 }, // the HQ's own rockets: better against infantry
+  hqbeam:  { light: 0.9, heavy: 1.0,  vehicle: 1.6,  air: 1.3,  building: 1.0 }, // the Axis lance (v2.36): the HQ gun's multipliers
   rail:    { light: 1.6, heavy: 1.4,  vehicle: 0.35, air: 0.5,  building: 0.3 },
   cannon:  { light: 0.9, heavy: 1.25, vehicle: 1.15, air: 0,    building: 1.3 },
   shell:   { light: 1.1, heavy: 1.0,  vehicle: 0.75, air: 0,    building: 1.6 },
@@ -952,13 +955,14 @@ const slotPos = (s, k) => tilePos(s, PADS[k][0], PADS[k][1]);
 const hqPos = s => tilePos(s, HQ_TILE[0], HQ_TILE[1]);
 const rallyU = s => hqU(s) + dirOf(s) * 300;
 
+const START_RES = { c: 300, e: 60 }; // what each side starts with (v2.36: named, so the match report can count it as gathered)
 function newGame(diffKey, opts = {}) {
   const g = { t: 0, ents: [], projs: [], fx: [], parts: [], sides: [], abil: [], over: false, winner: -1, nid: 1,
     diff: DIFF[diffKey] || DIFF.normal, diffKey, events: [], auto: !!opts.autoPlayer, autoDiff: opts.autoDiff || 'normal', shake: 0, front: [null, null], countdown: opts.countdown || 0,
     nodes: NODE_U.map((u, i) => ({ id: i, u, v: 0, prog: 0, owner: null, c: [0, 0] })), log: null, forcePath: opts.forcePath || null,
     creep: [[], []], acid: [], field: [[], []], warps: [] }; // creep patches per side (v2.18; Bloomhost only); acid: Ruinmaw pools (v2.19); field: Axiarch power field patches, warps: units mid-warp (v2.26)
   for (let s = 0; s < 2; s++) {
-    g.sides.push({ faction: (opts.factions && opts.factions[s]) || DEFAULT_FACTION, res: { c: 300, e: 60 }, stance: s === 0 ? 'hold' : 'retreat', stanceAt: 0, pushTo: null, slots: new Array(SLOT_COUNT).fill(null),
+    g.sides.push({ faction: (opts.factions && opts.factions[s]) || DEFAULT_FACTION, res: { c: START_RES.c, e: START_RES.e }, stance: s === 0 ? 'hold' : 'retreat', stanceAt: 0, pushTo: null, slots: new Array(SLOT_COUNT).fill(null),
       hq: null, aiT: 1 + s * 0.5, stats: { built: 0, kills: 0, lost: 0, earned: 0 }, lastAlert: -99, buff: false, ab: newAb(0, (opts.factions && opts.factions[s]) || DEFAULT_FACTION), abK: null, abEnd: 0, orders: newOrders(), sel: null, warp: null, salv: newSalv(), od: 0 }); // od: Overdrive's end time (v2.32) // salv: Salvage (v2.30); warp: the player's chosen warp point (Axiarchs, v2.26); null = the default
     const hq = mkBuilding(g, s, 'hq', -1);
     hq.built = true; hq.progress = 1; hq.hp = hq.maxHp; hq.shp = hq.maxShp;
@@ -1860,13 +1864,16 @@ function updateCreep(g, dt) {
     if (rg > other) e.hp = Math.min(e.maxHp, e.hp + e.maxHp * (rg - other) * dt);
   }
 }
-// The Flame Tank: every enemy on the ground in a strip ahead of it (range × 2 · strip wide) takes the burst; nothing lingers
-function flameBurst(g, src, def) {
-  const dir = src.face || dirOf(src.side), dmg = def.dmg * (g.sides[src.side].buff ? 1.2 : 1) * outMul(g, src);
+// The Flame Tank: every enemy on the ground in a strip ahead of it (range × 2 · strip wide) takes the burst; nothing lingers.
+// v2.36 (audit): the strip is centred on the chosen target's sideways position (t), so a target picked off to the side is
+// burned too (before, it took nothing and the tank fired at it forever). FLAME.aim false: the strip stays on the tank's line.
+const FLAME = { aim: true };
+function flameBurst(g, src, def, t) {
+  const dir = src.face || dirOf(src.side), dmg = def.dmg * (g.sides[src.side].buff ? 1.2 : 1) * outMul(g, src), cv = FLAME.aim && t ? t.v : src.v;
   for (const e of g.ents) {
     if (e.side === src.side || e.hp <= 0 || (e.kind === 'u' && UDEF[e.type].air) || e.shielded) continue;
     const ahead = (e.u - src.u) * dir, reach = def.range + (e.kind === 'b' ? e.half : 0);
-    if (ahead < -6 || ahead > reach || Math.abs(e.v - src.v) > def.strip + (e.kind === 'b' ? e.half : 0)) continue;
+    if (ahead < -6 || ahead > reach || Math.abs(e.v - cv) > def.strip + (e.kind === 'b' ? e.half : 0)) continue;
     damage(g, e, dmg, 'flame', src.side, src);
   }
   if (src.kind === 'u') src.recoil = 1;
@@ -1912,12 +1919,13 @@ function meleeHit(g, src, t, def) {
 }
 function fire(g, src, t, def) {
   if (src.kind === 'u') src.lastAct = g.t; // in combat (creep regen waits, v2.18)
-  if (def.weapon === 'flame') { flameBurst(g, src, def); return; }
+  if (def.weapon === 'flame') { flameBurst(g, src, def, t); return; }
   if (def.melee) { meleeHit(g, src, t, def); return; }
   if (def.beam) { // the Null Lance (v2.25): the beam lands at once; the SIM leaves a short beam mark for the renderer
     const m = muzzle(src), a = P(m.u, m.v, m.z), b = P(t.u, t.v, aimZ(t));
     damage(g, t, def.dmg * (g.sides[src.side].buff ? 1.2 : 1) * outMul(g, src), def.weapon, src.side, src);
-    g.fx.push({ k: 'beam', x: a.x, y: a.y, x2: b.x, y2: b.y, t: 0, life: def.weapon === 'horizon' ? 0.32 : 0.2, w: def.weapon === 'horizon' ? 3.2 : def.split ? 1.5 : 2.2 });
+    const hq = def.weapon === 'hqbeam'; // the Axis lance (v2.36): a heavier beam, drawn in the Axiarch violet and cyan
+    g.fx.push({ k: 'beam', x: a.x, y: a.y, x2: b.x, y2: b.y, t: 0, life: hq ? 0.34 : def.weapon === 'horizon' ? 0.32 : 0.2, w: hq ? 3.6 : def.weapon === 'horizon' ? 3.2 : def.split ? 1.5 : 2.2, hq });
     if (def.chain) chainBeam(g, src, t, def); // the Shardstorm (v2.29)
     return;
   }
@@ -3060,11 +3068,14 @@ function logMoments(g) { // up to 8 recorded turning points, in time order
   }
   return c.sort((a, b) => b.p - a.p).slice(0, 8).sort((a, b) => a.t - b.t);
 }
+// Credits (i 0) or energy (i 1) a side gathered (v2.36): what it started with, income, sales and Salvage, so what it spent
+// can never be more. A log resumed from an older save (L.from > 0) didn't see the start, so it isn't counted there.
+const logGathered = (L, T, i) => (L.from > 0 ? 0 : i ? START_RES.e : START_RES.c) + T.earn[i] + T.sold[i] + ((i ? T.salvE : T.salv) || 0);
 // The copied match log: plain text, one chronological list tagged [ME] / [ENEMY] / [ALL], same grouping as the screen
 function logText(g, meta) {
   const L = g.log, T = L.tot, R = g.result || {}, nm = t => UDEF[t].name, lines = [];
   const units = (tr, lo) => Object.keys(UDEF).filter(k => tr[k] || lo[k]).map(k => `${nm(k)} ${tr[k] || 0} (${lo[k] || 0} lost)`).join(', ') || 'none';
-  const res = s => { const t = T[s], sp = Object.values(t.spent); return `credits ${Math.round(t.earn[0]).toLocaleString('en')} earned / ${Math.round(sp.reduce((a, b) => a + b[0], 0)).toLocaleString('en')} spent; energy ${Math.round(t.earn[1]).toLocaleString('en')} / ${Math.round(sp.reduce((a, b) => a + b[1], 0)).toLocaleString('en')}`; };
+  const res = s => { const t = T[s], sp = Object.values(t.spent); return `credits ${Math.round(logGathered(L, t, 0)).toLocaleString('en')} gathered / ${Math.round(sp.reduce((a, b) => a + b[0], 0)).toLocaleString('en')} spent; energy ${Math.round(logGathered(L, t, 1)).toLocaleString('en')} / ${Math.round(sp.reduce((a, b) => a + b[1], 0)).toLocaleString('en')}`; };
   const sum = o => Object.values(o).reduce((a, b) => a + b, 0);
   lines.push(`Extinction Event v${meta.version} · ${meta.diff} · vs ${meta.persona}`);
   lines.push(`Result: ${meta.result} · ${mmss(g.t)}`);
@@ -5248,10 +5259,13 @@ function drawHealBeams(c, g, m, w) {
    player's fog exactly (nothing is spawned or drawn for what the player can't see) and skips fights off screen.
    Quality steps down automatically when frames run long (see vfxQuality). */
 const VFX_PARTS = 300, VFX_FX = 120, VFX_DECALS = 12, VFX_SMOKERS = 6;
+// v2.36: Flame Tank fire (particle kind 4) has its own ceiling inside the pool, so a wall of Flame Tanks can't crowd out
+// every other effect; each tank's stream thins as more of them burn at once (FIRE.rate is shared out)
+const FIRE = { max: 80, rate: 110, share: 360, life: [0.28, 0.4] };
 const QMUL = [0.3, 0.6, 1];                       // particle counts per quality level (0 low, 1 medium, 2 full)
 const VFX = {
   g: null, lastT: -1, frame: 0, q: 2, lock: null, shake: 0, rnd: mulberry(4242),
-  parts: [], np: 0, fx: [], nfx: 0, decals: [], smokers: [], wrecks: [],
+  parts: [], np: 0, fx: [], nfx: 0, decals: [], smokers: [], wrecks: [], nfire: 0, flamers: new Set(),
   rec: new WeakMap(), seenFx: new WeakSet(), warpSeen: new WeakSet(), prevE: [], prevP: [], prevA: [], shots: [], nshots: 0, freeRec: [],
   reduced: typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches,
   gaps: [], gapAt: 0, slowFor: 0, fastFor: 0,
@@ -5269,16 +5283,17 @@ function makeGlow(rgb) {
   gr.addColorStop(0, `rgba(${rgb},1)`); gr.addColorStop(0.35, `rgba(${rgb},0.55)`); gr.addColorStop(1, `rgba(${rgb},0)`);
   k.fillStyle = gr; k.fillRect(0, 0, 64, 64); return cv;
 }
-const GLOW = { warm: makeGlow('255,214,140'), white: makeGlow('255,255,255'), cyan: makeGlow('150,235,255'), fire: makeGlow('255,150,60'), t0: makeGlow(TEAM[0].glow), t1: makeGlow(TEAM[1].glow), acid: makeGlow('155,225,93'), frenzy: makeGlow('255,120,210') };
+const GLOW = { warm: makeGlow('255,214,140'), white: makeGlow('255,255,255'), cyan: makeGlow('150,235,255'), fire: makeGlow('255,150,60'), t0: makeGlow(TEAM[0].glow), t1: makeGlow(TEAM[1].glow), acid: makeGlow('155,225,93'), frenzy: makeGlow('255,120,210'), violet: makeGlow('180,140,255'), ember: makeGlow('255,80,30') }; // v2.36: violet for Axiarch rift energy, ember for burnt-out flame
 function stamp(c, img, x, y, r, a) { if (a <= 0.01 || r <= 0) return; c.globalAlpha = Math.min(1, a); c.drawImage(img, x - r, y - r, r * 2, r * 2); }
 
-// Pools. Particle kinds: 0 smoke, 1 spark, 2 debris (falls and settles), 3 dust. pri 1 = may push out pri 0.
+// Pools. Particle kinds: 0 smoke, 1 spark, 2 debris (falls and settles), 3 dust, 4 fire (v2.36). pri 1 = may push out pri 0.
 function vPart(x, y, vx, vy, life, size, kind, col, grav, pri, floor) {
   const P_ = VFX.parts;
   let p = null;
   if (VFX.np < VFX_PARTS) p = P_[VFX.np++];
   else if (pri > 0) { for (let i = 0; i < VFX.np; i++) if (P_[i].pri === 0) { p = P_[i]; break; } }
   if (!p) return; // full: the least important effect is the one dropped
+  if (p.kind === 4 && p.life > 0) VFX.nfire--; if (kind === 4) VFX.nfire++;
   p.x = x; p.y = y; p.vx = vx; p.vy = vy; p.life = p.max = life; p.size = size; p.kind = kind; p.col = col; p.grav = grav || 0; p.pri = pri || 0; p.floor = floor ?? 1e9;
 }
 function vFx(k, x, y, r, life, col, pri, x2 = 0, y2 = 0, w = 1, delay = 0) {
@@ -5292,7 +5307,7 @@ function vFx(k, x, y, r, life, col, pri, x2 = 0, y2 = 0, w = 1, delay = 0) {
 function vCount(n) { return Math.max(n > 0 ? 1 : 0, Math.round(n * QMUL[VFX.q])); }
 
 function vfxReset(g) {
-  VFX.g = g; VFX.lastT = -1; VFX.np = 0; VFX.nfx = 0; VFX.shake = 0; VFX.primed = false;
+  VFX.g = g; VFX.lastT = -1; VFX.np = 0; VFX.nfx = 0; VFX.nfire = 0; VFX.flamers.clear(); VFX.shake = 0; VFX.primed = false;
   VFX.decals.length = 0; VFX.smokers.length = 0; VFX.wrecks.length = 0; VFX.prevE.length = 0; VFX.prevP.length = 0; VFX.prevA.length = 0;
   VFX.rec = new WeakMap(); VFX.seenFx = new WeakSet();
 }
@@ -5308,10 +5323,11 @@ function vfxStep(g) {
   for (let i = 0; i < VFX.np; i++) {
     const p = P_[i];
     p.life -= dt;
-    if (p.life <= 0) { const last = P_[--VFX.np]; P_[VFX.np] = p; P_[i] = last; i--; continue; }
+    if (p.life <= 0) { if (p.kind === 4) VFX.nfire--; const last = P_[--VFX.np]; P_[VFX.np] = p; P_[i] = last; i--; continue; }
     p.vy += p.grav * dt; p.x += p.vx * dt; p.y += p.vy * dt;
     if (p.y > p.floor) { p.y = p.floor; p.vy *= -0.3; p.vx *= 0.6; }
     if (p.kind === 0 || p.kind === 3) p.vx *= 0.97;
+    else if (p.kind === 4) { p.vx *= 1 - 2.2 * dt; p.vy *= 1 - 2.2 * dt; } // flame licks slow and billow as they burn out
   }
   const F_ = VFX.fx;
   for (let i = 0; i < VFX.nfx; i++) {
@@ -5321,6 +5337,7 @@ function vfxStep(g) {
   }
   for (let i = VFX.decals.length - 1; i >= 0; i--) if ((VFX.decals[i].t += dt) > VFX.decals[i].life) VFX.decals.splice(i, 1);
   for (let i = VFX.wrecks.length - 1; i >= 0; i--) if ((VFX.wrecks[i].t += dt) > 1.2) VFX.wrecks.splice(i, 1);
+  if (dt > 0) vfxFlames(g, dt);
   if (dt > 0 && g.t >= EXT.start && !g.over) vfxMeteors(g, dt);
   for (let i = VFX.smokers.length - 1; i >= 0; i--) {
     const s = VFX.smokers[i];
@@ -5345,6 +5362,8 @@ function vfxScan(g, dt) {
     const cd = e.cd || 0;
     if (cd > r.cd + 0.05) onFire(g, e, lit);
     r.cd = cd;
+    if (e.maxShp && VFX.primed && (e.shp || 0) < (r.shp ?? 0) - 0.5 && lit(e.u)) { const w = P(e.u, e.v); if (onView(w.x)) sfx('shieldPing', w.x); } // v2.36: an Axiarch shield takes a hit
+    r.shp = e.shp || 0;
     if (e.hp < r.hp - 0.01) { r.ghost = Math.max(r.ghost, r.hp); r.ghostT = 0.35; }      // health just lost shows as a draining white chunk
     else if (r.ghostT > 0) r.ghostT -= dt;
     else r.ghost = Math.max(e.hp, r.ghost - e.maxHp * 0.8 * dt);
@@ -5362,7 +5381,7 @@ function vfxScan(g, dt) {
   }
   for (const p of VFX.prevP) { const r = R.get(p); if (r && r.f !== frame) { if (p.t <= 4) onImpact(g, p, lit); R.delete(p); VFX.freeRec.push(r); } }
   VFX.prevP.length = 0; for (const p of g.projs) VFX.prevP.push(p);
-  for (const f of g.fx) if (!VFX.seenFx.has(f)) { VFX.seenFx.add(f); if (f.k === 'boom' && lit(f.x) && onView(f.x)) onBoom(f); else if (f.k === 'shatter' && lit(f.u)) sfx('shatter', f.x); } // v2.34: a collapse, heard where seen
+  for (const f of g.fx) if (!VFX.seenFx.has(f)) { VFX.seenFx.add(f); if (f.k === 'beam' && f.hq && lit(f.x2) && onView(f.x2)) onHqBeam(f); else if (f.k === 'boom' && lit(f.x) && onView(f.x)) onBoom(f); else if (f.k === 'shatter' && lit(f.u)) sfx('shatter', f.x); } // v2.34: a collapse, heard where seen
   // commander abilities: casts, the strike's warning and its impact (also caught if the strike resolved and left between frames)
   for (const a of g.abil) {
     let r = R.get(a);
@@ -5384,7 +5403,6 @@ function vfxScan(g, dt) {
 const titanStep = u => Math.floor((u.anim * 3.2 - Math.PI / 2) / Math.PI);
 
 const MUZ_COL = { spine: null, claw: null, talon: null, slam: null, rend: null, maul: null, gore: null, acid: null, bile: null, lob: null, ruin: null, rifle: 'warm', gatling: 'warm', flak: 'warm', rail: 'cyan', rocket: 'fire', missile: 'fire', cannon: 'warm', siege: 'white', shell: 'fire', hqgun: null, flame: 'fire', hydra: 'warm', bomb: 'fire' };
-const FLAME_COL = ['#ffd27a', '#ff9a3c', '#ff5a24'];
 function onFire(g, e, lit) {
   const gun = e.kind === 'b' ? bdOf(e).gun && bdOf(e).gun[e.tier] : UDEF[e.type];
   if (!gun) return;
@@ -5392,15 +5410,16 @@ function onFire(g, e, lit) {
   if (VFX.nshots < VFX.shots.length) { const s = VFX.shots[VFX.nshots++]; s.e = e; s.u = m.u; s.v = m.v; s.z = m.z; s.w = wpn; }
   if (!lit(m.u) || !onView(w.x)) return; // firing in the fog stays hidden
   const face = e.face || (e.side ? -1 : 1), col = MUZ_COL[wpn] ? GLOW[MUZ_COL[wpn]] : GLOW['t' + e.side];
-  sfx(wpn, w.x);
+  sfx(wpn === 'hqgun' && facOf(e.fac) === 'bloomhost' ? 'hqspine' : wpn, w.x);
   switch (wpn) {
     case 'rifle': vFx('flash', w.x, w.y, 6, 0.08, col, 1); break;
     case 'gatling': vFx('flash', w.x - 3, w.y, 6, 0.07, col, 1); vFx('flash', w.x + 3, w.y - 1, 6, 0.07, col, 1, 0, 0, 1, 0.08); break;
     case 'flak': vFx('flash', w.x, w.y - 1.5, 5, 0.05, col, 1); vFx('flash', w.x, w.y + 1.5, 5, 0.05, col, 1, 0, 0, 1, 0.06); break;
-    case 'flame': // a tongue of fire along the strip it burns
-      vFx('flash', w.x + face * 30, w.y + 4, 22, 0.22, GLOW.fire, 1); vFx('flash', w.x + face * 8, w.y, 9, 0.18, GLOW.warm, 1);
-      for (let i = vCount(6); i > 0; i--) vPart(w.x + face * vr(0, 8), w.y + vr(-2, 2), face * vr(170, 330), vr(-10, 18), vr(0.2, 0.32), vr(2.6, 4.2), 1, FLAME_COL[(VFX.rnd() * 3) | 0], -30, 0);
+    case 'flame': { // v2.36: no fireball; the nozzle glows and vfxFlames keeps the stream burning while it fires
+      const r = VFX.rec.get(e); if (r) { r.fireT = g.t; VFX.flamers.add(e); }
+      vFx('flash', w.x + face * 4, w.y, 8, 0.2, GLOW.warm, 1);
       break;
+    }
     case 'bomb': vFx('flash', w.x, w.y, 8, 0.12, col, 1); break; // the Leviathan's bay opens
     case 'hydra': vFx('flash', w.x, w.y, 6, 0.06, col, 1); vFx('flash', w.x - 4, w.y + 3, 6, 0.06, col, 1, 0, 0, 1, 0.05); break;
     case 'rail': vFx('flash', w.x, w.y, 9, 0.12, col, 2); break;
@@ -5422,12 +5441,21 @@ function onFire(g, e, lit) {
       for (let i = vCount(5); i > 0; i--) vPart(w.x, w.y, vr(-25, 25), vr(-30, -5), vr(0.6, 1.1), vr(4, 7), 0, 'light', -4, 0);
       break;
     case 'hqgun':
-      vFx('flash', w.x, w.y, 14, 0.12, col, 2); vFx('ring', w.x, w.y, 4, 0.3, TEAM[e.side].main, 1, 18, 0, 2);
+      if (facOf(e.fac) === 'bloomhost') { // v2.36: the Hive looses a volley of spines with a wet spray
+        vFx('flash', w.x, w.y, 12, 0.14, GLOW.acid, 2);
+        for (let i = vCount(5); i > 0; i--) vPart(w.x, w.y, vr(-40, 40), vr(-60, -10), vr(0.3, 0.6), vr(1.4, 2.4), 1, '#9be15d', 220, 0, w.y + 60);
+      } else { // Last Fist: an industrial cannon (v2.36): a hard flash, a ring and a puff of gun smoke
+        vFx('flash', w.x, w.y, 16, 0.1, GLOW.warm, 2); vFx('flash', w.x, w.y, 6, 0.1, GLOW.white, 2); vFx('ring', w.x, w.y, 4, 0.3, '#ffd9a0', 1, 20, 0, 2);
+        for (let i = vCount(4); i > 0; i--) vPart(w.x + vr(-3, 3), w.y, vr(-22, 22), vr(-30, -8), vr(0.7, 1.2), vr(4, 7), 0, 'light', -6, 0);
+      }
       break;
-    case 'spine': vFx('flash', w.x, w.y, 6, 0.07, GLOW['t' + e.side], 1); break; // the Maw spits
+    case 'hqbeam': vFx('flash', w.x, w.y, 18, 0.2, GLOW.violet, 2); vFx('flash', w.x, w.y, 8, 0.16, GLOW.white, 2); vFx('ring', w.x, w.y, 3, 0.35, RIFT, 1, 16, 0, 1.6); break; // the Axis lance charges and fires (v2.36)
+    case 'lance': case 'horizon': vFx('flash', w.x, w.y, wpn === 'horizon' ? 12 : 8, 0.14, GLOW.cyan, 1); break; // the Null Lance (v2.36: it had no muzzle effect)
+    case 'spine': vFx('flash', w.x, w.y, 6, 0.07, GLOW.acid, 1); break; // the Maw spits
     case 'acid': case 'bile': case 'lob': case 'ruin': case 'glob': vFx('flash', w.x, w.y, wpn === 'acid' ? 5 : 9, 0.1, GLOW.acid, 1); break; // a spray of acid (v2.19); the Brood Tyrant's glob (v2.21)
     case 'crush': vFx('flash', w.x, w.y, 10, 0.14, GLOW.acid, 1); break; // the Worldrender's sac opens
-    case 'bolt': case 'astral': case 'breaker': case 'grav': case 'rift': case 'prism': case 'storm': vFx('flash', w.x, w.y, wpn === 'astral' ? 9 : 6, 0.1, GLOW.cyan, 1); break; // Axiarch shots (v2.27; v2.29 Prismwing, Shardstorm)
+    case 'bolt': case 'astral': case 'prism': case 'storm': case 'pulse': vFx('flash', w.x, w.y, wpn === 'astral' ? 10 : wpn === 'pulse' ? 9 : 6, 0.1, GLOW.cyan, 1); vFx('flash', w.x, w.y, 3, 0.08, GLOW.white, 1); break; // Axiarch shots (v2.27; v2.29 Prismwing, Shardstorm; v2.36 the Bastion's pulse)
+    case 'breaker': case 'grav': case 'rift': case 'phase': vFx('flash', w.x, w.y, wpn === 'breaker' ? 10 : 7, 0.12, GLOW.violet, 1); vFx('flash', w.x, w.y, 3, 0.08, GLOW.white, 1); break; // rift weapons in violet (v2.36: the Wraithwing's phase bolt too)
     case 'void': case 'sovereign': vFx('flash', w.x, w.y, wpn === 'sovereign' ? 12 : 9, 0.14, GLOW.cyan, 1); vFx('ring', w.x, w.y, 2, 0.25, RIFT, 1, 12, 0, 1.4); break; // a Voidcarrier's orb, a Sovereign's mass released (v2.29)
     case 'riftblade': case 'parallax':
     case 'claw': case 'talon': case 'slam': case 'rend': case 'maul': case 'gore': case 'needle': // a bite or a blow: a short bright snap at the jaws
@@ -5457,7 +5485,18 @@ function onImpact(g, p, lit) {
       for (let i = vCount(4); i > 0; i--) vPart(w.x, w.y, vr(-60, 60), vr(-70, 10), vr(0.15, 0.3), 1.3, 1, '#c9f6ff', 220, 0, ground);
       break;
     case 'rocket': case 'missile': vFx('ring', w.x, w.y, 3, 0.25, '#ffd9a0', 0, 16, 0, 1.4); break;
-    case 'hqgun': vFx('flash', w.x, w.y, 12, 0.15, GLOW['t' + p.side], 1); vFx('ring', w.x, w.y, 3, 0.3, TEAM[p.side].light, 1, 22, 0, 1.6); break;
+    case 'hqgun':
+      if (facOf(g.sides[p.side].faction) === 'bloomhost') { bhSplat(w, ground, 3); sfx('splat', w.x); break; } // v2.36: the volley splashes
+      vFx('flash', w.x, w.y, 13, 0.15, GLOW.fire, 1); vFx('ring', w.x, w.y, 3, 0.3, '#ffd9a0', 1, 22, 0, 1.6); // the cannon round bursts (v2.36)
+      for (let i = vCount(4); i > 0; i--) vPart(w.x, w.y, vr(-60, 60), vr(-70, -10), vr(0.4, 0.7), vr(1.4, 2.2), 2, '#2a3648', 300, 0, ground);
+      break;
+    case 'bolt': case 'phase': case 'prism': case 'astral': case 'pulse': case 'grav': { // Axiarch energy: a clean flash, a ring and a few sparks (v2.36)
+      const vio = p.weapon === 'phase' || p.weapon === 'grav', big = p.weapon === 'astral' || p.weapon === 'pulse';
+      vFx('flash', w.x, w.y, big ? 10 : 6, 0.12, vio ? GLOW.violet : GLOW.cyan, 1); vFx('ring', w.x, w.y, 2, 0.22, vio ? RIFT : '#bff4ff', 0, big ? 16 : 10, 0, 1.2);
+      for (let i = vCount(big ? 4 : 2); i > 0; i--) vPart(w.x, w.y, vr(-70, 70), vr(-70, 20), vr(0.12, 0.25), 1.2, 1, vio ? '#dcc8ff' : '#d8f8ff', 160, 0, ground);
+      break;
+    }
+    case 'spine': bhSplat(w, ground, 1); break;
     case 'cannon':
       vFx('ring', w.x, w.y, 4, 0.3, '#ffd9a0', 1, 22, 0, 1.6);
       for (let i = vCount(4); i > 0; i--) vPart(w.x, ground - 1, vr(-20, 20), vr(-18, -4), vr(0.6, 1), vr(3, 6), 3, '', -2, 0);
@@ -5481,13 +5520,65 @@ function onImpact(g, p, lit) {
     case 'rift': case 'breaker': // a violet burst (v2.27)
       vFx('ring', w.x, p.weapon === 'rift' ? ground : w.y, 3, 0.35, RIFT, 1, p.weapon === 'rift' ? 30 : 22, p.weapon === 'rift' ? 1 : 0, 1.6);
       break;
-    case 'acid': case 'bile': case 'ruin': case 'lob': case 'glob': // a splash of acid (v2.19)
+    case 'acid': case 'bile': case 'ruin': case 'lob': case 'glob': case 'crush': // a splash of acid (v2.19); v2.36 a wet splat that drips and stains the ground
       vFx('ring', w.x, p.weapon === 'lob' ? ground : w.y, 3, 0.3, '#9be15d', 1, p.weapon === 'acid' ? 10 : 24, p.weapon === 'lob' ? 1 : 0, 1.4);
-      for (let i = vCount(p.weapon === 'acid' ? 2 : 4); i > 0; i--) vPart(w.x, w.y, vr(-30, 30), vr(-40, -5), vr(0.3, 0.6), vr(1.4, 2.4), 1, '#9be15d', 200, 0, ground);
+      bhSplat(w, ground, p.weapon === 'acid' ? 2 : p.weapon === 'crush' ? 5 : 3);
+      sfx('splat', w.x);
       break;
     case 'flak': // anti-air airburst
       for (let i = vCount(3); i > 0; i--) vPart(w.x + vr(-4, 4), w.y + vr(-4, 4), vr(-10, 10), vr(-8, 4), vr(0.5, 0.8), vr(2.5, 4), 0, 'light', -2, 0);
       break;
+  }
+}
+// The Flame Tank's cone (v2.36): a tapered, flickering body of fire from the nozzle to the end of the stream, so the
+// licks drawn over it read as one continuous jet. One small path per burning tank per frame.
+function drawFlameCones(c) {
+  c.globalCompositeOperation = 'lighter';
+  for (const e of VFX.flamers) {
+    const r = VFX.rec.get(e), S = r && r.stream; if (!S) continue;
+    const fl = 0.8 + 0.2 * Math.sin(VFX.frame * 1.7 + e.id), L1 = S.len * (0.92 + 0.08 * fl), nx = -S.dy, ny = S.dx, ex = S.x + S.dx * L1, ey = S.y + S.dy * L1;
+    for (const [w0, w1, a, col] of [[3, 15, 0.22, '255,120,40'], [1.5, 7, 0.4, '255,200,110'], [0.6, 2.5, 0.55, '255,245,210']]) {
+      c.fillStyle = `rgba(${col},${a * fl})`; c.beginPath();
+      c.moveTo(S.x + nx * w0, S.y + ny * w0); c.lineTo(ex + nx * w1, ey + ny * w1);
+      c.quadraticCurveTo(ex + S.dx * w1 * 0.8, ey + S.dy * w1 * 0.8, ex - nx * w1, ey - ny * w1); c.lineTo(S.x - nx * w0, S.y - ny * w0); c.closePath(); c.fill();
+    }
+    stamp(c, GLOW.fire, S.x, S.y, 7 * fl, 0.9); stamp(c, GLOW.fire, ex, ey, 16 * fl, 0.5); // the nozzle and the end of the jet
+  }
+  c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
+}
+// A Bloomhost splat (v2.36): a burst of droplets that fall to the ground and a short-lived green stain (n: size, 1-5)
+function bhSplat(w, ground, n) {
+  vFx('flash', w.x, w.y, 4 + n * 2, 0.12, GLOW.acid, 0);
+  for (let i = vCount(2 + n); i > 0; i--) vPart(w.x, w.y, vr(-25, 25) * (1 + n * 0.2), vr(-55, -10), vr(0.35, 0.7), vr(1.2, 2.2), 1, i % 2 ? '#9be15d' : '#c4f58e', 240, 0, ground + vr(-2, 3));
+  if (n >= 2) addDecal(w.x, ground, 3 + n * 2.4, 4, 'acid');
+}
+// The Axis lance lands (v2.36): a violet-white flare where the beam meets its target
+function onHqBeam(f) {
+  vFx('flash', f.x2, f.y2, 14, 0.25, GLOW.violet, 2); vFx('flash', f.x2, f.y2, 6, 0.2, GLOW.white, 2); vFx('ring', f.x2, f.y2, 3, 0.35, RIFT, 1, 22, 0, 1.6);
+  for (let i = vCount(4); i > 0; i--) vPart(f.x2, f.y2, vr(-80, 80), vr(-80, 20), vr(0.15, 0.3), 1.4, 1, '#e6dcff', 180, 0, f.y2 + 30);
+}
+// The Flame Tank's stream (v2.36): while a tank keeps firing (it fires every 0.25 s), fire pours from the nozzle to its
+// target: licks of flame that start white-hot, redden, rise and break up into smoke at the far end. FIRE caps the total.
+function vfxFlames(g, dt) {
+  if (!VFX.flamers.size) return;
+  const F = g.fog[0], each = Math.min(FIRE.rate, FIRE.share / VFX.flamers.size) * QMUL[VFX.q];
+  for (const e of VFX.flamers) {
+    const r = VFX.rec.get(e);
+    if (!r || e.hp <= 0 || g.t - (r.fireT ?? -9) > 0.34) { VFX.flamers.delete(e); continue; }
+    const m = muzzle(e), w = P(m.u, m.v, m.z);
+    r.stream = null;
+    if (F.vis[cellOf(m.u)] !== 1 || !onView(w.x)) continue;
+    const t = e.tgt ? g.ents.find(x => x.id === e.tgt && x.hp > 0) : null, face = e.face || dirOf(e.side);
+    const tp = t ? P(t.u, t.v, Math.min(8, aimZ(t))) : { x: w.x + face * UDEF.flame.range, y: w.y + 4 };
+    let dx = tp.x - w.x, dy = tp.y - w.y; const d = Math.max(1, Math.hypot(dx, dy)), len = Math.min(d + 6, UDEF.flame.range + 12); dx /= d; dy /= d;
+    r.stream = { x: w.x, y: w.y, dx, dy, len, t: g.t }; // the cone drawn under the licks (drawFlameCone)
+    r.fireAcc = (r.fireAcc || 0) + each * dt;
+    for (; r.fireAcc >= 1; r.fireAcc--) {
+      if (VFX.nfire >= FIRE.max) { r.fireAcc = 0; break; }
+      const sp = vr(230, 300), life = len / sp * vr(0.85, 1.1), sx = vr(-0.24, 0.24);
+      vPart(w.x + vr(-1.5, 1.5), w.y + vr(-1.5, 1.5), (dx - dy * sx) * sp, (dy + dx * sx) * sp, Math.max(FIRE.life[0], Math.min(FIRE.life[1], life)), vr(2.6, 4.2), 4, '', -60, 0);
+    }
+    if (VFX.rnd() < 6 * dt * QMUL[VFX.q]) vPart(w.x + dx * len, w.y + dy * len - 4, vr(-8, 8), vr(-26, -12), vr(0.6, 1), vr(4, 7), 0, 'dark', -8, 0); // smoke off the end
   }
 }
 function onBoom(f) { // every blast from the SIM gets a shockwave and a sound; bigger ones throw debris
@@ -5735,6 +5826,16 @@ function drawPull(c, f) {
 // A Null Lance beam (v2.25): a pale core inside a cyan glow, fading over its short life
 function drawBeam(c, f) {
   const k = 1 - f.t / f.life;
+  if (f.hq) { // the Axis lance (v2.36): a wide violet sheath, a cyan beam and a white-hot core that thins as it fades
+    const j = Math.sin(f.t * 90) * 0.6; // a slight shimmer
+    c.globalCompositeOperation = 'lighter'; c.lineCap = 'round';
+    c.strokeStyle = `rgba(${RIFTA},${0.3 * k})`; c.lineWidth = f.w * 4.2 + j; c.beginPath(); c.moveTo(f.x, f.y); c.lineTo(f.x2, f.y2); c.stroke();
+    c.strokeStyle = `rgba(110,215,255,${0.6 * k})`; c.lineWidth = f.w * 1.8; c.stroke();
+    c.strokeStyle = `rgba(255,255,255,${0.95 * k})`; c.lineWidth = f.w * 0.7 * k + 0.4; c.stroke();
+    stamp(c, GLOW.violet, f.x, f.y, 10 + f.w * 2, 0.9 * k); stamp(c, GLOW.cyan, f.x2, f.y2, 8 + f.w * 3, k);
+    c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1; c.lineCap = 'butt';
+    return;
+  }
   c.globalCompositeOperation = 'lighter'; c.lineCap = 'round';
   c.strokeStyle = `rgba(80,200,255,${0.35 * k})`; c.lineWidth = f.w * 3; c.beginPath(); c.moveTo(f.x, f.y); c.lineTo(f.x2, f.y2); c.stroke();
   c.strokeStyle = `rgba(225,248,255,${0.9 * k})`; c.lineWidth = f.w; c.stroke();
@@ -5806,7 +5907,7 @@ function vfxMeteors(g, dt) {
   vFx('ring', w.x, w.y, 4, 0.4, '#ffb070', 1, 30, 1, 1.6, 0.45);
   sfx('meteor', w.x);
 }
-function addDecal(x, y, r, life) { if (VFX.decals.length >= VFX_DECALS) VFX.decals.shift(); VFX.decals.push({ x, y, r, t: 0, life }); }
+function addDecal(x, y, r, life, col) { if (VFX.decals.length >= VFX_DECALS) VFX.decals.shift(); VFX.decals.push({ x, y, r, t: 0, life, col }); } // col 'acid': a Bloomhost stain (v2.36)
 
 // Quality fallback: if over 30% of frames take longer than 33 ms for 2 seconds, step down a level;
 // after 6 smooth seconds (under 10% slow frames), step back up. Gaps over 250 ms (tab switches) are ignored.
@@ -5880,7 +5981,7 @@ function drawFlags(c, g, time) {
 function drawDecals(c) {
   for (const d of VFX.decals) {
     const a = 0.45 * Math.min(1, (d.life - d.t) / 4);
-    c.fillStyle = `rgba(12,10,8,${a})`; c.beginPath(); c.ellipse(d.x, d.y, d.r, d.r * 0.42, 0, 0, 7); c.fill();
+    c.fillStyle = d.col === 'acid' ? `rgba(120,190,60,${a * 0.8})` : `rgba(12,10,8,${a})`; c.beginPath(); c.ellipse(d.x, d.y, d.r, d.r * 0.42, 0, 0, 7); c.fill();
   }
 }
 function drawWrecks(c, time) {
@@ -5904,11 +6005,25 @@ function drawVfx(c) {
     else { c.fillStyle = p.col === 'light' ? '#aaaabf' : '#282834'; c.globalAlpha = (p.col === 'light' ? 0.3 : 0.55) * k; }
     c.beginPath(); c.arc(p.x, p.y, p.size * (1.8 - k), 0, 7); c.fill();
   }
+  let fire = 0;
   for (let i = 0; i < VFX.np; i++) {
     const p = P_[i];
     if (p.kind === 0 || p.kind === 3) continue;
+    if (p.kind === 4) { fire++; continue; }
     c.globalAlpha = p.kind === 2 ? Math.min(1, p.life / p.max * 3) : p.life / p.max;
     c.fillStyle = p.col; c.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+  }
+  if (fire) drawFlameCones(c);
+  if (fire) { // flame (v2.36): soft additive licks that grow, redden and flicker as they age; a white-hot core near the nozzle
+    c.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < VFX.np; i++) {
+      const p = P_[i];
+      if (p.kind !== 4) continue;
+      const k = p.life / p.max, age = 1 - k, fl = 0.75 + 0.25 * Math.sin(p.x * 0.7 + p.life * 60);
+      stamp(c, age < 0.55 ? GLOW.fire : GLOW.ember, p.x, p.y, p.size * (1.6 + age * 4.2), (age < 0.55 ? 0.7 : 0.45) * k * fl);
+      if (age < 0.18) stamp(c, GLOW.warm, p.x, p.y, p.size * 0.9, 0.9 * fl);
+    }
+    c.globalCompositeOperation = 'source-over';
   }
   c.globalAlpha = 1;
   const F_ = VFX.fx;
@@ -5937,6 +6052,75 @@ function drawVfx(c) {
   c.globalAlpha = 1;
 }
 
+// Faction weapons in flight (v2.36, audit phase 2). Render only: flight paths stay the SIM's. Axiarch shots are lasers
+// (a streak with a white core) or energy orbs; Bloomhost shots are wobbling globs on a drawn arc that drip as they fly, or
+// bone spines; each HQ has its own: a Last Fist cannon round, a Bloomhost spine volley (the Axis fires a beam, drawBeam).
+const AX_LASER = { bolt: [26, '120,220,255', 1.6], phase: [22, RIFTA, 1.6], prism: [14, '200,245,255', 1.2], astral: [70, '150,235,255', 2.2] }; // streak length, glow, core width
+const AX_ORB = { pulse: [3.4, 'cyan', '#bff4ff'], grav: [2.6, 'violet', RIFT], breaker: [3.6, 'violet', RIFT] }; // radius, glow, ring
+const BH_GLOB = { acid: [2, 1], bile: [3, 1], ruin: [4, 1], glob: [3.6, 0], crush: [5.2, 0] }; // radius, drawn arc (the rest fall)
+function projDir(a, b, side) { const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy); return d > 0.01 ? [dx / d, dy / d] : [side ? -1 : 1, 0]; }
+function projArc(p) { // the height of a glob's drawn arc: 0 at launch and landing, highest halfway
+  const r = VFX.rec.get(p); if (!r || !r.has) return 0;
+  const d0 = Math.hypot(p.u - r.ou, p.v - r.ov), d1 = Math.hypot(p.tu - p.u, p.tv - p.v);
+  return Math.sin(Math.PI * d0 / Math.max(1, d0 + d1)) * Math.min(40, (d0 + d1) * 0.12);
+}
+function drawSpine(c, x, y, dx, dy, len, w = 1.7) {
+  c.strokeStyle = '#e9dcbc'; c.lineWidth = w; c.beginPath(); c.moveTo(x - dx * len, y - dy * len); c.lineTo(x, y); c.stroke();
+  c.strokeStyle = '#7b5a3c'; c.lineWidth = 1; c.beginPath(); c.moveTo(x - dx * len, y - dy * len); c.lineTo(x - dx * len * 0.55, y - dy * len * 0.55); c.stroke();
+  c.fillStyle = '#c4f58e'; c.beginPath(); c.arc(x, y, 1.1, 0, 7); c.fill();
+}
+function drawFacProj(c, g, p, a, b, wp, time) {
+  if (wp === 'hqgun') {
+    const [dx, dy] = projDir(a, b, p.side);
+    if (facOf(g.sides[p.side].faction) === 'bloomhost') { // three spines abreast
+      for (const o of [-1, 0, 1]) drawSpine(c, b.x - dy * o * 7 - dx * Math.abs(o) * 6, b.y + dx * o * 7 - dy * Math.abs(o) * 6, dx, dy, 18, 2.4);
+      return true;
+    }
+    c.lineCap = 'round'; c.strokeStyle = 'rgba(255,170,70,0.85)'; c.lineWidth = 3.4; c.beginPath(); c.moveTo(b.x - dx * 16, b.y - dy * 16); c.lineTo(b.x, b.y); c.stroke();
+    c.strokeStyle = '#fff1c8'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(b.x - dx * 9, b.y - dy * 9); c.lineTo(b.x, b.y); c.stroke(); c.lineCap = 'butt';
+    c.globalCompositeOperation = 'lighter'; stamp(c, GLOW.fire, b.x, b.y, 8, 0.9); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
+    return true;
+  }
+  const las = AX_LASER[wp];
+  if (las) {
+    const [dx, dy] = projDir(a, b, p.side), r = VFX.rec.get(p);
+    let len = las[0]; if (r && r.has) { const o = P(r.ou, r.ov, r.oz); len = Math.min(len, Math.hypot(b.x - o.x, b.y - o.y)); }
+    c.globalCompositeOperation = 'lighter'; c.lineCap = 'round';
+    c.strokeStyle = `rgba(${las[1]},0.35)`; c.lineWidth = las[2] * 3.2; c.beginPath(); c.moveTo(b.x - dx * len, b.y - dy * len); c.lineTo(b.x, b.y); c.stroke();
+    c.strokeStyle = `rgba(${las[1]},0.9)`; c.lineWidth = las[2] * 1.6; c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,0.95)'; c.lineWidth = las[2] * 0.6; c.beginPath(); c.moveTo(b.x - dx * len * 0.6, b.y - dy * len * 0.6); c.lineTo(b.x, b.y); c.stroke();
+    stamp(c, wp === 'phase' ? GLOW.violet : GLOW.cyan, b.x, b.y, 3 + las[2] * 2, 0.9);
+    c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1; c.lineCap = 'butt';
+    return true;
+  }
+  const orb = AX_ORB[wp];
+  if (orb) {
+    const [dx, dy] = projDir(a, b, p.side), R = orb[0];
+    c.globalCompositeOperation = 'lighter';
+    c.strokeStyle = orb[1] === 'violet' ? `rgba(${RIFTA},0.4)` : 'rgba(120,220,255,0.4)'; c.lineWidth = R * 1.4; c.lineCap = 'round'; c.beginPath(); c.moveTo(b.x - dx * R * 4, b.y - dy * R * 4); c.lineTo(b.x, b.y); c.stroke(); c.lineCap = 'butt';
+    stamp(c, GLOW[orb[1]], b.x, b.y, R * 3.6, 0.95);
+    c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
+    c.fillStyle = '#ffffff'; c.beginPath(); c.arc(b.x, b.y, R * 0.6, 0, 7); c.fill();
+    c.strokeStyle = orb[2]; c.lineWidth = 1; c.beginPath(); c.arc(b.x, b.y, R + 1.2 + Math.sin(time * 18 + p.t * 20) * 0.6, 0, 7); c.stroke();
+    return true;
+  }
+  if (wp === 'spine') { const [dx, dy] = projDir(a, b, p.side); drawSpine(c, b.x, b.y, dx, dy, 11); return true; }
+  const gl = BH_GLOB[wp];
+  if (gl) {
+    const h = gl[1] ? projArc(p) : 0, R = gl[0], x = b.x, y = b.y - h, wob = 1 + 0.18 * Math.sin(time * 22 + p.t * 31);
+    const [dx, dy] = projDir(a, b, p.side);
+    if (h > 2) { const gy = P(p.u, p.v, 0).y; c.fillStyle = 'rgba(0,0,0,0.22)'; c.beginPath(); c.ellipse(b.x, Math.max(gy, b.y), R * 1.1, R * 0.45, 0, 0, 7); c.fill(); } // its shadow below
+    c.fillStyle = 'rgba(155,225,93,0.45)'; for (const k of [2.2, 3.8]) { c.beginPath(); c.arc(x - dx * R * k, y - dy * R * k + k, R * (0.75 - k * 0.12), 0, 7); c.fill(); } // trailing droplets
+    c.save(); c.translate(x, y); c.rotate(Math.atan2(dy, dx)); c.scale(wob * 1.25, 1 / wob);
+    c.fillStyle = wp === 'ruin' || wp === 'crush' ? '#5f9a32' : '#7fc548'; c.beginPath(); c.arc(0, 0, R, 0, 7); c.fill();
+    c.fillStyle = '#d6ff9a'; c.beginPath(); c.arc(R * 0.25, -R * 0.3, R * 0.42, 0, 7); c.fill();
+    c.restore();
+    c.globalCompositeOperation = 'lighter'; stamp(c, GLOW.acid, x, y, R * 2.6, 0.45); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
+    if (VFX.rnd() < 0.06 * QMUL[VFX.q]) vPart(x, y + R, vr(-8, 8), vr(0, 20), vr(0.3, 0.5), 1.4, 1, '#9be15d', 260, 0, P(p.u, p.v, 0).y); // a drip falls away
+    return true;
+  }
+  return false;
+}
 function render(c, g, time, sel, selPad) {
   const { cw, ch, dpr, S, A } = V;
   if (!cw) return;
@@ -6002,6 +6186,7 @@ function render(c, g, time, sel, selPad) {
   for (const p of g.projs) {
     if (p.side !== 0 && !lit(p.u)) continue;
     const a = P(p.pu, p.pv, p.pz), b = P(p.u, p.v, p.z), wp = p.weapon;
+    if (drawFacProj(c, g, p, a, b, wp, time)) continue; // faction weapons (v2.36)
     if (wp === 'rifle' || wp === 'flak' || wp === 'gatling' || wp === 'rail' || wp === 'spine' || wp === 'bolt' || wp === 'astral') {
       c.strokeStyle = wp === 'rail' || wp === 'astral' || wp === 'bolt' ? '#bff4ff' : wp === 'flak' ? '#ffe9a8' : wp === 'gatling' ? '#ffd38a' : wp === 'spine' ? '#d6ff9a' : '#fff3b0';
       c.lineWidth = wp === 'rail' || wp === 'astral' ? 2 : wp === 'gatling' || wp === 'bolt' ? 1.5 : 1.2;
@@ -6746,6 +6931,7 @@ function openPad(k) {
 function closePanel() { sel = null; selPad = -1; sellArm = 0; upArm = 0; $('bp').classList.add('hide'); placeToasts(); }
 function refreshPanel() {
   $('bpPick').classList.add('hide'); $('bp').classList.remove('wide'); // shown again below for a building choosing its path
+  $('bp').classList.toggle('shp', !!(selPad < 0 && sel && sel.maxShp)); // v2.36
   if (selPad >= 0) {
     if (!game || game.sides[0].slots[selPad]) { closePanel(); return; }
     $('bpName').textContent = 'Empty pad'; $('bpPad').textContent = padLabel(null, selPad); setHTML($('bpPips'), '');
@@ -7129,8 +7315,8 @@ function repSummary(g) {
   const score = R.score ? `<p class="note">Remaining strength (buildings + army): <b>you ${R.score[0].toLocaleString('en')}</b> · enemy ${R.score[1].toLocaleString('en')}${R.by !== 'score' ? ` (decided by ${R.by})` : ''}</p>` : '';
   return `${score}<table><tr><th></th><td><b>You</b></td><td class="e"><b>Enemy</b></td></tr>
     ${row('Faction', t => factionName(g.sides[T.indexOf(t)].faction))}
-    ${row('Credits earned / spent', t => `${fmtN(t.earn[0])} / ${fmtN(sp(t, 0))}${t.sold[0] ? ` (+${fmtN(t.sold[0])} from sales)` : ''}`)}
-    ${row('Energy earned / spent', t => `${fmtN(t.earn[1])} / ${fmtN(sp(t, 1))}`)}
+    ${row('Credits gathered / spent', t => `${fmtN(logGathered(L, t, 0))} / ${fmtN(sp(t, 0))}${t.sold[0] ? ` (${fmtN(t.sold[0])} from sales)` : ''}`)}
+    ${row('Energy gathered / spent', t => `${fmtN(logGathered(L, t, 1))} / ${fmtN(sp(t, 1))}`)}
     ${row('Salvage', t => facOf(g.sides[T.indexOf(t)].faction) === 'lastfist' ? `${fmtN(t.salv || 0)} credits${t.salvE ? `, ${fmtN(Math.round(t.salvE))} energy` : ''}` : '–')}
     ${row('Units built (lost)', units)}
     ${row('Enemy units destroyed', t => fmtN(sum(t.killed)))}
@@ -7141,7 +7327,7 @@ function repSummary(g) {
     ${row('Storm damage taken', t => fmtN(t.storm))}
     <tr><th>Extinction Event</th><td colspan="2">${ext}</td></tr>
     <tr><th>Enemy behavior</th><td colspan="2">${behave}</td></tr></table>
-    <p class="note">Enemy numbers are revealed after the match; during play you saw only what your units could see. Node time adds up all three nodes.</p>${repFrom(L)}`;
+    <p class="note">Enemy numbers are revealed after the match; during play you saw only what your units could see. Node time adds up all three nodes. Gathered counts the ${START_RES.c} credits and ${START_RES.e} energy each side starts with, income, sales and Salvage.</p>${repFrom(L)}`;
 }
 function repTimeline(g) {
   const A = logLines(g, 0), B = logLines(g, 1), n = Math.max(A.length, B.length), cell = (l, c) => l ? `<b class="t${c}">${mmss(l.t)}</b><span class="${l.key ? 'k' : 'u'} ${c}">${l.txt}</span>` : '<b></b><span></span>';
@@ -7174,8 +7360,9 @@ function repStats(g) {
     <h4 class="sh">Army value over time <span class="note">(credits + energy of living units, every ${LOG_SAMPLE} s; <span style="color:#39c8ff">you</span>, <span style="color:#ff4d4d">enemy</span>)</span></h4>${graph}
     <h4 class="sh">Resources</h4>
     <table><tr><th></th><td><b>You</b></td><td class="e"><b>Enemy</b></td></tr>
-    <tr><th>Credits gathered / spent</th><td>${fmtN(T[0].earn[0])} / ${fmtN(sp(T[0], 0))}</td><td class="e">${fmtN(T[1].earn[0])} / ${fmtN(sp(T[1], 0))}</td></tr>
-    <tr><th>Energy gathered / spent</th><td>${fmtN(T[0].earn[1])} / ${fmtN(sp(T[0], 1))}</td><td class="e">${fmtN(T[1].earn[1])} / ${fmtN(sp(T[1], 1))}</td></tr>${salv}</table>
+    <tr><th>Credits gathered / spent</th><td>${fmtN(logGathered(L, T[0], 0))} / ${fmtN(sp(T[0], 0))}</td><td class="e">${fmtN(logGathered(L, T[1], 0))} / ${fmtN(sp(T[1], 0))}</td></tr>
+    <tr><th>Energy gathered / spent</th><td>${fmtN(logGathered(L, T[0], 1))} / ${fmtN(sp(T[0], 1))}</td><td class="e">${fmtN(logGathered(L, T[1], 1))} / ${fmtN(sp(T[1], 1))}</td></tr>${salv}</table>
+    <p class="note">Gathered counts the ${START_RES.c} credits and ${START_RES.e} energy each side starts with, income, sales and Salvage.</p>
     <h4 class="sh">Units built and lost</h4><div class="scols">${units(0)}${units(1)}</div>${repFrom(L)}`;
 }
 function repText(g) {
@@ -7205,7 +7392,7 @@ function repCopy() {
    come only from the effects code, which already skips anything hidden in the fog. iOS: audio starts on the first
    tap, is suspended in the background and resumed on return (or on the next tap). */
 const SOUND_KEY = 'extinctionEvent.sound';
-const SND = { ctx: null, master: null, noise: null, bufs: {}, live_v: [], on: true, voices: 0, live: 0, per: {}, last: {}, rnd: mulberry(77), played: 0, dropped: 0 };
+const SND = { ctx: null, master: null, noise: null, bufs: {}, gain: {}, tok: 4, tokT: 0, live_v: [], on: true, voices: 0, live: 0, per: {}, last: {}, rnd: mulberry(77), played: 0, dropped: 0 };
 try { SND.on = localStorage.getItem(SOUND_KEY) !== 'off'; } catch (e) {}
 const SND_MAX = 14, SND_ROOM = [[3, 8, 14], [6, 10, 14], [9, 12, 14]]; // room per priority, by effect quality level (low, medium, full)
 
@@ -7241,6 +7428,7 @@ async function sndBake() {
       SND.bufs[key] = out;
     } catch (e) { return; } // keep synthesising live
   }
+  sndLevel();
 }
 function sndWake() { sndInit(); if (SND.ctx && SND.ctx.state !== 'running' && !document.hidden) SND.ctx.resume().catch(() => {}); }
 for (const t of ['pointerdown', 'touchend', 'keydown']) document.addEventListener(t, sndWake, { capture: true, passive: true });
@@ -7288,7 +7476,17 @@ function hiss(v, filter, f0, f1, q, dur, peak, delay = 0) {
   s.start(at, SND.rnd() * 0.5); s.stop(at + dur + 0.02);
   v.nodes.push(s, f, g); if (at + dur + 0.02 >= v.end) { v.end = at + dur + 0.02; v.last = s; } return s;
 }
+// A hum: an oscillator whose pitch wavers (an LFO on its frequency), for Axiarch beams and fields (v2.36)
+function hum(v, type, f, dur, peak, rate, depth, delay = 0) {
+  const { ctx } = v, at = v.t + delay, o = tone(v, type, f, f, dur, peak, delay), l = ctx.createOscillator(), lg = ctx.createGain();
+  l.frequency.value = rate; lg.gain.value = depth; l.connect(lg); lg.connect(o.frequency); l.start(at); l.stop(at + dur + 0.02);
+  v.nodes.push(l, lg); return o;
+}
+// A chitter: a few very short clicks of filtered noise, close together (Bloomhost, v2.36)
+function chitter(v, f, n, gap, peak, delay = 0) { for (let i = 0; i < n; i++) hiss(v, 'bandpass', f * (1 + 0.12 * (i % 2)), f * 0.8, 6, 0.018, peak * (1 - i * 0.15), delay + i * gap); }
 // name: [priority 0 small arms / 1 heavy / 2 events, per-sound cap, min gap s, global (plays without a position), recipe]
+// v2.36: Bloomhost (wet squelches, chitters, organic thumps) and Axiarch (zaps, hums, shield pings) weapons have their own;
+// SFX_FAC lists them, and their loudness is matched to Last Fist's (sndLevel)
 const SFX = {
   rifle:    [0, 2, 0.07, 0, v => hiss(v, 'bandpass', 2400, 1600, 1.2, 0.05, 0.5)],
   gatling:  [0, 2, 0.12, 0, v => { hiss(v, 'bandpass', 1800, 1300, 1.4, 0.045, 0.5); hiss(v, 'bandpass', 1800, 1300, 1.4, 0.045, 0.45, 0.08); }],
@@ -7324,19 +7522,78 @@ const SFX = {
   shatter:  [1, 1, 0.6, 0, v => { hiss(v, 'highpass', 4200, 2200, 1.3, 0.5, 0.45); [1760, 1320, 990].forEach((f, i) => tone(v, 'triangle', f, f * 0.7, 0.25, 0.12, i * 0.07)); }], // a Phase Beacon bubble collapses (v2.34)
   meteor:   [1, 1, 0.7, 0, v => { hiss(v, 'bandpass', 2400, 500, 1.2, 0.35, 0.35); tone(v, 'sine', 70, 35, 0.35, 0.6, 0.3); }],
   defeat:   [2, 1, 2, 1, v => { [440, 349, 294, 220].forEach((f, i) => tone(v, 'triangle', f, f, i === 3 ? 0.7 : 0.22, 0.45, i * 0.2)); }],
+  // Bloomhost (v2.36)
+  acid:     [0, 2, 0.12, 0, v => { hiss(v, 'bandpass', 1100, 420, 2.2, 0.09, 0.55); tone(v, 'sine', 320, 140, 0.08, 0.3); }], // a wet spit
+  bile:     [1, 2, 0.15, 0, v => { hiss(v, 'bandpass', 800, 260, 2, 0.16, 0.6); tone(v, 'sine', 210, 80, 0.14, 0.45); }],
+  ruin:     [1, 2, 0.18, 0, v => { hiss(v, 'lowpass', 700, 180, 1.2, 0.22, 0.6); tone(v, 'sine', 140, 50, 0.2, 0.7); }],
+  glob:     [1, 2, 0.2, 0, v => { hiss(v, 'bandpass', 600, 200, 2, 0.2, 0.55); tone(v, 'sine', 170, 60, 0.18, 0.55); }],
+  crush:    [1, 1, 0.4, 0, v => { tone(v, 'sine', 90, 32, 0.4, 0.85); hiss(v, 'lowpass', 500, 120, 0.9, 0.35, 0.6); }], // a sac bursts
+  lob:      [1, 2, 0.2, 0, v => { tone(v, 'sine', 120, 45, 0.22, 0.75); hiss(v, 'bandpass', 500, 200, 1.6, 0.18, 0.5); }], // an organic thump
+  spine:    [0, 2, 0.1, 0, v => { chitter(v, 3200, 2, 0.03, 0.55); hiss(v, 'bandpass', 900, 500, 2, 0.05, 0.3); }],
+  hqspine:  [1, 1, 0.2, 0, v => { chitter(v, 2900, 3, 0.035, 0.6); tone(v, 'sine', 130, 50, 0.22, 0.7); hiss(v, 'bandpass', 700, 250, 2, 0.15, 0.45); }],
+  splat:    [0, 2, 0.1, 0, v => { hiss(v, 'bandpass', 700, 240, 2.4, 0.12, 0.6); tone(v, 'sine', 230, 90, 0.1, 0.35); }], // a wet squelch on impact
+  claw:     [0, 2, 0.1, 0, v => chitter(v, 3600, 3, 0.025, 0.5)],
+  talon:    [0, 2, 0.1, 0, v => chitter(v, 3400, 2, 0.03, 0.5)],
+  needle:   [0, 2, 0.1, 0, v => chitter(v, 4200, 2, 0.022, 0.45)],
+  rend:     [0, 2, 0.1, 0, v => { chitter(v, 3000, 2, 0.03, 0.45); hiss(v, 'bandpass', 900, 400, 2, 0.07, 0.4); }],
+  slam:     [1, 2, 0.15, 0, v => { tone(v, 'sine', 95, 40, 0.18, 0.8); hiss(v, 'lowpass', 400, 150, 0.8, 0.12, 0.45); }],
+  maul:     [1, 2, 0.12, 0, v => { tone(v, 'sine', 110, 45, 0.15, 0.7); hiss(v, 'bandpass', 700, 300, 1.6, 0.1, 0.45); }],
+  gore:     [1, 2, 0.12, 0, v => { tone(v, 'sine', 100, 42, 0.16, 0.75); chitter(v, 2600, 2, 0.03, 0.35, 0.03); }],
+  // Axiarchs (v2.36)
+  bolt:     [0, 2, 0.1, 0, v => { tone(v, 'square', 1900, 420, 0.07, 0.18); tone(v, 'sine', 2600, 1200, 0.09, 0.3); }], // a zap
+  phase:    [0, 2, 0.1, 0, v => { tone(v, 'sawtooth', 1400, 300, 0.08, 0.16); tone(v, 'sine', 900, 1800, 0.08, 0.25); }],
+  prism:    [0, 2, 0.1, 0, v => { tone(v, 'sine', 3200, 1600, 0.06, 0.3); tone(v, 'triangle', 2400, 2400, 0.05, 0.15, 0.02); }],
+  astral:   [1, 2, 0.2, 0, v => { tone(v, 'sine', 3400, 260, 0.3, 0.45); hiss(v, 'highpass', 4000, 2500, 0.8, 0.12, 0.3); tone(v, 'square', 600, 150, 0.12, 0.08); }],
+  pulse:    [1, 2, 0.15, 0, v => { tone(v, 'sine', 620, 180, 0.2, 0.55); tone(v, 'triangle', 1240, 360, 0.12, 0.2); }], // the Bastion's pulse
+  grav:     [1, 2, 0.15, 0, v => { hum(v, 'sine', 160, 0.22, 0.6, 22, 30); tone(v, 'sine', 900, 300, 0.1, 0.2); }],
+  breaker:  [1, 2, 0.2, 0, v => { hum(v, 'sawtooth', 120, 0.25, 0.25, 18, 25); tone(v, 'sine', 240, 60, 0.25, 0.6); }],
+  rift:     [1, 2, 0.2, 0, v => { tone(v, 'sine', 300, 90, 0.3, 0.6); hum(v, 'triangle', 600, 0.2, 0.2, 14, 60); }],
+  void:     [1, 1, 0.3, 0, v => { hum(v, 'sine', 70, 0.45, 0.75, 6, 8); tone(v, 'triangle', 280, 140, 0.3, 0.2); }], // a deep hum
+  sovereign:[1, 1, 0.4, 0, v => { hum(v, 'sine', 55, 0.6, 0.85, 5, 7); tone(v, 'sine', 1200, 300, 0.35, 0.25); }],
+  storm:    [1, 2, 0.15, 0, v => { hiss(v, 'highpass', 5000, 3000, 1, 0.1, 0.4); tone(v, 'square', 1600, 500, 0.08, 0.15); }], // crackle
+  lance:    [1, 2, 0.15, 0, v => { tone(v, 'sawtooth', 1200, 500, 0.12, 0.2); hum(v, 'sine', 440, 0.18, 0.35, 30, 20); }],
+  horizon:  [1, 2, 0.25, 0, v => { tone(v, 'sawtooth', 900, 200, 0.25, 0.25); hum(v, 'sine', 220, 0.35, 0.5, 18, 15); }],
+  hqbeam:   [1, 1, 0.2, 0, v => { hum(v, 'sawtooth', 110, 0.36, 0.3, 9, 6); tone(v, 'sine', 880, 1760, 0.2, 0.3); tone(v, 'sine', 1760, 600, 0.3, 0.25, 0.08); }], // the Axis lance: a hum and a zap
+  blade:    [0, 2, 0.1, 0, v => { tone(v, 'sine', 2400, 900, 0.06, 0.3); hiss(v, 'highpass', 3500, 3500, 1, 0.04, 0.25); }],
+  riftblade:[0, 2, 0.1, 0, v => { tone(v, 'triangle', 1800, 500, 0.08, 0.3); hum(v, 'sine', 500, 0.08, 0.2, 40, 60); }],
+  parallax: [0, 2, 0.1, 0, v => { tone(v, 'sine', 500, 2400, 0.07, 0.3); tone(v, 'sine', 2400, 700, 0.07, 0.25, 0.06); }],
+  shieldPing: [0, 1, 0.15, 0, v => { tone(v, 'sine', 1600, 1600, 0.12, 0.3); tone(v, 'sine', 2400, 2350, 0.1, 0.15, 0.02); }], // a shield takes a hit
 };
+const SFX_FAC = { // which sounds belong to which faction's weapons, for loudness matching (sndLevel)
+  lastfist: ['rifle', 'gatling', 'hydra', 'flame', 'bomb', 'flak', 'rail', 'rocket', 'missile', 'cannon', 'siege', 'shell', 'hqgun'],
+  bloomhost: ['acid', 'bile', 'ruin', 'glob', 'crush', 'lob', 'spine', 'hqspine', 'splat', 'claw', 'talon', 'needle', 'rend', 'slam', 'maul', 'gore'],
+  axiarchs: ['bolt', 'phase', 'prism', 'astral', 'pulse', 'grav', 'breaker', 'rift', 'void', 'sovereign', 'storm', 'lance', 'horizon', 'hqbeam', 'blade', 'riftblade', 'parallax', 'shieldPing'],
+};
+// Loudness matching (v2.36): once the sounds are baked, each Bloomhost and Axiarch weapon sound gets a gain that brings its
+// loudness (RMS) to the Last Fist average for its priority. Last Fist's own sounds are left as they were. Kept within
+// 0.4-2.5× so a quiet click isn't blown up into a bang.
+function sndLevel() {
+  const rms = n => { const b = SND.bufs[n]; if (!b) return 0; const d = b.getChannelData(0); let q = 0; for (let i = 0; i < d.length; i++) q += d[i] * d[i]; return Math.sqrt(q / Math.max(1, d.length)); };
+  const ref = {};
+  for (const n of SFX_FAC.lastfist) { const r = rms(n), pr = SFX[n][0]; if (r > 0) (ref[pr] || (ref[pr] = [])).push(r); }
+  for (const f of ['bloomhost', 'axiarchs']) for (const n of SFX_FAC[f]) {
+    const r = rms(n), L = ref[SFX[n][0]] || ref[0]; if (!r || !L) continue;
+    SND.gain[n] = clamp(L.reduce((a, b) => a + b, 0) / L.length / r, 0.4, 2.5);
+  }
+}
 const SND_VOL = { 0: 0.22, 1: 0.32, 2: 0.4 };
+// v2.36: with every faction's weapons now audible, weapon sounds (priorities 0 and 1) share a budget of starts per second
+// (a token bucket), by effect quality level (low, medium, full): at full, about what v2.35 played per second in a full
+// battle; a slow phone that steps its effects down also plays fewer weapon sounds
+const SND_RATE = { per: [6, 11, 16], burst: 4 };
 function sndPlay(name, x, size) {
   const r = SFX[name], ctx = SND.ctx;
   if (!r || !SND.on || !ctx || ctx.state !== 'running') return false;
   const [pri, cap, gap, global, fn] = r, now = ctx.currentTime;
-  let vol = SND_VOL[pri], pan = 0;
+  let vol = SND_VOL[pri] * (SND.gain[name] || 1), pan = 0; // v2.36: matched loudness (sndLevel)
   if (!global) { // position: pan across the screen, fade at the edges, silent off screen
     const off = (x - cam.x) / (V.cw / 2 / V.S || 1);
     if (Math.abs(off) > 1.15) return false;
     vol *= 1 - 0.6 * clamp((Math.abs(off) - 0.8) / 0.35, 0, 1); pan = clamp(off * 0.6, -0.8, 0.8);
   }
-  if (now - (SND.last[name] ?? -9) < gap || (SND.per[name] || 0) >= cap || SND.voices >= SND_ROOM[VFX.q][pri]) { SND.dropped++; return false; }
+  if (pri < 2) { SND.tok = Math.min(SND_RATE.burst, SND.tok + (now - SND.tokT) * SND_RATE.per[VFX.q]); SND.tokT = now; }
+  if (now - (SND.last[name] ?? -9) < gap || (SND.per[name] || 0) >= cap || SND.voices >= SND_ROOM[VFX.q][pri] || (pri < 2 && SND.tok < 1)) { SND.dropped++; return false; }
+  if (pri < 2) SND.tok--;
   SND.last[name] = now; SND.per[name] = (SND.per[name] || 0) + 1; SND.voices++; SND.played++;
   const v = voice(ctx, now + 0.005, vol, pan), buf = SND.bufs[name === 'boom' ? `boom:${size < 20 ? 12 : size < 40 ? 30 : 50}` : name];
   if (buf) { // the usual path: play the baked buffer, a little detuned so repeats don't sound identical
