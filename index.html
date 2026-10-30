@@ -800,8 +800,40 @@ function aiPlanWith(plan, sig) {
    vision: it only reorders and reweights the AI's existing choices, with some variation per match. */
 const PERSONAS = ['aggressor', 'turtle', 'economist', 'trickster'];
 const PERSONA_NAME = { aggressor: 'The Aggressor', turtle: 'The Turtle', economist: 'The Economist', trickster: 'The Trickster' };
+/* ---------- AI presets (v2.38, audit phase 4) ----------
+   One brain (aiUpdate and its helpers) for every AI side, driven by dials. A preset holds the dials and says whether the
+   competence rules are on; the personality (rollPersona) still sets the style: build plan, attack edges, unit tastes,
+   paths. 'legacy' is v2.37's AI exactly: its dials are the constants that AI used and its competence rules are off (the
+   replay fingerprint tests prove it plays the same). 'default' is the game's AI from v2.38: the same brain with
+   competence rules for every v2.37 unit (smart). Dials:
+   nodes      field nodes it fights for: 1 its own only, 2 its own and the middle, 3 all three (the far one under their guns)
+   eco        Refineries above the difficulty's number (economy vs army spending)
+   bank       credits it counts as rich: with a full army and this banked, it commits
+   attackAt   no base attack before this game time (s);  minArmy: the smallest army value it attacks a base with
+   turrets    Turrets it keeps at home beyond its plan (defense investment)
+   sigAt      earliest game time for its signature building
+   sell       sells a spare building to make room when stuck without a Habitat
+   scout      seconds between scouting runs by one cheap unit (0: never)
+   retreat    an attack pulls back when its army is below this share of the enemy's it knows of
+   delay      reaction delay: multiplies the difficulty's time between decisions
+   comp       unit composition weights by unit type (multiply the unit's score) */
+const AI_DIALS = { nodes: 2, eco: 0, bank: 2500, attackAt: 0, minArmy: 300, turrets: 0, sigAt: 0, sell: true, scout: 0, retreat: 0.7, delay: 1, comp: {} };
+const AI_PRESETS = {
+  legacy: { name: 'Legacy', smart: false, dials: AI_DIALS },
+  default: { name: 'Default', smart: true, dials: Object.assign({}, AI_DIALS, { scout: 70, comp: {} }) },
+};
+const AI_PRESET_KEYS = Object.keys(AI_PRESETS);
+const aiDials = P => (P && P.dial) || AI_DIALS; // a persona without dials (an older save) reads the legacy constants
+const aiSmart = P => !!(P && P.smart);
 const pickOne = a => a[Math.floor(Math.random() * a.length)];
-function rollPersona(kind) {
+// preset: 'legacy' or 'default' (v2.38); it adds the dials and the competence switch after the personality's own rolls,
+// with no random numbers of its own, so a Legacy personality rolls exactly as before
+function rollPersona(kind, preset) {
+  const P = rollPersona0(kind), A = AI_PRESETS[preset] || AI_PRESETS.default;
+  P.preset = AI_PRESETS[preset] ? preset : 'default'; P.smart = A.smart; P.dial = Object.assign({}, A.dials, { comp: Object.assign({}, A.dials.comp) });
+  return P;
+}
+function rollPersona0(kind) {
   if (!PERSONAS.includes(kind)) kind = pickOne(PERSONAS);
   // refDelta: Refineries vs what the difficulty allows; wave / fieldEdge / attackEdge scale the attack thresholds;
   // upShift moves the first upgrade; bias weights unit choices; feint: share of pushes that pull back;
@@ -1004,8 +1036,8 @@ function newGame(diffKey, opts = {}) {
     hq.built = true; hq.progress = 1; hq.hp = hq.maxHp; hq.shp = hq.maxShp;
     g.sides[s].hq = hq;
   }
-  g.sides[1].persona = rollPersona(opts.persona); // secret: never shown until the match is over
-  if (g.auto) g.sides[0].persona = rollPersona(opts.autoPersona);
+  g.sides[1].persona = rollPersona(opts.persona, opts.ai); // secret: never shown until the match is over; opts.ai: its preset (v2.38)
+  if (g.auto) g.sides[0].persona = rollPersona(opts.autoPersona, opts.autoAi);
   g.log = newLog(0); // the match log (never read by the SIM)
   g.fog = [newFog(g, 0), newFog(g, 1)];
   updateVision(g);
@@ -2714,7 +2746,7 @@ function aiUpdate(g, s, dt) {
   side.aiT -= dt;
   if (side.aiT > 0) return;
   const D = s === 1 ? g.diff : (DIFF[g.autoDiff] || DIFF.normal);
-  side.aiT = D.delay * rand(0.8, 1.2);
+  side.aiT = D.delay * aiDials(side.persona).delay * rand(0.8, 1.2); // v2.38: the reaction-delay dial (legacy 1)
   const opp = 1 - s, dir = dirOf(s), fog = g.fog[s], oppTier = fog.lastHQ.tier;
 
   const mine = [];
@@ -2734,7 +2766,7 @@ function aiUpdate(g, s, dt) {
   let used = popUsed(g, s);
   const reserve = { c: 0, e: 0 };
   const fill = D.armyCap + (1 - D.armyCap) * clamp((g.t - 720) / 480, 0, 1); // share of the army limit it uses
-  const P = side.persona || (side.persona = rollPersona());
+  const P = side.persona || (side.persona = rollPersona()), dl = aiDials(P), smart = aiSmart(P); // v2.38: the preset's dials and competence
   const fillNow = g.t < 300 && !threat ? Math.min(fill, P.earlyFill) : fill; // a greedy opening fields less until 5:00 (unless threatened)
   const log = side.aiLog || (side.aiLog = { firstAttack: null, attacks: 0, feints: 0, firstUpgrade: null, trained: {} });
   if (danger) side.lastDanger = g.t;
@@ -2746,8 +2778,8 @@ function aiUpdate(g, s, dt) {
   const pressed = threat && (infantryRush || myV < thV * 0.8);
   const sig = SIG.on && bdS(g, s, 'sigA') ? (P.kind === 'aggressor' || P.kind === 'trickster' ? 'sigA' : 'sigB') : null;
   const plan = aiPlanWith(pressed ? AI_PLAN : P.plan, sig);
-  const sigReady = !!sig && !(calm || defend) && !countB(g, s, sig) && hasBuilt(g, s, 'barracks') && alive(g, s, 'refinery').filter(b => b.built).length >= Math.min(D.refineries, plan.filter(t => t === 'refinery').length);
-  const refCap = clamp(D.refineries + P.refDelta + (ecoMood ? 1 : 0) - (defend && P.refDelta > 0 ? P.refDelta : 0), 1, 4);
+  const sigReady = !!sig && g.t >= dl.sigAt && !(calm || defend) && !countB(g, s, sig) && hasBuilt(g, s, 'barracks') && alive(g, s, 'refinery').filter(b => b.built).length >= Math.min(D.refineries, plan.filter(t => t === 'refinery').length);
+  const refCap = clamp(D.refineries + P.refDelta + dl.eco + (ecoMood ? 1 : 0) - (defend && P.refDelta > 0 ? P.refDelta : 0), 1, 4);
 
   // 1) Economy and tech
   const constructing = g.ents.filter(e => e.kind === 'b' && e.side === s && !e.built && e.hp > 0);
@@ -2764,6 +2796,7 @@ function aiUpdate(g, s, dt) {
   // its signature building (v2.32), once its economy (the difficulty's Refineries, or all its plan has if fewer) and first
   // production building are up, and not while under pressure (like tech); it takes the pad of a duplicate the plan gave up for it (aiPlanWith)
   else if (sigReady) want = sig;
+  else if (dl.turrets && !threat && countB(g, s, 'turret') < dl.turrets && hasBuilt(g, s, 'barracks') && side.slots.filter(x => !x).length >= 2) want = 'turret'; // the defense dial (v2.38)
   else {
     const need = {};
     for (const t of plan) {
@@ -2781,12 +2814,12 @@ function aiUpdate(g, s, dt) {
     if (!r.ok) { const up = bdS(g, s, 'hq').up[2]; reserve.c = Math.max(reserve.c, up.c); reserve.e = Math.max(reserve.e, up.e); }
   }
   // No Habitat and no free pad: the army is stuck at the HQ's 12. Sell a spare Reactor or extra Refinery to make room.
-  if (!freePad && countB(g, s, 'habitat') === 0 && cap < POP_MAX && D.eco) {
+  if (!freePad && countB(g, s, 'habitat') === 0 && cap < POP_MAX && D.eco && dl.sell) {
     const spare = alive(g, s, 'reactor').find(b => side.res.e > ENERGY_PLENTY) || (countB(g, s, 'refinery') > 2 && alive(g, s, 'refinery')[0]);
     if (spare) { trySell(g, s, spare); want = 'habitat'; }
   }
   // Credits piling up with no energy and no free pad: trade an extra Refinery for a Reactor
-  if (!freePad && D.eco && side.res.e < 120 && side.res.c > 1500 && countB(g, s, 'refinery') > 2 && !constructing.length) {
+  if (!freePad && D.eco && dl.sell && side.res.e < 120 && side.res.c > 1500 && countB(g, s, 'refinery') > 2 && !constructing.length) {
     trySell(g, s, alive(g, s, 'refinery')[0]); want = 'reactor';
   }
   if (!want && D === DIFF.hard && !g.forcePath && freePad && !constructing.length && income(g, s).c >= 25 && aiArmorShare(theirs) > 0.35) {
@@ -2904,6 +2937,7 @@ function aiUpdate(g, s, dt) {
       sovereign: 1.7 + comp.vehicle * 0.5 + (turtle ? 0.8 : 0) - antiAir * 1.2 - comp.air * 0.5,
     };
     if (!threat) for (const t of types) { const b = P.bias[t] || P.bias[AI_TWIN[t]]; if (b && sc[t] > 0) sc[t] *= b; } // the personality's taste in units (threats are answered on merit)
+    for (const t of types) if (dl.comp[t] !== undefined) sc[t] *= dl.comp[t]; // the composition dial (v2.38; legacy has none)
     // Bloomspire path units (v2.21, minimal): one the AI has never trained goes to the top once, so it saves for it (its
     // simple score sits below the Razorwing's, which would otherwise always win)
     if (facOf(side.faction) === 'bloomhost') { const best = Math.max(...types.map(t => sc[t])); for (const t of types) if (UNIT_PATH[t] && UNIT_PATH[t].b === 'techlab' && !log.trained[t]) sc[t] = best + 0.1; }
@@ -2933,7 +2967,7 @@ function aiUpdate(g, s, dt) {
 
   // 4) Strategy: hold the near node, take the field, siege just outside the enemy guns, or go all in
   const hqGun = BDEF.hq.gun[oppTier], hqVal = knownDefense(g, s);
-  const rich = side.res.c > 2500;
+  const rich = side.res.c > dl.bank;
   const nSiege = mine.filter(u => AI_SIEGE.includes(u.type)).length;
   const ae = P.attackEdge * (ecoMood ? 1.2 : 1); // how much of an edge this personality wants before a base attack
   const wave = Math.min(3600, 400 + g.t * 4) * D.wave * P.wave * (ecoMood ? 1.3 : 1);
@@ -2941,7 +2975,7 @@ function aiUpdate(g, s, dt) {
   // A failed base attack raises the bar for the next one, unless the army is maxed out with money banked to refill it
   const late = g.t > 1080; // after 18 minutes, stop waiting for a perfect edge
   const bold = myV >= attackBar(g, s) || (full && (rich || side.res.c > 1000)) || late;
-  const siegeLine = hqU(opp) - dir * (hqGun.range + 25), fieldLine = L / 2 + dir * 20;
+  const siegeLine = hqU(opp) - dir * (hqGun.range + 25), fieldLine = L / 2 + dir * 20, farLine = g.nodes[s === 0 ? g.nodes.length - 1 : 0].u; // farLine: the enemy's own node (the nodes dial at 3, v2.38)
   const myNode = g.nodes[s === 0 ? 0 : g.nodes.length - 1];
   // enemies camping on or near our node, as far as we know
   const atNode = theirs.filter(u => u.fresh && Math.abs(u.u - myNode.u) < NODE_R + 160);
@@ -2972,7 +3006,8 @@ function aiUpdate(g, s, dt) {
   if (side.stance !== 'attack' && g.t >= EXT.warn && myV >= 200 && myV >= thV * 0.7) go(null, 'all'); // the storm is coming: everything in
   else if (side.stance !== 'attack' && holdForStrike) { /* wait */ }
   else if (side.stance !== 'attack') {
-    if (bold && myV >= 300 && ((myV >= (thV + hqVal) * 1.35 * ae && myV >= wave * 0.6) || (full && myV > (thV + hqVal) * 1.05 * ae))) go(null, 'all');
+    if (g.t < dl.attackAt && !late) { if (D.nodes && nodeLost && myV >= 250 && myV >= armyValue(atNode) * 1.15) go(myNode.u, 'node'); } // the attack-timing dial (v2.38): before it, only its own node
+    else if (bold && myV >= dl.minArmy && ((myV >= (thV + hqVal) * 1.35 * ae && myV >= wave * 0.6) || (full && myV > (thV + hqVal) * 1.05 * ae))) go(null, 'all');
     else if (bold && nSiege >= 2 && myV >= thV * 0.95 * ae && (myV >= wave * 0.7 || full)) go(siegeLine, 'siege');
     else if (bold && myV >= wave && myV > thV * 1.15 * ae) go(siegeLine, 'siege');
     else if (bold && rich && full && myV >= thV * 0.85) go(null, 'all'); // money in the bank refills the army, so commit
@@ -2980,11 +3015,11 @@ function aiUpdate(g, s, dt) {
     else if (bold && punish) go(null, 'all'); // their army just broke against our base
     else if (D.nodes && nodeLost && myV >= 250 && myV >= armyValue(atNode) * 1.15) go(myNode.u, 'node'); // win back our node, all together
     else if (P.kind === 'aggressor' && lightThreat && myV < thV * 1.3) { /* an infantry rush at the door: hold the base until clearly stronger */ }
-    else if (weakNode) go(fieldLine, 'field');
-    else if (myV >= D.fieldMin && myV >= thV * D.fieldEdge * (threat ? Math.max(1, P.fieldEdge) : P.fieldEdge)) go(fieldLine, 'field'); // take and hold the field nodes
+    else if (weakNode && dl.nodes >= 2) go(fieldLine, 'field');
+    else if (dl.nodes >= 2 && myV >= D.fieldMin && myV >= thV * D.fieldEdge * (threat ? Math.max(1, P.fieldEdge) : P.fieldEdge)) go(dl.nodes >= 3 && myV >= thV * 1.5 ? farLine : fieldLine, 'field'); // take and hold the field nodes (the nodes dial, v2.38)
   } else if (side.feintUntil && g.t >= side.feintUntil) {
     side.feintUntil = 0; side.stance = 'retreat'; side.pushTo = null; side.pushMode = null; side.launchV = 0; side.stanceAt = g.t; // the feint pulls back
-  } else if (since > 6 && myV < thV * (late ? 0.5 : 0.7)) {
+  } else if (since > 6 && myV < thV * (late ? 0.5 : dl.retreat)) {
     failed();
     side.stance = 'retreat'; side.pushTo = null; side.pushMode = null; side.stanceAt = g.t;
   } else if (side.pushTo === null && since > 10 && thV < 200 && myV < hqVal * 1.2 && !rich) {
@@ -2992,7 +3027,7 @@ function aiUpdate(g, s, dt) {
     side.stance = 'retreat'; side.pushMode = null; side.stanceAt = g.t; // too few to crack the base defenses: regroup instead of trickling in
   } else if (side.pushMode === 'field' || side.pushMode === 'node') {
     if (bold && nSiege >= 2 && myV >= thV && (myV >= wave * 0.7 || full)) { side.pushTo = siegeLine; side.pushMode = 'siege'; side.launchV = myV; side.stanceAt = g.t; ev(g, { type: 'aiAttack', side: s, mode: 'siege' }); lg(g, s, 'G', 'siege'); }
-    else if (bold && myV >= 300 && ((myV >= (thV + hqVal) * 1.35 && myV >= wave * 0.6) || (full && myV > (thV + hqVal) * 1.05))) { side.pushTo = null; side.pushMode = 'all'; side.launchV = myV; side.stanceAt = g.t; }
+    else if (bold && myV >= dl.minArmy && ((myV >= (thV + hqVal) * 1.35 && myV >= wave * 0.6) || (full && myV > (thV + hqVal) * 1.05))) { side.pushTo = null; side.pushMode = 'all'; side.launchV = myV; side.stanceAt = g.t; }
     else if (side.pushMode === 'node' && !nodeLost && myNode.owner === s && myV >= 300 && myV >= thV * 0.9) { side.pushTo = fieldLine; side.pushMode = 'field'; side.stanceAt = g.t; }
   } else if (side.pushTo !== null && bold && (myV > (thV + hqVal) * 1.3 || (since > 50 && myV > thV * 1.1))) {
     side.pushTo = null; side.pushMode = 'all'; side.stanceAt = g.t;
@@ -3128,6 +3163,7 @@ function deserialize(str) {
     return f;
   });
   if (!g.sides[1].persona) g.sides[1].persona = rollPersona(); // a save from before personalities: pick one now
+  for (const sd of g.sides) if (sd.persona && !sd.persona.dial) Object.assign(sd.persona, { preset: 'default', smart: true, dial: Object.assign({}, AI_PRESETS.default.dials) }); // v2.38: an older save's AI plays the game's AI (Default)
   for (const sd of g.sides) if (!sd.ab) sd.ab = newAb(g.t, sd.faction); // a save from before abilities: each starts its first cooldown now
   if (o.v >= 8 && o.v < 10) for (const sd of g.sides) { // separate cooldowns: the longest one still running now locks all three (never a free use)
     let end = 0, k0 = null;

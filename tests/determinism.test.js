@@ -25,15 +25,19 @@ const FP_V235 = '4be0c9891986796cd10fa32ce44a5d76cf81a0ce0d42ca9e878d919deca1153
 const LF_BH_V233 = '014ce26817d31591d24561ac3daf04b1cdfe852fcac44485795c3e4043d6cbb6'; // recorded on v2.33 without the save version (ends 12:23, Last Fist wins)
 const V229_OFF = '856b576e7c8dfa7ee14e35e1bf1c6629c1705e40513c942a3eed7070700779b4'; // v2.29's state hash, the same way (v2.30, Salvage off)
 
+// v2.38 (audit phase 4): every replay here runs the Legacy AI preset (ai/autoAi 'legacy'), which must play exactly as
+// v2.37's AI did. The preset's own settings (persona.preset, smart, dial) are configuration, not match state, so they are
+// left out of the hash; everything the AI did is still in it.
+const stripPreset = o => { for (const sd of o.sides) if (sd.persona) { delete sd.persona.preset; delete sd.persona.smart; delete sd.persona.dial; } };
 function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 
 function fingerprint(salvageOff, aimOff, redesign) {
   const sim = loadSim({ random: mulberry(2024) }); sim.setRedesign(!!redesign); // v2.37: the unit redesign off unless asked for (the pinned replays are v2.36's)
   if (salvageOff || aimOff) sim.FLAME.aim = false;
   if (salvageOff) { sim.SALVAGE.pct = 0; sim.SIG.on = false; sim.RETREAT.fire = true; }
-  const g = sim.newGame('hard', { autoPlayer: true, autoDiff: 'hard', persona: 'trickster', autoPersona: 'turtle' });
+  const g = sim.newGame('hard', { autoPlayer: true, autoDiff: 'hard', ai: 'legacy', autoAi: 'legacy', persona: 'trickster', autoPersona: 'turtle' });
   for (let i = 0; i < 30 * 480 && !g.over; i++) sim.update(g, 1 / 30);
-  const o = JSON.parse(sim.serialize(g, {})); delete o.log; // the match log (v2.9) is a record, not game state: left out so it can change freely
+  const o = JSON.parse(sim.serialize(g, {})); delete o.log; stripPreset(o); // the match log (v2.9) is a record, not game state: left out so it can change freely
   if (salvageOff) { delete o.v; for (const s of o.sides) { delete s.salv; delete s.od; } }
   const state = JSON.stringify(o) + JSON.stringify({ parts: g.parts, fx: g.fx, shake: g.shake, over: g.over, winner: g.winner });
   return crypto.createHash('sha256').update(state).digest('hex');
@@ -41,9 +45,9 @@ function fingerprint(salvageOff, aimOff, redesign) {
 
 function lfBh() { // Last Fist (autoplayer, Turtle) vs Bloomhost (Aggressor), Hard, to the end of the match
   const sim = loadSim({ random: mulberry(2024) }); sim.setRedesign(false); sim.RETREAT.fire = true; sim.FLAME.aim = false; // v2.35: the v2.34 retreat rule; v2.36: the v2.35 Flame Tank
-  const g = sim.newGame('hard', { autoPlayer: true, autoDiff: 'hard', persona: 'aggressor', autoPersona: 'turtle', factions: ['lastfist', 'bloomhost'] });
+  const g = sim.newGame('hard', { autoPlayer: true, autoDiff: 'hard', ai: 'legacy', autoAi: 'legacy', persona: 'aggressor', autoPersona: 'turtle', factions: ['lastfist', 'bloomhost'] });
   for (let i = 0; i < 30 * 1700 && !g.over; i++) sim.update(g, 1 / 30);
-  const o = JSON.parse(sim.serialize(g, {})); delete o.log; delete o.v; // the save version
+  const o = JSON.parse(sim.serialize(g, {})); delete o.log; stripPreset(o); delete o.v; // the save version
   const state = JSON.stringify(o) + JSON.stringify({ parts: g.parts, fx: g.fx, shake: g.shake, over: g.over, winner: g.winner });
   return crypto.createHash('sha256').update(state).digest('hex');
 }
@@ -54,9 +58,9 @@ test('a fixed Last Fist vs Bloomhost match plays exactly as v2.33 did, apart fro
 
 function bhAx(redesign) { // Bloomhost (Aggressor) vs Axiarchs (Economist autoplayer), Hard, to the end or 12 minutes
   const sim = loadSim({ random: mulberry(2024) }); sim.setRedesign(redesign);
-  const g = sim.newGame('hard', { autoPlayer: true, autoDiff: 'hard', persona: 'aggressor', autoPersona: 'economist', factions: ['bloomhost', 'axiarchs'] });
+  const g = sim.newGame('hard', { autoPlayer: true, autoDiff: 'hard', ai: 'legacy', autoAi: 'legacy', persona: 'aggressor', autoPersona: 'economist', factions: ['bloomhost', 'axiarchs'] });
   for (let i = 0; i < 30 * 720 && !g.over; i++) sim.update(g, 1 / 30);
-  const o = JSON.parse(sim.serialize(g, {})); delete o.log;
+  const o = JSON.parse(sim.serialize(g, {})); delete o.log; stripPreset(o);
   return crypto.createHash('sha256').update(JSON.stringify(o) + JSON.stringify({ parts: g.parts, fx: g.fx, shake: g.shake, over: g.over, winner: g.winner })).digest('hex');
 }
 
