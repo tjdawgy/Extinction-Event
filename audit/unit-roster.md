@@ -418,4 +418,17 @@ Each item was approved in phase 3b and implemented as below. Every mechanic has 
 Any unit-count increase gets a 250+ unit performance run; the S1 run is below.
 
 ### PERF
-PERF_TABLE
+`tests/perf.js battle` at 858×396, 2× pixels, auto quality, `--settle=14`, both sides fielding the army. Script time per frame (ms, average); single runs. "Before" is v2.36, "after" is v2.37 with the index and the redesign.
+
+| Units on the field | v2.36, 1× CPU | v2.37, 1× CPU | v2.36, 4× CPU | v2.37, 4× CPU |
+|---|---|---|---|---|
+| ~85 (mixed Last Fist army) | 2.4 | 3.0 | 16.6 | 14.3 |
+| 164 (60 Skitterlings, 20 Riflemen, 4 Tanks per side) | 4.6 | 3.3 | 32.4 | 21.2 |
+| 281 (120 Skitterlings per side) | 10.0 | 5.5 | 63.8 | 34.7 |
+| 250 (S4 run: 60 Skitterlings at the limit plus a mixed army per side) | 12.3 | 6.6 | 81.2 | 40.9 |
+
+- **At 160+ units,** the index roughly halves the frame cost.
+- **At ~85 units** the two versions are within run-to-run noise (2.4–3.0 ms at 1×; an earlier pair of runs measured 3.1 vs 3.4 the other way).
+- **At 250+ units,** v2.37 is under 7 ms per frame at 1× (the frame budget is 16.7 ms); at 4× it is about where v2.36 was at 164 units.
+- **The worst realistic case** (a Bloomhost side at the 60-Skitterling limit against a full army) is about 140–180 units, inside the measured range.
+- **Measured in the targeting-only step** (before the mechanics, same setup): 164 units 6.5 → 4.2 ms and 281 units 15.0 → 8.1 ms at 1×; 44.5 → 31.4 and 88.9 → 54.9 ms at 4×.

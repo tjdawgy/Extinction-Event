@@ -2,6 +2,26 @@
 
 Issues found during testing that are deliberately deferred. Each lists the step that should address it.
 
+## Audit phase 3b: unit redesign (v2.37)
+- **Implemented per audit/unit-roster.md** (section 6 is the item-by-item record):
+  - P1–P7, P9–P16 as designed; P8 became Titan Siege lock; S1 Skitterlings at half supply with a limit of 60.
+  - Numbers are first-pass placeholders for Phase 5.
+  - `setRedesign(false)` restores every v2.36 value and switches the mechanics off; the determinism tests use it.
+- **Targeting index first:** units sorted by lane position each tick, exact checks, ties in the old order.
+  - Every replay and fingerprint test passed unchanged after it, before any mechanic changed.
+  - With the redesign off, the main replay still matches v2.36 exactly.
+  - A new Bloomhost vs Axiarchs replay (FP_V237) pins the redesign.
+- **Corrosion rule changed:** the strongest running effect applies (cap 25%), and a weaker, longer one takes over when it ends. Nothing adds up. Before, a strong short hit plus a weak long one became strong and long.
+- **Tests changed:**
+  - **New tests:** tests/redesign.test.js.
+  - **Re-seeded for half-supply Skitterlings:**
+    - Bloomhost abilities test: seed 2 → 4.
+    - Bloomhost base AI test: seed 6 → 11; 3 of seeds 1–33 pass, see Audit.
+  - **Bloomspire AI test:** runs with the redesign off, as it already ran on the old retreat rule.
+  - **Updated to the new behaviour:** the Sovereign beam (ax-array), Leviathan stats (techlab), the Bastion surge (axiarchs, ax-trees), the overcharge-with-brace cap (ax-abilities, now on the v2.36 Bastion), and the Bilecaster as a spotted long-range unit (fog).
+- **Fixed while testing:** a phased Wraithwing kept walking (it could pass its target); it now holds still.
+- **Performance:** see audit/unit-roster.md section 6, PERF.
+
 ## Audit phase 2: visual and audio identity (v2.36)
 - **Last Fist:** the Flame Tank lost its fireball flash; it pours a continuous flamethrower jet (a flickering tapered cone plus licks of fire that start white-hot, redden, rise and smoke at the end; `vfxFlames`, `drawFlameCones`, particle kind 4). The HQ fires an industrial cannon round (an orange tracer, a hard muzzle flash, gun smoke, a burst with debris). Other Last Fist weapons and sounds are unchanged.
 - **Bloomhost:** Spitter, Bilecaster and Ruinmaw shots are wobbling acid globs on a drawn arc with trailing droplets and drips; Brood Tyrant and Worldrender drops are globs; the Maw and the Hive fire bone spines (the Hive a volley of three). Hits splat: droplets and a short-lived green stain (`bhSplat`). Sounds: wet spits and squelches, chitters for claws and spines, organic thumps for slams, lobs and the Hive.
@@ -66,6 +86,13 @@ Items for the strategy explorer and full balance audit. Logged only, nothing tun
 - **Hard ≈ Normal on the ladder:** 19–21 over 40 at v2.15, 18–22 at main (v2.14).
 - **Test bots always take path A** (Barracks, War Factory) **and Support** (Tech Lab), so bot data never covers Mass Deployment, Assault or Air Power.
 - **Tech Lab AI default paths are provisional:** Economist and Trickster on Air Power, Aggressor and Turtle on Support.
+- **AI and the v2.37 unit redesign** (minimum AI changes only: the AI skips Skitterlings at their limit). Gaps:
+  - **Unit scores still reflect the old roles.** The Bilecaster is scored as anti-light splash, though it is now a single-target marker. The Rift Mortar and Bile Lobber are scored as plain artillery. The Lancer's focus, the Wraithwing's phase and the Voidcarrier's field aren't valued at all.
+  - **Titans:** they plant and unplant on their own and the AI's pushes and retreats drive them. But the AI brings no spotter for the planted 280 reach (beyond the Titan's 240 sight), and its siege push spacing doesn't know Titans stop to plant.
+  - **Voidcarrier:** the AI never positions it. Warp-ins follow the frontmost field automatically, so an AI carrier deep in enemy ground can pull warp-ins into danger.
+  - **No timing play:** the Riftstalker (hit and fade), Wraithwing (phase) and Sovereign (charge) use only their automatic behaviour.
+  - **Bloomhost AI rarely trains Razorwings now:** with half-supply Skitterlings, only 3 of 33 seeded Hard matches (Turtle vs a Last Fist Aggressor) trained all three base units; most never trained a Razorwing.
+  - **Skitterling limit:** the AI doesn't plan its army around the 60 limit; it just stops choosing them at the limit.
 - **Bloomhost AI never trains a Worldrender under the v2.35 retreat rule** (0 of 74 seeded Hard matches; with v2.34's rule 1 of 42 seeds did at v2.32). Check in the AI training phase whether supply or the retreat change keeps it out (AI coverage).
 - **Bot rows from v2.13–v2.14 are not comparable with later rows** (the bots never upgraded before the v2.15 fix).
 - **Orbital Strike now hits aircraft (v2.16)** with the same 280/140 damage, HQ T2 unlock, cost and cooldown. Unmeasured: its effect on air armies (a Gunship has 230 HP and dies at the centre; a Leviathan has 1400).
