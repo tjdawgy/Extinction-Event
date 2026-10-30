@@ -324,7 +324,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.26'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.27'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -365,9 +365,9 @@ const COUNTDOWN = 3;
 const FACTIONS = {
   lastfist: { name: 'Last Fist', abilities: true, trees: true, abil: ['shield', 'strike', 'repair'] },
   bloomhost: { name: 'Bloomhost', abilities: true, trees: true, abil: ['frenzy', 'brood', 'corrosive'] }, // trees: Larva Pit and Evolution Chamber (v2.19), Bloomspire (v2.21); abilities v2.20
-  // Axiarchs (v2.25 framework, docs/AXIARCHS.md): production paths and abilities come later; until then the three
-  // production buildings stay T1 (lockMsg) and the ability buttons sit locked as "Soon" (soonAbil)
-  axiarchs: { name: 'Axiarchs', abilities: false, trees: false, abil: [], lockMsg: 'Doctrine paths coming soon', soonAbil: ['Mass Warp', 'Shield Overcharge', 'Purification Beam'] },
+  // Axiarchs (v2.25 framework, docs/AXIARCHS.md): Genesis Gate and Architectum trees v2.27; the Celestial Array stays T1
+  // until v2.29 (its lockMsg), and the ability buttons sit locked as "Soon" (soonAbil) until v2.28
+  axiarchs: { name: 'Axiarchs', abilities: false, trees: true, abil: [], soonAbil: ['Mass Warp', 'Shield Overcharge', 'Purification Beam'] },
 }, DEFAULT_FACTION = 'lastfist', FACTION_KEYS = Object.keys(FACTIONS);
 const factionName = k => (FACTIONS[k] || FACTIONS[DEFAULT_FACTION]).name;
 const facOf = k => FACTIONS[k] ? k : DEFAULT_FACTION;
@@ -439,9 +439,9 @@ const BDEF_AX = (() => {
   re('refinery', { name: 'Matter Loom' });
   re('reactor', { name: 'Singularity Well' });
   re('habitat', { name: 'Continuum Spire' });
-  re('barracks', { name: 'Genesis Gate', tiers: [null, 'Forms Shardlings', 'Doctrine paths coming soon', 'Doctrine paths coming soon'] });
-  re('factory', { name: 'Architectum', req: 'barracks', tiers: [null, 'Forms Bastions', 'Doctrine paths coming soon', 'Doctrine paths coming soon'] });
-  re('techlab', { name: 'Celestial Array', req: 'barracks', tiers: [null, 'Forms Wraithwings', 'Calculus paths coming soon', 'Calculus paths coming soon'] });
+  re('barracks', { name: 'Genesis Gate', tiers: [null, 'Forms Shardlings', 'Riftwalk or Lattice Doctrine', 'Riftwalk or Lattice Doctrine'] });
+  re('factory', { name: 'Architectum', req: 'barracks', tiers: [null, 'Forms Bastions', 'Rupture or Dominion Doctrine', 'Rupture or Dominion Doctrine'] });
+  re('techlab', { name: 'Celestial Array', req: 'barracks', lockMsg: 'Calculus paths coming soon', tiers: [null, 'Forms Wraithwings', 'Calculus paths coming soon', 'Calculus paths coming soon'] });
   re('turret', { name: 'Null Lance',
     gun: [null, { weapon: 'lance', dmg: 30, cd: 1.0, range: 260, hitsAir: true, beam: true },
                 { weapon: 'lance', dmg: 20, cd: 0.85, range: 280, hitsAir: true, beam: true, split: 3 },
@@ -478,7 +478,14 @@ const TREES_BH = {
   techlab:  { A: { name: 'Swarm Bloom', short: 'SWARM', steps: [null, null, { unlock: ['needlewing'], short: 'Needlewings', txt: 'Unlocks Needlewings: cheap flyers that hit harder in a pack' }, { unlock: ['cloudwing'], short: 'Cloudwings', txt: 'Unlocks Cloudwings: swarm flyers that release short-lived offspring' }] },
               B: { name: 'Apex Bloom', short: 'APEX', steps: [null, null, { unlock: ['broodtyrant'], short: 'Brood Tyrants', txt: 'Unlocks Brood Tyrants: heavy flyers that prefer buildings' }, { unlock: ['worldrender'], short: 'Worldrenders', txt: 'Unlocks Worldrenders: huge aerial base-breakers' }] } },
 };
-const TREE_SETS = { lastfist: TREES, bloomhost: TREES_BH };
+// Axiarch trees (v2.27): the Genesis Gate and the Architectum; the Celestial Array has none yet (stays T1 until v2.29)
+const TREES_AX = {
+  barracks: { A: { name: 'Riftwalk Doctrine', short: 'RIFT', steps: [null, null, { unlock: ['riftstalker'], short: 'Riftstalkers', txt: 'Unlocks Riftstalkers: hunters that phase-step onto their prey' }, { unlock: ['parallax'], short: 'Parallaxes', txt: 'Unlocks Parallaxes: phase-step behind the target, blows that disrupt' }] },
+              B: { name: 'Lattice Doctrine', short: 'LATTICE', steps: [null, null, { unlock: ['lancer'], short: 'Lancers', txt: 'Unlocks Lancers: energy bolts at air and ground' }, { unlock: ['marksman'], short: 'Astral Marksmen', txt: 'Unlocks Astral Marksmen: charged shots from very long range' }] } },
+  factory:  { A: { name: 'Rupture Doctrine', short: 'RUPTURE', steps: [null, null, { unlock: ['riftmortar'], short: 'Rift Mortars', txt: 'Unlocks Rift Mortars: long-range siege' }, { unlock: ['worldbreaker'], short: 'Worldbreakers', txt: 'Unlocks Worldbreakers: heavy siege that leaves distortion zones' }] },
+              B: { name: 'Dominion Doctrine', short: 'DOMINION', steps: [null, null, { unlock: ['gravemantle'], short: 'Gravemantles', txt: 'Unlocks Gravemantles: an aura that slows enemy ground units' }, { unlock: ['eventide'], short: 'Eventides', txt: 'Unlocks Eventides: a gravity pulse that pulls enemies in' }] } },
+};
+const TREE_SETS = { lastfist: TREES, bloomhost: TREES_BH, axiarchs: TREES_AX };
 const prodLocked = (fac, type) => !!TREES[type] && !treeOf(fac, type); // a production building with no paths yet (Axiarchs, v2.25)
 const DRILL = { hp: 1.35, dmg: 1.1, capture: 1.5 }, PAIR_TIME = 1.5; // a Mass Deployment pair takes 1.5× a Rifleman's training time
 const UNIT_PATH = {}; // unit type → { b: building type, p: path, path: the path's entry } for units a path unlocks (both factions)
@@ -546,6 +553,25 @@ Object.assign(UDEF, {
   bastion: { name: 'Bastion', fac: 'axiarchs', from: 'factory', tier: 1, cost: { c: 280, e: 90 }, pop: 4, hp: 620, shp: 420, dmg: 36, cd: 1.6, range: 100, speed: 23, hitsAir: false, armor: 'vehicle', weapon: 'pulse', time: 14, h: 24, brace: { cut: 0.4, dur: 3, cd: 12 } },
   wraithwing: { name: 'Wraithwing', fac: 'axiarchs', from: 'techlab', tier: 1, cost: { c: 260, e: 120 }, pop: 3, hp: 160, shp: 140, dmg: 20, cd: 0.8, range: 140, speed: 86, hitsAir: true, armor: 'air', air: true, weapon: 'phase', time: 13, h: 12 },
 });
+// Axiarch tree units (v2.27). Genesis Gate, Riftwalk Doctrine: Riftstalker (phase-step: the Leaper's leap code; bonus vs
+// light), Parallax (its phase-step lands just behind the target; its blows disrupt: the target deals less damage for 2 s,
+// never stacking past DISRUPT.cap). Lattice Doctrine: Lancer (energy bolts at air and ground), Astral Marksman (very long
+// range; a visible charge-up of charge seconds on the same target before each shot; weak against buildings).
+// Architectum, Rupture Doctrine: Rift Mortar (Artillery's arcing shot, minimum range, splash), Worldbreaker (heavy siege;
+// each hit leaves a distortion zone in the Ruinmaw's acid-pool list, under its hard cap). Dominion Doctrine: Gravemantle
+// (an aura that slows enemy ground units; slows never stack, the strongest applies, capped at SLOW.cap), Eventide (every
+// pulse.cd seconds a gravity pulse pulls enemy ground units inward; never into buildings or off the lane, never aircraft).
+Object.assign(UDEF, {
+  riftstalker: { name: 'Riftstalker', fac: 'axiarchs', from: 'barracks', tier: 2, cost: { c: 140, e: 50 }, pop: 3, hp: 170, shp: 110, dmg: 18, cd: 0.8, range: 24, speed: 48, hitsAir: false, armor: 'light', weapon: 'riftblade', time: 8, h: 20, melee: true, chase: 160, leap: { range: 130, min: 45, speed: 420, cd: 8 } },
+  parallax: { name: 'Parallax', fac: 'axiarchs', from: 'barracks', tier: 3, cost: { c: 220, e: 90 }, pop: 4, hp: 260, shp: 180, dmg: 30, cd: 0.9, range: 26, speed: 46, hitsAir: false, armor: 'heavy', weapon: 'parallax', time: 11, h: 24, melee: true, chase: 170, leap: { range: 150, min: 40, speed: 480, cd: 9, behind: true }, disrupt: { amt: 0.3, dur: 2 } },
+  lancer: { name: 'Lancer', fac: 'axiarchs', from: 'barracks', tier: 2, cost: { c: 150, e: 60 }, pop: 3, hp: 150, shp: 110, dmg: 16, cd: 0.9, range: 170, speed: 32, hitsAir: true, armor: 'light', weapon: 'bolt', time: 8, h: 22 },
+  marksman: { name: 'Astral Marksman', fac: 'axiarchs', from: 'barracks', tier: 3, cost: { c: 240, e: 110 }, pop: 4, hp: 140, shp: 120, dmg: 85, cd: 3.0, range: 330, speed: 28, hitsAir: false, armor: 'light', weapon: 'astral', time: 11, h: 24, charge: 1.2 },
+  riftmortar: { name: 'Rift Mortar', fac: 'axiarchs', from: 'factory', tier: 2, cost: { c: 220, e: 90 }, pop: 4, hp: 160, shp: 120, dmg: 60, cd: 3.3, range: 430, minRange: 110, speed: 21, hitsAir: false, armor: 'vehicle', weapon: 'rift', lob: true, time: 13, h: 22, splash: 55 },
+  worldbreaker: { name: 'Worldbreaker', fac: 'axiarchs', from: 'factory', tier: 3, cost: { c: 460, e: 190 }, pop: 7, hp: 1150, shp: 650, dmg: 80, cd: 2.8, range: 210, speed: 17, hitsAir: false, armor: 'vehicle', weapon: 'breaker', time: 19, h: 30, splash: 34, acid: 'dist' },
+  gravemantle: { name: 'Gravemantle', fac: 'axiarchs', from: 'factory', tier: 2, cost: { c: 230, e: 100 }, pop: 4, hp: 520, shp: 380, dmg: 14, cd: 1.2, range: 120, speed: 24, hitsAir: false, armor: 'heavy', weapon: 'grav', time: 13, h: 24, aura: { r: 110, slow: 0.3 } },
+  eventide: { name: 'Eventide', fac: 'axiarchs', from: 'factory', tier: 3, cost: { c: 420, e: 180 }, pop: 6, hp: 1000, shp: 650, dmg: 24, cd: 1.3, range: 140, speed: 20, hitsAir: false, armor: 'vehicle', weapon: 'grav', time: 17, h: 30, pulse: { r: 130, pull: 40, cd: 14 } },
+});
+const DISRUPT = { cap: 0.3 }, SLOW = { cap: 0.35, dur: 0.35 }; // the strongest wins, never added up
 const SHIELD = { delay: 4, rate: 0.1 }; // Axiarch shields: regen 10% of max per second after 4 s without damage (the power field's faster rate comes in v2.26)
 const SPAWN = { max: 6, dmg: 0.5 }; // Cloudwing offspring: at most 6 per side at once (separate from Emergency Brood's TEMP.max), half damage
 const CORR = { cap: 0.25 }; // corrosion: at most +25% damage taken, however many acid hits land
@@ -590,20 +616,29 @@ const DMG = {
   phase:   { light: 1.0, heavy: 0.85, vehicle: 1.1,  air: 1.0,  building: 0.7 }, // Wraithwing
   lance:   { light: 1.0, heavy: 1.0,  vehicle: 0.9,  air: 1.1,  building: 0.3 }, // Null Lance T1-T2
   horizon: { light: 1.0, heavy: 1.1,  vehicle: 1.2,  air: 1.0,  building: 0.8 }, // Null Lance T3, Event Horizon
+  riftblade: { light: 1.5, heavy: 0.9, vehicle: 0.6,  air: 0,    building: 0.6 }, // Riftstalker (v2.27): bonus vs light armor
+  parallax: { light: 1.3, heavy: 1.1,  vehicle: 0.8,  air: 0,    building: 0.6 }, // Parallax
+  bolt:    { light: 1.0, heavy: 1.0,  vehicle: 0.9,  air: 1.2,  building: 0.6 }, // Lancer: a main source of anti-air
+  astral:  { light: 1.5, heavy: 1.4,  vehicle: 0.5,  air: 0,    building: 0.25 }, // Astral Marksman: weak vs buildings
+  rift:    { light: 1.1, heavy: 1.0,  vehicle: 0.75, air: 0,    building: 1.6 }, // Rift Mortar (Artillery's table)
+  breaker: { light: 0.9, heavy: 1.2,  vehicle: 1.2,  air: 0,    building: 1.7 }, // Worldbreaker
+  grav:    { light: 1.0, heavy: 1.0,  vehicle: 1.0,  air: 0,    building: 0 },   // Gravemantle, Eventide: ground units only
 };
-const PSPEED = { rifle: 1100, rocket: 430, hqgun: 430, rail: 1700, cannon: 820, siege: 700, missile: 470, flak: 950, gatling: 1200, hydra: 1200, bomb: 260, spine: 1100, acid: 520, bile: 460, ruin: 600, glob: 380, crush: 220, pulse: 650, phase: 800 };
-const MUZ = { rifle: [10, 13], heavy: [12, 27], sniper: [17, 14], tank: [27, 18], artillery: [28, 31], titan: [38, 27], flame: [26, 12], hydra: [30, 33], aircraft: [16, -5], interceptor: [20, 0], leviathan: [0, -10], skitterling: [9, 5], bulwark: [17, 11], razorwing: [12, 1], leaper: [12, 7], ravager: [18, 14], spitter: [14, 15], bilecaster: [16, 20], bilelobber: [12, 26], ruinmaw: [24, 16], thornback: [18, 10], dreadthorn: [22, 14], needlewing: [10, 1], cloudwing: [14, 1], broodtyrant: [20, 2], worldrender: [0, -8], shardling: [12, 12], bastion: [20, 17], wraithwing: [16, -1] };
+const PSPEED = { rifle: 1100, rocket: 430, hqgun: 430, rail: 1700, cannon: 820, siege: 700, missile: 470, flak: 950, gatling: 1200, hydra: 1200, bomb: 260, spine: 1100, acid: 520, bile: 460, ruin: 600, glob: 380, crush: 220, pulse: 650, phase: 800, bolt: 900, astral: 2200, breaker: 600, grav: 700 };
+const MUZ = { rifle: [10, 13], heavy: [12, 27], sniper: [17, 14], tank: [27, 18], artillery: [28, 31], titan: [38, 27], flame: [26, 12], hydra: [30, 33], aircraft: [16, -5], interceptor: [20, 0], leviathan: [0, -10], skitterling: [9, 5], bulwark: [17, 11], razorwing: [12, 1], leaper: [12, 7], ravager: [18, 14], spitter: [14, 15], bilecaster: [16, 20], bilelobber: [12, 26], ruinmaw: [24, 16], thornback: [18, 10], dreadthorn: [22, 14], needlewing: [10, 1], cloudwing: [14, 1], broodtyrant: [20, 2], worldrender: [0, -8], shardling: [12, 12], bastion: [20, 17], wraithwing: [16, -1], riftstalker: [14, 12], parallax: [16, 14], lancer: [14, 18], marksman: [20, 20], riftmortar: [12, 24], worldbreaker: [26, 22], gravemantle: [16, 18], eventide: [18, 24] };
 
 const BUILD_ORDER = ['refinery', 'reactor', 'habitat', 'barracks', 'turret', 'factory', 'techlab'];
-const UNIT_ORDER = ['rifle', 'heavy', 'sniper', 'tank', 'artillery', 'titan', 'flame', 'hydra', 'aircraft', 'interceptor', 'leviathan', 'medic', 'drone', 'skitterling', 'leaper', 'ravager', 'spitter', 'bilecaster', 'bulwark', 'bilelobber', 'ruinmaw', 'thornback', 'dreadthorn', 'razorwing', 'needlewing', 'cloudwing', 'broodtyrant', 'worldrender', 'shardling', 'bastion', 'wraithwing'];
+const UNIT_ORDER = ['rifle', 'heavy', 'sniper', 'tank', 'artillery', 'titan', 'flame', 'hydra', 'aircraft', 'interceptor', 'leviathan', 'medic', 'drone', 'skitterling', 'leaper', 'ravager', 'spitter', 'bilecaster', 'bulwark', 'bilelobber', 'ruinmaw', 'thornback', 'dreadthorn', 'razorwing', 'needlewing', 'cloudwing', 'broodtyrant', 'worldrender', 'shardling', 'riftstalker', 'parallax', 'lancer', 'marksman', 'bastion', 'riftmortar', 'worldbreaker', 'gravemantle', 'eventide', 'wraithwing'];
 // Credits first (Refineries before tech); Reactors are skipped while energy is plentiful
 const AI_PLAN = ['barracks', 'refinery', 'refinery', 'reactor', 'habitat', 'factory', 'reactor', 'techlab']; // roles: the same plan builds either faction's base
 // Bloomhost units read the personalities' Last Fist tastes (bias) through their counterpart (v2.17)
-const AI_TWIN = { skitterling: 'rifle', bulwark: 'tank', razorwing: 'aircraft', leaper: 'rifle', ravager: 'sniper', spitter: 'heavy', bilecaster: 'sniper', bilelobber: 'artillery', ruinmaw: 'titan', thornback: 'flame', dreadthorn: 'hydra', needlewing: 'aircraft', cloudwing: 'aircraft', broodtyrant: 'leviathan', worldrender: 'leviathan', shardling: 'rifle', bastion: 'tank', wraithwing: 'aircraft' }; // v2.25: Axiarchs too
+const AI_TWIN = { skitterling: 'rifle', bulwark: 'tank', razorwing: 'aircraft', leaper: 'rifle', ravager: 'sniper', spitter: 'heavy', bilecaster: 'sniper', bilelobber: 'artillery', ruinmaw: 'titan', thornback: 'flame', dreadthorn: 'hydra', needlewing: 'aircraft', cloudwing: 'aircraft', broodtyrant: 'leviathan', worldrender: 'leviathan', shardling: 'rifle', bastion: 'tank', wraithwing: 'aircraft', riftstalker: 'rifle', parallax: 'sniper', lancer: 'heavy', marksman: 'sniper', riftmortar: 'artillery', worldbreaker: 'titan', gravemantle: 'flame', eventide: 'hydra' }; // v2.25, v2.27: Axiarchs too
 // The AI's path choice is made in Last Fist terms and translated (v2.19): Specialists → Acidic, Mass Deployment → Predatory;
 // Siege → Siege Evolution, Assault → Predator Evolution; Tech Lab (v2.21): Air Power → Apex Bloom (heavy bombers, like the
 // Leviathan), Support → Swarm Bloom
-const AI_PATH_MAP = { bloomhost: { barracks: { A: 'B', B: 'A' }, factory: { A: 'A', B: 'B' }, techlab: { A: 'B', B: 'A' } } };
+// Axiarchs (v2.27): Specialists → Lattice Doctrine (ranged), Mass Deployment → Riftwalk Doctrine; Siege → Rupture Doctrine,
+// Assault → Dominion Doctrine
+const AI_PATH_MAP = { bloomhost: { barracks: { A: 'B', B: 'A' }, factory: { A: 'A', B: 'B' }, techlab: { A: 'B', B: 'A' } }, axiarchs: { barracks: { A: 'B', B: 'A' }, factory: { A: 'A', B: 'B' } } };
 const aiPathTo = (fac, type, p) => { const m = AI_PATH_MAP[facOf(fac)]; return m && m[type] ? m[type][p] : p; };
 const aiPathFrom = (fac, type, p) => { const m = AI_PATH_MAP[facOf(fac)]; if (!m || !m[type] || !p) return p; for (const k in m[type]) if (m[type][k] === p) return k; return p; };
 const ENERGY_PLENTY = 250;
@@ -900,7 +935,7 @@ function tryUpgrade(g, s, b, path) { // path: 'A' or 'B' when a building with a 
   if (!b.built) return { ok: false, msg: `${d.name} is still under construction` };
   if (b.upgrading) return { ok: false, msg: 'Upgrade already in progress' };
   if (b.tier >= 3) return { ok: false, msg: `${d.name} is fully upgraded` };
-  if (prodLocked(b.fac, b.type)) return { ok: false, msg: `${d.name}: ${FACTIONS[facOf(b.fac)].lockMsg || 'paths coming soon'}` }; // Axiarch production stays T1 for now (v2.25)
+  if (prodLocked(b.fac, b.type)) return { ok: false, msg: `${d.name}: ${d.lockMsg || 'paths coming soon'}` }; // the Celestial Array stays T1 for now (v2.27)
   const T = treeOf(b.fac, b.type);
   if (T && b.tier === 1 && !T[path]) return { ok: false, msg: `Choose a path for this ${d.name}` };
   const up = d.up[b.tier + 1];
@@ -940,7 +975,7 @@ function spawnUnit(g, s, type, u, v) {
   const d = UDEF[type];
   const unit = { id: g.nid++, kind: 'u', type, side: s, u, v, z: d.air ? (type === 'interceptor' ? rand(100, 124) : type === 'leviathan' ? rand(88, 98) : type === 'drone' ? rand(104, 114) : type === 'razorwing' ? rand(56, 72) : type === 'needlewing' ? rand(50, 64) : type === 'cloudwing' ? rand(62, 76) : type === 'broodtyrant' ? rand(78, 88) : type === 'worldrender' ? rand(84, 94) : type === 'wraithwing' ? rand(64, 80) : rand(70, 94)) : 0,
     laneV: rand(-LANE_V, LANE_V), hp: d.hp, maxHp: d.hp, cd: Math.random() * 0.5, face: dirOf(s), anim: Math.random() * 10,
-    moving: false, rallyOff: -Math.random() * 100, recoil: 0, hitT: 0, shT: 0, vet: 0, aimAir: 0, medAt: -1, tgt: 0, braceT: 0, braceCd: 0, lastHurt: -99, lastAct: -99, creepAt: -1, temp: 0, tLife: 0, tSrc: null, kid: 0, spawnT: 0, shp: d.shp || 0, maxShp: d.shp || 0, shpT: -99, shpHit: -99, frzT: 0, leapCd: 0, leaping: 0, lu: 0, lv: 0, ld: 0, corr: 0, corrT: 0, burstCd: 0 }; // tgt: what it last attacked; braceT/braceCd: the Bulwark's brace (v2.17); lastHurt/lastAct: last damage taken/dealt, creepAt: last creep regen (v2.18); leap*: the Leaper's jump, corr/corrT: corrosion, burstCd: the Dreadthorn's spines (v2.19) // vet: a Drilled Rifleman (v2.13); aimAir: where a Hydra's guns point (v2.14); medAt: last healed by a Medicopter (v2.15) // shT (shield until) set from the start keeps every unit the same shape for the JS engine
+    moving: false, rallyOff: -Math.random() * 100, recoil: 0, hitT: 0, shT: 0, vet: 0, aimAir: 0, medAt: -1, tgt: 0, braceT: 0, braceCd: 0, lastHurt: -99, lastAct: -99, creepAt: -1, temp: 0, tLife: 0, tSrc: null, kid: 0, spawnT: 0, dis: 0, disT: 0, slow: 0, slowT: 0, chT: 0, chTgt: 0, pulseCd: 0, shp: d.shp || 0, maxShp: d.shp || 0, shpT: -99, shpHit: -99, frzT: 0, leapCd: 0, leaping: 0, lu: 0, lv: 0, ld: 0, corr: 0, corrT: 0, burstCd: 0 }; // tgt: what it last attacked; braceT/braceCd: the Bulwark's brace (v2.17); lastHurt/lastAct: last damage taken/dealt, creepAt: last creep regen (v2.18); leap*: the Leaper's jump, corr/corrT: corrosion, burstCd: the Dreadthorn's spines (v2.19) // vet: a Drilled Rifleman (v2.13); aimAir: where a Hydra's guns point (v2.14); medAt: last healed by a Medicopter (v2.15) // shT (shield until) set from the start keeps every unit the same shape for the JS engine
   g.ents.push(unit);
   g.sides[s].stats.built++;
   return unit;
@@ -969,7 +1004,7 @@ function hqStatus(g, s, viewer = s) {
    Each side sees full-depth strips of the lane around its own units, buildings and held field nodes.
    Depth counts for little in range (DV_W), so strips match how far things can actually shoot. */
 const FOG_CELL = 10, FOG_N = Math.ceil(L / FOG_CELL) + 1;
-const SIGHT = { rifle: 170, heavy: 180, sniper: 220, tank: 210, artillery: 200, titan: 240, flame: 190, hydra: 260, aircraft: 260, interceptor: 280, leviathan: 220, medic: 220, drone: 420, skitterling: 170, bulwark: 190, razorwing: 250, leaper: 180, ravager: 190, spitter: 190, bilecaster: 230, bilelobber: 200, ruinmaw: 240, thornback: 190, dreadthorn: 220, needlewing: 220, cloudwing: 230, broodtyrant: 230, worldrender: 220, shardling: 170, bastion: 200, wraithwing: 250 };
+const SIGHT = { rifle: 170, heavy: 180, sniper: 220, tank: 210, artillery: 200, titan: 240, flame: 190, hydra: 260, aircraft: 260, interceptor: 280, leviathan: 220, medic: 220, drone: 420, skitterling: 170, bulwark: 190, razorwing: 250, leaper: 180, ravager: 190, spitter: 190, bilecaster: 230, bilelobber: 200, ruinmaw: 240, thornback: 190, dreadthorn: 220, needlewing: 220, cloudwing: 230, broodtyrant: 230, worldrender: 220, shardling: 170, bastion: 200, wraithwing: 250, riftstalker: 180, parallax: 190, lancer: 200, marksman: 230, riftmortar: 200, worldbreaker: 240, gravemantle: 200, eventide: 220 };
 const B_SIGHT = { hq: 520, turret: 340 }, B_SIGHT_DEF = 200, NODE_SIGHT = 220; // HQ 520 ≥ its T3 range (470)
 const INTEL_TTL = 45, THREAT_MEMORY = 5, SPOT_GAP = 10;
 const cellOf = u => clamp(Math.floor(u / FOG_CELL), 0, FOG_N - 1);
@@ -1062,6 +1097,7 @@ function update(g, dt) {
   updateCreep(g, dt);
   updateField(g, dt);
   updateWarps(g);
+  updateAuras(g);
   updateShields(g, dt);
   updateAcid(g, dt);
   updateTemps(g);
@@ -1218,11 +1254,11 @@ function acquire(g, src, def, foes) {
    overrides the global stance for the units it covers; where a group and a type order both cover a unit, the most
    recent wins (order.n counts up). A global stance clears them all. 'move' (Regroup) walks to a point, fighting what
    it meets on the way like any stance, then holds there; its flag is done once every unit it covers has arrived. */
-const UGROUPS = { inf: ['rifle', 'heavy', 'sniper', 'skitterling', 'leaper', 'ravager', 'spitter', 'bilecaster', 'shardling'], arm: ['tank', 'artillery', 'titan', 'flame', 'hydra', 'bulwark', 'bilelobber', 'ruinmaw', 'thornback', 'dreadthorn', 'bastion'], air: ['aircraft', 'interceptor', 'leviathan', 'razorwing', 'needlewing', 'cloudwing', 'broodtyrant', 'worldrender', 'wraithwing'], sup: ['medic', 'drone'] }; // v2.18: Bloomhost units join the groups
+const UGROUPS = { inf: ['rifle', 'heavy', 'sniper', 'skitterling', 'leaper', 'ravager', 'spitter', 'bilecaster', 'shardling', 'riftstalker', 'parallax', 'lancer', 'marksman'], arm: ['tank', 'artillery', 'titan', 'flame', 'hydra', 'bulwark', 'bilelobber', 'ruinmaw', 'thornback', 'dreadthorn', 'bastion', 'riftmortar', 'worldbreaker', 'gravemantle', 'eventide'], air: ['aircraft', 'interceptor', 'leviathan', 'razorwing', 'needlewing', 'cloudwing', 'broodtyrant', 'worldrender', 'wraithwing'], sup: ['medic', 'drone'] }; // v2.18: Bloomhost units join the groups
 const GROUP_NAME = { inf: 'Infantry', arm: 'Armor', air: 'Air', sup: 'Support' };
 const GROUP_OF = {}; for (const k in UGROUPS) for (const t of UGROUPS[k]) GROUP_OF[t] = k;
 const ORDER_NAME = { hold: 'Hold', attack: 'Attack', retreat: 'Retreat', move: 'Regroup' };
-const PLURAL = { rifle: 'Riflemen', heavy: 'Heavies', sniper: 'Snipers', tank: 'Tanks', artillery: 'Artillery', titan: 'Titans', flame: 'Flame Tanks', hydra: 'Hydras', aircraft: 'Gunships', interceptor: 'Interceptors', leviathan: 'Leviathans', medic: 'Medicopters', drone: 'Recon Drones', skitterling: 'Skitterlings', bulwark: 'Bulwarks', razorwing: 'Razorwings', leaper: 'Leapers', ravager: 'Ravagers', spitter: 'Spitters', bilecaster: 'Bilecasters', bilelobber: 'Bile Lobbers', ruinmaw: 'Ruinmaws', thornback: 'Thornbacks', dreadthorn: 'Dreadthorns', needlewing: 'Needlewings', cloudwing: 'Cloudwings', broodtyrant: 'Brood Tyrants', worldrender: 'Worldrenders', shardling: 'Shardlings', bastion: 'Bastions', wraithwing: 'Wraithwings' };
+const PLURAL = { rifle: 'Riflemen', heavy: 'Heavies', sniper: 'Snipers', tank: 'Tanks', artillery: 'Artillery', titan: 'Titans', flame: 'Flame Tanks', hydra: 'Hydras', aircraft: 'Gunships', interceptor: 'Interceptors', leviathan: 'Leviathans', medic: 'Medicopters', drone: 'Recon Drones', skitterling: 'Skitterlings', bulwark: 'Bulwarks', razorwing: 'Razorwings', leaper: 'Leapers', ravager: 'Ravagers', spitter: 'Spitters', bilecaster: 'Bilecasters', bilelobber: 'Bile Lobbers', ruinmaw: 'Ruinmaws', thornback: 'Thornbacks', dreadthorn: 'Dreadthorns', needlewing: 'Needlewings', cloudwing: 'Cloudwings', broodtyrant: 'Brood Tyrants', worldrender: 'Worldrenders', shardling: 'Shardlings', bastion: 'Bastions', wraithwing: 'Wraithwings', riftstalker: 'Riftstalkers', parallax: 'Parallaxes', lancer: 'Lancers', marksman: 'Astral Marksmen', riftmortar: 'Rift Mortars', worldbreaker: 'Worldbreakers', gravemantle: 'Gravemantles', eventide: 'Eventides' };
 const newOrders = () => ({ all: null, groups: {}, types: {}, n: 0 });
 function unitOrder(side, type) { // the order a unit of this type follows, or null for the global stance
   const O = side.orders; if (!O) return null;
@@ -1262,7 +1298,7 @@ function updateOrders(g) { // twice a second: a Regroup flag is done once every 
   }
 }
 // The AI's only micro so far (Normal and Hard): pull Artillery back when enemy ground units it can see get close
-const AI_ART = ['artillery', 'bilelobber'], AI_SIEGE = ['artillery', 'titan', 'bilelobber', 'ruinmaw']; // units the AI's siege rules count (v2.19: Bloomhost's too)
+const AI_ART = ['artillery', 'bilelobber', 'riftmortar'], AI_SIEGE = ['artillery', 'titan', 'bilelobber', 'ruinmaw', 'riftmortar', 'worldbreaker']; // units the AI's siege rules count (v2.19: Bloomhost's too; v2.27: Axiarchs')
 function aiMicro(g, s, D, mine) {
   if (D === DIFF.easy) return;
   const side = g.sides[s], O = side.orders || (side.orders = newOrders());
@@ -1303,7 +1339,7 @@ function updateUnit(g, u, foes, dt) {
   const side = g.sides[u.side], dir = dirOf(u.side), home = rallyU(u.side) + u.rallyOff * dir;
   const ord = unitOrder(side, u.type), st = ord ? ord.o : side.stance; // a group or type order overrides the global stance
   const { best, close } = d.weapon ? acquire(g, u, d, foes) : NO_TARGET; // Medicopters and Recon Drones carry no weapon
-  const sp = (d.fac === 'bloomhost' && !d.air && onCreep(g, u.side, u.u, u.v) ? CREEP.speed : 1) * (frz ? ABIL.frenzy.speed : 1); // creep (v2.18) and Frenzy Bloom (v2.20)
+  const sp = (d.fac === 'bloomhost' && !d.air && onCreep(g, u.side, u.u, u.v) ? CREEP.speed : 1) * (frz ? ABIL.frenzy.speed : 1) * (u.slowT > g.t ? 1 - u.slow : 1); // creep (v2.18), Frenzy Bloom (v2.20), a Gravemantle's slow (v2.27)
   if (u.leaping) { // mid-leap (v2.19): fly to the landing spot, nothing else
     const du = u.lu - u.u, dv = u.lv - u.v, dd = Math.hypot(du, dv), st = d.leap.speed * dt;
     if (dd <= st) { u.u = u.lu; u.v = u.lv; u.z = 0; u.leaping = 0; u.leapCd = g.t + d.leap.cd; }
@@ -1317,10 +1353,16 @@ function updateUnit(g, u, foes, dt) {
     return;
   }
   u.tgt = best ? best.id : 0;
+  if (!best || best.id !== u.chTgt) u.chT = 0; // the Astral Marksman's charge starts over on a new target (v2.27)
   if (best) {
     u.moving = false;
     if (Math.abs(best.u - u.u) > 1) u.face = best.u >= u.u ? 1 : -1;
     if (d.swing) { const air = best.kind === 'u' && UDEF[best.type].air ? 1 : 0; if (air !== u.aimAir) { u.aimAir = air; u.cd = Math.max(u.cd, d.swing); } } // the Hydra's guns swing between ground and air
+    if (u.cd <= 0 && d.charge) { // v2.27: a visible charge-up on the same target before each shot
+      if (!u.chT) { u.chT = g.t + d.charge; u.chTgt = best.id; }
+      else if (g.t >= u.chT) { fire(g, u, best, d); u.cd = d.cd * rand(0.9, 1.1); u.chT = 0; }
+      return;
+    }
     if (u.cd <= 0) { fire(g, u, best, d); u.cd = d.cd * rand(0.9, 1.1); }
     return;
   }
@@ -1329,7 +1371,9 @@ function updateUnit(g, u, foes, dt) {
     const prey = acquire(g, u, { ...d, range: d.chase }, foes).best;
     if (prey && d.leap && g.t >= u.leapCd) { // the Leaper jumps the last stretch (v2.19), never further than leap.range
       const dist = effDist(u, prey);
-      if (dist <= d.leap.range && dist >= d.leap.min) { const k = Math.max(0, (Math.hypot(prey.u - u.u, prey.v - u.v) - d.range * 0.7) / Math.max(1, Math.hypot(prey.u - u.u, prey.v - u.v))); u.lu = u.u + (prey.u - u.u) * k; u.lv = u.v + (prey.v - u.v) * k; u.ld = Math.max(1, Math.hypot(u.lu - u.u, u.lv - u.v)); u.leaping = 1; return; }
+      if (dist <= d.leap.range && dist >= d.leap.min) { const k = Math.max(0, (Math.hypot(prey.u - u.u, prey.v - u.v) - d.range * 0.7) / Math.max(1, Math.hypot(prey.u - u.u, prey.v - u.v))); u.lu = u.u + (prey.u - u.u) * k; u.lv = u.v + (prey.v - u.v) * k;
+        if (d.leap.behind) { const pd = Math.max(1, Math.hypot(prey.u - u.u, prey.v - u.v)); u.lu = clamp(prey.u + (prey.u - u.u) / pd * d.range * 0.7, 0, L); u.lv = clamp(prey.v + (prey.v - u.v) / pd * d.range * 0.7, -LANE_V, LANE_V); } // the Parallax lands just behind its target (v2.27)
+        u.ld = Math.max(1, Math.hypot(u.lu - u.u, u.lv - u.v)); u.leaping = 1; return; }
     }
     if (prey) { moveToward(u, d, prey.u, prey.v, dt, sp); return; }
   }
@@ -1479,6 +1523,26 @@ function startWarp(g, s, type) {
   const w = warpPoint(g, s), p = warpSpot(g, s, w.u, w.v);
   g.warps.push({ side: s, type, u: p.u, v: p.v, t0: g.t, end: g.t + WARP.ch });
 }
+// Gravemantle aura and Eventide pulse (v2.27)
+const pullOk = (g, u, v) => u >= 0 && u <= L && Math.abs(v) <= LANE_V && !g.ents.some(b => b.kind === 'b' && b.hp > 0 && Math.hypot(b.u - u, b.v - v) < b.half + 8);
+function updateAuras(g) {
+  for (const a of g.ents) {
+    if (a.kind !== 'u' || a.hp <= 0) continue;
+    const d = UDEF[a.type];
+    if (d.aura) for (const e of g.ents) if (e.kind === 'u' && e.side !== a.side && e.hp > 0 && !UDEF[e.type].air && Math.hypot(e.u - a.u, (e.v - a.v) * 0.6) <= d.aura.r) slowU(g, e, d.aura.slow, SLOW.dur);
+    if (d.pulse && g.t >= a.pulseCd) {
+      const near = g.ents.filter(e => e.kind === 'u' && e.side !== a.side && e.hp > 0 && !UDEF[e.type].air && !e.leaping && Math.hypot(e.u - a.u, e.v - a.v) <= d.pulse.r);
+      if (!near.length) continue;
+      a.pulseCd = g.t + d.pulse.cd;
+      for (const e of near) { // inward by up to pull, never closer than 24, never into a building or off the lane (half the pull, else none)
+        const du = a.u - e.u, dv = a.v - e.v, dd = Math.hypot(du, dv), k = Math.min(d.pulse.pull, Math.max(0, dd - 24));
+        if (k <= 0) continue;
+        for (const f of [1, 0.5]) { const nu = e.u + du / dd * k * f, nv = e.v + dv / dd * k * f; if (pullOk(g, nu, nv)) { e.u = nu; e.v = nv; break; } }
+      }
+      const w = P(a.u, a.v); g.fx.push({ k: 'pull', x: w.x, y: w.y, r: d.pulse.r, t: 0, life: 0.6 });
+    }
+  }
+}
 function updateWarps(g) {
   if (!g.warps.length) return;
   const done = g.warps.filter(w => g.t >= w.end);
@@ -1525,7 +1589,7 @@ function updateCreep(g, dt) {
 }
 // The Flame Tank: every enemy on the ground in a strip ahead of it (range × 2 · strip wide) takes the burst; nothing lingers
 function flameBurst(g, src, def) {
-  const dir = src.face || dirOf(src.side), dmg = def.dmg * (g.sides[src.side].buff ? 1.2 : 1);
+  const dir = src.face || dirOf(src.side), dmg = def.dmg * (g.sides[src.side].buff ? 1.2 : 1) * (src.disT > g.t ? outMul(g, src) : 1);
   for (const e of g.ents) {
     if (e.side === src.side || e.hp <= 0 || (e.kind === 'u' && UDEF[e.type].air) || e.shielded) continue;
     const ahead = (e.u - src.u) * dir, reach = def.range + (e.kind === 'b' ? e.half : 0);
@@ -1546,6 +1610,19 @@ function aimZ(e) {
 }
 
 // Melee (v2.17): the blow lands at once. A Skitterling hits harder for every other Skitterling on the same target.
+// Disrupted (v2.27, the Parallax): a unit deals less damage for a short time; the strongest wins, never past DISRUPT.cap
+const outMul = (g, src) => src.kind === 'u' && src.disT > g.t ? 1 - src.dis : 1;
+function disrupt(g, e, c) {
+  if (e.kind !== 'u' || e.hp <= 0) return;
+  const live = e.disT > g.t;
+  e.dis = Math.min(DISRUPT.cap, Math.max(live ? e.dis : 0, c.amt)); e.disT = Math.max(live ? e.disT : 0, g.t + c.dur);
+}
+// Slowed (v2.27, the Gravemantle): the same rule; slows never stack, the strongest applies, never past SLOW.cap
+function slowU(g, e, amt, dur) {
+  if (e.kind !== 'u' || e.hp <= 0 || UDEF[e.type].air) return;
+  const live = e.slowT > g.t;
+  e.slow = Math.min(SLOW.cap, Math.max(live ? e.slow : 0, amt)); e.slowT = Math.max(live ? e.slowT : 0, g.t + dur);
+}
 function meleeHit(g, src, t, def) {
   let mul = 1;
   if (def.swarm) {
@@ -1554,7 +1631,9 @@ function meleeHit(g, src, t, def) {
     mul += Math.min(def.swarm.max, n * def.swarm.per);
   }
   if (src.kid) mul *= SPAWN.dmg; // a Cloudwing's offspring bites for half (v2.21)
+  if (src.disT > g.t) mul *= outMul(g, src); // disrupted (v2.27)
   damage(g, t, def.dmg * mul, def.weapon, src.side, src);
+  if (def.disrupt) disrupt(g, t, def.disrupt); // the Parallax's blows (v2.27)
   if (src.kind === 'u') src.recoil = 1;
 }
 function fire(g, src, t, def) {
@@ -1563,16 +1642,16 @@ function fire(g, src, t, def) {
   if (def.melee) { meleeHit(g, src, t, def); return; }
   if (def.beam) { // the Null Lance (v2.25): the beam lands at once; the SIM leaves a short beam mark for the renderer
     const m = muzzle(src), a = P(m.u, m.v, m.z), b = P(t.u, t.v, aimZ(t));
-    damage(g, t, def.dmg * (g.sides[src.side].buff ? 1.2 : 1), def.weapon, src.side, src);
+    damage(g, t, def.dmg * (g.sides[src.side].buff ? 1.2 : 1) * outMul(g, src), def.weapon, src.side, src);
     g.fx.push({ k: 'beam', x: a.x, y: a.y, x2: b.x, y2: b.y, t: 0, life: def.weapon === 'horizon' ? 0.32 : 0.2, w: def.weapon === 'horizon' ? 3.2 : def.split ? 1.5 : 2.2 });
     return;
   }
   const m = muzzle(src);
   const p = { u: m.u, v: m.v, z: m.z, pu: m.u, pv: m.v, pz: m.z, tu: t.u, tv: t.v, tz: aimZ(t), target: t, side: src.side,
-    weapon: def.weapon, dmg: def.dmg * (g.sides[src.side].buff ? 1.2 : 1) * (src.vet ? DRILL.dmg : 1), splash: def.splash || 0, t: 0 };
+    weapon: def.weapon, dmg: def.dmg * (g.sides[src.side].buff ? 1.2 : 1) * (src.vet ? DRILL.dmg : 1) * (src.disT > g.t ? outMul(g, src) : 1), splash: def.splash || 0, t: 0 }; // disrupted: less damage (v2.27)
   if (def.weapon === 'bomb' || def.drop) { p.target = null; p.tz = 0; p.tu = t.u + rand(-6, 6); p.tv = t.v + rand(-5, 5); } // falls where the target is now
   if (def.corrode) p.corr = def.corrode; // v2.19: acid corrodes what it hits
-  if (def.acid) p.acid = 1;
+  if (def.acid) p.acid = def.acid === 'dist' ? 'dist' : 1; // the Worldbreaker's distortion zones share the acid-pool list (v2.27)
   if (def.weapon === 'shell' || def.lob) { // the Bile Lobber reuses the Artillery shell (v2.19)
     p.su = m.u; p.sv = m.v; p.sz = m.z;
     p.tu = t.u + rand(-14, 14); p.tv = t.v + rand(-12, 12); p.tz = 0;
@@ -1784,7 +1863,7 @@ function updateProjs(g, dt) {
   for (const p of g.projs) {
     p.t += dt;
     p.pu = p.u; p.pv = p.v; p.pz = p.z;
-    if (p.weapon === 'shell' || p.weapon === 'lob') {
+    if (p.weapon === 'shell' || p.weapon === 'lob' || p.weapon === 'rift') { // the Rift Mortar's shot arcs like a shell (v2.27)
       const k = Math.min(1, p.t / p.T);
       p.u = lerp(p.su, p.tu, k); p.v = lerp(p.sv, p.tv, k);
       p.z = lerp(p.sz, 0, k) + p.arc * 4 * k * (1 - k);
@@ -1816,11 +1895,11 @@ function splashHit(g, p, hit, scale, falloffFloor) {
 
 function impact(g, p, hit) {
   const w = P(p.u, p.v, p.z);
-  if (p.weapon === 'shell' || p.weapon === 'lob') { splashHit(g, p, null, 1, 0.5); fxBoom(g, w.x, w.y, 30); return; }
+  if (p.weapon === 'shell' || p.weapon === 'lob' || p.weapon === 'rift') { splashHit(g, p, null, 1, 0.5); fxBoom(g, w.x, w.y, 30); return; }
   if (p.weapon === 'bomb' || p.weapon === 'crush') { splashHit(g, p, null, 1, 0.5); fxBoom(g, w.x, w.y, p.weapon === 'crush' ? 48 : 40); return; } // full damage at the centre, half at the edge (the Worldrender too, v2.21)
   if (hit && hit.hp > 0) { damage(g, hit, p.dmg, p.weapon, p.side); if (p.corr) corrode(g, hit, p.corr); }
   if (p.splash > 0) splashHit(g, p, hit, 0.5, 1);
-  if (p.acid) addAcid(g, p.side, p.u, p.v);
+  if (p.acid) addAcid(g, p.side, p.u, p.v, p.acid === 'dist' ? 'dist' : undefined);
   if (p.weapon === 'rifle' || p.weapon === 'rail' || p.weapon === 'gatling') {
     for (let i = 0; i < (p.weapon === 'rail' ? 5 : 2); i++)
       addPart(g, { x: w.x, y: w.y, vx: rand(-40, 40), vy: rand(-50, 0), life: 0.18, size: 1.3, color: p.weapon === 'rail' ? '#c9f6ff' : '#fff3b0', grav: 200 });
@@ -1834,9 +1913,9 @@ function corrode(g, e, c) {
   e.corr = Math.min(CORR.cap, Math.max(live ? e.corr : 0, c.amt)); e.corrT = Math.max(live ? e.corrT : 0, g.t + c.dur);
 }
 // Ruinmaw acid pools (v2.19): at most ACID.max at once; a new one replaces the oldest
-function addAcid(g, side, u, v) {
+function addAcid(g, side, u, v, kind) { // kind 'dist': a Worldbreaker's distortion zone (v2.27), same damage, cap and life
   if (g.acid.length >= ACID.max) g.acid.shift();
-  g.acid.push({ side, u, v, end: g.t + ACID.dur });
+  g.acid.push(kind ? { side, u, v, end: g.t + ACID.dur, kind } : { side, u, v, end: g.t + ACID.dur });
 }
 function updateAcid(g, dt) {
   if (!g.acid.length) return;
@@ -1893,7 +1972,7 @@ function kill(g, e, by, weapon) {
     if (by >= 0) g.sides[by].stats.kills++;
     if (g.log) { const T = g.log.tot[e.side]; logAdd(T.lost, e.type); if (weapon) logAdd(T.lostTo || (T.lostTo = {}), weapon); if (by >= 0) logAdd(g.log.tot[by].killed, e.type); lgUnit(g, e.side, 'K', e.type); logLoss(g, e); }
     const d = UDEF[e.type], w = P(e.u, e.v, aimZ(e));
-    fxBoom(g, w.x, w.y, e.type === 'shardling' ? 8 : e.type === 'bastion' ? 20 : e.type === 'wraithwing' ? 14 : e.type === 'skitterling' ? 6 : e.type === 'bulwark' || e.type === 'ruinmaw' || e.type === 'dreadthorn' || e.type === 'thornback' ? 18 : d.fac === 'bloomhost' && !d.air ? 10 : d.air ? (e.type === 'razorwing' || e.type === 'cloudwing' ? 12 : e.type === 'needlewing' ? 8 : e.type === 'worldrender' ? 44 : 28) : e.type === 'rifle' || e.type === 'sniper' ? 9 : e.type === 'heavy' ? 15 : e.type === 'titan' ? 46 : 30);
+    fxBoom(g, w.x, w.y, e.type === 'riftstalker' || e.type === 'lancer' || e.type === 'marksman' ? 10 : e.type === 'parallax' ? 12 : e.type === 'shardling' ? 8 : e.type === 'bastion' ? 20 : e.type === 'wraithwing' ? 14 : e.type === 'skitterling' ? 6 : e.type === 'bulwark' || e.type === 'ruinmaw' || e.type === 'dreadthorn' || e.type === 'thornback' ? 18 : d.fac === 'bloomhost' && !d.air ? 10 : d.air ? (e.type === 'razorwing' || e.type === 'cloudwing' ? 12 : e.type === 'needlewing' ? 8 : e.type === 'worldrender' ? 44 : 28) : e.type === 'rifle' || e.type === 'sniper' ? 9 : e.type === 'heavy' ? 15 : e.type === 'titan' ? 46 : 30);
     return;
   }
   if (e.slot >= 0 && side.slots[e.slot] === e) side.slots[e.slot] = null;
@@ -2129,6 +2208,15 @@ function aiUpdate(g, s, dt) {
       shardling: 0.9 + comp.light * 0.5 - comp.vehicle * 0.5 - comp.air * 0.4 - (types.length > 2 ? 0.3 : 0),
       bastion: 1.3 + comp.light * 1.0 + comp.heavy * 0.7 - comp.air * 0.9,
       wraithwing: 1.2 + comp.vehicle * 1.0 + comp.light * 0.4 + comp.air * 0.6 + (antiAir < 0.45 ? 0.9 : 0),
+      // Axiarch tree units (v2.27): simple scores in the style of their Last Fist counterparts
+      riftstalker: 1.0 + comp.light * 0.9 - comp.vehicle * 0.6 - comp.air * 0.4,
+      parallax: 1.2 + comp.light * 1.1 + comp.heavy * 0.4 - comp.vehicle * 0.5 - comp.air * 0.5,
+      lancer: 1.0 + comp.air * 2.0 + comp.heavy * 0.5 + comp.vehicle * 0.3,
+      marksman: 0.8 + comp.light * 1.4 + comp.heavy * 1.0 - comp.vehicle * 1.0 - comp.air * 0.6,
+      riftmortar: (nFront >= 3 && nArt < Math.max(2, nFront / 2.5)) ? 1.1 + comp.light * 0.5 + (turtle ? 0.8 : 0) + (oppTier - 1) * 0.3 : 0.1,
+      worldbreaker: 1.2 + comp.vehicle * 0.8 + comp.heavy * 0.8 + comp.light * 0.4 - comp.air * 1.2 + (turtle ? 0.4 : 0),
+      gravemantle: 1.3 + comp.light * 1.6 + comp.heavy * 0.6 - comp.vehicle * 0.6 - comp.air * 0.8,
+      eventide: 1.4 + comp.light * 1.2 + comp.heavy * 0.6 - comp.air * 0.9,
     };
     if (!threat) for (const t of types) { const b = P.bias[t] || P.bias[AI_TWIN[t]]; if (b && sc[t] > 0) sc[t] *= b; } // the personality's taste in units (threats are answered on merit)
     // Bloomspire path units (v2.21, minimal): one the AI has never trained goes to the top once, so it saves for it (its
@@ -2324,7 +2412,7 @@ const logSpend = (g, s, kind, c, e) => { if (g.log) { const a = g.log.tot[s].spe
 
 /* ---------- Save and resume ---------- */
 // v6 adds fog of war; v7 the AI's personality (kept on its side record); v10 the shared ability cooldown; v11 the match log; v12 group orders, the selection and Regroup flags; v13 upgrade-tree paths; v14 War Factory paths. Older saves are migrated.
-const SAVE_VER = 23, SAVE_OK = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23];
+const SAVE_VER = 24, SAVE_OK = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24];
 function serialize(g, extra) {
   const live = g.ents.filter(e => e.hp > 0);
   for (const sd of g.sides) if (sd.hq.hp <= 0 && !live.includes(sd.hq)) live.push(sd.hq); // a fallen HQ inside the storm's 5 s end window
@@ -2381,6 +2469,7 @@ function deserialize(str) {
   }
   for (const e of g.ents) if (e.kind === 'u' && e.temp === undefined) { e.temp = 0; e.frzT = 0; }
   // v21: a temporary unit records its lifetime and source (every one before v21 came from an Emergency Brood); Cloudwing timers
+  for (const e of g.ents) if (e.kind === 'u' && e.disT === undefined) Object.assign(e, { dis: 0, disT: 0, slow: 0, slowT: 0, chT: 0, chTgt: 0, pulseCd: 0 }); // v24: disrupt, slow, charge and pulse timers
   for (const e of g.ents) if (e.maxShp === undefined) Object.assign(e, { shp: 0, maxShp: 0, shpT: -99, shpHit: -99 }); // v22: Axiarch shields; nothing before v22 had any
   for (const e of g.ents) if (e.kind === 'u' && e.tLife === undefined) Object.assign(e, { tLife: e.temp ? ABIL.brood.life : 0, tSrc: e.temp ? 'brood' : null, kid: 0, spawnT: 0 });
   for (const e of g.ents) if (e.kind === 'u' && e.leapCd === undefined) Object.assign(e, { leapCd: 0, leaping: 0, lu: 0, lv: 0, ld: 0, corr: 0, corrT: 0, burstCd: 0 });
@@ -3762,14 +3851,102 @@ function dWraith(c, T, u) { // Wraithwing: a sleek crescent flyer of black stone
   c.fillStyle = T.light; c.fillRect(9 - k, -2, 2, 1.4);
   c.fillStyle = `rgba(${T.glow},0.8)`; c.beginPath(); c.arc(-2, 1, 1.6, 0, 7); c.fill(); // core
 }
-const DRAW_U = { skitterling: dSkitter, bulwark: dBulwark, razorwing: dRazor, leaper: dLeaper, ravager: dRavager, spitter: dSpitter, bilecaster: dBilecaster, bilelobber: dLobber, ruinmaw: dRuinmaw, thornback: dThornback, dreadthorn: dDreadthorn, needlewing: dNeedle, cloudwing: dCloudwing, broodtyrant: dTyrant, worldrender: dWorld, shardling: dShard, bastion: dBastion, wraithwing: dWraith, rifle: dRifle, heavy: dHeavy, sniper: dSniper, tank: dTank, artillery: dArt, titan: dTitan, flame: dFlame, hydra: dHydra, aircraft: dAir, interceptor: dInter, leviathan: dLev, medic: dMedic, drone: dDrone };
+// Axiarch tree units (v2.27): hovering stone and light, facing +x; team colour on glyphs and eyes, violet for rift energy
+const RIFT = '#b48cff', RIFTA = '180,140,255';
+const hov = (u, sp = 2.5) => Math.sin(u.anim * sp) * 1.2;
+function dRiftstalker(c, T, u) { // Riftstalker: a lean, forward-leaning shard of a hunter with two long rift claws
+  const y0 = -8 + hov(u, u.moving ? 8 : 2.5), sl = u.recoil * 4;
+  c.fillStyle = `rgba(${RIFTA},0.3)`; c.beginPath(); c.ellipse(0, -0.5, 6, 1.6, 0, 0, 7); c.fill();
+  c.fillStyle = AXC.stone[1]; poly(c, [[-9, y0 - 4], [6, y0 - 15], [10, y0 - 10], [-4, y0 + 2]]); c.fill();   // body, leaning in
+  c.fillStyle = AXC.stone[0]; poly(c, [[-9, y0 - 4], [6, y0 - 15], [2, y0 - 16], [-10, y0 - 8]]); c.fill();
+  c.fillStyle = AXC.obs[0]; poly(c, [[7, y0 - 15], [13, y0 - 17], [11, y0 - 12]]); c.fill();                 // head
+  c.fillStyle = T.light; c.fillRect(10, y0 - 15.5, 1.6, 1.2);
+  c.strokeStyle = RIFT; c.lineWidth = 1.5; c.lineCap = 'round';
+  c.beginPath(); c.moveTo(4, y0 - 10); c.quadraticCurveTo(12 + sl, y0 - 8, 17 + sl, y0 - 2); c.stroke();       // front claw
+  c.globalAlpha = 0.6; c.beginPath(); c.moveTo(-2, y0 - 6); c.quadraticCurveTo(6 + sl * 0.5, y0 - 1, 9 + sl * 0.5, y0 + 4); c.stroke(); c.globalAlpha = 1;
+  c.strokeStyle = `rgba(${T.glow},0.7)`; c.lineWidth = 0.9; c.beginPath(); c.moveTo(-6, y0 - 5); c.lineTo(4, y0 - 12); c.stroke();
+}
+function dParallax(c, T, u) { // Parallax: a tall blade-bearer with a faint offset double of itself, twin crescent blades
+  const y0 = -8 + hov(u, u.moving ? 7 : 2), sl = u.recoil * 0.6;
+  const body = (a, dx) => { c.globalAlpha = a;
+    c.fillStyle = AXC.stone[0]; poly(c, [[dx, y0 - 24], [dx + 6, y0 - 12], [dx + 2, y0], [dx - 5, y0 - 12]]); c.fill();
+    c.fillStyle = AXC.stone[2]; poly(c, [[dx, y0 - 24], [dx + 2, y0], [dx - 5, y0 - 12]]); c.fill(); };
+  body(0.3, -6); body(1, 0); c.globalAlpha = 1;                                                                 // the double, then itself
+  c.fillStyle = T.light; c.fillRect(1.5, y0 - 20, 1.8, 1.3);
+  c.strokeStyle = `rgba(${T.glow},0.8)`; c.lineWidth = 1; c.beginPath(); c.moveTo(0, y0 - 18); c.lineTo(1, y0 - 4); c.stroke();
+  c.save(); c.translate(5, y0 - 13); c.rotate(-0.5 + sl);
+  c.strokeStyle = RIFT; c.lineWidth = 1.8; c.beginPath(); c.arc(6, 0, 8, -1.3, 1.3); c.stroke();                   // crescent blade
+  c.restore();
+  c.strokeStyle = `rgba(${RIFTA},0.6)`; c.lineWidth = 1.4; c.beginPath(); c.arc(-3, y0 - 9, 6, 1.8, 4.2); c.stroke(); // back blade
+}
+function dLancer(c, T, u) { // Lancer: an upright slab of a body holding a long lance, its tip charged with light
+  const y0 = -7 + hov(u, u.moving ? 6 : 2), k = u.recoil;
+  c.fillStyle = `rgba(${T.glow},0.25)`; c.beginPath(); c.ellipse(0, -0.5, 6, 1.6, 0, 0, 7); c.fill();
+  c.fillStyle = AXC.stone[1]; poly(c, [[-4, y0], [4, y0], [5, y0 - 18], [0, y0 - 22], [-5, y0 - 18]]); c.fill();
+  c.fillStyle = AXC.stone[0]; poly(c, [[0, y0 - 22], [5, y0 - 18], [4, y0], [0, y0]]); c.fill();
+  c.fillStyle = T.light; c.fillRect(1, y0 - 19, 2, 1.3);
+  c.strokeStyle = AXC.edge; c.lineWidth = 1.6; c.beginPath(); c.moveTo(-6 - k * 2, y0 - 8); c.lineTo(15 - k * 2, y0 - 18); c.stroke(); // the lance
+  c.fillStyle = `rgba(${AXC.pale},${0.7 + 0.3 * Math.sin(u.anim * 6)})`; c.beginPath(); c.arc(15 - k * 2, y0 - 18, 1.8 + k, 0, 7); c.fill();
+}
+function dMarksman(c, T, u) { // Astral Marksman: a kneeling stone figure behind a very long prism, a lens at its tip
+  const y0 = -4 + hov(u, 1.5) * 0.5, k = u.recoil * 2;
+  c.fillStyle = AXC.stone[2]; poly(c, [[-8, y0 + 3], [2, y0 + 3], [0, y0 - 4], [-7, y0 - 3]]); c.fill();         // knee block
+  c.fillStyle = AXC.stone[1]; poly(c, [[-6, y0 - 3], [1, y0 - 3], [2, y0 - 18], [-3, y0 - 22], [-7, y0 - 16]]); c.fill(); // torso
+  c.fillStyle = AXC.obs[0]; poly(c, [[-3, y0 - 22], [1, y0 - 25], [3, y0 - 21], [0, y0 - 19]]); c.fill();         // head
+  c.fillStyle = T.light; c.fillRect(1, y0 - 22, 1.6, 1.2);
+  c.fillStyle = AXC.obs[1]; poly(c, [[-4 - k, y0 - 13], [22 - k, y0 - 16], [22 - k, y0 - 13.5], [-4 - k, y0 - 10]]); c.fill(); // the long prism
+  c.strokeStyle = `rgba(${T.glow},0.75)`; c.lineWidth = 0.9; c.beginPath(); c.moveTo(-2 - k, y0 - 12); c.lineTo(20 - k, y0 - 15); c.stroke();
+  c.fillStyle = `rgba(${AXC.pale},0.85)`; c.beginPath(); c.arc(22.5 - k, y0 - 14.8, 1.6, 0, 7); c.fill();       // the lens
+}
+function dRiftMortar(c, T, u) { // Rift Mortar: a hovering stone platform carrying a tilted ring-barrel around a violet core
+  const y0 = -6 + hov(u, 1.6), k = u.recoil * 2;
+  c.fillStyle = `rgba(${RIFTA},0.25)`; c.beginPath(); c.ellipse(0, -0.5, 13, 2.6, 0, 0, 7); c.fill();
+  c.fillStyle = AXC.stone[1]; poly(c, [[-14, y0], [12, y0], [14, y0 - 6], [-12, y0 - 6]]); c.fill();
+  c.fillStyle = AXC.stone[0]; poly(c, [[-12, y0 - 6], [14, y0 - 6], [10, y0 - 9], [-10, y0 - 9]]); c.fill();
+  c.save(); c.translate(-1, y0 - 13 + k); c.rotate(-0.6);
+  c.strokeStyle = AXC.edge; c.lineWidth = 2.2; for (const r of [0, 7, 14]) { c.beginPath(); c.ellipse(r, 0, 2.2, 5.5 - r * 0.12, 0, 0, 7); c.stroke(); } // the rings
+  c.restore();
+  c.fillStyle = `rgba(${RIFTA},${0.6 + 0.3 * Math.sin(u.anim * 3)})`; c.beginPath(); c.arc(-1, y0 - 13 + k, 2.4, 0, 7); c.fill();
+  c.fillStyle = T.light; c.fillRect(8, y0 - 8, 2, 1.3);
+}
+function dWorldbreaker(c, T, u) { // Worldbreaker: a great hovering block with a monolith arm raised over a glowing rift crack
+  const y0 = -8 + hov(u, 1.2), k = u.recoil * 4;
+  c.fillStyle = `rgba(${RIFTA},0.25)`; c.beginPath(); c.ellipse(0, -0.5, 20, 3.6, 0, 0, 7); c.fill();
+  c.fillStyle = AXC.obs[1]; poly(c, [[-20, y0], [14, y0], [18, y0 - 16], [-16, y0 - 20]]); c.fill();           // the hull
+  c.fillStyle = AXC.stone[0]; poly(c, [[-16, y0 - 20], [18, y0 - 16], [12, y0 - 24], [-12, y0 - 27]]); c.fill();
+  c.strokeStyle = RIFT; c.lineWidth = 1.6; c.beginPath(); c.moveTo(-14, y0 - 6); c.lineTo(-6, y0 - 11); c.lineTo(0, y0 - 7); c.lineTo(8, y0 - 12); c.stroke(); // the crack
+  c.save(); c.translate(8, y0 - 22); c.rotate(-0.9 + k * 0.12);                                                    // the arm
+  c.fillStyle = AXC.stone[1]; poly(c, [[0, -3], [22, -5], [22, 5], [0, 3]]); c.fill();
+  c.fillStyle = AXC.obs[0]; poly(c, [[18, -8], [27, -8], [27, 8], [18, 8]]); c.fill();
+  c.fillStyle = `rgba(${T.glow},0.7)`; c.fillRect(20, -1, 5, 2);
+  c.restore();
+  c.fillStyle = T.light; c.fillRect(10, y0 - 19, 2.2, 1.6);
+}
+function dGravemantle(c, T, u) { // Gravemantle: a cloaked dome of stone with small stones orbiting it, heavy and slow
+  const y0 = -6 + hov(u, 1.4), t = u.anim;
+  c.fillStyle = AXC.obs[1]; c.beginPath(); c.moveTo(-13, y0); c.quadraticCurveTo(-12, y0 - 24, 0, y0 - 26); c.quadraticCurveTo(12, y0 - 24, 13, y0); c.closePath(); c.fill(); // the mantle
+  c.fillStyle = AXC.stone[0]; c.beginPath(); c.moveTo(0, y0 - 26); c.quadraticCurveTo(12, y0 - 24, 13, y0); c.lineTo(4, y0); c.quadraticCurveTo(6, y0 - 18, 0, y0 - 26); c.fill();
+  c.strokeStyle = `rgba(${RIFTA},0.7)`; c.lineWidth = 1; c.beginPath(); c.moveTo(-8, y0 - 6); c.quadraticCurveTo(0, y0 - 10, 8, y0 - 6); c.stroke(); // glyph band
+  c.fillStyle = T.light; c.fillRect(5, y0 - 18, 2, 1.4);
+  for (let i = 0; i < 3; i++) { const a = t * 1.2 + i * 2.09, x = Math.cos(a) * 16, y = y0 - 14 + Math.sin(a) * 4; c.fillStyle = Math.sin(a) > 0 ? AXC.stone[0] : AXC.stone[2]; poly(c, [[x, y - 2.5], [x + 2, y], [x, y + 2], [x - 2, y]]); c.fill(); }
+}
+function dEventide(c, T, u) { // Eventide: an upright stone ring around a dark sphere, on a hovering plinth
+  const y0 = -8 + hov(u, 1), t = u.anim, k = 0.5 + 0.5 * Math.sin(t * 2);
+  c.fillStyle = `rgba(${RIFTA},0.25)`; c.beginPath(); c.ellipse(0, -0.5, 16, 3, 0, 0, 7); c.fill();
+  c.fillStyle = AXC.stone[1]; poly(c, [[-12, y0], [12, y0], [9, y0 - 6], [-9, y0 - 6]]); c.fill();             // plinth
+  c.strokeStyle = AXC.stone[0]; c.lineWidth = 5; c.beginPath(); c.ellipse(0, y0 - 22, 9, 15, 0, 0, 7); c.stroke(); // the ring
+  c.strokeStyle = `rgba(${T.glow},0.6)`; c.lineWidth = 1; c.stroke();
+  c.fillStyle = '#05060d'; c.beginPath(); c.arc(0, y0 - 22, 5.5, 0, 7); c.fill();                                 // the sphere
+  c.strokeStyle = `rgba(${RIFTA},${0.4 + 0.5 * k})`; c.lineWidth = 1.2; c.beginPath(); c.arc(0, y0 - 22, 7 + k, 0, 7); c.stroke();
+}
+const DRAW_U = { skitterling: dSkitter, bulwark: dBulwark, razorwing: dRazor, leaper: dLeaper, ravager: dRavager, spitter: dSpitter, bilecaster: dBilecaster, bilelobber: dLobber, ruinmaw: dRuinmaw, thornback: dThornback, dreadthorn: dDreadthorn, needlewing: dNeedle, cloudwing: dCloudwing, broodtyrant: dTyrant, worldrender: dWorld, shardling: dShard, bastion: dBastion, wraithwing: dWraith, riftstalker: dRiftstalker, parallax: dParallax, lancer: dLancer, marksman: dMarksman, riftmortar: dRiftMortar, worldbreaker: dWorldbreaker, gravemantle: dGravemantle, eventide: dEventide, rifle: dRifle, heavy: dHeavy, sniper: dSniper, tank: dTank, artillery: dArt, titan: dTitan, flame: dFlame, hydra: dHydra, aircraft: dAir, interceptor: dInter, leviathan: dLev, medic: dMedic, drone: dDrone };
 // Drawn size where it differs from the SIM height (the Titan walker stands taller than its hitbox): health bars and shadows follow the art
 const UVIS = { titan: { h: 50, w: 17 }, hydra: { h: 42, w: 15 } };
 const visH = type => (UVIS[type] || UDEF[type]).h;
 // Sprite cache: a ground unit's pose is drawn once into a small canvas at the current zoom, then stamped with one
 // drawImage. Walk cycles are cut into a few poses; a unit mid-recoil and aircraft (few, always animating) draw live.
-const SPR_BOX = { shardling: [-12, -34, 32, 40], bastion: [-22, -40, 46, 44], skitterling: [-14, -12, 30, 14], bulwark: [-24, -30, 55, 32], leaper: [-20, -20, 36, 22], ravager: [-18, -34, 44, 36], spitter: [-12, -20, 30, 22], bilecaster: [-14, -26, 36, 28], bilelobber: [-18, -32, 38, 34], ruinmaw: [-26, -36, 60, 38], thornback: [-18, -30, 38, 32], dreadthorn: [-24, -46, 58, 48], rifle: [-9, -26, 22, 30], heavy: [-14, -33, 29, 36], sniper: [-11, -26, 31, 30], tank: [-25, -34, 55, 37], artillery: [-30, -38, 64, 41], titan: [-22, -56, 64, 62], flame: [-23, -24, 52, 27], hydra: [-22, -50, 62, 54] };
-const SPR_STEP = { shardling: [9, 6], bastion: [4, 6], skitterling: [14, 6], bulwark: [6, 8], leaper: [12, 6], ravager: [8, 6], spitter: [10, 6], bilecaster: [7, 6], bilelobber: [5, 8], ruinmaw: [4, 8], thornback: [7, 8], dreadthorn: [5, 8], rifle: [11, 8], heavy: [8, 8], sniper: [10, 8], titan: [3.2, 12], hydra: [3.6, 12] }; // [phase speed, poses per cycle]
+const SPR_BOX = { shardling: [-12, -34, 32, 40], bastion: [-22, -40, 46, 44], riftstalker: [-16, -34, 40, 40], parallax: [-18, -42, 42, 48], lancer: [-12, -38, 34, 42], marksman: [-14, -36, 44, 42], riftmortar: [-22, -38, 46, 42], worldbreaker: [-26, -66, 66, 70], gravemantle: [-24, -44, 48, 48], eventide: [-22, -56, 44, 60], skitterling: [-14, -12, 30, 14], bulwark: [-24, -30, 55, 32], leaper: [-20, -20, 36, 22], ravager: [-18, -34, 44, 36], spitter: [-12, -20, 30, 22], bilecaster: [-14, -26, 36, 28], bilelobber: [-18, -32, 38, 34], ruinmaw: [-26, -36, 60, 38], thornback: [-18, -30, 38, 32], dreadthorn: [-24, -46, 58, 48], rifle: [-9, -26, 22, 30], heavy: [-14, -33, 29, 36], sniper: [-11, -26, 31, 30], tank: [-25, -34, 55, 37], artillery: [-30, -38, 64, 41], titan: [-22, -56, 64, 62], flame: [-23, -24, 52, 27], hydra: [-22, -50, 62, 54] };
+const SPR_STEP = { shardling: [9, 6], bastion: [4, 6], riftstalker: [8, 6], parallax: [7, 6], lancer: [6, 6], marksman: [1.5, 4], riftmortar: [1.6, 6], worldbreaker: [1.2, 6], gravemantle: [1.4, 6], eventide: [1, 6], skitterling: [14, 6], bulwark: [6, 8], leaper: [12, 6], ravager: [8, 6], spitter: [10, 6], bilecaster: [7, 6], bilelobber: [5, 8], ruinmaw: [4, 8], thornback: [7, 8], dreadthorn: [5, 8], rifle: [11, 8], heavy: [8, 8], sniper: [10, 8], titan: [3.2, 12], hydra: [3.6, 12] }; // [phase speed, poses per cycle]
 const SPR = { scale: 0, map: new Map(), budget: 0 };
 function sprPose(u) { // a stand-in unit snapped to one of the cached poses, with its cache key; null = draw live
   const box = SPR_BOX[u.type];
@@ -4194,11 +4371,15 @@ function drawPathMark(c, path, T, d, fac) {
   c.fillStyle = 'rgba(8,14,26,0.85)'; c.strokeStyle = T.main; c.lineWidth = 1.6;
   c.beginPath(); c.moveTo(x - r, y - r); c.lineTo(x + r, y - r); c.lineTo(x + r, y + r * 0.4); c.lineTo(x, y + r * 1.25); c.lineTo(x - r, y + r * 0.4); c.closePath(); c.fill(); c.stroke();
   c.strokeStyle = T.light; c.lineWidth = 1.5; c.beginPath();
-  const k = (fac === 'bloomhost' ? 'x' : '') + (d === BD(fac, 'factory') ? 'f' : d === BD(fac, 'techlab') ? 't' : 'b') + path;
+  const k = (fac === 'bloomhost' ? 'x' : fac === 'axiarchs' ? 'a' : '') + (d === BD(fac, 'factory') ? 'f' : d === BD(fac, 'techlab') ? 't' : 'b') + path;
   if (k === 'xbA') { for (const j of [-4, 0, 4]) { c.moveTo(x + j - 2, y - 6); c.quadraticCurveTo(x + j + 1, y - 1, x + j - 1, y + 5); } } // Predatory: claw marks (v2.19)
   else if (k === 'xbB') { c.moveTo(x, y - 7); c.quadraticCurveTo(x + 6, y + 1, x, y + 5); c.quadraticCurveTo(x - 6, y + 1, x, y - 7); } // Acidic: a drop
   else if (k === 'xfA') { c.moveTo(x - 6, y + 4); c.quadraticCurveTo(x, y - 10, x + 6, y + 4); c.moveTo(x + 7, y + 4); c.arc(x + 6, y + 4, 1.5, 0, 7); } // Siege: a lobbed arc
   else if (k === 'xfB') { for (const j of [-5, 0, 5]) { c.moveTo(x + j - 2.5, y + 4); c.lineTo(x + j, y - 6); c.lineTo(x + j + 2.5, y + 4); } } // Predator: spines
+  else if (k === 'abA') { c.moveTo(x - 6, y + 4); c.lineTo(x - 2, y - 4); c.lineTo(x + 2, y + 2); c.lineTo(x + 6, y - 6); } // Riftwalk: a phase-step zigzag (v2.27)
+  else if (k === 'abB') { c.moveTo(x, y - 7); c.lineTo(x, y + 5); c.moveTo(x - 6, y - 1); c.lineTo(x + 6, y - 1); c.moveTo(x - 4, y - 5); c.lineTo(x + 4, y + 3); } // Lattice: a lattice star
+  else if (k === 'afA') { for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; c.moveTo(x + Math.cos(a) * 2, y - 1 + Math.sin(a) * 2); c.lineTo(x + Math.cos(a) * 6.5, y - 1 + Math.sin(a) * 6.5); } } // Rupture: a burst
+  else if (k === 'afB') { c.arc(x, y - 1, 6, 0, 7); c.moveTo(x + 3, y - 1); c.arc(x, y - 1, 3, 0, 7); } // Dominion: gravity rings
   else if (k === 'bA') { c.arc(x, y - 1, 4, 0, 7); c.moveTo(x - 6.5, y - 1); c.lineTo(x + 6.5, y - 1); c.moveTo(x, y - 7.5); c.lineTo(x, y + 5.5); }
   else if (k === 'bB') for (const j of [0, 5]) { c.moveTo(x - 5, y - 5 + j); c.lineTo(x, y - 1 + j); c.lineTo(x + 5, y - 5 + j); }
   else if (k === 'tA') { c.moveTo(x, y - 7); c.lineTo(x + 6.5, y + 3); c.lineTo(x, y); c.lineTo(x - 6.5, y + 3); c.closePath(); } // a wing
@@ -4299,6 +4480,7 @@ function drawUnit(c, u) {
   c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
   c.restore();
   if (u.shT > VFX.lastT) drawShield(c, u, VFX.lastT);
+  if (VFX.g) drawAxFx(c, VFX.g, u, w); // v2.27: a Marksman's charge, a Gravemantle's aura, slowed and disrupted marks
   if (u.maxShp && VFX.g && VFX.g.t - u.shpHit < 0.3) drawShpHit(c, w.x, w.y - u.z, visH(u.type) * US, (VFX.g.t - u.shpHit) / 0.3); // Axiarch shields hit (v2.25)
   if (u.corrT > VFX.lastT) drawCorrosion(c, u, w); // v2.19
   if (u.frzT > VFX.lastT) { // Frenzy Bloom: a pulsing pink glow (v2.20), larger and brighter with a ring at the feet (v2.21)
@@ -4317,6 +4499,12 @@ function drawCorrosion(c, u, w) {
 // Ruinmaw acid pools (v2.19): a bubbling green puddle that fades in its last second
 function drawAcidPool(c, a, t) {
   const w = P(a.u, a.v), left = a.end - t, al = clamp(left, 0, 1);
+  if (a.kind === 'dist') { // a Worldbreaker's distortion zone (v2.27): a warped violet ripple instead of acid
+    c.fillStyle = `rgba(110,80,180,${0.3 * al})`; c.beginPath(); c.ellipse(w.x, w.y, ACID.r, ACID.r * DY * 0.6, 0, 0, 7); c.fill();
+    c.strokeStyle = `rgba(${RIFTA},${0.6 * al})`; c.lineWidth = 1.2;
+    for (let i = 0; i < 3; i++) { const k = ((t * 0.8 + i / 3) % 1), r = ACID.r * k; c.beginPath(); c.ellipse(w.x, w.y, r, r * DY * 0.6, 0, 0, 7); c.stroke(); }
+    return;
+  }
   c.fillStyle = `rgba(110,180,60,${0.42 * al})`; c.beginPath(); c.ellipse(w.x, w.y, ACID.r, ACID.r * DY * 0.6, 0, 0, 7); c.fill();
   c.strokeStyle = `rgba(155,225,93,${0.55 * al})`; c.lineWidth = 1.2; c.stroke();
   c.fillStyle = `rgba(190,245,130,${0.6 * al})`;
@@ -4511,6 +4699,8 @@ function onFire(g, e, lit) {
     case 'spine': vFx('flash', w.x, w.y, 6, 0.07, GLOW['t' + e.side], 1); break; // the Maw spits
     case 'acid': case 'bile': case 'lob': case 'ruin': case 'glob': vFx('flash', w.x, w.y, wpn === 'acid' ? 5 : 9, 0.1, GLOW.acid, 1); break; // a spray of acid (v2.19); the Brood Tyrant's glob (v2.21)
     case 'crush': vFx('flash', w.x, w.y, 10, 0.14, GLOW.acid, 1); break; // the Worldrender's sac opens
+    case 'bolt': case 'astral': case 'breaker': case 'grav': case 'rift': vFx('flash', w.x, w.y, wpn === 'astral' ? 9 : 6, 0.1, GLOW.cyan, 1); break; // Axiarch shots (v2.27)
+    case 'riftblade': case 'parallax':
     case 'claw': case 'talon': case 'slam': case 'rend': case 'maul': case 'gore': case 'needle': // a bite or a blow: a short bright snap at the jaws
       vFx('flash', w.x + face * 3, w.y, wpn === 'slam' ? 10 : 5, 0.08, GLOW['t' + e.side], 1); break;
   }
@@ -4553,6 +4743,9 @@ function onImpact(g, p, lit) {
       vFx('flash', w.x, ground - 6, 22, 0.16, GLOW.fire, 2);
       for (let i = vCount(6); i > 0; i--) vPart(w.x + vr(-10, 10), ground - 1, vr(-34, 34), vr(-22, -6), vr(0.9, 1.5), vr(5, 9), 3, '', -2, 0);
       for (let i = vCount(4); i > 0; i--) vPart(w.x, ground - 2, vr(-80, 80), vr(-110, -40), vr(0.7, 1.2), vr(1.8, 3), 2, '#2a3648', 320, 1, ground);
+      break;
+    case 'rift': case 'breaker': // a violet burst (v2.27)
+      vFx('ring', w.x, p.weapon === 'rift' ? ground : w.y, 3, 0.35, RIFT, 1, p.weapon === 'rift' ? 30 : 22, p.weapon === 'rift' ? 1 : 0, 1.6);
       break;
     case 'acid': case 'bile': case 'ruin': case 'lob': case 'glob': // a splash of acid (v2.19)
       vFx('ring', w.x, p.weapon === 'lob' ? ground : w.y, 3, 0.3, '#9be15d', 1, p.weapon === 'acid' ? 10 : 24, p.weapon === 'lob' ? 1 : 0, 1.4);
@@ -4670,6 +4863,27 @@ const BUBBLE = [0, 1].map(s => {
   k.fillStyle = `rgba(${TEAM[s].glow},0.18)`; k.fill(); k.strokeStyle = `rgba(${TEAM[s].glow},1)`; k.lineWidth = 3; k.stroke();
   return cv;
 });
+// Axiarch tree effects on a unit (v2.27)
+function drawAxFx(c, g, u, w) {
+  const d = UDEF[u.type], y = w.y - u.z;
+  if (d.aura) { // the Gravemantle's aura: a faint violet ring on the ground at its reach
+    c.strokeStyle = `rgba(${RIFTA},${0.18 + 0.08 * Math.sin(VFX.lastT * 2 + u.id)})`; c.lineWidth = 1.2; c.setLineDash([4, 6]);
+    c.beginPath(); c.ellipse(w.x, w.y, d.aura.r, d.aura.r * DY, 0, 0, 7); c.stroke(); c.setLineDash([]);
+  }
+  if (d.charge && u.chT > g.t) { // the Astral Marksman charging: a thin line to its target and a growing light at the lens
+    const t = g.ents.find(e => e.id === u.chTgt), k = 1 - (u.chT - g.t) / d.charge;
+    if (t) { const m = muzzle(u), a = P(m.u, m.v, m.z), b = P(t.u, t.v, aimZ(t)); c.strokeStyle = `rgba(200,235,255,${0.15 + 0.45 * k})`; c.lineWidth = 0.8 + k; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
+      c.globalCompositeOperation = 'lighter'; stamp(c, GLOW.cyan, a.x, a.y, 3 + 7 * k, 0.9); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1; }
+  }
+  if (u.slowT > g.t) { const r = Math.max(8, visH(u.type) * 0.6) * US; c.strokeStyle = `rgba(${RIFTA},0.6)`; c.lineWidth = 1.2; for (const k of [1, 0.6]) { c.beginPath(); c.ellipse(w.x, w.y, r * k, r * k * 0.35, 0, 0, 7); c.stroke(); } } // slowed: violet ripples at the feet
+  if (u.disT > g.t) { c.strokeStyle = `rgba(${RIFTA},0.85)`; c.lineWidth = 1.2; const h = visH(u.type) * US; c.beginPath(); for (const s of [-1, 1]) { c.moveTo(w.x + s * 5, y - h - 6); c.lineTo(w.x + s * 2, y - h - 3); c.lineTo(w.x + s * 5, y - h); } c.stroke(); } // disrupted: broken brackets
+}
+// An Eventide's gravity pulse (v2.27): a violet ring that closes in on it
+function drawPull(c, f) {
+  const k = f.t / f.life, r = f.r * (1 - k);
+  c.strokeStyle = `rgba(${RIFTA},${0.7 * (1 - k)})`; c.lineWidth = 2.4; c.beginPath(); c.ellipse(f.x, f.y, r, r * DY, 0, 0, 7); c.stroke();
+  c.strokeStyle = `rgba(230,215,255,${0.5 * (1 - k)})`; c.lineWidth = 1; c.beginPath(); c.ellipse(f.x, f.y, r * 0.7, r * 0.7 * DY, 0, 0, 7); c.stroke();
+}
 // A Null Lance beam (v2.25): a pale core inside a cyan glow, fading over its short life
 function drawBeam(c, f) {
   const k = 1 - f.t / f.life;
@@ -4905,20 +5119,29 @@ function render(c, g, time, sel, selPad) {
   for (const p of g.projs) {
     if (p.side !== 0 && !lit(p.u)) continue;
     const a = P(p.pu, p.pv, p.pz), b = P(p.u, p.v, p.z), wp = p.weapon;
-    if (wp === 'rifle' || wp === 'flak' || wp === 'gatling' || wp === 'rail' || wp === 'spine') {
-      c.strokeStyle = wp === 'rail' ? '#bff4ff' : wp === 'flak' ? '#ffe9a8' : wp === 'gatling' ? '#ffd38a' : wp === 'spine' ? '#d6ff9a' : '#fff3b0';
-      c.lineWidth = wp === 'rail' ? 2 : wp === 'gatling' ? 1.5 : 1.2;
+    if (wp === 'rifle' || wp === 'flak' || wp === 'gatling' || wp === 'rail' || wp === 'spine' || wp === 'bolt' || wp === 'astral') {
+      c.strokeStyle = wp === 'rail' || wp === 'astral' || wp === 'bolt' ? '#bff4ff' : wp === 'flak' ? '#ffe9a8' : wp === 'gatling' ? '#ffd38a' : wp === 'spine' ? '#d6ff9a' : '#fff3b0';
+      c.lineWidth = wp === 'rail' || wp === 'astral' ? 2 : wp === 'gatling' || wp === 'bolt' ? 1.5 : 1.2;
       c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
-      if (wp === 'rail') { c.globalCompositeOperation = 'lighter'; stamp(c, GLOW.cyan, b.x, b.y, 5, 0.9); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1; }
+      if (wp === 'rail' || wp === 'astral' || wp === 'bolt') { c.globalCompositeOperation = 'lighter'; stamp(c, GLOW.cyan, b.x, b.y, 5, 0.9); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1; }
     } else if (wp === 'cannon' || wp === 'siege') {
       const big = wp === 'siege';
       c.strokeStyle = 'rgba(255,220,140,0.75)'; c.lineWidth = big ? 3.2 : 2.2; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
       c.globalCompositeOperation = 'lighter'; stamp(c, big ? GLOW.white : GLOW.warm, b.x, b.y, big ? 8 : 6, 0.85); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
       c.fillStyle = '#fff6d0'; c.beginPath(); c.arc(b.x, b.y, big ? 3 : 2.2, 0, 7); c.fill();
+    } else if (wp === 'breaker' || wp === 'grav') { // Worldbreaker and Gravemantle/Eventide shots (v2.27): a violet orb
+      c.strokeStyle = `rgba(${RIFTA},0.55)`; c.lineWidth = wp === 'breaker' ? 3 : 2; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
+      c.fillStyle = RIFT; c.beginPath(); c.arc(b.x, b.y, wp === 'breaker' ? 3.4 : 2.2, 0, 7); c.fill();
     } else if (wp === 'acid' || wp === 'bile' || wp === 'ruin' || wp === 'glob' || wp === 'crush') { // Bloomhost acid (v2.19): a green glob with a short trail
       const big = wp === 'crush' ? 4.4 : wp === 'ruin' || wp === 'glob' ? 3.2 : wp === 'bile' ? 2.6 : 1.8;
       c.strokeStyle = 'rgba(155,225,93,0.55)'; c.lineWidth = big; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
       c.fillStyle = wp === 'ruin' ? '#6fae3a' : '#c4f58e'; c.beginPath(); c.arc(b.x, b.y, big, 0, 7); c.fill();
+    } else if (wp === 'rift') { // the Rift Mortar's shot (v2.27): a violet orb on the shell's arc, the same landing ring
+      const gp = P(p.u, p.v, 0);
+      if (showLanding(p, lit)) { const t = P(p.tu, p.tv, 0), k = clamp(p.t / p.T, 0, 1); c.strokeStyle = TEAM[p.side].main; c.globalAlpha = 0.2 + 0.5 * k; c.lineWidth = 1.2; c.beginPath(); c.ellipse(t.x, t.y, 26 - 8 * k, (26 - 8 * k) * 0.42, 0, 0, 7); c.stroke(); c.globalAlpha = 1; }
+      c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.ellipse(gp.x, gp.y, 4, 1.6, 0, 0, 7); c.fill();
+      c.globalCompositeOperation = 'lighter'; stamp(c, GLOW.cyan, b.x, b.y, 7, 0.6); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
+      c.fillStyle = RIFT; c.beginPath(); c.arc(b.x, b.y, 3.2, 0, 7); c.fill(); c.fillStyle = '#efe6ff'; c.beginPath(); c.arc(b.x - 1, b.y - 1, 1.1, 0, 7); c.fill();
     } else if (wp === 'lob') { // the Bile Lobber's arcing glob, with the same landing ring as a shell
       const gp = P(p.u, p.v, 0);
       if (showLanding(p, lit)) { const t = P(p.tu, p.tv, 0), k = clamp(p.t / p.T, 0, 1); c.strokeStyle = TEAM[p.side].main; c.globalAlpha = 0.2 + 0.5 * k; c.lineWidth = 1.2; c.beginPath(); c.ellipse(t.x, t.y, 26 - 8 * k, (26 - 8 * k) * 0.42, 0, 0, 7); c.stroke(); c.globalAlpha = 1; }
@@ -4956,6 +5179,7 @@ function render(c, g, time, sel, selPad) {
   c.globalAlpha = 1;
   for (const f of g.fx) { // the SIM's blasts (its muzzle flashes are replaced by the per-weapon ones in drawVfx)
     if (f.k === 'beam') { if (lit(f.x) || lit(f.x2)) drawBeam(c, f); continue; } // Null Lance beams (v2.25), only where the player can see
+    if (f.k === 'pull') { if (lit(f.x)) drawPull(c, f); continue; } // Eventide pulses (v2.27)
     if (f.k !== 'boom' || !lit(f.x)) continue;
     drawBoom(c, f.x, f.y, f.r, f.t / f.life);
   }
@@ -5196,6 +5420,14 @@ const UNIT_TIPS = {
   shardling: ['Lone ranged units and nodes: fast light blades, ground and buildings', 'Focus fire, splash, Flame Tanks; it can\'t hit aircraft'],
   bastion: ['Holding the front: large shields and a brace (40% less damage for 3 s, every 12 s)', 'Heavies, Tanks, Snipers worn down over time; aircraft'],
   wraithwing: ['Aircraft, ground units and buildings: a fast flyer', 'Anything that hits air, Turrets'],
+  riftstalker: ['Light infantry and lone ranged units: it phase-steps onto them (up to 130, every 8 s)', 'Focus fire, Tanks, heavy frontline units'],
+  parallax: ['Ranged units: it phase-steps behind them; its blows disrupt (30% less damage for 2 s)', 'Focus fire, heavy frontline units, Turrets'],
+  lancer: ['Aircraft and ground from range: energy bolts, a main source of anti-air', 'Melee units that reach it, splash'],
+  marksman: ['Infantry from very long range, after a visible charge-up on its target', 'Fast attackers, aircraft (it can\'t hit them); weak against buildings'],
+  riftmortar: ['Buildings and clumps from 430 range, like Artillery (minimum range 110)', 'Anything that gets close, aircraft'],
+  worldbreaker: ['Buildings and clumps; every hit leaves a short distortion zone', 'Fast attackers, aircraft, Heavies'],
+  gravemantle: ['Holding ground: enemy ground units near it are slowed 30%', 'Ranged focus, aircraft (it can\'t hit them)'],
+  eventide: ['Packed ground units: a gravity pulse pulls them in (every 14 s)', 'Ranged focus, aircraft (it can\'t hit them)'],
   needlewing: ['Exposed ground units in a pack: +12% damage for each other Needlewing on the target (up to +36%)', 'Anything that hits air, splash; it can\'t hit aircraft'],
   cloudwing: ['Overwhelming ground targets; while fighting it releases 2 offspring every 14 s (12 s life, at most 6)', 'Anything that hits air; it can\'t hit aircraft'],
   broodtyrant: ['Buildings first, then ground units, with heavy globs from 150 range', 'Interceptors, Heavies, Hydras, Turrets; it can\'t hit aircraft'],
@@ -5234,7 +5466,7 @@ function showInfo(kind, type) {
     const d = BD(pFac(), type);
     name = d.name; sub = d.req ? `Requires ${BD(pFac(), d.req).name}` : '';
     body = `<div class="istats">${stat('HP', d.hp)}${d.shp ? stat('Shields', d.shp) : ''}${stat('Build time', d.time + 's')}${stat('Credits', d.cost.c)}${stat('Energy', d.cost.e)}</div>` +
-      (prodLocked(pFac(), type) ? `<div class="irow">${FACTIONS[pFac()].lockMsg}: it stays at T1 for now.</div>` : '') +
+      (prodLocked(pFac(), type) ? `<div class="irow">${d.lockMsg}: it stays at T1 for now.</div>` : '') +
       [1, 2, 3].map(t => `<div class="irow"><em>T${t}${t > 1 ? ` (${d.up[t].c} credits, ${d.up[t].e} energy)` : ''}</em> ${d.tiers[t]}</div>`).join('');
   }
   $('infoName').textContent = name; $('infoSub').textContent = sub; $('infoBody').innerHTML = body;
@@ -5614,7 +5846,7 @@ function refreshPanel() {
   }
   if (prodLocked(b.fac, b.type)) { // Axiarch production stays T1 until its paths arrive (v2.25)
     $('bpNow').textContent = `T1: ${d.tiers[1]}`; setHTML($('bpNext'), '');
-    up.disabled = true; up.textContent = FACTIONS[facOf(b.fac)].lockMsg; up.classList.remove('poor'); up.classList.add('soon'); $('bp').classList.add('wide'); return;
+    up.disabled = true; up.textContent = d.lockMsg; up.classList.remove('poor'); up.classList.add('soon'); $('bp').classList.add('wide'); return;
   }
   up.classList.remove('soon');
   const T = treeOf(b.fac, b.type), P = T && (b.path || b.upPath) ? T[b.path || b.upPath] : null, pick = T && b.tier === 1 && !b.upgrading;

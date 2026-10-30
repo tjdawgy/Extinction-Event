@@ -165,3 +165,31 @@ Warp-in (section 4), numbers in `WARP`:
 - The AI never sets a warp point, so it always uses the default.
 
 Saves v23 store the field, the warps in progress and each side's warp point. Older saves start with no field and grow it.
+
+=== v2.27 GENESIS GATE AND ARCHITECTUM TREES (implementation record; not tuned) ===
+
+Paths use the same rules as the other factions: chosen at the T1 → T2 upgrade, locked per building, reset by selling. The base unit stays on both paths. Upgrade costs and times are the Last Fist Barracks and War Factory ones. The Celestial Array keeps "Calculus paths coming soon" until v2.29. Path units warp in like the base units.
+
+| Building | Path A | Path B |
+|---|---|---|
+| Genesis Gate | Riftwalk Doctrine: T2 Riftstalker, T3 Parallax | Lattice Doctrine: T2 Lancer, T3 Astral Marksman |
+| Architectum | Rupture Doctrine: T2 Rift Mortar, T3 Worldbreaker | Dominion Doctrine: T2 Gravemantle, T3 Eventide |
+
+Units (first-pass numbers set against the Last Fist unit in the same tree slot; Axiarch units cost more and carry shields):
+
+| Unit | Slot | Cost | Supply | HP + shields | Damage / cooldown (dps) | Range | Speed | Armor | Hits | Trait (code reused) | Last Fist slot equivalent |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Riftstalker | Gate T2, Riftwalk | 140/50 | 3 | 170 + 110 | 18 / 0.8 s (22.5) | 24 (melee) | 48 | light | ground, buildings | Phase-step onto a target 45–130 away at 420/s, then 8 s cooldown (the Leaper's leap); 1.5× vs light armor | Heavy 100/25, 2, 240 HP |
+| Parallax | Gate T3, Riftwalk | 220/90 | 4 | 260 + 180 | 30 / 0.9 s (33) | 26 (melee) | 46 | heavy | ground, buildings | Phase-step 40–150, landing just behind the target, 9 s cooldown; its blows disrupt: the target deals 30% less damage for 2 s (strongest wins, capped at 30%, never stacking) | Sniper 150/60, 2, 110 HP |
+| Lancer | Gate T2, Lattice | 150/60 | 3 | 150 + 110 | 16 / 0.9 s (17.8) | 170 | 32 | light | aircraft, ground, buildings | Energy bolts; a main source of mobile anti-air (1.2× vs air) | Heavy 100/25, 2, 240 HP |
+| Astral Marksman | Gate T3, Lattice | 240/110 | 4 | 140 + 120 | 85 / 3.0 s (+1.2 s charge) | 330 | 28 | light | ground, buildings | A visible 1.2 s charge-up on the same target before each shot (a line to the target, a light at the lens); 0.25× vs buildings | Sniper 150/60, 2, 110 HP |
+| Rift Mortar | Architectum T2, Rupture | 220/90 | 4 | 160 + 120 | 60 / 3.3 s, splash 55 | 430 (min 110) | 21 | vehicle | ground, buildings | Artillery's arcing shot and spotters | Artillery 175/60, 3, 150 HP |
+| Worldbreaker | Architectum T3, Rupture | 460/190 | 7 | 1,150 + 650 | 80 / 2.8 s, splash 34 | 210 | 17 | vehicle | ground, buildings (1.7×) | Each hit leaves a distortion zone in the Ruinmaw's acid-pool list: same 12 damage/s to enemy ground units, 4 s, and the same hard cap of 6 pools in all | Titan 420/160, 6, 1,500 HP |
+| Gravemantle | Architectum T2, Dominion | 230/100 | 4 | 520 + 380 | 14 / 1.2 s (11.7) | 120 | 24 | heavy | ground | Aura: enemy ground units within 110 are slowed 30%. Slows never stack: the strongest applies, capped at 35% (`SLOW`) | Flame Tank 190/50, 3, 520 HP |
+| Eventide | Architectum T3, Dominion | 420/180 | 6 | 1,000 + 650 | 24 / 1.3 s (18.5) | 140 | 20 | vehicle | ground | Gravity pulse every 14 s when an enemy ground unit is within 130: each is pulled up to 40 inward (never closer than 24). A pull that would end in a building or off the lane is halved, else skipped. No aircraft. A visible violet ring closes in | Hydra 360/140, 5, 1,100 HP |
+
+New weapon tables (light / heavy / vehicle / air / building): riftblade 1.5 / 0.9 / 0.6 / 0 / 0.6; parallax 1.3 / 1.1 / 0.8 / 0 / 0.6; bolt 1.0 / 1.0 / 0.9 / 1.2 / 0.6; astral 1.5 / 1.4 / 0.5 / 0 / 0.25; rift 1.1 / 1.0 / 0.75 / 0 / 1.6; breaker 0.9 / 1.2 / 1.2 / 0 / 1.7; grav 1.0 / 1.0 / 1.0 / 0 / 0.
+
+AI path choice, translated from each personality's Last Fist choice: Barracks Specialists → Genesis Gate Lattice, Mass Deployment → Riftwalk; War Factory Siege → Architectum Rupture, Assault → Dominion. The AI's siege and artillery lists (`AI_SIEGE`, `AI_ART`) now count Rift Mortars and Worldbreakers (artillery: the Rift Mortar).
+
+Saves v24 add disrupt, slow, charge and pulse timers on every unit (zero on older saves). Distortion zones carry `kind: 'dist'` in the acid-pool list.

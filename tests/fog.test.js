@@ -20,8 +20,9 @@ test('base vision always covers the HQ and Turret guns at every tier', () => {
   }
   const g = quiet();
   for (const s of [0, 1]) for (let du = 0; du <= sim.BDEF.hq.gun[3].range; du += 5) assert.ok(lit(g, s, sim.hqU(s) + (s ? -du : du)));
-  for (const t in sim.SIGHT) if (t !== 'artillery' && t !== 'sniper' && t !== 'bilelobber') assert.ok(sim.SIGHT[t] > sim.UDEF[t].range, `${t} sees past its range`);
-  assert.ok(sim.SIGHT.artillery < sim.UDEF.artillery.range && sim.SIGHT.sniper < sim.UDEF.sniper.range && sim.SIGHT.bilelobber < sim.UDEF.bilelobber.range, 'Artillery, Snipers and Bile Lobbers outrange their sight');
+  const spotted = ['artillery', 'sniper', 'bilelobber', 'riftmortar', 'marksman']; // long range that needs spotters (v2.27: the Rift Mortar and Astral Marksman too)
+  for (const t in sim.SIGHT) if (!spotted.includes(t)) assert.ok(sim.SIGHT[t] > sim.UDEF[t].range, `${t} sees past its range`);
+  for (const t of spotted) assert.ok(sim.SIGHT[t] < sim.UDEF[t].range, `${t} outranges its sight`);
 });
 
 test('at the start the middle of the lane is dark to both sides; the enemy HQ is a known ghost', () => {

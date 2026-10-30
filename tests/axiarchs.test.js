@@ -99,10 +99,11 @@ test('base units: the Wraithwing hits aircraft, ground and buildings; Shardlings
   assert.ok(U.bastion.brace && U.shardling.melee);
 });
 
-test('Axiarch production stays T1 ("Doctrine paths coming soon"); each faction trains only its own units; abilities are locked', () => {
+test('the Celestial Array stays T1 ("Calculus paths coming soon"; v2.27: the Gate and Architectum pick paths); each faction trains only its own units; abilities are locked', () => {
   const g = quiet(); seeAll(g); g.t = 300;
   const gate = finish(g, 0, 'barracks'), arch = finish(g, 0, 'factory'), arr = finish(g, 0, 'techlab'), loom = finish(g, 0, 'refinery'), nl = finish(g, 0, 'turret'); finish(g, 0, 'habitat'); finish(g, 0, 'habitat');
-  for (const b of [gate, arch, arr]) assert.match(sim.tryUpgrade(g, 0, b, 'A').msg, /paths coming soon/);
+  assert.match(sim.tryUpgrade(g, 0, arr, 'A').msg, /Calculus paths coming soon/);
+  for (const b of [gate, arch]) assert.match(sim.tryUpgrade(g, 0, b).msg, /Choose a path/);
   for (const b of [loom, nl, g.sides[0].hq]) assert.ok(sim.tryUpgrade(g, 0, b).ok, b.type);
   for (const [t, ok] of [['shardling', true], ['bastion', true], ['wraithwing', true], ['rifle', false], ['skitterling', false]]) assert.strictEqual(sim.tryTrain(g, 0, t).ok, ok, t);
   assert.match(sim.abilityCheck(g, 0, 'strike').msg, /Axiarchs commander abilities are coming soon/);
@@ -131,7 +132,7 @@ test('the minimal AI plays the Axiarchs with each personality: economy, base uni
     for (let i = 0; i < 30 * 60 * 10 && !g.over; i++) { S.update(g, 1 / 30); for (const e of g.events) if (e.type === 'node' && e.side === 0 && !e.lost) nodes++; g.events.length = 0; }
     const T = g.log.tot[0], tr = g.sides[0].aiLog.trained;
     assert.ok(T.bBuilt.refinery > 0 && T.bBuilt.barracks > 0, `${persona}: economy and production ${JSON.stringify(T.bBuilt)}`);
-    assert.ok(tr.shardling > 0 && (tr.bastion > 0 || tr.wraithwing > 0), `${persona}: base units ${JSON.stringify(tr)}`);
+    assert.ok(tr.shardling > 0 && Object.keys(tr).length >= 2, `${persona}: base units and more ${JSON.stringify(tr)}`); // v2.27: path units count too
     assert.ok(nodes > 0, `${persona}: takes nodes`); assert.ok(g.sides[0].aiLog.attacks > 0, `${persona}: attacks`);
     assert.ok(!Object.keys(tr).some(t => U[t].fac !== 'axiarchs'), 'only its own units');
     lances.push(T.bBuilt.turret || 0);

@@ -115,7 +115,7 @@ test('the AI uses the default warp point; its units warp in (seeded Hard)', () =
 });
 
 test('saves v23 keep the field, units mid-warp and the warp point; a v22 save grows its field from scratch', () => {
-  assert.strictEqual(sim.SAVE_VER, 23);
+  assert.ok(sim.SAVE_VER >= 23); // v24 (v2.27) loads the same way
   const g = grown(quiet()); const n = g.nodes[0]; n.owner = 0; n.prog = 100; step(g, 60);
   assert.ok(sim.setWarp(g, 0, n.u, 10).ok); sim.startWarp(g, 0, 'bastion');
   const g2 = sim.deserialize(sim.serialize(g, {}));
