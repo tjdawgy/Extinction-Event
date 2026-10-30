@@ -424,7 +424,7 @@ const BDEF = {
 // Cost, build time, HP and upgrade costs are the faction's light production building's (Last Fist: the Barracks); no tree,
 // no supply. Last Fist: the Salvage Yard (A) raises Salvage (YARD), the Fortification Depot (B) puts a bunker on every field
 // node it holds (BUNKER). A faction without these roles yet (Bloomhost until v2.33, Axiarchs until v2.34) can't build them.
-const sigDef = (base, x) => Object.assign({ cost: base.cost, hp: base.hp, half: base.half, time: base.time, up: base.up, sig: true }, x);
+const sigDef = (base, x) => Object.assign({ cost: base.cost, hp: base.hp, half: base.half, time: base.time, up: base.up, sig: true }, base.shp ? { shp: base.shp } : {}, x); // shp: an Axiarch building's shields (v2.34)
 BDEF.sigA = sigDef(BDEF.barracks, { name: 'Salvage Yard', h: 46,
   tiers: [null, 'Salvage returns 20% of a unit\'s credit cost (base 10%)', 'Salvage cap doubled (400 a minute); salvage also returns half as much energy', 'Overdrive: salvage over the cap speeds your production +25% for 20 s'] });
 BDEF.sigB = sigDef(BDEF.barracks, { name: 'Fortification Depot', h: 48,
@@ -484,6 +484,12 @@ const BDEF_AX = (() => {
   for (const [k, h] of Object.entries({ hq: 70, refinery: 40, reactor: 46, habitat: 30, barracks: 44, factory: 40, turret: 40, techlab: 70 })) o[k].h = h;
   return o;
 })();
+// Axiarch signature buildings (v2.34): the Phase Beacon (A) and the Echo Reliquary (B); Genesis Gate cost, time, HP, shields
+// and upgrade costs; drawn heights fit their art
+BDEF_AX.sigA = sigDef(BDEF_AX.barracks, { name: 'Phase Beacon', h: 50,
+  tiers: [null, 'A power-field bubble follows your frontmost unit (a node field\'s size); it collapses for 15 s if your units in it lose 35% within 5 s', 'Bubble 1.5× wider', 'Units that warp into the bubble arrive with full shields and +20% damage for 8 s'] });
+BDEF_AX.sigB = sigDef(BDEF_AX.barracks, { name: 'Echo Reliquary', h: 46,
+  tiers: [null, 'Keeps the echoes of your last 3 fallen T2/T3 units: warp one back for half its cost', 'Keeps 5 echoes', 'Recovered units arrive with a 30% overshield for 20 s'] });
 const BDEFS = { lastfist: BDEF, bloomhost: BDEF_BH, axiarchs: BDEF_AX };
 const BD = (fac, type) => (BDEFS[fac] || BDEF)[type];     // a faction's definition of a building role
 const bdOf = e => BD(e.fac, e.type);                        // a building's own definition
@@ -644,6 +650,17 @@ const MOUND = { every: 20, n: [0, 2, 3, 3], life: 30, max: 10, r: 40, burst: 0.5
 // max enemy ground units in the creep's outer strip (edge deep) for snare seconds (they can still attack), then they are
 // immune for imm seconds. Losing the Rootheart: creep's reach returns to normal and the extra recedes by the usual rules.
 const ROOT = { grow: 1.5, reach: 1.5, slow: 0.15, regen: 1.5, every: 15, snare: 1, imm: 10, max: 5, edge: 16 };
+// Phase Beacon (v2.34): a power-field bubble (a normal field patch, key 'beacon') that follows its anchor, the frontmost Axiarch
+// ground unit (else the frontmost unit; with none, the Beacon itself), re-picked every `every` seconds and approached at
+// `move` per second. Radius: a node's field (FIELD.nodeR) at T1, × r2 from T2. If its side's units inside lose `loss` of their
+// combined shields plus health within `window` seconds it collapses for `down` seconds, then re-forms at the anchor. T3: a
+// unit that warps in inside the bubble arrives with full shields and +dmg damage for dmgDur seconds.
+const BEACON = { every: 1, move: 90, r2: 1.5, loss: 0.35, window: 5, down: 15, dmg: 0.2, dmgDur: 8 };
+// Echo Reliquary (v2.34): an Axiarch T2/T3 unit that dies (never a temporary or recovered one) leaves an echo: n[tier] are kept,
+// the oldest replaced. An echo warps the unit back for cost × its price (normal warp channel, supply and placement; no
+// production building or path needed), consumed as the warp starts. T3: recovered units arrive with an overshield of osh × max
+// shields for oshDur seconds (it never regenerates). Losing the Reliquary loses every echo.
+const ECHO = { n: [0, 3, 5, 5], cost: 0.5, osh: 0.3, oshDur: 20 };
 const SIG = { on: true }; // false: no signature buildings for anyone (the AI never builds them; tests compare against older versions)
 const SPAWN = { max: 6, dmg: 0.5 }; // Cloudwing offspring: at most 6 per side at once (separate from Emergency Brood's TEMP.max), half damage
 const CORR = { cap: 0.25 }; // corrosion: at most +25% damage taken, however many acid hits land
@@ -1658,11 +1675,71 @@ function updateField(g, dt) {
       const hq = g.sides[s].hq;
       if (hq.hp > 0) { const n = g.ents.filter(b => b.kind === 'b' && b.side === s && b.type === 'habitat' && b.built && b.hp > 0).length; want.set('axis', { u: hq.u, v: hq.v, R: Math.min(FIELD.maxR, FIELD.axisR + FIELD.spireAdd * n), node: false }); }
       for (const n of g.nodes) if (n.owner === s) want.set('n' + n.id, { u: n.u, v: n.v || 0, R: FIELD.nodeR, node: true });
+      const bk = beaconOf(g, s); // the Phase Beacon's bubble (v2.34): wanted unless collapsed; it forms at the anchor
+      if (bk && !(bk.col > g.t)) { if (bk.au === undefined) beaconAnchor(g, s, bk); want.set('beacon', { u: bk.au, v: bk.av, R: FIELD.nodeR * (bk.tier >= 2 ? BEACON.r2 : 1), node: true }); }
     }
     g.field[s] = zoneStep(list, want, FIELD, dt);
+    if (ax) moveBeacon(g, s, dt);
     const sd = g.sides[s]; // a chosen warp point outside the field snaps back to the default
     if (sd.warp && !onField(g, s, sd.warp.u, sd.warp.v)) { sd.warp = null; ev(g, { type: 'warpSnap', side: s }); }
   }
+}
+/* ---------- Phase Beacon (v2.34) ---------- */
+const beaconOf = (g, s) => facOf(g.sides[s].faction) === 'axiarchs' ? sigOf(g, s, 'sigA') : null;
+const relOf = (g, s) => facOf(g.sides[s].faction) === 'axiarchs' ? sigOf(g, s, 'sigB') : null;
+const beaconPatch = (g, s) => g.field[s].find(p => p.k === 'beacon') || null;
+const inBeacon = (g, s, u, v) => { const p = beaconPatch(g, s); if (!p || p.r <= 0) return false; const du = u - p.u, dv = v - p.v; return du * du + dv * dv <= p.r * p.r; };
+// The anchor: the frontmost (closest to the enemy HQ) living Axiarch ground unit; none: the frontmost unit of any kind; none: the Beacon
+function beaconAnchor(g, s, bk) {
+  const dir = dirOf(s); let best = null, air = null;
+  for (const e of g.ents) if (e.kind === 'u' && e.side === s && e.hp > 0) { if (UDEF[e.type].air) { if (!air || dir * e.u > dir * air.u) air = e; } else if (!best || dir * e.u > dir * best.u) best = e; }
+  const a = best || air;
+  bk.au = a ? a.u : bk.u; bk.av = a ? clamp(a.v, -LANE_V, LANE_V) : 0; bk.anc = a ? a.id : 0; bk.at = g.t + BEACON.every;
+}
+function moveBeacon(g, s, dt) {
+  const bk = beaconOf(g, s), p = beaconPatch(g, s);
+  if (!bk || !p || bk.col > g.t) return;
+  if (!(g.t < bk.at)) beaconAnchor(g, s, bk); // re-picked once a second
+  const du = bk.au - p.u, dv = bk.av - p.v, d = Math.hypot(du, dv), st = BEACON.move * dt; // the bubble glides to it
+  if (d <= st) { p.u = bk.au; p.v = bk.av; } else { p.u += du / d * st; p.v += dv / d * st; }
+  // collapse: the side's own units inside lose BEACON.loss of their combined shields plus health within BEACON.window seconds
+  const prev = bk.bp || {}, now = {}; let lost = 0, have = 0;
+  for (const e of g.ents) if (e.kind === 'u' && e.side === s && e.hp > 0 && inBeacon(g, s, e.u, e.v)) { const v = e.hp + (e.shp || 0); now[e.id] = v; have += v; if (prev[e.id] !== undefined) lost += Math.max(0, prev[e.id] - v); }
+  for (const id in prev) if (now[id] === undefined && !g.ents.some(e => e.id === +id && e.hp > 0)) lost += prev[id]; // died inside
+  bk.bp = now;
+  const hist = (bk.bl || []).filter(h => g.t - h[0] < BEACON.window); if (lost > 0) hist.push([g.t, lost]); bk.bl = hist;
+  const sum = hist.reduce((a, h) => a + h[1], 0);
+  if (sum > 0 && sum >= BEACON.loss * (have + sum)) {
+    bk.col = g.t + BEACON.down; bk.bl = []; bk.bp = {}; bk.au = undefined;
+    const w = P(p.u, p.v); g.fx.push({ k: 'shatter', side: s, u: p.u, v: p.v, r: p.r, x: w.x, y: w.y, t: 0, life: 1.2 });
+    g.field[s] = g.field[s].filter(q => q !== p); // collapsed: gone at once
+    ev(g, { type: 'beaconDown', side: s, seen: !!g.fog && cellsLit(g.fog[1 - s].vis, p.u, p.r) });
+    if (g.log) g.log.tot[s].bkDown = (g.log.tot[s].bkDown || 0) + 1;
+  }
+}
+/* ---------- Echo Reliquary (v2.34): echoes live on the Reliquary (rel.ech, oldest first) ---------- */
+function echoStore(g, e) {
+  const d = UDEF[e.type];
+  if (e.temp || e.echo || d.tier < 2 || facOf(d.fac) !== 'axiarchs') return;
+  const rel = relOf(g, e.side); if (!rel) return;
+  const L0 = rel.ech || (rel.ech = []); L0.push(e.type);
+  while (L0.length > ECHO.n[rel.tier]) L0.shift(); // full: the oldest gives way
+}
+const echoCost = type => ({ c: Math.round(UDEF[type].cost.c * ECHO.cost), e: Math.round(UDEF[type].cost.e * ECHO.cost) });
+function tryEcho(g, s, i) {
+  const rel = relOf(g, s), side = g.sides[s];
+  if (g.over) return { ok: false, msg: 'The match is over' };
+  if (g.countdown > 0) return WAIT_GO;
+  if (!rel || !rel.ech || !rel.ech[i]) return { ok: false, msg: 'No such echo' };
+  const type = rel.ech[i], d = UDEF[type], k = echoCost(type), cap = popCap(g, s);
+  if (popUsed(g, s) + d.pop > cap) return { ok: false, msg: cap >= POP_MAX ? 'Army is at maximum size' : `Army is full — build or upgrade a ${bdS(g, s, 'habitat').name}` };
+  if (side.res.c < k.c) return { ok: false, msg: `Need ${Math.ceil(k.c - side.res.c)} more credits` };
+  if (side.res.e < k.e) return { ok: false, msg: `Need ${Math.ceil(k.e - side.res.e)} more energy` };
+  side.res.c -= k.c; side.res.e -= k.e; logSpend(g, s, 'u', k.c, k.e);
+  rel.ech.splice(i, 1); // consumed as the warp starts
+  startWarp(g, s, type, { echo: 1, paid: k.c });
+  if (g.log) g.log.tot[s].echoes = (g.log.tot[s].echoes || 0) + 1;
+  return { ok: true, msg: `${d.name}: echo warping in` };
 }
 // The default warp point: the front edge of the field, the point furthest toward the enemy along the lane
 function defaultWarp(g, s) {
@@ -1701,9 +1778,9 @@ function warpSpot(g, s, u, v, taken) {
 }
 // A finished unit starts its warp: a channel of WARP.ch seconds at a valid spot near the warp point. It is already paid
 // for and counts toward supply until it arrives (popUsed).
-function startWarp(g, s, type) {
+function startWarp(g, s, type, extra) { // extra: an echo's flags (v2.34)
   const w = warpPoint(g, s), p = warpSpot(g, s, w.u, w.v);
-  g.warps.push({ side: s, type, u: p.u, v: p.v, t0: g.t, end: g.t + WARP.ch });
+  g.warps.push(Object.assign({ side: s, type, u: p.u, v: p.v, t0: g.t, end: g.t + WARP.ch }, extra));
 }
 // Gravemantle aura and Eventide pulse (v2.27)
 const pullOk = (g, u, v) => u >= 0 && u <= L && Math.abs(v) <= LANE_V && !g.ents.some(b => b.kind === 'b' && b.hp > 0 && Math.hypot(b.u - u, b.v - v) < b.half + 8);
@@ -1733,6 +1810,8 @@ function updateWarps(g) {
   for (const w of done) {
     const p = warpOk(g, w.side, w.u, w.v) ? w : warpSpot(g, w.side, w.u, w.v); // something moved onto the spot: the nearest valid one, else the Axis
     const nu = spawnUnit(g, w.side, w.type, p.u, p.v); nu.laneV = clamp(p.v, -LANE_V, LANE_V); arriveOrders(g, nu);
+    if (w.echo) { nu.echo = 1; nu.paid = w.paid; const rel = relOf(g, w.side); if (rel && rel.tier >= 3) { nu.osh = nu.maxShp * ECHO.osh; nu.oshT = g.t + ECHO.oshDur; } } // recovered (v2.34)
+    const bk = beaconOf(g, w.side); if (bk && bk.tier >= 3 && inBeacon(g, w.side, nu.u, nu.v)) { nu.shp = nu.maxShp; nu.bkT = g.t + BEACON.dmgDur; } // arrived in a T3 Beacon bubble (v2.34)
     if (g.log) { logAdd(g.log.tot[w.side].trained, w.type); lgUnit(g, w.side, 'T', w.type); }
   }
 }
@@ -1773,7 +1852,7 @@ function updateCreep(g, dt) {
 }
 // The Flame Tank: every enemy on the ground in a strip ahead of it (range × 2 · strip wide) takes the burst; nothing lingers
 function flameBurst(g, src, def) {
-  const dir = src.face || dirOf(src.side), dmg = def.dmg * (g.sides[src.side].buff ? 1.2 : 1) * (src.disT > g.t ? outMul(g, src) : 1);
+  const dir = src.face || dirOf(src.side), dmg = def.dmg * (g.sides[src.side].buff ? 1.2 : 1) * outMul(g, src);
   for (const e of g.ents) {
     if (e.side === src.side || e.hp <= 0 || (e.kind === 'u' && UDEF[e.type].air) || e.shielded) continue;
     const ahead = (e.u - src.u) * dir, reach = def.range + (e.kind === 'b' ? e.half : 0);
@@ -1795,7 +1874,7 @@ function aimZ(e) {
 
 // Melee (v2.17): the blow lands at once. A Skitterling hits harder for every other Skitterling on the same target.
 // Disrupted (v2.27, the Parallax): a unit deals less damage for a short time; the strongest wins, never past DISRUPT.cap
-const outMul = (g, src) => src.kind === 'u' && src.disT > g.t ? 1 - src.dis : 1;
+const outMul = (g, src) => src.kind !== 'u' ? 1 : (src.disT > g.t ? 1 - src.dis : 1) * (src.bkT > g.t ? 1 + BEACON.dmg : 1); // disrupted (v2.27); a Beacon T3 warp-in (v2.34)
 function disrupt(g, e, c) {
   if (e.kind !== 'u' || e.hp <= 0) return;
   const live = e.disT > g.t;
@@ -1816,7 +1895,7 @@ function meleeHit(g, src, t, def) {
     mul += Math.min(def.swarm.max, n * def.swarm.per);
   }
   if (src.kid) mul *= SPAWN.dmg; // a Cloudwing's offspring bites for half (v2.21)
-  if (src.disT > g.t) mul *= outMul(g, src); // disrupted (v2.27)
+  mul *= outMul(g, src); // disrupted (v2.27), a Beacon T3 warp-in (v2.34)
   damage(g, t, def.dmg * mul, def.weapon, src.side, src);
   if (def.disrupt) disrupt(g, t, def.disrupt); // the Parallax's blows (v2.27)
   if (src.kind === 'u') src.recoil = 1;
@@ -1834,7 +1913,7 @@ function fire(g, src, t, def) {
   }
   const m = muzzle(src);
   const p = { u: m.u, v: m.v, z: m.z, pu: m.u, pv: m.v, pz: m.z, tu: t.u, tv: t.v, tz: aimZ(t), target: t, side: src.side,
-    weapon: def.weapon, dmg: def.dmg * (g.sides[src.side].buff ? 1.2 : 1) * (src.vet ? DRILL.dmg : 1) * (src.disT > g.t ? outMul(g, src) : 1), splash: def.splash || 0, t: 0 }; // disrupted: less damage (v2.27)
+    weapon: def.weapon, dmg: def.dmg * (g.sides[src.side].buff ? 1.2 : 1) * (src.vet ? DRILL.dmg : 1) * outMul(g, src), splash: def.splash || 0, t: 0 }; // disrupted: less damage (v2.27)
   if (def.weapon === 'bomb' || def.drop) { p.target = null; p.tz = 0; p.tu = t.u + rand(-6, 6); p.tv = t.v + rand(-5, 5); } // falls where the target is now
   if (def.corrode) p.corr = def.corrode; // v2.19: acid corrodes what it hits
   if (def.acid) p.acid = def.acid === 'dist' ? 'dist' : 1; // the Worldbreaker's distortion zones share the acid-pool list (v2.27)
@@ -2245,6 +2324,7 @@ function damage(g, e, amt, weapon, fromSide, src) {
   }
   let hit = dmg;
   if (e.shT > g.t) { hit = dmg * (1 - ABIL.shield.cut); logEffect(g, e.side, 'shield', dmg * ABIL.shield.cut); } // Emergency Shield
+  if (e.oshT > g.t && e.osh > 0) { const a = Math.min(e.osh, hit); e.osh -= a; hit -= a; e.shpHit = g.t; } // an Echo Reliquary T3 overshield (v2.34): first, never regenerates
   if (e.maxShp) { // Axiarch shields (v2.25), not the HQ shield or the Emergency Shield: they take the hit first, any overflow goes to HP
     e.shpT = g.t;
     if (e.shp > 0 && e.kind === 'u' && UDEF[e.type].link) hit -= shieldLink(g, e, Math.min(e.shp, hit)); // a Prismwing's shield link (v2.29)
@@ -2280,6 +2360,7 @@ function kill(g, e, by, weapon) {
     const d = UDEF[e.type], w = P(e.u, e.v, aimZ(e));
     salvage(g, e, w);
     if (e.tSrc === 'mite') miteBurst(g, e); // v2.33: killed, never expired (expiry doesn't come through kill)
+    echoStore(g, e); // v2.34: an Axiarch T2/T3 unit's echo
     fxBoom(g, w.x, w.y, e.type === 'sovereign' ? 44 : e.type === 'voidcarrier' ? 28 : e.type === 'prismwing' ? 10 : e.type === 'shardstorm' ? 14 : e.type === 'riftstalker' || e.type === 'lancer' || e.type === 'marksman' ? 10 : e.type === 'parallax' ? 12 : e.type === 'shardling' ? 8 : e.type === 'bastion' ? 20 : e.type === 'wraithwing' ? 14 : e.type === 'skitterling' ? 6 : e.type === 'bulwark' || e.type === 'ruinmaw' || e.type === 'dreadthorn' || e.type === 'thornback' ? 18 : d.fac === 'bloomhost' && !d.air ? 10 : d.air ? (e.type === 'razorwing' || e.type === 'cloudwing' ? 12 : e.type === 'needlewing' ? 8 : e.type === 'worldrender' ? 44 : 28) : e.type === 'rifle' || e.type === 'sniper' ? 9 : e.type === 'heavy' ? 15 : e.type === 'titan' ? 46 : 30);
     return;
   }
@@ -2508,6 +2589,9 @@ function aiUpdate(g, s, dt) {
     reserve.c = Math.max(reserve.c, ABIL.strike.cost.c); reserve.e = Math.max(reserve.e, ABIL.strike.cost.e);
   }
   // 3) Army: counter what the opponent fields, bring siege guns against a turtle
+  // Echoes (v2.34, minimal): an Axiarch AI warps an echo back whenever it can afford one and has supply room (oldest first)
+  const rel = relOf(g, s);
+  if (rel && rel.ech && rel.ech.length) for (let i = 0; i < rel.ech.length; i++) if (tryEcho(g, s, i).ok) { used = popUsed(g, s); break; }
   const types = UNIT_ORDER.filter(t => canTrain(g, s, t));
   const turtle = theirs.length > 2 && theirs.filter(u => Math.abs(u.u - hqU(opp)) < 560).length / theirs.length > 0.6;
   if (types.length) {
