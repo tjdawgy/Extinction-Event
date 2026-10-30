@@ -3,7 +3,8 @@
 ## Current state
 - Version: v2.29 (Celestial Array tree; the Axiarchs are complete; title screen since v2.23, assets/title-screen.jpg).
 - Factions: all three are complete. **Last Fist** (upgrade trees: Barracks v2.13, War Factory v2.14, Tech Lab v2.15), **Bloomhost** (framework v2.17, creep v2.18, Larva Pit and Evolution Chamber trees + anti-air v2.19, commander abilities + temporary units v2.20, Bloomspire tree v2.21; complete at v2.22) and **Axiarchs** (framework v2.25, power field and warp-in v2.26, Genesis Gate and Architectum trees v2.27, commander abilities v2.28, Celestial Array tree v2.29; complete at v2.29).
-- Roadmap: done: Last Fist upgrade trees → Bloomhost → Axiarchs. Next, in order: strategy explorer + full balance audit + matchup testing → AI training (including the deferred Bloomhost and Axiarch AI items, AI coverage checks and performance checks) → campaign, multiplayer, App Store.
+- Roadmap: done: Last Fist upgrade trees → Bloomhost → Axiarchs. Next, in order: Last Fist identity pass → strategy explorer + full balance audit + matchup testing → AI training (including the deferred Bloomhost and Axiarch AI items, AI coverage checks and performance checks) → campaign, multiplayer, App Store.
+- Last Fist identity pass per docs/LASTFIST.md (v2.30–v2.33), then the audit.
 - Until the audit, implementation only: no balance tuning, no tactical AI work, and no matrices or ladders unless a prompt asks for them. The only AI changes allowed are the minimum the AI needs to build and use new content.
 - No balance tuning, matchup testing, or tactical AI work until all three factions are in. Log findings under Audit in KNOWN_ISSUES.md.
 - Bloomhost: complete (v2.17–v2.21; v2.22 closed it out with a Definition of Done check at the end of docs/BLOOMHOST.md). Its AI pass moved to the AI training phase; its balance, matchup and performance items are grouped under "Bloomhost summary" in KNOWN_ISSUES.md.
