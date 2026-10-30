@@ -1223,6 +1223,7 @@ function update(g, dt) {
       if (f === null || (e.side === 0 ? e.u > f : e.u < f)) g.front[e.side] = e.u;
     }
   }
+  indexFoes(foes[0], dt); indexFoes(foes[1], dt); // v2.37: lane-sorted, so target searches look only near the searcher
   const n = g.ents.length;
   for (let i = 0; i < n; i++) {
     const e = g.ents[i];
@@ -1431,7 +1432,57 @@ function updateShields(g, dt) {
 // Lane-style range: sideways spread counts for less, so units can't slip past each other
 function effDist(a, b) { return Math.max(0, Math.hypot(a.u - b.u, (a.v - b.v) * DV_W) - (b.kind === 'b' ? b.half : 0)); }
 
-function acquire(g, src, def, foes) {
+// Targeting index (v2.37, audit phase 3b). Each tick, both hostile lists are indexed: units sorted by lane position (u),
+// buildings kept apart (few, and wide). A search looks only at units whose u could be within reach: |du| ≤ range + how far
+// anything can move during the tick (IX_SPEED: above every unit's speed with creep and Frenzy, and every leap). effDist is
+// never less than |du| (a unit has no half), so nothing in range is skipped; every cheap check is exact and ties go to the
+// earlier entry in the list, as the plain scan did, so every match plays exactly as before. A list without an index (none
+// today) is scanned in full.
+const IX_SPEED = 600;
+function indexFoes(list, dt) {
+  const ord = [], bs = [];
+  for (let i = 0; i < list.length; i++) (list[i].kind === 'b' ? bs : ord).push(i);
+  ord.sort((a, b) => list[a].u - list[b].u || a - b);
+  const us = new Float64Array(ord.length);
+  for (let i = 0; i < ord.length; i++) us[i] = list[ord[i]].u;
+  list.ix = { ord, us, bs, slack: IX_SPEED * dt + 2 };
+}
+// One indexed search (scan): the best target within reach R (air: AR), and whether anything visible is inside minRange
+function ixScan(g, src, def, foes, R, AR, minR) {
+  const X = foes.ix, vis = g.fog[src.side].vis, side = src.side, su = src.u, sv = src.v, maxR = Math.max(R, AR);
+  let best = null, bs = 1e9, bi = -1, close = false;
+  const check = idx => {
+    const e = foes[idx];
+    if (e.hp <= 0 || e.shielded) return;
+    const bh = e.kind === 'b' ? e.half : 0, du = Math.abs(e.u - su);
+    if (du - bh > maxR) return; // effDist ≥ |du| − half
+    const dv = (e.v - sv) * DV_W, lim = maxR + bh + 1;
+    if (du * du + dv * dv > lim * lim) return; // safely beyond reach (the exact distance is taken below)
+    if (e.side !== side) { let lit = false; for (let c = cellOf(e.u - bh), c1 = cellOf(e.u + bh); c <= c1; c++) if (vis[c]) { lit = true; break; } if (!lit) return; } // visibleTo
+    const ud = e.kind === 'u' ? UDEF[e.type] : null, air = !!(ud && ud.air);
+    if (air ? !def.hitsAir : def.hitsGround === false) return;
+    const dist = effDist(src, e);
+    if (dist > (air && AR ? AR : R)) return;
+    if (dist < minR) { close = true; return; }
+    const mult = DMG[def.weapon][ud ? ud.armor : 'building'];
+    if (!mult) return;
+    const sc = dist + (e.kind === 'b' ? 80 : 0) - (mult - 1) * 45 - (1 - e.hp / e.maxHp) * 25 - (air && def.preferAir ? 400 : 0) - (e.kind === 'b' && def.preferB ? 280 : 0);
+    if (sc < bs || (sc === bs && idx < bi)) { bs = sc; best = e; bi = idx; }
+  };
+  for (const idx of X.bs) check(idx);
+  const reach = maxR + X.slack, lo = su - reach, hi = su + reach, us = X.us;
+  let a = 0, b = us.length; while (a < b) { const m = (a + b) >> 1; if (us[m] < lo) a = m + 1; else b = m; }
+  for (let k = a; k < us.length && us[k] <= hi; k++) check(X.ord[k]);
+  return { best, close };
+}
+// chase (melee, v2.37): when nothing is in weapon range, also the best target within chase range (prey), as the second
+// search { ...def, range: chase } would find it
+function acquire(g, src, def, foes, chase) {
+  if (foes.ix) {
+    const minR = def.minRange || 0, r = ixScan(g, src, def, foes, def.range, def.airRange || 0, minR);
+    if (chase) r.prey = r.best || r.close ? null : ixScan(g, src, def, foes, chase, def.airRange || 0, minR).best;
+    return r;
+  }
   let best = null, bs = 1e9, close = false;
   const minR = def.minRange || 0;
   for (const e of foes) {
@@ -1548,7 +1599,7 @@ function updateUnit(g, u, foes, dt) {
   if (u.hitT > 0) u.hitT -= dt;
   const side = g.sides[u.side], dir = dirOf(u.side), home = rallyU(u.side) + u.rallyOff * dir;
   const ord = unitOrder(side, u.type), st = ord ? ord.o : side.stance; // a group or type order overrides the global stance
-  const { best, close } = d.weapon ? acquire(g, u, d, foes) : NO_TARGET; // Medicopters and Recon Drones carry no weapon
+  const A = d.weapon ? acquire(g, u, d, foes, d.chase) : NO_TARGET, { best, close } = A; // Medicopters and Recon Drones carry no weapon; melee: the chase search in the same pass (v2.37)
   const sp = (d.fac === 'bloomhost' && !d.air && onCreep(g, u.side, u.u, u.v) ? CREEP.speed : 1) * (frz ? ABIL.frenzy.speed : 1) * (u.slowT > g.t ? 1 - u.slow : 1) * (u.snT > g.t ? 0 : 1); // creep (v2.18), Frenzy Bloom (v2.20), a Gravemantle's slow (v2.27), a Rootheart's snare (v2.33)
   if (u.leaping) { // mid-leap (v2.19): fly to the landing spot, nothing else
     const du = u.lu - u.u, dv = u.lv - u.v, dd = Math.hypot(du, dv), st = d.leap.speed * dt;
@@ -1580,7 +1631,7 @@ function updateUnit(g, u, foes, dt) {
   }
   if (close) { u.moving = false; return; } // artillery: enemy is inside minimum range
   if (d.chase && st !== 'move' && !(st === 'hold' && u.holdU !== undefined)) { // melee (v2.17): close on the nearest enemy it can see and hurt
-    const prey = acquire(g, u, { ...d, range: d.chase }, foes).best;
+    const prey = A.prey !== undefined ? A.prey : acquire(g, u, { ...d, range: d.chase }, foes).best;
     if (prey && d.leap && g.t >= u.leapCd && !(u.snT > g.t)) { // snared: no leap either (v2.33) // the Leaper jumps the last stretch (v2.19), never further than leap.range
       const dist = effDist(u, prey);
       if (dist <= d.leap.range && dist >= d.leap.min) { const k = Math.max(0, (Math.hypot(prey.u - u.u, prey.v - u.v) - d.range * 0.7) / Math.max(1, Math.hypot(prey.u - u.u, prey.v - u.v))); u.lu = u.u + (prey.u - u.u) * k; u.lv = u.v + (prey.v - u.v) * k;
