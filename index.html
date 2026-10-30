@@ -127,6 +127,9 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 /* Extinction Event warning: under the top bar, takes no taps; toasts move down while it shows */
 #ext{position:fixed;z-index:3;top:calc(env(safe-area-inset-top,0px) + 50px);left:50%;transform:translateX(-50%);padding:5px 14px;border-radius:10px;background:rgba(120,14,8,.9);border:1px solid #ff6a4d;color:#fff;font-weight:800;font-size:13px;letter-spacing:.3px;white-space:nowrap;pointer-events:none}
 #ext.hide{display:none}
+/* Overdrive (v2.32, Salvage Yard T3): an amber pill with a timer, top left under the top bar; taps pass through */
+#od{position:fixed;z-index:2;top:calc(env(safe-area-inset-top,0px) + 50px);left:calc(env(safe-area-inset-left,0px) + 6px);display:flex;align-items:center;gap:5px;padding:3px 9px 3px 5px;border-radius:12px;background:rgba(40,22,6,.88);border:1px solid #ffaa3c;color:#ffd59a;font-size:12px;font-weight:700;white-space:nowrap;pointer-events:none}
+#od.hide{display:none} #od svg{width:16px;height:16px;flex:none} #od span{font-variant-numeric:tabular-nums;color:#fff;min-width:22px}
 .ext-on #toasts{top:calc(env(safe-area-inset-top,0px) + 84px)}
 .info-open #bp{visibility:hidden} /* the building panel waits behind the info panel instead of overlapping it */
 /* Commander abilities: a column on the right edge of the battlefield, clear of the top bar, the cards and both panels */
@@ -310,6 +313,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
       <div class="bpr"><button id="bpUp">Upgrade</button><button id="bpRep">Repair</button><button id="bpSell">Sell</button></div>
     </div>
     <div id="ext" class="hide" aria-live="assertive"></div>
+    <div id="od" class="hide" role="status" aria-label="Overdrive"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2 3 3.5-1 .5 3.6 3.4 1.3-1.6 3.1 1.6 3.1-3.4 1.3-.5 3.6-3.5-1-2 3-2-3-3.5 1-.5-3.6L2.6 15l1.6-3.1L2.6 8.9 6 7.6 6.5 4l3.5 1z" fill="#ffaa3c"/><circle cx="12" cy="12" r="3.6" fill="#2a1606"/><path d="M13 8l-3 5h2.4l-1 3.5 3-5h-2.4z" fill="#fff1c8"/></svg><b>Overdrive</b><span id="odT"></span></div>
     <div id="abil" class="hide" aria-label="Commander abilities"></div>
     <div id="aim" class="hide" role="status"><b id="aimName"></b><span id="aimTxt"></span><button id="aimX">Cancel</button></div>
     <div id="info" class="hide"><div class="ih"><b id="infoName"></b><small id="infoSub"></small><button id="infoX" aria-label="Close">×</button></div><div id="infoBody"></div></div>
@@ -325,7 +329,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.31'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.32'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -416,6 +420,22 @@ const BDEF = {
     up: [null, null, { c: 150, e: 60, time: 12 }, { c: 250, e: 120, time: 16 }],
     tiers: [null, 'Gun 27 damage/s, 250 range, hits air', 'Gun 42 damage/s, 280 range, hits air', 'Gun 63 damage/s, 310 range, hits air'] },
 };
+// Signature buildings (v2.32, docs/SIGNATURE_BUILDINGS.md): two roles, sigA and sigB, at most one of each per side at a time.
+// Cost, build time, HP and upgrade costs are the faction's light production building's (Last Fist: the Barracks); no tree,
+// no supply. Last Fist: the Salvage Yard (A) raises Salvage (YARD), the Fortification Depot (B) puts a bunker on every field
+// node it holds (BUNKER). A faction without these roles yet (Bloomhost until v2.33, Axiarchs until v2.34) can't build them.
+const sigDef = (base, x) => Object.assign({ cost: base.cost, hp: base.hp, half: base.half, time: base.time, up: base.up, sig: true }, x);
+BDEF.sigA = sigDef(BDEF.barracks, { name: 'Salvage Yard', h: 46,
+  tiers: [null, 'Salvage returns 20% of a unit\'s credit cost (base 10%)', 'Salvage cap doubled (400 a minute); salvage also returns half as much energy', 'Overdrive: salvage over the cap speeds your production +25% for 20 s'] });
+BDEF.sigB = sigDef(BDEF.barracks, { name: 'Fortification Depot', h: 48,
+  tiers: [null, 'A bunker on every field node you hold (ground only)', 'Bunkers heal your Barracks units in range, 2% of HP per second', 'Bunker guns deal double damage and hit aircraft'] });
+// The node bunker: the Turret's code at half a T1 Turret's HP and damage, ground only until the Depot's T3. Never built by
+// hand: the Depot places one on each held node (no pad, no supply, no cost) and its tier follows the Depot's.
+BDEF.bunker = { name: 'Node Bunker', cost: { c: 0, e: 0 }, hp: BDEF.turret.hp / 2, half: 14, h: 26, time: 1, noPad: true, up: [null, null, null, null],
+  gun: [null, { weapon: 'gatling', dmg: BDEF.turret.gun[1].dmg / 2, cd: BDEF.turret.gun[1].cd, range: BDEF.turret.gun[1].range, hitsAir: false },
+              { weapon: 'gatling', dmg: BDEF.turret.gun[1].dmg / 2, cd: BDEF.turret.gun[1].cd, range: BDEF.turret.gun[1].range, hitsAir: false },
+              { weapon: 'gatling', dmg: BDEF.turret.gun[1].dmg, cd: BDEF.turret.gun[1].cd, range: BDEF.turret.gun[1].range, hitsAir: true }],
+  tiers: [null, 'Gun 13 damage/s, 250 range, ground only', 'Also heals your Barracks units in range (2% of HP per second)', 'Gun 27 damage/s, hits air too; still heals'] };
 // Bloomhost (v2.17): the same roles; first-pass numbers mirror Last Fist (docs/BLOOMHOST.md has the table). The Hive keeps
 // the HQ's stats and gun, so nothing about the enemy's faction leaks into the AI's estimate of a base it hasn't seen.
 const BDEF_BH = (() => {
@@ -598,6 +618,14 @@ const SHIELD = { delay: 4, rate: 0.1 }; // Axiarch shields: regen 10% of max per
 // r of a Last Fist unit or building (not the dying unit itself), that Last Fist side gains pct of the unit's credit cost,
 // rounded; at most cap credits per side per game minute (the rest is lost). Buildings give nothing. pct 0 turns it all off.
 const SALVAGE = { pct: 0.1, r: 200, cap: 200, per: 60 };
+// Salvage Yard (v2.32): a finished Yard raises Salvage to pct (T1); T2 multiplies the cap by cap and returns energy worth
+// energy × the credits salvaged; T3: salvage over the cap starts Overdrive: Last Fist production buildings work od faster
+// for odDur seconds (a new overflow restarts the timer; it never stacks). Losing the Yard returns everything to SALVAGE.
+const YARD = { pct: 0.2, cap: 2, energy: 0.5, od: 0.25, odDur: 20 };
+// Fortification Depot (v2.32): a bunker destroyed while its node is still held is rebuilt after rebuild seconds; from T2
+// bunkers heal friendly Barracks units within their gun's range by heal of max HP per second (the strongest heal applies).
+const BUNKER = { rebuild: 45, heal: 0.02, back: 80, side: 75 }; // back/side: where it stands: toward its own base (on the far node, outside the enemy HQ's T1 gun) and far enough back to stand clear of the rally flag
+const SIG = { on: true }; // false: no signature buildings for anyone (the AI never builds them; tests compare against older versions)
 const SPAWN = { max: 6, dmg: 0.5 }; // Cloudwing offspring: at most 6 per side at once (separate from Emergency Brood's TEMP.max), half damage
 const CORR = { cap: 0.25 }; // corrosion: at most +25% damage taken, however many acid hits land
 const ACID = { max: 6, r: 40, dps: 12, dur: 4 }; // Ruinmaw acid pools: at most 6 at once (the oldest goes), 12 damage/s to enemy ground units, 4 s
@@ -657,7 +685,7 @@ const DMG = {
 const PSPEED = { rifle: 1100, rocket: 430, hqgun: 430, rail: 1700, cannon: 820, siege: 700, missile: 470, flak: 950, gatling: 1200, hydra: 1200, bomb: 260, spine: 1100, acid: 520, bile: 460, ruin: 600, glob: 380, crush: 220, pulse: 650, phase: 800, bolt: 900, astral: 2200, breaker: 600, grav: 700, prism: 900, void: 300, sovereign: 220 };
 const MUZ = { rifle: [10, 13], heavy: [12, 27], sniper: [17, 14], tank: [27, 18], artillery: [28, 31], titan: [38, 27], flame: [26, 12], hydra: [30, 33], aircraft: [16, -5], interceptor: [20, 0], leviathan: [0, -10], skitterling: [9, 5], bulwark: [17, 11], razorwing: [12, 1], leaper: [12, 7], ravager: [18, 14], spitter: [14, 15], bilecaster: [16, 20], bilelobber: [12, 26], ruinmaw: [24, 16], thornback: [18, 10], dreadthorn: [22, 14], needlewing: [10, 1], cloudwing: [14, 1], broodtyrant: [20, 2], worldrender: [0, -8], shardling: [12, 12], bastion: [20, 17], wraithwing: [16, -1], riftstalker: [14, 12], parallax: [16, 14], lancer: [14, 18], marksman: [20, 20], riftmortar: [12, 24], worldbreaker: [26, 22], gravemantle: [16, 18], eventide: [18, 24], prismwing: [12, 0], shardstorm: [14, -1], voidcarrier: [22, 1], sovereign: [0, -8] };
 
-const BUILD_ORDER = ['refinery', 'reactor', 'habitat', 'barracks', 'turret', 'factory', 'techlab'];
+const BUILD_ORDER = ['refinery', 'reactor', 'habitat', 'barracks', 'turret', 'factory', 'techlab', 'sigA', 'sigB']; // sig: only for a faction that has them (v2.32)
 const UNIT_ORDER = ['rifle', 'heavy', 'sniper', 'tank', 'artillery', 'titan', 'flame', 'hydra', 'aircraft', 'interceptor', 'leviathan', 'medic', 'drone', 'skitterling', 'leaper', 'ravager', 'spitter', 'bilecaster', 'bulwark', 'bilelobber', 'ruinmaw', 'thornback', 'dreadthorn', 'razorwing', 'needlewing', 'cloudwing', 'broodtyrant', 'worldrender', 'shardling', 'riftstalker', 'parallax', 'lancer', 'marksman', 'bastion', 'riftmortar', 'worldbreaker', 'gravemantle', 'eventide', 'wraithwing', 'prismwing', 'shardstorm', 'voidcarrier', 'sovereign'];
 // Credits first (Refineries before tech); Reactors are skipped while energy is plentiful
 const AI_PLAN = ['barracks', 'refinery', 'refinery', 'reactor', 'habitat', 'factory', 'reactor', 'techlab']; // roles: the same plan builds either faction's base
@@ -673,6 +701,16 @@ const AI_PATH_MAP = { bloomhost: { barracks: { A: 'B', B: 'A' }, factory: { A: '
 const aiPathTo = (fac, type, p) => { const m = AI_PATH_MAP[facOf(fac)]; return m && m[type] ? m[type][p] : p; };
 const aiPathFrom = (fac, type, p) => { const m = AI_PATH_MAP[facOf(fac)]; if (!m || !m[type] || !p) return p; for (const k in m[type]) if (m[type][k] === p) return k; return p; };
 const ENERGY_PLENTY = 250;
+// Signature buildings in the AI's build plan (v2.32, minimal AI): the Aggressor and the Trickster build A, the Turtle and
+// the Economist B (Last Fist only until v2.33). Every plan already fills all 8 pads, so the signature building replaces the
+// plan's last building whose type appears earlier in the plan (a second Refinery, Reactor, Barracks or Turret); the only
+// planned copy of a type is never dropped, so every plan keeps its Tech Lab. Upgraded through AI_UPG like the rest.
+function aiPlanWith(plan, sig) {
+  if (!sig) return plan;
+  const out = plan.slice();
+  for (let i = out.length - 1; i > 0; i--) if (out.indexOf(out[i]) < i) { out[i] = sig; return out; }
+  return out.concat(sig); // no duplicate to give up (no plan today)
+}
 /* ---------- AI personalities ----------
    Strategic priorities, rolled secretly at the start of each match and independent of difficulty
    (difficulty still decides how well they are carried out). A personality adds no rules, resources or
@@ -855,8 +893,8 @@ function aiMassWarpTarget(g, s, ctx) {
   }
   return best;
 }
-const AI_UPG = [['barracks', 2], ['reactor', 2], ['refinery', 2], ['factory', 2], ['habitat', 2], ['reactor', 3], ['hq', 2], ['techlab', 2],
-  ['factory', 3], ['barracks', 3], ['turret', 2], ['habitat', 3], ['refinery', 3], ['techlab', 3], ['hq', 3], ['turret', 3]];
+const AI_UPG = [['barracks', 2], ['reactor', 2], ['refinery', 2], ['factory', 2], ['habitat', 2], ['sigA', 2], ['sigB', 2], ['reactor', 3], ['hq', 2], ['techlab', 2],
+  ['factory', 3], ['barracks', 3], ['turret', 2], ['habitat', 3], ['refinery', 3], ['techlab', 3], ['sigA', 3], ['sigB', 3], ['hq', 3], ['turret', 3]]; // sig: v2.32
 // Field nodes: neutral income points along the lane. Ground troops inside the zone capture them.
 const NODE_U = [600, L / 2, L - 600], NODE_R = 70, NODE_INC = { c: 3, e: 1 }, REGEN_DELAY = 8;
 // Diamond of pads (tile coords i, j). The HQ takes the back tile (1, -1); the rest fill back to front.
@@ -877,7 +915,7 @@ function newGame(diffKey, opts = {}) {
     creep: [[], []], acid: [], field: [[], []], warps: [] }; // creep patches per side (v2.18; Bloomhost only); acid: Ruinmaw pools (v2.19); field: Axiarch power field patches, warps: units mid-warp (v2.26)
   for (let s = 0; s < 2; s++) {
     g.sides.push({ faction: (opts.factions && opts.factions[s]) || DEFAULT_FACTION, res: { c: 300, e: 60 }, stance: s === 0 ? 'hold' : 'retreat', stanceAt: 0, pushTo: null, slots: new Array(SLOT_COUNT).fill(null),
-      hq: null, aiT: 1 + s * 0.5, stats: { built: 0, kills: 0, lost: 0, earned: 0 }, lastAlert: -99, buff: false, ab: newAb(0, (opts.factions && opts.factions[s]) || DEFAULT_FACTION), abK: null, abEnd: 0, orders: newOrders(), sel: null, warp: null, salv: newSalv() }); // salv: Salvage (v2.30); warp: the player's chosen warp point (Axiarchs, v2.26); null = the default
+      hq: null, aiT: 1 + s * 0.5, stats: { built: 0, kills: 0, lost: 0, earned: 0 }, lastAlert: -99, buff: false, ab: newAb(0, (opts.factions && opts.factions[s]) || DEFAULT_FACTION), abK: null, abEnd: 0, orders: newOrders(), sel: null, warp: null, salv: newSalv(), od: 0 }); // od: Overdrive's end time (v2.32) // salv: Salvage (v2.30); warp: the player's chosen warp point (Axiarchs, v2.26); null = the default
     const hq = mkBuilding(g, s, 'hq', -1);
     hq.built = true; hq.progress = 1; hq.hp = hq.maxHp; hq.shp = hq.maxShp;
     g.sides[s].hq = hq;
@@ -938,9 +976,11 @@ const unitLockMsg = d => { if (!d) return ''; const q = UNIT_PATH[Object.keys(UD
 
 function tryBuild(g, s, type, want = -1) {
   const d = bdS(g, s, type), side = g.sides[s];
+  if (!d || d.noPad || (d.sig && !SIG.on)) return { ok: false, msg: 'Not available' }; // a role this faction doesn't have (yet); bunkers come with the Depot
   if (g.over) return { ok: false, msg: 'The match is over' };
   if (g.countdown > 0) return WAIT_GO;
   if (d.req && !hasBuilt(g, s, d.req)) return { ok: false, msg: `Requires a finished ${bdS(g, s, d.req).name}` };
+  if (d.sig && countB(g, s, type)) return { ok: false, msg: `${d.name}: already built (one at a time)` }; // v2.32: at most one of each signature building
   const slot = want >= 0 && !side.slots[want] ? want : side.slots.findIndex(x => !x);
   if (slot < 0) return { ok: false, msg: 'All 8 building pads are in use' };
   if (side.res.c < d.cost.c) return { ok: false, msg: `Need ${Math.ceil(d.cost.c - side.res.c)} more credits` };
@@ -960,6 +1000,7 @@ function trySell(g, s, b) {
   if (g.over) return { ok: false, msg: 'The match is over' };
   if (g.countdown > 0) return WAIT_GO;
   if (b.type === 'hq') return { ok: false, msg: `The ${d.name} can’t be sold` };
+  if (d.noPad) return { ok: false, msg: `The ${d.name} comes with the Fortification Depot` };
   if (b.hp <= 0) return { ok: false, msg: 'That building is gone' };
   const r = sellValue(b);
   side.res.c += r.c; side.res.e += r.e;
@@ -980,6 +1021,7 @@ function tryUpgrade(g, s, b, path) { // path: 'A' or 'B' when a building with a 
   if (g.countdown > 0) return WAIT_GO;
   if (!b.built) return { ok: false, msg: `${d.name} is still under construction` };
   if (b.upgrading) return { ok: false, msg: 'Upgrade already in progress' };
+  if (d.noPad) return { ok: false, msg: `The ${d.name} follows the Fortification Depot's tier` };
   if (b.tier >= 3) return { ok: false, msg: `${d.name} is fully upgraded` };
   if (prodLocked(b.fac, b.type)) return { ok: false, msg: `${d.name}: ${d.lockMsg || 'paths coming soon'}` }; // the Celestial Array stays T1 for now (v2.27)
   const T = treeOf(b.fac, b.type);
@@ -1030,7 +1072,7 @@ function spawnUnit(g, s, type, u, v) {
 // The HQ is shielded while any other building on that side still stands
 function refreshShields(g) {
   for (let s = 0; s < 2; s++) {
-    const hq = g.sides[s].hq, sh = g.ents.some(b => b.kind === 'b' && b.side === s && b.type !== 'hq' && b.hp > 0 && b.built); // v2.11: finished buildings only (no shield from construction starts)
+    const hq = g.sides[s].hq, sh = g.ents.some(b => b.kind === 'b' && b.side === s && b.type !== 'hq' && b.type !== 'bunker' && b.hp > 0 && b.built); // v2.32: node bunkers don't hold the shield up // v2.11: finished buildings only (no shield from construction starts)
     if (hq.shielded && !sh) { ev(g, { type: 'shieldDown', side: s, seen: !!g.fog && visibleTo(g, 1 - s, hq) }); lg(g, s, 'H'); }
     hq.shielded = sh;
   }
@@ -1121,6 +1163,7 @@ function update(g, dt) {
     side.buff = g.ents.some(b => b.side === s && b.type === 'techlab' && b.hp > 0 && pathMod(b, 'nanoweave')); // v2.15: Support T3 only
   }
   updateNodes(g, dt);
+  updateBunkers(g); // v2.32: right after node ownership changes
   logTick(g, dt);
   const foes = [[], []]; // foes[s] = everything hostile to side s
   g.front = [null, null];
@@ -1140,6 +1183,7 @@ function update(g, dt) {
   }
   updateProjs(g, dt);
   updateMedics(g, dt);
+  bunkerHeal(g, dt);
   updateCreep(g, dt);
   updateField(g, dt);
   updateWarps(g);
@@ -1176,11 +1220,53 @@ function updateNodes(g, dt) {
   }
 }
 
+/* ---------- Fortification Depot (v2.32): a bunker on every field node a Last Fist side holds ----------
+   While the side has a finished, standing Depot, each node it holds has one bunker (placed at once when the node is taken
+   or the Depot finishes). A node that changes owner loses its bunker; a bunker destroyed while its node is still held comes
+   back after BUNKER.rebuild seconds (the timer lives on the Depot, dep.bk[node id]); no Depot, no bunkers. */
+const depotOf = (g, s) => facOf(g.sides[s].faction) === 'lastfist' ? sigOf(g, s, 'sigB') : null;
+function razeBunker(g, b) { kill(g, b, -1); }
+function mkBunker(g, s, n, tier) {
+  const b = mkBuilding(g, s, 'bunker', -1);
+  b.u = n.u - dirOf(s) * BUNKER.side; b.v = -BUNKER.back; b.node = n.id;
+  b.built = true; b.progress = 1; b.tier = tier; b.hp = b.maxHp;
+  return b;
+}
+function updateBunkers(g) {
+  for (let s = 0; s < 2; s++) {
+    if (facOf(g.sides[s].faction) !== 'lastfist') continue;
+    const dep = depotOf(g, s), mine = g.ents.filter(e => e.type === 'bunker' && e.side === s && e.hp > 0);
+    if (!dep) { for (const b of mine) razeBunker(g, b); continue; }
+    const bk = dep.bk || (dep.bk = {});
+    for (const n of g.nodes) {
+      const b = mine.find(x => x.node === n.id);
+      if (n.owner !== s) { if (b) razeBunker(g, b); delete bk[n.id]; continue; }
+      if (b) { b.tier = dep.tier; continue; } // upgrades apply at once
+      if (bk[n.id] === undefined || g.t >= bk[n.id]) { mkBunker(g, s, n, dep.tier); delete bk[n.id]; }
+    }
+  }
+}
+// T2+: each bunker heals friendly Barracks units within its gun's range; a unit takes one bunker heal, minus any faster heal
+// it already gets this tick (a Medicopter), like the other heals. Runs after updateMedics.
+function bunkerHeal(g, dt) {
+  for (const b of g.ents) {
+    if (b.type !== 'bunker' || b.hp <= 0 || b.tier < 2) continue;
+    const r = BDEF.bunker.gun[b.tier].range;
+    for (const e of g.ents) {
+      if (e.kind !== 'u' || e.side !== b.side || e.hp <= 0 || e.bkAt === g.t || UDEF[e.type].from !== 'barracks' || UDEF[e.type].fac || effDist(b, e) > r) continue;
+      e.bkAt = g.t;
+      const rate = BUNKER.heal - (e.medAt === g.t ? UDEF.medic.heal : 0);
+      if (rate > 0 && e.hp < e.maxHp) { const h0 = e.hp; e.hp = Math.min(e.maxHp, e.hp + e.maxHp * rate * dt); if (g.log) g.log.tot[e.side].bkHeal = (g.log.tot[e.side].bkHeal || 0) + e.hp - h0; }
+    }
+  }
+}
+
 function tryRepair(g, s, b) {
   const d = bdOf(b), side = g.sides[s];
   if (g.over) return { ok: false, msg: 'The match is over' };
   if (g.countdown > 0) return WAIT_GO;
   if (!b.built) return { ok: false, msg: `${d.name} is still under construction` };
+  if (d.noPad) return { ok: false, msg: `The ${d.name} can’t be repaired: a destroyed one is rebuilt for free` };
   const missing = b.maxHp - b.hp - (b.repair || 0);
   if (missing < 1) return { ok: false, msg: `${d.name} is already being fully repaired` };
   const cost = repairCost(b);
@@ -1223,7 +1309,7 @@ function updateBuilding(g, b, foes, dt) {
     }
   }
   if (b.queue.length) {
-    b.prodT += dt;
+    b.prodT += g.sides[b.side].od > g.t && overdrive(g, b.side) ? dt * (1 + YARD.od) : dt; // Overdrive (v2.32): Last Fist only
     const ut = b.queue[0], pair = ut === 'rifle' && b.queue[1] === 'rifle' && pathMod(b, 'pairs');
     if (b.prodT >= UDEF[ut].time * (pair ? PAIR_TIME : 1)) {
       b.prodT = 0; b.queue.shift();
@@ -1673,7 +1759,7 @@ function flameBurst(g, src, def) {
   if (src.kind === 'u') src.recoil = 1;
 }
 function muzzle(src) {
-  if (src.kind === 'b') return src.type === 'turret' ? { u: src.u, v: src.v, z: 38 * BS } : { u: src.u, v: src.v - 8 * BS, z: 79 * BS };
+  if (src.kind === 'b') return src.type === 'turret' ? { u: src.u, v: src.v, z: 38 * BS } : src.type === 'bunker' ? { u: src.u, v: src.v, z: 20 * BS } : { u: src.u, v: src.v - 8 * BS, z: 79 * BS };
   const m = MUZ[src.type];
   return { u: src.u + src.face * m[0] * US, v: src.v, z: (src.z || 0) + m[1] * US };
 }
@@ -2123,6 +2209,7 @@ function kill(g, e, by, weapon) {
     return;
   }
   if (e.slot >= 0 && side.slots[e.slot] === e) side.slots[e.slot] = null;
+  if (e.type === 'bunker') { const dep = depotOf(g, e.side), n = g.nodes[e.node]; if (dep && n && n.owner === e.side) (dep.bk || (dep.bk = {}))[e.node] = g.t + BUNKER.rebuild; } // v2.32: back in 45 s if the node is still held
   for (let i = 0; i < 3; i++) { const w = P(e.u + rand(-e.half, e.half) * 0.6, e.v + rand(-e.half, e.half) * 0.6, rand(10, e.h * 0.7)); fxBoom(g, w.x, w.y, rand(36, 56)); }
   ev(g, { type: 'destroyed', side: e.side, name: bdOf(e).name, hq: e.type === 'hq', seen: visibleTo(g, 1 - e.side, e) });
   if (g.log) { logAdd(g.log.tot[e.side].bLost, e.type); lg(g, e.side, 'D', e.type, e.tier, by); }
@@ -2136,20 +2223,36 @@ function kill(g, e, by, weapon) {
 // each on its own (a mirror match can pay both). A "+N" pop-up goes into g.fx tagged with the salvaging side; only that
 // side's player sees it, and only where they can see (scrapShown). Nothing else tells the opponent.
 const newSalv = () => ({ tot: 0, m: -1, n: 0 }); // tot: the match total; m: the game minute n counts within
+// Salvage counts what was actually paid for the unit (v2.32): temporary units (abilities, offspring) cost nothing and give
+// nothing; a unit can carry its own paid price (e.paid, for later discounted units)
+const paidOf = e => e.temp ? 0 : e.paid !== undefined ? e.paid : UDEF[e.type].cost.c;
+// A side's finished, standing signature building of a role (Last Fist only until v2.33)
+const sigOf = (g, s, type) => g.ents.find(e => e.kind === 'b' && e.side === s && e.type === type && e.built && e.hp > 0) || null;
+const yardOf = (g, s) => facOf(g.sides[s].faction) === 'lastfist' ? sigOf(g, s, 'sigA') : null;
+// Overdrive (Salvage Yard T3): on while its timer runs and the Yard still stands at T3
+const overdrive = (g, s) => g.sides[s].od > g.t && (yardOf(g, s) || { tier: 0 }).tier >= 3;
 function salvage(g, e, w) {
-  if (!(SALVAGE.pct > 0) || e.temp) return;
-  const gain = Math.round(UDEF[e.type].cost.c * SALVAGE.pct);
-  if (gain <= 0) return;
+  if (!(SALVAGE.pct > 0)) return;
+  const paid = paidOf(e);
+  if (!(paid > 0)) return;
   for (let s = 0; s < 2; s++) {
     const sd = g.sides[s];
     if (facOf(sd.faction) !== 'lastfist' || !g.ents.some(f => f !== e && f.side === s && f.hp > 0 && effDist(e, f) <= SALVAGE.r)) continue;
+    const y = yardOf(g, s), gain = Math.round(paid * (y ? YARD.pct : SALVAGE.pct)), cap = SALVAGE.cap * (y && y.tier >= 2 ? YARD.cap : 1);
+    if (gain <= 0) continue;
     const S = sd.salv || (sd.salv = newSalv()), m = Math.floor(g.t / SALVAGE.per);
     if (S.m !== m) { S.m = m; S.n = 0; }
-    const add = Math.min(gain, SALVAGE.cap - S.n);
+    const add = Math.min(gain, Math.max(0, cap - S.n));
+    if (add < gain && y && y.tier >= 3) { // Overdrive: the overflow isn't wasted
+      if (!(sd.od > g.t)) ev(g, { type: 'overdrive', side: s });
+      sd.od = g.t + YARD.odDur;
+      if (g.log) g.log.tot[s].od = (g.log.tot[s].od || 0) + 1;
+    }
     if (add <= 0) continue;
-    S.n += add; S.tot += add; sd.res.c += add;
-    if (g.log) g.log.tot[s].salv = (g.log.tot[s].salv || 0) + add;
-    g.fx.push({ k: 'scrap', side: s, n: add, x: w.x, y: w.y, t: 0, life: 1.3 });
+    const en = y && y.tier >= 2 ? add * YARD.energy : 0;
+    S.n += add; S.tot += add; sd.res.c += add; sd.res.e += en;
+    if (g.log) { g.log.tot[s].salv = (g.log.tot[s].salv || 0) + add; if (en) g.log.tot[s].salvE = (g.log.tot[s].salvE || 0) + en; }
+    g.fx.push({ k: 'scrap', side: s, n: add, e: en, x: w.x, y: w.y, t: 0, life: 1.3 });
   }
 }
 const scrapShown = (g, f, s) => f.k === 'scrap' && f.side === s && g.fog[s].vis[cellOf(f.x)] === 1; // the pop-up's only viewer
@@ -2241,7 +2344,9 @@ function aiUpdate(g, s, dt) {
   const defend = P.kind === 'economist' && threat && myV < thV * 0.6;
   // Under real pressure every personality drops its style and plays the standard defense (the safety floor)
   const pressed = threat && (infantryRush || myV < thV * 0.8);
-  const plan = pressed ? AI_PLAN : P.plan;
+  const sig = SIG.on && bdS(g, s, 'sigA') ? (P.kind === 'aggressor' || P.kind === 'trickster' ? 'sigA' : 'sigB') : null;
+  const plan = aiPlanWith(pressed ? AI_PLAN : P.plan, sig);
+  const sigReady = !!sig && !(calm || defend) && !countB(g, s, sig) && hasBuilt(g, s, 'barracks') && alive(g, s, 'refinery').filter(b => b.built).length >= Math.min(D.refineries, plan.filter(t => t === 'refinery').length);
   const refCap = clamp(D.refineries + P.refDelta + (ecoMood ? 1 : 0) - (defend && P.refDelta > 0 ? P.refDelta : 0), 1, 4);
 
   // 1) Economy and tech
@@ -2256,9 +2361,13 @@ function aiUpdate(g, s, dt) {
     (countB(g, s, 'habitat') > 0 || side.slots.filter(x => !x).length >= 2)) want = 'refinery'; // turn spare energy into credits (leaving room for a Habitat)
   else if (D.eco && side.res.e < 120 && side.res.c > 800 && countB(g, s, 'reactor') < 3 &&
     (countB(g, s, 'habitat') > 0 || side.slots.filter(x => !x).length >= 2)) want = 'reactor'; // credits to spare but no energy: another Reactor
+  // its signature building (v2.32), once its economy (the difficulty's Refineries, or all its plan has if fewer) and first
+  // production building are up, and not while under pressure (like tech); it takes the pad of a duplicate the plan gave up for it (aiPlanWith)
+  else if (sigReady) want = sig;
   else {
     const need = {};
     for (const t of plan) {
+      if (t === sig && !sigReady) continue; // placed by the branch above, never before its trigger
       if (t === 'refinery' && (need.refinery || 0) >= refCap) continue;
       if (t === 'reactor' && side.res.e > ENERGY_PLENTY) continue; // energy to spare: no new Reactor
       if ((calm || defend) && (t === 'techlab' || t === 'reactor')) continue;  // no tech while under pressure
@@ -2296,7 +2405,7 @@ function aiUpdate(g, s, dt) {
   if (g.t >= EXT.start && side.hq.hp > 0 && side.hq.hp < side.hq.maxHp * 0.9 && !(side.hq.repair > 0) && side.res.c > 150) tryRepair(g, s, side.hq);
   // Repair a badly damaged building when the coast is clear
   if (!threat && side.res.c > 600) {
-    const hurt = g.ents.find(b => b.kind === 'b' && b.side === s && b.built && b.hp > 0 && !(b.repair > 0) && b.hp < b.maxHp * 0.6);
+    const hurt = g.ents.find(b => b.kind === 'b' && b.side === s && b.type !== 'bunker' && b.built && b.hp > 0 && !(b.repair > 0) && b.hp < b.maxHp * 0.6);
     if (hurt) tryRepair(g, s, hurt);
   }
 
@@ -2587,7 +2696,7 @@ const logSpend = (g, s, kind, c, e) => { if (g.log) { const a = g.log.tot[s].spe
 
 /* ---------- Save and resume ---------- */
 // v6 adds fog of war; v7 the AI's personality (kept on its side record); v10 the shared ability cooldown; v11 the match log; v12 group orders, the selection and Regroup flags; v13 upgrade-tree paths; v14 War Factory paths. Older saves are migrated.
-const SAVE_VER = 27, SAVE_OK = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27];
+const SAVE_VER = 28, SAVE_OK = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28]; // v28: signature buildings (v2.32)
 function serialize(g, extra) {
   const live = g.ents.filter(e => e.hp > 0);
   for (const sd of g.sides) if (sd.hq.hp <= 0 && !live.includes(sd.hq)) live.push(sd.hq); // a fallen HQ inside the storm's 5 s end window
@@ -2636,6 +2745,8 @@ function deserialize(str) {
   g.warps = Array.isArray(o.warps) ? o.warps : [];
   for (const sd of g.sides) if (sd.warp === undefined) sd.warp = null;
   for (const sd of g.sides) if (!sd.salv) sd.salv = newSalv(); // v27: Salvage; an older save starts its total and this minute's cap at 0
+  for (const sd of g.sides) if (sd.od === undefined) sd.od = 0; // v28: Overdrive's timer (Salvage Yard T3); nothing before v28 had a Yard
+  for (const e of g.ents) if (e.kind === 'b' && e.type === 'sigB' && !e.bk) e.bk = {}; // v28: Depot bunker rebuild timers
   for (const e of g.ents) if (e.kind === 'u' && e.lastHurt === undefined) { e.lastHurt = -99; e.lastAct = -99; e.creepAt = -1; }
   g.acid = Array.isArray(o.acid) ? o.acid : []; // v19: acid pools, leaps, corrosion and spine bursts; older saves start without
   // v20: a Bloomhost side from v17-v19 kept Last Fist's ability timers (unused): carry them over to its own three
@@ -2802,7 +2913,7 @@ function logText(g, meta) {
   lines.push(`Result: ${meta.result} · ${mmss(g.t)}`);
   lines.push(`Factions: you ${factionName(g.sides[0].faction)}, enemy ${factionName(g.sides[1].faction)}`);
   if (L.from > 0) lines.push(`Recorded from ${mmss(L.from)} (resumed from an older save); earlier events are not included.`);
-  for (const s of [0, 1]) { lines.push(`${s ? 'Enemy' : 'You'}: ${res(s)}${facOf(g.sides[s].faction) === 'lastfist' ? `; salvage ${Math.round(T[s].salv || 0).toLocaleString('en')} credits` : ''}`); lines.push(`  Units built ${sum(T[s].trained)}, lost ${sum(T[s].lost)}: ${units(T[s].trained, T[s].lost)}`); }
+  for (const s of [0, 1]) { lines.push(`${s ? 'Enemy' : 'You'}: ${res(s)}${facOf(g.sides[s].faction) === 'lastfist' ? `; salvage ${Math.round(T[s].salv || 0).toLocaleString('en')} credits${T[s].salvE ? ` and ${Math.round(T[s].salvE).toLocaleString('en')} energy` : ''}` : ''}`); lines.push(`  Units built ${sum(T[s].trained)}, lost ${sum(T[s].lost)}: ${units(T[s].trained, T[s].lost)}`); }
   lines.push('TIMELINE');
   const all = [];
   for (const s of [0, 1]) for (const l of logLines(g, s, false)) if (s === 0 || !['W', 'X', 'E'].includes(l.code)) all.push({ ...l, tag: ['W', 'X', 'E'].includes(l.code) ? 'ALL' : s ? 'ENEMY' : 'ME' });
@@ -3258,10 +3369,136 @@ function habitatLive(c, T, t, b, tier) {
   if (tier >= 3) { const [x, y] = pt(0, 0, 44); glow(c, x, y, 2.6, T.glow, 0.45 + 0.45 * blink(t, 1)); }
 }
 
+/* ---------- Signature buildings (v2.32): the Salvage Yard, the Fortification Depot and the node bunker ----------
+   Industrial steel, rivets, exposed machinery and amber work lights, with welded additions that make each tier more
+   armoured and better armed. Same rules as the other buildings: everything stays on the pad and below the health bar. */
+const AMB = '255,170,60', CONC = ['#8d8b82', '#5f5d56', '#45433e'], RUST = ['#7a5a3c', '#553d28', '#3c2a1b'], CRATE = ['#8a7448', '#5e4e2f', '#45391f'];
+function rivets(c, u, v, a, b, z, n) { // rivet heads along the top edge of a block's left and right faces
+  c.fillStyle = 'rgba(214,222,236,0.6)';
+  for (let i = 0; i < n; i++) {
+    const k = -1 + (2 * i + 1) / n;
+    let [x, y] = pt(u - a - 0.2, v + k * b, z); c.fillRect(x - 0.6, y - 0.6, 1.2, 1.2);
+    [x, y] = pt(u + k * a, v + b + 0.2, z); c.fillRect(x - 0.6, y - 0.6, 1.2, 1.2);
+  }
+}
+function hazard(c, u, v, a, b, z, h) { // yellow and black stripes across a block's right face
+  poly(c, [pt(u - a, v + b + 0.1, z), pt(u + a, v + b + 0.1, z), pt(u + a, v + b + 0.1, z + h), pt(u - a, v + b + 0.1, z + h)]); c.fillStyle = '#e8b830'; c.fill();
+  c.fillStyle = '#1d1f22';
+  for (let s0 = -a; s0 < a; s0 += 4) poly(c, [pt(u + s0, v + b + 0.2, z), pt(u + Math.min(a, s0 + 2), v + b + 0.2, z), pt(u + Math.min(a, s0 + 2 + h * 0.6), v + b + 0.2, z + h), pt(u + Math.min(a, s0 + h * 0.6), v + b + 0.2, z + h)]), c.fill();
+}
+function scrapHeap(c, u, v, r, h) { // a heap of scrap: a dark mound with plates and girders sticking out (fixed shapes)
+  cone(c, u, v, r, r * 0.3, 6, h, '#6a6157', '#2b2620', '#5e554b');
+  for (const [du, dv, dz, w, tilt, col] of [[-0.45, 0.2, 0.35, 0.55, -6, RUST[0]], [0.35, 0.3, 0.55, 0.45, 5, '#8e98a8'], [0.05, -0.4, 0.75, 0.4, -3, RUST[1]], [-0.2, 0.55, 0.15, 0.5, 4, '#6f7a8c']]) {
+    const [x, y] = pt(u + du * r, v + dv * r, 6 + dz * h); c.fillStyle = col;
+    c.beginPath(); c.moveTo(x - w * r, y); c.lineTo(x + w * r * 0.6, y + tilt * 0.4); c.lineTo(x + w * r * 0.7, y + tilt * 0.4 - 3); c.lineTo(x - w * r * 0.9, y - 3.4); c.closePath(); c.fill();
+  }
+  pipe(c, pt(u - r * 0.3, v - r * 0.2, 6 + h * 0.5), pt(u + r * 0.4, v + r * 0.1, 6 + h * 1.05), 1.8, '#9aa3b0'); // a girder
+}
+function sandbags(c, u0, v0, u1, v1, z, n) { // a row of sandbags between two points
+  for (let i = 0; i < n; i++) { const k = (i + 0.5) / n, [x, y] = pt(lerp(u0, u1, k), lerp(v0, v1, k), z); c.fillStyle = '#9b8a62'; c.beginPath(); c.ellipse(x, y - 1.8, 3.4, 2.2, 0, 0, 7); c.fill(); c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(x - 3, y - 0.4, 6, 0.8); }
+}
+/* Salvage Yard: T1 a scrap heap, a sorting shed and a magnet crane; T2 adds a compactor, a conveyor and a second heap;
+   T3 an armoured smelter with a furnace and an autocannon on the shed roof. Overdrive (T3) makes the furnace roar. */
+function yardBody(c, T, tier) {
+  plinth(c, 32); trim(c, 30, T, tier);
+  pipe(c, pt(-6, -26, 6), pt(-6, -26, 42), 2.4, M.h); // the crane mast, at the back
+  if (tier >= 2) for (let z = 12; z < 42; z += 7) pipe(c, pt(-6, -26, z), pt(-6, -26, z + 6), 4, 'rgba(232,184,48,0.35)'); // lattice
+  if (tier >= 3) { // the smelter: welded armour, a furnace mouth and a chimney
+    box(c, 20, -14, 9, 9, 6, 24, MAT.dark); sides(c, 20, -14, 9.2, 9.2, 24, 2.5, T.face); rivets(c, 20, -14, 9.2, 9.2, 28, 4);
+    cyl(c, 24, -18, 3.2, 30, 12, '#5e6d88', '#232c3d', '#2b2f36');
+    poly(c, [pt(15, -4.8, 8), pt(25, -4.8, 8), pt(25, -4.8, 17), pt(15, -4.8, 17)]); c.fillStyle = '#2a1408'; c.fill();
+  } else if (tier >= 2) { // the compactor
+    box(c, 20, -14, 8, 8, 6, 14, MAT.dark); hazard(c, 20, -14, 8.2, 8.2, 8, 4); rivets(c, 20, -14, 8.2, 8.2, 20, 3);
+  }
+  if (tier >= 3) { box(c, -12, -8, 15, 15, 6, 5, RUST); rivets(c, -12, -8, 15, 15, 11, 7); } // a welded armour skirt
+  // the sorting shed: corrugated steel, an amber-lit bay door
+  box(c, -12, -8, 12, 12, 6, 17, MAT.metal); sides(c, -12, -8, 12.2, 12.2, 19, 2, T.face); rivets(c, -12, -8, 12.2, 12.2, 22.6, 5);
+  c.strokeStyle = 'rgba(0,0,0,0.18)'; c.lineWidth = 0.7;
+  for (let i = -2; i <= 2; i++) { c.beginPath(); c.moveTo(...pt(-12 + i * 4, 4.3, 6)); c.lineTo(...pt(-12 + i * 4, 4.3, 18)); c.stroke(); } // corrugation
+  poly(c, [pt(-24.3, -14, 6), pt(-24.3, -2, 6), pt(-24.3, -2, 17), pt(-24.3, -14, 17)]); c.fillStyle = M.d; c.fill();
+  c.fillStyle = `rgba(${AMB},0.55)`; poly(c, [pt(-24.4, -14, 15), pt(-24.4, -2, 15), pt(-24.4, -2, 16.4), pt(-24.4, -14, 16.4)]); c.fill();
+  box(c, -12, -8, 13.5, 13.5, 23, 2.2, MAT.light);
+  if (tier >= 3) cyl(c, -12, -8, 4.5, 25, 4, '#6e7e98', '#2c374b', '#7d8ca3'); // the gun mount
+  if (tier >= 2) { pipe(c, pt(-2, 2, 12), pt(8, 10, 22), 3.4, M.l); pipe(c, pt(-2, 2, 12.5), pt(8, 10, 22.5), 1, '#9aa3b0'); } // conveyor from the shed up the heap
+  if (tier >= 2) scrapHeap(c, -16, 20, 9, 12);
+  scrapHeap(c, 14, 14, 13, tier >= 2 ? 22 : 18); // the main heap, out front
+}
+function yardLive(c, T, t, b, tier) {
+  const sw = Math.sin(t * 0.6) * 0.45 + 0.35, [mx, my] = pt(-6, -26, 42), jx = mx + Math.cos(sw) * 22, jy = my + Math.sin(sw) * 9 - 2;
+  c.strokeStyle = M.h; c.lineWidth = 1.8; c.beginPath(); c.moveTo(mx, my); c.lineTo(jx, jy); c.stroke(); // jib
+  const drop = 10 + 4 * Math.sin(t * 0.9);
+  c.strokeStyle = M.d; c.lineWidth = 0.8; c.beginPath(); c.moveTo(jx, jy); c.lineTo(jx, jy + drop); c.stroke(); // cable
+  c.fillStyle = '#3b4250'; c.beginPath(); c.ellipse(jx, jy + drop + 1.5, 4, 1.8, 0, 0, 7); c.fill(); c.fillStyle = '#c94b2e'; c.fillRect(jx - 4, jy + drop, 8, 1.2); // magnet
+  glow(c, mx, my - 1.5, 1.8, AMB, 0.35 + 0.6 * blink(t, 0)); // amber work light
+  if (tier >= 2) lamp(c, 20, -14, tier >= 3 ? 31 : 21, AMB, 0.3 + 0.6 * (Math.sin(t * 7) > 0 ? 1 : 0), 1.4); // compactor / smelter warning light
+  if (tier >= 3) { // the furnace and the roof autocannon
+    const od = b && game && game.sides[b.side] && overdrive(game, b.side), f = od ? 0.85 + 0.15 * Math.sin(t * 19) : 0.45 + 0.15 * Math.sin(t * 3);
+    poly(c, [pt(15.5, -4.7, 8.5), pt(24.5, -4.7, 8.5), pt(24.5, -4.7, 16.5), pt(15.5, -4.7, 16.5)]); c.fillStyle = `rgba(255,${od ? 150 : 110},40,${f})`; c.fill();
+    const [cx, cy] = pt(24, -18, 42); if (od) { glow(c, cx, cy - 2, 2.4, '255,140,40', 0.8); for (let i = 0; i < 3; i++) { const k = (t * 1.6 + i / 3) % 1; c.fillStyle = `rgba(255,200,90,${1 - k})`; c.fillRect(cx - 1 + Math.sin(t * 9 + i) * 3, cy - 4 - k * 14, 1.6, 1.6); } }
+    const [hx, hy] = pt(-12, -8, 30), a = gunAngle(b, hx, hy, -0.4);
+    c.save(); c.translate(hx, hy); c.rotate(a); c.fillStyle = M.h; barrels(c, 2, 2, 13, 3, 1.8); c.fillStyle = M.l; c.fillRect(-4, -3.4, 7, 6.8); c.fillStyle = `rgb(${AMB})`; c.fillRect(-4, -0.8, 7, 1.6); c.restore();
+  }
+}
+/* Fortification Depot: T1 a concrete blockhouse behind sandbags with ammunition crates and a radar; T2 adds a field
+   hospital (it heals) and a wall; T3 armour plating and a twin anti-air gun on the roof (bunkers then hit aircraft). */
+function depotBody(c, T, tier) {
+  plinth(c, 32); trim(c, 30, T, tier);
+  if (tier >= 2) { box(c, 20, -18, 9, 9, 6, 12, ['#d9d6cc', '#a7a397', '#8a867a']); poly(c, [pt(11, -20, 6), pt(11, -16, 6), pt(11, -16, 18), pt(11, -20, 18)]); c.fillStyle = '#3b3a35'; c.fill(); } // the field hospital
+  if (tier >= 3) { box(c, 4, -2, 22.5, 17.5, 6, 7, MAT.dark); rivets(c, 4, -2, 22.5, 17.5, 13, 8); sides(c, 4, -2, 22.6, 17.6, 11, 1.4, ['', '#b8862e', '#8e6623']); } // welded armour skirt
+  box(c, 4, -2, 20, 15, 6, tier >= 3 ? 20 : 17, CONC); // the blockhouse
+  sides(c, 4, -2, 20.2, 15.2, tier >= 3 ? 22 : 19, 2, T.face);
+  poly(c, [pt(-16.3, -10, 14), pt(-16.3, 8, 14), pt(-16.3, 8, 16.5), pt(-16.3, -10, 16.5)]); c.fillStyle = '#121418'; c.fill(); // firing slit
+  winR(c, 4, -2, 20.2, 15.3, 14, 2.5, 5, '#121418');
+  box(c, 4, -2, 21, 16, tier >= 3 ? 26 : 23, 2.4, CONC);
+  sandbags(c, -26, -18, -26, 18, 6, 7); sandbags(c, -24, 24, 14, 24, 6, 7);
+  if (tier >= 2) { box(c, -26, 0, 2, 20, 9, 5, CONC); sandbags(c, -26, -18, -26, 18, 14, 7); } // a wall, sandbags on top
+  for (const [u, v, z] of [[-14, 22, 6], [-6, 22, 6], [-10, 22, 12]]) { box(c, u, v, 3.6, 3, z, 6, CRATE); c.strokeStyle = 'rgba(0,0,0,0.3)'; c.lineWidth = 0.6; c.beginPath(); c.moveTo(...pt(u - 3.6, v + 3, z + 3)); c.lineTo(...pt(u + 3.6, v + 3, z + 3)); c.stroke(); } // ammunition crates
+  if (tier >= 3) box(c, 4, -2, 7, 7, 28, 4, MAT.metal); // the gun ring
+  pipe(c, pt(18, 10, tier >= 3 ? 28 : 25), pt(18, 10, 40), 1.4, M.h); // radar mast
+}
+function depotLive(c, T, t, b, tier) {
+  const [mx, my] = pt(18, 10, 40), w = 6 * Math.cos(t * 1.4);
+  c.fillStyle = w > 0 ? M.h : M.l; c.beginPath(); c.ellipse(mx, my, Math.abs(w) + 1, 3, 0, 0, 7); c.fill(); // radar
+  glow(c, mx, my - 3, 1.6, AMB, 0.3 + 0.7 * blink(t, 1));
+  lamp(c, -16.5, 18, 18, AMB, 0.35 + 0.5 * blink(t, 3), 1.4);
+  if (tier >= 2) { // a red-cross lamp on the field hospital (green: it heals)
+    const [x, y] = pt(20, -18, 22), p = 0.55 + 0.35 * Math.sin(t * 3);
+    c.fillStyle = `rgba(93,255,138,${p})`; c.fillRect(x - 3.5, y - 1.2, 7, 2.4); c.fillRect(x - 1.2, y - 3.5, 2.4, 7);
+  }
+  if (tier >= 3) { // the twin anti-air gun: tracks its target, or sweeps the sky
+    const [hx, hy] = pt(4, -2, 33), a = b && b.aim ? gunAngle(b, hx, hy, -1.1) : -1.1 - 0.5 * Math.abs(Math.sin(t * 0.5)) * (b && b.side === 1 ? -1 : 1) + (b && b.side === 1 ? -0.9 : 0);
+    c.save(); c.translate(hx, hy); c.rotate(a); c.fillStyle = M.h; barrels(c, 2, 2, 16, 4, 2); c.fillStyle = M.d; c.fillRect(15, -3.5, 2.5, 7);
+    c.fillStyle = M.l; c.fillRect(-5, -4.5, 9, 9); c.fillStyle = `rgb(${AMB})`; c.fillRect(-5, -1, 9, 2); c.restore();
+  }
+}
+/* The node bunker: a low concrete pillbox ringed with sandbags; its gun turns to its target. T2: a green heal light;
+   T3: a twin anti-air mount with a shield plate. */
+function arcFront(c, u, v, r, z, col, lw) { const [x, y] = pt(u, v, z); c.strokeStyle = col; c.lineWidth = lw; c.beginPath(); c.ellipse(x, y, r * 1.2247, r * 0.7071, 0, 0.15, Math.PI - 0.15); c.stroke(); } // the visible front half of a ring
+function bunkerBody(c, T, tier) {
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.ellipse(0, 0, 20, 11, 0, 0, 7); c.fill();
+  const bag = a => { const [x, y] = pt(Math.cos(a) * 14, Math.sin(a) * 14, 0); c.fillStyle = '#9b8a62'; c.beginPath(); c.ellipse(x, y - 2, 4, 2.4, 0, 0, 7); c.fill(); c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(x - 3.4, y - 1.6, 6.8, 0.7); };
+  for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; if (Math.sin(a) - Math.cos(a) < 0) bag(a); } // the back half of the sandbag ring
+  cyl(c, 0, 0, 10.5, 2, 9, CONC[1], CONC[2], null);
+  cone(c, 0, 0, 10.5, 7.5, 11, 4, CONC[0], CONC[1], CONC[0]); // sloped concrete roof
+  arcFront(c, 0, 0, 10.6, 8.5, '#121418', 2.2); // the firing slit
+  arcFront(c, 0, 0, 10.7, 4, T.main, 1.4);
+  if (tier >= 3) { cyl(c, 0, 0, 5.5, 15, 3, '#6e7e98', '#2c374b', '#7d8ca3'); } // the anti-air mount's ring
+  for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; if (Math.sin(a) - Math.cos(a) >= 0) bag(a); } // the front half
+}
+function bunkerLive(c, T, t, b, tier) {
+  if (tier >= 2) lamp(c, -6, 6, 13, '93,255,138', 0.35 + 0.55 * blink(t, 0), 1.4);
+  const [hx, hy] = pt(0, 0, tier >= 3 ? 19 : 16.5), a = gunAngle(b, hx, hy, tier >= 3 ? -0.8 : -0.3);
+  c.save(); c.translate(hx, hy); c.rotate(a);
+  if (tier >= 3) { c.fillStyle = M.h; barrels(c, 2, 2, 13, 3.4, 1.8); c.fillStyle = M.l; c.fillRect(-4, -4, 7, 8); c.fillStyle = `rgb(${AMB})`; c.fillRect(-4, -0.8, 7, 1.6); }
+  else { c.fillStyle = M.h; c.fillRect(2, -1.2, 11, 2.4); c.fillStyle = M.l; c.fillRect(-4, -3, 7, 6); c.fillStyle = T.main; c.fillRect(-4, -0.8, 7, 1.6); }
+  c.restore();
+}
+
 // Static bodies and live parts, per type
 const BART = {
   hq: [hqBody, hqLive], turret: [turretBody, turretLive], barracks: [barracksBody, barracksLive], factory: [factoryBody, factoryLive],
   techlab: [techlabBody, techlabLive], reactor: [reactorBody, reactorLive], refinery: [refineryBody, refineryLive], habitat: [habitatBody, habitatLive],
+  sigA: [yardBody, yardLive], sigB: [depotBody, depotLive], bunker: [bunkerBody, bunkerLive], // v2.32
 };
 const DRAW_B = {}; // the whole building, drawn live (card icons, and while the cache fills)
 for (const k in BART) DRAW_B[k] = (c, T, t, b, tier) => { BART[k][0](c, T, tier); BART[k][1](c, T, t, b, tier); };
@@ -3577,6 +3814,12 @@ function drawNodeZone(c, n, time, inView = true) { // ownership is public; progr
     c.beginPath(); c.ellipse(w.x, w.y, NODE_R, ry, 0, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.abs(n.prog) / 100); c.stroke();
   }
   if (inView && n.c[0] && n.c[1]) { c.strokeStyle = `rgba(255,255,255,${0.3 + 0.3 * Math.sin(time * 10)})`; c.lineWidth = 2; c.beginPath(); c.ellipse(w.x, w.y, NODE_R + 4, ry + 3, 0, 0, 7); c.stroke(); }
+}
+// A Depot T2 bunker's heal zone (v2.32): faint green, the gun's range along the lane across its whole depth
+function drawHealRing(c, b, time) {
+  const w = P(b.u, 0), rx = BDEF.bunker.gun[b.tier].range, ry = (LANE_V + 18) * DY;
+  c.fillStyle = 'rgba(93,255,138,0.035)'; c.beginPath(); c.ellipse(w.x, w.y, rx, ry, 0, 0, 7); c.fill();
+  c.setLineDash([3, 7]); c.lineDashOffset = -time * 6; c.strokeStyle = 'rgba(93,255,138,0.24)'; c.lineWidth = 1.2; c.stroke(); c.setLineDash([]); c.lineDashOffset = 0;
 }
 function drawNode(c, n, time) {
   const w = P(n.u, n.v), rgb = n.owner === null ? '210,195,255' : TEAM[n.owner].glow, main = n.owner === null ? '#ddd2ff' : TEAM[n.owner].main;
@@ -5204,6 +5447,7 @@ function drawScrap(c, f) {
   c.fillStyle = '#d98c2b'; c.fillRect(x - 20, y - 8, 8, 2); c.fillStyle = '#2b2d2f'; c.fillRect(x - 19, y - 5, 1.5, 1.5); c.fillRect(x - 14.5, y - 5, 1.5, 1.5);
   c.font = '700 12px -apple-system,system-ui,sans-serif'; c.textAlign = 'left'; c.lineWidth = 3; c.strokeStyle = '#1d1f21';
   c.strokeText('+' + f.n, x - 8, y); c.fillStyle = '#f2d36b'; c.fillText('+' + f.n, x - 8, y);
+  if (f.e) { const tx = x - 6 + c.measureText('+' + f.n).width, et = ' +' + Math.round(f.e); c.strokeText(et, tx, y); c.fillStyle = '#5dffb0'; c.fillText(et, tx, y); } // Salvage Yard T2 (v2.32): the energy
   c.globalAlpha = 1;
 }
 function drawPull(c, f) {
@@ -5430,6 +5674,7 @@ function render(c, g, time, sel, selPad) {
     }
   }
   for (const n of g.nodes) drawNodeZone(c, n, time, lit(n.u));
+  for (const b of g.ents) if (b.type === 'bunker' && b.hp > 0 && b.tier >= 2 && seen(b)) drawHealRing(c, b, time); // v2.32: Depot T2
   for (const a of g.acid) if (lit(a.u)) drawAcidPool(c, a, g.t);
   drawDecals(c);
   if (g) drawSelection(c, g, time);
@@ -5813,12 +6058,20 @@ function showInfo(kind, type) {
     body = `<div class="istats">${stat('HP', d.hp)}${stat('Build time', d.time + 's')}${stat('Credits', d.cost.c)}${stat('Energy', d.cost.e)}</div><div class="irow"><em>T1</em> ${d.tiers[1]}</div>` +
       Object.keys(T).map(k => `<div class="irow"><em>Path ${k} · ${T[k].name}</em> T2 (${d.up[2].c}/${d.up[2].e}): ${T[k].steps[2].txt}. T3 (${d.up[3].c}/${d.up[3].e}): ${T[k].steps[3].txt}.</div>`).join('') +
       `<div class="irow">Each ${d.name} picks its own path; a second one can take the other. Selling resets it.</div>`;
+  } else if (BD(pFac(), type) && BD(pFac(), type).noPad) { // the node bunker (v2.32)
+    const d = BD(pFac(), type), G = d.gun;
+    name = d.name; sub = `Free with the ${BD(pFac(), 'sigB').name}`;
+    body = `<div class="istats">${stat('HP', d.hp)}${stat('Damage/s', Math.round(G[1].dmg / G[1].cd))}${stat('Range', G[1].range)}${stat('Shoots', 'Ground only')}${stat('Cost', 'None')}${stat('Rebuild', BUNKER.rebuild + 's')}</div>` +
+      [1, 2, 3].map(t => `<div class="irow"><em>Depot T${t}</em> ${d.tiers[t]}</div>`).join('') +
+      `<div class="irow">One on every field node you hold. Taking a node places it at once; losing the node destroys it. Destroyed while you still hold the node, it returns after ${BUNKER.rebuild} s. Uses no pad and no army size, and gives no Salvage.</div>`;
   } else {
     const d = BD(pFac(), type);
-    name = d.name; sub = d.req ? `Requires ${BD(pFac(), d.req).name}` : '';
+    name = d.name; sub = d.sig ? 'Signature building · one at a time' + (d.req ? ` · requires ${BD(pFac(), d.req).name}` : '') : d.req ? `Requires ${BD(pFac(), d.req).name}` : '';
     body = `<div class="istats">${stat('HP', d.hp)}${d.shp ? stat('Shields', d.shp) : ''}${stat('Build time', d.time + 's')}${stat('Credits', d.cost.c)}${stat('Energy', d.cost.e)}</div>` +
       (prodLocked(pFac(), type) ? `<div class="irow">${d.lockMsg}: it stays at T1 for now.</div>` : '') +
-      [1, 2, 3].map(t => `<div class="irow"><em>T${t}${t > 1 ? ` (${d.up[t].c} credits, ${d.up[t].e} energy)` : ''}</em> ${d.tiers[t]}</div>`).join('');
+      [1, 2, 3].map(t => `<div class="irow"><em>T${t}${t > 1 ? ` (${d.up[t].c} credits, ${d.up[t].e} energy)` : ''}</em> ${d.tiers[t]}</div>`).join('') +
+      (type === 'sigA' ? `<div class="irow">Upgrades your Salvage: kills near your forces return credits. Lose the ${d.name} and Salvage drops back to ${Math.round(SALVAGE.pct * 100)}% and ${SALVAGE.cap} a minute.</div>` : '') +
+      (type === 'sigB' ? `<div class="irow"><em>Node Bunker</em> ${BD(pFac(), 'bunker').hp} HP, ${Math.round(BD(pFac(), 'bunker').gun[1].dmg / BD(pFac(), 'bunker').gun[1].cd)} damage/s, ${BD(pFac(), 'bunker').gun[1].range} range. Free: one per node you hold, back ${BUNKER.rebuild} s after it falls while you hold the node. Lose the ${d.name} and every bunker goes with it.</div>` : '');
   }
   $('infoName').textContent = name; $('infoSub').textContent = sub; $('infoBody').innerHTML = body;
   $('info').classList.remove('hide'); document.body.classList.add('info-open');
@@ -5831,7 +6084,7 @@ function buildCards() {
   const wrap = $('cards'); wrap.innerHTML = '';
   wrap.classList.toggle('army', tab === 'army');
   if (tab === 'army') { buildArmy(); return; }
-  const list = tab === 'build' ? BUILD_ORDER : UNIT_ORDER.filter(t => !game || unitVisible(game, t));
+  const list = tab === 'build' ? BUILD_ORDER.filter(t => BD(pFac(), t) && (!BD(pFac(), t).sig || SIG.on)) : UNIT_ORDER.filter(t => !game || unitVisible(game, t)); // v2.32: signature roles only where the faction has them
   trainSig = game ? trainSigOf(game) : '';
   for (const type of list) {
     const d = tab === 'build' ? BD(pFac(), type) : UDEF[type];
@@ -6104,12 +6357,12 @@ function refreshUI(force) {
     let html, locked, poor, badge = 0, prog = 0;
     if (tab === 'build') {
       const d = BD(pFac(), type);
-      locked = !!(d.req && !hasBuilt(game, 0, d.req));
+      const mine = alive(game, 0, type), have = d.sig && mine.length > 0; // v2.32: one of each signature building at a time
+      locked = !!(d.req && !hasBuilt(game, 0, d.req)) || have;
       poor = s.res.c < d.cost.c || s.res.e < d.cost.e;
-      const mine = alive(game, 0, type);
-      badge = mine.length;
+      badge = have ? 0 : mine.length;
       for (const b of mine) if (!b.built) prog = Math.max(prog, b.progress);
-      html = locked ? `<span class="lock">Requires ${BD(pFac(), d.req).name}</span>` : costHTML(d.cost, s.res);
+      html = have ? '<span class="lock">Already built</span>' : locked ? `<span class="lock">Requires ${BD(pFac(), d.req).name}</span>` : costHTML(d.cost, s.res);
     } else {
       const d = UDEF[type];
       const prods = alive(game, 0, d.from).filter(b => canMake(b, type));
@@ -6132,7 +6385,13 @@ function refreshUI(force) {
   }
   refreshAbil();
   refreshExt();
+  refreshOd();
   refreshPanel();
+}
+function refreshOd() { // Overdrive (v2.32): shown while your Salvage Yard's production boost runs
+  const s = game.sides[0], on = !game.over && overdrive(game, 0), el = $('od');
+  el.classList.toggle('hide', !on);
+  if (on) { const txt = `${Math.ceil(s.od - game.t)} s`; if ($('odT').textContent !== txt) $('odT').textContent = txt; el.setAttribute('aria-label', `Overdrive: production +${Math.round(YARD.od * 100)}% for ${txt}`); }
 }
 function refreshExt() {
   const t = game.t, el = $('ext');
@@ -6164,6 +6423,13 @@ function refreshPanel() {
   if (!game || sel.hp <= 0 || !game.ents.includes(sel)) { closePanel(); return; }
   const b = sel, d = bdOf(b), res = game.sides[0].res, up = $('bpUp'), sell = $('bpSell');
   $('bpName').textContent = d.name;
+  if (d.noPad) { // a node bunker (v2.32): nothing to buy; it follows the Depot
+    setHTML($('bpPips'), [1, 2, 3].map(i => `<i class="${i <= b.tier ? 'on' : ''}"></i>`).join(''));
+    $('bpHp').textContent = `${Math.ceil(b.hp)}/${Math.round(b.maxHp)}`;
+    $('bpNow').textContent = `T${b.tier}: ${d.tiers[b.tier]}`;
+    setHTML($('bpNext'), `<span>Free with your ${BD(pFac(), 'sigB').name}: its tier sets this one's; destroyed, it returns in ${BUNKER.rebuild} s while you hold the node</span>`);
+    up.classList.add('hide'); sell.classList.add('hide'); $('bpRep').classList.add('hide'); return;
+  }
   setHTML($('bpPips'), [1, 2, 3].map(i => `<i class="${i <= b.tier && b.built ? 'on' : ''}"></i>`).join(''));
   $('bpHp').textContent = `${Math.ceil(b.hp)}/${Math.round(b.maxHp)}` + (b.maxShp ? ` · ${Math.ceil(b.shp)} sh` : ''); // v2.25: Axiarch shields
   const rep = $('bpRep'), hurt = b.built && b.hp < b.maxHp - 1;
@@ -6247,6 +6513,7 @@ function handleEvents() {
     else if (e.type === 'destroyed' && e.side === 1 && !e.seen && !e.hq) continue; // happened out of sight
     else if (e.type === 'destroyed') toast(e.side === 0 ? `${e.name} destroyed` : `Enemy ${e.seen ? e.name : 'HQ'} destroyed`, e.side === 0 ? 'bad' : 'ok'); // an unseen enemy HQ isn't named (v2.17: the name would tell its faction)
     else if (e.type === 'spotted' && e.side === 0) { toast('Enemy units spotted', 'warn'); sndPlay('ping'); }
+    else if (e.type === 'overdrive' && e.side === 0) toast(`Overdrive: production +${Math.round(YARD.od * 100)}% for ${YARD.odDur} s`, 'ok'); // v2.32
     else if (e.type === 'warpSnap' && e.side === 0) { toast('Warp point lost with the field: back to the front edge', 'warn'); refreshWarpCard(); } // v2.26
     else if (e.type === 'node') { if (e.side === 0 && !e.lost) sndPlay('node'); toast(e.lost ? (e.side === 0 ? 'You lost a field node' : 'Enemy lost a field node') : (e.side === 0 ? 'Field node captured: +3 credits, +1 energy per second' : 'Enemy captured a field node'), (e.side === 0) === !e.lost ? 'ok' : 'warn'); }
     else if (e.type === 'go') showGo();
@@ -6500,7 +6767,7 @@ function repSummary(g) {
     ${row('Faction', t => factionName(g.sides[T.indexOf(t)].faction))}
     ${row('Credits earned / spent', t => `${fmtN(t.earn[0])} / ${fmtN(sp(t, 0))}${t.sold[0] ? ` (+${fmtN(t.sold[0])} from sales)` : ''}`)}
     ${row('Energy earned / spent', t => `${fmtN(t.earn[1])} / ${fmtN(sp(t, 1))}`)}
-    ${row('Salvage', t => facOf(g.sides[T.indexOf(t)].faction) === 'lastfist' ? `${fmtN(t.salv || 0)} credits` : '–')}
+    ${row('Salvage', t => facOf(g.sides[T.indexOf(t)].faction) === 'lastfist' ? `${fmtN(t.salv || 0)} credits${t.salvE ? `, ${fmtN(Math.round(t.salvE))} energy` : ''}` : '–')}
     ${row('Units built (lost)', units)}
     ${row('Enemy units destroyed', t => fmtN(sum(t.killed)))}
     ${row('Buildings built · upgraded · lost', blds)}

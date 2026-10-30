@@ -149,7 +149,7 @@ test('SALVAGE.pct 0 switches it off completely: no credits, no pop-ups, no total
 });
 
 test('saves v27 keep the totals and this minute\'s cap; a v26 save starts both at 0; the match report and log show it', () => {
-  assert.strictEqual(sim.SAVE_VER, 27);
+  assert.ok(sim.SAVE_VER >= 27); // v28 (v2.32) loads the same way
   const g = quiet(); seeAll(g); g.t = 70;
   put(g, 0, 'rifle', MID);
   for (let i = 0; i < 10; i++) sim.kill(g, put(g, 1, 'bulwark', MID + 50), 0); // 190 this minute
