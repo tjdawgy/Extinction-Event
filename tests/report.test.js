@@ -120,7 +120,6 @@ test('full matches: every recorded number matches the game (AI personalities, ru
     same([E[2], E[3], E[4]], ['E', g.result.how, g.winner], `${label}: the end is the last event`);
     if (g.result.how === 'hq') assert.ok(g.log.ev.some(e => e[2] === 'D' && e[3] === 'hq' && e[1] === 1 - g.winner), `${label}: the fallen HQ is recorded`);
     for (const m of sim.logMoments(g)) assert.ok(m.t >= 0 && m.t <= g.t + 0.1, `${label}: moment in the match`);
-    assert.ok(sim.logLessons(g).length >= 1);
   }
 });
 

@@ -93,6 +93,8 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 #bp.hide{display:none}
 .bph{display:flex;align-items:center;gap:7px}
 .bph b{font-size:13.5px}
+.bpt{display:flex;flex-direction:column;line-height:1.15;min-width:0} /* name over pad number (v2.35) */
+#bpPad{color:#ffd34d;font-size:10.5px;font-weight:700;letter-spacing:.02em}
 .pips{display:flex;gap:3px}
 .pips i{width:7px;height:7px;border-radius:50%;border:1.5px solid var(--credit)}
 .pips i.on{background:var(--credit)}
@@ -104,6 +106,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .bpr button{flex:1;height:34px;border-radius:9px;font-weight:800;font-size:12.5px}
 #bpUp{border:0;background:linear-gradient(#4fd3ff,#1b8fd0);color:#001522}
 #bpUp.poor,#bpUp[disabled]{background:var(--panel3);color:var(--muted)}
+#bpUp.arm{background:linear-gradient(#ffd34d,#d99a12);color:#2a1a00} /* a costly upgrade waits for a second tap (v2.35) */
 #bpSell{border:1px solid rgba(255,90,110,.45);background:rgba(255,77,77,.08);color:#ffc7cf}
 #bpSell.arm{background:#5a1c22;border-color:var(--bad);color:#fff}
 #bpSell.hide,#bpUp.hide,#bpRep.hide{display:none}
@@ -261,9 +264,10 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .rep .tl li{display:flex;gap:8px;padding:4px 0;border-top:1px solid rgba(120,150,200,.12)}
 .rep .tl b{min-width:42px;color:var(--blue);font-variant-numeric:tabular-nums}
 .rep .tag{font-size:10.5px;padding:0 5px;border-radius:5px;background:rgba(255,255,255,.08);color:var(--muted);white-space:nowrap;align-self:flex-start}
-.rep .les{margin:0 0 8px;padding:6px 8px;border:1px solid var(--line);border-radius:10px;font-size:12.5px}
-.rep .les div{margin-top:2px} .rep .les em{font-style:normal;font-weight:800;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;margin-right:5px}
-.rep .f{color:#9fe6ff} .rep .i{color:#ffd34d} .rep .r{color:#5dff8a}
+.rep h4.sh{margin:10px 0 3px;font-size:12.5px;color:var(--text)} .rep h4.sh .note{font-weight:400} /* Stats tab (v2.35) */
+.rep svg.sgraph{height:auto;max-height:120px;font-size:11px;fill:var(--muted)} .rep h4.sh .len{margin-left:6px;font-size:14px;color:var(--blue);font-variant-numeric:tabular-nums}
+.rep h4.sh:first-child{margin-top:2px}
+.rep .scols{display:grid;grid-template-columns:1fr 1fr;gap:0 14px;align-items:start}
 .rep svg{display:block;width:100%;height:46px;margin:2px 0 2px}
 .rep .tbar{display:flex;align-items:center;gap:8px;margin-bottom:4px}
 .rep .tbar .ghost{height:30px;padding:0 10px;font-size:12.5px;border-radius:9px}
@@ -309,7 +313,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
     <div id="toasts"></div>
     <div id="cd" class="hide" aria-live="assertive"><small></small><b></b></div>
     <div id="bp" class="hide">
-      <div class="bph"><b id="bpName"></b><span class="pips" id="bpPips"></span><span id="bpHp"></span><button id="bpX" aria-label="Close">×</button></div>
+      <div class="bph"><span class="bpt"><b id="bpName"></b><small id="bpPad"></small></span><span class="pips" id="bpPips"></span><span id="bpHp"></span><button id="bpX" aria-label="Close">×</button></div>
       <div id="bpNow"></div>
       <div id="bpNext"></div>
       <div id="bpPick" class="hide"><button data-p="A"></button><button data-p="B"></button></div>
@@ -332,7 +336,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.34'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.35'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -1530,6 +1534,7 @@ function moveToward(u, d, tu, tv, dt, mul = 1) { // mul: speed multiplier (creep
   return true;
 }
 
+const RETREAT = { fire: false }; // v2.35 (audit): retreating units hold their fire; fire true restores the v2.34 rule (firing on the move)
 function updateUnit(g, u, foes, dt) {
   const d = UDEF[u.type];
   u.anim += dt;
@@ -1547,9 +1552,11 @@ function updateUnit(g, u, foes, dt) {
     else { u.u += du / dd * st; u.v += dv / dd * st; u.z = Math.sin(Math.PI * clamp(1 - dd / u.ld, 0, 1)) * Math.min(26, u.ld * 0.18); u.face = du >= 0 ? 1 : -1; }
     u.moving = true; return;
   }
-  // Retreat: keep running home, firing on the move, until back at the rally flag
+  // Retreat: keep running home until back at the rally flag. A retreating unit holds its fire (v2.35, audit): it
+  // attacks again only once the retreat ends, back at the flag or under a new order
   if (st === 'retreat' && Math.abs(home - u.u) > 12) {
-    if (best && u.cd <= 0) { fire(g, u, best, d); u.cd = d.cd * rand(0.9, 1.1); }
+    if (!RETREAT.fire) { u.tgt = 0; u.chT = 0; }
+    else if (best && u.cd <= 0) { fire(g, u, best, d); u.cd = d.cd * rand(0.9, 1.1); } // the v2.34 rule, for the tests' fixed replays
     moveToward(u, d, home, u.laneV, dt, sp);
     return;
   }
@@ -3052,31 +3059,6 @@ function logMoments(g) { // up to 8 recorded turning points, in time order
     else if (k === 'X') c.push({ t, p: 8, txt: 'The Extinction Event began' });
   }
   return c.sort((a, b) => b.p - a.p).slice(0, 8).sort((a, b) => a.t - b.t);
-}
-// Lessons: each from recorded facts only, labelled fact / interpretation / recommendation. None fits: say so.
-function logLessons(g) {
-  const L = g.log, out = []; if (!L) return out;
-  const T = L.tot, me = T[0], foe = T[1], sum = o => Object.values(o).reduce((a, b) => a + b, 0);
-  const worst = logBattles(g).filter(b => b.v[0] >= 600 && b.v[0] > b.v[1] * 1.3).sort((a, b) => (b.v[0] - b.v[1]) - (a.v[0] - a.v[1]))[0];
-  if (worst) {
-    const z = zoneOf(worst.u), lostB = L.ev.filter(e => e[2] === 'D' && e[1] === 0 && e[0] >= worst.t0 && e[0] <= worst.t1).map(e => logBName(g, 0, e[3]));
-    out.push({ fact: `${mmss(worst.t0)}–${mmss(worst.t1)}, ${z}: you lost ${worst.n[0]} units (${worst.v[0]})${lostB.length ? ` and your ${lostB.join(', ')}` : ''}; the enemy lost ${worst.n[1]} (${worst.v[1]}).`,
-      why: 'That fight cost you far more than it cost them.',
-      next: z === 'near the enemy base' ? 'Attack with a bigger army, or bring Artillery or an Orbital Strike against their defences first.' : z === 'near your base' ? 'Keep a Turret or a group of Heavies at home before the enemy pushes.' : 'Fight closer to your Turrets, or pull back and regroup before engaging.' });
-  }
-  if (foe.nodeTime > 120 && foe.nodeTime > me.nodeTime * 1.5) out.push({ fact: `Field node time held: you ${mmss(me.nodeTime)}, the enemy ${mmss(foe.nodeTime)} (all nodes added up).`,
-    why: 'The enemy earned more from field nodes (each gives +3 credits and +1 energy per second).', next: 'Capture a node earlier and keep a few units on it.' });
-  const casts = L.ev.filter(e => e[2] === 'A' && e[1] === 0), weak = casts.find(e => (e[3] === 'shield' && e[4] < 100) || (e[3] === 'strike' && e[4] < 150) || (e[3] === 'repair' && e[4] < 150));
-  if (!casts.length && g.t - L.from > 300) out.push({ fact: 'You used no commander abilities.', why: 'An Emergency Shield, Orbital Strike or Repair Pulse can swing a close fight.', next: 'Use one per big fight: they share one cooldown, so pick the one that fits the moment.' });
-  else if (weak) out.push({ fact: `At ${mmss(weak[0])}: ${logEvText(weak, true, g)}.`, why: 'It spent the shared cooldown on a small effect.', next: 'Save the cooldown for a big fight or a Strike on a clump of units.' });
-  const burned = (me.lostTo && me.lostTo.flame) || 0, inf = ['rifle', 'heavy', 'sniper'].reduce((a, k) => a + (me.lost[k] || 0), 0);
-  if (burned >= 12) out.push({ fact: `Enemy Flame Tanks destroyed ${burned} of your units (you lost ${inf} infantry in all).`, why: 'Massed infantry is what Flame Tanks are built to burn.', next: 'Answer them with Tanks, Artillery or Heavies, and keep infantry out of their short range.' });
-  const bank = L.bank[0], avg = bank.length ? bank.reduce((a, b) => a + b, 0) / bank.length : 0;
-  if (bank.length >= 8 && avg > 600) out.push({ fact: `You held ${Math.round(avg)} credits on average (sampled every 15 s).`, why: 'Unspent credits are not fighting for you.', next: 'Spend as you earn: more units, upgrades or another production building.' });
-  const air = ['aircraft', 'interceptor'].reduce((a, k) => a + (foe.trained[k] || 0), 0), aa = Object.keys(me.trained).reduce((a, k) => a + (UDEF[k].hitsAir && k !== 'rifle' ? me.trained[k] : 0), 0);
-  if (air >= 3 && aa < 3) out.push({ fact: `The enemy trained ${air} aircraft; you trained ${aa} units that hit air apart from Riflemen.`, why: 'Few of your units could fight their aircraft.', next: 'Answer aircraft with Heavies, Snipers or your own Interceptors.' });
-  if (!out.length) out.push({ fact: `You lost ${sum(me.lost)} units and ${sum(me.bLost)} buildings; the enemy lost ${sum(foe.lost)} and ${sum(foe.bLost)}.`, why: 'From what it recorded, the game can\'t tell why this match was won or lost.', next: '' });
-  return out.slice(0, 3);
 }
 // The copied match log: plain text, one chronological list tagged [ME] / [ENEMY] / [ALL], same grouping as the screen
 function logText(g, meta) {
@@ -5863,6 +5845,27 @@ function drawSelection(c, g, time) {
     c.beginPath(); c.ellipse(w.x, w.y, r, r * 0.42, 0, 0, 7); c.stroke();
   }
 }
+// The selected building or pad (v2.35, audit): a pulsing gold glow on its pad (under), brackets around the building (over),
+// on for as long as the building panel shows it. top: the bracket pass, drawn after everything on the field
+function drawBuildingSel(c, g, time, top) {
+  const b = sel && sel.side === 0 && sel.hp > 0 && g.ents.includes(sel) ? sel : null;
+  if (!b && !(selPad >= 0)) return;
+  const d = b ? bdOf(b) : null, a = 0.5 + 0.5 * Math.sin(time * 5);
+  const at = !b ? slotPos(0, selPad) : b.type === 'hq' ? hqPos(0) : b.slot >= 0 && !d.noPad ? slotPos(0, b.slot) : b, w = P(at.u, at.v);
+  c.save();
+  c.shadowColor = 'rgba(255,211,77,0.95)'; c.shadowBlur = 5 + 9 * a;
+  c.strokeStyle = `rgba(255,211,77,${0.45 + 0.55 * a})`; c.lineWidth = 2.6;
+  if (!top) {
+    const h = (b && b.type === 'hq' ? HQ_PAD_H : b && d.noPad ? d.half * 0.9 : PAD_H) + 2;
+    poly(c, [pt(-h, -h), pt(h, -h), pt(h, h), pt(-h, h)].map(([x, y]) => [w.x + x, w.y + y])); c.stroke();
+  } else if (b) {
+    const q = P(b.u, b.v), hw = 2 * d.half * IX * BS + 4, x0 = q.x - hw, x1 = q.x + hw, y0 = q.y - (d.half + d.h) * BS - 8, y1 = q.y + d.half * BS + 4, n = Math.min(12, hw * 0.4);
+    c.beginPath();
+    for (const [x, y, sx, sy] of [[x0, y0, 1, 1], [x1, y0, -1, 1], [x1, y1, -1, -1], [x0, y1, 1, -1]]) { c.moveTo(x + sx * n, y); c.lineTo(x, y); c.lineTo(x, y + sy * n); }
+    c.stroke();
+  }
+  c.restore();
+}
 function drawFlags(c, g, time) {
   const O = g.sides[0].orders; if (!O) return;
   for (const o of [O.all, ...Object.values(O.groups), ...Object.values(O.types)]) {
@@ -5972,7 +5975,7 @@ function render(c, g, time, sel, selPad) {
   for (const b of g.ents) if (b.type === 'bunker' && b.hp > 0 && b.tier >= 2 && seen(b)) drawHealRing(c, b, time); // v2.32: Depot T2
   for (const a of g.acid) if (lit(a.u)) drawAcidPool(c, a, g.t);
   drawDecals(c);
-  if (g) drawSelection(c, g, time);
+  if (g) { drawSelection(c, g, time); drawBuildingSel(c, g, time, false); }
   drawWrecks(c, time);
   // everything on the field, back to front
   const list = g.ents.filter(seen);
@@ -5994,6 +5997,7 @@ function render(c, g, time, sel, selPad) {
       c.closePath(); c.fill();
     }
   }
+  drawBuildingSel(c, g, time, true);
   drawFog(c, F);
   for (const p of g.projs) {
     if (p.side !== 0 && !lit(p.u)) continue;
@@ -6170,7 +6174,7 @@ function clampCam() {
    ===================================================================== */
 const $ = id => document.getElementById(id);
 const cv = $('cv'), ctx = cv.getContext('2d'), mm = $('mm'), mctx = mm.getContext('2d');
-let game = null, running = false, paused = false, speed = 1, last = 0, tab = 'build', endTimer = null, sel = null, selPad = -1, sellArm = 0, tapCycle = null;
+let game = null, running = false, paused = false, speed = 1, last = 0, tab = 'build', endTimer = null, sel = null, selPad = -1, sellArm = 0, upArm = 0, tapCycle = null;
 let diffKey = 'normal';
 // Match setup (v2.17): the last faction choices, remembered between visits. 'random' is picked at the start of the match.
 const FACTION_KEY = 'extinctionEvent.factions', FAC_PICKS = [...FACTION_KEYS, 'random'];
@@ -6733,28 +6737,28 @@ function refreshExt() {
 }
 
 /* ---------- Building panel: tap a building to upgrade or sell it ---------- */
-function openPanel(b) { sel = b; selPad = -1; sellArm = 0; bpPath = null; $('bp').classList.remove('hide'); refreshPanel(); placeToasts(); }
+function openPanel(b) { sel = b; selPad = -1; sellArm = 0; upArm = 0; bpPath = null; $('bp').classList.remove('hide'); refreshPanel(); placeToasts(); }
 function openPad(k) {
-  sel = null; selPad = k; sellArm = 0; $('bp').classList.remove('hide');
+  sel = null; selPad = k; sellArm = 0; upArm = 0; $('bp').classList.remove('hide');
   if (tab !== 'build') document.querySelector('.tabs [data-tab="build"]').click();
   refreshPanel(); placeToasts();
 }
-function closePanel() { sel = null; selPad = -1; sellArm = 0; $('bp').classList.add('hide'); placeToasts(); }
+function closePanel() { sel = null; selPad = -1; sellArm = 0; upArm = 0; $('bp').classList.add('hide'); placeToasts(); }
 function refreshPanel() {
   $('bpPick').classList.add('hide'); $('bp').classList.remove('wide'); // shown again below for a building choosing its path
   if (selPad >= 0) {
     if (!game || game.sides[0].slots[selPad]) { closePanel(); return; }
-    $('bpName').textContent = 'Empty pad'; setHTML($('bpPips'), '');
+    $('bpName').textContent = 'Empty pad'; $('bpPad').textContent = padLabel(null, selPad); setHTML($('bpPips'), '');
     $('bpNow').textContent = 'Pick a building below to build it here.';
     setHTML($('bpNext'), '');
     $('bpUp').classList.add('hide'); $('bpSell').classList.add('hide'); $('bpRep').classList.add('hide'); $('bpHp').textContent = '';
     return;
   }
-  $('bpUp').classList.remove('hide');
+  $('bpUp').classList.remove('hide'); $('bpUp').classList.remove('arm');
   if (!sel) return;
   if (!game || sel.hp <= 0 || !game.ents.includes(sel)) { closePanel(); return; }
   const b = sel, d = bdOf(b), res = game.sides[0].res, up = $('bpUp'), sell = $('bpSell');
-  $('bpName').textContent = d.name;
+  $('bpName').textContent = d.name; $('bpPad').textContent = padLabel(b);
   if (d.noPad) { // a node bunker (v2.32): nothing to buy; it follows the Depot
     setHTML($('bpPips'), [1, 2, 3].map(i => `<i class="${i <= b.tier ? 'on' : ''}"></i>`).join(''));
     $('bpHp').textContent = `${Math.ceil(b.hp)}/${Math.round(b.maxHp)}`;
@@ -6801,20 +6805,47 @@ function refreshPanel() {
       el.classList.toggle('on', bpPath === k);
     }
     setHTML($('bpNext'), '');
-    up.disabled = false; up.textContent = bpPath ? `Choose · ${nx.c}/${nx.e}` : 'Pick a path'; up.classList.toggle('poor', !bpPath || res.c < nx.c || res.e < nx.e);
+    const armed = bpPath && upArmed(b);
+    up.disabled = false; up.textContent = armed ? `Confirm · ${nx.c}/${nx.e}` : bpPath ? `Choose · ${nx.c}/${nx.e}` : 'Pick a path'; up.classList.toggle('poor', !armed && (!bpPath || res.c < nx.c || res.e < nx.e)); up.classList.toggle('arm', !!armed);
     return;
   }
   setHTML($('bpNext'), `<span>Next T${b.tier + 1}: ${tierTxt(b.tier + 1)}</span>` + costHTML(nx, res) + `<span>${nx.time}s</span>`);
   if (b.upgrading) { up.disabled = true; up.textContent = `Upgrading ${Math.round(b.upProg * 100)}%`; up.classList.remove('poor'); }
-  else { up.disabled = false; up.textContent = 'Upgrade'; up.classList.toggle('poor', res.c < nx.c || res.e < nx.e); }
+  else { const armed = upArmed(b); up.disabled = false; up.textContent = armed ? 'Tap to confirm' : 'Upgrade'; up.classList.toggle('poor', !armed && (res.c < nx.c || res.e < nx.e)); up.classList.toggle('arm', armed); }
 }
+// The panel header's second line (v2.35): which pad the building stands on. Pads count 1-8 from the HQ outward (slot order)
+function padLabel(b, k) {
+  if (!b) return `Pad ${k + 1}`;
+  if (b.type === 'hq') return 'HQ pad';
+  if (bdOf(b).noPad) return `${NODE_NAME[b.node] ? NODE_NAME[b.node][0].toUpperCase() + NODE_NAME[b.node].slice(1) : 'Field'} node`;
+  return b.slot >= 0 ? `Pad ${b.slot + 1}` : '';
+}
+// Costly upgrades (v2.35, audit): the top third of a faction's upgrade costs (credits + energy, every role's T2 and T3) take
+// a second tap to confirm. Ties are kept whole, so the cut is the highest cost that leaves no more than a third above it.
+const UP_BIG = {};
+function upBigAt(fac) {
+  if (UP_BIG[fac] !== undefined) return UP_BIG[fac];
+  const B = BDEFS[fac] || BDEF, all = [];
+  for (const t in B) if (B[t].up && !B[t].noPad) for (const k of [2, 3]) if (B[t].up[k]) all.push(B[t].up[k].c + B[t].up[k].e);
+  all.sort((a, b) => b - a);
+  const n = Math.ceil(all.length / 3); let cut = Infinity;
+  for (let i = 0; i < all.length && i < n; i++) if (all.filter(x => x >= all[i]).length <= n) cut = all[i];
+  return (UP_BIG[fac] = cut);
+}
+const upIsBig = b => { const nx = b.tier < 3 && bdOf(b).up && bdOf(b).up[b.tier + 1]; return !!nx && nx.c + nx.e >= upBigAt(b.fac); };
+const upArmed = b => upArm > performance.now() && upIsBig(b);
 let bpPath = null; // the path picked in the panel, not yet confirmed
-for (const el of $('bpPick').children) el.addEventListener('click', () => { if (!sel || paused) return; bpPath = bpPath === el.dataset.p ? null : el.dataset.p; refreshPanel(); });
+for (const el of $('bpPick').children) el.addEventListener('click', () => { if (!sel || paused) return; bpPath = bpPath === el.dataset.p ? null : el.dataset.p; upArm = 0; refreshPanel(); });
 $('bpX').addEventListener('click', closePanel);
 $('bpUp').addEventListener('click', () => {
   if (!sel || !game || paused) return;
   const T = treeOf(sel.fac, sel.type);
   if (T && sel.tier === 1 && !bpPath) { toast('Pick a path first: tap A or B', 'bad'); shake($('bp')); return; }
+  if (upIsBig(sel) && !sel.upgrading && sel.built && !(upArm > performance.now())) { // a costly upgrade: the first tap arms it (v2.35)
+    const nx = bdOf(sel).up[sel.tier + 1], res = game.sides[0].res;
+    if (res.c >= nx.c && res.e >= nx.e && game.countdown <= 0) { upArm = performance.now() + 2500; refreshPanel(); return; }
+  }
+  upArm = 0;
   const r = tryUpgrade(game, 0, sel, T && sel.tier === 1 ? bpPath : undefined);
   if (r.ok) bpPath = null;
   if (r.ok) toast(r.msg, 'ok'); else { toast(r.msg, 'bad'); shake($('bp')); }
@@ -6993,7 +7024,7 @@ function showStart() {
     <div class="how">
       <div><b>Build and upgrade</b>Tap an empty pad then a building card, or just tap a card. Tap a building to upgrade, repair or sell it. Hold any card for details.</div>
       <div><b>Control the field</b>Ground troops standing on a field node capture it for extra income. Your HQ is shielded while any other building stands.</div>
-      <div><b>Command your army</b>Attack pushes forward, Hold stops everyone where they stand, Retreat pulls back to your flag. Drag sideways to look around.</div>
+      <div><b>Command your army</b>Attack pushes forward, Hold stops everyone where they stand, Retreat pulls back to your flag without firing. Drag sideways to look around.</div>
     </div>
     <div class="setup"><span class="lbl">Difficulty</span>${diffSeg()}<span class="lbl">You</span>${facSeg('meSeg', 'me')}<span class="lbl">Opponent</span>${facSeg('foeSeg', 'foe')}<p class="fdesc" id="facDesc">${factionDesc(facPick.me)}</p></div>
     <div class="row">${sv ? `<button class="big" id="bResume">Resume match</button><button class="ghost" id="bPlay">New match</button><span class="lbl">${DIFF[sv.diffKey] ? DIFF[sv.diffKey].label : ''}, ${fmtTime(sv.t)} in</span>` : '<button class="big" id="bPlay">Start match</button>'}<button class="ghost" id="bSound">${sndLabel()}</button></div>`);
@@ -7044,7 +7075,7 @@ function pauseGame(restored) {
 function fmtTime(t) { t = Math.floor(t); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; }
 // Post-match report (v2.9): built from the match log, which the UI reads only now that the match is over.
 // The enemy's moves and stats are revealed here (never during play).
-const REP_TABS = ['Summary', 'Timeline', 'Key moments', 'Lessons'];
+const REP_TABS = ['Summary', 'Timeline', 'Key moments', 'Stats']; // v2.35: Stats replaced Lessons
 let repTab = 'Summary';
 function showEnd() {
   const g = game, win = g.winner === 0, R = g.result || { how: 'hq' }, L = g.log;
@@ -7075,7 +7106,7 @@ function repShow(tab) {
   const cp = $('box').querySelector('.cpy'); if (cp) cp.remove();
   for (const b of $('repTabs').children) b.classList.toggle('on', b.dataset.t === tab);
   const pane = $('repPane'), g = game;
-  pane.innerHTML = !g.log ? '<p class="note">This match was not recorded.</p>' : tab === 'Summary' ? repSummary(g) : tab === 'Timeline' ? repTimeline(g) : tab === 'Key moments' ? repMoments(g) : repLessons(g);
+  pane.innerHTML = !g.log ? '<p class="note">This match was not recorded.</p>' : tab === 'Summary' ? repSummary(g) : tab === 'Timeline' ? repTimeline(g) : tab === 'Key moments' ? repMoments(g) : repStats(g);
   pane.scrollTop = 0;
   if (tab === 'Timeline') $('bCopy').addEventListener('click', repCopy);
 }
@@ -7125,9 +7156,27 @@ function repMoments(g) {
     <p class="note" style="margin-top:0">Army value every 15 s${L.from > 0 ? ` from ${mmss(L.from)}` : ''} (you blue, enemy red; peak ${fmtN(top)})</p>
     <ul class="tl">${M.map(m => `<li><b>${mmss(m.t)}</b><span>${m.txt}</span>${m.tag ? `<span class="tag">${m.tag}</span>` : ''}</li>`).join('') || '<li>No major moments were recorded.</li>'}</ul>${repFrom(L)}`;
 }
-function repLessons(g) {
-  return logLessons(g).map(l => `<div class="les"><div><em class="f">Fact</em>${l.fact}</div><div><em class="i">Interpretation</em>${l.why}</div>${l.next ? `<div><em class="r">Next time</em>${l.next}</div>` : ''}</div>`).join('') +
-    `<p class="note">Lessons come only from events the game recorded. Where it can't tell why a fight was won or lost, it says so.</p>${repFrom(g.log)}`;
+// Stats (v2.35, audit; replaces Lessons): match length, army value over time, units built and lost by type, resources
+// gathered and spent, and Salvage for a Last Fist side. Read from the match log only.
+function repStats(g) {
+  const L = g.log, T = L.tot, sp = (t, i) => Object.values(t.spent).reduce((a, b) => a + b[i], 0), A = L.army, n = Math.max(A[0].length, A[1].length);
+  const top = Math.max(1, ...A[0], ...A[1]), W = 600, H = 112, x0 = 46, x1 = W - 8, y0 = 8, y1 = H - 20, t0 = L.from, t1 = L.from + Math.max(1, n - 1) * LOG_SAMPLE;
+  const X = i => (x0 + (n > 1 ? i / (n - 1) : 0) * (x1 - x0)).toFixed(1), Y = v => (y1 - v / top * (y1 - y0)).toFixed(1);
+  const line = (a, col) => a.length ? `<polyline fill="none" stroke="${col}" stroke-width="2.2" stroke-linejoin="round" points="${a.map((v, i) => `${X(i)},${Y(v)}`).join(' ')}"/>` : '';
+  const grid = [0, 0.5, 1].map(f => `<line x1="${x0}" x2="${x1}" y1="${Y(top * f)}" y2="${Y(top * f)}" stroke="rgba(120,150,200,.18)"/><text x="${x0 - 6}" y="${(+Y(top * f) + 4).toFixed(1)}" text-anchor="end">${fmtN(top * f)}</text>`).join('');
+  const ticks = [0, 0.5, 1].map(f => `<text x="${(x0 + f * (x1 - x0)).toFixed(1)}" y="${H - 5}" text-anchor="${f === 0 ? 'start' : f === 1 ? 'end' : 'middle'}">${mmss(t0 + f * (t1 - t0))}</text>`).join('');
+  const graph = n ? `<svg class="sgraph" viewBox="0 0 ${W} ${H}" role="img" aria-label="Army value over time">${grid}${ticks}${line(A[1], '#ff4d4d')}${line(A[0], '#39c8ff')}</svg>` : '<p class="note">No army samples were recorded.</p>';
+  const units = s => { const t = T[s], ks = Object.keys(UDEF).filter(k => t.trained[k] || t.lost[k]);
+    return `<table><tr><th>${s ? 'Enemy units' : 'Your units'}</th><td><b>Built</b></td><td><b>Lost</b></td></tr>${ks.map(k => `<tr><th>${UDEF[k].name}</th><td>${t.trained[k] || 0}</td><td>${t.lost[k] || 0}</td></tr>`).join('') || '<tr><th>None</th><td></td><td></td></tr>'}</table>`; };
+  const lf = [0, 1].filter(s => facOf(g.sides[s].faction) === 'lastfist');
+  const salv = lf.length ? `<tr><th>Salvage recovered</th>${[0, 1].map(s => `<td${s ? ' class="e"' : ''}>${lf.includes(s) ? `${fmtN(T[s].salv || 0)} credits${T[s].salvE ? `, ${fmtN(T[s].salvE)} energy` : ''}` : '–'}</td>`).join('')}</tr>` : '';
+  return `<h4 class="sh">Match length <b class="len">${mmss(g.t)}</b></h4>
+    <h4 class="sh">Army value over time <span class="note">(credits + energy of living units, every ${LOG_SAMPLE} s; <span style="color:#39c8ff">you</span>, <span style="color:#ff4d4d">enemy</span>)</span></h4>${graph}
+    <h4 class="sh">Resources</h4>
+    <table><tr><th></th><td><b>You</b></td><td class="e"><b>Enemy</b></td></tr>
+    <tr><th>Credits gathered / spent</th><td>${fmtN(T[0].earn[0])} / ${fmtN(sp(T[0], 0))}</td><td class="e">${fmtN(T[1].earn[0])} / ${fmtN(sp(T[1], 0))}</td></tr>
+    <tr><th>Energy gathered / spent</th><td>${fmtN(T[0].earn[1])} / ${fmtN(sp(T[0], 1))}</td><td class="e">${fmtN(T[1].earn[1])} / ${fmtN(sp(T[1], 1))}</td></tr>${salv}</table>
+    <h4 class="sh">Units built and lost</h4><div class="scols">${units(0)}${units(1)}</div>${repFrom(L)}`;
 }
 function repText(g) {
   const R = g.result || {}, win = g.winner === 0;

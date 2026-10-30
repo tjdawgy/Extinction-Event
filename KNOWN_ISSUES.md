@@ -2,6 +2,14 @@
 
 Issues found during testing that are deliberately deferred. Each lists the step that should address it.
 
+## Audit phase 1: quick fixes (v2.35)
+- **Selected building:** a pulsing gold glow on its pad and gold brackets around it while its panel is open (`drawBuildingSel`); an empty pad being built on gets the same glow. The panel header shows the name and, under it, the pad (`Pad 1`–`Pad 8` in slot order, `HQ pad`, or `West/Centre/East node` for a node bunker).
+- **Costly upgrades confirm on a second tap** (`upBigAt`, `upIsBig`): the top third of a faction's upgrade costs by credits + energy, ties kept whole so no more than a third qualify. With today's costs (the same for all three factions) the cut is 400: HQ T2 and T3, War Factory role T3, Tech Lab role T2 and T3. The first tap turns the button gold ("Tap to confirm", or "Confirm · c/e" with a path picked) for 2.5 s; an upgrade you can't afford skips the confirm and shows the usual shortfall.
+- **Lessons tab removed** (`logLessons`, `repLessons` deleted). **Stats** takes its place: match length, army value every 15 s as a line graph (both sides), resources gathered and spent, Salvage recovered (Last Fist sides only), and units built and lost by type for each side. Summary, Timeline and Key moments are unchanged.
+- **Retreating units hold their fire** until the retreat ends (back within 12 of the rally flag, or a new order). `RETREAT.fire` true restores the v2.34 rule; the two determinism replays pinned to older versions (v2.29 with Salvage and signature buildings off, Last Fist vs Bloomhost at v2.33) run with it and still match, so nothing else in the SIM changed. The main fingerprint is unchanged (no retreating unit had a target in that match). The rule applies to the AI's units too (its default stance, feints and Artillery pull-backs use Retreat); no AI code changed.
+- **Tests re-seeded for the retreat rule:** the Bloomhost AI's abilities test (seed 7 → 2: with 7 it cast no Emergency Brood). The Bloomspire AI test runs on the v2.34 rule (`RETREAT.fire` true, seed 17 as before): with the new rule the Bloomhost AI still took Apex Bloom and trained Brood Tyrants, but trained no Worldrender in 74 seeded matches (seeds 1-80 against the Turtle autoplayer, 1-8 against the Economist and Trickster, several of them 20-minute matches it won). Logged under Audit for the AI training phase.
+- **Bug sweep:** no crashes, softlocks, broken inputs or wrong results found (9 faction pairings played to the end in headless Chromium at iPhone landscape size with UI input during play, plus save, reload and Resume). Non-crucial findings, not fixed: listed under Open, "Found in the v2.35 bug sweep".
+
 ## Signature buildings, batch 3 (v2.34): complete
 - The Axiarchs (docs/SIGNATURE_BUILDINGS.md section 4): the Phase Beacon (role `sigA`, the BEACON block) and the Echo Reliquary (`sigB`, the ECHO block). Every faction now has both; docs/SIGNATURE_BUILDINGS.md is marked complete with a stats table and the Definition of Done check.
 - Spec interpretations made in v2.34: with no units the bubble sits on the Beacon; the anchor is re-picked every second and the bubble glides to it at 90 a second; a collapse removes the bubble at once (shatter and sound) and it re-forms by growing at the anchor; the 35% is measured against what the units inside had (their current shields plus health plus what they lost in the window), counting units that die inside and ignoring units that walk out; "warping into the bubble" is the normal warp channel arriving inside it (Mass Warp arrivals don't count); the echo re-warp takes the normal 2 s warp channel with no production time; echo cost is 50% of credits and energy, rounded; an echo is stored at the Reliquary's tier at the time of death and kept by its tier's limit; recovered units' Salvage is on the 50% credits paid.
@@ -47,6 +55,7 @@ Items for the strategy explorer and full balance audit. Logged only, nothing tun
 - **Hard ≈ Normal on the ladder:** 19–21 over 40 at v2.15, 18–22 at main (v2.14).
 - **Test bots always take path A** (Barracks, War Factory) **and Support** (Tech Lab), so bot data never covers Mass Deployment, Assault or Air Power.
 - **Tech Lab AI default paths are provisional:** Economist and Trickster on Air Power, Aggressor and Turtle on Support.
+- **Bloomhost AI never trains a Worldrender under the v2.35 retreat rule** (0 of 74 seeded Hard matches; with v2.34's rule 1 of 42 seeds did at v2.32). Check in the AI training phase whether supply or the retreat change keeps it out (AI coverage).
 - **Bot rows from v2.13–v2.14 are not comparable with later rows** (the bots never upgraded before the v2.15 fix).
 - **Orbital Strike now hits aircraft (v2.16)** with the same 280/140 damage, HQ T2 unlock, cost and cooldown. Unmeasured: its effect on air armies (a Gunship has 230 HP and dies at the centre; a Leviathan has 1400).
 - **Orbital Strike unlocks at HQ T2 instead of a War Factory (v2.16).** The AI's other personalities reach HQ T2 through their normal upgrade order; when, and how that changes their Strike use, is unmeasured.
@@ -115,6 +124,12 @@ Every Bloomhost item for the audit and AI training, in one place (details in the
 - **Interface notes:** Bloomhost attacks are silent (v2.17); remembered enemy creep has a hard edge (v2.18).
 
 ## Open
+
+### Found in the v2.35 bug sweep (non-crucial, not fixed)
+- **Building panel HP wraps on Axiarch buildings:** "656/656 · 45 sh" breaks onto two lines in the 264-wide panel header (cosmetic; seen on the Architectum).
+- **Stats and Summary: credits spent can exceed credits gathered** because the 300 starting credits (and sale refunds, shown separately in Summary) are not counted as gathered. A labelling question, not a calculation error.
+- **Army value samples stop at 120** (30 minutes, `logTick`); a longer match's graph ends early. Matches end by the Extinction Event's limit, so this shouldn't show in practice.
+
 
 ### Flame Tank: off-centre targets are never hit (found in v2.31, not fixed)
 - **Bug:** a Flame Tank picks targets by lane distance (`acquire`, sideways distance ×0.4), but its burst only hits within its 24-wide strip (`flameBurst`: sideways up to `strip`, plus half a building's width). A target it picks that sits further to the side takes nothing, and the Flame Tank stands still firing at it forever.

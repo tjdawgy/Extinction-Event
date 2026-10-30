@@ -147,6 +147,8 @@ test('v2.29: pick a Celestial Array path through the panel (Ascendant Calculus),
   assert.match(await page.textContent('#bpPick [data-p="A"]'), /Swarm Calculus.*Prismwings.*Shardstorms/);
   assert.match(await page.textContent('#bpPick [data-p="B"]'), /Ascendant Calculus.*Voidcarriers.*Astral Sovereigns/);
   await page.click('#bpPick [data-p="B"]'); await page.click('#bpUp');
+  assert.deepStrictEqual(await page.evaluate(() => [sel.upgrading, $('bpUp').textContent]), [false, 'Confirm · 250/150'], 'v2.35: a costly upgrade waits for a second tap');
+  await page.click('#bpUp');
   assert.deepStrictEqual(await page.evaluate(() => [sel.upgrading, sel.upPath]), [true, 'B']);
   await page.evaluate(() => { for (let i = 0; i < 30 * 40 && sel.upgrading; i++) update(game, 1 / 30); refreshPanel(); closePanel(); refreshUI(true); });
   assert.deepStrictEqual(await page.evaluate(() => { const a = game.ents.find(e => e.side === 0 && e.type === 'techlab'); return [a.tier, a.path]; }), [2, 'B']);

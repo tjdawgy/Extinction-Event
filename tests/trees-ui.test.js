@@ -111,7 +111,7 @@ test('Tech Lab (v2.15): needs only a Barracks (v2.16); Air Power or Support in t
   await page.evaluate(() => { for (const k of ['refinery', 'techlab']) { tryBuild(game, 0, k); for (const b of game.ents) if (b.kind === 'b') { b.built = true; b.progress = 1; } } openPanel(game.ents.find(e => e.type === 'techlab')); });
   assert.match(await page.textContent('#bpPick [data-p="A"]'), /Air Power.*Interceptors.*Leviathans/);
   assert.match(await page.textContent('#bpPick [data-p="B"]'), /Support.*Medicopters, Recon Drones.*Nanoweave/);
-  await page.click('#bpPick [data-p="B"]'); await page.click('#bpUp');
+  await page.click('#bpPick [data-p="B"]'); await page.click('#bpUp'); await page.click('#bpUp'); // v2.35: Tech Lab T2 is a costly upgrade (second tap confirms)
   await page.evaluate(() => { sel.upProg = 0.9999; update(game, 0.2); closePanel(); });
   await page.click('.tabs [data-tab="train"]');
   const t = await page.$$eval('#cards .card', c => c.map(x => x.dataset.type));

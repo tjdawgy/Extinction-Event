@@ -30,7 +30,7 @@ async function main() {
     });
     await snap('Tech Lab at T1: Air Power or Support', 'picker');
     await page.click('#bpPick [data-p="A"]'); await snap('Air Power picked: the button confirms', 'picked');
-    await page.click('#bpUp');
+    await page.click('#bpUp'); await page.click('#bpUp'); // v2.35: a costly upgrade confirms on the second tap
     await page.evaluate(() => {
       const [a, b] = game.ents.filter(e => e.type === 'techlab' && e.side === 0);
       a.upProg = 0.999; __frames(3); tryUpgrade(game, 0, a); a.upProg = 0.999; __frames(3);

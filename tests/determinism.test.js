@@ -8,6 +8,9 @@
 // v2.34 (the Axiarchs' signature buildings) leaves Last Fist and Bloomhost alone: a fixed Last Fist vs Bloomhost match must play
 // exactly as at v2.33, apart from the save version (LF_BH_V233). (v2.32 pinned Bloomhost vs Axiarchs to v2.31 and v2.33 pinned
 // Last Fist vs Axiarchs to v2.32 the same way; each later batch changes its own faction on purpose.)
+// v2.35 (audit): retreating units hold their fire. The two replays pinned to older versions run with RETREAT.fire true (the
+// v2.34 rule), so they still prove nothing else changed; the main fingerprint plays the new rule (unchanged: in that match no
+// retreating unit had a target in range).
 const test = require('node:test');
 const assert = require('node:assert');
 const crypto = require('crypto');
@@ -21,7 +24,7 @@ function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Ma
 
 function fingerprint(salvageOff) {
   const sim = loadSim({ random: mulberry(2024) });
-  if (salvageOff) { sim.SALVAGE.pct = 0; sim.SIG.on = false; }
+  if (salvageOff) { sim.SALVAGE.pct = 0; sim.SIG.on = false; sim.RETREAT.fire = true; }
   const g = sim.newGame('hard', { autoPlayer: true, autoDiff: 'hard', persona: 'trickster', autoPersona: 'turtle' });
   for (let i = 0; i < 30 * 480 && !g.over; i++) sim.update(g, 1 / 30);
   const o = JSON.parse(sim.serialize(g, {})); delete o.log; // the match log (v2.9) is a record, not game state: left out so it can change freely
@@ -31,7 +34,7 @@ function fingerprint(salvageOff) {
 }
 
 function lfBh() { // Last Fist (autoplayer, Turtle) vs Bloomhost (Aggressor), Hard, to the end of the match
-  const sim = loadSim({ random: mulberry(2024) });
+  const sim = loadSim({ random: mulberry(2024) }); sim.RETREAT.fire = true; // v2.35: the v2.34 retreat rule
   const g = sim.newGame('hard', { autoPlayer: true, autoDiff: 'hard', persona: 'aggressor', autoPersona: 'turtle', factions: ['lastfist', 'bloomhost'] });
   for (let i = 0; i < 30 * 1700 && !g.over; i++) sim.update(g, 1 / 30);
   const o = JSON.parse(sim.serialize(g, {})); delete o.log; delete o.v; // the save version

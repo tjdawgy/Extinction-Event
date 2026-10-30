@@ -24,7 +24,7 @@ async function main() {
       running = false; showEnd();
     }, { persona: opt('persona') || 'turtle', diff: opt('diff') || 'normal' });
     const snap = async label => { await page.waitForTimeout(80); shots.push({ label, img: (await page.screenshot()).toString('base64') }); };
-    for (const t of ['Summary', 'Timeline', 'Key moments', 'Lessons']) { await page.click(`#repTabs [data-t="${t}"]`); await snap(t); }
+    for (const t of ['Summary', 'Timeline', 'Key moments', 'Stats']) { await page.click(`#repTabs [data-t="${t}"]`); await snap(t); }
     await page.click('#repTabs [data-t="Timeline"]');
     await page.evaluate(() => { $('repPane').scrollTop = 1e6; }); await snap('Timeline, scrolled to the end');
     await page.evaluate(() => { $('repPane').scrollTop = 0; });

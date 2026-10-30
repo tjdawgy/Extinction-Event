@@ -148,10 +148,8 @@ test('saves keep War Factory paths and Hydra aim; a v13 save migrates (T2+ War F
   assert.strictEqual(g3.ents.find(e => e.type === 'barracks').path, null, 'Barracks untouched');
 });
 
-test('the match log counts what killed your units; 12+ Flame Tank kills give a lesson', () => {
+test('the match log counts what killed your units', () => { // v2.35: the Lessons tab (and its Flame Tank lesson) is gone
   const g = field();
   for (let i = 0; i < 13; i++) { const r = sim.spawnUnit(g, 0, 'rifle', 900, 0); sim.kill(g, r, 1, 'flame'); }
   assert.strictEqual(g.log.tot[0].lostTo.flame, 13);
-  const L = sim.logLessons(g, 0);
-  assert.ok(L.some(l => /Enemy Flame Tanks destroyed 13 of your units/.test(l.fact)), JSON.stringify(L));
 });

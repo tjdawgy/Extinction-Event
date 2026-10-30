@@ -20,7 +20,7 @@ const PLAY = () => { // a real AI-vs-AI match to its end, then the report
 test('no leaks during play: the UI reads the match log only on the end screen, and no report shows while playing', { skip }, async () => {
   const html = readHtml(), ui = html.slice(html.indexOf('SIM END'));
   const from = ui.indexOf('// Post-match report (v2.9)'), to = ui.indexOf('/* ---------- Sound');
-  const uses = [...ui.matchAll(/\b(game|g)\.log\b|logLines|logText|logMoments|logLessons/g)].map(m => m.index);
+  const uses = [...ui.matchAll(/\b(game|g)\.log\b|logLines|logText|logMoments|repStats/g)].map(m => m.index);
   assert.ok(uses.length > 0 && uses.every(i => i > from && i < to), 'every read of the log in the UI is inside the report code');
   const { page, errors } = await openPage(browser, PHONE);
   await page.click('#bPlay'); await page.waitForTimeout(300);
@@ -49,7 +49,7 @@ for (const dev of [PHONE, NARROW]) {
       const tabs = [...document.querySelectorAll('#repTabs button')].map(b => { const r = b.getBoundingClientRect(); return r.right <= innerWidth && r.top >= 0; });
       return { again: vis('bAgain'), menu: vis('bMenu2'), tabs, h1: document.querySelector('#box h1').getBoundingClientRect().top >= 0, pane: $('repPane').scrollTop, box: $('box').scrollTop };
     });
-    for (const t of ['Summary', 'Timeline', 'Key moments', 'Lessons']) {
+    for (const t of ['Summary', 'Timeline', 'Key moments', 'Stats']) {
       await page.click(`#repTabs [data-t="${t}"]`);
       await page.evaluate(() => { $('repPane').scrollTop = 1e6; }); // even scrolled to the end
       const c = await check();
