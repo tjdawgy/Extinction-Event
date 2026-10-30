@@ -150,7 +150,7 @@ test('the minimal AI (Bloomhost): the Aggressor and Trickster build the Brood Mo
 });
 
 test('saves v29 keep Mites, the Mound and Rootheart timers and snares; an older save with a stray Bloomhost signature building drops it', () => {
-  assert.strictEqual(sim.SAVE_VER, 29); assert.ok(sim.SAVE_OK.includes(28) && sim.SAVE_OK.includes(29));
+  assert.ok(sim.SAVE_VER >= 29); assert.ok(sim.SAVE_OK.includes(28) && sim.SAVE_OK.includes(29)); // v30 (v2.34) loads the same way
   const g = quiet(); seeAll(g); const mo = fin(g, 0, 'sigA'); const rh = fin(g, 0, 'sigB'); rh.tier = 3; step(g, M.every + 0.5);
   const e = put(g, 1, 'rifle', 900); e.snT = g.t + 0.6; e.snImm = g.t + 9;
   const g2 = sim.deserialize(sim.serialize(g, {}));

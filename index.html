@@ -194,6 +194,9 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .card .bar i{display:block;height:100%;width:0;background:var(--blue)}
 .card .path{position:absolute;left:4px;top:3px;font-size:9px;font-weight:800;letter-spacing:.04em;color:#ffd34d;pointer-events:none}
 .card .path.pr:empty{display:none}
+.echoHdr{flex:none;align-self:stretch;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:0 6px;border-radius:10px;background:rgba(159,232,255,.08);border:1px dashed rgba(159,232,255,.35);color:#bfefff;font-size:11px;font-weight:700;line-height:1.2;text-align:center;white-space:nowrap} /* Echoes (v2.34) */
+.echoHdr small{color:var(--muted);font-weight:600;font-size:10px}
+#cards .card.echoc{border-color:rgba(159,232,255,.45)} #cards .card.echoc .path{background:rgba(159,232,255,.2);color:#dff7ff}
 .trainHint{align-self:center;padding:0 14px;color:var(--muted);font-size:13px;font-weight:600;white-space:nowrap} /* empty Train tab (v2.16) */
 .card.locked{opacity:.5}
 .card.poor .nm{color:var(--muted)}
@@ -329,7 +332,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.33'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.34'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -424,7 +427,7 @@ const BDEF = {
 // Cost, build time, HP and upgrade costs are the faction's light production building's (Last Fist: the Barracks); no tree,
 // no supply. Last Fist: the Salvage Yard (A) raises Salvage (YARD), the Fortification Depot (B) puts a bunker on every field
 // node it holds (BUNKER). A faction without these roles yet (Bloomhost until v2.33, Axiarchs until v2.34) can't build them.
-const sigDef = (base, x) => Object.assign({ cost: base.cost, hp: base.hp, half: base.half, time: base.time, up: base.up, sig: true }, x);
+const sigDef = (base, x) => Object.assign({ cost: base.cost, hp: base.hp, half: base.half, time: base.time, up: base.up, sig: true }, base.shp ? { shp: base.shp } : {}, x); // shp: an Axiarch building's shields (v2.34)
 BDEF.sigA = sigDef(BDEF.barracks, { name: 'Salvage Yard', h: 46,
   tiers: [null, 'Salvage returns 20% of a unit\'s credit cost (base 10%)', 'Salvage cap doubled (400 a minute); salvage also returns half as much energy', 'Overdrive: salvage over the cap speeds your production +25% for 20 s'] });
 BDEF.sigB = sigDef(BDEF.barracks, { name: 'Fortification Depot', h: 48,
@@ -484,6 +487,12 @@ const BDEF_AX = (() => {
   for (const [k, h] of Object.entries({ hq: 70, refinery: 40, reactor: 46, habitat: 30, barracks: 44, factory: 40, turret: 40, techlab: 70 })) o[k].h = h;
   return o;
 })();
+// Axiarch signature buildings (v2.34): the Phase Beacon (A) and the Echo Reliquary (B); Genesis Gate cost, time, HP, shields
+// and upgrade costs; drawn heights fit their art
+BDEF_AX.sigA = sigDef(BDEF_AX.barracks, { name: 'Phase Beacon', h: 50,
+  tiers: [null, 'A power-field bubble follows your frontmost unit (a node field\'s size); it collapses for 15 s if your units in it lose 35% within 5 s', 'Bubble 1.5× wider', 'Units that warp into the bubble arrive with full shields and +20% damage for 8 s'] });
+BDEF_AX.sigB = sigDef(BDEF_AX.barracks, { name: 'Echo Reliquary', h: 46,
+  tiers: [null, 'Keeps the echoes of your last 3 fallen T2/T3 units: warp one back for half its cost', 'Keeps 5 echoes', 'Recovered units arrive with a 30% overshield for 20 s'] });
 const BDEFS = { lastfist: BDEF, bloomhost: BDEF_BH, axiarchs: BDEF_AX };
 const BD = (fac, type) => (BDEFS[fac] || BDEF)[type];     // a faction's definition of a building role
 const bdOf = e => BD(e.fac, e.type);                        // a building's own definition
@@ -644,6 +653,17 @@ const MOUND = { every: 20, n: [0, 2, 3, 3], life: 30, max: 10, r: 40, burst: 0.5
 // max enemy ground units in the creep's outer strip (edge deep) for snare seconds (they can still attack), then they are
 // immune for imm seconds. Losing the Rootheart: creep's reach returns to normal and the extra recedes by the usual rules.
 const ROOT = { grow: 1.5, reach: 1.5, slow: 0.15, regen: 1.5, every: 15, snare: 1, imm: 10, max: 5, edge: 16 };
+// Phase Beacon (v2.34): a power-field bubble (a normal field patch, key 'beacon') that follows its anchor, the frontmost Axiarch
+// ground unit (else the frontmost unit; with none, the Beacon itself), re-picked every `every` seconds and approached at
+// `move` per second. Radius: a node's field (FIELD.nodeR) at T1, × r2 from T2. If its side's units inside lose `loss` of their
+// combined shields plus health within `window` seconds it collapses for `down` seconds, then re-forms at the anchor. T3: a
+// unit that warps in inside the bubble arrives with full shields and +dmg damage for dmgDur seconds.
+const BEACON = { every: 1, move: 90, r2: 1.5, loss: 0.35, window: 5, down: 15, dmg: 0.2, dmgDur: 8 };
+// Echo Reliquary (v2.34): an Axiarch T2/T3 unit that dies (never a temporary or recovered one) leaves an echo: n[tier] are kept,
+// the oldest replaced. An echo warps the unit back for cost × its price (normal warp channel, supply and placement; no
+// production building or path needed), consumed as the warp starts. T3: recovered units arrive with an overshield of osh × max
+// shields for oshDur seconds (it never regenerates). Losing the Reliquary loses every echo.
+const ECHO = { n: [0, 3, 5, 5], cost: 0.5, osh: 0.3, oshDur: 20 };
 const SIG = { on: true }; // false: no signature buildings for anyone (the AI never builds them; tests compare against older versions)
 const SPAWN = { max: 6, dmg: 0.5 }; // Cloudwing offspring: at most 6 per side at once (separate from Emergency Brood's TEMP.max), half damage
 const CORR = { cap: 0.25 }; // corrosion: at most +25% damage taken, however many acid hits land
@@ -1658,11 +1678,71 @@ function updateField(g, dt) {
       const hq = g.sides[s].hq;
       if (hq.hp > 0) { const n = g.ents.filter(b => b.kind === 'b' && b.side === s && b.type === 'habitat' && b.built && b.hp > 0).length; want.set('axis', { u: hq.u, v: hq.v, R: Math.min(FIELD.maxR, FIELD.axisR + FIELD.spireAdd * n), node: false }); }
       for (const n of g.nodes) if (n.owner === s) want.set('n' + n.id, { u: n.u, v: n.v || 0, R: FIELD.nodeR, node: true });
+      const bk = beaconOf(g, s); // the Phase Beacon's bubble (v2.34): wanted unless collapsed; it forms at the anchor
+      if (bk && !(bk.col > g.t)) { if (bk.au === undefined) beaconAnchor(g, s, bk); want.set('beacon', { u: bk.au, v: bk.av, R: FIELD.nodeR * (bk.tier >= 2 ? BEACON.r2 : 1), node: true }); }
     }
     g.field[s] = zoneStep(list, want, FIELD, dt);
+    if (ax) moveBeacon(g, s, dt);
     const sd = g.sides[s]; // a chosen warp point outside the field snaps back to the default
     if (sd.warp && !onField(g, s, sd.warp.u, sd.warp.v)) { sd.warp = null; ev(g, { type: 'warpSnap', side: s }); }
   }
+}
+/* ---------- Phase Beacon (v2.34) ---------- */
+const beaconOf = (g, s) => facOf(g.sides[s].faction) === 'axiarchs' ? sigOf(g, s, 'sigA') : null;
+const relOf = (g, s) => facOf(g.sides[s].faction) === 'axiarchs' ? sigOf(g, s, 'sigB') : null;
+const beaconPatch = (g, s) => g.field[s].find(p => p.k === 'beacon') || null;
+const inBeacon = (g, s, u, v) => { const p = beaconPatch(g, s); if (!p || p.r <= 0) return false; const du = u - p.u, dv = v - p.v; return du * du + dv * dv <= p.r * p.r; };
+// The anchor: the frontmost (closest to the enemy HQ) living Axiarch ground unit; none: the frontmost unit of any kind; none: the Beacon
+function beaconAnchor(g, s, bk) {
+  const dir = dirOf(s); let best = null, air = null;
+  for (const e of g.ents) if (e.kind === 'u' && e.side === s && e.hp > 0) { if (UDEF[e.type].air) { if (!air || dir * e.u > dir * air.u) air = e; } else if (!best || dir * e.u > dir * best.u) best = e; }
+  const a = best || air;
+  bk.au = a ? a.u : bk.u; bk.av = a ? clamp(a.v, -LANE_V, LANE_V) : 0; bk.anc = a ? a.id : 0; bk.at = g.t + BEACON.every;
+}
+function moveBeacon(g, s, dt) {
+  const bk = beaconOf(g, s), p = beaconPatch(g, s);
+  if (!bk || !p || bk.col > g.t) return;
+  if (!(g.t < bk.at)) beaconAnchor(g, s, bk); // re-picked once a second
+  const du = bk.au - p.u, dv = bk.av - p.v, d = Math.hypot(du, dv), st = BEACON.move * dt; // the bubble glides to it
+  if (d <= st) { p.u = bk.au; p.v = bk.av; } else { p.u += du / d * st; p.v += dv / d * st; }
+  // collapse: the side's own units inside lose BEACON.loss of their combined shields plus health within BEACON.window seconds
+  const prev = bk.bp || {}, now = {}; let lost = 0, have = 0;
+  for (const e of g.ents) if (e.kind === 'u' && e.side === s && e.hp > 0 && inBeacon(g, s, e.u, e.v)) { const v = e.hp + (e.shp || 0); now[e.id] = v; have += v; if (prev[e.id] !== undefined) lost += Math.max(0, prev[e.id] - v); }
+  for (const id in prev) if (now[id] === undefined && !g.ents.some(e => e.id === +id && e.hp > 0)) lost += prev[id]; // died inside
+  bk.bp = now;
+  const hist = (bk.bl || []).filter(h => g.t - h[0] < BEACON.window); if (lost > 0) hist.push([g.t, lost]); bk.bl = hist;
+  const sum = hist.reduce((a, h) => a + h[1], 0);
+  if (sum > 0 && sum >= BEACON.loss * (have + sum)) {
+    bk.col = g.t + BEACON.down; bk.bl = []; bk.bp = {}; bk.au = undefined;
+    const w = P(p.u, p.v); g.fx.push({ k: 'shatter', side: s, u: p.u, v: p.v, r: p.r, x: w.x, y: w.y, t: 0, life: 1.2 });
+    g.field[s] = g.field[s].filter(q => q !== p); // collapsed: gone at once
+    ev(g, { type: 'beaconDown', side: s, seen: !!g.fog && cellsLit(g.fog[1 - s].vis, p.u, p.r) });
+    if (g.log) g.log.tot[s].bkDown = (g.log.tot[s].bkDown || 0) + 1;
+  }
+}
+/* ---------- Echo Reliquary (v2.34): echoes live on the Reliquary (rel.ech, oldest first) ---------- */
+function echoStore(g, e) {
+  const d = UDEF[e.type];
+  if (e.temp || e.echo || d.tier < 2 || facOf(d.fac) !== 'axiarchs') return;
+  const rel = relOf(g, e.side); if (!rel) return;
+  const L0 = rel.ech || (rel.ech = []); L0.push(e.type);
+  while (L0.length > ECHO.n[rel.tier]) L0.shift(); // full: the oldest gives way
+}
+const echoCost = type => ({ c: Math.round(UDEF[type].cost.c * ECHO.cost), e: Math.round(UDEF[type].cost.e * ECHO.cost) });
+function tryEcho(g, s, i) {
+  const rel = relOf(g, s), side = g.sides[s];
+  if (g.over) return { ok: false, msg: 'The match is over' };
+  if (g.countdown > 0) return WAIT_GO;
+  if (!rel || !rel.ech || !rel.ech[i]) return { ok: false, msg: 'No such echo' };
+  const type = rel.ech[i], d = UDEF[type], k = echoCost(type), cap = popCap(g, s);
+  if (popUsed(g, s) + d.pop > cap) return { ok: false, msg: cap >= POP_MAX ? 'Army is at maximum size' : `Army is full — build or upgrade a ${bdS(g, s, 'habitat').name}` };
+  if (side.res.c < k.c) return { ok: false, msg: `Need ${Math.ceil(k.c - side.res.c)} more credits` };
+  if (side.res.e < k.e) return { ok: false, msg: `Need ${Math.ceil(k.e - side.res.e)} more energy` };
+  side.res.c -= k.c; side.res.e -= k.e; logSpend(g, s, 'u', k.c, k.e);
+  rel.ech.splice(i, 1); // consumed as the warp starts
+  startWarp(g, s, type, { echo: 1, paid: k.c });
+  if (g.log) g.log.tot[s].echoes = (g.log.tot[s].echoes || 0) + 1;
+  return { ok: true, msg: `${d.name}: echo warping in` };
 }
 // The default warp point: the front edge of the field, the point furthest toward the enemy along the lane
 function defaultWarp(g, s) {
@@ -1701,9 +1781,9 @@ function warpSpot(g, s, u, v, taken) {
 }
 // A finished unit starts its warp: a channel of WARP.ch seconds at a valid spot near the warp point. It is already paid
 // for and counts toward supply until it arrives (popUsed).
-function startWarp(g, s, type) {
+function startWarp(g, s, type, extra) { // extra: an echo's flags (v2.34)
   const w = warpPoint(g, s), p = warpSpot(g, s, w.u, w.v);
-  g.warps.push({ side: s, type, u: p.u, v: p.v, t0: g.t, end: g.t + WARP.ch });
+  g.warps.push(Object.assign({ side: s, type, u: p.u, v: p.v, t0: g.t, end: g.t + WARP.ch }, extra));
 }
 // Gravemantle aura and Eventide pulse (v2.27)
 const pullOk = (g, u, v) => u >= 0 && u <= L && Math.abs(v) <= LANE_V && !g.ents.some(b => b.kind === 'b' && b.hp > 0 && Math.hypot(b.u - u, b.v - v) < b.half + 8);
@@ -1733,6 +1813,8 @@ function updateWarps(g) {
   for (const w of done) {
     const p = warpOk(g, w.side, w.u, w.v) ? w : warpSpot(g, w.side, w.u, w.v); // something moved onto the spot: the nearest valid one, else the Axis
     const nu = spawnUnit(g, w.side, w.type, p.u, p.v); nu.laneV = clamp(p.v, -LANE_V, LANE_V); arriveOrders(g, nu);
+    if (w.echo) { nu.echo = 1; nu.paid = w.paid; const rel = relOf(g, w.side); if (rel && rel.tier >= 3) { nu.osh = nu.maxShp * ECHO.osh; nu.oshT = g.t + ECHO.oshDur; } } // recovered (v2.34)
+    const bk = beaconOf(g, w.side); if (bk && bk.tier >= 3 && inBeacon(g, w.side, nu.u, nu.v)) { nu.shp = nu.maxShp; nu.bkT = g.t + BEACON.dmgDur; } // arrived in a T3 Beacon bubble (v2.34)
     if (g.log) { logAdd(g.log.tot[w.side].trained, w.type); lgUnit(g, w.side, 'T', w.type); }
   }
 }
@@ -1773,7 +1855,7 @@ function updateCreep(g, dt) {
 }
 // The Flame Tank: every enemy on the ground in a strip ahead of it (range × 2 · strip wide) takes the burst; nothing lingers
 function flameBurst(g, src, def) {
-  const dir = src.face || dirOf(src.side), dmg = def.dmg * (g.sides[src.side].buff ? 1.2 : 1) * (src.disT > g.t ? outMul(g, src) : 1);
+  const dir = src.face || dirOf(src.side), dmg = def.dmg * (g.sides[src.side].buff ? 1.2 : 1) * outMul(g, src);
   for (const e of g.ents) {
     if (e.side === src.side || e.hp <= 0 || (e.kind === 'u' && UDEF[e.type].air) || e.shielded) continue;
     const ahead = (e.u - src.u) * dir, reach = def.range + (e.kind === 'b' ? e.half : 0);
@@ -1795,7 +1877,7 @@ function aimZ(e) {
 
 // Melee (v2.17): the blow lands at once. A Skitterling hits harder for every other Skitterling on the same target.
 // Disrupted (v2.27, the Parallax): a unit deals less damage for a short time; the strongest wins, never past DISRUPT.cap
-const outMul = (g, src) => src.kind === 'u' && src.disT > g.t ? 1 - src.dis : 1;
+const outMul = (g, src) => src.kind !== 'u' ? 1 : (src.disT > g.t ? 1 - src.dis : 1) * (src.bkT > g.t ? 1 + BEACON.dmg : 1); // disrupted (v2.27); a Beacon T3 warp-in (v2.34)
 function disrupt(g, e, c) {
   if (e.kind !== 'u' || e.hp <= 0) return;
   const live = e.disT > g.t;
@@ -1816,7 +1898,7 @@ function meleeHit(g, src, t, def) {
     mul += Math.min(def.swarm.max, n * def.swarm.per);
   }
   if (src.kid) mul *= SPAWN.dmg; // a Cloudwing's offspring bites for half (v2.21)
-  if (src.disT > g.t) mul *= outMul(g, src); // disrupted (v2.27)
+  mul *= outMul(g, src); // disrupted (v2.27), a Beacon T3 warp-in (v2.34)
   damage(g, t, def.dmg * mul, def.weapon, src.side, src);
   if (def.disrupt) disrupt(g, t, def.disrupt); // the Parallax's blows (v2.27)
   if (src.kind === 'u') src.recoil = 1;
@@ -1834,7 +1916,7 @@ function fire(g, src, t, def) {
   }
   const m = muzzle(src);
   const p = { u: m.u, v: m.v, z: m.z, pu: m.u, pv: m.v, pz: m.z, tu: t.u, tv: t.v, tz: aimZ(t), target: t, side: src.side,
-    weapon: def.weapon, dmg: def.dmg * (g.sides[src.side].buff ? 1.2 : 1) * (src.vet ? DRILL.dmg : 1) * (src.disT > g.t ? outMul(g, src) : 1), splash: def.splash || 0, t: 0 }; // disrupted: less damage (v2.27)
+    weapon: def.weapon, dmg: def.dmg * (g.sides[src.side].buff ? 1.2 : 1) * (src.vet ? DRILL.dmg : 1) * outMul(g, src), splash: def.splash || 0, t: 0 }; // disrupted: less damage (v2.27)
   if (def.weapon === 'bomb' || def.drop) { p.target = null; p.tz = 0; p.tu = t.u + rand(-6, 6); p.tv = t.v + rand(-5, 5); } // falls where the target is now
   if (def.corrode) p.corr = def.corrode; // v2.19: acid corrodes what it hits
   if (def.acid) p.acid = def.acid === 'dist' ? 'dist' : 1; // the Worldbreaker's distortion zones share the acid-pool list (v2.27)
@@ -2245,6 +2327,7 @@ function damage(g, e, amt, weapon, fromSide, src) {
   }
   let hit = dmg;
   if (e.shT > g.t) { hit = dmg * (1 - ABIL.shield.cut); logEffect(g, e.side, 'shield', dmg * ABIL.shield.cut); } // Emergency Shield
+  if (e.oshT > g.t && e.osh > 0) { const a = Math.min(e.osh, hit); e.osh -= a; hit -= a; e.shpHit = g.t; } // an Echo Reliquary T3 overshield (v2.34): first, never regenerates
   if (e.maxShp) { // Axiarch shields (v2.25), not the HQ shield or the Emergency Shield: they take the hit first, any overflow goes to HP
     e.shpT = g.t;
     if (e.shp > 0 && e.kind === 'u' && UDEF[e.type].link) hit -= shieldLink(g, e, Math.min(e.shp, hit)); // a Prismwing's shield link (v2.29)
@@ -2280,6 +2363,7 @@ function kill(g, e, by, weapon) {
     const d = UDEF[e.type], w = P(e.u, e.v, aimZ(e));
     salvage(g, e, w);
     if (e.tSrc === 'mite') miteBurst(g, e); // v2.33: killed, never expired (expiry doesn't come through kill)
+    echoStore(g, e); // v2.34: an Axiarch T2/T3 unit's echo
     fxBoom(g, w.x, w.y, e.type === 'sovereign' ? 44 : e.type === 'voidcarrier' ? 28 : e.type === 'prismwing' ? 10 : e.type === 'shardstorm' ? 14 : e.type === 'riftstalker' || e.type === 'lancer' || e.type === 'marksman' ? 10 : e.type === 'parallax' ? 12 : e.type === 'shardling' ? 8 : e.type === 'bastion' ? 20 : e.type === 'wraithwing' ? 14 : e.type === 'skitterling' ? 6 : e.type === 'bulwark' || e.type === 'ruinmaw' || e.type === 'dreadthorn' || e.type === 'thornback' ? 18 : d.fac === 'bloomhost' && !d.air ? 10 : d.air ? (e.type === 'razorwing' || e.type === 'cloudwing' ? 12 : e.type === 'needlewing' ? 8 : e.type === 'worldrender' ? 44 : 28) : e.type === 'rifle' || e.type === 'sniper' ? 9 : e.type === 'heavy' ? 15 : e.type === 'titan' ? 46 : 30);
     return;
   }
@@ -2508,6 +2592,9 @@ function aiUpdate(g, s, dt) {
     reserve.c = Math.max(reserve.c, ABIL.strike.cost.c); reserve.e = Math.max(reserve.e, ABIL.strike.cost.e);
   }
   // 3) Army: counter what the opponent fields, bring siege guns against a turtle
+  // Echoes (v2.34, minimal): an Axiarch AI warps an echo back whenever it can afford one and has supply room (oldest first)
+  const rel = relOf(g, s);
+  if (rel && rel.ech && rel.ech.length) for (let i = 0; i < rel.ech.length; i++) if (tryEcho(g, s, i).ok) { used = popUsed(g, s); break; }
   const types = UNIT_ORDER.filter(t => canTrain(g, s, t));
   const turtle = theirs.length > 2 && theirs.filter(u => Math.abs(u.u - hqU(opp)) < 560).length / theirs.length > 0.6;
   if (types.length) {
@@ -2771,7 +2858,7 @@ const logSpend = (g, s, kind, c, e) => { if (g.log) { const a = g.log.tot[s].spe
 
 /* ---------- Save and resume ---------- */
 // v6 adds fog of war; v7 the AI's personality (kept on its side record); v10 the shared ability cooldown; v11 the match log; v12 group orders, the selection and Regroup flags; v13 upgrade-tree paths; v14 War Factory paths. Older saves are migrated.
-const SAVE_VER = 29, SAVE_OK = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]; // v28: signature buildings (v2.32); v29: Bloomhost's (v2.33)
+const SAVE_VER = 30, SAVE_OK = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]; // v28: signature buildings (v2.32); v29: Bloomhost's (v2.33); v30: the Axiarchs' (v2.34)
 function serialize(g, extra) {
   const live = g.ents.filter(e => e.hp > 0);
   for (const sd of g.sides) if (sd.hq.hp <= 0 && !live.includes(sd.hq)) live.push(sd.hq); // a fallen HQ inside the storm's 5 s end window
@@ -2824,6 +2911,13 @@ function deserialize(str) {
   for (const e of g.ents) if (e.kind === 'b' && e.type === 'sigB' && facOf(e.fac) === 'lastfist' && !e.bk) e.bk = {}; // v28: Depot bunker rebuild timers
   // v29 (v2.33): Bloomhost's signature roles. Before v29 a Bloomhost side couldn't have them: any stray sigA/sigB building on a
   // Bloomhost side in an older save is dropped (its pad freed), and no unit is snared or a Mite yet
+  // v30 (v2.34): the Axiarchs' signature roles; an older save's stray one on an Axiarch side is dropped the same way. Stored
+  // echoes (rel.ech), the Beacon's state and recovered units' flags are plain fields, saved with their entities and warps
+  if (o.v < 30) {
+    for (const e of g.ents) if (e.kind === 'b' && (e.type === 'sigA' || e.type === 'sigB') && facOf(e.fac) === 'axiarchs') { e.hp = 0; const sd = g.sides[e.side]; if (sd.slots[e.slot] === e) sd.slots[e.slot] = null; }
+    g.ents = g.ents.filter(e => e.hp > 0 || e === g.sides[0].hq || e === g.sides[1].hq);
+    for (const f of g.field) for (let i = f.length - 1; i >= 0; i--) if (f[i].k === 'beacon') f.splice(i, 1);
+  }
   if (o.v < 29) {
     for (const e of g.ents) if (e.kind === 'b' && (e.type === 'sigA' || e.type === 'sigB') && facOf(e.fac) !== 'lastfist') { e.hp = 0; const sd = g.sides[e.side]; if (sd.slots[e.slot] === e) sd.slots[e.slot] = null; }
     g.ents = g.ents.filter(e => e.hp > 0 || e === g.sides[0].hq || e === g.sides[1].hq);
@@ -3911,9 +4005,44 @@ function arrayBody(c, T, tier) {
   if (tier >= 2) for (const [u, v] of [[-20, 16], [18, -18]]) obelisk(c, u, v, 3, 5, 26, T, 0.35);
 }
 function arrayLive(c, T, t, b, tier) { axRing(c, 0, 0, ARRAYZ[tier] - 14, 14, t, T, 1); if (tier >= 2) axRing(c, 0, 0, ARRAYZ[tier] - 24, 19, t + 1.5, T, -0.7, 0.5); }
+/* Phase Beacon (v2.34): an obsidian projector whose crystal lens points to its bubble; T2 a floating ring and twin vanes,
+   T3 three orbiting shards and a second ring. While the bubble is collapsed the lens goes dark and the shards fall still. */
+const BKZ = [0, 44, 48, 54]; // lens height
+function beaconBody(c, T, tier) {
+  axBase(c, 32, T, tier);
+  slab(c, 0, 0, 16, 16, 5, 8, T, 0.3);
+  if (tier >= 2) for (const [u, v] of [[-18, 14], [14, -18]]) obelisk(c, u, v, 3.5, 5, 22 + tier * 3, T, 0.4); // vanes
+  obelisk(c, 0, 0, 8, 13, BKZ[tier] - 16, T, 0.55);
+}
+function beaconLive(c, T, t, b, tier) {
+  const down = b && game && b.col > game.t, [x, y] = pt(0, 0, BKZ[tier]), k = 0.5 + 0.5 * Math.sin(t * 2.2);
+  if (!down) glow(c, x, y, 4 + tier, T.glow, 0.25 + 0.3 * k);
+  c.fillStyle = down ? '#3a3f55' : `rgba(${AXC.pale},0.95)`; c.beginPath(); c.moveTo(x, y - 7); c.lineTo(x + 4, y); c.lineTo(x, y + 5); c.lineTo(x - 4, y); c.closePath(); c.fill();
+  if (tier >= 2) axRing(c, 0, 0, BKZ[tier] - 10, 14, down ? 0 : t, T, 1.2, down ? 0.25 : 0.7);
+  if (tier >= 3) { axRing(c, 0, 0, BKZ[tier] - 22, 20, down ? 0 : t + 1.5, T, -0.8, down ? 0.2 : 0.5); for (let i = 0; i < 3; i++) { const a = (down ? 0 : t * 0.9) + i * 2.09; axGem(c, Math.cos(a) * 18, Math.sin(a) * 18, BKZ[tier] - 14, 3, down ? 0 : t, T, i); } }
+}
+/* Echo Reliquary (v2.34): a sealed obsidian vault under a crystal canopy; each stored echo floats above it as a pale mote.
+   T2 a wider canopy with corner obelisks; T3 a ring of glyph stones and a second canopy tier. */
+function reliquaryBody(c, T, tier) {
+  axBase(c, 32, T, tier);
+  if (tier >= 3) for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + 0.3; slab(c, Math.cos(a) * 24, Math.sin(a) * 24, 3, 3, 5, 9, T, 0.4); } // glyph stones
+  slab(c, 0, 0, 18, 14, 5, 14, T, 0.35); // the vault
+  slab(c, 0, 0, 14, 10, 19, 6, T, 0.25);
+  if (tier >= 2) for (const [u, v] of [[-20, -20], [20, 20], [20, -20]]) obelisk(c, u, v, 3, 5, 30 + tier * 2, T, 0.35); // corner obelisks (none in front of the vault)
+  for (let i = 0; i < (tier >= 3 ? 2 : 1); i++) { const z = 36 + i * 9, r = 15 - i * 5; poly(c, [pt(-r, -r, z), pt(r, -r, z), pt(r, r, z), pt(-r, r, z)]); c.fillStyle = `rgba(${AXC.pale},${0.14 + i * 0.08})`; c.fill(); c.strokeStyle = `rgba(${T.glow},0.55)`; c.lineWidth = 1; c.stroke(); } // a floating crystal canopy (a second, smaller one at T3)
+}
+function reliquaryLive(c, T, t, b, tier) {
+  const n = b && b.ech ? b.ech.length : tier >= 2 ? 2 : 1, max = ECHO.n[tier];
+  for (let i = 0; i < max; i++) {
+    const a = t * 0.7 + i / max * Math.PI * 2, [x, y] = pt(Math.cos(a) * 10, Math.sin(a) * 10, 27 + Math.sin(t * 2 + i) * 2);
+    if (i < n) { glow(c, x, y, 2.4, AXC.pale, 0.55 + 0.3 * Math.sin(t * 3 + i)); c.fillStyle = '#ffffff'; c.beginPath(); c.arc(x, y, 1.1, 0, 7); c.fill(); } // a stored echo
+    else { c.strokeStyle = `rgba(${T.glow},0.35)`; c.lineWidth = 0.8; c.beginPath(); c.arc(x, y, 2, 0, 7); c.stroke(); } // an empty place
+  }
+}
 const BART_AX = {
   hq: [axisBody, axisLive], refinery: [loomBody, loomLive], reactor: [wellBody, wellLive], habitat: [contBody, contLive],
   barracks: [gateBody, gateLive], factory: [archBody, archLive], turret: [lanceBody, lanceLive], techlab: [arrayBody, arrayLive],
+  sigA: [beaconBody, beaconLive], sigB: [reliquaryBody, reliquaryLive], // v2.34
 };
 const BARTS = { lastfist: BART, bloomhost: BART_BH, axiarchs: BART_AX };
 const artOf = (fac, type) => (BARTS[fac] || BART)[type];
@@ -5251,7 +5380,7 @@ function vfxScan(g, dt) {
   }
   for (const p of VFX.prevP) { const r = R.get(p); if (r && r.f !== frame) { if (p.t <= 4) onImpact(g, p, lit); R.delete(p); VFX.freeRec.push(r); } }
   VFX.prevP.length = 0; for (const p of g.projs) VFX.prevP.push(p);
-  for (const f of g.fx) if (!VFX.seenFx.has(f)) { VFX.seenFx.add(f); if (f.k === 'boom' && lit(f.x) && onView(f.x)) onBoom(f); }
+  for (const f of g.fx) if (!VFX.seenFx.has(f)) { VFX.seenFx.add(f); if (f.k === 'boom' && lit(f.x) && onView(f.x)) onBoom(f); else if (f.k === 'shatter' && lit(f.u)) sfx('shatter', f.x); } // v2.34: a collapse, heard where seen
   // commander abilities: casts, the strike's warning and its impact (also caught if the strike resolved and left between frames)
   for (const a of g.abil) {
     let r = R.get(a);
@@ -5569,6 +5698,20 @@ function drawAxFx(c, g, u, w) {
 }
 // An Eventide's gravity pulse (v2.27): a violet ring that closes in on it
 // A Salvage pop-up (v2.30): "+N" with a small scrap plate, muted yellow on charcoal, rising and fading
+// A Phase Beacon bubble collapsing (v2.34): the field's edge breaks into pale shards that fly outward and fade, with a flash
+function drawShatter(c, f) {
+  const k = f.t / f.life, a = 1 - k, R = f.r * (1 + 0.25 * k);
+  c.globalAlpha = a;
+  c.strokeStyle = `rgba(${AXC.pale},0.8)`; c.lineWidth = 2; c.setLineDash([14, 10]); c.lineDashOffset = k * 40;
+  c.beginPath(); c.ellipse(f.x, f.y, R, R * DY, 0, 0, 7); c.stroke(); c.setLineDash([]); c.lineDashOffset = 0;
+  c.fillStyle = 'rgba(160,225,255,0.9)';
+  for (let i = 0; i < 18; i++) {
+    const t0 = i / 18 * Math.PI * 2, d = f.r * (0.85 + 0.5 * k), x = f.x + Math.cos(t0) * d, y = f.y + Math.sin(t0) * d * DY - k * 18 * ((i % 3) + 1), s2 = 3 + (i % 3);
+    c.beginPath(); c.moveTo(x, y - s2); c.lineTo(x + s2 * 0.5, y); c.lineTo(x, y + s2 * 0.6); c.lineTo(x - s2 * 0.5, y); c.closePath(); c.fill();
+  }
+  if (k < 0.25) { c.fillStyle = `rgba(210,240,255,${0.35 * (1 - k / 0.25)})`; c.beginPath(); c.ellipse(f.x, f.y, f.r, f.r * DY, 0, 0, 7); c.fill(); }
+  c.globalAlpha = 1;
+}
 // A killed Mite's acid burst (v2.33): a green splash ring with droplets, the burst radius on the ground
 function drawAcidBurst(c, f) {
   const k = f.t / f.life, R = f.r * (0.4 + 0.6 * Math.min(1, k * 2.2));
@@ -5924,7 +6067,8 @@ function render(c, g, time, sel, selPad) {
     if (f.k === 'beam') { if (lit(f.x) || lit(f.x2)) drawBeam(c, f); continue; } // Null Lance beams (v2.25), only where the player can see
     if (f.k === 'pull') { if (lit(f.x)) drawPull(c, f); continue; } // Eventide pulses (v2.27)
     if (f.k === 'scrap') { if (scrapShown(g, f, 0)) drawScrap(c, f); continue; }
-    if (f.k === 'acidburst') { if (lit(f.u)) drawAcidBurst(c, f); continue; } // a killed Mite (v2.33)
+    if (f.k === 'acidburst') { if (lit(f.u)) drawAcidBurst(c, f); continue; }
+    if (f.k === 'shatter') { if (lit(f.u)) drawShatter(c, f); continue; } // a Phase Beacon bubble collapsing (v2.34) // a killed Mite (v2.33)
     if (f.k === 'roots') { drawRoots(c, f, lit); continue; } // a Rootheart's snare pulse (v2.33), only where the player can see // Salvage (v2.30): the player's own, where they can see
     if (f.k !== 'boom' || !lit(f.x)) continue;
     drawBoom(c, f.x, f.y, f.r, f.t / f.life);
@@ -5953,7 +6097,7 @@ function render(c, g, time, sel, selPad) {
         c.fillStyle = 'rgba(0,0,0,0.6)'; c.fillRect(w.x - 22, y, 44, 3.5);
         c.fillStyle = TEAM[e.side].main; c.fillRect(w.x - 22, y, 44 * e.prodT / UDEF[e.queue[0]].time, 3.5);
       }
-    } else if (e.shT > g.t || e.hp < e.maxHp || e.temp || e.shp < e.maxShp || e.ovT > g.t) {
+    } else if (e.shT > g.t || e.hp < e.maxHp || e.temp || e.shp < e.maxShp || e.ovT > g.t || e.oshT > g.t || e.bkT > g.t) {
       const d = UDEF[e.type], w = P(e.u, e.v), y = w.y - e.z - visH(e.type) * US - 9, bw = d.air ? 28 : Math.max(18, d.h * 0.9 + 6);
       if (e.shT > g.t) { // shield timer: a ring that empties as the shield runs out
         c.strokeStyle = TEAM[e.side].light; c.lineWidth = 1.6; c.beginPath(); c.arc(w.x - bw / 2 - 5, y + 1, 3.2, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * clamp((e.shT - g.t) / ABIL.shield.dur, 0, 1)); c.stroke();
@@ -5961,6 +6105,8 @@ function render(c, g, time, sel, selPad) {
       if (e.ovT > g.t) { // Shield Overcharge timer (v2.28): a pale-cyan ring that empties as it runs out
         c.strokeStyle = '#bff4ff'; c.lineWidth = 1.6; c.beginPath(); c.arc(w.x - bw / 2 - 5, y + 1, 3.2, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * clamp((e.ovT - g.t) / ABIL.overcharge.dur, 0, 1)); c.stroke();
       }
+      if (e.oshT > g.t && e.osh > 0) { const of = e.osh / (e.maxShp * ECHO.osh); c.fillStyle = 'rgba(0,0,0,0.65)'; c.fillRect(w.x - bw / 2 - 1, y - 9, bw + 2, 3); c.fillStyle = '#f0f8ff'; c.fillRect(w.x - bw / 2, y - 8, bw * clamp(of, 0, 1), 1.6); } // an Echo overshield (v2.34): a white bar over the shields
+      if (e.bkT > g.t) { c.fillStyle = `rgba(${AXC.pale},0.9)`; c.beginPath(); const bx = w.x + bw / 2 + 5, by = y - 3; c.moveTo(bx, by - 4); c.lineTo(bx + 3, by); c.lineTo(bx, by + 2); c.lineTo(bx - 3, by); c.closePath(); c.fill(); } // a Beacon T3 warp-in: +20% damage (v2.34)
       if (e.temp) { // a temporary unit (v2.20): a ring that empties as its lifetime runs out
         c.strokeStyle = '#e8d2a8'; c.lineWidth = 1.6; c.beginPath(); c.arc(w.x + bw / 2 + 5, y + 1, 3.2, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * clamp((e.temp - g.t) / (e.tLife || ABIL.brood.life), 0, 1)); c.stroke();
       }
@@ -6227,6 +6373,8 @@ function showInfo(kind, type) {
       [1, 2, 3].map(t => `<div class="irow"><em>T${t}${t > 1 ? ` (${d.up[t].c} credits, ${d.up[t].e} energy)` : ''}</em> ${d.tiers[t]}</div>`).join('') +
       (type === 'sigA' && facOf(pFac()) === 'bloomhost' ? `<div class="irow"><em>Mite</em> ${UDEF.mite.hp} HP, ${(UDEF.mite.dmg / UDEF.mite.cd).toFixed(1)} damage/s, speed ${Math.round(UDEF.mite.speed)}, ground and buildings. Free and temporary: ${MOUND.life} s, no army size, never captures nodes, gives no Salvage. At most ${MOUND.max} at a time; the clutch waits while you are at the cap.</div>` : '') +
       (type === 'sigB' && facOf(pFac()) === 'bloomhost' ? `<div class="irow">Strengthens your creep; nothing else about creep changes. Lose the ${d.name} and the creep shrinks back to its normal reach.</div>` : '') +
+      (type === 'sigA' && facOf(pFac()) === 'axiarchs' ? `<div class="irow">The bubble is power field like any other: warp in there, and shields recharge faster inside. It never stacks with your other field. Its anchor is your frontmost ground unit (else any unit), checked every second.</div>` : '') +
+      (type === 'sigB' && facOf(pFac()) === 'axiarchs' ? `<div class="irow">An echo is left by each of your T2 or T3 units that dies (never temporary or recovered units). Echoes appear first on the Train tab: tap one to warp the unit back for half its cost, no production building needed. Lose the ${d.name} and every echo is lost.</div>` : '') +
       (type === 'sigA' && facOf(pFac()) === 'lastfist' ? `<div class="irow">Upgrades your Salvage: kills near your forces return credits. Lose the ${d.name} and Salvage drops back to ${Math.round(SALVAGE.pct * 100)}% and ${SALVAGE.cap} a minute.</div>` : '') +
       (type === 'sigB' && facOf(pFac()) === 'lastfist' ? `<div class="irow"><em>Node Bunker</em> ${BD(pFac(), 'bunker').hp} HP, ${Math.round(BD(pFac(), 'bunker').gun[1].dmg / BD(pFac(), 'bunker').gun[1].cd)} damage/s, ${BD(pFac(), 'bunker').gun[1].range} range. Free: one per node you hold, back ${BUNKER.rebuild} s after it falls while you hold the node. Lose the ${d.name} and every bunker goes with it.</div>` : '');
   }
@@ -6260,6 +6408,7 @@ function buildCards() {
     if (tab === 'train' && type === 'rifle') el.insertAdjacentHTML('beforeend', '<span class="path pr"></span>');
     wrap.appendChild(el);
   }
+  if (tab === 'train' && game && relOf(game, 0)) echoCards(wrap); // v2.34: the Echoes section, first
   if (tab === 'train' && game && facOf(game.sides[0].faction) === 'axiarchs') { wrap.insertBefore(warpCard(), wrap.firstChild); refreshWarpCard(); } // v2.26
   if (tab === 'train' && game && !list.length) { // nothing to train yet: one line that says what unlocks it
     const el = document.createElement('div');
@@ -6275,7 +6424,32 @@ let trainSig = '';
 const unitVisible = (g, type) => canTrain(g, 0, type);
 const hiddenUnits = g => UNIT_ORDER.filter(t => !unitVisible(g, t));
 const trainHint = g => { const n = BD(g.sides[0].faction, 'barracks').name; return g.ents.some(e => e.kind === 'b' && e.side === 0 && e.type === 'barracks' && e.hp > 0) ? `Units unlock when your ${n} is finished` : `Build a ${n} to train units`; };
-const trainSigOf = g => { const h = hiddenUnits(g); return h.join(',') + (h.length === UNIT_ORDER.length ? '|' + trainHint(g) : ''); };
+const trainSigOf = g => { const h = hiddenUnits(g), rel = relOf(g, 0); return h.join(',') + (h.length === UNIT_ORDER.length && !rel ? '|' + trainHint(g) : '') + (rel ? `|e${rel.tier}:${(rel.ech || []).join(',')}` : ''); }; // v2.34: echoes rebuild the tab
+/* ---------- Echoes (Axiarchs, v2.34): the Train tab's first section while you own an Echo Reliquary ----------
+   A label with the count, then one card per stored echo (oldest first): tap it to warp the unit back for half its cost. */
+function echoCards(wrap) {
+  const rel = relOf(game, 0), list = rel.ech || [], hdr = document.createElement('div'), frag = document.createDocumentFragment();
+  hdr.className = 'echoHdr'; hdr.dataset.type = 'other'; hdr.id = 'echoHdr';
+  hdr.innerHTML = `Echoes<small>${list.length}/${ECHO.n[rel.tier]}</small>${list.length ? '' : '<small>none yet</small>'}`;
+  frag.appendChild(hdr);
+  list.forEach((type, i) => {
+    const el = document.createElement('button');
+    el.className = 'card echoc'; el.dataset.type = 'other'; el.dataset.echo = i; el.dataset.unit = type;
+    el.innerHTML = '<canvas class="ic"></canvas><span class="nm"></span><span class="cost"></span><span class="path">ECHO</span>';
+    el.querySelector('.nm').textContent = UDEF[type].name;
+    drawIcon(el.querySelector('.ic'), 'u', type);
+    el.addEventListener('click', () => { if (!game || game.over || paused) return; hideInfo(); const r = tryEcho(game, 0, i); toast(r.msg, r.ok ? 'ok' : 'bad'); if (!r.ok) shake(el); refreshUI(true); });
+    frag.appendChild(el);
+  });
+  wrap.insertBefore(frag, wrap.firstChild);
+}
+function refreshEchoCards() {
+  const s = game.sides[0], cap = popCap(game, 0), used = popUsed(game, 0);
+  for (const el of $('cards').querySelectorAll('.card.echoc')) {
+    const t = el.dataset.unit, k = echoCost(t), poor = s.res.c < k.c || s.res.e < k.e || used + UDEF[t].pop > cap;
+    setHTML(el.querySelector('.cost'), costHTML(k, s.res, UDEF[t].pop)); el.classList.toggle('poor', !!poor);
+  }
+}
 
 /* ---------- Set warp point (Axiarchs, v2.26) ----------
    The first card on the Train tab: tap it to arm, then tap a spot inside your power field. Tap the card again (or the
@@ -6514,7 +6688,7 @@ function refreshUI(force) {
     let html, locked, poor, badge = 0, prog = 0;
     if (tab === 'build') {
       const d = BD(pFac(), type);
-      const mine = alive(game, 0, type), have = d.sig && mine.length > 0; // v2.32: one of each signature building at a time
+      const mine = alive(game, 0, type), have = !!d.sig && mine.length > 0; // v2.32: one of each signature building at a time (v2.34: a real boolean; undefined made classList.toggle flip the card every refresh)
       locked = !!(d.req && !hasBuilt(game, 0, d.req)) || have;
       poor = s.res.c < d.cost.c || s.res.e < d.cost.e;
       badge = have ? 0 : mine.length;
@@ -6534,12 +6708,13 @@ function refreshUI(force) {
     }
     const costEl = el.querySelector('.cost');
     if (force) costEl.innerHTML = html; else setHTML(costEl, html);
-    el.classList.toggle('locked', locked);
-    el.classList.toggle('poor', !locked && poor);
+    el.classList.toggle('locked', !!locked); // always a boolean: toggle(name, undefined) flips the class
+    el.classList.toggle('poor', !locked && !!poor);
     const be = el.querySelector('.badge');
-    be.textContent = badge; be.classList.toggle('show', badge > 0);
+    if (be.textContent !== String(badge)) be.textContent = badge; be.classList.toggle('show', badge > 0);
     el.querySelector('.bar i').style.width = (prog * 100).toFixed(1) + '%';
   }
+  if (tab === 'train') refreshEchoCards(); // v2.34
   refreshAbil();
   refreshExt();
   refreshOd();
@@ -6670,6 +6845,7 @@ function handleEvents() {
     else if (e.type === 'destroyed' && e.side === 1 && !e.seen && !e.hq) continue; // happened out of sight
     else if (e.type === 'destroyed') toast(e.side === 0 ? `${e.name} destroyed` : `Enemy ${e.seen ? e.name : 'HQ'} destroyed`, e.side === 0 ? 'bad' : 'ok'); // an unseen enemy HQ isn't named (v2.17: the name would tell its faction)
     else if (e.type === 'spotted' && e.side === 0) { toast('Enemy units spotted', 'warn'); sndPlay('ping'); }
+    else if (e.type === 'beaconDown' && (e.side === 0 || e.seen)) toast(e.side === 0 ? `Phase Beacon bubble collapsed: back in ${BEACON.down} s` : 'Enemy field bubble collapsed', e.side === 0 ? 'warn' : 'ok'); // v2.34
     else if (e.type === 'overdrive' && e.side === 0) toast(`Overdrive: production +${Math.round(YARD.od * 100)}% for ${YARD.odDur} s`, 'ok'); // v2.32
     else if (e.type === 'warpSnap' && e.side === 0) { toast('Warp point lost with the field: back to the front edge', 'warn'); refreshWarpCard(); } // v2.26
     else if (e.type === 'node') { if (e.side === 0 && !e.lost) sndPlay('node'); toast(e.lost ? (e.side === 0 ? 'You lost a field node' : 'Enemy lost a field node') : (e.side === 0 ? 'Field node captured: +3 credits, +1 energy per second' : 'Enemy captured a field node'), (e.side === 0) === !e.lost ? 'ok' : 'warn'); }
@@ -7096,6 +7272,7 @@ const SFX = {
   siren:    [2, 1, 1.5, 1, v => { tone(v, 'sawtooth', 600, 900, 0.35, 0.12); tone(v, 'sawtooth', 900, 600, 0.35, 0.12, 0.35); tone(v, 'sawtooth', 600, 900, 0.35, 0.12, 0.7); }],
   orbital:  [2, 2, 0.3, 0, v => { hiss(v, 'highpass', 2500, 800, 0.7, 0.12, 0.6); tone(v, 'sine', 80, 26, 1.1, 1); hiss(v, 'lowpass', 900, 80, 0.7, 1.3, 0.9); }],
   rumble:   [2, 1, 3, 1, v => { hiss(v, 'lowpass', 160, 60, 0.7, 1.5, 0.9); tone(v, 'sine', 42, 30, 1.5, 0.7); }],
+  shatter:  [1, 1, 0.6, 0, v => { hiss(v, 'highpass', 4200, 2200, 1.3, 0.5, 0.45); [1760, 1320, 990].forEach((f, i) => tone(v, 'triangle', f, f * 0.7, 0.25, 0.12, i * 0.07)); }], // a Phase Beacon bubble collapses (v2.34)
   meteor:   [1, 1, 0.7, 0, v => { hiss(v, 'bandpass', 2400, 500, 1.2, 0.35, 0.35); tone(v, 'sine', 70, 35, 0.35, 0.6, 0.3); }],
   defeat:   [2, 1, 2, 1, v => { [440, 349, 294, 220].forEach((f, i) => tone(v, 'triangle', f, f, i === 3 ? 0.7 : 0.22, 0.45, i * 0.2)); }],
 };

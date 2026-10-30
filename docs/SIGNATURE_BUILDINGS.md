@@ -1,5 +1,9 @@
 # Signature buildings spec
 
+**Status: complete (v2.32–v2.34).** Built per section 7: v2.32 shared rules and Last Fist, v2.33 Bloomhost, v2.34 the Axiarchs
+and this close-out. The spec below is kept as given; the stats table, the interpretations made while building it and the
+Definition of Done check follow it. All numbers are first-pass and untuned (KNOWN_ISSUES.md, Audit).
+
 Combined from parts 1 and 2 as given. The only change: section 7's build order is renumbered to v2.32–v2.34.
 
 === SIGNATURE BUILDINGS SPEC — PART 1 OF 2 ===
@@ -101,3 +105,44 @@ Each batch: npm test, unchanged behavior for factions not touched, one SIM match
 - Usable at 667x375.
 
 === END OF PART 2 ===
+
+---
+
+## Stats (v2.34, first-pass, from the code)
+
+Every signature building costs, builds and upgrades like its faction's light production building: 150 credits, 14 s; T2
+150 credits + 50 energy (14 s), T3 250 + 120 (20 s); 640 HP (Axiarchs: 512 HP + 192 shields). At most one of each per side;
+no supply. Code: roles `sigA`/`sigB` in BDEF / BDEF_BH / BDEF_AX; numbers in the YARD, BUNKER, MOUND, ROOT, BEACON, ECHO blocks.
+
+| Building | T1 | T2 | T3 |
+|---|---|---|---|
+| **Salvage Yard** (Last Fist A) | Salvage 20% (base 10%) | Cap 400 a minute (×2); energy = half the credits salvaged | Overdrive: salvage over the cap gives Last Fist production +25% for 20 s (refreshes, never stacks) |
+| **Fortification Depot** (Last Fist B) | A Node Bunker on every held node | Bunkers heal Barracks units in range 2% HP/s | Bunker damage ×2, hits aircraft |
+| **Brood Mound** (Bloomhost A) | 2 Mites every 20 s (cap 10 living) | 3 Mites every 20 s | A killed Mite bursts: 1.2 damage, radius 40, enemy ground units only |
+| **Rootheart** (Bloomhost B) | Creep grows 1.5× faster and 1.5× farther; enemy ground units on it −15% speed | Bloomhost regen on creep 1.5× (2.25%/s) | Every 15 s: snare up to 5 enemy ground units on the creep's outer 16 for 1 s; 10 s immunity |
+| **Phase Beacon** (Axiarchs A) | A field bubble, radius 140 (a node's), on the frontmost ground unit (re-picked every 1 s, moves 90/s); collapses for 15 s if units inside lose 35% of shields + HP within 5 s | Radius 210 (1.5×) | Warp-ins inside the bubble: full shields, +20% damage for 8 s |
+| **Echo Reliquary** (Axiarchs B) | Keeps 3 echoes of fallen T2/T3 units (oldest replaced); re-warp for 50% cost | Keeps 5 | Recovered units: overshield 30% of max shields for 20 s, no regen |
+
+| Unit | HP | Damage | Range | Speed | Other |
+|---|---|---|---|---|---|
+| **Node Bunker** (Depot) | 450 | 6 every 0.45 s (13/s); T3 12 (27/s) | 250 | — | Ground only until T3; free; no pad; rebuilt 45 s after it falls while the node is held; no Salvage |
+| **Mite** (Brood Mound) | 24 | 2.4 every 0.5 s (4.8/s), melee | 20 | 62.4 | Ground and buildings; 30 s life; free; no supply; never captures nodes; no Salvage; sight 150 |
+
+## Interpretations made while building (details in KNOWN_ISSUES.md, "Signature buildings, batch 1–3")
+- AI (section 5): the signature building replaces the plan's last duplicate building (never the only copy of a type), is built
+  once the difficulty's Refineries (or all the plan has) and a Barracks-role building are finished, and is held while under
+  pressure, like tech. The Axiarch AI spends an echo (oldest first) whenever it can afford one and has supply room.
+- Salvage counts the price actually paid (`paidOf`): temporary units 0, recovered units 50%.
+- Phase Beacon: with no units the bubble sits on the Beacon; a collapse removes it at once and it re-forms (growing) at the
+  anchor; "warping into the bubble" means the normal warp channel arriving inside it (Mass Warp arrivals don't count).
+- Echo re-warp time is the normal warp channel (2 s), with no production time.
+
+## Definition of Done (section 8), checked at v2.34
+- All six buildings work at T1–T3 as written: tests/signature.test.js, tests/bloomhost-sig.test.js, tests/axiarchs-sig.test.js.
+- One-of-each limit and rebuilding after a loss: tests/signature.test.js (and the UI tests' "Already built").
+- 8 pads per player, unchanged: SLOT_COUNT 8; bunkers use no pad (tested).
+- No free unit gives Salvage (Mites, temporary units, bunkers; tested); echoes can't loop (recovered units never leave echoes; tested).
+- Bunkers never outlive their node (tested); Mites never exceed the cap (tested).
+- The minimal AI builds and uses them without cheating: the same tryBuild / tryUpgrade / tryEcho rules as the player (tests per faction).
+- Saves load correctly, old saves included: v28, v29, v30 migrations and tests.
+- Usable at 667×375: screenshots in docs/screenshots/ (sig-*, bhsig-*, axsig-*) and the UI tests at 667×375.

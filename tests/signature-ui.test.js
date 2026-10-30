@@ -18,7 +18,7 @@ async function start(dev, me, foe = 'bloomhost') {
   return { page, errors };
 }
 
-test('Build tab: Salvage Yard and Fortification Depot cards for Last Fist, none for the Axiarchs yet; "Already built" while one stands; info cards for both and the bunker', { skip }, async () => {
+test('Build tab: Salvage Yard and Fortification Depot cards for Last Fist, each other faction its own pair; "Already built" while one stands; info cards for both and the bunker', { skip }, async () => {
   const { page, errors } = await start(NARROW, 'lastfist');
   const r = await page.evaluate(() => {
     const names = () => [...$('cards').querySelectorAll('.card .nm')].map(x => x.textContent);
@@ -42,10 +42,10 @@ test('Build tab: Salvage Yard and Fortification Depot cards for Last Fist, none 
   assert.match(r.after, /150/, 'rebuildable after the loss');
   assert.deepStrictEqual(errors, []);
   await page.close();
-  for (const fac of ['axiarchs']) { // Bloomhost has its own since v2.33 (tests/bloomhost-sig-ui.test.js)
+  for (const fac of ['bloomhost', 'axiarchs']) { // every faction has its own pair since v2.34, under its own names
     const { page: p2, errors: e2 } = await start(NARROW, fac, 'lastfist');
-    const n = await p2.evaluate(() => [...$('cards').querySelectorAll('.card')].map(x => x.dataset.type));
-    assert.ok(!n.includes('sigA') && !n.includes('sigB'), `${fac}: ${n.join(', ')}`);
+    const n = await p2.evaluate(() => [...$('cards').querySelectorAll('.card')].map(x => x.dataset.type + ':' + x.querySelector('.nm').textContent));
+    assert.ok(n.some(x => x.startsWith('sigA:') && !/Salvage Yard/.test(x)) && n.some(x => x.startsWith('sigB:') && !/Fortification Depot/.test(x)), `${fac}: ${n.join(', ')}`);
     assert.deepStrictEqual(e2, []); await p2.close();
   }
 });

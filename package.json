@@ -1,6 +1,6 @@
 {
   "name": "extinction-event",
-  "version": "2.33.0",
+  "version": "2.34.0",
   "private": true,
   "description": "Extinction Event: a single-file mobile RTS (index.html)",
   "scripts": {
