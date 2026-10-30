@@ -2,6 +2,21 @@
 
 Issues found during testing that are deliberately deferred. Each lists the step that should address it.
 
+## Audit phase 4: simulation harness and AI competence (v2.38)
+- **Harness** (audit/sim, audit/README.md): headless, seeded matches on the real SIM, a parallel runner with JSON and markdown summaries, a unit-usage tool and the validation script.
+- **One AI brain with dials and presets:**
+  - **Legacy** is v2.37's AI exactly: all five replay fingerprints pass on it unchanged.
+  - **Default** is the game's AI now.
+- **Spectate mode:** tap the version on the start screen.
+- **Statistical AI tests** (tests/ai-stats.test.js) replace five single-seed tests.
+- **Validation** (audit/validation.md: 100 Default mirrors per faction, 40 Default vs Legacy per pairing):
+  - 0 crashes. 79–91% of mirror matches end before 20:00. Mirror sides are near even.
+  - **Default does not clearly beat Legacy:** 149–143 overall with 68 draws; same-faction pairings 16–18, 18–8, 16–14. Logged under Audit.
+- **Fixed this phase** (the v2.37 AI gaps, below under Audit): unit scores for v2.37 roles, spotters for every long gun, the Titan leash, the Voidcarrier held behind the front, Skitterling-limit planning and Razorwings, basic timing for the Riftstalker, Wraithwing and Sovereign.
+  - **Also fixed:** the AI banked 4,000–7,500 credits by 20:00, energy-starved with full pads. Default spends: credit-only units when energy is short, parallel upgrades, a Refinery traded for a Reactor.
+  - **Also fixed:** big path units were almost never trained. They now go to the top once, with room saved: Worldrender 45% in the Economist test (was about 2%); Leviathan 10.5% and Hydra 15.5% of Default mirror sides (Legacy: 0% and 2%).
+- **Test fixes:** the flaky Mite acid-burst test (the Tank shot the Mite before it expired) now keeps the Tank passive.
+
 ## Audit phase 3b: unit redesign (v2.37)
 - **Implemented per audit/unit-roster.md** (section 6 is the item-by-item record):
   - P1–P7, P9–P16 as designed; P8 became Titan Siege lock; S1 Skitterlings at half supply with a limit of 60.
@@ -86,14 +101,23 @@ Items for the strategy explorer and full balance audit. Logged only, nothing tun
 - **Hard ≈ Normal on the ladder:** 19–21 over 40 at v2.15, 18–22 at main (v2.14).
 - **Test bots always take path A** (Barracks, War Factory) **and Support** (Tech Lab), so bot data never covers Mass Deployment, Assault or Air Power.
 - **Tech Lab AI default paths are provisional:** Economist and Trickster on Air Power, Aggressor and Turtle on Support.
-- **AI and the v2.37 unit redesign** (minimum AI changes only: the AI skips Skitterlings at their limit). Gaps:
-  - **Unit scores still reflect the old roles.** The Bilecaster is scored as anti-light splash, though it is now a single-target marker. The Rift Mortar and Bile Lobber are scored as plain artillery. The Lancer's focus, the Wraithwing's phase and the Voidcarrier's field aren't valued at all.
-  - **Titans:** they plant and unplant on their own and the AI's pushes and retreats drive them. But the AI brings no spotter for the planted 280 reach (beyond the Titan's 240 sight), and its siege push spacing doesn't know Titans stop to plant.
-  - **Voidcarrier:** the AI never positions it. Warp-ins follow the frontmost field automatically, so an AI carrier deep in enemy ground can pull warp-ins into danger.
-  - **No timing play:** the Riftstalker (hit and fade), Wraithwing (phase) and Sovereign (charge) use only their automatic behaviour.
-  - **Bloomhost AI rarely trains Razorwings now:** with half-supply Skitterlings, only 3 of 33 seeded Hard matches (Turtle vs a Last Fist Aggressor) trained all three base units; most never trained a Razorwing.
-  - **Skitterling limit:** the AI doesn't plan its army around the 60 limit; it just stops choosing them at the limit.
-- **Bloomhost AI never trains a Worldrender under the v2.35 retreat rule** (0 of 74 seeded Hard matches; with v2.34's rule 1 of 42 seeds did at v2.32). Check in the AI training phase whether supply or the retreat change keeps it out (AI coverage).
+- **Default AI (v2.38) is no better than Legacy at winning** (audit/validation.md):
+  - **Overall:** 51% of decided matches; same-faction pairings 47%, 69% and 53%.
+  - **What doesn't decide matches:** the unit-competence fixes, spending and grouped reinforcements each measured neutral within noise over 24–48 matches. Default even leads in army value at 10 minutes (about 1,000 vs 820) and in nodes held.
+  - **What looks like it does:** army trading. Both AIs attack 13–19 times a match and rebuild, so supply stays at half the limit.
+  - **For Phase 6:** engagement choice (when to fight, when to fall back), concentration, and finishing a base.
+- **Faction balance in AI play (v2.38, Phase 5):** in Default vs Legacy, Last Fist beats Bloomhost and the Axiarchs about 88% of decided matches either way round, and the Axiarchs win only 9–32% against the other factions. Mirror draws: Bloomhost 22% and Axiarchs 21% reach 20:00 (Last Fist 9%).
+- **Units under 5% in Default mirrors:**
+  - **Astral Sovereign (0%):** it needs the Celestial Array's Ascendant path at T3, which only the Economist and Trickster take, and matches end at about 13 minutes.
+  - **Worldrender (2.5%):** the same reason. It reaches 45% when an Economist plays a long match (tests/ai-stats).
+- **AI and the v2.37 unit redesign** (v2.38: the Default preset fixes the items marked fixed; Legacy keeps them). Gaps:
+  - (Fixed in Default, v2.38.) **Unit scores still reflect the old roles.** The Bilecaster is scored as anti-light splash, though it is now a single-target marker. The Rift Mortar and Bile Lobber are scored as plain artillery. The Lancer's focus, the Wraithwing's phase and the Voidcarrier's field aren't valued at all.
+  - (Fixed in Default, v2.38.) **Titans:** they plant and unplant on their own and the AI's pushes and retreats drive them. But the AI brings no spotter for the planted 280 reach (beyond the Titan's 240 sight), and its siege push spacing doesn't know Titans stop to plant.
+  - (Fixed in Default, v2.38.) **Voidcarrier:** the AI never positions it. Warp-ins follow the frontmost field automatically, so an AI carrier deep in enemy ground can pull warp-ins into danger.
+  - (Fixed in Default, v2.38.) **No timing play:** the Riftstalker (hit and fade), Wraithwing (phase) and Sovereign (charge) use only their automatic behaviour.
+  - (Default v2.38: Razorwings in 57.5% of mirror sides; 35–40% when a Turtle builds its Bloomspire last.) **Bloomhost AI rarely trains Razorwings now:** with half-supply Skitterlings, only 3 of 33 seeded Hard matches (Turtle vs a Last Fist Aggressor) trained all three base units; most never trained a Razorwing.
+  - (Fixed in Default, v2.38.) **Skitterling limit:** the AI doesn't plan its army around the 60 limit; it just stops choosing them at the limit.
+- (Default v2.38: 45% of Economist matches, 2.5% of mirror sides.) **Bloomhost AI never trains a Worldrender under the v2.35 retreat rule** (0 of 74 seeded Hard matches; with v2.34's rule 1 of 42 seeds did at v2.32). Check in the AI training phase whether supply or the retreat change keeps it out (AI coverage).
 - **Bot rows from v2.13–v2.14 are not comparable with later rows** (the bots never upgraded before the v2.15 fix).
 - **Orbital Strike now hits aircraft (v2.16)** with the same 280/140 damage, HQ T2 unlock, cost and cooldown. Unmeasured: its effect on air armies (a Gunship has 230 HP and dies at the centre; a Leviathan has 1400).
 - **Orbital Strike unlocks at HQ T2 instead of a War Factory (v2.16).** The AI's other personalities reach HQ T2 through their normal upgrade order; when, and how that changes their Strike use, is unmeasured.
@@ -168,7 +192,11 @@ Every Bloomhost item for the audit and AI training, in one place (details in the
 - **Army value samples stop at 120** (30 minutes, `logTick`); a longer match's graph ends early. Matches end by the Extinction Event's limit, so this shouldn't show in practice.
 
 
-### Flaky test: the Aggressor's defence strike (seen at v2.29)
+### Flaky test: a Medicopter on Retreat (seen at v2.38)
+- `every combat unit stops to fight ...` (tests/orders-weapons.test.js) is unseeded. About 1 run in 12, a Medicopter on Retreat ends up 40+ ahead of the retreating Riflemen it follows (it lags their centre as they run home).
+- No AI code is involved. Fix: seed it, or measure against the infantry's centre.
+
+### (Resolved in v2.38: the statistical tests in tests/ai-stats.test.js replace it.) Flaky test: the Aggressor's defence strike (seen at v2.29)
 - `the AI uses abilities under the same rules ... each personality in its own way` (`tests/abilities.test.js`) is unseeded: it plays 3 random Last Fist matches per personality and needs at least one Aggressor Orbital Strike on defences. It failed once in a v2.29 `npm test` run, then passed 3 of 3 on v2.29 and 3 of 3 on v2.28. Last Fist play is identical between the two versions, so the change didn't cause it. Fix: seed it, or count over more matches.
 
 ### Creep: interface notes (v2.18)

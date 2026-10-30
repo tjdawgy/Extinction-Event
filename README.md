@@ -24,6 +24,7 @@ npm test
 | `tests/retreat.test.js` | Retreat (v2.35): retreating units hold their fire until back at the rally flag or given a new order; `RETREAT.fire` restores the v2.34 rule |
 | `tests/audit2.test.js` | Audit phase 2 (v2.36): the Flame Tank burns a target off to the side (`FLAME.aim`); the Axis lance is a beam with the HQ gun's damage, rate and range; gathered resources include the start, sales and Salvage |
 | `tests/redesign.test.js` | Unit redesign (v2.37, audit/unit-roster.md): one test per mechanic (P1-P16), the corrosion rule, Skitterlings at half supply with a limit of 60, and `setRedesign(false)` restoring v2.36 |
+| `tests/ai-stats.test.js` | Statistical AI tests (v2.38): N seeded matches on the current rules through the real SIM, asserting rates (Bloomhost abilities, base AI and Bloomspire; Axiarch personalities; Last Fist abilities; Easy never strikes). `AISTATS_N=20 node tests/ai-stats.test.js --print` prints the rates |
 | `tests/micro.test.js` | Unit micro controls (v2.12): group and type orders, the most recent order winning, newly trained units, Regroup (arrival, the flag, replacement, whole army), the global stance clearing orders, GET READY and game-over blocking, save/resume mid-Regroup and v11 migration, orders in the match log, the AI's Artillery pull-back |
 | `tests/micro-ui.test.js` | Micro controls in headless Chromium: Build / Train / Army tabs, only owned groups and types listed, select and order by tapping, Regroup by tapping the battlefield, pause and GET READY blocking, button size and no overlap with abilities, building panel, info panel or top bar at 858×396 and 667×375, orders kept across a page reload |
 | `tests/trees.test.js` | Upgrade trees (v2.13, Barracks): a path per building at T2 (required), T3 continuing it, selling resetting it; Heavy and Sniper only on Specialists; Mass Deployment pairs (double cost, trained together, queue room); Drilled Riflemen (HP, capture speed); the AI's path choice; saves and v12 migration; ghosts and the match log |
@@ -84,3 +85,6 @@ Other tools:
 - `node tests/screenshot.js [outDir] [--narrow]`: PNGs of the title, intro, countdown, play, HQ states and victory at 858×396 (or 667×375). The default output folder, `tests/screenshots/`, is git-ignored.
 
 The version shown on the title screen is `VERSION` near the top of the script in `index.html`. Bump it with every change.
+
+
+Simulation harness (v2.38): see audit/README.md (`node audit/sim/run.js`, `usage.js`, `validate.js`).
