@@ -122,7 +122,7 @@ test('the AI maps its Tech Lab taste onto the Celestial Array (Air Power → Asc
 });
 
 test('saves v26 keep Celestial Array paths and the new units; a v25 save loads (a T1 Celestial Array without a path)', () => {
-  assert.strictEqual(sim.SAVE_VER, 26);
+  assert.ok(sim.SAVE_VER >= 26); // v27 (v2.30) loads the same way
   const g = quiet(); seeAll(g); finish(g, 0, 'barracks'); for (let i = 0; i < 3; i++) finish(g, 0, 'habitat'); const arr = finish(g, 0, 'techlab'); arr.tier = 3; arr.path = 'B';
   const v = put(g, 0, 'voidcarrier', 800); v.shp = 100;
   const g2 = sim.deserialize(sim.serialize(g, {}));

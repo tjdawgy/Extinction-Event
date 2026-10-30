@@ -18,8 +18,9 @@ function checkExact(g, label) {
   const L = g.log, T = L.tot;
   for (const s of [0, 1]) {
     const t = T[s], sd = g.sides[s], spent = i => Object.values(t.spent).reduce((a, b) => a + b[i], 0);
-    // money is conserved: start + earned + sales - spent = what is left
-    assert.ok(Math.abs(300 + t.earn[0] + t.sold[0] - spent(0) - sd.res.c) < 1e-6, `${label} side ${s} credits: ${300 + t.earn[0] + t.sold[0] - spent(0)} vs ${sd.res.c}`);
+    // money is conserved: start + earned + sales + salvage (v2.30) - spent = what is left
+    assert.ok(Math.abs(300 + t.earn[0] + t.sold[0] + t.salv - spent(0) - sd.res.c) < 1e-6, `${label} side ${s} credits: ${300 + t.earn[0] + t.sold[0] + t.salv - spent(0)} vs ${sd.res.c}`);
+    assert.strictEqual(t.salv, sd.salv.tot, `${label} side ${s} salvage`);
     assert.ok(Math.abs(60 + t.earn[1] + t.sold[1] - spent(1) - sd.res.e) < 1e-6, `${label} side ${s} energy`);
     assert.strictEqual(sum(t.lost), sd.stats.lost, `${label} side ${s} units lost`);
     assert.strictEqual(sum(t.killed), sd.stats.kills, `${label} side ${s} kills`);
