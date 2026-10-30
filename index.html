@@ -329,7 +329,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.33'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.34'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -6514,7 +6514,7 @@ function refreshUI(force) {
     let html, locked, poor, badge = 0, prog = 0;
     if (tab === 'build') {
       const d = BD(pFac(), type);
-      const mine = alive(game, 0, type), have = d.sig && mine.length > 0; // v2.32: one of each signature building at a time
+      const mine = alive(game, 0, type), have = !!d.sig && mine.length > 0; // v2.32: one of each signature building at a time (v2.34: a real boolean; undefined made classList.toggle flip the card every refresh)
       locked = !!(d.req && !hasBuilt(game, 0, d.req)) || have;
       poor = s.res.c < d.cost.c || s.res.e < d.cost.e;
       badge = have ? 0 : mine.length;
@@ -6534,10 +6534,10 @@ function refreshUI(force) {
     }
     const costEl = el.querySelector('.cost');
     if (force) costEl.innerHTML = html; else setHTML(costEl, html);
-    el.classList.toggle('locked', locked);
-    el.classList.toggle('poor', !locked && poor);
+    el.classList.toggle('locked', !!locked); // always a boolean: toggle(name, undefined) flips the class
+    el.classList.toggle('poor', !locked && !!poor);
     const be = el.querySelector('.badge');
-    be.textContent = badge; be.classList.toggle('show', badge > 0);
+    if (be.textContent !== String(badge)) be.textContent = badge; be.classList.toggle('show', badge > 0);
     el.querySelector('.bar i').style.width = (prog * 100).toFixed(1) + '%';
   }
   refreshAbil();
