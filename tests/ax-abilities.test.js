@@ -117,7 +117,9 @@ test('Shield Overcharge: faster shield regen even under fire, less damage (cappe
   // damage: 25% less; with the Bastion's brace (40%) together never more than 50%
   s.shp = 0; let h = s.hp; sim.damage(g, s, 20, 'rifle', 1); const fullS = 20 * sim.DMG.rifle.light;
   assert.ok(Math.abs((h - s.hp) - fullS * (1 - A.overcharge.cut)) < 1e-6, `25% less: ${(h - s.hp).toFixed(2)} of ${fullS}`);
+  sim.setRedesign(false); // v2.37: no Axiarch unit braces any more (the Bastion surges, P6); the cap rule is checked on the v2.36 Bastion
   b.shp = 0; b.braceT = 0; b.braceCd = 0; h = b.hp; sim.damage(g, b, 100, 'cannon', 1); const fullB = 100 * sim.DMG.cannon.vehicle;
+  sim.setRedesign(true);
   assert.ok(Math.abs((h - b.hp) - fullB * (1 - A.overcharge.cap)) < 1e-6, `braced and overcharged: 50% less, not ${((1 - 0.6 * 0.75) * 100).toFixed(0)}% (${(h - b.hp).toFixed(2)} of ${fullB})`);
   assert.ok(s.hp > 0 && b.hp > 0, 'no invulnerability, but both still standing');
   step(g, A.overcharge.dur - 1 + 0.1);

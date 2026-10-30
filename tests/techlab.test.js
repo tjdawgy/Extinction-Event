@@ -59,9 +59,9 @@ test('Interceptor rework: 150/60, 190 HP, speed 100, still air-only; with no air
   assert.ok(Math.abs(it.u - (lev.u - 12)) < 6 && Math.abs(it.v - lev.v) < 20, `escorting: ${it.u.toFixed(0)},${it.v.toFixed(0)} vs ${lev.u.toFixed(0)},${lev.v}`);
 });
 
-test('Leviathan: bombs what is right below it (40 range), splash 60, 2× on buildings, prefers buildings, cannot hit air, obeys the HQ shield', () => {
+test('Leviathan: bombs what is right below it (40 range), four bombs in a line (v2.37), 2× on buildings, prefers buildings, cannot hit air, obeys the HQ shield', () => {
   const d = sim.UDEF.leviathan;
-  same([d.cost.c, d.cost.e, d.pop, d.hp, d.dmg, d.cd, d.range, d.splash, d.hitsAir], [480, 240, 7, 1400, 140, 3, 40, 60, false]);
+  same([d.cost.c, d.cost.e, d.pop, d.hp, d.dmg, d.cd, d.range, d.splash, d.hitsAir, d.carpet.n], [480, 240, 7, 1400, 35, 3, 40, 40, false, 4]); // v2.37 (P10): four 35-damage bombs in a line (was one 140, splash 60)
   same([sim.DMG.bomb.building, sim.DMG.bomb.vehicle, sim.DMG.bomb.heavy, sim.DMG.bomb.light, sim.DMG.bomb.air], [2, 1, 0.8, 0.6, 0]);
   const g = field(); sim.tryBuild(g, 1, 'barracks'); const bar = g.ents.find(e => e.side === 1 && e.type === 'barracks'); bar.built = true; bar.progress = 1; bar.u = 850; bar.v = 0; // mid-field, away from the HQ
   const lv = sim.spawnUnit(g, 0, 'leviathan', bar.u, bar.v);

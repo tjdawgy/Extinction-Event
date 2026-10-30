@@ -745,7 +745,7 @@ const REDESIGN = { on: false, orig: {}, stats: {
   sniper:      { pierce: { n: 3, len: 150, w: 12, fall: 0.6 } },                   // P4: up to 3 more in a line behind, each 60% of the last
   riftstalker: { fade: true },                                                     // P5: strikes, then phase-steps back
   bastion:     { brace: undefined, surge: { rate: 0.35, dur: 3, cd: 12 } },       // P6: a shield surge instead of the Bulwark's brace
-  titan:       { siege: { plant: 2, unplant: 1.5, bonus: 90, bmul: 1.3, idle: 4 } }, // P8: siege lock
+  titan:       { siege: { plant: 2, unplant: 1.5, reach: 90, bmul: 1.3, idle: 4 } }, // P8: siege lock
   leviathan:   { dmg: 35, splash: 40, carpet: { n: 4, gap: 26 } },                 // P10: a line of four smaller bombs
   worldrender: { devour: { frac: 0.3, cap: 40 } },                                 // P11: heals 30% of building damage, at most 40 HP/s
   sovereign:   { dmg: 260, splash: 0, drop: undefined, beam: true, charge: 2 },    // P12: a charged single-target beam
@@ -1647,6 +1647,7 @@ function updateUnit(g, u, foes, dt) {
     u.moving = true; return;
   }
   if (d.siege && titanSiege(g, u, d, st, foes)) return; // P8 (v2.37): planting, planted or unplanting
+  if (u.phT > g.t) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // P13 (v2.37): a phased Wraithwing holds still and can't fire
   // Retreat: keep running home until back at the rally flag. A retreating unit holds its fire (v2.35, audit): it
   // attacks again only once the retreat ends, back at the flag or under a new order
   if (st === 'retreat' && Math.abs(home - u.u) > 12) {
@@ -1710,12 +1711,12 @@ function updateUnit(g, u, foes, dt) {
 
 const NO_TARGET = { best: null, close: false };
 // P8 (v2.37): the Titan's siege lock. It fires only when planted: planting takes plant seconds, then it can't move, reaches
-// bonus further and hits buildings bmul harder; it unplants (unplant seconds, no shots either way) when ordered to retreat
+// reach further and hits buildings bmul harder; it unplants (unplant seconds, no shots either way) when ordered to retreat
 // or regroup, or after idle seconds with nothing in reach. Mobile, it plants as soon as an enemy is within planted reach
 // (on any stance but Retreat and Regroup). The player and the AI both get this behaviour; neither has to order it.
 // u.siege: 0 mobile, 1 planting, 2 planted, 3 unplanting; u.sgT: when the change ends; u.sgIdle: last time it had a target.
 function titanSiege(g, u, d, st, foes) {
-  const S = d.siege, R2 = d.range + S.bonus, go = st === 'retreat' || st === 'move';
+  const S = d.siege, R2 = d.range + S.reach, go = st === 'retreat' || st === 'move';
   if (u.siege === 1 || u.siege === 3) {
     u.moving = false; u.tgt = 0;
     if (g.t >= u.sgT) { u.siege = u.siege === 1 ? 2 : 0; u.sgIdle = g.t; }

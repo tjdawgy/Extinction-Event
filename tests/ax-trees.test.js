@@ -54,7 +54,7 @@ test('disrupt: a Parallax blow makes the target deal less damage for a while; it
   for (let i = 0; i < 5; i++) sim.fire(g, p, r, U.parallax); assert.ok(r.dis <= sim.DISRUPT.cap + 1e-9, 'never past the cap');
   sim.disrupt(g, r, { amt: 0.9, dur: 1 }); assert.strictEqual(r.dis, sim.DISRUPT.cap, 'even a stronger one is capped');
   sim.disrupt(g, r, { amt: 0.1, dur: 10 }); assert.strictEqual(r.dis, sim.DISRUPT.cap, 'a weaker one never lowers it'); assert.ok(r.disT >= g.t + 9, 'the later end is kept');
-  const b = put(g, 0, 'bastion', 760, 0); b.braceCd = 1e9; const h0 = b.shp + b.hp;
+  const b = put(g, 0, 'bastion', 760, 0); b.braceCd = 1e9; b.surgeCd = 1e9; const h0 = b.shp + b.hp;
   sim.fire(g, r, b, U.heavy); for (let i = 0; i < 60 && g.projs.length; i++) sim.update(g, 1 / 30);
   const dealt = h0 - (b.shp + b.hp), full = U.heavy.dmg * sim.DMG.rocket.vehicle;
   assert.ok(Math.abs(dealt - full * (1 - sim.DISRUPT.cap)) < 1, `a disrupted Heavy's rocket: ${dealt.toFixed(1)} of ${full}`);

@@ -98,7 +98,7 @@ test('base units: the Wraithwing hits aircraft, ground and buildings; Shardlings
     e.hp = 0; g.ents = g.ents.filter(x => x.hp > 0);
   }
   const w = put(g, 0, 'wraithwing', 700, 0), h = air.hp; sim.fire(g, w, air, U.wraithwing); step(g, 0.5); assert.ok(air.hp < h, 'a Wraithwing shot downs aircraft');
-  assert.ok(U.bastion.brace && U.shardling.melee);
+  assert.ok(U.bastion.surge && !U.bastion.brace && U.shardling.melee); // v2.37: the Bastion's shield surge replaced its brace (P6)
 });
 
 test('all three production buildings pick paths (v2.27 Gate and Architectum, v2.29 Celestial Array); each faction trains only its own units; its own three abilities (v2.28; locked until then)', () => {

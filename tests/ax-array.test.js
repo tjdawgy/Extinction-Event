@@ -78,7 +78,7 @@ test('Shardstorm chain beam: from the target to at most 3 more enemies nearby, w
   assert.strictEqual(hit.length, 0, 'nothing within reach of the target'); assert.strictEqual(b.hp, 1000); assert.strictEqual(ref.hp, rh, 'never a jump to a building');
 });
 
-test('Voidcarrier and Astral Sovereign never hit aircraft; they go for buildings first; the Sovereign drops an area blow', () => {
+test('Voidcarrier and Astral Sovereign never hit aircraft; they go for buildings first; the Sovereign fires a single judgement beam (v2.37)', () => {
   for (const t of ['voidcarrier', 'sovereign']) {
     assert.strictEqual(U[t].hitsAir, false, t); assert.strictEqual(sim.DMG[U[t].weapon].air, 0, t); assert.ok(U[t].preferB, t);
     const g = quiet(); seeAll(g); const me = put(g, 0, t, 800);
@@ -92,8 +92,8 @@ test('Voidcarrier and Astral Sovereign never hit aircraft; they go for buildings
   }
   const g = quiet(); seeAll(g); const sv = put(g, 0, 'sovereign', 800);
   const ring = [0, 1, 2].map(i => { const e = put(g, 1, 'tank', 830 + i * 25); e.hp = e.maxHp = 5000; return e; });
-  sim.fire(g, sv, ring[1], U.sovereign); step(g, 3);
-  assert.ok(ring.every(e => e.hp < 5000), 'area damage on ground units around the drop');
+  sim.fire(g, sv, ring[1], U.sovereign); step(g, 0.1);
+  assert.ok(ring[1].hp < 5000 && ring[0].hp === 5000 && ring[2].hp === 5000, 'v2.37 (P12): one judgement beam, no splash'); // was: area damage around a drop
 });
 
 test('the four new units warp in like the others; every new unit is in the unit tables (completeness)', () => {
