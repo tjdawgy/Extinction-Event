@@ -135,7 +135,7 @@ test('path units warp in like the base units', () => {
 });
 
 test('saves v24 keep disrupt, slow, charge and pulse timers and distortion zones; a v23 save loads', () => {
-  assert.strictEqual(sim.SAVE_VER, 24);
+  assert.ok(sim.SAVE_VER >= 24); // v25 (v2.28) loads the same way
   const g = quiet(); seeAll(g);
   const r = put(g, 1, 'rifle', 700, 0); sim.disrupt(g, r, { amt: 0.3, dur: 2 }); sim.slowU(g, r, 0.3, 1); sim.addAcid(g, 0, 700, 0, 'dist');
   const e = put(g, 0, 'eventide', 500, 0); e.pulseCd = 99;

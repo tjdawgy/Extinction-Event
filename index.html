@@ -324,7 +324,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.27'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.28'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -366,8 +366,8 @@ const FACTIONS = {
   lastfist: { name: 'Last Fist', abilities: true, trees: true, abil: ['shield', 'strike', 'repair'] },
   bloomhost: { name: 'Bloomhost', abilities: true, trees: true, abil: ['frenzy', 'brood', 'corrosive'] }, // trees: Larva Pit and Evolution Chamber (v2.19), Bloomspire (v2.21); abilities v2.20
   // Axiarchs (v2.25 framework, docs/AXIARCHS.md): Genesis Gate and Architectum trees v2.27; the Celestial Array stays T1
-  // until v2.29 (its lockMsg), and the ability buttons sit locked as "Soon" (soonAbil) until v2.28
-  axiarchs: { name: 'Axiarchs', abilities: false, trees: true, abil: [], soonAbil: ['Mass Warp', 'Shield Overcharge', 'Purification Beam'] },
+  // until v2.29 (its lockMsg); commander abilities v2.28
+  axiarchs: { name: 'Axiarchs', abilities: true, trees: true, abil: ['mwarp', 'overcharge', 'beam'] },
 }, DEFAULT_FACTION = 'lastfist', FACTION_KEYS = Object.keys(FACTIONS);
 const factionName = k => (FACTIONS[k] || FACTIONS[DEFAULT_FACTION]).name;
 const facOf = k => FACTIONS[k] ? k : DEFAULT_FACTION;
@@ -607,6 +607,7 @@ const DMG = {
   acidpool: { light: 1.0, heavy: 1.0, vehicle: 1.0,  air: 0,    building: 0 },   // the Ruinmaw's acid pools
   thorns:  { light: 1.0, heavy: 1.0,  vehicle: 1.0,  air: 1.0,  building: 0 },   // Thornback retaliation
   spores:  { light: 1.0, heavy: 1.0,  vehicle: 1.0,  air: 0,    building: 0 },   // Corrosive Bloom (v2.20)
+  beam:    { light: 1.0, heavy: 1.0,  vehicle: 1.0,  air: 0,    building: 1.0 }, // Purification Beam (v2.28): ground units and buildings
   spines:  { light: 1.3, heavy: 1.0,  vehicle: 0.6,  air: 0,    building: 0 },   // Dreadthorn burst
   needle:  { light: 1.1, heavy: 0.8,  vehicle: 0.7,  air: 0,    building: 0.5 }, // Needlewing, Cloudwing (v2.21)
   glob:    { light: 0.8, heavy: 1.0,  vehicle: 1.1,  air: 0,    building: 1.6 }, // Brood Tyrant
@@ -698,13 +699,15 @@ function aiAbility(g, s, P, ctx) {
   // One shared cooldown: using any ability locks all three, so weigh the options. Each target's score is measured
   // against its own threshold (1 = just worth it), scaled by the lock it costs and by the personality's priorities.
   // Bloomhost (v2.20) uses the same logic through each ability's Last Fist counterpart (ABIL[k].like): Corrosive Bloom
-  // targets like the Orbital Strike (units only), Frenzy Bloom like the Shield, Emergency Brood like the Repair Pulse
+  // targets like the Orbital Strike (units only), Frenzy Bloom like the Shield, Emergency Brood like the Repair Pulse.
+  // Axiarchs (v2.28): Purification Beam like the Strike (a strip, no aircraft), Shield Overcharge like the Shield; Mass
+  // Warp has its own rule (aiMassWarpTarget), weighed like the Repair Pulse
   const opts = [], like = k => ABIL[k].like || k;
   for (const k of abList(side)) {
     if (!spare(k)) continue;
     if (like(k) === 'strike') { if (lvl > 0) opts.push([k, aiStrikeTarget(g, s, kind, lvl, seen, ctx, k)]); }
     else if (like(k) === 'shield') opts.push([k, aiShieldTarget(g, s, kind, lvl, seen, ctx, k)]);
-    else opts.push([k, k === 'brood' ? aiBroodTarget(g, s, kind, lvl, ctx) : aiRepairTarget(g, s, kind, lvl, ctx)]);
+    else opts.push([k, k === 'brood' ? aiBroodTarget(g, s, kind, lvl, ctx) : k === 'mwarp' ? aiMassWarpTarget(g, s, ctx) : aiRepairTarget(g, s, kind, lvl, ctx)]);
   }
   // The Aggressor saves the cooldown for a Strike on known defences while it builds up to a push; only a fight it is losing gets a Shield
   const hold = kind === 'aggressor' && lvl > 0 && !ctx.threat && abList(side).includes('strike') && aiFortified(g, s) && abilUnlocked(g, s, ABIL.strike) && ctx.myV >= 300;
@@ -724,17 +727,18 @@ function aiAbility(g, s, P, ctx) {
   if (best) use(best[0], best[1]);
 }
 function aiStrikeTarget(g, s, kind, lvl, seen, ctx, k = 'strike') {
-  const A = ABIL[k], f = g.fog[s], side = g.sides[s], front = g.front[s], home = hqU(s), spores = k === 'corrosive';
-  const ground = seen.filter(e => e.kind === 'u' && !(spores && UDEF[e.type].air)); // v2.16: the Strike hits aircraft too; Corrosive Bloom doesn't (v2.20)
+  const A = ABIL[k], f = g.fog[s], side = g.sides[s], front = g.front[s], home = hqU(s), spores = k === 'corrosive', beam = k === 'beam';
+  const ground = seen.filter(e => e.kind === 'u' && !((spores || beam) && UDEF[e.type].air)); // v2.16: the Strike hits aircraft too; Corrosive Bloom (v2.20) and the Beam (v2.28) don't
   const known = spores ? [] : Object.values(f.ghosts).filter(gh => gh.side !== s && !(gh.type === 'hq' && f.lastHQ.shielded)); // the spores don't touch buildings
-  const hit = (d, hp) => Math.min(1, (spores ? A.dps * A.dur * 0.6 : A.dmg - (A.dmg - A.edge) * Math.min(1, d / A.r)) / hp); // spores: they may walk out halfway
+  const hit = (d, hp) => Math.min(1, (spores ? A.dps * A.dur * 0.6 : beam ? A.dmg : A.dmg - (A.dmg - A.edge) * Math.min(1, d / A.r)) / hp); // spores: they may walk out halfway; the Beam: the same damage all along its strip
+  const inStrip = (p, u, v, half) => Math.abs(u - p.u) - half <= A.len / 2 && Math.abs(v - clamp(p.v, -LANE_V, LANE_V)) - half <= A.w ? 0 : Infinity; // the Beam's strip (v2.28)
   const pts = ground.map(e => ({ u: e.u, v: e.v })).concat(known.map(gh => ({ u: gh.u, v: gh.v, b: gh })));
   let best = null, bs = [Infinity, 340, 300][lvl]; // Normal waits for a fatter target; Hard reacts at once to a good one
   for (const p of pts) {
     if (!f.exp[cellOf(p.u)]) continue;
     let sc = 0, def = false;
     for (const e of ground) {
-      const d = Math.hypot(e.u - p.u, e.v - p.v);
+      const d = beam ? inStrip(p, e.u, e.v, 0) : Math.hypot(e.u - p.u, e.v - p.v);
       if (d > A.r) continue;
       const ud = UDEF[e.type], slow = clamp(1.6 - ud.speed / 40, 0.4, 1.2) * (lvl === 2 && !e.moving ? 1.35 : 1); // slow or (Hard sees it) standing units can't walk out in time
       let w = 1;
@@ -747,7 +751,7 @@ function aiStrikeTarget(g, s, kind, lvl, seen, ctx, k = 'strike') {
       sc += (ud.cost.c + ud.cost.e * 1.5) * hit(d, e.hp) * slow * w;
     }
     for (const gh of known) {
-      const d = Math.max(0, Math.hypot(gh.u - p.u, gh.v - p.v) - gh.half);
+      const d = beam ? inStrip(p, gh.u, gh.v, gh.half) : Math.max(0, Math.hypot(gh.u - p.u, gh.v - p.v) - gh.half);
       if (d > A.r) continue;
       const live = g.ents.find(e => e.id === gh.id && e.hp > 0 && visibleTo(g, s, e)), bd = BD(gh.fac, gh.type);
       let w = AB_BVAL[gh.type] || 150;
@@ -759,12 +763,12 @@ function aiStrikeTarget(g, s, kind, lvl, seen, ctx, k = 'strike') {
       if (kind === 'turtle') w *= 0.4;
       sc += w * hit(d, live ? live.hp : bd.hp * hpMul(bd, gh.tier || 1));
     }
-    if (sc > bs) { bs = sc; best = { u: clamp(p.u, 0, L), v: clamp(p.v, -200, 200), def, score: sc / [Infinity, 340, 300][lvl] }; }
+    if (sc > bs) { bs = sc; best = { u: clamp(p.u, 0, L), v: beam ? clamp(p.v, -LANE_V, LANE_V) : clamp(p.v, -200, 200), def, score: sc / [Infinity, 340, 300][lvl] }; }
   }
   return best;
 }
 function aiShieldTarget(g, s, kind, lvl, seen, ctx, k = 'shield') {
-  const A = ABIL[k], side = g.sides[s], home = hqU(s), buffed = o => k === 'frenzy' ? o.frzT > g.t : o.shT > g.t;
+  const A = ABIL[k], side = g.sides[s], home = hqU(s), buffed = o => k === 'frenzy' ? o.frzT > g.t : k === 'overcharge' ? o.ovT > g.t : o.shT > g.t;
   const attacking = side.stance === 'attack' && !(side.feintUntil > g.t);
   if ((kind === 'economist' || kind === 'turtle') && !ctx.threat) return null; // defensive personalities shield at home
   if (kind === 'trickster' && !attacking && !ctx.threat) return null;
@@ -808,6 +812,18 @@ function aiBroodTarget(g, s, kind, lvl, ctx) {
   const t = aiRepairTarget(g, s, kind, lvl, ctx); if (!t) return null;
   for (let i = 0; i < 4; i++) { const u = clamp(t.u - dirOf(s) * 60 * i, 0, L), v = clamp(t.v, -LANE_V, LANE_V); if (abilityCheck(g, s, 'brood', u, v).ok) return { u, v, score: t.score }; }
   return null;
+}
+// Mass Warp (v2.28, minimal): 4 or more of its units below 40% health within the circle of one of them, far enough from
+// the warp point for the trip to matter; the biggest such group
+function aiMassWarpTarget(g, s, ctx) {
+  const A = ABIL.mwarp, wp = warpPoint(g, s), hurt = ctx.mine.filter(m => m.hp < m.maxHp * A.aiHurt);
+  let best = null, bn = A.aiN - 1;
+  for (const c of hurt) {
+    if (Math.hypot(c.u - wp.u, c.v - wp.v) < A.aiFar) continue;
+    const n = hurt.filter(m => inAbil(m, c.u, c.v, A.r)).length;
+    if (n > bn) { bn = n; best = { u: c.u, v: c.v, score: n / A.aiN }; }
+  }
+  return best;
 }
 const AI_UPG = [['barracks', 2], ['reactor', 2], ['refinery', 2], ['factory', 2], ['habitat', 2], ['reactor', 3], ['hq', 2], ['techlab', 2],
   ['factory', 3], ['barracks', 3], ['turret', 2], ['habitat', 3], ['refinery', 3], ['techlab', 3], ['hq', 3], ['turret', 3]];
@@ -975,7 +991,7 @@ function spawnUnit(g, s, type, u, v) {
   const d = UDEF[type];
   const unit = { id: g.nid++, kind: 'u', type, side: s, u, v, z: d.air ? (type === 'interceptor' ? rand(100, 124) : type === 'leviathan' ? rand(88, 98) : type === 'drone' ? rand(104, 114) : type === 'razorwing' ? rand(56, 72) : type === 'needlewing' ? rand(50, 64) : type === 'cloudwing' ? rand(62, 76) : type === 'broodtyrant' ? rand(78, 88) : type === 'worldrender' ? rand(84, 94) : type === 'wraithwing' ? rand(64, 80) : rand(70, 94)) : 0,
     laneV: rand(-LANE_V, LANE_V), hp: d.hp, maxHp: d.hp, cd: Math.random() * 0.5, face: dirOf(s), anim: Math.random() * 10,
-    moving: false, rallyOff: -Math.random() * 100, recoil: 0, hitT: 0, shT: 0, vet: 0, aimAir: 0, medAt: -1, tgt: 0, braceT: 0, braceCd: 0, lastHurt: -99, lastAct: -99, creepAt: -1, temp: 0, tLife: 0, tSrc: null, kid: 0, spawnT: 0, dis: 0, disT: 0, slow: 0, slowT: 0, chT: 0, chTgt: 0, pulseCd: 0, shp: d.shp || 0, maxShp: d.shp || 0, shpT: -99, shpHit: -99, frzT: 0, leapCd: 0, leaping: 0, lu: 0, lv: 0, ld: 0, corr: 0, corrT: 0, burstCd: 0 }; // tgt: what it last attacked; braceT/braceCd: the Bulwark's brace (v2.17); lastHurt/lastAct: last damage taken/dealt, creepAt: last creep regen (v2.18); leap*: the Leaper's jump, corr/corrT: corrosion, burstCd: the Dreadthorn's spines (v2.19) // vet: a Drilled Rifleman (v2.13); aimAir: where a Hydra's guns point (v2.14); medAt: last healed by a Medicopter (v2.15) // shT (shield until) set from the start keeps every unit the same shape for the JS engine
+    moving: false, rallyOff: -Math.random() * 100, recoil: 0, hitT: 0, shT: 0, vet: 0, aimAir: 0, medAt: -1, tgt: 0, braceT: 0, braceCd: 0, lastHurt: -99, lastAct: -99, creepAt: -1, temp: 0, tLife: 0, tSrc: null, kid: 0, spawnT: 0, dis: 0, disT: 0, slow: 0, slowT: 0, chT: 0, chTgt: 0, pulseCd: 0, shp: d.shp || 0, maxShp: d.shp || 0, shpT: -99, shpHit: -99, ovT: 0, frzT: 0, leapCd: 0, leaping: 0, lu: 0, lv: 0, ld: 0, corr: 0, corrT: 0, burstCd: 0 }; // tgt: what it last attacked; braceT/braceCd: the Bulwark's brace (v2.17); lastHurt/lastAct: last damage taken/dealt, creepAt: last creep regen (v2.18); leap*: the Leaper's jump, corr/corrT: corrosion, burstCd: the Dreadthorn's spines (v2.19) // vet: a Drilled Rifleman (v2.13); aimAir: where a Hydra's guns point (v2.14); medAt: last healed by a Medicopter (v2.15) // shT (shield until) set from the start keeps every unit the same shape for the JS engine
   g.ents.push(unit);
   g.sides[s].stats.built++;
   return unit;
@@ -1223,7 +1239,11 @@ function extraTargets(g, src, def, foes, first, n) {
 }
 // Axiarch shields (v2.25) recharge after SHIELD.delay seconds without damage; they never restore HP
 function updateShields(g, dt) {
-  for (const e of g.ents) if (e.maxShp && e.hp > 0 && e.shp < e.maxShp && (e.kind === 'u' || e.built) && g.t - e.shpT >= SHIELD.delay) e.shp = Math.min(e.maxShp, e.shp + e.maxShp * (onField(g, e.side, e.u, e.v) ? FIELD.regen : SHIELD.rate) * dt); // faster inside the field (v2.26)
+  for (const e of g.ents) {
+    if (!e.maxShp || e.hp <= 0 || e.shp >= e.maxShp || !(e.kind === 'u' || e.built)) continue;
+    if (e.ovT > g.t) { const s0 = e.shp; e.shp = Math.min(e.maxShp, e.shp + e.maxShp * ABIL.overcharge.regen * dt); logEffect(g, e.side, 'overcharge', 0, e.shp - s0); continue; } // Shield Overcharge (v2.28): fast regen even under fire; shields only, never HP
+    if (g.t - e.shpT >= SHIELD.delay) e.shp = Math.min(e.maxShp, e.shp + e.maxShp * (onField(g, e.side, e.u, e.v) ? FIELD.regen : SHIELD.rate) * dt); // faster inside the field (v2.26)
+  }
 }
 
 // Lane-style range: sideways spread counts for less, so units can't slip past each other
@@ -1499,7 +1519,7 @@ function setWarp(g, s, u, v) {
   return { ok: true, msg: 'Warp point set' };
 }
 // A spot is valid for a warp: on the lane, inside the field, clear of enemies, of every building and of other warps
-function warpOk(g, s, u, v) {
+function warpOk(g, s, u, v, taken) {
   if (u < 0 || u > L || Math.abs(v) > LANE_V || !onField(g, s, u, v)) return false;
   for (const e of g.ents) {
     if (e.hp <= 0) continue;
@@ -1507,13 +1527,14 @@ function warpOk(g, s, u, v) {
     else if (e.side !== s && Math.hypot(e.u - u, e.v - v) < WARP.clear) return false;
   }
   for (const w of g.warps) if (Math.hypot(w.u - u, w.v - v) < WARP.step) return false; // two warps never share a spot
+  if (taken) for (const w of taken) if (Math.hypot(w.u - u, w.v - v) < WARP.step) return false; // nor two units of one Mass Warp (v2.28)
   return true;
 }
 // The nearest valid spot to (u, v), searching outward in rings; none: the Axis
-function warpSpot(g, s, u, v) {
+function warpSpot(g, s, u, v, taken) {
   for (let i = 0; i <= WARP.rings; i++) {
     const n = i ? 8 * i : 1;
-    for (let j = 0; j < n; j++) { const a = j / n * Math.PI * 2, pu = u + Math.cos(a) * i * WARP.step, pv = v + Math.sin(a) * i * WARP.step; if (warpOk(g, s, pu, pv)) return { u: pu, v: pv }; }
+    for (let j = 0; j < n; j++) { const a = j / n * Math.PI * 2, pu = u + Math.cos(a) * i * WARP.step, pv = v + Math.sin(a) * i * WARP.step; if (warpOk(g, s, pu, pv, taken)) return { u: pu, v: pv }; }
   }
   return axisSpot(g, s);
 }
@@ -1682,6 +1703,13 @@ const ABIL = {
     tip: 'A brood pod lands after a 2 s warning and releases 5 Skitterlings that live for 20 s and use no supply (at most 8 such creatures at once). Target ground you can see, clear of enemies.' },
   corrosive: { name: 'Corrosive Bloom', like: 'strike', cost: { c: 150, e: 150 }, cd: 100, first: 120, r: 85, dur: 8, dps: 14, corr: 0.15, req: 'hq', reqTier: 2,
     tip: 'A spore cloud for 8 s: enemy ground units inside take 14 damage per second and are corroded (15% more damage taken; the 25% corrosion cap still applies). Not aircraft or buildings; they can walk out. Target any explored ground.' },
+  // Axiarchs (v2.28, docs/AXIARCHS.md section 7): cost, cooldown, first use and unlock from the Last Fist counterpart (like)
+  mwarp: { name: 'Mass Warp', like: 'repair', cost: { c: 100, e: 75 }, cd: 50, first: 60, r: 120, ch: 2, n: 8, aiHurt: 0.4, aiN: 4, aiFar: 200,
+    tip: 'Up to 8 of your units inside the circle (the most damaged first) channel for 2 s, then warp to your warp point. It moves units; it never creates any. Target ground you can see with your units on it.' },
+  overcharge: { name: 'Shield Overcharge', like: 'shield', cost: { c: 75, e: 75 }, cd: 50, first: 60, r: 110, dur: 7, regen: 0.3, cut: 0.25, cap: 0.5,
+    tip: 'Your units inside the circle regain 30% of their shields per second, even under fire, and take 25% less damage for 7 s (with a Bastion\'s brace, never more than 50% less). Shields only: no health, no invulnerability.' },
+  beam: { name: 'Purification Beam', like: 'strike', cost: { c: 150, e: 150 }, cd: 100, first: 120, r: 70, delay: 3, sweep: 1.5, len: 220, w: 40, dmg: 240, req: 'hq', reqTier: 2,
+    tip: 'After a 3 s warning, a beam sweeps 220 along the lane over 1.5 s: 240 damage to every enemy ground unit and building it passes. Not aircraft, not a shielded HQ. Target explored ground on the lane.' },
 };
 const ABIL_ORDER = ['shield', 'strike', 'repair']; // Last Fist's; each faction's list is FACTIONS[...].abil
 const abList = side => FACTIONS[facOf(side.faction)].abil; // the abilities this side can use (one shared cooldown)
@@ -1690,7 +1718,7 @@ const abList = side => FACTIONS[facOf(side.faction)].abil; // the abilities this
 const TEMP = { max: 8 };
 // An ability's unlock: a finished building, at a tier for reqTier (the Orbital Strike needs HQ T2)
 const abilUnlocked = (g, s, A) => !A.req || (A.reqTier ? g.ents.some(b => b.kind === 'b' && b.side === s && b.type === A.req && b.built && b.hp > 0 && b.tier >= A.reqTier) : hasBuilt(g, s, A.req));
-const abilReqText = A => `${BDEF[A.req].name}${A.reqTier ? ' T' + A.reqTier : ''}`;
+const abilReqText = (A, fac) => `${BD(fac, A.req).name}${A.reqTier ? ' T' + A.reqTier : ''}`; // v2.28: the faction's own building name
 const newAb = (t0, fac) => Object.fromEntries(FACTIONS[facOf(fac)].abil.map(k => [k, t0 + ABIL[k].first]));
 const inAbil = (e, u, v, r) => { const du = e.u - u, dv = e.v - v, R = r + (e.kind === 'b' ? e.half : 0); return du * du + dv * dv <= R * R; };
 // Can side s use ability k on (u, v) now? Without a target, only the cost, cooldown and unlock are checked.
@@ -1700,7 +1728,7 @@ function abilityCheck(g, s, k, u, v) {
   if (g.countdown > 0) return WAIT_GO;
   if (!FACTIONS[facOf(side.faction)].abilities) return { ok: false, msg: `${factionName(side.faction)} commander abilities are coming soon` }; // v2.17
   if (!abList(side).includes(k)) return { ok: false, msg: `${A.name} is not a ${factionName(side.faction)} ability` }; // v2.20
-  if (!abilUnlocked(g, s, A)) return { ok: false, msg: `${A.name} needs ${A.reqTier ? 'your' : 'a'} ${abilReqText(A)}` };
+  if (!abilUnlocked(g, s, A)) return { ok: false, msg: `${A.name} needs ${A.reqTier ? 'your' : 'a'} ${abilReqText(A, side.faction)}` };
   const wait = side.ab[k] - g.t;
   if (wait > 0) return { ok: false, msg: side.abK && Math.abs(side.ab[k] - side.abEnd) < 1e-6 ? `Shared cooldown: abilities ready in ${Math.ceil(wait)} s` : `${A.name} is ready in ${Math.ceil(wait)} s` };
   if (side.res.c < A.cost.c) return { ok: false, msg: `Need ${Math.ceil(A.cost.c - side.res.c)} more credits` };
@@ -1708,12 +1736,14 @@ function abilityCheck(g, s, k, u, v) {
   if (u === undefined) return { ok: true };
   if (u < 0 || u > L || Math.abs(v) > 220) return { ok: false, msg: 'Target the battlefield' };
   const f = g.fog[s], c = cellOf(u);
-  const explored = k === 'strike' || k === 'corrosive'; // the area attacks need explored ground; the rest, ground in view
+  const explored = k === 'strike' || k === 'corrosive' || k === 'beam'; // the area attacks need explored ground; the rest, ground in view
   if (explored ? !f.exp[c] : !f.vis[c]) return { ok: false, msg: explored ? `${A.name} needs explored ground` : `${A.name} needs ground you can see` };
   if (k === 'brood') { // a pod lands only on open lane ground, clear of the enemies this side can see (v2.20)
     if (Math.abs(v) > LANE_V + 25) return { ok: false, msg: 'Emergency Brood needs open ground on the lane' };
     if (g.ents.some(e => e.kind === 'u' && e.side !== s && e.hp > 0 && !UDEF[e.type].air && visibleTo(g, s, e) && Math.hypot(e.u - u, e.v - v) < A.clear)) return { ok: false, msg: 'Emergency Brood needs ground clear of enemies' };
   }
+  if (k === 'beam' && Math.abs(v) > LANE_V + 25) return { ok: false, msg: 'Purification Beam needs a spot on the lane' }; // v2.28
+  if (k === 'mwarp' && !mwarpPick(g, s, u, v).length) return { ok: false, msg: 'Mass Warp needs your units inside the circle' };
   return { ok: true };
 }
 function useAbility(g, s, k, u, v) {
@@ -1732,10 +1762,53 @@ function useAbility(g, s, k, u, v) {
     let n = 0;
     for (const e of g.ents) if (e.kind === 'u' && e.side === s && e.hp > 0 && UDEF[e.type].fac === 'bloomhost' && inAbil(e, u, v, A.r)) { e.frzT = g.t + A.dur; n++; }
     g.abil.push({ k, side: s, u, v, t0: g.t, end: g.t + 0.6, n }); logEffect(g, s, k, n);
-  } else if (k === 'strike' || k === 'brood') g.abil.push({ k, side: s, u, v, t0: g.t, end: g.t + A.delay });
+  } else if (k === 'overcharge') { // v2.28: Axiarch units in the circle; a second cast refreshes, never stacks
+    let n = 0;
+    for (const e of g.ents) if (e.kind === 'u' && e.side === s && e.hp > 0 && e.maxShp && inAbil(e, u, v, A.r)) { e.ovT = g.t + A.dur; n++; }
+    g.abil.push({ k, side: s, u, v, t0: g.t, end: g.t + 0.6, n });
+  } else if (k === 'mwarp') { // v2.28: the chosen units channel at once and arrive at the end (updateAbilities)
+    const wp = warpPoint(g, s);
+    g.abil.push({ k, side: s, u, v, t0: g.t, end: g.t + A.ch, ids: mwarpPick(g, s, u, v).map(e => e.id), wu: wp.u, wv: wp.v });
+  } else if (k === 'beam') g.abil.push({ k, side: s, u, v: clamp(v, -LANE_V, LANE_V), t0: g.t, end: g.t + A.delay + A.sweep, at: 0, hit: [] }); // at: how far the sweep has gone (0-1)
+  else if (k === 'strike' || k === 'brood') g.abil.push({ k, side: s, u, v, t0: g.t, end: g.t + A.delay });
   else g.abil.push({ k, side: s, u, v, t0: g.t, end: g.t + A.dur });
   ev(g, { type: 'ability', side: s, k, u, v });
-  return { ok: true, msg: k === 'strike' ? 'Orbital Strike inbound' : k === 'brood' ? 'Brood pod launched' : `${A.name} active` };
+  return { ok: true, msg: k === 'strike' ? 'Orbital Strike inbound' : k === 'brood' ? 'Brood pod launched' : k === 'beam' ? 'Purification Beam charging' : k === 'mwarp' ? 'Mass Warp channelling' : `${A.name} active` };
+}
+// Mass Warp (v2.28): side s's units in the circle, the most damaged first (then the nearest), at most A.n
+function mwarpPick(g, s, u, v) {
+  const A = ABIL.mwarp, frac = e => (e.hp + (e.shp || 0)) / (e.maxHp + (e.maxShp || 0));
+  return g.ents.filter(e => e.kind === 'u' && e.side === s && e.hp > 0 && inAbil(e, u, v, A.r))
+    .sort((a, b) => frac(a) - frac(b) || Math.hypot(a.u - u, a.v - v) - Math.hypot(b.u - u, b.v - v) || a.id - b.id).slice(0, A.n);
+}
+// The channel ends: each chosen unit still alive moves to a valid spot at the warp point (the one shown at the cast while it
+// is still in the field, else the current one). Nothing is created or removed.
+function mwarpLand(g, a) {
+  const wp = onField(g, a.side, a.wu, a.wv) ? { u: a.wu, v: a.wv } : warpPoint(g, a.side), taken = [];
+  let n = 0;
+  for (const id of a.ids) {
+    const e = g.ents.find(x => x.id === id && x.hp > 0); if (!e) continue;
+    const p = warpSpot(g, a.side, wp.u, wp.v, taken); taken.push(p);
+    e.u = p.u; e.v = p.v; e.laneV = clamp(p.v, -LANE_V, LANE_V); e.moving = false;
+    if (e.holdU !== undefined) { e.holdU = p.u; e.holdV = p.v; } // a unit on Hold holds where it arrived
+    if (e.leaping) { e.leaping = 0; e.z = 0; } // a phase-step in flight ends where the warp puts it
+    n++;
+  }
+  a.n = n; logEffect(g, a.side, 'mwarp', n);
+}
+// The Purification Beam's sweep (v2.28): the head runs from one end of the strip to the other, toward the enemy, over
+// A.sweep seconds; every enemy ground unit and building it passes takes A.dmg once. A shielded HQ is untouched (damage()).
+function beamStep(g, a) {
+  const A = ABIL.beam, dir = dirOf(a.side), x0 = a.at * A.len;
+  a.at = Math.min(1, (g.t - a.t0 - A.delay) / A.sweep); const x1 = a.at * A.len, start = a.u - dir * A.len / 2;
+  for (const e of g.ents) {
+    if (e.side === a.side || e.hp <= 0 || (e.kind === 'u' && UDEF[e.type].air) || a.hit.includes(e.id)) continue;
+    const half = e.kind === 'b' ? e.half : 0, x = (e.u - start) * dir;
+    if (x + half < x0 - 6 || x - half > x1 || x - half > A.len || x + half < 0 || Math.abs(e.v - a.v) - half > A.w) continue;
+    a.hit.push(e.id); const h0 = e.hp; damage(g, e, A.dmg, 'beam', a.side);
+    logEffect(g, a.side, 'beam', h0 - Math.max(0, e.hp), e.hp <= 0 ? 1 : 0);
+  }
+  if (a.at >= 1) a.done = true;
 }
 // The brood pod lands: up to A.n temporary Skitterlings around it, never past TEMP.max for the side and never on an enemy
 function broodLand(g, a) {
@@ -1785,6 +1858,8 @@ function updateAbilities(g, dt) {
       }
     }
     if (a.k === 'brood' && g.t >= a.end && !a.done) { a.done = true; broodLand(g, a); }
+    if (a.k === 'mwarp' && g.t >= a.end && !a.done) { a.done = true; mwarpLand(g, a); } // v2.28
+    if (a.k === 'beam' && !a.done && g.t >= a.t0 + ABIL.beam.delay) beamStep(g, a);
     if (a.k === 'corrosive' && g.t <= a.end) { // the spore cloud: light damage and corrosion to enemy ground units inside (v2.20)
       const A = ABIL.corrosive;
       for (const e of g.ents) {
@@ -1933,10 +2008,14 @@ function damage(g, e, amt, weapon, fromSide, src) {
   const mult = DMG[weapon][armor];
   if (!mult) return;
   let dmg = amt * mult * (g.sides[e.side].buff ? 0.85 : 1) * (e.corrT > g.t ? 1 + e.corr : 1); // corroded: takes more (v2.19)
-  const br = e.kind === 'u' && UDEF[e.type].brace;
+  const br = e.kind === 'u' && UDEF[e.type].brace, pre = dmg;
   if (br) { // the Bulwark braces on the first hit after its cooldown (v2.17)
     if (!(e.braceT > g.t) && g.t >= e.braceCd) { e.braceT = g.t + br.dur; e.braceCd = g.t + br.cd; }
     if (e.braceT > g.t) dmg *= 1 - br.cut;
+  }
+  if (e.ovT > g.t) { // Shield Overcharge (v2.28): less damage, with the brace together never more than OV cap
+    const A = ABIL.overcharge, nd = Math.max(dmg * (1 - A.cut), pre * (1 - A.cap));
+    if (nd < dmg) { logEffect(g, e.side, 'overcharge', dmg - nd); dmg = nd; }
   }
   let hit = dmg;
   if (e.shT > g.t) { hit = dmg * (1 - ABIL.shield.cut); logEffect(g, e.side, 'shield', dmg * ABIL.shield.cut); } // Emergency Shield
@@ -2222,6 +2301,8 @@ function aiUpdate(g, s, dt) {
     // Bloomspire path units (v2.21, minimal): one the AI has never trained goes to the top once, so it saves for it (its
     // simple score sits below the Razorwing's, which would otherwise always win)
     if (facOf(side.faction) === 'bloomhost') { const best = Math.max(...types.map(t => sc[t])); for (const t of types) if (UNIT_PATH[t] && UNIT_PATH[t].b === 'techlab' && !log.trained[t]) sc[t] = best + 0.1; }
+    // Axiarchs (v2.28): the same rule on every production path (Genesis Gate, Architectum, and the Celestial Array's once it has one)
+    if (facOf(side.faction) === 'axiarchs') { const best = Math.max(...types.map(t => sc[t])); for (const t of types) if (UNIT_PATH[t] && !log.trained[t]) sc[t] = best + 0.1; }
     const fits = t => used + UDEF[t].pop <= cap * fillNow && freeProducer(g, s, t);
     const top = types.filter(fits).sort((a, b) => sc[b] - sc[a])[0];
     // Save for the better unit unless the enemy is already in the base (a calm AI keeps saving while merely threatened)
@@ -2373,7 +2454,7 @@ function logCompact(L) { // over the cap: first join neighbouring unit groups th
   L.open = {};
 }
 // per ability: [uses, effect, kills]; effect: strike/corrosive damage, shield damage blocked, repair HP restored, frenzy units, brood creatures
-const newLogAb = () => ({ shield: [0, 0], strike: [0, 0, 0], repair: [0, 0], frenzy: [0, 0], brood: [0, 0], corrosive: [0, 0, 0] });
+const newLogAb = () => ({ shield: [0, 0], strike: [0, 0, 0], repair: [0, 0], frenzy: [0, 0], brood: [0, 0], corrosive: [0, 0, 0], mwarp: [0, 0], overcharge: [0, 0, 0], beam: [0, 0, 0] }); // v2.28: mwarp units moved; overcharge damage blocked, shields restored; beam damage, kills
 function logAbilityDone(L, s) { // an ability's effect builds up until the side's next cast (one at a time under the shared cooldown)
   const c = L.cur[s]; if (!c) return;
   for (let i = L.ev.length - 1; i >= 0; i--) { const e = L.ev[i]; if (e[2] === 'A' && e[1] === s && e[0] === c.t) { e[4] = Math.round(c.a); e[5] = Math.round(c.b); break; } }
@@ -2388,7 +2469,7 @@ function logAbility(g, s, k) {
 function logEffect(g, s, k, a, b = 0) { // strike: damage, kills; shield: damage blocked; repair: HP restored
   const L = g.log; if (!L) return;
   const c = L.cur[s]; if (c && c.k === k) { c.a += a; c.b += b; }
-  const T = L.tot[s].ab[k]; T[1] += a; if (k === 'strike' || k === 'corrosive') T[2] += b;
+  const T = L.tot[s].ab[k]; T[1] += a; if (k === 'strike' || k === 'corrosive' || k === 'beam' || k === 'overcharge') T[2] += b;
 }
 function logLoss(g, e) { // unit value lost per 10 s, with where it happened, for battles in the report
   const L = g.log; if (!L) return;
@@ -2412,7 +2493,7 @@ const logSpend = (g, s, kind, c, e) => { if (g.log) { const a = g.log.tot[s].spe
 
 /* ---------- Save and resume ---------- */
 // v6 adds fog of war; v7 the AI's personality (kept on its side record); v10 the shared ability cooldown; v11 the match log; v12 group orders, the selection and Regroup flags; v13 upgrade-tree paths; v14 War Factory paths. Older saves are migrated.
-const SAVE_VER = 24, SAVE_OK = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24];
+const SAVE_VER = 25, SAVE_OK = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25];
 function serialize(g, extra) {
   const live = g.ents.filter(e => e.hp > 0);
   for (const sd of g.sides) if (sd.hq.hp <= 0 && !live.includes(sd.hq)) live.push(sd.hq); // a fallen HQ inside the storm's 5 s end window
@@ -2471,6 +2552,10 @@ function deserialize(str) {
   // v21: a temporary unit records its lifetime and source (every one before v21 came from an Emergency Brood); Cloudwing timers
   for (const e of g.ents) if (e.kind === 'u' && e.disT === undefined) Object.assign(e, { dis: 0, disT: 0, slow: 0, slowT: 0, chT: 0, chTgt: 0, pulseCd: 0 }); // v24: disrupt, slow, charge and pulse timers
   for (const e of g.ents) if (e.maxShp === undefined) Object.assign(e, { shp: 0, maxShp: 0, shpT: -99, shpHit: -99 }); // v22: Axiarch shields; nothing before v22 had any
+  for (const e of g.ents) if (e.kind === 'u' && e.ovT === undefined) e.ovT = 0; // v25: Shield Overcharge
+  // v25: an Axiarch side from v22-v24 had no abilities (an empty timer list): it gets its three on the match's own schedule
+  // (first use 60 s / 120 s after the start, so available at once in a later save), with no shared cooldown running
+  for (const sd of g.sides) if (facOf(sd.faction) === 'axiarchs' && sd.ab && sd.ab.mwarp === undefined) { sd.ab = newAb(0, sd.faction); sd.abK = null; sd.abEnd = 0; }
   for (const e of g.ents) if (e.kind === 'u' && e.tLife === undefined) Object.assign(e, { tLife: e.temp ? ABIL.brood.life : 0, tSrc: e.temp ? 'brood' : null, kid: 0, spawnT: 0 });
   for (const e of g.ents) if (e.kind === 'u' && e.leapCd === undefined) Object.assign(e, { leapCd: 0, leaping: 0, lu: 0, lv: 0, ld: 0, corr: 0, corrT: 0, burstCd: 0 });
   for (const f of g.fog) for (const id in f.ghosts) if (f.ghosts[id].fac === undefined) f.ghosts[id].fac = o.v < 17 ? DEFAULT_FACTION : null;
@@ -2505,7 +2590,9 @@ function logEvText(e, me, g) { // one log event as a line of text (me: written f
     case 'N': return `Captured the ${NODE_NAME[a] || ''} field node`;
     case 'L': return `Lost the ${NODE_NAME[a] || ''} field node`;
     case 'A': return a === 'strike' ? `Orbital Strike: ${Math.round(b || 0)} damage, ${x || 0} destroyed` : a === 'shield' ? `Emergency Shield: ${Math.round(b || 0)} damage blocked` : a === 'repair' ? `Repair Pulse: ${Math.round(b || 0)} HP restored`
-      : a === 'frenzy' ? `Frenzy Bloom: ${Math.round(b || 0)} organisms frenzied` : a === 'brood' ? `Emergency Brood: ${Math.round(b || 0)} Skitterlings hatched` : `Corrosive Bloom: ${Math.round(b || 0)} damage, ${x || 0} destroyed`;
+      : a === 'frenzy' ? `Frenzy Bloom: ${Math.round(b || 0)} organisms frenzied` : a === 'brood' ? `Emergency Brood: ${Math.round(b || 0)} Skitterlings hatched`
+      : a === 'mwarp' ? `Mass Warp: ${Math.round(b || 0)} units warped` : a === 'overcharge' ? `Shield Overcharge: ${Math.round(b || 0)} damage blocked, ${Math.round(x || 0)} shields restored` // v2.28
+      : a === 'beam' ? `Purification Beam: ${Math.round(b || 0)} damage, ${x || 0} destroyed` : `Corrosive Bloom: ${Math.round(b || 0)} damage, ${x || 0} destroyed`;
     case 'H': return 'HQ shield down';
     case 'O': return `Order: ${a === 'all' ? 'whole army' : a === 'group' ? GROUP_NAME[b] : (PLURAL[b] || b)} ${ORDER_NAME[x] ? ORDER_NAME[x].toLowerCase() : x}`;
     case 'G': return b ? 'Feint attack launched (pulled back)' : `Attack launched${a === 'siege' ? ' (siege)' : ''}`;
@@ -2575,6 +2662,7 @@ function logMoments(g) { // up to 8 recorded turning points, in time order
     else if (k === 'D' && ['factory', 'techlab', 'turret', 'refinery'].includes(a)) c.push({ t, p: 5, txt: `${who(s)} ${logBName(g, s, a)} destroyed` });
     else if (k === 'N' || k === 'L') c.push({ t, p: k === 'L' ? 4 : 3, txt: `${s === 0 ? 'You' : 'The enemy'} ${k === 'N' ? 'captured' : 'lost'} the ${NODE_NAME[a]} field node` });
     else if (k === 'A' && a === 'corrosive' && b >= 400) c.push({ t, p: 5 + b / 1000, txt: `${s === 0 ? 'Your' : 'Enemy'} Corrosive Bloom: ${b} damage, ${e[5]} destroyed` });
+    else if (k === 'A' && a === 'beam' && b >= 400) c.push({ t, p: 5 + b / 1000, txt: `${s === 0 ? 'Your' : 'Enemy'} Purification Beam: ${b} damage, ${e[5]} destroyed` }); // v2.28
     else if (k === 'A' && a === 'strike' && b >= 400) c.push({ t, p: 5 + b / 1000, txt: `${s === 0 ? 'Your' : 'Enemy'} Orbital Strike: ${b} damage, ${e[5]} destroyed` });
     else if (k === 'T' && ['titan', 'aircraft', 'artillery'].includes(a) && !firstUnit[s + a]) { firstUnit[s + a] = 1; c.push({ t, p: 2, txt: `${s === 0 ? 'Your' : 'Enemy'} first ${UDEF[a].name}` }); }
     else if (k === 'X') c.push({ t, p: 8, txt: 'The Extinction Event began' });
@@ -4481,6 +4569,7 @@ function drawUnit(c, u) {
   c.restore();
   if (u.shT > VFX.lastT) drawShield(c, u, VFX.lastT);
   if (VFX.g) drawAxFx(c, VFX.g, u, w); // v2.27: a Marksman's charge, a Gravemantle's aura, slowed and disrupted marks
+  if (u.ovT > VFX.lastT) drawOvercharge(c, u, w, VFX.lastT); // v2.28
   if (u.maxShp && VFX.g && VFX.g.t - u.shpHit < 0.3) drawShpHit(c, w.x, w.y - u.z, visH(u.type) * US, (VFX.g.t - u.shpHit) / 0.3); // Axiarch shields hit (v2.25)
   if (u.corrT > VFX.lastT) drawCorrosion(c, u, w); // v2.19
   if (u.frzT > VFX.lastT) { // Frenzy Bloom: a pulsing pink glow (v2.20), larger and brighter with a ring at the feet (v2.21)
@@ -4649,8 +4738,15 @@ function vfxScan(g, dt) {
     r.f = frame;
     if (a.k === 'strike' && !r.warned && a.side !== 0 && lit(a.u)) { r.warned = 1; if (VFX.primed) { sfx('siren'); toast('Enemy orbital strike incoming!', 'bad'); } }
     if (a.k === 'strike' && a.done && !r.boom) { r.boom = 1; onStrike(g, a, lit); }
+    if (a.k === 'beam') { // v2.28: the enemy's warning only where the player can see the strip; the sweep's sound likewise
+      const seen = beamSeen(a, lit);
+      if (!r.warned && a.side !== 0 && seen) { r.warned = 1; if (VFX.primed) { sfx('siren'); toast('Enemy beam incoming!', 'bad'); } }
+      if (!r.boom && g.t >= a.t0 + ABIL.beam.delay) { r.boom = 1; if (seen) { sfx('orbital', a.u); if (onView(a.u) && VFX.q > 0 && !VFX.reduced) VFX.shake = Math.max(VFX.shake, 4); } }
+    }
+    if (a.k === 'mwarp' && a.done && !r.boom) { r.boom = 1; if (a.side === 0 || lit(a.wu)) sfx('warp', a.wu); } // the arrival
   }
   for (const a of VFX.prevA) { const r = R.get(a); if (r && r.f !== frame && a.k === 'strike' && !r.boom) { r.boom = 1; onStrike(g, a, lit); } }
+  for (const a of VFX.prevA) { const r = R.get(a); if (r && r.f !== frame && a.k === 'mwarp' && a.done && !r.boom) { r.boom = 1; if (a.side === 0 || lit(a.wu)) sfx('warp', a.wu); } } // a Mass Warp that ended and left between frames (v2.28)
   VFX.prevA.length = 0; for (const a of g.abil) VFX.prevA.push(a);
 }
 const titanStep = u => Math.floor((u.anim * 3.2 - Math.PI / 2) / Math.PI);
@@ -4801,8 +4897,14 @@ function onAbilCast(g, a, lit) {
   else if (a.k === 'frenzy') { vFx('ring', w.x, w.y, 10, 0.5, '#ff9ae0', 2, ABIL.frenzy.r, 1, 2.5); sfx('shieldUp', w.x); } // v2.20
   else if (a.k === 'corrosive') { vFx('ring', w.x, w.y, 10, 0.7, '#c4f58e', 2, ABIL.corrosive.r, 1, 2.2); sfx('pulse', w.x); }
   else if (a.k === 'brood') sfx('whistle', w.x); // the pod is on its way (drawn by drawAbilities)
+  else if (a.k === 'overcharge') { vFx('ring', w.x, w.y, 10, 0.5, '#bff4ff', 2, ABIL.overcharge.r, 1, 2.5); sfx('shieldUp', w.x); } // v2.28
+  else if (a.k === 'mwarp') sfx('warp', w.x); // the channel (drawn by drawAbilities); the arrival is heard where it is seen
   else if (a.side === 0) sfx('uplink');
 }
+// The Purification Beam's strip (v2.28): its two ends along the lane, the start being the end away from the target side
+const beamEnds = a => { const h = ABIL.beam.len / 2 * dirOf(a.side); return [a.u - h, a.u + h]; };
+// What the player may see of an enemy ability that covers more than one spot (v2.28): any of its points in view
+const beamSeen = (a, lit) => a.side === 0 || beamEnds(a).some(u => lit(u)) || lit(a.u);
 function onStrike(g, a, lit) { // the blast is drawn where the player may see it; hidden units caught in it show nothing
   if (!abilSeen(a, lit)) return;
   const w = P(a.u, a.v), R0 = ABIL.strike.r;
@@ -4819,6 +4921,8 @@ function onStrike(g, a, lit) { // the blast is drawn where the player may see it
 // Drawn straight from the SIM's ability list, outside the pools, so the quality fallback can never cut a strike warning
 function drawAbilities(c, g, lit, time) {
   for (const a of g.abil) {
+    if (a.k === 'beam') { if (beamSeen(a, lit)) drawBeamStrip(c, g, a, time); continue; } // v2.28
+    if (a.k === 'mwarp') { drawMassWarp(c, g, a, lit, time); continue; }
     if (!abilSeen(a, lit)) continue;
     const w = P(a.u, a.v), A = ABIL[a.k], ry = DY;
     if (a.k === 'repair') {
@@ -4855,6 +4959,62 @@ function drawAbilities(c, g, lit, time) {
       c.fillText(left.toFixed(1), w.x, w.y - A.r * ry - 8);
     }
   }
+}
+// Purification Beam (v2.28): during the warning, the strip outlined in pale violet-white with a countdown; then a column
+// of light sweeps along it, leaving a fading scorched band behind the head
+function drawBeamStrip(c, g, a, time) {
+  const A = ABIL.beam, [u0, u1] = beamEnds(a), y0 = P(0, a.v - A.w).y, y1 = P(0, a.v + A.w).y, lo = Math.min(u0, u1), wdt = Math.abs(u1 - u0);
+  const warm = g.t - a.t0, left = A.delay - warm;
+  if (left > 0) {
+    const k = clamp(warm / A.delay, 0, 1), pulse = 0.6 + 0.4 * Math.sin(time * 12);
+    c.fillStyle = `rgba(200,225,255,${0.08 + 0.12 * k})`; c.fillRect(lo, y0, wdt, y1 - y0);
+    c.strokeStyle = `rgba(190,215,255,${0.55 + 0.45 * pulse})`; c.lineWidth = 2; c.setLineDash([8, 6]); c.strokeRect(lo, y0, wdt, y1 - y0); c.setLineDash([]);
+    c.strokeStyle = 'rgba(235,245,255,0.85)'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(u0, y0); c.lineTo(u0, y1); c.stroke(); // where the sweep starts
+    const ax = u0 + (u1 - u0) * 0.5, ay = (y0 + y1) / 2, d = Math.sign(u1 - u0); // an arrow along the sweep
+    c.beginPath(); c.moveTo(ax - d * 14, ay); c.lineTo(ax + d * 10, ay); c.moveTo(ax + d * 4, ay - 5); c.lineTo(ax + d * 10, ay); c.lineTo(ax + d * 4, ay + 5); c.stroke();
+    c.fillStyle = '#fff'; c.font = '700 14px -apple-system,system-ui,sans-serif'; c.textAlign = 'center'; c.fillText(left.toFixed(1), a.u, y0 - 8);
+    if (left < 0.7) { const b = 1 - left / 0.7; c.strokeStyle = `rgba(215,200,255,${0.25 + 0.5 * b})`; c.lineWidth = 2 + b * 5; c.beginPath(); c.moveTo(u0, y0 - 600); c.lineTo(u0, (y0 + y1) / 2); c.stroke(); } // the beam descends
+    return;
+  }
+  const at = a.done ? 1 : a.at, hx = u0 + (u1 - u0) * at, fade = a.done ? clamp((a.end - g.t) * 4 + 0.3, 0, 1) : 1;
+  c.globalCompositeOperation = 'lighter';
+  c.fillStyle = `rgba(170,150,255,${0.22 * fade})`; c.fillRect(Math.min(u0, hx), y0, Math.abs(hx - u0), y1 - y0); // the burned band
+  if (!a.done) {
+    const gr = c.createLinearGradient(0, y0 - 420, 0, (y0 + y1) / 2);
+    gr.addColorStop(0, 'rgba(200,190,255,0)'); gr.addColorStop(1, 'rgba(235,240,255,0.9)');
+    c.fillStyle = gr; c.fillRect(hx - 7, y0 - 420, 14, (y1 - y0) / 2 + 420);
+    c.fillStyle = 'rgba(255,255,255,0.95)'; c.fillRect(hx - 2, y0 - 420, 4, (y1 - y0) / 2 + 420);
+    stamp(c, GLOW.white, hx, (y0 + y1) / 2, A.w * 1.1, 0.9); stamp(c, GLOW.cyan, hx, (y0 + y1) / 2, A.w * 1.6, 0.7);
+    if (VFX.rnd() < 0.8 * QMUL[VFX.q]) vPart(hx + vr(-4, 4), vr(y0, y1), vr(-30, 30), vr(-90, -30), vr(0.3, 0.6), 2, 1, '#e6ecff', 0, 0);
+  }
+  c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
+}
+// Mass Warp (v2.28): the channel on each chosen unit (a pale column, like a warp-in) and a ring at the cast spot; a matching
+// glow at the warp point. Enemy parts show only where the player can see them; the units themselves are drawn only in view.
+function drawMassWarp(c, g, a, lit, time) {
+  if (a.done) return;
+  const k = clamp((g.t - a.t0) / ABIL.mwarp.ch, 0, 1), mine = a.side === 0;
+  c.globalCompositeOperation = 'lighter';
+  if (mine || lit(a.u)) { const w = P(a.u, a.v), r = ABIL.mwarp.r * (1 - 0.3 * k); c.strokeStyle = `rgba(${TEAM[a.side].glow},${0.3 + 0.4 * k})`; c.lineWidth = 1.6; c.setLineDash([6, 6]); c.beginPath(); c.ellipse(w.x, w.y, r, r * DY, 0, 0, 7); c.stroke(); c.setLineDash([]); }
+  for (const id of a.ids) {
+    const e = g.ents.find(x => x.id === id && x.hp > 0);
+    if (!e || !(mine || visibleTo(g, 0, e))) continue;
+    const p = P(e.u, e.v), h = (UDEF[e.type].air ? e.z + 30 : 34) + 12 * k;
+    const gr = c.createLinearGradient(0, p.y, 0, p.y - h); gr.addColorStop(0, `rgba(160,230,255,${0.2 + 0.5 * k})`); gr.addColorStop(1, 'rgba(160,230,255,0)');
+    c.fillStyle = gr; c.fillRect(p.x - 7 - 3 * k, p.y - h, 14 + 6 * k, h);
+    c.strokeStyle = `rgba(225,248,255,${0.4 + 0.5 * k})`; c.lineWidth = 1.2; c.beginPath(); c.ellipse(p.x, p.y, 12 - 4 * k, (12 - 4 * k) * 0.42, 0, 0, 7); c.stroke();
+  }
+  if (mine || lit(a.wu)) { const p = P(a.wu, a.wv), r = 18 + 10 * k; stamp(c, GLOW.cyan, p.x, p.y - 10, r, 0.3 + 0.5 * k); c.strokeStyle = `rgba(225,248,255,${0.4 + 0.5 * k})`; c.lineWidth = 1.4; c.beginPath(); c.ellipse(p.x, p.y, r, r * 0.42, 0, 0, 7); c.stroke(); }
+  c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
+}
+// Shield Overcharge on a unit (v2.28): its shield shell glows bright and steady, with sparks running over it
+function drawOvercharge(c, u, w, t) {
+  const h = visH(u.type) * US, r = Math.max(10, h * 0.75), y = w.y - u.z, k = 0.5 + 0.5 * Math.sin(t * 10 + u.id), fade = Math.min(1, u.ovT - t);
+  c.globalCompositeOperation = 'lighter'; stamp(c, GLOW.cyan, w.x, y - h * 0.5, Math.max(14, h * 1.1), (0.45 + 0.2 * k) * fade); c.globalCompositeOperation = 'source-over';
+  c.globalAlpha = (0.6 + 0.3 * k) * fade; c.strokeStyle = '#d8f8ff'; c.lineWidth = 1.6;
+  c.beginPath(); c.ellipse(w.x, y - h * 0.5, r * 0.85, r, 0, 0, 7); c.stroke();
+  c.strokeStyle = '#7fe0ff'; c.lineWidth = 1; c.beginPath(); c.ellipse(w.x, y - h * 0.5, r * 0.85, r, 0, t * 4 + u.id, t * 4 + u.id + 1.2); c.stroke();
+  c.globalAlpha = 1;
 }
 // Shield bubble: drawn once per team into a small canvas, then stamped (no paths or colour strings per unit per frame)
 const BUBBLE = [0, 1].map(s => {
@@ -4910,7 +5070,19 @@ function drawShield(c, u, t) { // a shimmering bubble around a shielded unit, fa
 function drawAim(c, g) {
   if (!aim || !aim.placed) return;
   const A = ABIL[aim.k], w = P(aim.u, aim.v), col = aim.ok ? AB_COL[aim.k] : '#ff4d4d';
-  if (aim.ok && (aim.k === 'shield' || aim.k === 'repair' || aim.k === 'frenzy')) { // abilities on your own units: show who is covered
+  if (aim.k === 'beam') { // v2.28: the strip it will sweep, and which way
+    const v = clamp(aim.v, -LANE_V, LANE_V), [u0, u1] = beamEnds({ u: aim.u, side: 0 }), y0 = P(0, v - A.w).y, y1 = P(0, v + A.w).y;
+    c.globalAlpha = 0.16; c.fillStyle = col; c.fillRect(Math.min(u0, u1), y0, Math.abs(u1 - u0), y1 - y0);
+    c.globalAlpha = 1; c.strokeStyle = col; c.lineWidth = 2.4; c.setLineDash([8, 6]); c.strokeRect(Math.min(u0, u1), y0, Math.abs(u1 - u0), y1 - y0); c.setLineDash([]);
+    c.globalAlpha = 0.5; c.lineWidth = 1.2; c.beginPath(); c.ellipse(w.x, w.y, A.r, A.r * DY, 0, 0, 7); c.stroke(); c.globalAlpha = 1; // tap inside to confirm
+    return;
+  }
+  if (aim.ok && aim.k === 'mwarp') { // v2.28: the units that will warp, and where to
+    const wp = warpPoint(g, 0), q = P(wp.u, wp.v); c.strokeStyle = col; c.lineWidth = 1.2; c.globalAlpha = 0.9;
+    for (const e of mwarpPick(g, 0, aim.u, aim.v)) { const p = P(e.u, e.v); c.beginPath(); c.ellipse(p.x, p.y, 9, 4, 0, 0, 7); c.stroke(); }
+    c.setLineDash([3, 5]); c.beginPath(); c.moveTo(w.x, w.y); c.lineTo(q.x, q.y); c.stroke(); c.setLineDash([]); c.globalAlpha = 1;
+  }
+  if (aim.ok && (aim.k === 'shield' || aim.k === 'repair' || aim.k === 'frenzy' || aim.k === 'overcharge')) { // abilities on your own units: show who is covered
     c.strokeStyle = col; c.lineWidth = 1.2; c.globalAlpha = 0.9;
     for (const e of g.ents) if (e.side === 0 && e.hp > 0 && (e.kind === 'u' || aim.k === 'repair') && inAbil(e, aim.u, aim.v, A.r)) { const p = P(e.u, e.v); c.beginPath(); c.ellipse(p.x, p.y, e.kind === 'b' ? e.half * BS : 9, (e.kind === 'b' ? e.half * BS : 9) * 0.45, 0, 0, 7); c.stroke(); }
   }
@@ -4923,12 +5095,12 @@ function drawStrikeAlerts(c, g, lit, time) {
   const hw = V.cw / 2 / V.S, top = V.ft, bot = V.fb;
   let n = 0;
   for (const a of g.abil) {
-    if (a.k !== 'strike' || a.done || !abilSeen(a, lit) || Math.abs(a.u - cam.x) < hw - 20) continue;
+    if (!(a.k === 'strike' || a.k === 'beam') || a.done || !(a.k === 'beam' ? beamSeen(a, lit) : abilSeen(a, lit)) || Math.abs(a.u - cam.x) < hw - 20) continue; // v2.28: the Beam too
     const right = a.u > cam.x, y = (top + bot) / 2, x = right ? V.cw - 145 : 75, k = 0.6 + 0.4 * Math.sin(time * 10);
     c.fillStyle = a.side === 0 ? `rgba(255,140,90,${k})` : `rgba(255,70,70,${k})`;
     c.beginPath(); const d = right ? 1 : -1; c.moveTo(x + d * 16, y); c.lineTo(x - d * 4, y - 14); c.lineTo(x - d * 4, y + 14); c.closePath(); c.fill();
     c.fillStyle = '#fff'; c.font = '700 12px -apple-system,system-ui,sans-serif'; c.textAlign = 'center';
-    c.fillText(`${Math.max(0, a.end - g.t).toFixed(1)}s`, x + d * 2, y + 30);
+    c.fillText(`${Math.max(0, (a.k === 'beam' ? a.t0 + ABIL.beam.delay : a.end) - g.t).toFixed(1)}s`, x + d * 2, y + 30);
     n++;
   }
   return n;
@@ -5207,10 +5379,13 @@ function render(c, g, time, sel, selPad) {
         c.fillStyle = 'rgba(0,0,0,0.6)'; c.fillRect(w.x - 22, y, 44, 3.5);
         c.fillStyle = TEAM[e.side].main; c.fillRect(w.x - 22, y, 44 * e.prodT / UDEF[e.queue[0]].time, 3.5);
       }
-    } else if (e.shT > g.t || e.hp < e.maxHp || e.temp || e.shp < e.maxShp) {
+    } else if (e.shT > g.t || e.hp < e.maxHp || e.temp || e.shp < e.maxShp || e.ovT > g.t) {
       const d = UDEF[e.type], w = P(e.u, e.v), y = w.y - e.z - visH(e.type) * US - 9, bw = d.air ? 28 : Math.max(18, d.h * 0.9 + 6);
       if (e.shT > g.t) { // shield timer: a ring that empties as the shield runs out
         c.strokeStyle = TEAM[e.side].light; c.lineWidth = 1.6; c.beginPath(); c.arc(w.x - bw / 2 - 5, y + 1, 3.2, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * clamp((e.shT - g.t) / ABIL.shield.dur, 0, 1)); c.stroke();
+      }
+      if (e.ovT > g.t) { // Shield Overcharge timer (v2.28): a pale-cyan ring that empties as it runs out
+        c.strokeStyle = '#bff4ff'; c.lineWidth = 1.6; c.beginPath(); c.arc(w.x - bw / 2 - 5, y + 1, 3.2, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * clamp((e.ovT - g.t) / ABIL.overcharge.dur, 0, 1)); c.stroke();
       }
       if (e.temp) { // a temporary unit (v2.20): a ring that empties as its lifetime runs out
         c.strokeStyle = '#e8d2a8'; c.lineWidth = 1.6; c.beginPath(); c.arc(w.x + bw / 2 + 5, y + 1, 3.2, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * clamp((e.temp - g.t) / (e.tLife || ABIL.brood.life), 0, 1)); c.stroke();
@@ -5446,16 +5621,13 @@ function showInfo(kind, type) {
       <div class="irow"><em>Cost</em> ${d.cost.c} credits${d.cost.e ? `, ${d.cost.e} energy` : ''}${d.splash ? ', splash damage' : ''}</div>
       <div class="irow"><em>Strong against</em> ${UNIT_TIPS[type][0]}</div>
       <div class="irow"><em>Weak against</em> ${UNIT_TIPS[type][1]}</div>`;
-  } else if (kind === 'soon') { // an Axiarch ability that isn't in yet (v2.25)
-    name = type; sub = 'Commander ability · coming soon';
-    body = `<div class="irow">${factionName(pFac())} commander abilities are coming soon: ${FACTIONS[pFac()].soonAbil.join(', ')}.</div>`;
   } else if (kind === 'a') {
     const A = ABIL[type];
     name = A.name; sub = 'Commander ability';
-    body = `<div class="istats">${stat('Credits', A.cost.c)}${stat('Energy', A.cost.e)}${stat('Cooldown', A.cd + 's')}${stat('Radius', A.r)}</div>
+    body = `<div class="istats">${stat('Credits', A.cost.c)}${stat('Energy', A.cost.e)}${stat('Cooldown', A.cd + 's')}${type === 'beam' ? stat('Strip', `${A.len}×${A.w * 2}`) : stat('Radius', A.r)}</div>
       <div class="irow">${A.tip}</div>
       <div class="irow"><em>Shared cooldown</em> Using any ability locks all three for the used one's cooldown (${(game ? abList(game.sides[0]) : ABIL_ORDER).map(k2 => `${ABIL[k2].name} ${ABIL[k2].cd} s`).join(', ')}).</div>
-      <div class="irow"><em>Available</em> ${A.first} s after GO${A.req ? `, with ${A.reqTier ? 'your' : 'a'} ${abilReqText(A)}` : ''}. Tap the button, tap the battlefield, then tap inside the circle to confirm.</div>`;
+      <div class="irow"><em>Available</em> ${A.first} s after GO${A.req ? `, with ${A.reqTier ? 'your' : 'a'} ${abilReqText(A, pFac())}` : ''}. Tap the button, tap the battlefield, then tap inside the circle to confirm.</div>`;
   } else if (treeOf(pFac(), type)) { // a building with an upgrade tree
     const d = BD(pFac(), type), T = treeOf(pFac(), type);
     name = d.name; sub = (d.req ? `Requires ${BD(pFac(), d.req).name} · ` : '') + 'picks a path at T2';
@@ -5648,7 +5820,7 @@ const AB_ICON = {
   strike: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5" fill="none" stroke="#ff7a5c" stroke-width="2.6"/><path d="M12 1v7M12 16v7M1 12h7M16 12h7" stroke="#ff7a5c" stroke-width="2.6"/></svg>',
   repair: '<svg viewBox="0 0 24 24"><path d="M9.5 3h5v6.5H21v5h-6.5V21h-5v-6.5H3v-5h6.5z" fill="#5dff8a"/></svg>',
 };
-const AB_COL = { shield: '#39c8ff', strike: '#ff7a5c', repair: '#5dff8a', frenzy: '#ff8ad8', brood: '#e8d2a8', corrosive: '#b6ff5a' };
+const AB_COL = { shield: '#39c8ff', strike: '#ff7a5c', repair: '#5dff8a', frenzy: '#ff8ad8', brood: '#e8d2a8', corrosive: '#b6ff5a', mwarp: '#9fe8ff', overcharge: '#7fe0ff', beam: '#c9b8ff' };
 // Bloomhost's three (v2.20)
 const AB_ICON_BH = {
   frenzy: '<svg viewBox="0 0 24 24"><path d="M12 2c3 4 7 6 7 12a7 7 0 0 1-14 0c0-6 4-8 7-12z" fill="#ff8ad8"/></svg>',
@@ -5656,25 +5828,15 @@ const AB_ICON_BH = {
   corrosive: '<svg viewBox="0 0 24 24"><circle cx="8" cy="14" r="4" fill="#b6ff5a"/><circle cx="15" cy="10" r="5" fill="#8ad63a"/><circle cx="16" cy="17" r="3" fill="#b6ff5a"/></svg>',
 };
 Object.assign(AB_ICON, AB_ICON_BH);
+// The Axiarchs' three (v2.28; until then locked "Soon" buttons)
+Object.assign(AB_ICON, {
+  mwarp: '<svg viewBox="0 0 24 24"><path d="M7 4l5 5-5 5-5-5z" fill="none" stroke="#9fe8ff" stroke-width="1.8"/><path d="M17 10l5 5-5 5-5-5z" fill="#9fe8ff"/><path d="M10 12l4 2" stroke="#9fe8ff" stroke-width="1.6"/></svg>',
+  overcharge: '<svg viewBox="0 0 24 24"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z" fill="none" stroke="#7fe0ff" stroke-width="2"/><path d="M13 6l-4 7h3l-1 5 4-7h-3z" fill="#bff4ff"/></svg>',
+  beam: '<svg viewBox="0 0 24 24"><path d="M10 1h4v14h-4z" fill="#c9b8ff"/><path d="M3 17h18v4H3z" fill="none" stroke="#c9b8ff" stroke-width="1.8"/><path d="M7 15l-2 2M17 15l2 2" stroke="#c9b8ff" stroke-width="1.6"/></svg>',
+});
 let aim = null; // { k, placed, u, v, ok, msg }
-// A faction whose abilities aren't in yet shows them locked as "Soon" (Axiarchs, v2.25)
-const AB_SOON_ICON = '<svg viewBox="0 0 24 24"><path d="M12 2l8 10-8 10-8-10z" fill="none" stroke="#9fb4d8" stroke-width="2"/><circle cx="12" cy="12" r="2.4" fill="#9fb4d8"/></svg>';
 function buildAbil() {
   const box = $('abil'); box.innerHTML = '';
-  const F = game ? FACTIONS[facOf(game.sides[0].faction)] : null;
-  if (F && !F.abilities) {
-    for (const name of F.soonAbil || []) {
-      const el = document.createElement('button');
-      el.className = 'ab lock'; el.dataset.soon = '1'; el.style.setProperty('--ac', '#9fb4d8'); el.setAttribute('aria-label', `${name}: coming soon`);
-      el.innerHTML = `<span class="ring"></span>${AB_SOON_ICON}<small>Soon</small>`;
-      el.addEventListener('click', () => { if (lp && lp.el === el && lp.fired) { lp.fired = false; return; } if (!game || paused || !running) return; toast(`${name}: ${F.name} commander abilities are coming soon`, 'bad'); });
-      el.addEventListener('pointerdown', () => { if (lp) clearTimeout(lp.timer); lp = { el, fired: false, timer: setTimeout(() => { lp.fired = true; closePanel(); showInfo('soon', name); }, 420) }; });
-      for (const n of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(n, () => { if (lp && lp.el === el) clearTimeout(lp.timer); });
-      el.addEventListener('contextmenu', e => e.preventDefault());
-      box.appendChild(el);
-    }
-    return;
-  }
   for (const k of game ? abList(game.sides[0]) : ABIL_ORDER) { // the player's faction's three (v2.20)
     const el = document.createElement('button');
     el.className = 'ab'; el.dataset.k = k; el.style.setProperty('--ac', AB_COL[k]); el.setAttribute('aria-label', ABIL[k].name);
@@ -5727,7 +5889,6 @@ function refreshAbil() {
   if (!show) { if (aim) endAim(); return; }
   const s = game.sides[0];
   for (const el of box.children) {
-    if (el.dataset.soon) continue; // placeholders stay locked
     const k = el.dataset.k, A = ABIL[k], wait = s.ab[k] - game.t, locked = !abilUnlocked(game, 0, A);
     const cool = wait > 0, poorC = s.res.c < A.cost.c, poorE = s.res.e < A.cost.e, gate = game.countdown > 0;
     const shared = s.abK && Math.abs(s.ab[k] - s.abEnd) < 1e-6, total = shared ? ABIL[s.abK].cd : A.first; // one shared ring on all three
@@ -5738,7 +5899,7 @@ function refreshAbil() {
     el.classList.toggle('src', !locked && cool && shared && s.abK === k);
     el.style.setProperty('--p', cool ? clamp(wait / total, 0, 1).toFixed(3) : 0);
     setHTML(el.querySelector('small'), locked ? (A.req === 'hq' ? `HQ T${A.reqTier}` : BDEF[A.req].name.split(' ').pop()) : cool ? fmtCd(wait) : `<span class="${poorC ? 'no' : ''}">${A.cost.c}</span>·<span class="${poorE ? 'no' : 'e'}">${A.cost.e}</span>`);
-    el.setAttribute('aria-label', `${A.name}: ${locked ? `needs ${A.reqTier ? 'your' : 'a'} ${abilReqText(A)}` : cool ? `ready in ${Math.ceil(wait)} seconds${shared ? ` (shared cooldown from ${ABIL[s.abK].name})` : ''}` : `${A.cost.c} credits, ${A.cost.e} energy`}`);
+    el.setAttribute('aria-label', `${A.name}: ${locked ? `needs ${A.reqTier ? 'your' : 'a'} ${abilReqText(A, s.faction)}` : cool ? `ready in ${Math.ceil(wait)} seconds${shared ? ` (shared cooldown from ${ABIL[s.abK].name})` : ''}` : `${A.cost.c} credits, ${A.cost.e} energy`}`);
   }
 }
 function refreshUI(force) {
@@ -6145,7 +6306,8 @@ function repSummary(g) {
   const units = t => { const ks = Object.keys(UDEF).filter(k => t.trained[k] || t.lost[k]); return `${sum(t.trained)} (${sum(t.lost)})${ks.length ? ': ' + ks.map(k => `${UDEF[k].name} ${t.trained[k] || 0} (${t.lost[k] || 0})`).join(', ') : ''}`; };
   const blds = t => `${sum(t.bBuilt)} · ${t.bUp} · ${sum(t.bLost)}${sum(t.bLost) ? ` (${Object.keys(t.bLost).map(k => `${logBName(g, T.indexOf(t), k)}${t.bLost[k] > 1 ? ' ×' + t.bLost[k] : ''}`).join(', ')})` : ''}${t.bSold ? ` · ${t.bSold} sold` : ''}`;
   const ABT = { strike: a => `Strike ×${a[0]}: ${fmtN(a[1])} damage, ${a[2]} destroyed`, shield: a => `Shield ×${a[0]}: ${fmtN(a[1])} blocked`, repair: a => `Repair ×${a[0]}: ${fmtN(a[1])} HP`,
-    frenzy: a => `Frenzy ×${a[0]}: ${fmtN(a[1])} organisms`, brood: a => `Brood ×${a[0]}: ${fmtN(a[1])} Skitterlings`, corrosive: a => `Corrosive ×${a[0]}: ${fmtN(a[1])} damage, ${a[2]} destroyed` }; // v2.20: Bloomhost's too
+    frenzy: a => `Frenzy ×${a[0]}: ${fmtN(a[1])} organisms`, brood: a => `Brood ×${a[0]}: ${fmtN(a[1])} Skitterlings`, corrosive: a => `Corrosive ×${a[0]}: ${fmtN(a[1])} damage, ${a[2]} destroyed`, // v2.20: Bloomhost's too
+    mwarp: a => `Mass Warp ×${a[0]}: ${fmtN(a[1])} units`, overcharge: a => `Overcharge ×${a[0]}: ${fmtN(a[1])} blocked, ${fmtN(a[2])} shields`, beam: a => `Beam ×${a[0]}: ${fmtN(a[1])} damage, ${a[2]} destroyed` }; // v2.28: the Axiarchs'
   const abil = t => Object.keys(ABT).filter(k => t.ab[k] && t.ab[k][0]).map(k => ABT[k](t.ab[k])).join(' · ') || 'none';
   const PATHS = [0, 1].map(s => [...new Set(L.ev.filter(e => e[2] === 'U' && e[1] === s && e[6] && treeOf(g.sides[s].faction, e[3])).map(e => `${logBName(g, s, e[3])}: ${treeOf(g.sides[s].faction, e[3])[e[6]].name}`))].join(', ')); // from the recorded path choices
   const row = (h, f) => `<tr><th>${h}</th><td>${f(T[0])}</td><td class="e">${f(T[1])}</td></tr>`;

@@ -193,3 +193,21 @@ New weapon tables (light / heavy / vehicle / air / building): riftblade 1.5 / 0.
 AI path choice, translated from each personality's Last Fist choice: Barracks Specialists → Genesis Gate Lattice, Mass Deployment → Riftwalk; War Factory Siege → Architectum Rupture, Assault → Dominion. The AI's siege and artillery lists (`AI_SIEGE`, `AI_ART`) now count Rift Mortars and Worldbreakers (artillery: the Rift Mortar).
 
 Saves v24 add disrupt, slow, charge and pulse timers on every unit (zero on older saves). Distortion zones carry `kind: 'dist'` in the acid-pool list.
+
+=== v2.28 COMMANDER ABILITIES (implementation record; not tuned) ===
+
+One shared cooldown on the existing system: a cast locks all three for the cast ability's cooldown (`side.ab`, `side.abK`, `side.abEnd`). The "Soon" buttons are replaced by the three real ones. Costs, cooldowns, first use and unlock are the Last Fist counterpart's (`ABIL[k].like`). Code: `ABIL.mwarp`, `ABIL.overcharge`, `ABIL.beam` in index.html.
+
+| Ability | Mirrors | Cost | Cooldown | First use | Unlock | Target | Effect (first-pass) |
+|---|---|---|---|---|---|---|---|
+| Mass Warp | Repair Pulse | 100/75 | 50 s | 60 s after GO | none | ground in view, with your units in the 120 circle | Up to 8 of your units in the circle (the most damaged first, by health plus shields, then the nearest) channel for 2 s, then move to valid spots at the warp point shown at the cast (the current one if that left the field; the Axis if no spot is valid). Units die normally during the channel. Moves units only: nothing is created or removed. A unit on Hold holds where it arrives. |
+| Shield Overcharge | Emergency Shield | 75/75 | 50 s | 60 s | none | ground in view, 110 circle | Your Axiarch units in the circle: shields regenerate 30% of maximum per second for 7 s, even while taking damage, and they take 25% less damage. With the Bastion's brace, the two together never cut more than 50%. Shields only: no health, no invulnerability. A second cast refreshes, never stacks. Stored as game time (`unit.ovT`), so pause, speed and save/load keep it exact. |
+| Purification Beam | Orbital Strike | 150/150 | 100 s | 120 s | Axis T2 | explored ground on the lane | After a 3 s warning (the strip outlined, a countdown, the beam descending), a beam sweeps a 220 × 80 strip along the lane over 1.5 s, from the caster's end toward the enemy. Each enemy ground unit and building it passes takes 240 once (weapon table `beam`: 1.0 to every ground armor and buildings, 0 to aircraft). A shielded HQ takes nothing (the existing HQ shield rule in `damage()`). |
+
+Hidden faction: an enemy cast shows and sounds only where the player can see it. Mass Warp: the circle where the cast spot is in view, the channel on each unit the player can see, the glow at the warp point where that is in view. The Beam: its strip, warning toast ("Enemy beam incoming!"), siren and sweep sound only if part of the strip is in view; off-screen it gets the Orbital Strike's edge arrow. Overcharge: the cast ring where in view; the glow is drawn on units, which are drawn only in view.
+
+Match log and report: the same 'A' timeline line as the other factions (filled in at the side's next cast or the end of the match): "Mass Warp: N units warped", "Shield Overcharge: N damage blocked, N shields restored", "Purification Beam: N damage, N destroyed". The report's ability row and the key moments (a Beam of 400+ damage) include them.
+
+AI (minimal): Shield Overcharge uses Emergency Shield's logic (`aiShieldTarget`), the Purification Beam the Orbital Strike's (`aiStrikeTarget`, scored on the strip, without aircraft). Mass Warp (`aiMassWarpTarget`): cast when 4 or more of its units below 40% health are within the circle of one of them, at least 200 from the warp point; weighed like the Repair Pulse. Production: the Bloomspire "train each path unit once" rule now applies to every Axiarch production path (`UNIT_PATH`, so the Celestial Array's units once it has a tree), so the AI trains Gravemantles and Eventides on Dominion.
+
+Saves v25: `unit.ovT`; Mass Warp channels and Beams in progress are in the ability list. A v22–v24 Axiarch side (no abilities, an empty timer list) gets its three on the match's own schedule (first use 60 s / 120 s after the start), with no shared cooldown running.

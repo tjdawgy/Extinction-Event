@@ -64,3 +64,73 @@ test('an enemy Axiarch field and its warps in the fog show nothing and make no s
   assert.deepStrictEqual(errors, []);
   await page.close();
 });
+
+test('v2.28: Mass Warp, Shield Overcharge and Purification Beam cast through the buttons (tap, place, confirm); the long-press card', { skip }, async () => {
+  const { page, errors } = await openPage(browser, NARROW);
+  await page.click('#meSeg [data-f="axiarchs"]'); await page.click('#foeSeg [data-f="lastfist"]'); await page.click('#bPlay'); await page.waitForTimeout(300);
+  const at = await page.evaluate(() => {
+    game.countdown = 0; hideCountdown(); updateIntro();
+    for (const s of game.sides) { s.aiT = 1e9; s.res.c = s.res.e = 5000; }
+    for (let i = 0; i < 30 * 40; i++) update(game, 1 / 30); // the base field grows (the warp point at its front)
+    game.t = Math.max(game.t, 300); game.sides[0].hq.tier = 2; game.fog[0].exp.fill(1);
+    for (let i = 0; i < 4; i++) { const e = spawnUnit(game, 0, i % 2 ? 'bastion' : 'shardling', 640 + i * 14, -60); e.holdU = e.u; e.holdV = -60; e.cd = 1e6; e.hp *= 0.5; }
+    const t = spawnUnit(game, 1, 'tank', 900, -60); t.holdU = 900; t.holdV = -60; t.cd = 1e6; t.hp = t.maxHp = 5000; setStance(game, 1, 'hold'); // it would walk home on Retreat
+    update(game, 1 / 30); cam.x = 760; clampCam(); refreshUI(true);
+    window.__xy = (u, v = -60) => { const w = P(u, v); return { x: V.cw / 2 + (w.x - cam.x) * V.S, y: V.A + (w.y - Y_BOT) * V.S }; };
+    return { units: __xy(660), tank: __xy(900) };
+  });
+  assert.deepStrictEqual(await page.$$eval('#abil .ab', els => els.map(e => e.dataset.k)), ['mwarp', 'overcharge', 'beam'], 'the three real buttons, no "Soon"');
+  assert.strictEqual(await page.$$eval('#abil .ab.lock', els => els.length), 0);
+  const cast = async (k, p) => {
+    await page.evaluate(() => { for (const k2 in game.sides[0].ab) game.sides[0].ab[k2] = 0; refreshUI(true); }); // the test skips cooldowns
+    await page.click(`#abil .ab[data-k="${k}"]`); await page.mouse.click(p.x, p.y); await page.mouse.click(p.x + 3, p.y);
+    return page.evaluate(k2 => game.sides[0].abK === k2 && game.sides[0].abEnd > game.t, k);
+  };
+  assert.ok(await cast('overcharge', at.units), 'Shield Overcharge cast');
+  assert.strictEqual(await page.evaluate(() => game.ents.filter(e => e.side === 0 && e.ovT > game.t).length), 4);
+  assert.ok(await cast('beam', at.tank), 'Purification Beam cast');
+  await page.evaluate(() => { for (let i = 0; i < 30 * 5; i++) update(game, 1 / 30); render(ctx, game, game.t, null, -1); });
+  assert.strictEqual(await page.evaluate(() => 5000 - game.ents.find(e => e.side === 1 && e.type === 'tank').hp), await page.evaluate(() => ABIL.beam.dmg), 'the beam swept over the Tank');
+  const before = await page.evaluate(() => game.ents.filter(e => e.kind === 'u').length);
+  assert.ok(await cast('mwarp', at.units), 'Mass Warp cast');
+  const r = await page.evaluate(() => { const a = game.abil.find(x => x.k === 'mwarp'); for (let i = 0; i < 30 * 2.2; i++) update(game, 1 / 30); return { n: game.ents.filter(e => e.kind === 'u').length, near: game.ents.filter(e => e.side === 0 && e.kind === 'u' && Math.hypot(e.u - a.wu, e.v - a.wv) < 80).length }; }); // the warp point shown at the cast (a node captured meanwhile moves the default later)
+  assert.deepStrictEqual(r, { n: before, near: 4 }, 'all four warped; no unit created');
+  await page.dispatchEvent('#abil .ab[data-k="beam"]', 'pointerdown'); await page.waitForTimeout(500); await page.dispatchEvent('#abil .ab[data-k="beam"]', 'pointerup');
+  assert.match(await page.textContent('#info'), /Purification Beam[\s\S]*Strip[\s\S]*Axis T2/);
+  assert.deepStrictEqual(errors, []);
+  await page.close();
+});
+
+test('v2.28: enemy Axiarch casts in the fog show nothing, make no sound and give no warning; in view the Beam warns and shows', { skip }, async () => {
+  const { page, errors } = await openPage(browser, NARROW);
+  await page.click('#meSeg [data-f="lastfist"]'); await page.click('#foeSeg [data-f="axiarchs"]'); await page.click('#bPlay'); await page.waitForTimeout(300);
+  const r = await page.evaluate(() => {
+    game.countdown = 0; hideCountdown(); updateIntro(); paused = true;
+    for (const s of game.sides) { s.aiT = 1e9; s.res.c = s.res.e = 5000; }
+    for (let i = 0; i < 30 * 40; i++) update(game, 1 / 30);
+    game.sides[1].hq.tier = 2; game.fog[1].vis.fill(1); game.fog[1].exp.fill(1);
+    const F = game.fog[0], lit = u => F.vis[cellOf(u)] === 1, hidden = 1230;
+    for (const e of game.ents) e.cd = 1e6; game.projs.length = 0;
+    const foes = []; for (let i = 0; i < 4; i++) { const e = spawnUnit(game, 1, 'bastion', hidden + i * 12, 0); e.holdU = e.u; e.holdV = 0; e.cd = 1e6; e.hp *= 0.3; foes.push(e); }
+    update(game, 1 / 30); render(ctx, game, game.t, null, -1);
+    const calls = []; const sf = sfx; window.sfx = (n, x) => { calls.push(n); return sf(n, x); };
+    const tt = toast; window.toast = (m, k) => { calls.push('toast:' + m); return tt(m, k); };
+    const ops = () => { let n = 0; const P0 = CanvasRenderingContext2D.prototype, saved = {}; for (const m of ['fill', 'stroke', 'fillRect', 'strokeRect', 'drawImage', 'fillText']) { saved[m] = ctx[m]; ctx[m] = function (...a) { n++; return P0[m].apply(this, a); }; } drawAbilities(ctx, game, lit, game.t); for (const m in saved) ctx[m] = saved[m]; return n; };
+    const ok = [['overcharge', hidden], ['mwarp', hidden + 10], ['beam', hidden - 60]].map(([k, u]) => { for (const k2 in game.sides[1].ab) game.sides[1].ab[k2] = 0; return useAbility(game, 1, k, u, 0).ok; });
+    let drawn = 0; const ends = beamEnds(game.abil.find(a => a.k === 'beam'));
+    for (let i = 0; i < 30 * 4.8; i++) { update(game, 1 / 30); render(ctx, game, game.t, null, -1); drawn += ops(); }
+    const hidden_ = { ok, calls: calls.slice(), drawn, dark: [hidden, ...ends, warpPoint(game, 1).u].every(u => !lit(u)) };
+    // the same Beam where the player can see it: a Recon Drone over the enemy's side of the lane
+    const eye = spawnUnit(game, 0, 'drone', hidden, 0); eye.holdU = hidden; eye.holdV = 0; updateVision(game);
+    for (const k2 in game.sides[1].ab) game.sides[1].ab[k2] = 0; const okV = useAbility(game, 1, 'beam', hidden, 0).ok;
+    let drawnV = 0; for (let i = 0; i < 10; i++) { update(game, 1 / 30); render(ctx, game, game.t, null, -1); drawnV += ops(); }
+    return { hidden: hidden_, okV, drawnV, seen: calls.slice(hidden_.calls.length) };
+  });
+  assert.deepStrictEqual(r.hidden.ok, [true, true, true]);
+  assert.ok(r.hidden.dark, 'the casts, the strip and the enemy warp point are all out of the player\'s view');
+  assert.deepStrictEqual(r.hidden.calls, [], 'no sound or toast from casts in the fog');
+  assert.strictEqual(r.hidden.drawn, 0, 'nothing of them drawn');
+  assert.ok(r.okV && r.drawnV > 0 && r.seen.includes('siren') && r.seen.includes('toast:Enemy beam incoming!'), JSON.stringify(r));
+  assert.deepStrictEqual(errors, []);
+  await page.close();
+});
