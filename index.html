@@ -198,6 +198,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .card .bar i{display:block;height:100%;width:0;background:var(--blue)}
 .card .path{position:absolute;left:4px;top:3px;font-size:9px;font-weight:800;letter-spacing:.04em;color:#ffd34d;pointer-events:none}
 .card .path.pr:empty{display:none}
+.card .path.mx{left:auto;right:4px;top:auto;bottom:22px;color:#c8d4e8} .card .path.mx.full{color:#ff8a8a} /* S1 (v2.37): Skitterlings alive / limit */
 .echoHdr{flex:none;align-self:stretch;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:0 6px;border-radius:10px;background:rgba(159,232,255,.08);border:1px dashed rgba(159,232,255,.35);color:#bfefff;font-size:11px;font-weight:700;line-height:1.2;text-align:center;white-space:nowrap} /* Echoes (v2.34) */
 .echoHdr small{color:var(--muted);font-weight:600;font-size:10px}
 #cards .card.echoc{border-color:rgba(159,232,255,.45)} #cards .card.echoc .path{background:rgba(159,232,255,.2);color:#dff7ff}
@@ -337,7 +338,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.36'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.37'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -510,30 +511,30 @@ const hpMul = (d, t) => (d.hpMul || HPMUL)[t];
    the other path; selling resets it). T3 is the second step of that path. Data only: a step unlocks units or turns
    on a named modifier; a later faction is mostly a different TREES table. (The Tech Lab follows.) */
 const TREES = {
-  barracks: { A: { name: 'Specialists', short: 'SPEC', steps: [null, null, { unlock: ['heavy'], short: 'Heavy troopers', txt: 'Unlocks Heavy troopers' }, { unlock: ['sniper'], short: 'Snipers', txt: 'Unlocks Snipers' }] },
+  barracks: { A: { name: 'Specialists', short: 'SPEC', steps: [null, null, { unlock: ['heavy'], short: 'Heavy troopers', txt: 'Unlocks Heavy troopers' }, { unlock: ['sniper'], short: 'Snipers', txt: 'Unlocks Snipers: rounds that pierce a line' }] },
               B: { name: 'Mass Deployment', short: 'MASS', steps: [null, null, { mod: 'pairs', short: 'Riflemen in pairs', txt: 'Trains Riflemen two at a time (a pair takes 6 s)' }, { mod: 'drill', short: 'Drilled Riflemen', txt: 'Drilled Riflemen: +35% HP, +10% damage, capture nodes 1.5× faster' }] } },
-  factory:  { A: { name: 'Siege', short: 'SIEGE', steps: [null, null, { unlock: ['artillery'], short: 'Artillery', txt: 'Unlocks Artillery' }, { unlock: ['titan'], short: 'Titans', txt: 'Unlocks Titans' }] },
+  factory:  { A: { name: 'Siege', short: 'SIEGE', steps: [null, null, { unlock: ['artillery'], short: 'Artillery', txt: 'Unlocks Artillery: three-shell salvos' }, { unlock: ['titan'], short: 'Titans', txt: 'Unlocks Titans: walkers that plant for siege range' }] },
               B: { name: 'Assault', short: 'ASSAULT', steps: [null, null, { unlock: ['flame'], short: 'Flame Tanks', txt: 'Unlocks Flame Tanks: burn groups of infantry at close range' }, { unlock: ['hydra'], short: 'Hydras', txt: 'Unlocks Hydras: walkers with rotary guns that prefer aircraft' }] } },
-  techlab:  { A: { name: 'Air Power', short: 'AIR', steps: [null, null, { unlock: ['interceptor'], short: 'Interceptors', txt: 'Unlocks Interceptors: hunt aircraft, escort your own' }, { unlock: ['leviathan'], short: 'Leviathans', txt: 'Unlocks Leviathans: heavy bombers that wreck bases' }] },
+  techlab:  { A: { name: 'Air Power', short: 'AIR', steps: [null, null, { unlock: ['interceptor'], short: 'Interceptors', txt: 'Unlocks Interceptors: hunt aircraft, escort your own' }, { unlock: ['leviathan'], short: 'Leviathans', txt: 'Unlocks Leviathans: carpet bombers that wreck bases' }] },
               B: { name: 'Support', short: 'SUPPORT', steps: [null, null, { unlock: ['medic', 'drone'], short: 'Medicopters, Recon Drones', txt: 'Unlocks Medicopters (heal infantry) and Recon Drones (scouts, at most 3)' }, { mod: 'nanoweave', short: 'Nanoweave', txt: 'Nanoweave: your units and defenses deal 20% more damage and take 15% less' }] } },
 };
 // Bloomhost trees: the Larva Pit and the Evolution Chamber (v2.19), the Bloomspire (v2.21)
 const TREES_BH = {
-  barracks: { A: { name: 'Predatory Evolution', short: 'HUNT', steps: [null, null, { unlock: ['leaper'], short: 'Leapers', txt: 'Unlocks Leapers: hunters that leap onto ranged units' }, { unlock: ['ravager'], short: 'Ravagers', txt: 'Unlocks Ravagers: heavy hunters that shred light armor' }] },
-              B: { name: 'Acidic Evolution', short: 'ACID', steps: [null, null, { unlock: ['spitter'], short: 'Spitters', txt: 'Unlocks Spitters: acid that hits air and ground and corrodes armor' }, { unlock: ['bilecaster'], short: 'Bilecasters', txt: 'Unlocks Bilecasters: acid splash that corrodes ground units' }] } },
-  factory:  { A: { name: 'Siege Evolution', short: 'SIEGE', steps: [null, null, { unlock: ['bilelobber'], short: 'Bile Lobbers', txt: 'Unlocks Bile Lobbers: long-range bile artillery' }, { unlock: ['ruinmaw'], short: 'Ruinmaws', txt: 'Unlocks Ruinmaws: base-breakers that leave acid pools' }] },
+  barracks: { A: { name: 'Predatory Evolution', short: 'HUNT', steps: [null, null, { unlock: ['leaper'], short: 'Leapers', txt: 'Unlocks Leapers: hunters that leap onto ranged units' }, { unlock: ['ravager'], short: 'Ravagers', txt: 'Unlocks Ravagers: heavy hunters that frenzy on a kill' }] },
+              B: { name: 'Acidic Evolution', short: 'ACID', steps: [null, null, { unlock: ['spitter'], short: 'Spitters', txt: 'Unlocks Spitters: acid that hits air and ground and corrodes armor' }, { unlock: ['bilecaster'], short: 'Bilecasters', txt: 'Unlocks Bilecasters: long-range bile darts with lasting corrosion' }] } },
+  factory:  { A: { name: 'Siege Evolution', short: 'SIEGE', steps: [null, null, { unlock: ['bilelobber'], short: 'Bile Lobbers', txt: 'Unlocks Bile Lobbers: long-range bile that corrodes an area' }, { unlock: ['ruinmaw'], short: 'Ruinmaws', txt: 'Unlocks Ruinmaws: base-breakers that leave acid pools' }] },
               B: { name: 'Predator Evolution', short: 'BRUTE', steps: [null, null, { unlock: ['thornback'], short: 'Thornbacks', txt: 'Unlocks Thornbacks: armored brawlers that hurt melee attackers' }, { unlock: ['dreadthorn'], short: 'Dreadthorns', txt: 'Unlocks Dreadthorns: a spine burst when hit hard' }] } },
   techlab:  { A: { name: 'Swarm Bloom', short: 'SWARM', steps: [null, null, { unlock: ['needlewing'], short: 'Needlewings', txt: 'Unlocks Needlewings: cheap flyers that hit harder in a pack' }, { unlock: ['cloudwing'], short: 'Cloudwings', txt: 'Unlocks Cloudwings: swarm flyers that release short-lived offspring' }] },
-              B: { name: 'Apex Bloom', short: 'APEX', steps: [null, null, { unlock: ['broodtyrant'], short: 'Brood Tyrants', txt: 'Unlocks Brood Tyrants: heavy flyers that prefer buildings' }, { unlock: ['worldrender'], short: 'Worldrenders', txt: 'Unlocks Worldrenders: huge aerial base-breakers' }] } },
+              B: { name: 'Apex Bloom', short: 'APEX', steps: [null, null, { unlock: ['broodtyrant'], short: 'Brood Tyrants', txt: 'Unlocks Brood Tyrants: heavy flyers that prefer buildings' }, { unlock: ['worldrender'], short: 'Worldrenders', txt: 'Unlocks Worldrenders: aerial base-breakers that feed on buildings' }] } },
 };
 // Axiarch trees: the Genesis Gate and the Architectum (v2.27), the Celestial Array (v2.29)
 const TREES_AX = {
-  barracks: { A: { name: 'Riftwalk Doctrine', short: 'RIFT', steps: [null, null, { unlock: ['riftstalker'], short: 'Riftstalkers', txt: 'Unlocks Riftstalkers: hunters that phase-step onto their prey' }, { unlock: ['parallax'], short: 'Parallaxes', txt: 'Unlocks Parallaxes: phase-step behind the target, blows that disrupt' }] },
-              B: { name: 'Lattice Doctrine', short: 'LATTICE', steps: [null, null, { unlock: ['lancer'], short: 'Lancers', txt: 'Unlocks Lancers: energy bolts at air and ground' }, { unlock: ['marksman'], short: 'Astral Marksmen', txt: 'Unlocks Astral Marksmen: charged shots from very long range' }] } },
-  factory:  { A: { name: 'Rupture Doctrine', short: 'RUPTURE', steps: [null, null, { unlock: ['riftmortar'], short: 'Rift Mortars', txt: 'Unlocks Rift Mortars: long-range siege' }, { unlock: ['worldbreaker'], short: 'Worldbreakers', txt: 'Unlocks Worldbreakers: heavy siege that leaves distortion zones' }] },
+  barracks: { A: { name: 'Riftwalk Doctrine', short: 'RIFT', steps: [null, null, { unlock: ['riftstalker'], short: 'Riftstalkers', txt: 'Unlocks Riftstalkers: hit-and-fade hunters' }, { unlock: ['parallax'], short: 'Parallaxes', txt: 'Unlocks Parallaxes: phase-step behind the target, blows that disrupt' }] },
+              B: { name: 'Lattice Doctrine', short: 'LATTICE', steps: [null, null, { unlock: ['lancer'], short: 'Lancers', txt: 'Unlocks Lancers: focusing bolts at air and ground' }, { unlock: ['marksman'], short: 'Astral Marksmen', txt: 'Unlocks Astral Marksmen: charged shots from very long range' }] } },
+  factory:  { A: { name: 'Rupture Doctrine', short: 'RUPTURE', steps: [null, null, { unlock: ['riftmortar'], short: 'Rift Mortars', txt: 'Unlocks Rift Mortars: precise long-range strikes' }, { unlock: ['worldbreaker'], short: 'Worldbreakers', txt: 'Unlocks Worldbreakers: heavy siege whose zones weaken enemy fire' }] },
               B: { name: 'Dominion Doctrine', short: 'DOMINION', steps: [null, null, { unlock: ['gravemantle'], short: 'Gravemantles', txt: 'Unlocks Gravemantles: an aura that slows enemy ground units' }, { unlock: ['eventide'], short: 'Eventides', txt: 'Unlocks Eventides: a gravity pulse that pulls enemies in' }] } },
   techlab:  { A: { name: 'Swarm Calculus', short: 'SWARM', steps: [null, null, { unlock: ['prismwing'], short: 'Prismwings', txt: 'Unlocks Prismwings: cheap flyers that share shield damage' }, { unlock: ['shardstorm'], short: 'Shardstorms', txt: 'Unlocks Shardstorms: a beam that chains between enemies, air and ground' }] },
-              B: { name: 'Ascendant Calculus', short: 'ASCEND', steps: [null, null, { unlock: ['voidcarrier'], short: 'Voidcarriers', txt: 'Unlocks Voidcarriers: heavy flyers that prefer buildings' }, { unlock: ['sovereign'], short: 'Astral Sovereigns', txt: 'Unlocks Astral Sovereigns: huge base-breaking flyers' }] } },
+              B: { name: 'Ascendant Calculus', short: 'ASCEND', steps: [null, null, { unlock: ['voidcarrier'], short: 'Voidcarriers', txt: 'Unlocks Voidcarriers: flying power nodes; units warp in under them' }, { unlock: ['sovereign'], short: 'Astral Sovereigns', txt: 'Unlocks Astral Sovereigns: flyers with a charged judgement beam' }] } },
 };
 const TREE_SETS = { lastfist: TREES, bloomhost: TREES_BH, axiarchs: TREES_AX };
 const prodLocked = (fac, type) => !!TREES[type] && !treeOf(fac, type); // a production building with no paths yet (Axiarchs, v2.25)
@@ -733,6 +734,41 @@ const PSPEED = { rifle: 1100, rocket: 430, hqgun: 430, rail: 1700, cannon: 820, 
 const MUZ = { rifle: [10, 13], heavy: [12, 27], sniper: [17, 14], tank: [27, 18], artillery: [28, 31], titan: [38, 27], flame: [26, 12], hydra: [30, 33], aircraft: [16, -5], interceptor: [20, 0], leviathan: [0, -10], skitterling: [9, 5], mite: [7, 4], bulwark: [17, 11], razorwing: [12, 1], leaper: [12, 7], ravager: [18, 14], spitter: [14, 15], bilecaster: [16, 20], bilelobber: [12, 26], ruinmaw: [24, 16], thornback: [18, 10], dreadthorn: [22, 14], needlewing: [10, 1], cloudwing: [14, 1], broodtyrant: [20, 2], worldrender: [0, -8], shardling: [12, 12], bastion: [20, 17], wraithwing: [16, -1], riftstalker: [14, 12], parallax: [16, 14], lancer: [14, 18], marksman: [20, 20], riftmortar: [12, 24], worldbreaker: [26, 22], gravemantle: [16, 18], eventide: [18, 24], prismwing: [12, 0], shardstorm: [14, -1], voidcarrier: [22, 1], sovereign: [0, -8] };
 
 const BUILD_ORDER = ['refinery', 'reactor', 'habitat', 'barracks', 'turret', 'factory', 'techlab', 'sigA', 'sigB']; // sig: only for a faction that has them (v2.32)
+/* ---------- Unit redesign (v2.37, audit phase 3b; audit/unit-roster.md) ----------
+   One core mechanic per redesigned unit, numbered as in the roster (P1-P16, S1). The numbers are first-pass placeholders
+   for the balance phase. Each unit's new fields are applied to UDEF by setRedesign(true) at load; setRedesign(false)
+   restores every v2.36 value and switches the mechanics off (REDESIGN.on), so a match then plays exactly as v2.36 did. */
+const REDESIGN = { on: false, orig: {}, stats: {
+  artillery:   { salvo: { n: 3, spread: 30, gap: 0.12 }, splash: 40 },             // P1: a three-shell salvo, a third of the damage each
+  bilelobber:  { dmg: 40, corrode: { amt: 0.15, dur: 3 } },                        // P2: short corrosion over its whole splash
+  riftmortar:  { dmg: 100, splash: 20, precise: true },                            // P3: no scatter, a tight splash, a heavy hit
+  sniper:      { pierce: { n: 3, len: 150, w: 12, fall: 0.6 } },                   // P4: up to 3 more in a line behind, each 60% of the last
+  riftstalker: { fade: true },                                                     // P5: strikes, then phase-steps back
+  bastion:     { brace: undefined, surge: { rate: 0.35, dur: 3, cd: 12 } },       // P6: a shield surge instead of the Bulwark's brace
+  titan:       { siege: { plant: 2, unplant: 1.5, bonus: 90, bmul: 1.3, idle: 4 } }, // P8: siege lock
+  leviathan:   { dmg: 35, splash: 40, carpet: { n: 4, gap: 26 } },                 // P10: a line of four smaller bombs
+  worldrender: { devour: { frac: 0.3, cap: 40 } },                                 // P11: heals 30% of building damage, at most 40 HP/s
+  sovereign:   { dmg: 260, splash: 0, drop: undefined, beam: true, charge: 2 },    // P12: a charged single-target beam
+  wraithwing:  { phase: { dur: 1, cd: 8 } },                                       // P13: phases out when hit; 8 s before it can again
+  lancer:      { focus: { per: 0.15, max: 4 } },                                   // P14: +15% per consecutive hit on one target, up to +60%
+  ravager:     { bloodfrenzy: { dur: 4 } },                                        // P15: a kill frenzies it for 4 s (refreshed, never stacked)
+  bilecaster:  { splash: 0, range: 280, corrode: { amt: 0.2, dur: 14 } },          // P16: a long single-target corrosion
+  skitterling: { pop: 0.5, max: 60 },                                              // S1: half supply, at most 60 alive per side
+  voidcarrier: { dmg: 50, node: { r: 120 } },                                       // P9: carries a power field (radius 120); hits softer
+} };
+// P7: a Worldbreaker's distortion zone disrupts the enemy units inside (they deal amt less) instead of burning them
+const DIST = { amt: 0.3, dur: 0.5 };
+function setRedesign(on) {
+  for (const t in REDESIGN.stats) {
+    const d = UDEF[t], o = REDESIGN.orig[t] || (REDESIGN.orig[t] = Object.fromEntries(Object.keys(REDESIGN.stats[t]).map(k => [k, [k in d, d[k]]])));
+    for (const k in o) {
+      const v = on ? REDESIGN.stats[t][k] : o[k][1], has = on ? v !== undefined : o[k][0];
+      if (has) d[k] = v; else delete d[k];
+    }
+  }
+  REDESIGN.on = on;
+}
+setRedesign(true);
 const UNIT_ORDER = ['rifle', 'heavy', 'sniper', 'tank', 'artillery', 'titan', 'flame', 'hydra', 'aircraft', 'interceptor', 'leviathan', 'medic', 'drone', 'skitterling', 'mite', 'leaper', 'ravager', 'spitter', 'bilecaster', 'bulwark', 'bilelobber', 'ruinmaw', 'thornback', 'dreadthorn', 'razorwing', 'needlewing', 'cloudwing', 'broodtyrant', 'worldrender', 'shardling', 'riftstalker', 'parallax', 'lancer', 'marksman', 'bastion', 'riftmortar', 'worldbreaker', 'gravemantle', 'eventide', 'wraithwing', 'prismwing', 'shardstorm', 'voidcarrier', 'sovereign'];
 // Credits first (Refineries before tech); Reactors are skipped while energy is plentiful
 const AI_PLAN = ['barracks', 'refinery', 'refinery', 'reactor', 'habitat', 'factory', 'reactor', 'techlab']; // roles: the same plan builds either faction's base
@@ -1085,14 +1121,16 @@ function tryUpgrade(g, s, b, path) { // path: 'A' or 'B' when a building with a 
   return { ok: true, msg: T && b.tier === 1 ? `${d.name}: ${T[path].name} path (T2)` : `Upgrading ${d.name} to T${b.tier + 1}` };
 }
 
+// How many of a unit type side s has: alive (temporary ones included) plus queued in its buildings (the d.max limit)
+const unitCount = (g, s, type) => g.ents.reduce((a, e) => a + (e.side !== s ? 0 : e.kind === 'u' ? (e.type === type && e.hp > 0 ? 1 : 0) : e.queue ? e.queue.filter(q => q === type).length : 0), 0);
 function tryTrain(g, s, type) {
   const d = UDEF[type], side = g.sides[s];
   if (g.over) return { ok: false, msg: 'The match is over' };
   if (g.countdown > 0) return WAIT_GO;
   const prods = g.ents.filter(e => e.side === s && canMake(e, type));
   if (!prods.length) return { ok: false, msg: unitLockMsg(d) };
-  if (d.max && g.ents.reduce((a, e) => a + (e.side !== s ? 0 : e.kind === 'u' ? (e.type === type && e.hp > 0 ? 1 : 0) : e.queue ? e.queue.filter(q => q === type).length : 0), 0) >= d.max)
-    return { ok: false, msg: `At most ${d.max} ${PLURAL[type]} at a time` }; // the Recon Drone (v2.15), counting those in training
+  if (d.max && unitCount(g, s, type) >= d.max)
+    return { ok: false, msg: `At most ${d.max} ${PLURAL[type]} at a time` }; // the Recon Drone (v2.15), counting those in training; Skitterlings (S1, v2.37)
   // Riflemen go to a Mass Deployment Barracks first, where an order is a pair trained together
   prods.sort((a, b) => (type === 'rifle' ? (pathMod(b, 'pairs') ? 1 : 0) - (pathMod(a, 'pairs') ? 1 : 0) : 0) || a.queue.length - b.queue.length);
   const nOf = b => type === 'rifle' && pathMod(b, 'pairs') ? 2 : 1, p = prods.find(b => b.queue.length + nOf(b) <= 5) || prods[0], n = nOf(p); // the first with room in its queue
@@ -1424,6 +1462,7 @@ function chainBeam(g, src, first, def) {
 function updateShields(g, dt) {
   for (const e of g.ents) {
     if (!e.maxShp || e.hp <= 0 || e.shp >= e.maxShp || !(e.kind === 'u' || e.built)) continue;
+    if (e.surgeT > g.t) { e.shp = Math.min(e.maxShp, e.shp + e.maxShp * UDEF[e.type].surge.rate * dt); continue; } // P6 (v2.37): a Bastion's shield surge, even under fire
     if (e.ovT > g.t) { const s0 = e.shp; e.shp = Math.min(e.maxShp, e.shp + e.maxShp * ABIL.overcharge.regen * dt); logEffect(g, e.side, 'overcharge', 0, e.shp - s0); continue; } // Shield Overcharge (v2.28): fast regen even under fire; shields only, never HP
     if (g.t - e.shpT >= SHIELD.delay) e.shp = Math.min(e.maxShp, e.shp + e.maxShp * (onField(g, e.side, e.u, e.v) ? FIELD.regen : SHIELD.rate) * dt); // faster inside the field (v2.26)
   }
@@ -1453,7 +1492,7 @@ function ixScan(g, src, def, foes, R, AR, minR) {
   let best = null, bs = 1e9, bi = -1, close = false;
   const check = idx => {
     const e = foes[idx];
-    if (e.hp <= 0 || e.shielded) return;
+    if (e.hp <= 0 || e.shielded || e.phT > g.t) return; // a phased Wraithwing can't be targeted (P13, v2.37)
     const bh = e.kind === 'b' ? e.half : 0, du = Math.abs(e.u - su);
     if (du - bh > maxR) return; // effDist ≥ |du| − half
     const dv = (e.v - sv) * DV_W, lim = maxR + bh + 1;
@@ -1486,7 +1525,7 @@ function acquire(g, src, def, foes, chase) {
   let best = null, bs = 1e9, close = false;
   const minR = def.minRange || 0;
   for (const e of foes) {
-    if (e.hp <= 0 || e.shielded) continue; // don't waste shots on a shielded HQ
+    if (e.hp <= 0 || e.shielded || e.phT > g.t) continue; // don't waste shots on a shielded HQ (or a phased Wraithwing, v2.37)
     if (!visibleTo(g, src.side, e)) continue; // auto-target only what your side can see (spotters needed beyond sight)
     const air = e.kind === 'u' && !!UDEF[e.type].air;
     if (air ? !def.hitsAir : def.hitsGround === false) continue;
@@ -1607,6 +1646,7 @@ function updateUnit(g, u, foes, dt) {
     else { u.u += du / dd * st; u.v += dv / dd * st; u.z = Math.sin(Math.PI * clamp(1 - dd / u.ld, 0, 1)) * Math.min(26, u.ld * 0.18); u.face = du >= 0 ? 1 : -1; }
     u.moving = true; return;
   }
+  if (d.siege && titanSiege(g, u, d, st, foes)) return; // P8 (v2.37): planting, planted or unplanting
   // Retreat: keep running home until back at the rally flag. A retreating unit holds its fire (v2.35, audit): it
   // attacks again only once the retreat ends, back at the flag or under a new order
   if (st === 'retreat' && Math.abs(home - u.u) > 12) {
@@ -1615,9 +1655,10 @@ function updateUnit(g, u, foes, dt) {
     moveToward(u, d, home, u.laneV, dt, sp);
     return;
   }
-  u.tgt = best ? best.id : 0;
-  if (!best || best.id !== u.chTgt) u.chT = 0; // the Astral Marksman's charge starts over on a new target (v2.27)
-  if (best) {
+  const act = !(u.phT > g.t) && !d.siege; // v2.37: a phased Wraithwing can't fire (P13); a Titan fires only when planted (P8)
+  u.tgt = best && act ? best.id : 0;
+  if (!best || best.id !== u.chTgt || !act) u.chT = 0; // the Astral Marksman's charge starts over on a new target (v2.27)
+  if (best && act) {
     u.moving = false;
     if (Math.abs(best.u - u.u) > 1) u.face = best.u >= u.u ? 1 : -1;
     if (d.swing) { const air = best.kind === 'u' && UDEF[best.type].air ? 1 : 0; if (air !== u.aimAir) { u.aimAir = air; u.cd = Math.max(u.cd, d.swing); } } // the Hydra's guns swing between ground and air
@@ -1626,7 +1667,13 @@ function updateUnit(g, u, foes, dt) {
       else if (g.t >= u.chT) { fire(g, u, best, d); u.cd = d.cd * rand(0.9, 1.1); u.chT = 0; }
       return;
     }
-    if (u.cd <= 0) { fire(g, u, best, d); u.cd = d.cd * rand(0.9, 1.1); }
+    if (u.cd <= 0) {
+      fire(g, u, best, d); u.cd = d.cd * rand(0.9, 1.1);
+      if (d.fade && u.fadeArm) { // P5 (v2.37): the Riftstalker's strike landed: phase-step back to where it leapt from
+        u.fadeArm = 0; u.lu = u.fu; u.lv = u.fv; u.ld = Math.max(1, Math.hypot(u.lu - u.u, u.lv - u.v)); u.leaping = 1;
+        const w = P(u.u, u.v, 10); g.fx.push({ k: 'blink', side: u.side, u: u.u, x: w.x, y: w.y, t: 0, life: 0.4 });
+      }
+    }
     return;
   }
   if (close) { u.moving = false; return; } // artillery: enemy is inside minimum range
@@ -1636,7 +1683,9 @@ function updateUnit(g, u, foes, dt) {
       const dist = effDist(u, prey);
       if (dist <= d.leap.range && dist >= d.leap.min) { const k = Math.max(0, (Math.hypot(prey.u - u.u, prey.v - u.v) - d.range * 0.7) / Math.max(1, Math.hypot(prey.u - u.u, prey.v - u.v))); u.lu = u.u + (prey.u - u.u) * k; u.lv = u.v + (prey.v - u.v) * k;
         if (d.leap.behind) { const pd = Math.max(1, Math.hypot(prey.u - u.u, prey.v - u.v)); u.lu = clamp(prey.u + (prey.u - u.u) / pd * d.range * 0.7, 0, L); u.lv = clamp(prey.v + (prey.v - u.v) / pd * d.range * 0.7, -LANE_V, LANE_V); } // the Parallax lands just behind its target (v2.27)
-        u.ld = Math.max(1, Math.hypot(u.lu - u.u, u.lv - u.v)); u.leaping = 1; return; }
+        u.ld = Math.max(1, Math.hypot(u.lu - u.u, u.lv - u.v)); u.leaping = 1;
+        if (d.fade) { u.fu = u.u; u.fv = u.v; u.fadeArm = 1; } // P5: remember where it leapt from
+        return; }
     }
     if (prey) { moveToward(u, d, prey.u, prey.v, dt, sp); return; }
   }
@@ -1660,6 +1709,32 @@ function updateUnit(g, u, foes, dt) {
 }
 
 const NO_TARGET = { best: null, close: false };
+// P8 (v2.37): the Titan's siege lock. It fires only when planted: planting takes plant seconds, then it can't move, reaches
+// bonus further and hits buildings bmul harder; it unplants (unplant seconds, no shots either way) when ordered to retreat
+// or regroup, or after idle seconds with nothing in reach. Mobile, it plants as soon as an enemy is within planted reach
+// (on any stance but Retreat and Regroup). The player and the AI both get this behaviour; neither has to order it.
+// u.siege: 0 mobile, 1 planting, 2 planted, 3 unplanting; u.sgT: when the change ends; u.sgIdle: last time it had a target.
+function titanSiege(g, u, d, st, foes) {
+  const S = d.siege, R2 = d.range + S.bonus, go = st === 'retreat' || st === 'move';
+  if (u.siege === 1 || u.siege === 3) {
+    u.moving = false; u.tgt = 0;
+    if (g.t >= u.sgT) { u.siege = u.siege === 1 ? 2 : 0; u.sgIdle = g.t; }
+    return true;
+  }
+  if (u.siege === 2) {
+    const best = acquire(g, u, Object.assign({}, d, { range: R2 }), foes).best;
+    if (best) u.sgIdle = g.t;
+    if (go || (!best && g.t - u.sgIdle >= S.idle)) { u.siege = 3; u.sgT = g.t + S.unplant; u.tgt = 0; return true; }
+    u.moving = false; u.tgt = best ? best.id : 0;
+    if (best) { if (Math.abs(best.u - u.u) > 1) u.face = best.u >= u.u ? 1 : -1; if (u.cd <= 0) { fire(g, u, best, d); u.cd = d.cd * rand(0.9, 1.1); } }
+    return true;
+  }
+  if (go) return false;
+  const best = acquire(g, u, Object.assign({}, d, { range: R2 }), foes).best;
+  if (!best) return false;
+  u.siege = 1; u.sgT = g.t + S.plant; u.moving = false; u.tgt = 0; if (Math.abs(best.u - u.u) > 1) u.face = best.u >= u.u ? 1 : -1;
+  return true;
+}
 // Where a support unit goes (v2.15). Medicopter: over your biggest group of infantry (none: home). Recon Drone: on Attack,
 // just behind your front (or on the spotter's mark while sieging); otherwise home.
 function supportSpot(g, u, d, st, home) {
@@ -1740,14 +1815,31 @@ function updateField(g, dt) {
       const hq = g.sides[s].hq;
       if (hq.hp > 0) { const n = g.ents.filter(b => b.kind === 'b' && b.side === s && b.type === 'habitat' && b.built && b.hp > 0).length; want.set('axis', { u: hq.u, v: hq.v, R: Math.min(FIELD.maxR, FIELD.axisR + FIELD.spireAdd * n), node: false }); }
       for (const n of g.nodes) if (n.owner === s) want.set('n' + n.id, { u: n.u, v: n.v || 0, R: FIELD.nodeR, node: true });
+      for (const e of g.ents) if (e.kind === 'u' && e.side === s && e.hp > 0 && UDEF[e.type].node) want.set('vc' + e.id, { u: e.u, v: clamp(e.v, -LANE_V, LANE_V), R: UDEF[e.type].node.r, node: true }); // P9 (v2.37): a Voidcarrier's field
       const bk = beaconOf(g, s); // the Phase Beacon's bubble (v2.34): wanted unless collapsed; it forms at the anchor
       if (bk && !(bk.col > g.t)) { if (bk.au === undefined) beaconAnchor(g, s, bk); want.set('beacon', { u: bk.au, v: bk.av, R: FIELD.nodeR * (bk.tier >= 2 ? BEACON.r2 : 1), node: true }); }
     }
     g.field[s] = zoneStep(list, want, FIELD, dt);
     if (ax) moveBeacon(g, s, dt);
+    if (ax) carrierFields(g, s);
     const sd = g.sides[s]; // a chosen warp point outside the field snaps back to the default
     if (sd.warp && !onField(g, s, sd.warp.u, sd.warp.v)) { sd.warp = null; ev(g, { type: 'warpSnap', side: s }); }
   }
+}
+// P9 (v2.37): each Voidcarrier's field moves with it (it grows like a node's field once it appears); when the carrier dies
+// the field collapses at once, with the Phase Beacon's shatter. Warp-ins use it like any field: the default warp point sits
+// at the front edge of the frontmost patch, so with a carrier at the front, units warp in near it (the AI included).
+function carrierFields(g, s) {
+  const list = g.field[s]; let gone = false;
+  for (const p of list) {
+    if (p.k[0] !== 'v' || p.k[1] !== 'c') continue;
+    const id = +p.k.slice(2), e = g.ents.find(x => x.id === id);
+    if (e && e.hp > 0) { p.u = e.u; p.v = clamp(e.v, -LANE_V, LANE_V); continue; }
+    gone = true; p.r = 0; p.R = 0;
+    if (p.rr === undefined) { const w = P(p.u, p.v); g.fx.push({ k: 'shatter', side: s, u: p.u, v: p.v, r: Math.max(20, p.r0 || 60), x: w.x, y: w.y, t: 0, life: 1.2 }); p.rr = 1; }
+  }
+  for (const p of list) if (p.k[0] === 'v' && p.k[1] === 'c') p.r0 = p.r;
+  if (gone) g.field[s] = list.filter(p => !(p.k[0] === 'v' && p.k[1] === 'c' && p.R === 0 && p.r === 0));
 }
 /* ---------- Phase Beacon (v2.34) ---------- */
 const beaconOf = (g, s) => facOf(g.sides[s].faction) === 'axiarchs' ? sigOf(g, s, 'sigA') : null;
@@ -1855,7 +1947,7 @@ function updateAuras(g) {
     const d = UDEF[a.type];
     if (d.aura) for (const e of g.ents) if (e.kind === 'u' && e.side !== a.side && e.hp > 0 && !UDEF[e.type].air && Math.hypot(e.u - a.u, (e.v - a.v) * 0.6) <= d.aura.r) slowU(g, e, d.aura.slow, SLOW.dur);
     if (d.pulse && g.t >= a.pulseCd) {
-      const near = g.ents.filter(e => e.kind === 'u' && e.side !== a.side && e.hp > 0 && !UDEF[e.type].air && !e.leaping && Math.hypot(e.u - a.u, e.v - a.v) <= d.pulse.r);
+      const near = g.ents.filter(e => e.kind === 'u' && e.side !== a.side && e.hp > 0 && !UDEF[e.type].air && !e.leaping && !e.siege && Math.hypot(e.u - a.u, e.v - a.v) <= d.pulse.r);
       if (!near.length) continue;
       a.pulseCd = g.t + d.pulse.cd;
       for (const e of near) { // inward by up to pull, never closer than 24, never into a building or off the lane (half the pull, else none)
@@ -1975,20 +2067,27 @@ function fire(g, src, t, def) {
   if (def.beam) { // the Null Lance (v2.25): the beam lands at once; the SIM leaves a short beam mark for the renderer
     const m = muzzle(src), a = P(m.u, m.v, m.z), b = P(t.u, t.v, aimZ(t));
     damage(g, t, def.dmg * (g.sides[src.side].buff ? 1.2 : 1) * outMul(g, src), def.weapon, src.side, src);
-    const hq = def.weapon === 'hqbeam'; // the Axis lance (v2.36): a heavier beam, drawn in the Axiarch violet and cyan
-    g.fx.push({ k: 'beam', x: a.x, y: a.y, x2: b.x, y2: b.y, t: 0, life: hq ? 0.34 : def.weapon === 'horizon' ? 0.32 : 0.2, w: hq ? 3.6 : def.weapon === 'horizon' ? 3.2 : def.split ? 1.5 : 2.2, hq });
+    const hq = def.weapon === 'hqbeam' || def.weapon === 'sovereign'; // the Axis lance (v2.36), the Sovereign's judgement (v2.37): heavier, violet and cyan
+    g.fx.push({ k: 'beam', x: a.x, y: a.y, x2: b.x, y2: b.y, t: 0, life: hq ? 0.34 : def.weapon === 'horizon' ? 0.32 : 0.2, w: def.weapon === 'sovereign' ? 5 : hq ? 3.6 : def.weapon === 'horizon' ? 3.2 : def.split ? 1.5 : 2.2, hq });
     if (def.chain) chainBeam(g, src, t, def); // the Shardstorm (v2.29)
     return;
   }
   const m = muzzle(src);
+  let mul = 1; // v2.37: the Lancer's focus (P14), a planted Titan against buildings (P8)
+  if (def.focus && src.kind === 'u') { src.fcN = src.fcTgt === t.id ? Math.min(def.focus.max, (src.fcN || 0) + 1) : 0; src.fcTgt = t.id; mul = 1 + def.focus.per * src.fcN; }
+  if (def.siege && src.siege === 2 && t.kind === 'b') mul = def.siege.bmul;
+  if (def.salvo || def.carpet) { volley(g, src, t, def, m); if (src.kind === 'u') src.recoil = 1; return; } // P1, P10
   const p = { u: m.u, v: m.v, z: m.z, pu: m.u, pv: m.v, pz: m.z, tu: t.u, tv: t.v, tz: aimZ(t), target: t, side: src.side,
-    weapon: def.weapon, dmg: def.dmg * (g.sides[src.side].buff ? 1.2 : 1) * (src.vet ? DRILL.dmg : 1) * outMul(g, src), splash: def.splash || 0, t: 0 }; // disrupted: less damage (v2.27)
+    weapon: def.weapon, dmg: def.dmg * mul * (g.sides[src.side].buff ? 1.2 : 1) * (src.vet ? DRILL.dmg : 1) * outMul(g, src), splash: def.splash || 0, t: 0 }; // disrupted: less damage (v2.27)
+  if (def.focus) p.fc = src.fcN; // drawn brighter as it builds (v2.37)
+  if (def.pierce) { p.ou = m.u; p.ov = m.v; p.pierce = 1; } // P4: where the line starts
+  if (def.devour) p.dev = src.id; // P11: who feeds on the damage
   if (def.weapon === 'bomb' || def.drop) { p.target = null; p.tz = 0; p.tu = t.u + rand(-6, 6); p.tv = t.v + rand(-5, 5); } // falls where the target is now
   if (def.corrode) p.corr = def.corrode; // v2.19: acid corrodes what it hits
   if (def.acid) p.acid = def.acid === 'dist' ? 'dist' : 1; // the Worldbreaker's distortion zones share the acid-pool list (v2.27)
   if (def.weapon === 'shell' || def.lob) { // the Bile Lobber reuses the Artillery shell (v2.19)
     p.su = m.u; p.sv = m.v; p.sz = m.z;
-    p.tu = t.u + rand(-14, 14); p.tv = t.v + rand(-12, 12); p.tz = 0;
+    if (def.precise) { p.tu = t.u; p.tv = t.v; p.precise = 1; } else { p.tu = t.u + rand(-14, 14); p.tv = t.v + rand(-12, 12); } p.tz = 0; // P3: the Rift Mortar lands exactly
     const dd = Math.hypot(p.tu - p.su, p.tv - p.sv);
     p.T = 0.7 + dd / 520; p.arc = 60 + dd * 0.3; p.target = null;
   } else p.speed = PSPEED[def.weapon];
@@ -1996,6 +2095,22 @@ function fire(g, src, t, def) {
   const w = P(m.u, m.v, m.z);
   g.fx.push({ k: 'flash', x: w.x, y: w.y, t: 0, life: 0.07, r: def.weapon === 'rifle' || def.weapon === 'flak' ? 4 : 8 });
   if (src.kind === 'u') src.recoil = 1;
+}
+
+// P1 (Artillery salvo) and P10 (Leviathan carpet bombing), v2.37: several projectiles from one shot. A salvo scatters its
+// shells around the target and they land one after another (gap); a carpet lays its bombs in a line along the lane,
+// centred on the target, in the direction the bomber faces.
+function volley(g, src, t, def, m) {
+  const V = def.salvo || def.carpet, dmg = def.dmg * (g.sides[src.side].buff ? 1.2 : 1) * outMul(g, src) / (def.salvo ? V.n : 1), dir = src.face || dirOf(src.side);
+  for (let i = 0; i < V.n; i++) {
+    const p = { u: m.u, v: m.v, z: m.z, pu: m.u, pv: m.v, pz: m.z, target: null, side: src.side, weapon: def.weapon, dmg, splash: def.splash || 0, t: 0, tz: 0 };
+    if (def.salvo) {
+      p.su = m.u; p.sv = m.v; p.sz = m.z; p.tu = t.u + rand(-V.spread, V.spread); p.tv = t.v + rand(-V.spread, V.spread) * 0.8;
+      const dd = Math.hypot(p.tu - p.su, p.tv - p.sv); p.T = 0.7 + dd / 520 + i * V.gap; p.arc = 60 + dd * 0.3; p.salvo = 1;
+    } else { p.tu = t.u + dir * (i - (V.n - 1) / 2) * V.gap + rand(-4, 4); p.tv = t.v + rand(-5, 5); p.speed = PSPEED[def.weapon]; p.carpet = 1; }
+    g.projs.push(p);
+  }
+  const w = P(m.u, m.v, m.z); g.fx.push({ k: 'flash', x: w.x, y: w.y, t: 0, life: 0.07, r: 8 });
 }
 
 /* ---------- Commander abilities (Step 6) ----------
@@ -2331,6 +2446,41 @@ function splashHit(g, p, hit, scale, falloffFloor) {
 }
 
 function impact(g, p, hit) {
+  if (p.dev) { DEV.on = true; DEV.sum = 0; impact1(g, p, hit); DEV.on = false; devour(g, p, DEV.sum); return; } // P11
+  impact1(g, p, hit);
+  if (p.pierce && hit) pierceLine(g, p, hit); // P4
+}
+// P11 (v2.37): the Worldrender heals frac of the damage its drop did to buildings, at most cap HP per second (a running
+// budget that refills at cap per second up to one second's worth)
+const DEV = { on: false, sum: 0 };
+function devour(g, p, dealt) {
+  const w = g.ents.find(e => e.id === p.dev && e.hp > 0), H = w && UDEF[w.type].devour;
+  if (!H || dealt <= 0) return;
+  w.dvB = Math.min(H.cap, (w.dvB ?? H.cap) + (g.t - (w.dvT ?? g.t)) * H.cap); w.dvT = g.t;
+  const heal = Math.min(dealt * H.frac, w.dvB, w.maxHp - w.hp);
+  if (heal <= 0) return;
+  w.hp += heal; w.dvB -= heal;
+  const a = P(p.u, p.v, 0), b = P(w.u, w.v, w.z || 0); g.fx.push({ k: 'devour', side: w.side, u: w.u, x: a.x, y: a.y, x2: b.x, y2: b.y, t: 0, life: 0.9, n: Math.round(heal) });
+}
+// P4 (v2.37): a Sniper's round goes on through its target: up to pierce.n more enemy units within w of the line from the
+// shooter through the target, at most len beyond it, nearest first, each taking fall × the previous hit
+function pierceLine(g, p, hit) {
+  const K = UDEF.sniper.pierce, du = hit.u - p.ou, dv = hit.v - p.ov, d = Math.hypot(du, dv);
+  if (d < 1) return;
+  const ux = du / d, vy = dv / d, list = [];
+  for (const e of g.ents) {
+    if (e === hit || e.kind !== 'u' || e.side === p.side || e.hp <= 0 || e.phT > g.t) continue;
+    const ru = e.u - hit.u, rv = e.v - hit.v, along = ru * ux + rv * vy, off = Math.abs(ru * vy - rv * ux);
+    if (along > 0 && along <= K.len && off <= K.w) list.push([along, e]);
+  }
+  list.sort((a, b) => a[0] - b[0] || a[1].id - b[1].id);
+  let dmg = p.dmg;
+  for (const [, e] of list.slice(0, K.n)) { dmg *= K.fall; damage(g, e, dmg, p.weapon, p.side); }
+  const a = P(hit.u, hit.v, aimZ(hit)), b = P(hit.u + ux * K.len, hit.v + vy * K.len, aimZ(hit));
+  g.fx.push({ k: 'pierce', u: hit.u, x: a.x, y: a.y, x2: b.x, y2: b.y, t: 0, life: 0.25 });
+}
+
+function impact1(g, p, hit) {
   const w = P(p.u, p.v, p.z);
   if (p.weapon === 'shell' || p.weapon === 'lob' || p.weapon === 'rift') { splashHit(g, p, null, 1, 0.5); fxBoom(g, w.x, w.y, 30); return; }
   if (p.weapon === 'bomb' || p.weapon === 'crush' || p.weapon === 'sovereign') { splashHit(g, p, null, 1, 0.5); fxBoom(g, w.x, w.y, p.weapon === 'bomb' ? 40 : 48); return; } // the Astral Sovereign too (v2.29) // full damage at the centre, half at the edge (the Worldrender too, v2.21)
@@ -2356,8 +2506,19 @@ function shieldLink(g, e, a) {
   return moved;
 }
 // Corrosion (v2.19): the strongest level and the later end win; levels never add up and never pass CORR.cap
+// Corrosion (v2.37): the strongest running effect applies, capped at CORR.cap; a weaker one that outlasts it is kept as a
+// second slot (corr2) and takes over when the strongest ends. Nothing adds up. Before v2.37 (REDESIGN off) the strongest
+// amount was kept and the latest end time extended it, so a strong short hit plus a weak long one stayed strong and long.
+const corrNow = (e, t) => e.corrT > t ? e.corr : e.corr2T > t ? e.corr2 : 0;
 function corrode(g, e, c) {
   if (e.kind !== 'u' || e.hp <= 0) return;
+  if (REDESIGN.on) {
+    const fx = [[e.corr || 0, e.corrT || 0], [e.corr2 || 0, e.corr2T || 0], [Math.min(CORR.cap, c.amt), g.t + c.dur]].filter(x => x[1] > g.t && x[0] > 0);
+    fx.sort((a, b) => b[0] - a[0] || b[1] - a[1]);
+    const top = fx[0] || [0, 0], next = fx.slice(1).filter(x => x[1] > top[1]).sort((a, b) => b[0] - a[0])[0] || [0, 0];
+    e.corr = top[0]; e.corrT = top[1]; e.corr2 = next[0]; e.corr2T = next[1];
+    return;
+  }
   const live = e.corrT > g.t;
   e.corr = Math.min(CORR.cap, Math.max(live ? e.corr : 0, c.amt)); e.corrT = Math.max(live ? e.corrT : 0, g.t + c.dur);
 }
@@ -2371,22 +2532,31 @@ function updateAcid(g, dt) {
   g.acid = g.acid.filter(a => a.end > g.t);
   for (const a of g.acid) for (const e of g.ents) {
     if (e.kind !== 'u' || e.side === a.side || e.hp <= 0 || UDEF[e.type].air) continue;
-    if (Math.hypot(e.u - a.u, (e.v - a.v) * 0.6) <= ACID.r) damage(g, e, ACID.dps * dt, 'acidpool', a.side);
+    if (Math.hypot(e.u - a.u, (e.v - a.v) * 0.6) > ACID.r) continue;
+    if (a.kind === 'dist' && REDESIGN.on) disrupt(g, e, DIST); // P7 (v2.37): a distortion zone disrupts instead of burning
+    else damage(g, e, ACID.dps * dt, 'acidpool', a.side);
   }
 }
 // src: the attacking unit for blows at close range (melee, flame), so a Thornback can answer; retaliation passes no src,
 // so it can never set off more retaliation
 function damage(g, e, amt, weapon, fromSide, src) {
   if (e.shielded) return;
+  if (e.phT > g.t) return; // P13 (v2.37): a phased Wraithwing can't be hurt
+  if (DEV.on && e.kind === 'b') { const h0 = e.hp + (e.shp || 0); damage1(g, e, amt, weapon, fromSide, src); DEV.sum += h0 - Math.max(0, e.hp) - (e.shp || 0); return; }
+  damage1(g, e, amt, weapon, fromSide, src);
+}
+function damage1(g, e, amt, weapon, fromSide, src) {
   const armor = e.kind === 'b' ? 'building' : UDEF[e.type].armor;
   const mult = DMG[weapon][armor];
   if (!mult) return;
-  let dmg = amt * mult * (g.sides[e.side].buff ? 0.85 : 1) * (e.corrT > g.t ? 1 + e.corr : 1); // corroded: takes more (v2.19)
+  let dmg = amt * mult * (g.sides[e.side].buff ? 0.85 : 1) * (1 + corrNow(e, g.t)); // corroded: takes more (v2.19; v2.37 the second slot)
   const br = e.kind === 'u' && UDEF[e.type].brace, pre = dmg;
   if (br) { // the Bulwark braces on the first hit after its cooldown (v2.17)
     if (!(e.braceT > g.t) && g.t >= e.braceCd) { e.braceT = g.t + br.dur; e.braceCd = g.t + br.cd; }
     if (e.braceT > g.t) dmg *= 1 - br.cut;
   }
+  const sg = e.kind === 'u' && UDEF[e.type].surge; // P6 (v2.37): a Bastion's shield surge starts on the first hit after its cooldown
+  if (sg && g.t >= (e.surgeCd || 0)) { e.surgeT = g.t + sg.dur; e.surgeCd = g.t + sg.cd; }
   if (e.ovT > g.t) { // Shield Overcharge (v2.28): less damage, with the brace together never more than OV cap
     const A = ABIL.overcharge, nd = Math.max(dmg * (1 - A.cut), pre * (1 - A.cap));
     if (nd < dmg) { logEffect(g, e.side, 'overcharge', dmg - nd); dmg = nd; }
@@ -2415,7 +2585,11 @@ function damage(g, e, amt, weapon, fromSide, src) {
     const side = g.sides[e.side];
     if (g.t - side.lastAlert > 10) { side.lastAlert = g.t; ev(g, { type: 'alert', side: e.side, hq: e.type === 'hq' }); }
   }
-  if (e.hp <= 0) kill(g, e, fromSide, weapon);
+  if (e.kind === 'u' && e.hp > 0 && UDEF[e.type].phase && g.t >= (e.phCd || 0)) { const F = UDEF[e.type].phase; e.phT = g.t + F.dur; e.phCd = g.t + F.dur + F.cd; } // P13: phase out after the hit
+  if (e.hp <= 0) {
+    kill(g, e, fromSide, weapon);
+    if (src && src.kind === 'u' && src.hp > 0 && UDEF[src.type].bloodfrenzy) src.frzT = Math.max(src.frzT || 0, g.t + UDEF[src.type].bloodfrenzy.dur); // P15: refreshed, never stacked
+  }
 }
 
 function kill(g, e, by, weapon) {
@@ -2661,7 +2835,7 @@ function aiUpdate(g, s, dt) {
   // Echoes (v2.34, minimal): an Axiarch AI warps an echo back whenever it can afford one and has supply room (oldest first)
   const rel = relOf(g, s);
   if (rel && rel.ech && rel.ech.length) for (let i = 0; i < rel.ech.length; i++) if (tryEcho(g, s, i).ok) { used = popUsed(g, s); break; }
-  const types = UNIT_ORDER.filter(t => canTrain(g, s, t));
+  const types = UNIT_ORDER.filter(t => canTrain(g, s, t) && !(UDEF[t].max && UDEF[t].pop < 1 && unitCount(g, s, t) >= UDEF[t].max)); // v2.37: not a type at its limit (S1; the drone keeps its own rule)
   const turtle = theirs.length > 2 && theirs.filter(u => Math.abs(u.u - hqU(opp)) < 560).length / theirs.length > 0.6;
   if (types.length) {
     const comp = { light: 0, heavy: 0, vehicle: 0, air: 0 };
@@ -5253,8 +5427,12 @@ function drawUnit(c, u) {
   const big = u.type === 'leviathan' || u.type === 'worldrender' || u.type === 'sovereign' ? 2.4 : u.type === 'broodtyrant' || u.type === 'voidcarrier' ? 1.6 : u.type === 'drone' || u.type === 'needlewing' || u.type === 'prismwing' ? 0.5 : 1; // a Leviathan's shadow is seen coming
   c.beginPath(); c.ellipse(w.x, w.y, (d.air ? 16 * big : UVIS[u.type] ? UVIS[u.type].w : Math.max(8, d.h * 0.7)) * US, (d.air ? 3.5 * big : 2.6) * US, 0, 0, 7); c.fill();
   if (u.type === 'medic' && VFX.g) drawHealBeams(c, VFX.g, u, w);
+  if (u.siege) drawSiegeLock(c, u, w); // P8 (v2.37): a Titan's stabilisers, under it
   c.save(); c.translate(w.x, w.y - u.z + bob); c.scale(u.face * US * (u.kid ? 0.75 : 1), US * (u.kid ? 0.75 : 1)); // a Cloudwing's offspring is smaller (v2.21)
+  const ph = u.phT > VFX.lastT; // P13 (v2.37): a phased Wraithwing is a faint violet ghost
+  if (ph) c.globalAlpha = 0.25 + 0.1 * Math.sin(VFX.lastT * 40);
   drawUnitArt(c, u, TEAM[u.side]);
+  if (ph) { c.globalAlpha = 1; c.globalCompositeOperation = 'lighter'; stamp(c, GLOW.violet, 0, -4, 18, 0.55); c.globalCompositeOperation = 'source-over'; }
   c.globalCompositeOperation = 'lighter';
   if (u.hitT > 0) { c.globalAlpha = 0.6 * Math.min(1, u.hitT / 0.12); drawUnitArt(c, u, TEAM[u.side]); } // hit: the unit itself flashes
   if (u.type === 'sniper' && u.cd > 0 && u.cd < 0.35) stamp(c, GLOW.cyan, MUZ.sniper[0], -MUZ.sniper[1], 2 + (0.35 - u.cd) * 14, 0.9); // rail charging
@@ -5264,17 +5442,69 @@ function drawUnit(c, u) {
   if (u.shT > VFX.lastT) drawShield(c, u, VFX.lastT);
   if (VFX.g) drawAxFx(c, VFX.g, u, w); // v2.27: a Marksman's charge, a Gravemantle's aura, slowed and disrupted marks
   if (u.ovT > VFX.lastT) drawOvercharge(c, u, w, VFX.lastT); // v2.28
+  if (u.surgeT > VFX.lastT) drawSurge(c, u, w, VFX.lastT); // P6 (v2.37)
   if (u.maxShp && VFX.g && VFX.g.t - u.shpHit < 0.3) drawShpHit(c, w.x, w.y - u.z, visH(u.type) * US, (VFX.g.t - u.shpHit) / 0.3); // Axiarch shields hit (v2.25)
-  if (u.corrT > VFX.lastT) drawCorrosion(c, u, w); // v2.19
+  if (corrNow(u, VFX.lastT) > 0) drawCorrosion(c, u, w); // v2.19 (v2.37: either slot)
   if (u.frzT > VFX.lastT) { // Frenzy Bloom: a pulsing pink glow (v2.20), larger and brighter with a ring at the feet (v2.21)
     const h = visH(u.type) * US, k = 0.5 + 0.5 * Math.sin(VFX.lastT * 12 + u.id), y = w.y - u.z, r = Math.max(9, h * 0.75) * (1 + 0.25 * k);
     c.globalCompositeOperation = 'lighter'; stamp(c, GLOW.frenzy, w.x, y - h * 0.5, Math.max(16, h * 1.3) * (1 + 0.2 * k), 0.75 + 0.25 * k); c.globalCompositeOperation = 'source-over';
     c.globalAlpha = 0.55 + 0.4 * k; c.strokeStyle = '#ff8ad8'; c.lineWidth = 1.8; c.beginPath(); c.ellipse(w.x, y, r, r * 0.38, 0, 0, 7); c.stroke(); c.globalAlpha = 1;
   }
 }
+// P4 (v2.37): a Sniper's round going on through its target: a white-hot line that fades
+function drawPierce(c, f) {
+  const k = 1 - f.t / f.life;
+  c.globalCompositeOperation = 'lighter'; c.lineCap = 'round';
+  c.strokeStyle = `rgba(255,200,120,${0.5 * k})`; c.lineWidth = 4; c.beginPath(); c.moveTo(f.x, f.y); c.lineTo(f.x2, f.y2); c.stroke();
+  c.strokeStyle = `rgba(255,250,230,${0.95 * k})`; c.lineWidth = 1.4; c.stroke();
+  c.globalCompositeOperation = 'source-over'; c.lineCap = 'butt'; c.globalAlpha = 1;
+}
+// P5 (v2.37): a Riftstalker phase-stepping away: a violet ring that snaps shut where it stood
+function drawBlink(c, f) {
+  const k = f.t / f.life;
+  c.globalAlpha = 1 - k; c.strokeStyle = RIFT; c.lineWidth = 2;
+  c.beginPath(); c.ellipse(f.x, f.y, 16 * (1 - k * 0.7), 22 * (1 - k * 0.7), 0, 0, 7); c.stroke();
+  c.globalCompositeOperation = 'lighter'; stamp(c, GLOW.violet, f.x, f.y, 14 * (1 - k), 0.8); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
+}
+// P11 (v2.37): a Worldrender feeding: green motes stream from the building it hit up into it, with the HP regained
+function drawDevour(c, f) {
+  const k = f.t / f.life;
+  c.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 6; i++) { const q = clamp(k * 1.6 - i * 0.1, 0, 1), x = f.x + (f.x2 - f.x) * q + Math.sin(i * 2.1 + k * 9) * 5, y = f.y + (f.y2 - f.y) * q; stamp(c, GLOW.acid, x, y, 5, (1 - q) * 0.9); }
+  c.globalCompositeOperation = 'source-over';
+  c.globalAlpha = 1 - k; c.fillStyle = '#c4f58e'; c.font = 'bold 11px system-ui, sans-serif'; c.textAlign = 'center'; c.fillText(`+${f.n}`, f.x2, f.y2 - 30 - k * 14); c.globalAlpha = 1;
+}
+// P6 (v2.37): a Bastion's shield surge: a bright shell with rising cyan bands while its shields pour back in
+function drawSurge(c, u, w, t) {
+  const h = visH(u.type) * US, r = Math.max(14, h * 0.85), y = w.y - u.z - h * 0.45, k = 0.5 + 0.5 * Math.sin(t * 14 + u.id);
+  c.globalCompositeOperation = 'lighter'; stamp(c, GLOW.cyan, w.x, y, r * 1.6, 0.35 + 0.2 * k); c.globalCompositeOperation = 'source-over';
+  c.strokeStyle = `rgba(160,235,255,${0.55 + 0.35 * k})`; c.lineWidth = 1.8; c.beginPath(); c.ellipse(w.x, y, r, r * 0.9, 0, 0, 7); c.stroke();
+  c.lineWidth = 1.1; for (let i = 0; i < 3; i++) { const ph = (t * 1.6 + i / 3) % 1, yy = w.y - u.z - ph * h * 1.1; c.globalAlpha = 1 - ph; c.beginPath(); c.ellipse(w.x, yy, r * 0.8, r * 0.25, 0, 0, 7); c.stroke(); }
+  c.globalAlpha = 1;
+}
+// P8 (v2.37): a Titan in siege lock. Four stabiliser legs swing out and drive into the ground as it plants (k 0-1), with
+// a heavy ring once locked; they fold back as it unplants. Drawn under the walker.
+function drawSiegeLock(c, u, w) {
+  const S = UDEF.titan.siege || { plant: 2, unplant: 1.5 }, t = VFX.lastT;
+  const k = u.siege === 2 ? 1 : u.siege === 1 ? clamp(1 - (u.sgT - t) / S.plant, 0, 1) : clamp((u.sgT - t) / S.unplant, 0, 1);
+  const e = 1 - (1 - k) * (1 - k), sx = 22 * US * e, sy = 8 * US * e;
+  c.strokeStyle = '#3e4b65'; c.lineWidth = 3 * US; c.lineCap = 'round';
+  for (const [ax, ay] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+    const bx = w.x + ax * 6 * US, by = w.y - 6 * US, fx = w.x + ax * (8 * US + sx), fy = w.y + ay * sy * 0.5;
+    c.beginPath(); c.moveTo(bx, by); c.lineTo(fx, fy - 4 * e); c.lineTo(fx, fy); c.stroke();
+  }
+  c.lineCap = 'butt';
+  if (u.siege === 2) { // locked: a heavy dashed ring and team-coloured lock lights
+    c.strokeStyle = `rgba(${TEAM[u.side].glow},0.55)`; c.lineWidth = 1.6; c.setLineDash([6, 5]); c.lineDashOffset = -t * 10;
+    c.beginPath(); c.ellipse(w.x, w.y, 34 * US, 34 * US * 0.38, 0, 0, 7); c.stroke(); c.setLineDash([]); c.lineDashOffset = 0;
+    c.globalCompositeOperation = 'lighter'; for (const ax of [-1, 1]) stamp(c, GLOW['t' + u.side], w.x + ax * (8 * US + sx), w.y, 4, 0.6 + 0.3 * Math.sin(t * 6)); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
+  } else { // planting or unplanting: a progress arc over it
+    c.strokeStyle = '#ffd34d'; c.lineWidth = 2; c.beginPath(); c.arc(w.x, w.y - visH('titan') * US - 10, 6, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k); c.stroke();
+  }
+}
 // Corroded (v2.19): a green acid ring at the feet with drips; brighter for stronger corrosion
 function drawCorrosion(c, u, w) {
-  const k = clamp(u.corr / CORR.cap, 0.3, 1), r = (UDEF[u.type].air ? 12 : Math.max(8, visH(u.type) * 0.6)) * US, y = w.y - u.z;
+  const k = clamp(corrNow(u, VFX.lastT) / CORR.cap, 0.3, 1), r = (UDEF[u.type].air ? 12 : Math.max(8, visH(u.type) * 0.6)) * US, y = w.y - u.z;
   c.strokeStyle = `rgba(155,225,93,${0.35 + 0.4 * k})`; c.lineWidth = 1.4; c.beginPath(); c.ellipse(w.x, y, r, r * 0.35, 0, 0, 7); c.stroke();
   c.fillStyle = `rgba(155,225,93,${0.5 + 0.4 * k})`;
   for (let i = 0; i < 3; i++) { const ph = (VFX.lastT * 1.5 + i / 3 + u.id * 0.37) % 1, x = w.x + (i - 1) * r * 0.6, yy = y - visH(u.type) * US * (0.8 - ph * 0.7); c.beginPath(); c.arc(x, yy, 1.4, 0, 7); c.fill(); }
@@ -5415,6 +5645,13 @@ function vfxScan(g, dt) {
     r.cd = cd;
     if (e.maxShp && VFX.primed && (e.shp || 0) < (r.shp ?? 0) - 0.5 && lit(e.u)) { const w = P(e.u, e.v); if (onView(w.x)) sfx('shieldPing', w.x); } // v2.36: an Axiarch shield takes a hit
     r.shp = e.shp || 0;
+    if (e.kind === 'u' && VFX.primed && lit(e.u)) { // v2.37: redesigned units' cues (siege lock, shield surge, phase)
+      const x = P(e.u, e.v).x;
+      if ((e.siege || 0) !== (r.siege || 0) && (e.siege === 1 || e.siege === 3) && onView(x)) sfx('siegeLock', x);
+      if ((e.surgeT || 0) > (r.surgeT || 0) && onView(x)) sfx('shieldUp', x);
+      if ((e.phT || 0) > (r.phT || 0) && onView(x)) sfx('phaseOut', x);
+    }
+    r.siege = e.siege || 0; r.surgeT = e.surgeT || 0; r.phT = e.phT || 0;
     if (e.hp < r.hp - 0.01) { r.ghost = Math.max(r.ghost, r.hp); r.ghostT = 0.35; }      // health just lost shows as a draining white chunk
     else if (r.ghostT > 0) r.ghostT -= dt;
     else r.ghost = Math.max(e.hp, r.ghost - e.maxHp * 0.8 * dt);
@@ -5432,7 +5669,7 @@ function vfxScan(g, dt) {
   }
   for (const p of VFX.prevP) { const r = R.get(p); if (r && r.f !== frame) { if (p.t <= 4) onImpact(g, p, lit); R.delete(p); VFX.freeRec.push(r); } }
   VFX.prevP.length = 0; for (const p of g.projs) VFX.prevP.push(p);
-  for (const f of g.fx) if (!VFX.seenFx.has(f)) { VFX.seenFx.add(f); if (f.k === 'beam' && f.hq && lit(f.x2) && onView(f.x2)) onHqBeam(f); else if (f.k === 'boom' && lit(f.x) && onView(f.x)) onBoom(f); else if (f.k === 'shatter' && lit(f.u)) sfx('shatter', f.x); } // v2.34: a collapse, heard where seen
+  for (const f of g.fx) if (!VFX.seenFx.has(f)) { VFX.seenFx.add(f); if (f.k === 'beam' && f.hq && lit(f.x2) && onView(f.x2)) onHqBeam(f); else if ((f.k === 'blink' || f.k === 'devour') && lit(f.u) && onView(f.x)) sfx(f.k, f.x); else if (f.k === 'boom' && lit(f.x) && onView(f.x)) onBoom(f); else if (f.k === 'shatter' && lit(f.u)) sfx('shatter', f.x); } // v2.34: a collapse, heard where seen
   // commander abilities: casts, the strike's warning and its impact (also caught if the strike resolved and left between frames)
   for (const a of g.abil) {
     let r = R.get(a);
@@ -6132,7 +6369,7 @@ function drawFacProj(c, g, p, a, b, wp, time) {
     c.globalCompositeOperation = 'lighter'; stamp(c, GLOW.fire, b.x, b.y, 8, 0.9); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
     return true;
   }
-  const las = AX_LASER[wp];
+  const las0 = AX_LASER[wp], las = las0 && p.fc ? [las0[0] * (1 + 0.25 * p.fc), las0[1], las0[2] * (1 + 0.22 * p.fc)] : las0; // P14 (v2.37): a Lancer's focus builds a longer, thicker bolt
   if (las) {
     const [dx, dy] = projDir(a, b, p.side), r = VFX.rec.get(p);
     let len = las[0]; if (r && r.has) { const o = P(r.ou, r.ov, r.oz); len = Math.min(len, Math.hypot(b.x - o.x, b.y - o.y)); }
@@ -6264,7 +6501,9 @@ function render(c, g, time, sel, selPad) {
       c.fillStyle = wp === 'ruin' ? '#6fae3a' : '#c4f58e'; c.beginPath(); c.arc(b.x, b.y, big, 0, 7); c.fill();
     } else if (wp === 'rift') { // the Rift Mortar's shot (v2.27): a violet orb on the shell's arc, the same landing ring
       const gp = P(p.u, p.v, 0);
-      if (showLanding(p, lit)) { const t = P(p.tu, p.tv, 0), k = clamp(p.t / p.T, 0, 1); c.strokeStyle = TEAM[p.side].main; c.globalAlpha = 0.2 + 0.5 * k; c.lineWidth = 1.2; c.beginPath(); c.ellipse(t.x, t.y, 26 - 8 * k, (26 - 8 * k) * 0.42, 0, 0, 7); c.stroke(); c.globalAlpha = 1; }
+      if (showLanding(p, lit)) { const t = P(p.tu, p.tv, 0), k = clamp(p.t / p.T, 0, 1), R = p.precise ? 14 - 4 * k : 26 - 8 * k; c.strokeStyle = p.precise ? RIFT : TEAM[p.side].main; c.globalAlpha = 0.2 + 0.5 * k; c.lineWidth = 1.2; c.beginPath(); c.ellipse(t.x, t.y, R, R * 0.42, 0, 0, 7); c.stroke();
+        if (p.precise) { c.beginPath(); for (const s of [-1, 1]) { c.moveTo(t.x + s * (R + 2), t.y); c.lineTo(t.x + s * (R + 8), t.y); c.moveTo(t.x, t.y + s * (R * 0.42 + 1)); c.lineTo(t.x, t.y + s * (R * 0.42 + 5)); } c.stroke(); } // P3 (v2.37): a precise strike's crosshair
+        c.globalAlpha = 1; }
       c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.ellipse(gp.x, gp.y, 4, 1.6, 0, 0, 7); c.fill();
       c.globalCompositeOperation = 'lighter'; stamp(c, GLOW.cyan, b.x, b.y, 7, 0.6); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
       c.fillStyle = RIFT; c.beginPath(); c.arc(b.x, b.y, 3.2, 0, 7); c.fill(); c.fillStyle = '#efe6ff'; c.beginPath(); c.arc(b.x - 1, b.y - 1, 1.1, 0, 7); c.fill();
@@ -6309,6 +6548,9 @@ function render(c, g, time, sel, selPad) {
     if (f.k === 'scrap') { if (scrapShown(g, f, 0)) drawScrap(c, f); continue; }
     if (f.k === 'acidburst') { if (lit(f.u)) drawAcidBurst(c, f); continue; }
     if (f.k === 'shatter') { if (lit(f.u)) drawShatter(c, f); continue; } // a Phase Beacon bubble collapsing (v2.34) // a killed Mite (v2.33)
+    if (f.k === 'pierce') { if (lit(f.u)) drawPierce(c, f); continue; } // P4 (v2.37)
+    if (f.k === 'blink') { if (lit(f.u)) drawBlink(c, f); continue; } // P5 (v2.37)
+    if (f.k === 'devour') { if (lit(f.u)) drawDevour(c, f); continue; } // P11 (v2.37)
     if (f.k === 'roots') { drawRoots(c, f, lit); continue; } // a Rootheart's snare pulse (v2.33), only where the player can see // Salvage (v2.30): the player's own, where they can see
     if (f.k !== 'boom' || !lit(f.x)) continue;
     drawBoom(c, f.x, f.y, f.r, f.t / f.life);
@@ -6530,48 +6772,48 @@ function drawIcon(cvs, kind, type, fac) {
 const UNIT_TIPS = {
   rifle: ['Infantry swarms, and aircraft in numbers', 'Snipers, Tanks, Artillery, Turrets'],
   heavy: ['Tanks, Titans and aircraft', 'Snipers, Tanks'],
-  sniper: ['All infantry, from long range', 'Tanks, Gunships'],
+  sniper: ['Infantry, best in a line: the round goes through its target and hits up to 3 more behind it, weaker each time', 'Tanks, Gunships; units spread out'], // v2.37
   tank: ['Infantry, vehicles and buildings', 'Heavies, Gunships'],
-  artillery: ['Buildings and clumps of troops, from 440 range', 'Anything that gets close, Gunships'],
-  titan: ['Everything on the ground, especially buildings', 'Heavies, Gunships'],
+  artillery: ['Clumps and buildings from 440 range: every shot is a salvo of 3 shells that blankets the area (minimum range 110)', 'Anything that gets close, Gunships; a lone fast unit (the shells land wide)'], // v2.37
+  titan: ['Buildings and everything on the ground once planted: siege lock takes 2 s, then +90 range and +30% against buildings; it can\'t move until it unplants (1.5 s)', 'Heavies, Gunships; fast units that arrive while it plants or unplants'], // v2.37
   aircraft: ['Vehicles and Artillery', 'Interceptors, Heavies, Turrets'],
   interceptor: ['Aircraft only; escorts your Leviathans and Gunships', 'Heavies, Riflemen, Turrets'],
-  leviathan: ['Buildings, from right above them; it can\'t hit aircraft', 'Interceptors, Heavies, Hydras, Turrets'],
+  leviathan: ['Buildings in a row: it carpet-bombs a line of 4 bombs along its path; it can\'t hit aircraft', 'Interceptors, Heavies, Hydras, Turrets; a single hardened target'], // v2.37
   medic: ['No weapon: heals your infantry nearby (2.5% of HP per second)', 'Anything that hits air'],
   drone: ['No weapon: sees 420 far, spots for Artillery (at most 3)', 'Anything that hits air'],
   flame: ['Massed infantry at close range, anyone on a node', 'Tanks, Artillery, Heavies, Titans'],
   hydra: ['Aircraft first, then infantry swarms; slowly chips buildings', 'Tanks, Titans, Artillery'],
-  skitterling: ['Lone ranged units and nodes; hits harder when several bite the same target (up to +45%)', 'Splash damage, Flame Tanks, Turrets; it can\'t hit aircraft'],
+  skitterling: ['Lone ranged units and nodes; hits harder when several bite the same target (up to +45%). Half supply each, at most 60 alive', 'Splash damage, Flame Tanks, Turrets; it can\'t hit aircraft'], // v2.37
   mite: ['Swarming lone units and buildings for free: a clutch every 20 s from the Brood Mound; at T3 a killed Mite bursts into acid', 'Anything at all: very little HP; it can\'t hit aircraft or capture nodes'],
   bulwark: ['Soaking up fire at the front; braces when hit (40% less damage for 3 s, every 12 s)', 'Heavies, Tanks; being surrounded'],
   razorwing: ['Exposed ground units and aircraft; dives from the air', 'Anything that hits air, Turrets'],
   leaper: ['Snipers, Artillery and other ranged units: it leaps up to 140 onto them (every 7 s)', 'Splash, Flame Tanks, focused fire'],
-  ravager: ['Light armor (its maul does 1.6×): infantry, Snipers, support', 'Tanks, Turrets, focused fire'],
+  ravager: ['Light armor (its maul does 1.6×); every kill sends it into a 4 s frenzy (faster attacks and movement), refreshed by the next kill', 'Tanks, Turrets, focused fire'], // v2.37
   spitter: ['Aircraft and ground from range; its acid makes targets take more damage (corrosion)', 'Anything that reaches it, splash'],
-  bilecaster: ['Clumps of ground units: acid splash and stronger corrosion', 'Anything that reaches it, aircraft (it can\'t hit them)'],
-  bilelobber: ['Buildings and clumps from 420 range, like Artillery (minimum range 110)', 'Anything that gets close, aircraft'],
+  bilecaster: ['Marking targets from 280 range: a single bile dart whose corrosion lasts 14 s (+20% damage taken)', 'Swarms (one target at a time), anything that reaches it; it can\'t hit aircraft'], // v2.37
+  bilelobber: ['Softening an army from 420 range: its splash corrodes everything it hits for 3 s (minimum range 110)', 'Anything that gets close, aircraft; weak against buildings on its own'], // v2.37
   ruinmaw: ['Buildings above all; every hit leaves a short acid pool', 'Fast attackers, aircraft, Heavies'],
   thornback: ['The front line; anyone who hits it up close takes 20% of the damage back', 'Ranged focus, Tanks, aircraft'],
   dreadthorn: ['Packed infantry: a hit of 60+ releases a spine burst around it (every 15 s)', 'Ranged focus, Tanks, aircraft'],
   shardling: ['Lone ranged units and nodes: fast light blades, ground and buildings', 'Focus fire, splash, Flame Tanks; it can\'t hit aircraft'],
-  bastion: ['Holding the front: large shields and a brace (40% less damage for 3 s, every 12 s)', 'Heavies, Tanks, Snipers worn down over time; aircraft'],
-  wraithwing: ['Aircraft, ground units and buildings: a fast flyer', 'Anything that hits air, Turrets'],
-  riftstalker: ['Light infantry and lone ranged units: it phase-steps onto them (up to 130, every 8 s)', 'Focus fire, Tanks, heavy frontline units'],
+  bastion: ['Holding the front: when hit after its 12 s cooldown its shields surge back (35% per second for 3 s, even under fire)', 'Burst that breaks through to its health, corrosion; aircraft'], // v2.37
+  wraithwing: ['A fast flyer that phases out for 1 s when hit (it can\'t be touched or fire), then can\'t phase again for 8 s', 'Rapid-fire anti-air: Interceptors, Hydras, Turrets'], // v2.37
+  riftstalker: ['Lone ranged units: it phase-steps onto them (up to 130, every 8 s), strikes once and steps back to where it leapt from', 'A guarded backline; burst when it lands'], // v2.37
   parallax: ['Ranged units: it phase-steps behind them; its blows disrupt (30% less damage for 2 s)', 'Focus fire, heavy frontline units, Turrets'],
-  lancer: ['Aircraft and ground from range: energy bolts, a main source of anti-air', 'Melee units that reach it, splash'],
+  lancer: ['Tanky single targets and aircraft: every hit on the same target does 15% more, up to +60%', 'Swarms (it starts over on a new target); melee units that reach it'], // v2.37
   marksman: ['Infantry from very long range, after a visible charge-up on its target', 'Fast attackers, aircraft (it can\'t hit them); weak against buildings'],
-  riftmortar: ['Buildings and clumps from 430 range, like Artillery (minimum range 110)', 'Anything that gets close, aircraft'],
-  worldbreaker: ['Buildings and clumps; every hit leaves a short distortion zone', 'Fast attackers, aircraft, Heavies'],
+  riftmortar: ['Single high-value targets and buildings from 430 range: a precise, heavy strike with a tight blast (minimum range 110)', 'Swarms (little splash), anything that gets close, aircraft'], // v2.37
+  worldbreaker: ['Armies dug in: every hit leaves a distortion zone where enemy units deal 30% less damage', 'Mobile armies that step out, aircraft, Heavies'], // v2.37
   gravemantle: ['Holding ground: enemy ground units near it are slowed 30%; a weak shot at ground units and buildings', 'Ranged focus, aircraft (it can\'t hit them)'],
   eventide: ['Packed ground units: a gravity pulse pulls them in (every 14 s); a weak shot at ground units and buildings', 'Ranged focus, aircraft (it can\'t hit them)'],
   prismwing: ['Ground units and buildings in numbers: linked Prismwings share half of the shield damage each one takes', 'Anything that hits air, splash on the pack; it can\'t hit aircraft'],
   shardstorm: ['Swarms of aircraft and infantry: its beam chains to up to 3 more enemies, weaker each jump', 'Heavy single targets; weak against buildings'],
-  voidcarrier: ['Buildings first, then ground units, with slow heavy orbs from 170 range', 'Interceptors, Lancers, Hydras, defences; it can\'t hit aircraft'],
-  sovereign: ['Buildings above all, from right above them, with heavy damage across an area', 'Anti-air of every kind; very slow; it can\'t hit aircraft'],
+  voidcarrier: ['Taking the power field forward: it carries a field (radius 120) where Axiarch shields recharge fast and units warp in; slow orbs from 170 range', 'Interceptors, Lancers, Hydras, defences: kill it and the field collapses; it can\'t hit aircraft'], // v2.37
+  sovereign: ['One building at a time: a visible 2 s charge, then a judgement beam for heavy single-target damage', 'Anti-air during the charge; units and spread-out bases'], // v2.37
   needlewing: ['Exposed ground units in a pack: +12% damage for each other Needlewing on the target (up to +36%)', 'Anything that hits air, splash; it can\'t hit aircraft'],
   cloudwing: ['Overwhelming ground targets; while fighting it releases 2 offspring every 14 s (12 s life, at most 6)', 'Anything that hits air; it can\'t hit aircraft'],
   broodtyrant: ['Buildings first, then ground units, with heavy globs from 150 range', 'Interceptors, Heavies, Hydras, Turrets; it can\'t hit aircraft'],
-  worldrender: ['Buildings above all, from right above them, with splash on ground units', 'Interceptors, Heavies, Hydras, Turrets; it can\'t hit aircraft'],
+  worldrender: ['Buildings above all, from right above them: it heals for 30% of the damage it does to buildings (at most 40 HP/s)', 'Burst anti-air before it starts feeding; it can\'t hit aircraft'], // v2.37
 };
 const pFac = () => game ? game.sides[0].faction : DEFAULT_FACTION; // the player's faction (cards, panel and info)
 const stat = (label, val) => `<div><small>${label}</small><b>${val}</b></div>`;
@@ -6646,6 +6888,7 @@ function buildCards() {
     el.addEventListener('animationend', () => el.classList.remove('shake'));
     if (tab === 'train' && UNIT_PATH[type]) el.insertAdjacentHTML('beforeend', `<span class="path">${UNIT_PATH[type].path.short}</span>`);
     if (tab === 'train' && type === 'rifle') el.insertAdjacentHTML('beforeend', '<span class="path pr"></span>');
+    if (tab === 'train' && d.max) el.insertAdjacentHTML('beforeend', '<span class="path mx"></span>'); // how many of a limited unit you have (v2.37)
     wrap.appendChild(el);
   }
   if (tab === 'train' && game && relOf(game, 0)) echoCards(wrap); // v2.34: the Echoes section, first
@@ -6726,10 +6969,11 @@ function onCard(type, el) {
   refreshUI(true);
 }
 
+const fmtPop = p => p % 1 ? (p < 1 ? '½' : `${Math.floor(p)}½`) : String(p); // supply in halves (S1, v2.37)
 function costHTML(cost, res, pop) {
   let h = `<span class="${res.c < cost.c ? 'no' : ''}"><i class="dot c"></i>${cost.c}</span>`;
   if (cost.e) h += `<span class="${res.e < cost.e ? 'no' : ''}"><i class="dot e"></i>${cost.e}</span>`;
-  if (pop) h += `<span><i class="dot p"></i>${pop}</span>`;
+  if (pop) h += `<span><i class="dot p"></i>${fmtPop(pop)}</span>`;
   return h;
 }
 function setHTML(el, h) { if (el.innerHTML !== h) el.innerHTML = h; }
@@ -6910,7 +7154,7 @@ function refreshUI(force) {
   const s = game.sides[0], inc = income(game, 0), cap = popCap(game, 0), used = popUsed(game, 0);
   $('vC').textContent = Math.floor(s.res.c); $('rC').textContent = `+${inc.c.toFixed(0)}/s`;
   $('vE').textContent = Math.floor(s.res.e); $('rE').textContent = `+${inc.e.toFixed(1)}/s`;
-  $('vP').textContent = `${used}/${cap}`;
+  $('vP').textContent = `${fmtPop(used)}/${cap}`;
   for (let k = 0; k < 2; k++) {
     const st = hqStatus(game, k, 0), el = $('hq' + k), fill = el.querySelector('.hb i');
     el.className = 'hqr ' + st.state + (st.stale ? ' stale' : '');
@@ -6938,6 +7182,7 @@ function refreshUI(force) {
       const d = UDEF[type];
       const prods = alive(game, 0, d.from).filter(b => canMake(b, type));
       if (type === 'rifle') setHTML(el.querySelector('.pr'), prods.some(b => pathMod(b, 'pairs')) ? 'MASS ×2' : '');
+      const mx = el.querySelector('.mx'); if (mx) { const n = unitCount(game, 0, type); setHTML(mx, `${n}/${d.max}`); mx.classList.toggle('full', n >= d.max); }
       locked = !prods.length;
       poor = s.res.c < d.cost.c || s.res.e < d.cost.e || used + d.pop > cap;
       for (const p of prods) {
@@ -7608,12 +7853,16 @@ const SFX = {
   blade:    [0, 2, 0.1, 0, v => { tone(v, 'sine', 2400, 900, 0.06, 0.3); hiss(v, 'highpass', 3500, 3500, 1, 0.04, 0.25); }],
   riftblade:[0, 2, 0.1, 0, v => { tone(v, 'triangle', 1800, 500, 0.08, 0.3); hum(v, 'sine', 500, 0.08, 0.2, 40, 60); }],
   parallax: [0, 2, 0.1, 0, v => { tone(v, 'sine', 500, 2400, 0.07, 0.3); tone(v, 'sine', 2400, 700, 0.07, 0.25, 0.06); }],
+  phaseOut: [1, 1, 0.3, 0, v => { tone(v, 'sine', 1800, 300, 0.25, 0.3); hum(v, 'triangle', 700, 0.2, 0.15, 30, 200); }], // a Wraithwing phases out (v2.37)
+  blink:    [0, 2, 0.2, 0, v => { tone(v, 'sine', 400, 2200, 0.1, 0.3); tone(v, 'sine', 2200, 900, 0.08, 0.2, 0.08); }],  // a Riftstalker steps away (v2.37)
+  devour:   [0, 1, 0.3, 0, v => { hiss(v, 'bandpass', 500, 900, 2, 0.25, 0.4); tone(v, 'sine', 140, 220, 0.25, 0.4); }],  // a Worldrender feeds (v2.37)
+  siegeLock:[1, 1, 0.3, 0, v => { hiss(v, 'highpass', 2500, 1200, 0.8, 0.35, 0.35); tone(v, 'square', 90, 60, 0.08, 0.3, 0.3); tone(v, 'sine', 60, 40, 0.25, 0.7, 0.32); }], // hydraulics and a clank (v2.37)
   shieldPing: [0, 1, 0.15, 0, v => { tone(v, 'sine', 1600, 1600, 0.12, 0.3); tone(v, 'sine', 2400, 2350, 0.1, 0.15, 0.02); }], // a shield takes a hit
 };
 const SFX_FAC = { // which sounds belong to which faction's weapons, for loudness matching (sndLevel)
   lastfist: ['rifle', 'gatling', 'hydra', 'flame', 'bomb', 'flak', 'rail', 'rocket', 'missile', 'cannon', 'siege', 'shell', 'hqgun'],
-  bloomhost: ['acid', 'bile', 'ruin', 'glob', 'crush', 'lob', 'spine', 'hqspine', 'splat', 'claw', 'talon', 'needle', 'rend', 'slam', 'maul', 'gore'],
-  axiarchs: ['bolt', 'phase', 'prism', 'astral', 'pulse', 'grav', 'breaker', 'rift', 'void', 'sovereign', 'storm', 'lance', 'horizon', 'hqbeam', 'blade', 'riftblade', 'parallax', 'shieldPing'],
+  bloomhost: ['devour', 'acid', 'bile', 'ruin', 'glob', 'crush', 'lob', 'spine', 'hqspine', 'splat', 'claw', 'talon', 'needle', 'rend', 'slam', 'maul', 'gore'],
+  axiarchs: ['phaseOut', 'blink', 'bolt', 'phase', 'prism', 'astral', 'pulse', 'grav', 'breaker', 'rift', 'void', 'sovereign', 'storm', 'lance', 'horizon', 'hqbeam', 'blade', 'riftblade', 'parallax', 'shieldPing'],
 };
 // Loudness matching (v2.36): once the sounds are baked, each Bloomhost and Axiarch weapon sound gets a gain that brings its
 // loudness (RMS) to the Last Fist average for its priority. Last Fist's own sounds are left as they were. Kept within
