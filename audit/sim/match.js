@@ -11,12 +11,14 @@ function runMatch(spec) {
   const g = S.newGame(diff, { autoPlayer: true, autoDiff: diff, factions: [sides[0].faction, sides[1].faction],
     autoAi: sides[0].ai, ai: sides[1].ai, autoPersona: per(sides[0].persona), persona: per(sides[1].persona) });
   g.countdown = 0;
+  // optional per-side dial overrides (A.dial: { scout: 0, fix: { leash: false } }) for experiments
+  for (let i = 0; i < 2; i++) { const o = sides[i].dial, P = g.sides[i].persona; if (o && P && P.dial) { for (const k in o) if (k !== 'fix') P.dial[k] = o[k]; if (o.fix && P.dial.fix) Object.assign(P.dial.fix, o.fix); } }
   const samples = [];
   const take = () => {
     const army = [0, 0];
     for (const e of g.ents) if (e.kind === 'u' && e.hp > 0) army[e.side] += S.UDEF[e.type].cost.c + S.UDEF[e.type].cost.e;
     samples.push({ t: Math.round(g.t), bank: g.sides.map(sd => Math.round(sd.res.c)), energy: g.sides.map(sd => Math.round(sd.res.e)),
-      earned: g.log.tot.map(T => Math.round(T.earn[0])), army, nodes: g.nodes.map(n => n.owner) });
+      earned: g.log.tot.map(T => Math.round(T.earn[0])), army, nodes: g.nodes.map(n => n.owner), pop: [0, 1].map(s => S.popUsed(g, s)), cap: [0, 1].map(s => S.popCap(g, s)) });
   };
   take();
   let next = sample;

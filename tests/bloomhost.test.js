@@ -125,17 +125,5 @@ test('the match log names each side\'s buildings in its own faction and both fac
   assert.match(txt, /\[ME\] Larva Pit/); assert.match(txt, /\[ENEMY\] Barracks/);
 });
 
-test('one Hard match, Bloomhost (Turtle) against Last Fist: it builds its economy and Maws, trains all three base units, takes nodes and attacks', () => {
-  const mul = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
-  const S = loadSim({ random: mul(11) }); // seeded: one fixed match. v2.37: seed 11 (Skitterlings at half supply: with seed 6 it trained no Razorwing; 3 of seeds 1-33 train all three base units, logged under Audit). v2.33: seed 6 (with seed 77 the Bloomhost AI, now building its Rootheart, took Swarm Bloom and trained no Razorwing)
-  const g = S.newGame('hard', { autoPlayer: true, autoDiff: 'hard', persona: 'turtle', autoPersona: 'aggressor', factions: ['lastfist', 'bloomhost'] });
-  const built = new Set();
-  for (let i = 0; i < 30 * 1700 && !g.over; i++) { S.update(g, 1 / 30); for (const e of g.ents) if (e.side === 1 && e.kind === 'b') built.add(e.type); g.events.length = 0; }
-  assert.ok(g.over, `ended (at ${S.mmss(g.t)})`);
-  for (const k of ['refinery', 'reactor', 'habitat', 'barracks', 'factory', 'techlab', 'turret']) assert.ok(built.has(k), `built a ${S.BD('bloomhost', k).name}`);
-  const tr = g.sides[1].aiLog.trained;
-  for (const t of ['skitterling', 'bulwark', 'razorwing']) assert.ok(tr[t] > 0, `trained ${t}: ${JSON.stringify(tr)}`);
-  assert.ok(g.log.tot[1].nodeCap > 0, 'captured a node');
-  assert.ok(g.sides[1].aiLog.attacks > 0, 'attacked');
-  const ab = g.sides[1].aiLog.abil || {}; assert.ok(!ab.shield && !ab.strike && !ab.repair, 'never a Last Fist ability');
-});
+// v2.38 (audit phase 4): "one Hard match, Bloomhost (Turtle) against Last Fist: it builds its economy and Maws, trains all three base units, takes nodes and attacks" was one seeded match, re-seeded whenever a rule change moved it.
+// It is now a statistical test over N seeded matches on the current rules: tests/ai-stats.test.js.

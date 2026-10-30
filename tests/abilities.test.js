@@ -174,35 +174,8 @@ test('save and resume mid-cooldown and mid-effect; a v7 save starts each ability
   assert.strictEqual(g3.sides[0].ab.shield, 560); assert.strictEqual(g3.sides[0].ab.strike, 620);
 });
 
-test('the AI uses abilities under the same rules (one shared cooldown), each personality in its own way', () => {
-  const use = {}, strikeDef = {};
-  for (const kind of ['aggressor', 'turtle', 'economist', 'trickster']) {
-    use[kind] = { shield: 0, strike: 0, repair: 0 }; strikeDef[kind] = 0;
-    for (let m = 0; m < 3; m++) {
-      const g = sim.newGame('hard', { autoPlayer: true, autoDiff: 'hard', persona: kind, autoPersona: 'turtle' });
-      const orig = g.sides[1].res, last = [null, null]; // the AI pays: resources can never go negative from an ability
-      for (let i = 0; i < 30 * 900 && !g.over; i++) {
-        sim.update(g, 1 / 30); assert.ok(orig.c > -1e-6 && orig.e > -1e-6);
-        for (const e of g.events) if (e.type === 'ability') { // the AI waits out the shared cooldown too
-          const p = last[e.side];
-          if (p) assert.ok(g.t - p.t >= sim.ABIL[p.k].cd - 1e-6, `${kind}: ${e.k} ${(g.t - p.t).toFixed(1)} s after ${p.k}`);
-          last[e.side] = { t: g.t, k: e.k };
-        }
-        g.events.length = 0;
-      }
-      const a = g.sides[1].aiLog.abil || {};
-      for (const k of ['shield', 'strike', 'repair']) use[kind][k] += a[k] || 0;
-      strikeDef[kind] += a.strikeDef || 0;
-    }
-  }
-  for (const kind of Object.keys(use)) assert.ok(use[kind].shield + use[kind].strike + use[kind].repair > 0, `${kind} used abilities: ${JSON.stringify(use[kind])}`);
-  assert.ok(strikeDef.aggressor > 0, `the Aggressor strikes defences (${strikeDef.aggressor})`);
-  // Easy never uses the Orbital Strike
-  const g = sim.newGame('easy', {}); g.sides[0].aiT = 1e9;
-  const gE = sim.newGame('easy', { autoPlayer: true, autoDiff: 'easy' });
-  for (let i = 0; i < 30 * 900 && !gE.over; i++) sim.update(gE, 1 / 30);
-  assert.strictEqual((gE.sides[1].aiLog.abil || {}).strike || 0, 0);
-});
+// v2.38 (audit phase 4): "the AI uses abilities under the same rules (one shared cooldown), each personality in its own way" was one seeded match, re-seeded whenever a rule change moved it.
+// It is now a statistical test over N seeded matches on the current rules: tests/ai-stats.test.js.
 
 test('v2.11: Repair Pulse is never wasted by the AI; repairHealable tells the player when nothing in range can be healed', () => {
   // in the storm buildings can't be healed: a base full of damaged buildings and no hurt units gives nothing to heal

@@ -146,14 +146,5 @@ test('the AI trains every unit on its Bloomspire path (a prepared T3 Bloomspire 
   }
 });
 
-test('in a seeded Hard match the Bloomhost AI picks a Bloomspire path through its Tech Lab taste and trains its units', () => {
-  const mul = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
-  const S = loadSim({ random: mul(17) }); S.RETREAT.fire = true; S.setRedesign(false); // v2.37: also on v2.36's units (Skitterlings at half supply change this match); // v2.35: on the v2.34 retreat rule (retreating units fire). With retreating units holding their fire no Worldrender was trained in 74 seeded matches (seeds 1-80 here, 1-8 against the Economist and Trickster); logged in KNOWN_ISSUES.md for the AI training phase. v2.33: seed 17 (the Bloomhost AI's own signature building changed its play; with seed 42 no Worldrender before 22:58). v2.32: seed 42 (the Last Fist autoplayer's signature building changed its play; with seed 23 the match ends at 9:15 before a Worldrender; 1 of seeds 1-42 trains one). v2.30: seed 23 (was 3)
-  const g = S.newGame('hard', { autoPlayer: true, autoDiff: 'hard', persona: 'economist', autoPersona: 'turtle', factions: ['lastfist', 'bloomhost'] });
-  let path = null;
-  for (let i = 0; i < 30 * 1700 && !g.over; i++) { S.update(g, 1 / 30); for (const e of g.ents) if (e.side === 1 && e.type === 'techlab' && e.path) path = e.path; g.events.length = 0; }
-  assert.ok(g.over, 'the match ends');
-  assert.strictEqual(path, 'B', 'the Economist (Air Power) takes Apex Bloom');
-  const tr = g.sides[1].aiLog.trained;
-  assert.ok(tr.broodtyrant > 0 && tr.worldrender > 0, JSON.stringify(tr));
-});
+// v2.38 (audit phase 4): "in a seeded Hard match the Bloomhost AI picks a Bloomspire path through its Tech Lab taste and trains its units" was one seeded match, re-seeded whenever a rule change moved it.
+// It is now a statistical test over N seeded matches on the current rules: tests/ai-stats.test.js.

@@ -18,7 +18,7 @@ function simSource(file) {
 }
 // mulberry32: the same generator the test kit uses
 function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
-const EXPORTS = ['VERSION', 'newGame', 'update', 'UDEF', 'BDEF', 'BD', 'FACTIONS', 'FACTION_KEYS', 'PERSONAS', 'AI_PRESETS', 'UNIT_ORDER', 'popUsed', 'armyValue', 'setRedesign', 'REDESIGN', 'RETREAT', 'FLAME', 'SALVAGE', 'SIG', 'serialize', 'EXT', 'L', 'hqU', 'facOf'];
+const EXPORTS = ['VERSION', 'newGame', 'update', 'UDEF', 'BDEF', 'BD', 'FACTIONS', 'FACTION_KEYS', 'PERSONAS', 'AI_PRESETS', 'UNIT_ORDER', 'popUsed', 'popCap', 'armyValue', 'income', 'setRedesign', 'REDESIGN', 'RETREAT', 'FLAME', 'SALVAGE', 'SIG', 'serialize', 'EXT', 'L', 'hqU', 'facOf', 'ABIL'];
 function loadSim(seed, opts = {}) {
   const ctx = vm.createContext({ console });
   vm.runInContext(`Math.random = (${mulberry.toString()})(${seed | 0});`, ctx);

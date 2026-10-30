@@ -67,7 +67,7 @@ test('Mites follow the army\'s orders, can\'t capture nodes and give no Salvage,
 test('the T3 acid burst: a killed Mite bursts (enemy ground units only, never buildings); an expiring one never does; below T3 none', () => {
   const g = quiet(); seeAll(g); const mo = fin(g, 0, 'sigA'); mo.tier = 3;
   const mk = u => { const e = put(g, 0, 'mite', u); e.temp = g.t + 30; e.tSrc = 'mite'; e.cd = 1e6; return e; }; // passive: only the burst counts
-  const foe = put(g, 1, 'tank', MID + 20); foe.hp = foe.maxHp = 1e4; const air = put(g, 1, 'aircraft', MID + 10); air.hp = air.maxHp = 1e4;
+  const foe = put(g, 1, 'tank', MID + 20); foe.hp = foe.maxHp = 1e4; const air = put(g, 1, 'aircraft', MID + 10); air.hp = air.maxHp = 1e4; foe.cd = air.cd = 1e6; // passive too (v2.38: the Tank sometimes shot the Mite before it could expire, a flaky test)
   const pad = g.sides[1].slots.findIndex(x => !x); sim.tryBuild(g, 1, 'refinery', pad); const ref = g.ents.find(e => e.side === 1 && e.type === 'refinery'); ref.built = true; ref.hp = ref.maxHp;
   const m1 = mk(MID); sim.kill(g, m1, 1);
   const hit = 1e4 - foe.hp; assert.ok(Math.abs(hit - U.mite.dmg * M.burst * sim.DMG.miteacid.vehicle) < 1e-9, `burst ${hit}`);

@@ -124,16 +124,5 @@ test('saves v20 keep Bloomhost cooldowns and active effects; a v19 Bloomhost sav
   assert.ok(sim.SAVE_VER >= 20); // v21 (v2.21) loads the same way
 });
 
-test('the Bloomhost AI casts all three in a seeded Hard match (Turtle), under the same shared cooldown', () => {
-  const mul = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
-  const S = loadSim({ random: mul(4) }); // v2.37: seed 4 (Skitterlings at half supply changed the match; with seed 2 it cast no Emergency Brood). v2.35: seed 2 (retreating units hold their fire; with seed 7 it cast no Emergency Brood). v2.33: seed 7 (its Rootheart changed its play; with seed 1 it cast no Corrosive Bloom). v2.30: seed 1 (Salvage changed Last Fist's play; with seed 4 the AI no longer casts Frenzy Bloom)
-  const g = S.newGame('hard', { autoPlayer: true, autoDiff: 'hard', persona: 'turtle', autoPersona: 'turtle', factions: ['lastfist', 'bloomhost'] });
-  let last = null;
-  for (let i = 0; i < 30 * 1700 && !g.over; i++) {
-    S.update(g, 1 / 30);
-    for (const e of g.events) if (e.type === 'ability' && e.side === 1) { if (last) assert.ok(g.t - last.t >= S.ABIL[last.k].cd - 1e-6); last = { t: g.t, k: e.k }; }
-    g.events.length = 0;
-  }
-  const ab = g.sides[1].aiLog.abil || {};
-  for (const k of ['frenzy', 'brood', 'corrosive']) assert.ok(ab[k] > 0, `${k}: ${JSON.stringify(ab)}`);
-});
+// v2.38 (audit phase 4): "the Bloomhost AI casts all three in a seeded Hard match (Turtle), under the same shared cooldown" was one seeded match, re-seeded whenever a rule change moved it.
+// It is now a statistical test over N seeded matches on the current rules: tests/ai-stats.test.js.

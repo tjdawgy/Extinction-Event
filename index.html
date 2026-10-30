@@ -226,7 +226,8 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .box h1.win{color:var(--good)}
 .box h1.lose{color:var(--bad)}
 .box .kicker{margin:0 0 4px;font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--blue)}
-.box .ver{position:absolute;top:10px;right:14px;margin:0;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.box .ver{position:absolute;top:10px;right:14px;margin:0;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;cursor:pointer;padding:6px 0 6px 10px} /* tap: the dev menu (v2.38) */
+.spectate #panel, .spectate #abil{display:none} .setup.dev .seg button{height:28px;font-size:12px} /* spectating (v2.38): no build tray, no abilities */
 .box p{margin:6px 0 0;color:var(--muted);font-size:13.5px;max-width:64ch}
 .how{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
 .how div{background:rgba(30,46,76,.6);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:12.5px;color:var(--muted)}
@@ -338,7 +339,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.37'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.38'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -816,21 +817,24 @@ const PERSONA_NAME = { aggressor: 'The Aggressor', turtle: 'The Turtle', economi
    scout      seconds between scouting runs by one cheap unit (0: never)
    retreat    an attack pulls back when its army is below this share of the enemy's it knows of
    delay      reaction delay: multiplies the difficulty's time between decisions
+   late       game time after which it stops waiting for a clear edge and attacks with what it has
    comp       unit composition weights by unit type (multiply the unit's score) */
-const AI_DIALS = { nodes: 2, eco: 0, bank: 2500, attackAt: 0, minArmy: 300, turrets: 0, sigAt: 0, sell: true, scout: 0, retreat: 0.7, delay: 1, comp: {} };
+const AI_DIALS = { nodes: 2, eco: 0, bank: 2500, attackAt: 0, minArmy: 300, turrets: 0, sigAt: 0, sell: true, scout: 0, retreat: 0.7, delay: 1, late: 1080, comp: {} };
 const AI_PRESETS = {
   legacy: { name: 'Legacy', smart: false, dials: AI_DIALS },
-  default: { name: 'Default', smart: true, dials: Object.assign({}, AI_DIALS, { scout: 70, comp: {} }) },
+  default: { name: 'Default', smart: true, dials: Object.assign({}, AI_DIALS, { scout: 70, comp: {} }),
+    fix: { scores: true, room: true, pathUnits: true, spot: true, leash: true, carrier: true, timing: true, spend: true, batch: false } }, // batch: reinforcements in groups (measured neutral in v2.38, off) // the competence rules, each switchable (for the harness)
 };
 const AI_PRESET_KEYS = Object.keys(AI_PRESETS);
 const aiDials = P => (P && P.dial) || AI_DIALS; // a persona without dials (an older save) reads the legacy constants
 const aiSmart = P => !!(P && P.smart);
+const aiFix = (P, k) => !!(P && P.smart && (!P.dial || !P.dial.fix || P.dial.fix[k])); // one competence rule on (the harness can switch each off)
 const pickOne = a => a[Math.floor(Math.random() * a.length)];
 // preset: 'legacy' or 'default' (v2.38); it adds the dials and the competence switch after the personality's own rolls,
 // with no random numbers of its own, so a Legacy personality rolls exactly as before
 function rollPersona(kind, preset) {
   const P = rollPersona0(kind), A = AI_PRESETS[preset] || AI_PRESETS.default;
-  P.preset = AI_PRESETS[preset] ? preset : 'default'; P.smart = A.smart; P.dial = Object.assign({}, A.dials, { comp: Object.assign({}, A.dials.comp) });
+  P.preset = AI_PRESETS[preset] ? preset : 'default'; P.smart = A.smart; P.dial = Object.assign({}, A.dials, { comp: Object.assign({}, A.dials.comp) }, A.fix ? { fix: Object.assign({}, A.fix) } : {});
   return P;
 }
 function rollPersona0(kind) {
@@ -1678,6 +1682,7 @@ function updateUnit(g, u, foes, dt) {
     else { u.u += du / dd * st; u.v += dv / dd * st; u.z = Math.sin(Math.PI * clamp(1 - dd / u.ld, 0, 1)) * Math.min(26, u.ld * 0.18); u.face = du >= 0 ? 1 : -1; }
     u.moving = true; return;
   }
+  if (u.aiBack > g.t && !u.siege) { u.tgt = 0; u.chT = 0; moveToward(u, d, side.backU != null ? side.backU : home, u.laneV, dt, sp); return; } // v2.38: a Default AI pulls it back for a moment (unit timing)
   if (d.siege && titanSiege(g, u, d, st, foes)) return; // P8 (v2.37): planting, planted or unplanting
   if (u.phT > g.t) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // P13 (v2.37): a phased Wraithwing holds still and can't fire
   // Retreat: keep running home until back at the rally flag. A retreating unit holds its fire (v2.35, audit): it
@@ -1712,7 +1717,7 @@ function updateUnit(g, u, foes, dt) {
   if (close) { u.moving = false; return; } // artillery: enemy is inside minimum range
   if (d.chase && st !== 'move' && !(st === 'hold' && u.holdU !== undefined)) { // melee (v2.17): close on the nearest enemy it can see and hurt
     const prey = A.prey !== undefined ? A.prey : acquire(g, u, { ...d, range: d.chase }, foes).best;
-    if (prey && d.leap && g.t >= u.leapCd && !(u.snT > g.t)) { // snared: no leap either (v2.33) // the Leaper jumps the last stretch (v2.19), never further than leap.range
+    if (prey && d.leap && g.t >= u.leapCd && !(u.snT > g.t) && !(u.aiHold > g.t)) { // v2.38: a Default AI holds a Riftstalker's leap while its shields recharge // snared: no leap either (v2.33) // the Leaper jumps the last stretch (v2.19), never further than leap.range
       const dist = effDist(u, prey);
       if (dist <= d.leap.range && dist >= d.leap.min) { const k = Math.max(0, (Math.hypot(prey.u - u.u, prey.v - u.v) - d.range * 0.7) / Math.max(1, Math.hypot(prey.u - u.u, prey.v - u.v))); u.lu = u.u + (prey.u - u.u) * k; u.lv = u.v + (prey.v - u.v) * k;
         if (d.leap.behind) { const pd = Math.max(1, Math.hypot(prey.u - u.u, prey.v - u.v)); u.lu = clamp(prey.u + (prey.u - u.u) / pd * d.range * 0.7, 0, L); u.lv = clamp(prey.v + (prey.v - u.v) / pd * d.range * 0.7, -LANE_V, LANE_V); } // the Parallax lands just behind its target (v2.27)
@@ -1723,20 +1728,23 @@ function updateUnit(g, u, foes, dt) {
     if (prey) { moveToward(u, d, prey.u, prey.v, dt, sp); return; }
   }
   let tu = home, tv = u.laneV;
-  if (st === 'move') [tu, tv] = slotOf(u, ord); // Regroup: walk to the flag, then hold there
+  if (u.id === side.scoutId && side.scoutU != null && st !== 'retreat') tu = side.scoutU; // v2.38: a Default AI's scout
+  else if (st === 'move') [tu, tv] = slotOf(u, ord); // Regroup: walk to the flag, then hold there
   else if (st === 'hold' && u.holdU !== undefined) { tu = u.holdU; tv = u.holdV; }
   else if (d.support) [tu, tv] = supportSpot(g, u, d, st, home);
+  else if (d.node && side.vcU != null && st === 'attack') tu = side.vcU; // v2.38: a Default AI keeps its Voidcarrier just behind the front
   else if (st === 'attack') {
     // a field push spreads forward of its line; a siege spreads back from it, so nobody stands inside the enemy HQ's range
     const spread = side.pushMode === 'siege' ? -1 : 1;
     const end = side.pushTo !== null ? side.pushTo - spread * u.rallyOff * dir * 0.6 : (dir > 0 ? L : 0);
-    if (u.id === side.spotter && side.spotU != null && side.pushTo !== null) tu = side.spotU;
+    if (u.id === side.spotter && side.spotU != null && (side.pushTo !== null || side.spotAny)) tu = side.spotU; // spotAny (v2.38): a Default AI spots for its long guns on any push
     else if (u.type === 'interceptor') { // escort the nearest of your Leviathans and Gunships; with none, wait behind the front
       let esc = null, ed = 1e9;
       for (const e of g.ents) if (e.kind === 'u' && e.side === u.side && e.hp > 0 && (e.type === 'leviathan' || e.type === 'aircraft')) { const dd = Math.abs(e.u - u.u); if (dd < ed) { ed = dd; esc = e; } }
       if (esc) { tu = esc.u - dir * 12; tv = esc.v + (u.id % 2 ? 14 : -14); } else { const f = g.front[u.side]; tu = f === null ? home : f - dir * 40; }
     }
     else tu = end;
+    if (side.leash != null && !d.siege && !d.air) tu = dir > 0 ? Math.min(tu, side.leash) : Math.max(tu, side.leash); // v2.38: a Default AI's army stays within reach of its Titans while they plant
   }
   if (!moveToward(u, d, tu, tv, dt, sp)) u.face = dir;
 }
@@ -1774,7 +1782,7 @@ function supportSpot(g, u, d, st, home) {
   const side = g.sides[u.side], dir = dirOf(u.side);
   if (u.type === 'medic') { const c = infantryCentre(g, u.side); return c ? [c.u - dir * 10, c.v] : [home, u.laneV]; }
   if (st !== 'attack') return [home, u.laneV];
-  if (u.id === side.spotter && side.spotU != null && side.pushTo !== null) return [side.spotU, u.laneV];
+  if (u.id === side.spotter && side.spotU != null && (side.pushTo !== null || side.spotAny)) return [side.spotU, u.laneV];
   const f = g.front[u.side];
   return [clamp((f === null ? rallyU(u.side) : f) - dir * 30, 0, L), u.laneV]; // just behind the front: its sight reaches far ahead
 }
@@ -2819,7 +2827,7 @@ function aiUpdate(g, s, dt) {
     if (spare) { trySell(g, s, spare); want = 'habitat'; }
   }
   // Credits piling up with no energy and no free pad: trade an extra Refinery for a Reactor
-  if (!freePad && D.eco && dl.sell && side.res.e < 120 && side.res.c > 1500 && countB(g, s, 'refinery') > 2 && !constructing.length) {
+  if (!freePad && D.eco && dl.sell && side.res.e < 120 && side.res.c > 1500 && countB(g, s, 'refinery') > (aiFix(P, 'spend') && countB(g, s, 'reactor') < 2 ? 1 : 2) && !constructing.length) { // v2.38 (Default): also with 2 Refineries while it has under 2 Reactors
     trySell(g, s, alive(g, s, 'refinery')[0]); want = 'reactor';
   }
   if (!want && D === DIFF.hard && !g.forcePath && freePad && !constructing.length && income(g, s).c >= 25 && aiArmorShare(theirs) > 0.35) {
@@ -2846,9 +2854,11 @@ function aiUpdate(g, s, dt) {
   const upgrading = g.ents.some(b => b.kind === 'b' && b.side === s && b.upgrading && b.hp > 0);
   const floating = side.res.c > 700 && side.res.e > 200;
   const buildDone = !want || !freePad || constructing.length > 0;
-  if (g.t >= D.upStart + P.upShift - (ecoMood ? 30 : 0) && !upgrading && (buildDone || floating) && (!(calm || defend) || floating) && !(D.maxTier < 3 && Math.random() < 0.5)) {
+  const rich2 = aiFix(P, 'spend') && side.res.c > 1500 && g.ents.filter(b => b.kind === 'b' && b.side === s && b.upgrading && b.hp > 0).length < 2; // v2.38 (Default): rich, a second upgrade at once
+  if (g.t >= D.upStart + P.upShift - (ecoMood ? 30 : 0) && (!upgrading || rich2) && (buildDone || floating) && (!(calm || defend) || floating) && !(D.maxTier < 3 && Math.random() < 0.5)) {
     const energyShort = side.res.e < 120 && side.res.c > 800;
-    for (const [type, tier] of [...(energyShort ? [['reactor', 2], ['reactor', 3]] : []), ...P.upgFirst, ...AI_UPG]) {
+    for (const [type, tier] of [...(energyShort ? [['reactor', 2], ['reactor', 3]] : []), ...(rich2 ? [['habitat', 2], ['habitat', 3], ['reactor', 2], ['reactor', 3]] : []), ...P.upgFirst, ...AI_UPG]) {
+      if (rich2 && upgrading && alive(g, s, type).some(x => x.upgrading)) continue;
       if (tier > D.maxTier) continue;
       if (type === 'reactor' && side.res.e > ENERGY_PLENTY) continue;
       if (prodLocked(side.faction, type)) continue; // no paths yet (Axiarch production, v2.25)
@@ -2938,19 +2948,33 @@ function aiUpdate(g, s, dt) {
     };
     if (!threat) for (const t of types) { const b = P.bias[t] || P.bias[AI_TWIN[t]]; if (b && sc[t] > 0) sc[t] *= b; } // the personality's taste in units (threats are answered on merit)
     for (const t of types) if (dl.comp[t] !== undefined) sc[t] *= dl.comp[t]; // the composition dial (v2.38; legacy has none)
+    if (smart) aiSmartScores(g, s, sc, types, { comp, antiAir, theirs, mine, nFront, turtle, log, threat, P }); // v2.38: the Default AI values v2.37 roles
     // Bloomspire path units (v2.21, minimal): one the AI has never trained goes to the top once, so it saves for it (its
     // simple score sits below the Razorwing's, which would otherwise always win)
     if (facOf(side.faction) === 'bloomhost') { const best = Math.max(...types.map(t => sc[t])); for (const t of types) if (UNIT_PATH[t] && UNIT_PATH[t].b === 'techlab' && !log.trained[t]) sc[t] = best + 0.1; }
     // Axiarchs (v2.28): the same rule on every production path (Genesis Gate, Architectum, and the Celestial Array's once it has one)
     if (facOf(side.faction) === 'axiarchs') { const best = Math.max(...types.map(t => sc[t])); for (const t of types) if (UNIT_PATH[t] && !log.trained[t]) sc[t] = best + 0.1; }
-    const fits = t => used + UDEF[t].pop <= cap * fillNow && freeProducer(g, s, t);
+    const spend = aiFix(P, 'spend');
+    const fits = t => used + UDEF[t].pop <= cap * fillNow && (freeProducer(g, s, t) || (spend && side.res.c > 900 && g.ents.some(e => e.side === s && canMake(e, t) && e.queue.length < 3))); // v2.38 (Default): rich, it queues up to 3
     const top = types.filter(fits).sort((a, b) => sc[b] - sc[a])[0];
+    // v2.38 (Default): a big unit it has never trained, which its army is too full to fit, gets room: it stops training
+    // smaller units for up to 75 s while losses free supply (never while threatened)
+    let saveRoom = false;
+    if (aiFix(P, 'room') && !threat) {
+      const want = types.slice().sort((a, b) => sc[b] - sc[a])[0];
+      if (want && UDEF[want].pop >= 4 && !log.trained[want] && !fits(want) && freeProducer(g, s, want) && used + UDEF[want].pop > cap * fillNow) {
+        if (side.saveFor !== want) { side.saveFor = want; side.saveT = g.t; }
+        saveRoom = g.t - side.saveT < 75;
+      } else side.saveFor = null;
+    }
     // Save for the better unit unless the enemy is already in the base (a calm AI keeps saving while merely threatened)
     const mustSpend = defend || (saving ? danger && !(lightThreat && hasBuilt(g, s, 'factory')) : threat); // vs infantry, Tanks beat trickled Riflemen
-    for (let k = 0; k < D.trainPer; k++) {
+    for (let k = 0; k < D.trainPer && !saveRoom; k++) {
       const cand = types.filter(t => { const d = UDEF[t]; return fits(t) && side.res.c - d.cost.c >= reserve.c && side.res.e - d.cost.e >= reserve.e; });
       if (!cand.length) break;
-      if (top && !cand.includes(top) && !mustSpend && (saving || Math.random() < 0.6)) break;
+      const flush = spend && side.res.c > 900; // v2.38 (Default): credits piling up: buy what it can afford now instead of waiting
+      if (top && !cand.includes(top) && !mustSpend && !flush && (saving || Math.random() < 0.6)) break;
+      if (flush && side.res.e < 80) { const free = cand.filter(t => UDEF[t].cost.e <= 10); if (free.length) cand.splice(0, cand.length, ...free); } // energy-starved: credit-only units
       let pick;
       if (Math.random() < D.smart) pick = cand.slice().sort((a, b) => sc[b] - sc[a])[0];
       else {
@@ -2973,7 +2997,7 @@ function aiUpdate(g, s, dt) {
   const wave = Math.min(3600, 400 + g.t * 4) * D.wave * P.wave * (ecoMood ? 1.3 : 1);
   const full = used >= cap * fill - 2, since = g.t - side.stanceAt; // full by its own army limit
   // A failed base attack raises the bar for the next one, unless the army is maxed out with money banked to refill it
-  const late = g.t > 1080; // after 18 minutes, stop waiting for a perfect edge
+  const late = g.t > dl.late; // after 18 minutes (the late dial, v2.38), stop waiting for a perfect edge
   const bold = myV >= attackBar(g, s) || (full && (rich || side.res.c > 1000)) || late;
   const siegeLine = hqU(opp) - dir * (hqGun.range + 25), fieldLine = L / 2 + dir * 20, farLine = g.nodes[s === 0 ? g.nodes.length - 1 : 0].u; // farLine: the enemy's own node (the nodes dial at 3, v2.38)
   const myNode = g.nodes[s === 0 ? 0 : g.nodes.length - 1];
@@ -3034,12 +3058,14 @@ function aiUpdate(g, s, dt) {
   }
   aiAbility(g, s, P, { mine, theirs, threat, myV, thV });
   aiMicro(g, s, D, mine);
+  if (smart) aiSmartArmy(g, s, mine, dl, P); // v2.38: the Default AI's unit handling
 }
 // Spotters: siege guns can't fire at what their side can't see, so while sieging, one unit walks up until
 // its sight reaches the front of the enemy base (as far as this side knows where that is). Seeing the base
 // means entering its HQ's range, so sturdy units go first; a fallen spotter is replaced on the next tick.
 const SPOTTER_PREF = ['drone', 'titan', 'tank', 'heavy', 'aircraft', 'interceptor', 'rifle', 'sniper', 'ruinmaw', 'dreadthorn', 'bulwark', 'thornback', 'razorwing', 'ravager', 'skitterling', 'leaper'];
 function aiSpotter(g, s) {
+  if (aiFix(g.sides[s].persona, 'spot')) { aiSmartSpotter(g, s); return; } // v2.38: the Default AI spots for every long gun
   const side = g.sides[s], dir = dirOf(s), opp = 1 - s;
   const sieging = side.stance === 'attack' && side.pushTo !== null && side.pushMode === 'siege';
   const mine = sieging ? g.ents.filter(e => e.kind === 'u' && e.side === s && e.hp > 0) : [];
@@ -3053,6 +3079,103 @@ function aiSpotter(g, s) {
   if (gh.length) front = Math.max(...gh.map(b => -dir * b.u + b.half));
   side.spotter = sp.id;
   side.spotU = clamp(-dir * (front + SIGHT[sp.type] - 15), 0, L);
+}
+
+/* ---------- The Default AI's competence (v2.38, audit phase 4) ----------
+   Rules only the Default preset uses (aiSmart). They know the v2.37 units: what each is for, what it needs (vision,
+   room, timing) and where it should stand. No new rules for the units themselves: they act through the same orders,
+   spotter, hold and stance hooks the player's units obey. */
+// Unit scores for v2.37 roles (on top of the shared scores; threats keep being answered on merit)
+function aiSmartScores(g, s, sc, types, c) {
+  const { comp, antiAir, theirs, mine, nFront, turtle, log, P } = c, has = t => types.includes(t), n = t => mine.filter(u => u.type === t).length;
+  if (!aiFix(P, 'scores')) { if (aiFix(P, 'pathUnits')) aiPathUnitsFirst(sc, types, log, c.threat); return; }
+  const aaRapid = theirs.length ? theirs.filter(u => ['interceptor', 'hydra', 'spitter', 'lancer', 'razorwing', 'shardstorm', 'rifle'].includes(u.type)).length / theirs.length : 0.3;
+  const set = (t, v) => { if (has(t)) sc[t] = v; };
+  // long guns: each for the targets its v2.37 mechanic is made for
+  set('artillery', nFront >= 3 && n('artillery') < Math.max(2, nFront / 3) ? 1.1 + comp.light * 0.8 + comp.heavy * 0.3 + (turtle ? 0.8 : 0) : 0.1); // salvo: clumps and bases
+  set('riftmortar', nFront >= 3 && n('riftmortar') < Math.max(2, nFront / 3) ? 1.1 + comp.vehicle * 0.9 + comp.heavy * 0.5 - comp.light * 0.4 + (turtle ? 0.6 : 0) : 0.1); // precision: single high-value targets
+  set('bilelobber', nFront >= 4 && n('bilelobber') < Math.max(2, nFront / 4) ? 1.0 + comp.heavy * 0.6 + comp.vehicle * 0.5 + (turtle ? 0.5 : 0) : 0.1); // softening: with a front to exploit it
+  set('bilecaster', 0.9 + comp.heavy * 1.0 + comp.vehicle * 0.8 + (nFront >= 4 ? 0.3 : 0) - comp.air * 0.6 - comp.light * 0.3); // a single-target marker: tough targets
+  set('sniper', 0.8 + comp.light * 1.6 + comp.heavy * 0.9 - comp.vehicle * 1.0 - comp.air * 0.6); // pierce: infantry in lines
+  set('lancer', 1.0 + comp.air * 1.8 + comp.vehicle * 0.9 + comp.heavy * 0.7 - comp.light * 0.3); // focus: tough single targets and air
+  set('wraithwing', 1.2 + comp.vehicle * 1.0 + comp.light * 0.4 + (1 - aaRapid) * 0.6 + (antiAir < 0.45 ? 0.6 : 0)); // phase: strong against slow anti-air
+  set('ravager', 1.2 + comp.light * 1.6 + comp.heavy * 0.2 - comp.vehicle * 0.7 - comp.air * 0.5); // frenzy on kills: light swarms
+  if (has('voidcarrier')) sc.voidcarrier = 1.5 + (n('voidcarrier') ? -0.8 : 0.4) + (turtle ? 0.4 : 0) - antiAir * 0.8; // one field carrier for the push
+  if (has('sovereign')) sc.sovereign = 1.6 + (turtle ? 1.0 : 0.3) - antiAir * 1.0; // judgement: one building at a time
+  if (has('leviathan')) sc.leviathan = 1.6 + (turtle ? 1.0 : 0.3) - antiAir * 1.0; // carpet: buildings in a row
+  if (has('worldrender')) sc.worldrender = 1.6 + (turtle ? 1.0 : 0.3) - antiAir * 1.0; // devour: sustained base attack
+  // Skitterlings: plan around the limit of 60; Razorwings, its early flyer, always in the mix (anti-air and raids)
+  if (has('skitterling') && UDEF.skitterling.max) sc.skitterling *= clamp(1 - unitCount(g, s, 'skitterling') / UDEF.skitterling.max, 0.05, 1);
+  if (has('razorwing')) sc.razorwing = Math.max(sc.razorwing, 1.1 + comp.air * 1.2 + (n('razorwing') < 2 + Math.floor(g.t / 180) ? 0.6 : 0));
+  if (aiFix(P, 'pathUnits')) aiPathUnitsFirst(sc, types, log, c.threat);
+}
+// a path unit it has never trained goes to the top once, so it saves for it (the Bloomspire's rule, v2.21, on every path)
+function aiPathUnitsFirst(sc, types, log, threat) {
+  if (threat) return;
+  const best = Math.max(...types.map(t => sc[t]));
+  for (const t of types) if (UNIT_PATH[t] && !log.trained[t]) sc[t] = Math.max(sc[t], best + 0.1);
+}
+// Where its units stand and when they act: the Titans' leash, the Voidcarrier's spot, scouting and unit timing
+function aiSmartArmy(g, s, mine, dl, P) {
+  const side = g.sides[s], dir = dirOf(s), opp = 1 - s, ground = mine.filter(u => !UDEF[u.type].air);
+  // Titans plant to fire; the rest of an attacking army stays within reach of the rearmost one, so it isn't fought alone
+  const ti = mine.filter(u => UDEF[u.type].siege);
+  side.leash = aiFix(P, 'leash') && side.stance === 'attack' && ti.length ? ti.reduce((a, u) => dir * u.u < dir * a ? u.u : a, ti[0].u) + dir * 200 : null;
+  // the Voidcarrier floats just behind the ground front, so warp-ins land behind the line, not in front of it
+  const fr = ground.filter(u => !UDEF[u.type].support).reduce((a, u) => a === null || dir * u.u > dir * a ? u.u : a, null);
+  side.vcU = aiFix(P, 'carrier') && mine.some(u => UDEF[u.type].node) && fr !== null ? clamp(fr - dir * 110, 0, L) : null;
+  side.backU = clamp(rallyU(s) + dir * 120, 0, L);
+  // reinforcements in groups: while it attacks, new units gather at the rally point until they are worth 400 together,
+  // then march as one instead of walking to the front one by one
+  if (aiFix(P, 'batch') && side.stance === 'attack' && fr !== null) {
+    const back = mine.filter(u => !UDEF[u.type].support && !UDEF[u.type].siege && !UDEF[u.type].node && u.id !== side.spotter && u.id !== side.scoutId && dir * (fr - u.u) > 350 && dir * (u.u - side.backU) < 150);
+    const v = back.reduce((a, u) => a + UDEF[u.type].cost.c + UDEF[u.type].cost.e, 0);
+    if (v < 400 && !(side.lastDanger !== undefined && g.t - side.lastDanger < 15)) for (const u of back) u.aiBack = g.t + 1.5;
+  }
+  // scouting: every dl.scout seconds, with nothing fresh seen, its fastest cheap unit runs to just outside the enemy base
+  if (dl.scout) {
+    const sc = mine.find(u => u.id === side.scoutId);
+    if (sc && (Math.abs(sc.u - side.scoutU) < 30 || g.t - side.scoutT > 30)) { side.scoutId = null; side.scoutU = null; }
+    else if (!sc) { side.scoutId = null; side.scoutU = null; }
+    const fresh = Object.values(g.fog[s].intel).some(m => g.t - m.t <= 20);
+    if (!side.scoutId && !fresh && side.stance !== 'attack' && g.t - (side.scoutT || 0) > dl.scout) {
+      const c = mine.filter(u => !UDEF[u.type].siege && UDEF[u.type].cost.c <= 150 && u.id !== side.spotter).sort((a, b) => UDEF[b.type].speed - UDEF[a.type].speed || a.id - b.id)[0];
+      if (c) { side.scoutId = c.id; side.scoutU = clamp(hqU(opp) - dir * 560, 0, L); side.scoutT = g.t; }
+    }
+  }
+  // timing: a Riftstalker leaps only with its shields nearly full; a Wraithwing whose phase is spent backs off when hurt;
+  // a Sovereign under anti-air with its shields down backs off until they recharge
+  if (aiFix(P, 'timing')) for (const u of mine) {
+    const d = UDEF[u.type];
+    if (d.fade && u.maxShp && u.shp < u.maxShp * 0.75) u.aiHold = g.t + 1.5;
+    if (d.phase && u.phCd > g.t && u.hp + u.shp < (u.maxHp + u.maxShp) * 0.45) u.aiBack = g.t + 2.5;
+    if (u.type === 'sovereign' && u.maxShp && u.shp < u.maxShp * 0.25) {
+      const aa = g.ents.some(e => e.side === opp && e.hp > 0 && e.kind === 'u' && UDEF[e.type].hitsAir && Math.abs(e.u - u.u) < 240 && visibleTo(g, s, e));
+      if (aa) u.aiBack = g.t + 2.5;
+    }
+  }
+}
+// Spotters for every long gun (Default): while attacking with units that reach past their own sight (Artillery, Bile
+// Lobbers, Rift Mortars, Marksmen, Snipers, Bilecasters, planted Titans), one other unit walks just far enough ahead of
+// the frontmost of them for its sight to cover that reach, never more than 80 ahead of the rest of the army
+const SMART_SPOT = ['drone', 'aircraft', 'razorwing', 'needlewing', 'prismwing', 'wraithwing', 'interceptor', 'tank', 'bulwark', 'bastion', 'heavy', 'spitter', 'lancer', 'rifle', 'skitterling', 'shardling'];
+function aiSmartSpotter(g, s) {
+  const side = g.sides[s], dir = dirOf(s);
+  side.spotAny = true;
+  const reach = u => { const d = UDEF[u.type]; return d.siege ? d.range + d.siege.reach : d.range; };
+  const mine = side.stance === 'attack' ? g.ents.filter(e => e.kind === 'u' && e.side === s && e.hp > 0) : [];
+  const longs = mine.filter(u => UDEF[u.type].weapon && !UDEF[u.type].air && reach(u) > SIGHT[u.type] + 10);
+  if (!longs.length) { side.spotter = null; side.spotU = null; return; }
+  const lead = longs.reduce((a, u) => dir * u.u > dir * a.u ? u : a, longs[0]);
+  const ok = u => !longs.includes(u) && !UDEF[u.type].siege && u.id !== side.scoutId;
+  let sp = mine.find(u => u.id === side.spotter && ok(u));
+  if (!sp) for (const t of SMART_SPOT) { sp = mine.find(u => u.type === t && ok(u)); if (sp) break; }
+  if (!sp) sp = mine.find(ok);
+  if (!sp) { side.spotter = null; side.spotU = null; return; }
+  side.spotter = sp.id;
+  const rest = mine.filter(u => u !== sp && !UDEF[u.type].air), front = rest.length ? rest.reduce((a, u) => dir * u.u > dir * a ? u.u : a, rest[0].u) : lead.u;
+  const want = lead.u + dir * Math.max(0, reach(lead) - SIGHT[sp.type] + 20);
+  side.spotU = clamp(dir > 0 ? Math.min(want, front + 80) : Math.max(want, front - 80), 0, L);
 }
 
 /* ---------- Match log (v2.9) ----------
@@ -5630,6 +5753,13 @@ function vfxReset(g) {
   VFX.rec = new WeakMap(); VFX.seenFx = new WeakSet();
 }
 const onView = x => Math.abs(x - cam.x) < V.cw / 2 / V.S + 80;
+// What the screen shows of the field (v2.38): the player's fog, or for a spectator (dev menu) everything. Render only:
+// the SIM keeps each side's own fog
+function viewFog(g) {
+  if (!g.spectate) return g.fog[0];
+  if (!g._sf) { const one = () => new Uint8Array(FOG_N).fill(1); g._sf = Object.assign(Object.create(g.fog[0]), { vis: one(), seen: one(), exp: one(), ghosts: {} }); }
+  return g._sf;
+}
 
 // One step: look for what happened since the last frame, then age every effect by the game time that passed
 function vfxStep(g) {
@@ -5667,7 +5797,7 @@ function vfxStep(g) {
 }
 
 function vfxScan(g, dt) {
-  const F = g.fog[0], lit = u => F.vis[cellOf(u)] === 1, frame = ++VFX.frame, R = VFX.rec;
+  const F = viewFog(g), lit = u => F.vis[cellOf(u)] === 1, frame = ++VFX.frame, R = VFX.rec;
   VFX.nshots = 0;
   for (const e of g.ents) {
     let r = R.get(e);
@@ -5886,7 +6016,7 @@ function onHqBeam(f) {
 // target: licks of flame that start white-hot, redden, rise and break up into smoke at the far end. FIRE caps the total.
 function vfxFlames(g, dt) {
   if (!VFX.flamers.size) return;
-  const F = g.fog[0], each = Math.min(FIRE.rate, FIRE.share / VFX.flamers.size) * QMUL[VFX.q];
+  const F = viewFog(g), each = Math.min(FIRE.rate, FIRE.share / VFX.flamers.size) * QMUL[VFX.q];
   for (const e of VFX.flamers) {
     const r = VFX.rec.get(e);
     if (!r || e.hp <= 0 || g.t - (r.fireT ?? -9) > 0.34) { VFX.flamers.delete(e); continue; }
@@ -6224,7 +6354,7 @@ function vfxMeteors(g, dt) {
   VFX.metAcc = (VFX.metAcc || 0) + dt * (1.6 + (g.t - EXT.start) / 60) * QMUL[VFX.q]; // more as the storm grows
   if (VFX.metAcc < 1) return;
   VFX.metAcc -= 1;
-  const F = g.fog[0], bs = g.ents.filter(e => e.kind === 'b' && e.hp > 0 && F.vis[cellOf(e.u)] && onView(e.u));
+  const F = viewFog(g), bs = g.ents.filter(e => e.kind === 'b' && e.hp > 0 && F.vis[cellOf(e.u)] && onView(e.u));
   if (!bs.length) return;
   const b = bs[Math.floor(VFX.rnd() * bs.length)], w = P(b.u + vr(-b.half, b.half) * 0.6, b.v + vr(-b.half, b.half) * 0.6, vr(4, b.h * 0.5));
   vFx('meteor', w.x + vr(60, 120), w.y - 320, 0, 0.5, null, 3, w.x, w.y, 3.5);
@@ -6463,7 +6593,7 @@ function render(c, g, time, sel, selPad) {
   if (groundCache) c.drawImage(groundCache, GB.x0, GB.y0, GB.x1 - GB.x0, GB.y1 - GB.y0); else drawGround(c);
   if (!g) return;
   // Everything below is drawn from the player's point of view: enemies only inside friendly vision
-  const F = g.fog[0], seen = e => e.side === 0 || visibleTo(g, 0, e), lit = x => F.vis[cellOf(x)] === 1;
+  const F = viewFog(g), seen = e => e.side === 0 || !!g.spectate || visibleTo(g, 0, e), lit = x => F.vis[cellOf(x)] === 1;
   const ghosts = Object.values(F.ghosts).filter(gh => !cellsLit(F.vis, gh.u, gh.half));
   drawCreep(c, g, F); // under everything on the field (v2.18)
   drawField(c, g, F); // the Axiarch power field (v2.26), also under everything
@@ -6644,7 +6774,7 @@ function drawMinimap(c, g, w, h) {
   c.fillStyle = 'rgba(0,0,0,0.3)'; rr(c, 0.5, 0.5, w - 1, h - 1, 7); c.fill();
   c.strokeStyle = 'rgba(120,150,200,0.3)'; c.lineWidth = 1; c.stroke();
   const k = (w - 8) / (UMAX - UMIN), mx = u => 4 + (u - UMIN) * k, my = v => h / 2 + clamp(v / 260, -1, 1) * (h / 2 - 4);
-  const F = g && g.fog[0];
+  const F = g && viewFog(g);
   if (g) { // fog columns
     const a = fogAlpha(F);
     for (let i = 0; i < FOG_N; i++) if (a[i] > 0.02) { c.fillStyle = `rgba(${FOG_RGB},${a[i] * 0.9})`; c.fillRect(mx(i * FOG_CELL), 1, k * FOG_CELL + 0.6, h - 2); }
@@ -7000,6 +7130,7 @@ function wptTap(x, y) {
 function shake(el) { el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
 function onCard(type, el) {
   if (!game || game.over || paused) return;
+  if (game.spectate) { toast('Spectating: the AIs play both sides', 'warn'); return; }
   const r = tab === 'build' ? tryBuild(game, 0, type, selPad) : tryTrain(game, 0, type);
   if (r.ok) { toast(r.msg, 'ok'); if (tab === 'build' && selPad >= 0) closePanel(); }
   else { toast(r.msg, 'bad'); shake(el); }
@@ -7416,6 +7547,7 @@ function inDiamond(wx, wy, cx, cy, h) { return Math.abs(wx - cx) / (2 * h * IX) 
 function handleTap(x, y) {
   if (!game) return;
   hideInfo();
+  if (game.spectate) return; // a spectator only watches (drag still moves the camera)
   if (rg) { rgTap(x, y); return; }
   if (wpt) { wptTap(x, y); return; }
   if (aim) { aimTap(x, y); return; }
@@ -7494,7 +7626,7 @@ function applyStance(v) { // the global stance: everyone, and it clears every gr
   toast(v === 'attack' ? 'Army advancing on the enemy base' : v === 'hold' ? 'Army holding position' : 'Army retreating to the rally flag', v === 'attack' ? 'warn' : 'ok');
   refreshUI(true);
 }
-$('bSpeed').addEventListener('click', () => { speed = speed >= 3 ? 1 : speed + 1; $('bSpeed').textContent = speed + '×'; });
+$('bSpeed').addEventListener('click', () => { speed = game && game.spectate ? (speed >= 4 ? 1 : speed * 2) : speed >= 3 ? 1 : speed + 1; $('bSpeed').textContent = speed + '×'; }); // spectating (v2.38): 1×, 2×, 4×
 $('bPause').addEventListener('click', () => { if (running && game && !game.over) pauseGame(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && running && !paused && game && !game.over) pauseGame(); else if (document.hidden) saveGame(); });
 window.addEventListener('pagehide', saveGame);
@@ -7527,7 +7659,7 @@ function wireDiff() {
 }
 const SAVE_KEY = 'colonyMobile.save';
 function saveGame() {
-  if (!game || game.over) return;
+  if (!game || game.over || game.spectate) return; // a spectated match is never saved over the player's
   try { localStorage.setItem(SAVE_KEY, serialize(game, { camX: cam.x, speed })); } catch (e) {}
 }
 function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
@@ -7535,6 +7667,7 @@ function peekSave() {
   try { const s = localStorage.getItem(SAVE_KEY); if (!s) return null; const o = JSON.parse(s); return o && SAVE_OK.includes(o.v) ? { t: o.t, diffKey: o.diffKey } : null; } catch (e) { return null; }
 }
 function showStart() {
+  document.body.classList.remove('spectate'); // v2.38
   clearTimeout(endTimer); endTimer = null; endAim(); $('abil').classList.add('hide'); $('ext').classList.add('hide'); document.body.classList.remove('ext-on');
   running = false; paused = false; game = null; closePanel(); hideInfo(); hideCountdown(); applyZoom(1);
   const sv = peekSave();
@@ -7550,6 +7683,39 @@ function showStart() {
   wireDiff(); wireFactions(); wireSound();
   $('bPlay').addEventListener('click', startGame);
   if (sv) $('bResume').addEventListener('click', resumeGame);
+  $('box').querySelector('.ver').addEventListener('click', showDev); // the dev menu (v2.38): tap the version
+}
+/* ---------- Dev menu: spectate an AI-vs-AI match (v2.38, audit phase 4) ----------
+   Behind the version label on the start screen. Each side: faction, AI preset (Default or Legacy) and personality; a
+   speed of 1×, 2× or 4×. The spectator sees the whole field; nothing can be built or ordered; the match is never saved
+   (the player's save is left alone). Side A plays from the left in blue, side B from the right in red. */
+const devPick = { a: { f: 'lastfist', ai: 'default', p: 'random' }, b: { f: 'bloomhost', ai: 'default', p: 'random' }, speed: 2 };
+function showDev() {
+  const seg = (id, opts, cur) => `<div class="seg" id="${id}">${opts.map(([k, n]) => `<button data-k="${k}" class="${k === cur ? 'on' : ''}">${n}</button>`).join('')}</div>`;
+  const F = FACTION_KEYS.map(k => [k, factionName(k)]), A = AI_PRESET_KEYS.map(k => [k, AI_PRESETS[k].name]), Pn = [['random', 'Random'], ...PERSONAS.map(k => [k, PERSONA_NAME[k].replace('The ', '')])];
+  const side = (w, lbl) => `<span class="lbl">${lbl}</span>${seg('dv' + w + 'f', F, devPick[w].f)}${seg('dv' + w + 'a', A, devPick[w].ai)}${seg('dv' + w + 'p', Pn, devPick[w].p)}`;
+  overlay(`<span class="ver">v${VERSION}</span><h1>Spectate</h1><p>Dev menu: watch the AI play both sides.</p>
+    <div class="setup dev">${side('a', 'Side A (blue)')}${side('b', 'Side B (red)')}<span class="lbl">Speed</span>${seg('dvs', [[1, '1×'], [2, '2×'], [4, '4×']], devPick.speed)}</div>
+    <div class="row"><button class="big" id="bSpec">Spectate</button><button class="ghost" id="bDevBack">Back</button></div>`);
+  for (const [id, set] of [['dvaf', k => devPick.a.f = k], ['dvaa', k => devPick.a.ai = k], ['dvap', k => devPick.a.p = k], ['dvbf', k => devPick.b.f = k], ['dvba', k => devPick.b.ai = k], ['dvbp', k => devPick.b.p = k], ['dvs', k => devPick.speed = +k]])
+    for (const b of $(id).children) b.addEventListener('click', () => { set(b.dataset.k); for (const x of $(id).children) x.classList.toggle('on', x === b); });
+  $('bSpec').addEventListener('click', startSpectate);
+  $('bDevBack').addEventListener('click', showStart);
+}
+function startSpectate() {
+  clearTimeout(endTimer); endTimer = null;
+  const per = p => p === 'random' ? undefined : p;
+  game = newGame('hard', { countdown: 0, autoPlayer: true, autoDiff: 'hard', factions: [devPick.a.f, devPick.b.f], autoAi: devPick.a.ai, ai: devPick.b.ai, autoPersona: per(devPick.a.p), persona: per(devPick.b.p) });
+  game.spectate = true;
+  buildAbil(); hideCountdown(); camTouched = true; resize(); applyZoom(1); closePanel(); hideInfo(); endAim();
+  cam.x = L / 2; cam.vx = 0; clampCam();
+  running = true; paused = false; speed = devPick.speed; $('bSpeed').textContent = speed + '×';
+  tab = 'army';
+  for (const x of document.querySelectorAll('.tabs button')) x.classList.toggle('on', x.dataset.tab === 'army');
+  hideOverlay(); buildCards(); refreshUI(true); updateIntro();
+  document.body.classList.add('spectate');
+  const nm = w => `${factionName(devPick[w].f)} (${AI_PRESETS[devPick[w].ai].name}, ${devPick[w].p === 'random' ? 'random' : PERSONA_NAME[devPick[w].p].replace('The ', '')})`;
+  toast(`Spectating: ${nm('a')} vs ${nm('b')}`, 'ok');
 }
 function resumeGame() {
   let g = null;
@@ -7568,6 +7734,7 @@ function resumeGame() {
   pauseGame(true); // a restored match waits for the player to tap Resume
 }
 function startGame() {
+  document.body.classList.remove('spectate'); // v2.38
   clearTimeout(endTimer); endTimer = null;
   const me = pickFaction(facPick.me), foe = pickFaction(facPick.foe); // the opponent's pick is never shown during the match
   game = newGame(diffKey, { countdown: INTRO_T + COUNTDOWN, factions: [me, foe] });

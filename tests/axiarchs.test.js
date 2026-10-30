@@ -124,19 +124,5 @@ test('saves v22 keep shields; a v21 save loads with no shields anywhere', () => 
   assert.ok(g3 && g3.ents.every(e => e.maxShp === 0 && e.shp === 0)); step(g3, 2);
 });
 
-test('the minimal AI plays the Axiarchs with each personality: economy, base units, nodes and attacks (seeded Hard)', () => {
-  const lances = [];
-  for (const [seed, persona] of [[2, 'aggressor'], [2, 'economist'], [3, 'trickster'], [4, 'turtle']]) { // v2.34: Aggressor seed 1 → 2 (its Phase Beacon changed the match: with seed 1 it trained only Shardlings in 10 minutes)
-    const S = loadSim({ random: mul(seed) });
-    const g = S.newGame('hard', { autoPlayer: true, autoDiff: 'hard', persona: 'turtle', autoPersona: persona, factions: ['axiarchs', 'lastfist'] });
-    let nodes = 0;
-    for (let i = 0; i < 30 * 60 * 10 && !g.over; i++) { S.update(g, 1 / 30); for (const e of g.events) if (e.type === 'node' && e.side === 0 && !e.lost) nodes++; g.events.length = 0; }
-    const T = g.log.tot[0], tr = g.sides[0].aiLog.trained;
-    assert.ok(T.bBuilt.refinery > 0 && T.bBuilt.barracks > 0, `${persona}: economy and production ${JSON.stringify(T.bBuilt)}`);
-    assert.ok(tr.shardling > 0 && Object.keys(tr).length >= 2, `${persona}: base units and more ${JSON.stringify(tr)}`); // v2.27: path units count too
-    assert.ok(nodes > 0, `${persona}: takes nodes`); assert.ok(g.sides[0].aiLog.attacks > 0, `${persona}: attacks`);
-    assert.ok(!Object.keys(tr).some(t => U[t].fac !== 'axiarchs'), 'only its own units');
-    lances.push(T.bBuilt.turret || 0);
-  }
-  assert.ok(lances.some(n => n > 0), `a Null Lance is built (per personality: ${lances})`);
-});
+// v2.38 (audit phase 4): "the minimal AI plays the Axiarchs with each personality: economy, base units, nodes and attacks (seeded Hard)" was one seeded match, re-seeded whenever a rule change moved it.
+// It is now a statistical test over N seeded matches on the current rules: tests/ai-stats.test.js.
