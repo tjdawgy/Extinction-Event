@@ -138,3 +138,30 @@ Weapon tables (light / heavy / vehicle / air / building): blade (Shardling) 1.1 
 AI (minimal): the Axiarch units read the personalities' Last Fist tastes through their counterparts (Shardling ↔ Rifleman, Bastion ↔ Tank, Wraithwing ↔ Gunship), with scores in the same style. The AI skips the locked production upgrades and has no abilities to cast. Everything else (build order by role, Null Lances by the Turret rules, nodes, attacks) is the existing logic, unchanged.
 
 Not in v2.25 (per section 10): the power field and warp-in (v2.26; units walk out of their buildings for now), the Genesis Gate and Architectum trees (v2.27), commander abilities (v2.28; shown locked as "Soon"), the Celestial Array tree (v2.29).
+
+=== v2.26 POWER FIELD AND WARP-IN (implementation record; not tuned) ===
+
+Power field (section 3), all numbers in `FIELD` (index.html, SIM section, next to `updateField`). It is built on the creep zone code: `zoneStep` now does the grow and recede step for both creep and the field.
+
+| Constant | Value | Meaning |
+|---|---|---|
+| axisR | 230 | base field radius around the Axis |
+| spireAdd | 40 | added to the base field by each finished Continuum Spire |
+| maxR | 400 | the base field's largest radius |
+| nodeR | 140 | forward field around each node the Axiarchs hold |
+| grow | 7 per second | radius growth (the base field takes about 33 s) |
+| nodeGrow | ×1.5 | growth multiplier for a node's field |
+| recede | 10 per second | radius lost once the source is gone (node lost, Axis destroyed) |
+| regen | 25% of max per second | shield recharge inside the friendly field (outside: `SHIELD.rate`, 10%) |
+| front | 0.85 | how far out along the field's front edge the default warp point sits |
+
+Nothing else depends on the field: no building power-down, no vision. The enemy's field is remembered as last seen and drawn only on ground the player has seen, like creep (`fog.field`). It is painted into a cached canvas only when it changes: a faint cyan glow, a lattice of diamonds and spokes, and a team-coloured edge.
+
+Warp-in (section 4), numbers in `WARP`:
+- Training is one tap: cost and supply are paid on tap, as before. When production finishes, an Axiarch unit doesn't walk out. It starts a 2 s warp channel (`WARP.ch`) at the warp point, and it counts toward supply while warping.
+- Warp point: by default, the front edge of the field (the point furthest toward the enemy). "Set warp point" is the first card on the Train tab: tap it, then tap a spot inside your field. A point that ends up outside the field snaps back to the default, with a message.
+- Valid spot: on the lane, inside the field, at least 26 from any enemy, clear of every building, and not on another warp in progress. The search runs outward in rings 18 apart (up to 7 rings). If nothing is valid, the unit warps in at the Axis. The spot is checked again on arrival.
+- Enemy warp channels are drawn and heard only inside the player's vision. Units still warping in when the match ends never arrive.
+- The AI never sets a warp point, so it always uses the default.
+
+Saves v23 store the field, the warps in progress and each side's warp point. Older saves start with no field and grow it.

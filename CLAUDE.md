@@ -1,13 +1,13 @@
 # Extinction Event — working rules for Claude Code
 
 ## Current state
-- Version: v2.25 (Axiarchs framework; title screen since v2.23, assets/title-screen.jpg).
+- Version: v2.26 (Axiarchs power field and warp-in; title screen since v2.23, assets/title-screen.jpg).
 - Factions: **Last Fist** (upgrade trees done: Barracks v2.13, War Factory v2.14, Tech Lab v2.15) and **Bloomhost** (framework v2.17, creep v2.18, Larva Pit and Evolution Chamber trees + anti-air v2.19, commander abilities + temporary units v2.20, Bloomspire tree v2.21; complete at v2.22).
 - Roadmap, in order: finish all Last Fist upgrade trees → Bloomhost faction → third faction → strategy explorer + full balance audit + matchup testing → AI training → campaign, multiplayer, App Store.
 - Until the audit, implementation only: no balance tuning, no tactical AI work, and no matrices or ladders unless a prompt asks for them. The only AI changes allowed are the minimum the AI needs to build and use new content.
 - No balance tuning, matchup testing, or tactical AI work until all three factions are in. Log findings under Audit in KNOWN_ISSUES.md.
 - Bloomhost: complete (v2.17–v2.21; v2.22 closed it out with a Definition of Done check at the end of docs/BLOOMHOST.md). Its AI pass moved to the AI training phase; its balance, matchup and performance items are grouped under "Bloomhost summary" in KNOWN_ISSUES.md.
-- Building the Axiarchs (third faction) per docs/AXIARCHS.md section 10. Done: v2.25 framework. Next: v2.26 power field and warp-in.
+- Building the Axiarchs (third faction) per docs/AXIARCHS.md section 10. Done: v2.25 framework, v2.26 power field and warp-in. Next: v2.27 Genesis Gate and Architectum trees.
 - Until the audit, testing is functional only: npm test, one SIM match to confirm a full match runs, one browser check of anything with new UI, and screenshots of new visuals. No matrices, ladders, per-personality runs, or repeated performance runs unless a prompt asks for them. Performance runs only at the end of a faction or when a prompt asks.
 - Workflow: each batch is a new session that starts by reading CLAUDE.md and KNOWN_ISSUES.md.
 

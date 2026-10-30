@@ -109,6 +109,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 #bpSell.hide,#bpUp.hide,#bpRep.hide{display:none}
 #bpRep{border:1px solid rgba(93,255,138,.45);background:rgba(93,255,138,.08);color:#c8ffd9}
 #bpRep[disabled]{opacity:.6}
+#cards .card.warpc svg.ic{width:30px;height:30px;margin:2px auto 0;display:block} /* Set warp point (v2.26) */
 #bpUp.soon{flex:1.8;font-size:11px;line-height:1.15;padding:0 4px} /* Axiarch production: "Doctrine paths coming soon" (v2.25) */
 #bpHp{color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
 /* Upgrade-tree path picker (v2.13): two path cards, then the Upgrade button confirms */
@@ -323,7 +324,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.25'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.26'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -792,10 +793,10 @@ function newGame(diffKey, opts = {}) {
   const g = { t: 0, ents: [], projs: [], fx: [], parts: [], sides: [], abil: [], over: false, winner: -1, nid: 1,
     diff: DIFF[diffKey] || DIFF.normal, diffKey, events: [], auto: !!opts.autoPlayer, autoDiff: opts.autoDiff || 'normal', shake: 0, front: [null, null], countdown: opts.countdown || 0,
     nodes: NODE_U.map((u, i) => ({ id: i, u, v: 0, prog: 0, owner: null, c: [0, 0] })), log: null, forcePath: opts.forcePath || null,
-    creep: [[], []], acid: [] }; // creep patches per side (v2.18; Bloomhost only); acid: Ruinmaw pools (v2.19)
+    creep: [[], []], acid: [], field: [[], []], warps: [] }; // creep patches per side (v2.18; Bloomhost only); acid: Ruinmaw pools (v2.19); field: Axiarch power field patches, warps: units mid-warp (v2.26)
   for (let s = 0; s < 2; s++) {
     g.sides.push({ faction: (opts.factions && opts.factions[s]) || DEFAULT_FACTION, res: { c: 300, e: 60 }, stance: s === 0 ? 'hold' : 'retreat', stanceAt: 0, pushTo: null, slots: new Array(SLOT_COUNT).fill(null),
-      hq: null, aiT: 1 + s * 0.5, stats: { built: 0, kills: 0, lost: 0, earned: 0 }, lastAlert: -99, buff: false, ab: newAb(0, (opts.factions && opts.factions[s]) || DEFAULT_FACTION), abK: null, abEnd: 0, orders: newOrders(), sel: null });
+      hq: null, aiT: 1 + s * 0.5, stats: { built: 0, kills: 0, lost: 0, earned: 0 }, lastAlert: -99, buff: false, ab: newAb(0, (opts.factions && opts.factions[s]) || DEFAULT_FACTION), abK: null, abEnd: 0, orders: newOrders(), sel: null, warp: null }); // warp: the player's chosen warp point (Axiarchs, v2.26); null = the default
     const hq = mkBuilding(g, s, 'hq', -1);
     hq.built = true; hq.progress = 1; hq.hp = hq.maxHp; hq.shp = hq.maxShp;
     g.sides[s].hq = hq;
@@ -838,6 +839,7 @@ function popUsed(g, s) {
     if (e.kind === 'u') { if (!e.temp) p += UDEF[e.type].pop; } // temporary units use no supply (v2.20)
     else for (const q of e.queue) p += UDEF[q].pop;
   }
+  for (const w of g.warps) if (w.side === s) p += UDEF[w.type].pop; // paid for, still warping in (v2.26)
   return p;
 }
 function income(g, s) {
@@ -974,7 +976,7 @@ const cellOf = u => clamp(Math.floor(u / FOG_CELL), 0, FOG_N - 1);
 const sightOf = e => e.kind === 'u' ? SIGHT[e.type] : (B_SIGHT[e.type] || B_SIGHT_DEF);
 const ghostOf = b => ({ id: b.id, type: b.type, fac: b.fac, side: b.side, slot: b.slot, tier: b.tier, path: b.path, u: b.u, v: b.v, half: b.half }); // path: the last-seen upgrade-tree path; fac: its faction (v2.17)
 function newFog(g, s) {
-  const ehq = g.sides[1 - s].hq, f = { vis: new Uint8Array(FOG_N), exp: new Uint8Array(FOG_N), seen: new Uint8Array(FOG_N), ghosts: {}, intel: {}, creep: {}, // creep: the enemy's creep as last seen (v2.18)
+  const ehq = g.sides[1 - s].hq, f = { vis: new Uint8Array(FOG_N), exp: new Uint8Array(FOG_N), seen: new Uint8Array(FOG_N), ghosts: {}, intel: {}, creep: {}, field: {}, // creep: the enemy's creep as last seen (v2.18); field: its power field (v2.26)
     lastHQ: { hp: ehq.hp, maxHp: ehq.maxHp, shielded: false, tier: 1 }, lastSpot: -99, seenUnits: 0 };
   // Start positions are known: the enemy HQ begins as a ghost on explored ground, but not what it looks like (v2.17: its
   // faction stays hidden until seen). seen: ground actually in view at some point; explored-only ground shows no pads.
@@ -1010,6 +1012,9 @@ function updateVision(g) {
     const ec = g.creep[1 - s], live = new Set();
     for (const p of ec) { live.add(p.k); if (p.r > 0 && cellsLit(vis, p.u, p.r)) f.creep[p.k] = { u: p.u, v: p.v, r: p.r }; }
     for (const k in f.creep) { const m = f.creep[k]; if (!live.has(k) && cellsLit(vis, m.u, m.r)) delete f.creep[k]; }
+    const ef = g.field[1 - s], liveF = new Set(); // the enemy's power field (v2.26): remembered the same way
+    for (const p of ef) { liveF.add(p.k); if (p.r > 0 && cellsLit(vis, p.u, p.r)) f.field[p.k] = { u: p.u, v: p.v, r: p.r }; }
+    for (const k in f.field) { const m = f.field[k]; if (!liveF.has(k) && cellsLit(vis, m.u, m.r)) delete f.field[k]; }
     for (const id in f.intel) { const m = f.intel[id]; if (g.t - m.t > INTEL_TTL || (!seenU.has(+id) && vis[cellOf(m.u)])) delete f.intel[id]; }
     if (!f.seenUnits && seenU.size && g.t - f.lastSpot >= SPOT_GAP) { f.lastSpot = g.t; ev(g, { type: 'spotted', side: s }); }
     f.seenUnits = seenU.size;
@@ -1055,6 +1060,8 @@ function update(g, dt) {
   updateProjs(g, dt);
   updateMedics(g, dt);
   updateCreep(g, dt);
+  updateField(g, dt);
+  updateWarps(g);
   updateShields(g, dt);
   updateAcid(g, dt);
   updateTemps(g);
@@ -1141,6 +1148,7 @@ function updateBuilding(g, b, foes, dt) {
       const n = pair ? 2 : 1; // Mass Deployment: two Riflemen at a time
       if (n === 2) b.queue.shift();
       for (let i = 0; i < n; i++) {
+        if (facOf(b.fac) === 'axiarchs') { startWarp(g, b.side, ut); continue; } // Axiarchs (v2.26): the unit warps in at the warp point instead
         const nu = spawnUnit(g, b.side, ut, b.u + dirOf(b.side) * (b.half + 10), b.v + rand(-12, 12) + i * 16);
         if (ut === 'rifle' && pathMod(b, 'drill')) { nu.vet = 1; nu.maxHp = nu.hp = UDEF.rifle.hp * DRILL.hp; } // Drilled Riflemen
         if (g.log) { logAdd(g.log.tot[b.side].trained, ut); lgUnit(g, b.side, 'T', ut); }
@@ -1179,7 +1187,7 @@ function extraTargets(g, src, def, foes, first, n) {
 }
 // Axiarch shields (v2.25) recharge after SHIELD.delay seconds without damage; they never restore HP
 function updateShields(g, dt) {
-  for (const e of g.ents) if (e.maxShp && e.hp > 0 && e.shp < e.maxShp && (e.kind === 'u' || e.built) && g.t - e.shpT >= SHIELD.delay) e.shp = Math.min(e.maxShp, e.shp + e.maxShp * SHIELD.rate * dt);
+  for (const e of g.ents) if (e.maxShp && e.hp > 0 && e.shp < e.maxShp && (e.kind === 'u' || e.built) && g.t - e.shpT >= SHIELD.delay) e.shp = Math.min(e.maxShp, e.shp + e.maxShp * (onField(g, e.side, e.u, e.v) ? FIELD.regen : SHIELD.rate) * dt); // faster inside the field (v2.26)
 }
 
 // Lane-style range: sideways spread counts for less, so units can't slip past each other
@@ -1399,7 +1407,102 @@ const CREEP = {
   regen: 0.015,  // share of max HP regained per second on creep, out of combat only
   calm: 5,       // out of combat: no damage taken and no attack made for this many seconds
 };
+/* ---------- Power field (v2.26): the Axiarchs' Warp Matrix ----------
+   Built on the creep zone code (zoneStep). Sources: the Axis (the base field; every finished Continuum Spire enlarges it)
+   and each field node the Axiarchs hold (a forward field around the node). It grows and recedes gradually. Inside their
+   own field, Axiarch shields recharge faster and units can warp in; nothing else depends on it. No vision. */
+const FIELD = {
+  axisR: 230,    // base field radius around the Axis
+  spireAdd: 40,  // added to the base field by each finished Continuum Spire
+  maxR: 400,     // the base field's largest radius
+  nodeR: 140,    // forward field around a node the Axiarchs hold
+  grow: 7,       // radius growth per second
+  nodeGrow: 1.5, // growth multiplier for a node's field
+  recede: 10,    // radius lost per second once the source is gone (the node lost, the Axis destroyed)
+  regen: 0.25,   // shield recharge inside the field: share of max per second (outside: SHIELD.rate)
+  front: 0.85,   // the default warp point sits this far out along the field's front edge
+};
+const WARP = { ch: 2, clear: 26, step: 18, rings: 7 }; // warp-in: 2 s channel; keeps 26 clear of enemies; searches rings 18 apart
+const onField = (g, s, u, v) => { for (const p of g.field[s]) { const du = u - p.u, dv = v - p.v; if (du * du + dv * dv <= p.r * p.r) return true; } return false; };
+function updateField(g, dt) {
+  for (let s = 0; s < 2; s++) {
+    const ax = facOf(g.sides[s].faction) === 'axiarchs', list = g.field[s];
+    if (!ax && !list.length) continue;
+    const want = new Map();
+    if (ax) {
+      const hq = g.sides[s].hq;
+      if (hq.hp > 0) { const n = g.ents.filter(b => b.kind === 'b' && b.side === s && b.type === 'habitat' && b.built && b.hp > 0).length; want.set('axis', { u: hq.u, v: hq.v, R: Math.min(FIELD.maxR, FIELD.axisR + FIELD.spireAdd * n), node: false }); }
+      for (const n of g.nodes) if (n.owner === s) want.set('n' + n.id, { u: n.u, v: n.v || 0, R: FIELD.nodeR, node: true });
+    }
+    g.field[s] = zoneStep(list, want, FIELD, dt);
+    const sd = g.sides[s]; // a chosen warp point outside the field snaps back to the default
+    if (sd.warp && !onField(g, s, sd.warp.u, sd.warp.v)) { sd.warp = null; ev(g, { type: 'warpSnap', side: s }); }
+  }
+}
+// The default warp point: the front edge of the field, the point furthest toward the enemy along the lane
+function defaultWarp(g, s) {
+  const dir = dirOf(s); let best = null, bf = -1e9;
+  for (const p of g.field[s]) { if (p.r < 20) continue; const u = p.u + dir * p.r * FIELD.front; if (dir * u > bf) { bf = dir * u; best = { u: clamp(u, 0, L), v: clamp(p.v, -LANE_V, LANE_V) }; } }
+  return best || axisSpot(g, s);
+}
+const axisSpot = (g, s) => { const hq = g.sides[s].hq; return { u: hq.u + dirOf(s) * (hq.half + 12), v: hq.v }; };
+const warpPoint = (g, s) => { const sd = g.sides[s]; return sd.warp && onField(g, s, sd.warp.u, sd.warp.v) ? sd.warp : defaultWarp(g, s); };
+// Place side s's warp point (the player's "Set warp point"): only inside its own field
+function setWarp(g, s, u, v) {
+  if (facOf(g.sides[s].faction) !== 'axiarchs') return { ok: false, msg: 'Only the Axiarchs warp in units' };
+  if (Math.abs(v) > LANE_V + 20 || u < 0 || u > L || !onField(g, s, u, v)) return { ok: false, msg: 'Place it inside your power field' };
+  g.sides[s].warp = { u, v: clamp(v, -LANE_V, LANE_V) };
+  return { ok: true, msg: 'Warp point set' };
+}
+// A spot is valid for a warp: on the lane, inside the field, clear of enemies, of every building and of other warps
+function warpOk(g, s, u, v) {
+  if (u < 0 || u > L || Math.abs(v) > LANE_V || !onField(g, s, u, v)) return false;
+  for (const e of g.ents) {
+    if (e.hp <= 0) continue;
+    if (e.kind === 'b') { if (Math.hypot(e.u - u, e.v - v) < e.half + 12) return false; }
+    else if (e.side !== s && Math.hypot(e.u - u, e.v - v) < WARP.clear) return false;
+  }
+  for (const w of g.warps) if (Math.hypot(w.u - u, w.v - v) < WARP.step) return false; // two warps never share a spot
+  return true;
+}
+// The nearest valid spot to (u, v), searching outward in rings; none: the Axis
+function warpSpot(g, s, u, v) {
+  for (let i = 0; i <= WARP.rings; i++) {
+    const n = i ? 8 * i : 1;
+    for (let j = 0; j < n; j++) { const a = j / n * Math.PI * 2, pu = u + Math.cos(a) * i * WARP.step, pv = v + Math.sin(a) * i * WARP.step; if (warpOk(g, s, pu, pv)) return { u: pu, v: pv }; }
+  }
+  return axisSpot(g, s);
+}
+// A finished unit starts its warp: a channel of WARP.ch seconds at a valid spot near the warp point. It is already paid
+// for and counts toward supply until it arrives (popUsed).
+function startWarp(g, s, type) {
+  const w = warpPoint(g, s), p = warpSpot(g, s, w.u, w.v);
+  g.warps.push({ side: s, type, u: p.u, v: p.v, t0: g.t, end: g.t + WARP.ch });
+}
+function updateWarps(g) {
+  if (!g.warps.length) return;
+  const done = g.warps.filter(w => g.t >= w.end);
+  if (!done.length) return;
+  g.warps = g.warps.filter(w => g.t < w.end);
+  for (const w of done) {
+    const p = warpOk(g, w.side, w.u, w.v) ? w : warpSpot(g, w.side, w.u, w.v); // something moved onto the spot: the nearest valid one, else the Axis
+    const nu = spawnUnit(g, w.side, w.type, p.u, p.v); nu.laneV = clamp(p.v, -LANE_V, LANE_V);
+    if (g.log) { logAdd(g.log.tot[w.side].trained, w.type); lgUnit(g, w.side, 'T', w.type); }
+  }
+}
 const onCreep = (g, s, u, v) => { for (const p of g.creep[s]) { const du = u - p.u, dv = v - p.v; if (du * du + dv * dv <= p.r * p.r) return true; } return false; };
+// One zone step (creep v2.18, the power field v2.26): each wanted source keeps or gains a patch whose radius grows toward its
+// target R; a patch whose source is gone recedes to nothing and is dropped. C: grow, nodeGrow, recede.
+function zoneStep(list, want, C, dt) {
+  for (const p of list) { const w = want.get(p.k); p.R = w ? w.R : 0; want.delete(p.k); }
+  for (const [k, w] of want) list.push({ k, u: w.u, v: w.v, r: 0, R: w.R, node: w.node });
+  let gone = false;
+  for (const p of list) {
+    if (p.r < p.R) p.r = Math.min(p.R, p.r + C.grow * (p.node ? C.nodeGrow : 1) * dt);
+    else if (p.r > p.R) { p.r = Math.max(p.R, p.r - C.recede * dt); if (p.r <= 0) gone = true; }
+  }
+  return gone ? list.filter(p => p.r > 0 || p.R > 0) : list;
+}
 function updateCreep(g, dt) {
   for (let s = 0; s < 2; s++) {
     const bh = facOf(g.sides[s].faction) === 'bloomhost', list = g.creep[s];
@@ -1409,14 +1512,7 @@ function updateCreep(g, dt) {
       for (const b of g.ents) if (b.kind === 'b' && b.side === s && b.built && b.hp > 0) want.set('b' + b.id, { u: b.u, v: b.v, R: b.type === 'hq' ? CREEP.hiveR : CREEP.bldR, node: false });
       for (const n of g.nodes) if (n.owner === s) want.set('n' + n.id, { u: n.u, v: n.v, R: CREEP.nodeR, node: true });
     }
-    for (const p of list) { const w = want.get(p.k); p.R = w ? w.R : 0; want.delete(p.k); }
-    for (const [k, w] of want) list.push({ k, u: w.u, v: w.v, r: 0, R: w.R, node: w.node });
-    let gone = false;
-    for (const p of list) {
-      if (p.r < p.R) p.r = Math.min(p.R, p.r + CREEP.grow * (p.node ? CREEP.nodeGrow : 1) * dt);
-      else if (p.r > p.R) { p.r = Math.max(p.R, p.r - CREEP.recede * dt); if (p.r <= 0) gone = true; }
-    }
-    if (gone) g.creep[s] = list.filter(p => p.r > 0 || p.R > 0);
+    g.creep[s] = zoneStep(list, want, CREEP, dt);
   }
   // Out-of-combat regeneration on creep; never stacks: with a faster heal running (a Medicopter), that one applies
   for (const e of g.ents) {
@@ -1656,6 +1752,7 @@ const sideScore = (g, s) => g.ents.reduce((a, e) => a + (e.side !== s || e.hp <=
 function finish(g, winner, how, extra = {}) {
   g.over = true; g.winner = winner; g.endHold = null;
   for (const e of g.ents) if (e.kind === 'u' && e.temp) { e.hp = 0; e.dead = true; e.expired = true; } // temporary units leave with the match (v2.20)
+  g.warps = []; // and units still warping in never arrive (v2.26)
   if (g.ents.some(e => e.expired)) g.ents = g.ents.filter(e => !e.expired);
   g.result = { how, ...extra };
   ev(g, { type: 'over', winner, how });
@@ -2227,15 +2324,15 @@ const logSpend = (g, s, kind, c, e) => { if (g.log) { const a = g.log.tot[s].spe
 
 /* ---------- Save and resume ---------- */
 // v6 adds fog of war; v7 the AI's personality (kept on its side record); v10 the shared ability cooldown; v11 the match log; v12 group orders, the selection and Regroup flags; v13 upgrade-tree paths; v14 War Factory paths. Older saves are migrated.
-const SAVE_VER = 22, SAVE_OK = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22];
+const SAVE_VER = 23, SAVE_OK = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23];
 function serialize(g, extra) {
   const live = g.ents.filter(e => e.hp > 0);
   for (const sd of g.sides) if (sd.hq.hp <= 0 && !live.includes(sd.hq)) live.push(sd.hq); // a fallen HQ inside the storm's 5 s end window
   const ents = live.map(e => { const o = Object.assign({}, e); if (o.queue) o.queue = o.queue.slice(); return o; });
   const projs = g.projs.map(p => Object.assign({}, p, { target: p.target ? p.target.id : null }));
   const sides = g.sides.map(sd => Object.assign({}, sd, { hq: sd.hq.id, slots: sd.slots.map(b => b ? b.id : null), res: Object.assign({}, sd.res), stats: Object.assign({}, sd.stats) }));
-  const fog = g.fog.map(f => ({ exp: Array.from(f.exp).join(''), seen: Array.from(f.seen).join(''), ghosts: f.ghosts, creep: f.creep, intel: f.intel, lastHQ: f.lastHQ, lastSpot: f.lastSpot, seenUnits: f.seenUnits }));
-  return JSON.stringify({ v: SAVE_VER, t: g.t, nid: g.nid, diffKey: g.diffKey, ents, projs, sides, nodes: g.nodes, fog, abil: g.abil, endHold: g.endHold || null, log: g.log, creep: g.creep, acid: g.acid, extra });
+  const fog = g.fog.map(f => ({ exp: Array.from(f.exp).join(''), seen: Array.from(f.seen).join(''), ghosts: f.ghosts, creep: f.creep, field: f.field, intel: f.intel, lastHQ: f.lastHQ, lastSpot: f.lastSpot, seenUnits: f.seenUnits }));
+  return JSON.stringify({ v: SAVE_VER, t: g.t, nid: g.nid, diffKey: g.diffKey, ents, projs, sides, nodes: g.nodes, fog, abil: g.abil, endHold: g.endHold || null, log: g.log, creep: g.creep, field: g.field, warps: g.warps, acid: g.acid, extra });
 }
 function deserialize(str) {
   const o = JSON.parse(str);
@@ -2251,7 +2348,7 @@ function deserialize(str) {
     const f = newFog(g, k), sf = o.fog && o.fog[k];
     if (sf) {
       for (let i = 0; i < FOG_N; i++) { f.exp[i] = sf.exp[i] === '1' ? 1 : 0; f.seen[i] = (sf.seen || sf.exp)[i] === '1' ? 1 : 0; } // v17: older saves count explored ground as seen
-      Object.assign(f, { ghosts: sf.ghosts || {}, intel: sf.intel || {}, creep: sf.creep || {}, lastHQ: sf.lastHQ || f.lastHQ, lastSpot: sf.lastSpot ?? -99, seenUnits: sf.seenUnits || 0 });
+      Object.assign(f, { ghosts: sf.ghosts || {}, intel: sf.intel || {}, creep: sf.creep || {}, field: sf.field || {}, lastHQ: sf.lastHQ || f.lastHQ, lastSpot: sf.lastSpot ?? -99, seenUnits: sf.seenUnits || 0 });
     }
     return f;
   });
@@ -2272,6 +2369,9 @@ function deserialize(str) {
     else { if (e.tgt === undefined) e.tgt = 0; if (e.braceT === undefined) { e.braceT = 0; e.braceCd = 0; } }
   }
   g.creep = Array.isArray(o.creep) && o.creep.length === 2 ? o.creep : [[], []]; // v18: older saves start without creep and grow it
+  g.field = Array.isArray(o.field) && o.field.length === 2 ? o.field : [[], []]; // v23: older saves start without a power field and grow it
+  g.warps = Array.isArray(o.warps) ? o.warps : [];
+  for (const sd of g.sides) if (sd.warp === undefined) sd.warp = null;
   for (const e of g.ents) if (e.kind === 'u' && e.lastHurt === undefined) { e.lastHurt = -99; e.lastAct = -99; e.creepAt = -1; }
   g.acid = Array.isArray(o.acid) ? o.acid : []; // v19: acid pools, leaps, corrosion and spine bursts; older saves start without
   // v20: a Bloomhost side from v17-v19 kept Last Fist's ability timers (unused): carry them over to its own three
@@ -3927,6 +4027,83 @@ function creepCanvas(side, patches) {
   }
   return cv;
 }
+/* ---------- Power field layer (v2.26) ----------
+   Like the creep layer: each side's field is painted into its own offscreen canvas only when it changes (radii in 8-unit
+   steps, at most once a second unless a patch appears or goes), then stamped under everything with one drawImage. A faint
+   cyan glow, a fine lattice of concentric diamonds and spokes, and a team-coloured edge. The enemy's field is drawn from
+   what the player last saw of it (fog.field), only on ground the player has seen. */
+const FLV = { cv: [null, null], sig: ['', ''], keys: ['', ''], at: [0, 0] };
+function fieldCanvas(side, patches) {
+  const sig = patches.map(p => p.k + ':' + Math.round(p.r / 8)).join('|'), keys = patches.map(p => p.k).join('|'), now = performance.now();
+  if (FLV.cv[side] && (FLV.sig[side] === sig || (FLV.keys[side] === keys && now - FLV.at[side] < CRV.gap))) return FLV.cv[side];
+  FLV.keys[side] = keys; FLV.at[side] = now; FLV.sig[side] = sig;
+  let cv = FLV.cv[side];
+  if (!cv) { cv = FLV.cv[side] = document.createElement('canvas'); cv.width = Math.ceil(CRV.w * CRV.k); cv.height = Math.ceil(CRV.h * CRV.k); }
+  const c = cv.getContext('2d'), T = TEAM[side];
+  c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height);
+  c.setTransform(CRV.k, 0, 0, CRV.k, -CRV.x0 * CRV.k, -CRV.y0 * CRV.k);
+  for (const p of patches) { // the glow, all patches first so overlaps read as one field
+    if (p.r < 2) continue;
+    const x = p.u, y = p.v * DY;
+    c.save(); c.translate(x, y); c.scale(1, DY);
+    const gr = c.createRadialGradient(0, 0, 0, 0, 0, p.r);
+    gr.addColorStop(0, 'rgba(120,210,255,0.10)'); gr.addColorStop(0.8, 'rgba(110,200,255,0.07)'); gr.addColorStop(1, 'rgba(110,200,255,0)');
+    c.fillStyle = gr; c.beginPath(); c.arc(0, 0, p.r, 0, 7); c.fill();
+    c.restore();
+  }
+  for (const p of patches) { // the lattice: diamonds every 40 units, six spokes, and the team-coloured edge
+    if (p.r < 8) continue;
+    const x = p.u, y = p.v * DY, ry = DY;
+    c.strokeStyle = 'rgba(170,225,255,0.13)'; c.lineWidth = 1;
+    for (let r = 40; r < p.r - 6; r += 40) { c.beginPath(); c.moveTo(x - r, y); c.lineTo(x, y - r * ry); c.lineTo(x + r, y); c.lineTo(x, y + r * ry); c.closePath(); c.stroke(); }
+    c.beginPath(); for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + 0.26; c.moveTo(x + Math.cos(a) * 14, y + Math.sin(a) * 14 * ry); c.lineTo(x + Math.cos(a) * p.r * 0.92, y + Math.sin(a) * p.r * 0.92 * ry); } c.stroke();
+    c.strokeStyle = `rgba(${T.glow},0.32)`; c.lineWidth = 1.2; c.setLineDash([10, 6]);
+    c.beginPath(); c.ellipse(x, y, p.r, p.r * ry, 0, 0, 7); c.stroke(); c.setLineDash([]);
+  }
+  return cv;
+}
+function drawField(c, g, F) {
+  for (let s = 0; s < 2; s++) {
+    const patches = s === 0 ? g.field[0] : Object.keys(F.field).sort().map(k => ({ k, ...F.field[k] }));
+    if (!patches.length) { FLV.sig[s] = ''; continue; }
+    const cv = fieldCanvas(s, patches);
+    if (s === 1) {
+      c.save(); c.beginPath();
+      for (let i = 0; i < FOG_N; i++) if (F.seen[i]) { let j = i; while (j + 1 < FOG_N && F.seen[j + 1]) j++; c.rect(i * FOG_CELL, CRV.y0, (j - i + 1) * FOG_CELL, CRV.h); i = j; }
+      c.clip();
+    }
+    c.drawImage(cv, CRV.x0, CRV.y0, CRV.w, CRV.h);
+    if (s === 1) c.restore();
+  }
+  if (facOf(g.sides[0].faction) === 'axiarchs' && !g.over) drawWarpMark(c, g); // the player's own warp point
+}
+// The player's warp point: a glyph on the ground, brighter when the player placed it (the default sits at the field's front)
+function drawWarpMark(c, g) {
+  const wp = warpPoint(g, 0), w = P(wp.u, wp.v), set = !!g.sides[0].warp, k = 0.6 + 0.4 * Math.sin(VFX.lastT * 3);
+  c.strokeStyle = `rgba(159,232,255,${(set ? 0.8 : 0.45) * k})`; c.lineWidth = set ? 1.8 : 1.2;
+  c.beginPath(); c.moveTo(w.x - 12, w.y); c.lineTo(w.x, w.y - 6); c.lineTo(w.x + 12, w.y); c.lineTo(w.x, w.y + 6); c.closePath(); c.stroke();
+  c.beginPath(); c.moveTo(w.x - 6, w.y); c.lineTo(w.x, w.y - 3); c.lineTo(w.x + 6, w.y); c.lineTo(w.x, w.y + 3); c.closePath(); c.stroke();
+  if (set) { c.beginPath(); c.moveTo(w.x, w.y - 3); c.lineTo(w.x, w.y - 16); c.stroke(); }
+}
+// Units warping in (v2.26): a column of pale light that brightens over the channel, a turning diamond and a ground ring.
+// The enemy's warps show only inside the player's vision (and make no sound outside it).
+function drawWarps(c, g, lit, time) {
+  for (const w of g.warps) {
+    if (w.side !== 0 && !lit(w.u)) continue;
+    if (!VFX.warpSeen.has(w)) { VFX.warpSeen.add(w); if (VFX.primed) sfx('warp', P(w.u, w.v).x); }
+    const p = P(w.u, w.v), k = clamp((g.t - w.t0) / WARP.ch, 0, 1), d = UDEF[w.type], h = (d.air ? 70 : 34) + 10 * k;
+    c.globalCompositeOperation = 'lighter';
+    const gr = c.createLinearGradient(0, p.y, 0, p.y - h);
+    gr.addColorStop(0, `rgba(160,230,255,${0.15 + 0.4 * k})`); gr.addColorStop(1, 'rgba(160,230,255,0)');
+    c.fillStyle = gr; c.fillRect(p.x - 6 - 4 * k, p.y - h, 12 + 8 * k, h);
+    c.strokeStyle = `rgba(${TEAM[w.side].glow},${0.4 + 0.5 * k})`; c.lineWidth = 1.4;
+    c.beginPath(); c.ellipse(p.x, p.y, 16 - 4 * k, (16 - 4 * k) * 0.42, 0, 0, 7); c.stroke();
+    const a = time * 3, z = (d.air ? 40 : 14) * k + 6, r = 5 + 3 * k;
+    c.strokeStyle = `rgba(225,248,255,${0.5 + 0.5 * k})`; c.beginPath();
+    c.moveTo(p.x + Math.cos(a) * r, p.y - z); c.lineTo(p.x, p.y - z - r * 1.4); c.lineTo(p.x - Math.cos(a) * r, p.y - z); c.lineTo(p.x, p.y - z + r * 0.9); c.closePath(); c.stroke();
+    c.globalCompositeOperation = 'source-over';
+  }
+}
 function drawCreep(c, g, F) {
   for (let s = 0; s < 2; s++) {
     const patches = s === 0 ? g.creep[0] : Object.keys(F.creep).sort().map(k => ({ k, ...F.creep[k] }));
@@ -4166,7 +4343,7 @@ const QMUL = [0.3, 0.6, 1];                       // particle counts per quality
 const VFX = {
   g: null, lastT: -1, frame: 0, q: 2, lock: null, shake: 0, rnd: mulberry(4242),
   parts: [], np: 0, fx: [], nfx: 0, decals: [], smokers: [], wrecks: [],
-  rec: new WeakMap(), seenFx: new WeakSet(), prevE: [], prevP: [], prevA: [], shots: [], nshots: 0, freeRec: [],
+  rec: new WeakMap(), seenFx: new WeakSet(), warpSeen: new WeakSet(), prevE: [], prevP: [], prevA: [], shots: [], nshots: 0, freeRec: [],
   reduced: typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches,
   gaps: [], gapAt: 0, slowFor: 0, fastFor: 0,
 };
@@ -4685,6 +4862,7 @@ function render(c, g, time, sel, selPad) {
   const F = g.fog[0], seen = e => e.side === 0 || visibleTo(g, 0, e), lit = x => F.vis[cellOf(x)] === 1;
   const ghosts = Object.values(F.ghosts).filter(gh => !cellsLit(F.vis, gh.u, gh.half));
   drawCreep(c, g, F); // under everything on the field (v2.18)
+  drawField(c, g, F); // the Axiarch power field (v2.26), also under everything
 
   for (let s = 0; s < 2; s++) {
     const fac = g.sides[s].faction, hpos = hqPos(s), hp = P(hpos.u, hpos.v);
@@ -4784,6 +4962,7 @@ function render(c, g, time, sel, selPad) {
   c.globalAlpha = 1;
   drawVfx(c);
   drawAbilities(c, g, lit, time);
+  drawWarps(c, g, lit, time);
   drawFlags(c, g, time);
   drawAim(c, g);
   c.font = '600 11px -apple-system,system-ui,sans-serif'; c.textAlign = 'center';
@@ -5088,6 +5267,7 @@ function buildCards() {
     if (tab === 'train' && type === 'rifle') el.insertAdjacentHTML('beforeend', '<span class="path pr"></span>');
     wrap.appendChild(el);
   }
+  if (tab === 'train' && game && facOf(game.sides[0].faction) === 'axiarchs') { wrap.insertBefore(warpCard(), wrap.firstChild); refreshWarpCard(); } // v2.26
   if (tab === 'train' && game && !list.length) { // nothing to train yet: one line that says what unlocks it
     const el = document.createElement('div');
     el.className = 'trainHint'; el.dataset.type = 'other';
@@ -5104,6 +5284,32 @@ const hiddenUnits = g => UNIT_ORDER.filter(t => !unitVisible(g, t));
 const trainHint = g => { const n = BD(g.sides[0].faction, 'barracks').name; return g.ents.some(e => e.kind === 'b' && e.side === 0 && e.type === 'barracks' && e.hp > 0) ? `Units unlock when your ${n} is finished` : `Build a ${n} to train units`; };
 const trainSigOf = g => { const h = hiddenUnits(g); return h.join(',') + (h.length === UNIT_ORDER.length ? '|' + trainHint(g) : ''); };
 
+/* ---------- Set warp point (Axiarchs, v2.26) ----------
+   The first card on the Train tab: tap it to arm, then tap a spot inside your power field. Tap the card again (or the
+   banner's ×) to cancel. Units warp in at the warp point; a point left outside the field snaps back to the default. */
+let wpt = false;
+const WARP_ICON = '<svg viewBox="0 0 24 24" class="ic"><path d="M12 3l9 9-9 9-9-9z" fill="none" stroke="#9fe8ff" stroke-width="1.8"/><path d="M12 8l4 4-4 4-4-4z" fill="#9fe8ff"/></svg>';
+function warpCard() {
+  const el = document.createElement('button');
+  el.className = 'card warpc'; el.dataset.type = 'other'; el.id = 'cWarp';
+  el.innerHTML = `${WARP_ICON}<span class="nm">Warp point</span><span class="cost"></span>`;
+  el.addEventListener('click', () => {
+    if (!game || game.over || paused || !running) return;
+    if (wpt) { endAim(); return; }
+    endAim(); closePanel(); hideInfo();
+    wpt = true;
+    $('aim').style.setProperty('--ac', '#9fe8ff');
+    $('aimName').textContent = 'Set warp point'; $('aimTxt').textContent = ': tap a spot inside your power field';
+    $('aim').classList.remove('hide'); refreshWarpCard();
+  });
+  return el;
+}
+function refreshWarpCard() { const el = $('cWarp'); if (el && game) el.querySelector('.cost').textContent = wpt ? 'Cancel' : game.sides[0].warp ? 'Moved · tap to set' : 'Front · tap to set'; }
+function wptTap(x, y) {
+  const w = toWorld(x, y), r = setWarp(game, 0, w.x, w.y / DY);
+  toast(r.msg, r.ok ? 'ok' : 'bad');
+  if (r.ok) endAim(); else $('aimTxt').textContent = `: ${r.msg.toLowerCase()}`;
+}
 function shake(el) { el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
 function onCard(type, el) {
   if (!game || game.over || paused) return;
@@ -5263,8 +5469,9 @@ function onAbil(k, el) {
   $('aim').classList.remove('hide');
   refreshAbil();
 }
-function endAim() { // ends ability targeting and Regroup targeting
+function endAim() { // ends ability targeting, Regroup targeting and Set warp point
   if (rg) { rg = null; $('aim').classList.add('hide'); if (tab === 'army') refreshArmy(); }
+  if (wpt) { wpt = false; $('aim').classList.add('hide'); refreshWarpCard(); }
   if (!aim) return; aim = null; $('aim').classList.add('hide'); refreshAbil();
 }
 $('aimX').addEventListener('click', endAim);
@@ -5468,6 +5675,7 @@ function handleEvents() {
     else if (e.type === 'destroyed' && e.side === 1 && !e.seen && !e.hq) continue; // happened out of sight
     else if (e.type === 'destroyed') toast(e.side === 0 ? `${e.name} destroyed` : `Enemy ${e.seen ? e.name : 'HQ'} destroyed`, e.side === 0 ? 'bad' : 'ok'); // an unseen enemy HQ isn't named (v2.17: the name would tell its faction)
     else if (e.type === 'spotted' && e.side === 0) { toast('Enemy units spotted', 'warn'); sndPlay('ping'); }
+    else if (e.type === 'warpSnap' && e.side === 0) { toast('Warp point lost with the field: back to the front edge', 'warn'); refreshWarpCard(); } // v2.26
     else if (e.type === 'node') { if (e.side === 0 && !e.lost) sndPlay('node'); toast(e.lost ? (e.side === 0 ? 'You lost a field node' : 'Enemy lost a field node') : (e.side === 0 ? 'Field node captured: +3 credits, +1 energy per second' : 'Enemy captured a field node'), (e.side === 0) === !e.lost ? 'ok' : 'warn'); }
     else if (e.type === 'go') showGo();
     else if (e.type === 'extWarn') { sndPlay('siren'); toast('The Extinction Event starts in 30 seconds: finish it or lose your base', 'bad'); }
@@ -5487,6 +5695,7 @@ function handleTap(x, y) {
   if (!game) return;
   hideInfo();
   if (rg) { rgTap(x, y); return; }
+  if (wpt) { wptTap(x, y); return; }
   if (aim) { aimTap(x, y); return; }
   const w = toWorld(x, y), hits = [];
   for (const b of game.ents) {
@@ -5870,6 +6079,7 @@ const SFX = {
   siege:    [1, 1, 0.15, 0, v => { tone(v, 'sine', 90, 35, 0.35, 0.9); tone(v, 'sine', 90, 35, 0.35, 0.8, 0.07); hiss(v, 'lowpass', 700, 200, 0.7, 0.25, 0.5); tone(v, 'square', 140, 120, 0.08, 0.06); }],
   shell:    [1, 2, 0.15, 0, v => { tone(v, 'sine', 70, 35, 0.35, 0.9); hiss(v, 'lowpass', 500, 200, 0.7, 0.25, 0.5); }],
   whistle:  [0, 1, 0.3, 0, v => tone(v, 'sine', 1500, 600, 0.7, 0.12)],
+  warp:     [1, 2, 0.3, 0, v => { tone(v, 'sine', 300, 1200, 0.9, 0.12); tone(v, 'triangle', 600, 2400, 0.8, 0.05, 0.15); }], // a rising shimmer (v2.26)
   boom:     [1, 2, 0.06, 0, (v, s) => { const d = 0.25 + s / 80; hiss(v, 'lowpass', 400 + s * 20, 120, 0.7, d, 0.7); if (s > 28) tone(v, 'sine', 60, 30, d, 0.8); }],
   step:     [0, 1, 0.25, 0, v => { tone(v, 'sine', 55, 35, 0.16, 0.7); hiss(v, 'lowpass', 220, 150, 0.7, 0.1, 0.3); }],
   collapse: [2, 1, 0.3, 0, v => { hiss(v, 'lowpass', 320, 90, 0.7, 1.2, 0.8); tone(v, 'sine', 45, 25, 1, 0.8); }],

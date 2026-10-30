@@ -110,7 +110,7 @@ test('Axiarch production stays T1 ("Doctrine paths coming soon"); each faction t
 });
 
 test('saves v22 keep shields; a v21 save loads with no shields anywhere', () => {
-  assert.strictEqual(sim.SAVE_VER, 22);
+  assert.ok(sim.SAVE_VER >= 22); // v23 (v2.26) loads the same way
   const g = quiet(); seeAll(g);
   const s = put(g, 0, 'bastion', 800, 0); sim.damage(g, s, 150, 'cannon', 1);
   const g2 = sim.deserialize(sim.serialize(g, {}));
