@@ -68,6 +68,7 @@ test('Set warp point: only inside the field; units go there; it snaps back to th
   assert.ok(sim.setWarp(g, 0, n.u + 30, 20).ok); const set = g.sides[0].warp;
   sim.tryTrain(g, 0, 'shardling'); step(g, U.shardling.time + 0.1); arrive(g);
   const s = units(g, 'shardling')[0]; assert.ok(Math.hypot(s.u - set.u, s.v - set.v) < 1, 'arrived at the chosen point');
+  g.ents = g.ents.filter(e => e !== s); // since v2.31 it holds there on Hold, and would keep the node: take it away
   n.owner = null; n.prog = 0; g.events.length = 0;
   for (let i = 0; i < 30 * 30 && g.sides[0].warp; i++) sim.update(g, 1 / 30);
   assert.strictEqual(g.sides[0].warp, null, 'snapped back once the field receded from under it'); assert.ok(g.events.some(e => e.type === 'warpSnap' && e.side === 0));

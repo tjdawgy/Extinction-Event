@@ -59,9 +59,9 @@ test('Prismwing shield link: half of the shield damage goes evenly to up to 3 ne
   assert.ok(ps[0].hp < h[0] && ps.slice(1).every(p => p.shp === p.maxShp));
 });
 
-test('Shardstorm chain beam: from the target to at most 3 more enemies nearby, weaker each jump; aircraft and ground, never buildings or the same enemy twice', () => {
+test('Shardstorm chain beam: from the target to at most 3 more enemies nearby, weaker each jump; aircraft and ground (buildings weakly since v2.31), never jumping to a building or the same enemy twice', () => {
   const C = U.shardstorm.chain; assert.deepStrictEqual([C.n, C.fall], [3, 0.7]);
-  assert.ok(U.shardstorm.hitsAir && sim.DMG.storm.air > 0 && sim.DMG.storm.light > 0 && sim.DMG.storm.building === 0);
+  assert.ok(U.shardstorm.hitsAir && sim.DMG.storm.air > 0 && sim.DMG.storm.light > 0 && sim.DMG.storm.building > 0 && sim.DMG.storm.building < 0.5); // v2.31: weak against buildings (was 0), so they stop it
   const g = quiet(); seeAll(g);
   const st = put(g, 0, 'shardstorm', 700);
   const foes = [0, 1, 2, 3, 4, 5].map(i => { const e = put(g, 1, i % 2 ? 'aircraft' : 'rifle', 840 + i * 40); e.hp = e.maxHp = 1000; return e; });
@@ -75,7 +75,7 @@ test('Shardstorm chain beam: from the target to at most 3 more enemies nearby, w
   const a = put(g2, 1, 'rifle', 840), b = put(g2, 1, 'rifle', 840 + C.r + 40); for (const e of [a, b]) e.hp = e.maxHp = 1000;
   const ref = finish(g2, 1, 'refinery'); ref.u = 870; ref.v = 0; const rh = ref.hp;
   const hit = sim.chainBeam(g2, s2, a, U.shardstorm);
-  assert.strictEqual(hit.length, 0, 'nothing within reach of the target'); assert.strictEqual(b.hp, 1000); assert.strictEqual(ref.hp, rh, 'never a building');
+  assert.strictEqual(hit.length, 0, 'nothing within reach of the target'); assert.strictEqual(b.hp, 1000); assert.strictEqual(ref.hp, rh, 'never a jump to a building');
 });
 
 test('Voidcarrier and Astral Sovereign never hit aircraft; they go for buildings first; the Sovereign drops an area blow', () => {
@@ -136,8 +136,8 @@ test('saves v26 keep Celestial Array paths and the new units; a v25 save loads (
 });
 
 test('every Axiarch unit hits exactly the targets spec section 6 gives it (A aircraft, G ground units, B buildings)', () => {
-  const SPEC = { shardling: 'GB', riftstalker: 'GB', parallax: 'GB', lancer: 'AGB', marksman: 'GB', bastion: 'GB', riftmortar: 'GB', worldbreaker: 'GB', gravemantle: 'G', eventide: 'G',
-    wraithwing: 'AGB', prismwing: 'GB', shardstorm: 'AG', voidcarrier: 'GB', sovereign: 'GB' };
+  const SPEC = { shardling: 'GB', riftstalker: 'GB', parallax: 'GB', lancer: 'AGB', marksman: 'GB', bastion: 'GB', riftmortar: 'GB', worldbreaker: 'GB', gravemantle: 'GB', eventide: 'GB', // v2.31: Gravemantle and Eventide G → G, B
+    wraithwing: 'AGB', prismwing: 'GB', shardstorm: 'AGB', voidcarrier: 'GB', sovereign: 'GB' }; // v2.31: Shardstorm A, G → A, G, B
   assert.deepStrictEqual(Object.keys(U).filter(t => U[t].fac === 'axiarchs').sort(), Object.keys(SPEC).sort(), 'every Axiarch unit is listed');
   for (const [t, want] of Object.entries(SPEC)) {
     const W = sim.DMG[U[t].weapon], got = (U[t].hitsAir && W.air > 0 ? 'A' : '') + (U[t].hitsGround !== false && W.light > 0 ? 'G' : '') + (W.building > 0 ? 'B' : '');
