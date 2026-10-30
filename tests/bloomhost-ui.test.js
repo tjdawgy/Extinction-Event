@@ -39,7 +39,7 @@ test('a match as Bloomhost: names and cards, Train after a Larva Pit, Larva Pit 
     return { fac: game.sides.map(s => s.faction), cards: [...$('cards').querySelectorAll('.card .nm')].map(x => x.textContent), abil: [...$('abil').children].map(b => b.dataset.k) };
   });
   assert.deepStrictEqual(r.fac, ['bloomhost', 'lastfist']);
-  assert.deepStrictEqual(r.cards, ['Goremound', 'Pulse Organ', 'Hatchery', 'Larva Pit', 'Maw', 'Evolution Chamber', 'Bloomspire']);
+  assert.deepStrictEqual(r.cards, ['Goremound', 'Pulse Organ', 'Hatchery', 'Larva Pit', 'Maw', 'Evolution Chamber', 'Bloomspire', 'Brood Mound', 'Rootheart']); // v2.33: its signature buildings
   assert.deepStrictEqual(r.abil, ['frenzy', 'brood', 'corrosive']);
   await page.click('#abil .ab[data-k="frenzy"]');
   assert.ok((await toasts()).some(t => /Frenzy Bloom is ready in/.test(t)), 'its first cooldown, like Last Fist');

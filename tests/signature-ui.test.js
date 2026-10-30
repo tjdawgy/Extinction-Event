@@ -18,7 +18,7 @@ async function start(dev, me, foe = 'bloomhost') {
   return { page, errors };
 }
 
-test('Build tab: Salvage Yard and Fortification Depot cards for Last Fist only; "Already built" while one stands; info cards for both and the bunker', { skip }, async () => {
+test('Build tab: Salvage Yard and Fortification Depot cards for Last Fist, none for the Axiarchs yet; "Already built" while one stands; info cards for both and the bunker', { skip }, async () => {
   const { page, errors } = await start(NARROW, 'lastfist');
   const r = await page.evaluate(() => {
     const names = () => [...$('cards').querySelectorAll('.card .nm')].map(x => x.textContent);
@@ -42,7 +42,7 @@ test('Build tab: Salvage Yard and Fortification Depot cards for Last Fist only; 
   assert.match(r.after, /150/, 'rebuildable after the loss');
   assert.deepStrictEqual(errors, []);
   await page.close();
-  for (const fac of ['bloomhost', 'axiarchs']) {
+  for (const fac of ['axiarchs']) { // Bloomhost has its own since v2.33 (tests/bloomhost-sig-ui.test.js)
     const { page: p2, errors: e2 } = await start(NARROW, fac, 'lastfist');
     const n = await p2.evaluate(() => [...$('cards').querySelectorAll('.card')].map(x => x.dataset.type));
     assert.ok(!n.includes('sigA') && !n.includes('sigB'), `${fac}: ${n.join(', ')}`);

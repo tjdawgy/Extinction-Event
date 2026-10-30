@@ -17,16 +17,16 @@ const tier = (b, t) => { b.tier = t; };
 const bunkers = (g, s = 0) => g.ents.filter(e => e.type === 'bunker' && e.side === s && e.hp > 0);
 const hold = (g, n, s = 0) => { g.nodes[n].owner = s; g.nodes[n].prog = s === 0 ? 100 : -100; };
 
-test('the signature buildings: Barracks cost, build time, HP and upgrade costs; Last Fist only for now; Build order lists both', () => {
+test('the signature buildings: Barracks cost, build time, HP and upgrade costs; Last Fist (v2.32) and Bloomhost (v2.33), not the Axiarchs yet; Build order lists both', () => {
   for (const k of ['sigA', 'sigB']) {
     assert.deepStrictEqual([B[k].cost, B[k].time, B[k].hp, B[k].half, B[k].up], [B.barracks.cost, B.barracks.time, B.barracks.hp, B.barracks.half, B.barracks.up], k);
     assert.ok(B[k].sig && !B[k].pop && !B[k].inc && !B[k].gun, `${k}: no supply, no income, no gun of its own`);
     assert.ok(sim.BUILD_ORDER.includes(k));
-    assert.strictEqual(sim.BD('bloomhost', k), undefined, 'Bloomhost gets its own in v2.33'); assert.strictEqual(sim.BD('axiarchs', k), undefined, 'Axiarchs in v2.34');
+    assert.ok(sim.BD('bloomhost', k).sig, 'Bloomhost has its own (v2.33)'); assert.strictEqual(sim.BD('axiarchs', k), undefined, 'Axiarchs in v2.34');
   }
   assert.deepStrictEqual([B.sigA.name, B.sigB.name], ['Salvage Yard', 'Fortification Depot']);
   const g = quiet('bloomhost', 'axiarchs');
-  assert.strictEqual(sim.tryBuild(g, 0, 'sigA').ok, false); assert.strictEqual(sim.tryBuild(g, 1, 'sigB').ok, false);
+  assert.strictEqual(sim.tryBuild(g, 0, 'sigA').ok, true); assert.strictEqual(sim.tryBuild(g, 1, 'sigB').ok, false);
   assert.strictEqual(sim.tryBuild(quiet(), 0, 'bunker').ok, false, 'bunkers are never built by hand');
 });
 
@@ -171,29 +171,38 @@ test('the minimal AI (Last Fist): the Aggressor and Trickster build the Salvage 
     for (let i = 0; i < 30 * 120; i++) sim.update(g, 1 / 30);
     assert.strictEqual(g.ents.find(e => e.side === 1 && e.type === want).tier, 3, `${persona} upgraded its ${want}`);
   }
-  const g = sim.newGame('hard', { factions: ['lastfist', 'bloomhost'], persona: 'turtle' }); g.countdown = 0; g.sides[0].aiT = 1e9;
+  const g = sim.newGame('hard', { factions: ['lastfist', 'axiarchs'], persona: 'turtle' }); g.countdown = 0; g.sides[0].aiT = 1e9;
   for (let i = 0; i < 30 * 300; i++) sim.update(g, 1 / 30);
-  assert.ok(!g.ents.some(e => e.side === 1 && (e.type === 'sigA' || e.type === 'sigB')), 'a Bloomhost AI has none yet');
+  assert.ok(!g.ents.some(e => e.side === 1 && (e.type === 'sigA' || e.type === 'sigB')), 'an Axiarch AI has none yet (v2.34)');
 });
 
-test('every personality and difficulty: the Last Fist build plan with its signature building keeps every building type it had without it', () => {
+test('every personality and difficulty, Last Fist and Bloomhost (v2.33): the build plan with its signature building keeps every building type it had without it', () => {
   const S2 = loadSim({ random: (() => { let a = 11; return () => (a = (a * 16807) % 2147483647) / 2147483647; })() });
   const plans = new Map(); // every plan variant each personality can roll, plus the shared plan used under pressure
   for (let i = 0; i < 200; i++) for (const k of S2.PERSONAS) { const P = S2.rollPersona(k); plans.set(k + ':' + P.plan.join(','), { k, plan: P.plan }); }
   for (const k of S2.PERSONAS) plans.set(k + ':pressed', { k, plan: S2.AI_PLAN });
   assert.ok(plans.size >= 12, `${plans.size} plans`);
-  for (const diff of Object.keys(S2.DIFF)) for (const { k, plan } of plans.values()) {
+  for (const fac of ['lastfist', 'bloomhost']) for (const diff of Object.keys(S2.DIFF)) for (const { k, plan } of plans.values()) {
     const sig = k === 'aggressor' || k === 'trickster' ? 'sigA' : 'sigB', withSig = S2.aiPlanWith(plan, sig);
+    assert.ok(S2.BD(fac, sig) && S2.BD(fac, sig).sig, `${fac} has ${sig}`);
     for (const t of new Set(plan)) assert.ok(withSig.includes(t), `${diff} ${k}: ${plan.join(' ')} → ${withSig.join(' ')} lost ${t}`);
     assert.ok(withSig.includes('techlab') && withSig.includes(sig), `${diff} ${k}`);
     assert.strictEqual(withSig.length, plan.length, 'still 8 buildings: one duplicate gave way');
     assert.strictEqual(withSig.filter(t => t === sig).length, 1);
   }
-  assert.strictEqual(S2.aiPlanWith(S2.AI_PLAN, null), S2.AI_PLAN, 'other factions: the plan is unchanged');
+  assert.strictEqual(S2.aiPlanWith(S2.AI_PLAN, null), S2.AI_PLAN, 'no signature building (the Axiarchs until v2.34): the plan is unchanged');
+  // and the plan the AI actually follows, per faction: a seeded Hard match each, the building types it built are the plan's
+  for (const fac of ['lastfist', 'bloomhost']) for (const persona of S2.PERSONAS) {
+    const S3 = loadSim({ random: (() => { let a = 5; return () => (a = (a * 16807) % 2147483647) / 2147483647; })() });
+    const g = S3.newGame('hard', { factions: ['lastfist', fac], persona }); g.countdown = 0; g.sides[0].aiT = 1e9;
+    for (let i = 0; i < 30 * 240; i++) S3.update(g, 1 / 30);
+    const want = persona === 'aggressor' || persona === 'trickster' ? 'sigA' : 'sigB';
+    assert.ok(S3.countB(g, 1, want) === 1, `${fac} ${persona} built its ${want} by 4:00`);
+  }
 });
 
 test('saves v28 keep Overdrive, bunkers and rebuild timers; a v27 save loads with none of them and plays on', () => {
-  assert.strictEqual(sim.SAVE_VER, 28); assert.ok(sim.SAVE_OK.includes(27) && sim.SAVE_OK.includes(28));
+  assert.ok(sim.SAVE_VER >= 28); assert.ok(sim.SAVE_OK.includes(27) && sim.SAVE_OK.includes(28)); // v29 (v2.33) loads the same way
   const g = quiet(); seeAll(g); hold(g, 0); hold(g, 1); const y = fin(g, 0, 'sigA'); tier(y, 3); const d = fin(g, 0, 'sigB'); tier(d, 2); step(g, 0.1);
   g.sides[0].od = g.t + 12; sim.kill(g, bunkers(g).find(b => b.node === 1), 1); const due = d.bk[1];
   const g2 = sim.deserialize(sim.serialize(g, {}));

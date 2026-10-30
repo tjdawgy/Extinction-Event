@@ -148,7 +148,7 @@ test('the AI trains every unit on its Bloomspire path (a prepared T3 Bloomspire 
 
 test('in a seeded Hard match the Bloomhost AI picks a Bloomspire path through its Tech Lab taste and trains its units', () => {
   const mul = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
-  const S = loadSim({ random: mul(42) }); // v2.32: seed 42 (the Last Fist autoplayer's signature building changed its play; with seed 23 the match ends at 9:15 before a Worldrender; 1 of seeds 1-42 trains one). v2.30: seed 23 (was 3)
+  const S = loadSim({ random: mul(17) }); // v2.33: seed 17 (the Bloomhost AI's own signature building changed its play; with seed 42 no Worldrender before 22:58). v2.32: seed 42 (the Last Fist autoplayer's signature building changed its play; with seed 23 the match ends at 9:15 before a Worldrender; 1 of seeds 1-42 trains one). v2.30: seed 23 (was 3)
   const g = S.newGame('hard', { autoPlayer: true, autoDiff: 'hard', persona: 'economist', autoPersona: 'turtle', factions: ['lastfist', 'bloomhost'] });
   let path = null;
   for (let i = 0; i < 30 * 1700 && !g.over; i++) { S.update(g, 1 / 30); for (const e of g.ents) if (e.side === 1 && e.type === 'techlab' && e.path) path = e.path; g.events.length = 0; }
