@@ -1,0 +1,18 @@
+hard vs Greedy: lastfist 35-7, bloomhost 30-12, axiarchs 37-5; total 102-24 (AI 81%)
+  pairs (AI<bot): lastfist<lastfist 12-2, lastfist<bloomhost 14-0, lastfist<axiarchs 9-5, bloomhost<lastfist 8-6, bloomhost<bloomhost 11-3, bloomhost<axiarchs 11-3, axiarchs<lastfist 11-3, axiarchs<bloomhost 12-2, axiarchs<axiarchs 14-0
+hard vs strategy bots, lastfist: 18-0-0 [rush 6-0, turtle 6-0, contain 6-0]
+hard vs strategy bots, bloomhost: 15-3-0 [rush 6-0, turtle 6-0, contain 3-3]
+hard vs strategy bots, axiarchs: 18-0-0 [rush 6-0, turtle 6-0, contain 6-0]
+hard vs Default, lastfist: 38-2-0
+hard vs Default, bloomhost: 39-1-0
+hard vs Default, axiarchs: 36-4-0
+hard vs hard, lastfist vs bloomhost: 15-25-0
+hard vs hard, lastfist vs axiarchs: 19-21-0
+hard vs hard, bloomhost vs axiarchs: 22-18-0
+Default (normal) vs Greedy: lastfist 0-18, bloomhost 0-18, axiarchs 1-17; total 1-53 (AI 1.9%)
+  pairs (AI<bot): lastfist<lastfist 0-6, lastfist<bloomhost 0-6, lastfist<axiarchs 0-6, bloomhost<lastfist 0-6, bloomhost<bloomhost 0-6, bloomhost<axiarchs 0-6, axiarchs<lastfist 1-5, axiarchs<bloomhost 0-6, axiarchs<axiarchs 0-6
+Default (easy) vs Greedy: lastfist 0-18, bloomhost 0-18, axiarchs 0-18; total 0-54 (AI 0%)
+  pairs (AI<bot): lastfist<lastfist 0-6, lastfist<bloomhost 0-6, lastfist<axiarchs 0-6, bloomhost<lastfist 0-6, bloomhost<bloomhost 0-6, bloomhost<axiarchs 0-6, axiarchs<lastfist 0-6, axiarchs<bloomhost 0-6, axiarchs<axiarchs 0-6
+openings Hard picks (300 rolls), lastfist: {"economist":69,"turtle":67,"boomer":164}
+openings Hard picks (300 rolls), bloomhost: {"boomer":220,"turtle":80}
+openings Hard picks (300 rolls), axiarchs: {"turtle":209,"boomer":91}

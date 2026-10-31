@@ -1,0 +1,4 @@
+Default (normal) vs Greedy: lastfist 1-17, bloomhost 0-18, axiarchs 0-18; total 1-53 (AI 1.9%)
+  pairs (AI<bot): lastfist<lastfist 0-6, lastfist<bloomhost 0-6, lastfist<axiarchs 1-5, bloomhost<lastfist 0-6, bloomhost<bloomhost 0-6, bloomhost<axiarchs 0-6, axiarchs<lastfist 0-6, axiarchs<bloomhost 0-6, axiarchs<axiarchs 0-6
+Default (easy) vs Greedy: lastfist 0-18, bloomhost 0-18, axiarchs 0-18; total 0-54 (AI 0%)
+  pairs (AI<bot): lastfist<lastfist 0-6, lastfist<bloomhost 0-6, lastfist<axiarchs 0-6, bloomhost<lastfist 0-6, bloomhost<bloomhost 0-6, bloomhost<axiarchs 0-6, axiarchs<lastfist 0-6, axiarchs<bloomhost 0-6, axiarchs<axiarchs 0-6

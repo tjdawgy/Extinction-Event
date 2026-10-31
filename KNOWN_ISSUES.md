@@ -2,6 +2,27 @@
 
 Issues found during testing that are deliberately deferred. Each lists the step that should address it.
 
+## Audit phase 7b: balance and the strategy triangle (v2.42)
+- **Report:** audit/strategy-report.md. **Diagnosis:** audit/strategy-diagnosis.md. **Logs:** audit/logs7b/. **Tools** (audit/sim): strat.js (Rush, Turtle, Contain, Standard and Greedy openings with timing, contain, tech and air branches), stratrun.js, diag7b.js, an7b.js, trace7b.js, duelx.js, hardsearch7b.js, validate7b.js, nodes7b.js.
+- **Why Last Fist won identical play:** containment. Its all-ranged army parks at the edge of the enemy HQ gun, which barely reaches the defender's own node; melee defenders at the rally flag chase out of cover and die one by one; nodes and Salvage pay for the siege. Its Tank and Flame Tank also won every open duel.
+- **Changes:** numbers only, in `BALANCE7B` (`setBalance7b(false)` = v2.41): Refinery 175 / 13 s / 420 HP; HQ gun 16 / 48 / 62 by tier; Turret 150 + 40, 9 s, tougher, Maw and Null Lance harder-hitting; nodes 4 + 1.5; Rifleman 45 credits, 6.5 damage; Heavy 135 + 40; Tank 280 + 70; Flame ×0.2 against vehicles; Skitterling 66 HP; Bulwark 840 HP, 28 damage; Spitter 70 + 20, range 165. Six rounds; round 6 (Skitterling speed, Bulwark cost, Rifleman range) broke the triangle and was reverted.
+- **Results:**
+  - Greedy vs Greedy: LF 52.5%, BH 40%, AX 57.5% (was 97.5 / 32.5 / 20). Hard vs Hard: LF 42.5%, BH 58.8%, AX 48.8% (was 84 / 35 / 31).
+  - Triangle (24 per cell): Rush > Greedy 96 / 100 / 100%, Greedy > Turtle 100% ×3, Turtle > Rush 100 / 92 / 58%.
+  - Contain: a correct defender breaks a light Contain 100 / 62.5 / 87.5%; a heavy Contain with a clear lead wins 100 / 100 / 62.5%.
+  - Nodes: 2 nodes held at 4:00 win 72%, 3 win 60%, 0–1 win 34–38%.
+  - Signature buildings: net gains for the Salvage Yard (Greedy/Timing 8–0, Contain 6–2), Fortification Depot (Greedy/Timing 7–1), Phase Beacon (Contain 7–1).
+  - Hard vs Greedy 81% (83 / 71 / 88; was 62.7%), vs Default 95 / 97.5 / 90%; it varies its opening (Last Fist Boomer, Economist, Turtle; Bloomhost Boomer, Turtle; Axiarchs Turtle, Boomer) and adapts after scouting (`adapt`, `punish` on).
+- **AI changes (Hard only; Default, so Easy and Normal, has none):** `breakout` (hold deep under the HQ gun when camped on, out together at 1.4×, a pressure Turret at once), `adapt`, `punish` back on, the `flood` dial at 0.4 (Flame Tanks against lighter mixes). v2.41's Hard is the `hard241` preset.
+- **Open:**
+  - **Bloomhost** has only 2 viable openings and 1 viable mid-game branch in the mixed field (target 3 each); in mixed bot play Last Fist is still on top (73.8%) and Bloomhost low (23.8%).
+  - The **tech branch** is too strong (74%) and the **contain branch** too weak (26%) against the field: parking next to Turrets bleeds an army, and a maxed turtle meets attacks that die on its Turrets.
+  - The triangle is steep (most cells 90–100%); the Axiarch Turtle > Rush cell is narrow (58%).
+  - Last Fist moved from top to bottom in Hard vs Hard (still inside 40–60%): watch in playtests.
+  - Easy and Normal play the unchanged Default AI on the new numbers: against the Greedy bot unchanged (Normal 1–53, Easy 0–54, before and after); against the phase 5 Rifleman rush Normal now loses 4 of 12 per faction (was 0 of 12).
+  - Proposed mechanic changes (rally point inside the HQ gun, melee Hold engage radius, the third node, signature buildings off the pad budget, Turrets scaling with the HQ, AI rebuilding) are in the report, not implemented.
+- **Tests:** new tests/strategy.test.js; tests that pin v2.41 numbers for a mechanic now call `setBalance7b(false)` (ax-abilities, bloomhost-sig, fog, regression, trees, tactics' v239 replays, determinism's balance-on fingerprints, hardhuman's Default replays). Intermittent, pre-existing: tests/fog.test.js "AI siege under fog" is unseeded and failed 1 of 6 runs on v2.41's index.html too.
+
 ## Audit phase 7a: Hard against human-style play (v2.41)
 - **Report:** audit/hard-vs-human-report.md. **Logs:** audit/logs7a/. **Tools** (audit/sim): greedy.js (the Greedy bot), greedyrun.js, ablate7a.js, hardsearch7a.js, validate7a.js, shield7a.js, counter7a.js, botvbot.js.
 - **Greedy bot:** a scripted copy of the opening that beat v2.40 Hard:

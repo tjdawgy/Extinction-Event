@@ -1,0 +1,7 @@
+rush vs lastfist: rush wins 0, AI wins 12, draws 0
+rush vs bloomhost: rush wins 0, AI wins 12, draws 0
+rush vs axiarchs: rush wins 0, AI wins 12, draws 0
+after
+rush vs lastfist: rush wins 4, AI wins 8, draws 0, median rush win 5:52
+rush vs bloomhost: rush wins 4, AI wins 8, draws 0, median rush win 5:40
+rush vs axiarchs: rush wins 4, AI wins 8, draws 0, median rush win 5:43
