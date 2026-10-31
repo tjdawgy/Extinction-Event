@@ -9,7 +9,9 @@ function runMatch(spec) {
   const { seed, sides, diff = 'hard', maxT = 1200, sample = 30 } = spec;
   const S = loadSim(seed, { file: spec.file, instrument: (spec.diag ? INSTRUMENT : '') + (spec.code ? `\n;${spec.code}` : '') || undefined }); // code: an experiment's changes to SIM values (audit only)
   const per = p => (p && p !== 'random' ? p : undefined);
-  const g = S.newGame(diff, { autoPlayer: true, autoDiff: diff, factions: [sides[0].faction, sides[1].faction],
+  if (sides[1].bot) throw new Error('a scripted bot plays side 0 only');
+  const bot = sides[0].bot ? require('./greedy').greedyBot(S, sides[0].botOpts || {}) : null; // Phase 7a: a scripted bot (Greedy) in the player's slot
+  const g = S.newGame(diff, { autoPlayer: !bot, autoDiff: diff, factions: [sides[0].faction, sides[1].faction],
     autoAi: sides[0].ai, ai: sides[1].ai, autoPersona: per(sides[0].persona), persona: per(sides[1].persona) });
   g.countdown = 0;
   // optional per-side dial overrides (A.dial: { scout: 0, fix: { leash: false } }) for experiments
@@ -33,6 +35,7 @@ function runMatch(spec) {
   let next = sample;
   while (!g.over && g.t < maxT) {
     S.update(g, 1 / 30);
+    if (bot) bot(g, 0, 1 / 30);
     g.events.length = 0;
     if (g.t >= next) { take(); next += sample; }
   }
@@ -46,6 +49,7 @@ function runMatch(spec) {
       return { faction: g.sides[s].faction, ai: P.preset || 'legacy', persona: P.kind, trained: T.trained, lost: T.lost, alive,
         earned: [Math.round(T.earn[0]), Math.round(T.earn[1])], spent: spent.map(Math.round), salvage: Math.round(T.salv || 0),
         nodeTime: Math.round(T.nodeTime), buildings: T.bBuilt, tech: tech[s], killed: T.killed, lostTo: T.lostTo || {}, ab: T.ab, mites: T.mites, echoes: T.echoes || 0, bkHeal: Math.round(T.bkHeal || 0), od: T.od || 0,
+        bot: bot && s === 0 ? bot.log : undefined,
         diag: S.diag ? { dmg: S.diag.dmg[s], kills: S.diag.kills[s] } : undefined, aiLog: g.sides[s].aiLog ? { attacks: g.sides[s].aiLog.attacks, firstAttack: g.sides[s].aiLog.firstAttack, abil: g.sides[s].aiLog.abil || {} } : null };
     }),
     samples,
