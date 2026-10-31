@@ -1,0 +1,19 @@
+set tri, n 4 per side, seed 97000, code: BDEF.refinery.cost.c = 175; for (const B of [BDEF, BDEF_BH, BDEF_AX]) { B.refinery.time = 13; B.turret.time = 9; } BDEF.turret.cost.c = 150; BDEF.turret.cost.e = 40; NODE_INC.c = 4; NODE_INC.e = 1.5; UDEF.skitterling.hp = 66; UDEF.bulwark.hp = 840; UDEF.spitter.cost = { c: 70, e: 20 }; UDEF.rifle.dmg = 6.5; UDEF.tank.cost = { c: 280, e: 70 }; DMG.flame.vehicle = 0.2; for (const B of [BDEF, BDEF_AX]) { B.hq.gun[1].dmg = 16; B.hq.gun[2].dmg = 48; B.hq.gun[3].dmg = 62; } BDEF.refinery.hp = 420; BDEF_BH.refinery.hp = 420; BDEF_AX.refinery.hp = 336; BDEF_AX.refinery.shp = 126; UDEF.rifle.cost = { c: 45, e: 0 };  BDEF.turret.hp = 1300; BDEF_BH.turret.hp = 1400; BDEF_AX.turret.hp = 1040; BDEF_AX.turret.shp = 390; BDEF_BH.turret.gun[1].dmg = 22; BDEF_AX.turret.gun[1].dmg = 55; 
+  lastfist rush>greedy: 8-0 (100%) median 5.5 min
+  lastfist greedy>turtle: 8-0 (100%) median 5 min
+  lastfist turtle>rush: 8-0 (100%) median 8.5 min
+  lastfist contain>greedy: 0-8 (0%) median 5.5 min
+  lastfist contain>turtle: 2-6 (25%) median 21.8 min
+  lastfist contain>rush: 6-2 (75%) median 16.3 min
+  bloomhost rush>greedy: 8-0 (100%) median 3 min
+  bloomhost greedy>turtle: 8-0 (100%) median 6.6 min
+  bloomhost turtle>rush: 8-0 (100%) median 8.7 min
+  bloomhost contain>greedy: 0-8 (0%) median 6.1 min
+  bloomhost contain>turtle: 8-0 (100%) median 6.3 min
+  bloomhost contain>rush: 2-6 (25%) median 3.4 min
+  axiarchs rush>greedy: 8-0 (100%) median 3.3 min
+  axiarchs greedy>turtle: 8-0 (100%) median 4.7 min
+  axiarchs turtle>rush: 4-4 (50%) median 7.6 min
+  axiarchs contain>greedy: 0-8 (0%) median 4 min
+  axiarchs contain>turtle: 0-8 (0%) median 7.7 min
+  axiarchs contain>rush: 5-3 (62.5%) median 22.1 min

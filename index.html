@@ -775,8 +775,25 @@ setRedesign(true);
    with its reason in the report. A patch is [path, value]; setBalance7b(false) puts back every v2.41 value, so a match then
    plays exactly as v2.41 did. setBalance(false) (v2.38) also turns this layer off. */
 const BALANCE7B = { on: false, orig: null, patches: [
+  // greed has a cost: a Refinery pays back in 44 s of its own income instead of 37.5, builds slower and dies faster
+  ['BDEF.refinery.cost.c', 175], ['BDEF.refinery.time', 13], ['BDEF_BH.refinery.time', 13], ['BDEF_AX.refinery.time', 13],
+  ['BDEF.refinery.hp', 420], ['BDEF_BH.refinery.hp', 420], ['BDEF_AX.refinery.hp', 336], ['BDEF_AX.refinery.shp', 126],
+  // the HQ gun: weak at T1 (an early attack can hurt an undefended base), stronger at T2 and T3 (a paid defence)
+  ['BDEF.hq.gun.1.dmg', 16], ['BDEF.hq.gun.2.dmg', 48], ['BDEF.hq.gun.3.dmg', 62],
+  ['BDEF_AX.hq.gun.1.dmg', 16], ['BDEF_AX.hq.gun.2.dmg', 48], ['BDEF_AX.hq.gun.3.dmg', 62],
+  // defence in time: the faction Turrets are cheaper, faster to build and tougher; the Maw and the Null Lance hit harder at T1
+  ['BDEF.turret.cost.c', 150], ['BDEF.turret.cost.e', 40], ['BDEF.turret.time', 9], ['BDEF_BH.turret.time', 9], ['BDEF_AX.turret.time', 9],
+  ['BDEF.turret.hp', 1300], ['BDEF_BH.turret.hp', 1400], ['BDEF_AX.turret.hp', 1040], ['BDEF_AX.turret.shp', 390],
+  ['BDEF_BH.turret.gun.1.dmg', 22], ['BDEF_AX.turret.gun.1.dmg', 55],
+  // field nodes worth fighting for
+  ['NODE_INC.c', 4], ['NODE_INC.e', 1.5],
+  // Last Fist: Riflemen cheaper but lighter-hitting (rush with them, don't win every trade), dearer Heavies and Tanks, Flame
+  // Tanks a specialist against infantry (weak against vehicles)
+  ['UDEF.rifle.cost', { c: 45, e: 0 }], ['UDEF.rifle.dmg', 6.5], ['UDEF.heavy.cost', { c: 135, e: 40 }], ['UDEF.tank.cost', { c: 280, e: 70 }], ['DMG.flame.vehicle', 0.2],
+  // Bloomhost: sturdier Skitterlings and Bulwarks, cheaper Spitters with the reach to answer a ranged line
+  ['UDEF.skitterling.hp', 66], ['UDEF.bulwark.hp', 840], ['UDEF.bulwark.dmg', 28], ['UDEF.spitter.cost', { c: 70, e: 20 }], ['UDEF.spitter.range', 165],
 ] };
-const B7_ROOT = () => ({ UDEF, BDEF, BDEF_BH, BDEF_AX, DMG, NODE_INC, SALVAGE, YARD, BUNKER, MOUND, ROOT, BEACON, ECHO, ABIL });
+const B7_ROOT = () => ({ UDEF, BDEF, BDEF_BH, BDEF_AX, DMG, NODE_INC, SALVAGE, YARD, BUNKER, MOUND, ROOT, BEACON, ECHO });
 function b7At(path) { const k = path.split('.'), R = B7_ROOT(); let o = R[k[0]]; for (let i = 1; i < k.length - 1; i++) o = o[k[i]]; return [o, k[k.length - 1]]; }
 const b7Copy = v => v && typeof v === 'object' ? JSON.parse(JSON.stringify(v)) : v;
 function setBalance7b(on) {
@@ -790,6 +807,9 @@ function b7Texts() {
   const n = v => String(Math.round(v)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   const hqT = (fac, w, x) => { const d = BD(fac, 'hq'); for (let t = 1; t <= 3; t++) { const gn = d.gun[t]; d.tiers[t] = `${w} ${gn.dmg} damage, ${gn.range} range${x ? `; ${n(d.hp * d.hpMul[t])} HP + ${n(d.shp * d.hpMul[t])} shields` : `, ${n(d.hp * d.hpMul[t])} HP`}`; } };
   hqT('lastfist', 'Turret'); hqT('bloomhost', 'Spine launcher'); hqT('axiarchs', 'Axis lance', true);
+  const maw = BDEF_BH.turret.gun[1], lance = BDEF_AX.turret.gun[1];
+  BDEF_BH.turret.tiers[1] = `Spines ${Math.round(maw.dmg / maw.cd)} damage/s, ${maw.range} range, hits air`;
+  BDEF_AX.turret.tiers[1] = `Beam ${Math.round(lance.dmg / lance.cd)} damage/s at one target, ${lance.range} range, hits air`;
 }
 /* ---------- Balance pass (v2.39, audit phase 5; audit/balance-report.md) ----------
    Conservative: costs and build times first, then two small stat fixes where controlled duels showed a unit losing at equal
@@ -919,6 +939,11 @@ const AI_PRESETS = {
     lastfist: { kinds: ['boomer'], dials: { delay: 0.6, sigAt: 99999 } },
     bloomhost: { kinds: ['boomer'], dials: { delay: 1, sigAt: 99999 } },
     axiarchs: { kinds: ['boomer'], dials: { delay: 0.6, sigAt: 99999 } } } },
+  // v2.41's Hard exactly (with v2.41's numbers via setBalance7b(false)): the baseline for phase 7b
+  hard241: { name: 'Hard v2.41', smart: true, dials: Object.assign({}, AI_DIALS, { scout: 70, comp: {} }), fix: null, byFac: {
+    lastfist: { kinds: ['boomer'], dials: { delay: 0.6, sigAt: 99999 } },
+    bloomhost: { kinds: ['boomer'], dials: { delay: 1, sigAt: 99999 } },
+    axiarchs: { kinds: ['boomer'], dials: { delay: 0.6, sigAt: 99999 } } } },
   // v2.40's Hard exactly: the baseline for phase 7a
   hard240: { name: 'Hard v2.40', smart: true, dials: Object.assign({}, AI_DIALS, { scout: 70, comp: {} }), fix: null, byFac: {
     lastfist: { kinds: ['economist'], dials: { delay: 0.6, sigAt: 99999, tech: 'techlab' } },
@@ -930,8 +955,12 @@ const AI_PRESETS = {
 };
 // v2.41: the phase 7a rules Hard keeps (each A/B in the report; punish measured worse and stays off)
 const HARD_FIX = { read: true, contest: true, counter: true, nowave: true, shield: true, power: true, fill: true, est: true };
-AI_PRESETS.hard.fix = Object.assign({}, AI_PRESETS.default.fix, HARD_FIX);
+// v2.42 (audit phase 7b): Hard adds breakout (no trickling out of a contained base, Turrets as soon as pressure starts) and
+// adapt (the scout's read changes the opening)
+const HARD_FIX_7B = Object.assign({}, HARD_FIX, { breakout: true, adapt: true });
+AI_PRESETS.hard.fix = Object.assign({}, AI_PRESETS.default.fix, HARD_FIX_7B);
 AI_PRESETS.hard240.fix = Object.assign({}, AI_PRESETS.default.fix);
+AI_PRESETS.hard241.fix = Object.assign({}, AI_PRESETS.default.fix, HARD_FIX);
 const AI_PRESET_KEYS = Object.keys(AI_PRESETS);
 const aiDials = P => (P && P.dial) || AI_DIALS; // a persona without dials (an older save) reads the legacy constants
 const aiSmart = P => !!(P && P.smart);
@@ -2868,7 +2897,7 @@ function aiPickPath(g, s, b, P, theirs) {
   if (D === DIFF.easy) return to(def);
   const have = g.ents.filter(e => e !== b && e.side === s && e.type === b.type && e.hp > 0).map(e => aiPathFrom(fac, b.type, e.path || e.upPath)).filter(Boolean);
   if (b.type === 'barracks' && aiArmorShare(theirs) > 0.35 && !have.includes('A')) return to('A');
-  if (b.type === 'factory' && aiFix(P, 'counter') && theirs.length >= 5 && aiLightShare(theirs) >= 0.55 && !have.includes('B')) return to('B'); // v2.41 (counter): an infantry flood, the Assault path (Flame Tanks)
+  if (b.type === 'factory' && aiFix(P, 'counter') && theirs.length >= 5 && aiLightShare(theirs) >= (aiDials(P).flood || 0.55) && !have.includes('B')) return to('B'); // v2.41 (counter): an infantry flood, the Assault path (Flame Tanks)
   if (have.length && have.includes(def)) return to(def === 'A' ? 'B' : 'A');
   return to(def);
 }
@@ -3133,7 +3162,7 @@ function aiUpdate(g, s, dt) {
     if (aiFix(P, 'counter')) for (const t of types) {
       const d = UDEF[t];
       if (d.hitsGround === false && !d.support && comp.air <= 0.12) sc[t] = 0.05;
-      else if (comp.light >= 0.55 && theirs.length >= 5) { if (d.splash || d.weapon === 'flame' || t === 'thornback' || t === 'gravemantle') sc[t] *= 1.4; else if (t === 'rifle' || t === 'skitterling' || t === 'shardling') sc[t] *= 0.7; }
+      else if (comp.light >= (dl.flood || 0.55) && theirs.length >= 5) { /* v2.42: the flood share is a dial (flood; v2.41 0.55) */ if (d.splash || d.weapon === 'flame' || t === 'thornback' || t === 'gravemantle') sc[t] *= 1.4; else if (t === 'rifle' || t === 'skitterling' || t === 'shardling') sc[t] *= 0.7; }
     }
     const spend = aiFix(P, 'spend'), noAA = aiFix(P, 'counter') && comp.air <= 0.12;
     const fits = t => used + UDEF[t].pop <= cap * fillNow && (freeProducer(g, s, t) || (spend && side.res.c > 900 && g.ents.some(e => e.side === s && canMake(e, t) && e.queue.length < 3))); // v2.38 (Default): rich, it queues up to 3
@@ -7811,7 +7840,7 @@ function handleEvents() {
     else if (e.type === 'beaconDown' && (e.side === 0 || e.seen)) toast(e.side === 0 ? `Phase Beacon bubble collapsed: back in ${BEACON.down} s` : 'Enemy field bubble collapsed', e.side === 0 ? 'warn' : 'ok'); // v2.34
     else if (e.type === 'overdrive' && e.side === 0) toast(`Overdrive: production +${Math.round(YARD.od * 100)}% for ${YARD.odDur} s`, 'ok'); // v2.32
     else if (e.type === 'warpSnap' && e.side === 0) { toast('Warp point lost with the field: back to the front edge', 'warn'); refreshWarpCard(); } // v2.26
-    else if (e.type === 'node') { if (e.side === 0 && !e.lost) sndPlay('node'); toast(e.lost ? (e.side === 0 ? 'You lost a field node' : 'Enemy lost a field node') : (e.side === 0 ? 'Field node captured: +3 credits, +1 energy per second' : 'Enemy captured a field node'), (e.side === 0) === !e.lost ? 'ok' : 'warn'); }
+    else if (e.type === 'node') { if (e.side === 0 && !e.lost) sndPlay('node'); toast(e.lost ? (e.side === 0 ? 'You lost a field node' : 'Enemy lost a field node') : (e.side === 0 ? `Field node captured: +${NODE_INC.c} credits, +${NODE_INC.e} energy per second` : 'Enemy captured a field node'), (e.side === 0) === !e.lost ? 'ok' : 'warn'); }
     else if (e.type === 'go') showGo();
     else if (e.type === 'extWarn') { sndPlay('siren'); toast('The Extinction Event starts in 30 seconds: finish it or lose your base', 'bad'); }
     else if (e.type === 'extStart') sndPlay('rumble');

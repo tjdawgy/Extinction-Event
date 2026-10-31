@@ -7,6 +7,8 @@
 //   rush     two Barracks before any economy, the basic unit nonstop, attacks at about 400 of army and keeps streaming in
 //   turtle   Barracks, Refinery, a Turret on the front pad, a second Refinery, HQ T2 and a second Turret; the army holds
 //            under its guns
+//   standard Barracks, two Refineries, Reactor, Habitat, a third Refinery, with a small army from the start (the
+//            containment tests' defender)
 //   contain  two Refineries and two Barracks; at about 450 of army it walks to just outside the enemy HQ's (and Turrets')
 //            reach and parks there; every new unit joins it
 // Mid-game branches (from the end of the opening):
@@ -50,20 +52,21 @@ const UPG = {
   air:     [['techlab', 2], ['refinery', 2], ['reactor', 2], ['habitat', 2], ['techlab', 3], ['reactor', 3], ['habitat', 3], ['refinery', 3], ['barracks', 2], ['hq', 2]],
 };
 UPG.contain = UPG.timing;
-const ATTACK_V = { timing: 2000, contain: 450, tech: 1e9, air: 2200 };
+const ATTACK_V = { timing: 2000, contain: 450, tech: 3000, air: 2200 }; // tech: only once it leaves home (army limit, or 12:00)
 const OPEN = {
   greedy:  { build: ['refinery', 'refinery', 'refinery', 'barracks', 'reactor', 'habitat'], upg: [['refinery', 2], ['habitat', 2]], end: 150 },
-  rush:    { build: ['barracks', 'refinery', 'barracks', 'habitat', 'refinery'], upg: [['habitat', 2]], end: 240 },
-  turtle:  { build: ['barracks', 'refinery', 'turret', 'refinery', 'reactor', 'habitat', 'turret'], upg: [['hq', 2], ['turret', 2], ['refinery', 2]], end: 240 },
+  rush:    { build: ['barracks', 'refinery', 'barracks', 'habitat', 'refinery'], upg: [['habitat', 2]], upgLF: [['barracks', 2], ['habitat', 2]], end: 240 }, // Last Fist rushes with Mass Deployment (Riflemen in pairs)
+  turtle:  { build: ['barracks', 'refinery', 'turret', 'reactor', 'refinery', 'habitat', 'refinery'], upg: [['hq', 2], ['turret', 2], ['refinery', 2]], end: 240 },
   contain: { build: ['barracks', 'refinery', 'refinery', 'barracks', 'reactor', 'habitat'], upg: [['refinery', 2]], end: 200 },
+  standard: { build: ['barracks', 'refinery', 'refinery', 'reactor', 'habitat', 'refinery'], upg: [['refinery', 2]], end: 180 }, // a balanced opening: army from the start, three Refineries by 1:30
 };
-const DEFAULT_BRANCH = { greedy: 'timing', rush: 'timing', turtle: 'tech', contain: 'contain' };
+const DEFAULT_BRANCH = { greedy: 'timing', rush: 'timing', turtle: 'tech', contain: 'contain', standard: 'timing' };
 const RUSH_V = 400, CONTAIN_V = 450;
 
 function stratBot(S, o = {}) {
   const opener = o.opener || 'greedy', branch = o.branch || DEFAULT_BRANCH[opener], defend = o.defend || 'break';
   const containV = o.containV || CONTAIN_V, armyAt = o.armyAt || 150; // containV: the army a Contain parks with (heavy Contain: 1200); armyAt: when a greedy opening starts its army
-  let t = 0, mode = null, launchV = 0, peakV = 0, lastNode = -1, mid = false, jit = 1, rushDone = false, attackV = 0;
+  let t = 0, stageT = 0, mode = null, launchV = 0, peakV = 0, lastNode = -1, mid = false, jit = 1, rushDone = false, attackV = 0;
   const log = { attacks: 0, firstAttack: null, defends: 0, breaks: 0, abil: 0, contain: 0, sold: 0, mid: null };
   const val = us => us.reduce((a, u) => a + S.UDEF[u.type].cost.c + S.UDEF[u.type].cost.e * 1.5, 0);
   const bot = (g, s, dt) => {
@@ -80,31 +83,36 @@ function stratBot(S, o = {}) {
     const paths = PATHS[mid ? branch : (opener === 'turtle' ? 'tech' : branch)][fac];
     // 1) buildings: the opening's list, then the branch's; with no free pad, sell a building the branch has no use for
     let reserve = 0;
-    const lists = mid ? [BUILD[branch]] : [OPEN[opener].build];
+    const blist = o.sig ? BUILD[branch].slice(0, -1).concat(g.t >= (o.sigAt || 240) ? ['sig' + o.sig] : []) : BUILD[branch]; // sig: the signature building takes the branch's last pad
+    const lists = mid ? [blist] : [OPEN[opener].build];
     let next = null;
     for (const L of lists) { const need = {}; for (const b of L) { need[b] = (need[b] || 0) + 1; if ((have[b] || 0) < need[b]) { next = b; break; } } if (next) break; }
     if (next && (next === 'factory' || next === 'techlab') && !have.barracks) next = 'barracks';
     if (next && building.length < 2) {
-      const r = S.tryBuild(g, s, next);
+      const r = S.tryBuild(g, s, next, next === 'turret' && !side.slots[4] ? 4 : -1); // a Turret on the front pad
       if (!r.ok && /pads/.test(r.msg) && mid) { // full: sell a surplus building (more than the branch's list has)
-        const want = {}; for (const b of BUILD[branch]) want[b] = (want[b] || 0) + 1;
+        const want = {}; for (const b of blist) want[b] = (want[b] || 0) + 1;
         const spare = g.ents.find(e => e.kind === 'b' && e.side === s && e.hp > 0 && e.built && e.slot >= 0 && e.type !== 'hq' && (have[e.type] || 0) > (want[e.type] || 0) && !e.queue.length);
         if (spare && S.trySell(g, s, spare).ok) log.sold++;
       } else if (!r.ok) reserve = S.BD(side.faction, next).cost.c;
     }
+    const bReserve = reserve, eKeep = next ? S.BD(side.faction, next).cost.e : 0; // for the next building only (the opening keeps all of it back)
     if (used >= cap - 3 && cap < S.POP_MAX && !building.some(b => b.type === 'habitat') && !g.ents.some(b => b.kind === 'b' && b.side === s && b.type === 'habitat' && b.upgrading)) {
       const hab = S.alive(g, s, 'habitat').find(b => b.built && b.tier < 3);
       if (hab) S.tryUpgrade(g, s, hab); else if (side.slots.some(x => !x)) S.tryBuild(g, s, 'habitat');
     }
+    // a minimum army during the opening (turtle: grows with time; contain: until it can park): units first while under it
+    const armyMin = mid ? 0 : opener === 'turtle' ? Math.min(1200, 100 + g.t * 4) : opener === 'contain' ? containV : opener === 'standard' ? Math.min(900, 100 + g.t * 3) : 0;
+    const short = myV < armyMin;
     // 2) upgrades, one or two at a time (the rush upgrades nothing until its attack is over)
     const ups = g.ents.filter(b => b.kind === 'b' && b.side === s && b.upgrading && b.hp > 0).length;
-    const ulist = mid ? UPG[branch] : OPEN[opener].upg;
-    if (ups < (side.res.c > 600 ? 3 : 2)) for (const [type, tier] of ulist) {
-      if (type === 'hq' && g.t < (opener === 'turtle' || branch === 'tech' ? 80 : 240)) continue;
+    const ulist = mid ? (o.sig ? [['sig' + o.sig, 2]].concat(UPG[branch], [['sig' + o.sig, 3]]) : UPG[branch]) : (fac === 'lastfist' && o.pairs !== false && OPEN[opener].upgLF) || OPEN[opener].upg;
+    if (ups < (side.res.c > 600 ? 3 : 2) && !(short && side.res.c < 400)) for (const [type, tier] of ulist) {
+      if (type === 'hq' && g.t < (opener === 'turtle' || branch === 'tech' ? 45 : 240)) continue;
       if (tier === 3 && g.t < 200) continue;
       const b = S.alive(g, s, type).find(x => x.built && !x.upgrading && x.tier < tier); if (!b) continue;
       const T = S.treeOf(side.faction, type);
-      const r = S.tryUpgrade(g, s, b, T && b.tier === 1 ? paths[type] : undefined);
+      const r = S.tryUpgrade(g, s, b, T && b.tier === 1 ? (!mid && opener === 'rush' && type === 'barracks' ? 'B' : paths[type]) : undefined);
       if (!r.ok) reserve = Math.max(reserve, Math.min(200, S.BD(side.faction, type).up[b.tier + 1].c));
       break;
     }
@@ -113,19 +121,19 @@ function stratBot(S, o = {}) {
     const mix = {};
     if (!mid && opener === 'rush') mix[R.basic] = 1;
     else if (!mid && opener === 'contain') { mix[R.basic] = 3; const b2 = resolve('b2'); if (b2) mix[b2] = 1; }
-    else if (!mid && opener === 'turtle') { mix[R.basic] = 2; mix[R.veh] = 1; }
+    else if (!mid && (opener === 'turtle' || opener === 'standard')) { mix[R.basic] = 2; mix[R.veh] = 1; }
     else for (const [role, w] of Object.entries(MIX[mid ? branch : 'timing'])) { const ty = resolve(role); if (ty) mix[ty] = (mix[ty] || 0) + w; }
     const armyTime = (mid && g.t >= armyAt) || opener !== 'greedy' || g.t >= armyAt || threat.length > 0;
     if (opener === 'greedy' && have.barracks && mine.length < 1 && !mid) S.tryTrain(g, s, R.basic);
     if (armyTime) {
       const counts = {}; for (const u of mine) counts[u.type] = (counts[u.type] || 0) + 1;
-      const keep = threat.length ? 0 : !mid && opener === 'rush' ? (have.barracks >= 2 ? 0 : reserve * 0.5) : reserve * (!mid && opener === 'contain' ? 1 : 0.5); // the rush trains nonstop once both Barracks stand
+      const keep = (threat.length || short) && next !== 'turret' ? 0 : !mid ? (opener === 'rush' && have.barracks >= 2 ? 0 : bReserve) : reserve * 0.5; // the opening builds first (the rush trains nonstop once both Barracks stand)
       for (let k = 0; k < 5; k++) {
         const opts = Object.keys(mix).filter(ty => S.canTrain(g, s, ty) && g.ents.some(b => b.side === s && b.kind === 'b' && S.canMake(b, ty) && b.queue.length < 2));
         if (!opts.length) { if (S.canTrain(g, s, R.basic) && side.res.c > 400) opts.push(R.basic); else break; }
         const tot = Object.values(counts).reduce((a, b) => a + b, 0) + 1, W = Object.values(mix).reduce((a, b) => a + b, 0) || 1;
         opts.sort((a, b) => (counts[a] || 0) / tot - (mix[a] || 0.5) / W - ((counts[b] || 0) / tot - (mix[b] || 0.5) / W));
-        const pick = opts.find(ty => side.res.c - S.UDEF[ty].cost.c >= keep && side.res.e >= S.UDEF[ty].cost.e);
+        const pick = opts.find(ty => side.res.c - S.UDEF[ty].cost.c >= keep && side.res.e - S.UDEF[ty].cost.e >= (keep ? eKeep : 0));
         if (!pick || !S.tryTrain(g, s, pick).ok) break;
         counts[pick] = (counts[pick] || 0) + 1;
       }
@@ -135,44 +143,49 @@ function stratBot(S, o = {}) {
     for (const gh of Object.values(g.fog[s].ghosts)) if (gh.side === opp) { const bd = S.BD(gh.fac, gh.type), gun = bd && bd.gun && bd.gun[gh.tier || 1]; if (gun) guns.push(gh.u - dir * gun.range); }
     const hqGun = S.BD(g.sides[opp].faction, 'hq').gun[g.fog[s].lastHQ.tier || 1].range;
     const containU = dir > 0 ? Math.min(oppHq - hqGun - 45, ...guns.map(x => x - 45)) : Math.max(oppHq + hqGun + 45, ...guns.map(x => x + 45));
-    const flagU = S.NODE_U[1] - dir * 90, homeU = home + dir * 110;
+    const flagU = o.nodes === 1 ? S.NODE_U[s === 0 ? 0 : 2] : S.NODE_U[1] - dir * 90, homeU = home + dir * 110; // nodes 1: it gathers on its own node and never contests the middle
     const order = u => { if (side.stance === 'attack' || side.stance === 'retreat') S.setStance(g, s, 'hold'); if (!side.orders.all || side.orders.all.u !== u) S.giveOrder(g, s, 'all', null, 'move', u, 0, true); };
     const nearHome = army.filter(u => Math.abs(u.u - home) < 800), thV = val(threat);
     // defence first: enemies near the base
-    if (threat.length && mode !== 'attack' && mode !== 'contain') {
+    if (threat.length && mode !== 'attack' && mode !== 'contain' && mode !== 'stage') {
       if (mode !== 'defend' && mode !== 'breakout') { log.defends++; mode = 'defend'; }
       if (defend === 'naive') { if (side.stance !== 'retreat' || side.orders.all) S.setStance(g, s, 'retreat'); }
       else if (mode === 'defend') {
         // hold deep in the base, under the HQ gun, until clearly stronger than what is outside; then out together
         if (side.stance !== 'hold') S.setStance(g, s, 'hold');
-        order(homeU);
+        // inside its own cover (HQ gun, Turrets) it fights whatever comes in, melee units too; outside, it holds deep
+        const inside = threat.filter(e => Math.abs(e.u - home) < 420);
+        if (inside.length) { const tg = inside.reduce((a, e) => Math.abs(e.u - home) < Math.abs(a.u - home) ? e : a, inside[0]); order(Math.round(tg.u)); }
+        else order(homeU);
         if (val(nearHome) >= thV * 1.3 && val(nearHome) >= 250) { mode = 'breakout'; log.breaks++; }
       }
       if (mode === 'breakout') {
         const tgt = threat.reduce((a, e) => Math.abs(e.u - home) < Math.abs(a.u - home) ? e : a, threat[0]);
-        order(Math.max(0, Math.min(S.L, Math.round(tgt.u))));
+        const reach = opener === 'turtle' && !mid ? 330 : 2000; // the turtle fights inside its Turret's cover until mid-game
+        order(Math.max(0, Math.min(S.L, Math.round(home + dir * Math.min(reach, Math.abs(tgt.u - home))))));
         if (val(nearHome) < thV * 0.8) mode = 'defend';
+        else if (val(nearHome) >= Math.max(1200, thV * 2.5) && (mid || g.t > 200)) { mid = true; S.setStance(g, s, 'attack'); mode = 'attack'; launchV = myV; log.attacks++; if (log.firstAttack === null) log.firstAttack = g.t; } // far stronger: counter-attack
       }
     } else if (mode === 'defend' || mode === 'breakout') { mode = mid ? null : (opener === 'greedy' && g.t < 150 ? 'eco' : null); S.setStance(g, s, 'hold'); }
     if (mode === null || mode === 'build') {
-      if (!mid) mode = opener === 'rush' ? 'build' : opener === 'turtle' ? 'home' : opener === 'contain' ? 'build' : 'gather';
+      if (!mid) mode = opener === 'rush' ? 'build' : opener === 'turtle' ? 'home' : opener === 'contain' ? 'build' : opener === 'standard' ? 'home' : 'gather';
       else mode = branch === 'contain' ? 'gather' : branch === 'tech' ? 'home' : 'gather';
     }
     if (mode === 'eco') { // the greedy runner walks the nodes (as greedy.js)
-      const nodes = s === 0 ? [0, 1, 2] : [2, 1, 0], k = nodes.find(i => g.nodes[i].owner !== s);
+      const nodes = (s === 0 ? [0, 1, 2] : [2, 1, 0]).slice(0, o.nodes || 3), k = nodes.find(i => g.nodes[i].owner !== s);
       if (k !== undefined && army.length) { const u = g.nodes[k].u - dir * (k === nodes[2] ? 55 : 0); if (lastNode !== k || !side.orders.all) { S.giveOrder(g, s, 'all', null, 'move', u, 0); lastNode = k; } }
       if (g.t >= 150) { mode = 'gather'; lastNode = -1; }
     }
     if (mode === 'build') { // rush and contain openings: gather at home, then go
       order(home + dir * 300);
-      if (opener === 'rush' && myV >= RUSH_V * jit && !rushDone) { S.setStance(g, s, 'attack'); mode = 'attack'; launchV = myV; peakV = myV; log.attacks++; if (log.firstAttack === null) log.firstAttack = g.t; }
+      if (opener === 'rush' && myV >= RUSH_V * jit && !rushDone) { mode = 'stage'; stageT = g.t; log.attacks++; if (log.firstAttack === null) log.firstAttack = g.t; }
       else if (opener === 'contain' && myV >= containV * jit) { mode = 'contain'; peakV = myV; log.contain++; if (log.firstAttack === null) log.firstAttack = g.t; }
       else if (rushDone) mode = 'gather';
     }
     if (mode === 'home') { // the turtle: hold under its guns; attack once at the army limit (or late)
       order(home + dir * 200);
       const at = used >= Math.min(S.POP_MAX, cap) - 4 && cap >= S.POP_MAX - 10;
-      if ((mid && (at || g.t > 840) && myV > 1500) || (mid && branch !== 'tech')) { mode = branch === 'contain' ? 'contain' : 'gather'; }
+      if ((mid && (at || g.t > 720) && myV > 1500) || (mid && branch !== 'tech')) { mode = branch === 'contain' ? 'contain' : 'gather'; }
       if (at && myV > 1500) { S.setStance(g, s, 'attack'); mode = 'attack'; launchV = myV; log.attacks++; if (log.firstAttack === null) log.firstAttack = g.t; }
     }
     if (mode === 'gather') {
@@ -181,15 +194,20 @@ function stratBot(S, o = {}) {
         order(flagU);
         const there = army.filter(u => Math.abs(u.u - flagU) < 170);
         if (val(there) >= attackV || (used >= cap - 2 && cap >= S.POP_MAX - 4 && val(there) >= myV * 0.8)) {
-          S.setStance(g, s, 'attack'); mode = 'attack'; launchV = myV; log.attacks++; if (log.firstAttack === null) log.firstAttack = g.t;
+          mode = 'stage'; stageT = g.t; log.attacks++; if (log.firstAttack === null) log.firstAttack = g.t;
         }
       }
+    }
+    if (mode === 'stage') { // every attack forms up just outside the enemy guns first, then goes in together
+      order(containU);
+      const there = army.filter(u => Math.abs(u.u - containU) < 120);
+      if (val(there) >= myV * 0.8 || g.t - stageT > 25) { S.setStance(g, s, 'attack'); mode = 'attack'; launchV = myV; peakV = myV; }
     }
     if (mode === 'contain') {
       order(containU);
       peakV = Math.max(peakV, myV);
       const theirV = val(seen.filter(e => Math.abs(e.u - oppHq) < 900));
-      if ((myV >= Math.max(2500, theirV * 3) && used >= cap - 6) || (cap >= S.POP_MAX - 4 && used >= cap - 3)) { S.setStance(g, s, 'attack'); mode = 'attack'; launchV = myV; log.attacks++; }
+      if (myV >= Math.max(containV * 2.5, theirV * 2) || (cap >= S.POP_MAX - 4 && used >= cap - 3)) { /* clearly stronger than what it sees (or maxed): all in */ S.setStance(g, s, 'attack'); mode = 'attack'; launchV = myV; log.attacks++; }
       else if (myV < peakV * 0.35 && peakV > 300) { mode = 'gather'; peakV = 0; if (!mid) mid = true; } // the contain broke: regroup
     } else if (mode === 'attack') {
       if (myV < launchV * 0.4) {

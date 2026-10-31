@@ -1,0 +1,9 @@
+== s2a: UDEF.spitter.range = 165;
+cross-faction shares: lastfist 24-16, bloomhost 15-25, axiarchs 21-19 draws 0
+{"lastfist-bloomhost":[15,5],"lastfist-axiarchs":[9,11],"bloomhost-axiarchs":[10,10]}
+== s2b: UDEF.heavy.cost = { c: 135, e: 40 };
+cross-faction shares: lastfist 23-17, bloomhost 14-26, axiarchs 23-17 draws 0
+{"lastfist-bloomhost":[16,4],"lastfist-axiarchs":[7,13],"bloomhost-axiarchs":[10,10]}
+== s2c: UDEF.spitter.range = 165; UDEF.heavy.cost = { c: 135, e: 40 }; UDEF.bulwark.dmg = 28;
+cross-faction shares: lastfist 21-19, bloomhost 16-24, axiarchs 23-17 draws 0
+{"lastfist-bloomhost":[14,6],"lastfist-axiarchs":[7,13],"bloomhost-axiarchs":[10,10]}

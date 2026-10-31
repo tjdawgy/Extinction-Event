@@ -1,0 +1,20 @@
+tri: 1/144tri: 2/144tri: 3/144tri: 4/144tri: 5/144tri: 6/144tri: 7/144tri: 8/144tri: 9/144tri: 10/144tri: 11/144tri: 12/144tri: 13/144tri: 14/144tri: 15/144tri: 16/144tri: 17/144tri: 18/144tri: 19/144tri: 20/144tri: 21/144tri: 22/144tri: 23/144tri: 24/144tri: 25/144tri: 26/144tri: 27/144tri: 28/144tri: 29/144tri: 30/144tri: 31/144tri: 32/144tri: 33/144tri: 34/144tri: 35/144tri: 36/144tri: 37/144tri: 38/144tri: 39/144tri: 40/144tri: 41/144tri: 42/144tri: 43/144tri: 44/144tri: 45/144tri: 46/144tri: 47/144tri: 48/144tri: 49/144tri: 50/144tri: 51/144tri: 52/144tri: 53/144tri: 54/144tri: 55/144tri: 56/144tri: 57/144tri: 58/144tri: 59/144tri: 60/144tri: 61/144tri: 62/144tri: 63/144tri: 64/144tri: 65/144tri: 66/144tri: 67/144tri: 68/144tri: 69/144tri: 70/144tri: 71/144tri: 72/144tri: 73/144tri: 74/144tri: 75/144tri: 76/144tri: 77/144tri: 78/144tri: 79/144tri: 80/144tri: 81/144tri: 82/144tri: 83/144tri: 84/144tri: 85/144tri: 86/144tri: 87/144tri: 88/144tri: 89/144tri: 90/144tri: 91/144tri: 92/144tri: 93/144tri: 94/144tri: 95/144tri: 96/144tri: 97/144tri: 98/144tri: 99/144tri: 100/144tri: 101/144tri: 102/144tri: 103/144tri: 104/144tri: 105/144tri: 106/144tri: 107/144tri: 108/144tri: 109/144tri: 110/144tri: 111/144tri: 112/144tri: 113/144tri: 114/144tri: 115/144tri: 116/144tri: 117/144tri: 118/144tri: 119/144tri: 120/144tri: 121/144tri: 122/144tri: 123/144tri: 124/144tri: 125/144tri: 126/144tri: 127/144tri: 128/144tri: 129/144tri: 130/144tri: 131/144tri: 132/144tri: 133/144tri: 134/144tri: 135/144tri: 136/144tri: 137/144tri: 138/144tri: 139/144tri: 140/144tri: 141/144tri: 142/144tri: 143/144tri: 144/144 (347 s)
+set tri, n 4 per side, seed 97000, code: BDEF.refinery.cost.c = 175; for (const B of [BDEF, BDEF_BH, BDEF_AX]) { B.refinery.time = 13; B.turret.time = 9; } BDEF.turret.cost.c = 150; BDEF.turret.cost.e = 40; NODE_INC.c = 4; NODE_INC.e = 1.5; UDEF.skitterling.hp = 66; UDEF.bulwark.hp = 840; UDEF.spitter.cost = { c: 70, e: 20 }; UDEF.rifle.dmg = 6.5; UDEF.tank.cost = { c: 280, e: 70 }; DMG.flame.vehicle = 0.2; for (const B of [BDEF, BDEF_AX]) { B.hq.gun[1].dmg = 12; B.hq.gun[2].dmg = 48; B.hq.gun[3].dmg = 62; } BDEF.refinery.hp = 420; BDEF_BH.refinery.hp = 420; BDEF_AX.refinery.hp = 336; BDEF_AX.refinery.shp = 126; 
+  lastfist rush>greedy: 3-5 (37.5%) median 4.9 min
+  lastfist greedy>turtle: 8-0 (100%) median 4.7 min
+  lastfist turtle>rush: 8-0 (100%) median 4.8 min
+  lastfist contain>greedy: 2-6 (25%) median 5.6 min
+  lastfist contain>turtle: 0-8 (0%) median 7.4 min
+  lastfist contain>rush: 8-0 (100%) median 5.2 min
+  bloomhost rush>greedy: 8-0 (100%) median 2.8 min
+  bloomhost greedy>turtle: 8-0 (100%) median 5.2 min
+  bloomhost turtle>rush: 8-0 (100%) median 3.9 min
+  bloomhost contain>greedy: 8-0 (100%) median 4.8 min
+  bloomhost contain>turtle: 0-8 (0%) median 5.3 min
+  bloomhost contain>rush: 5-3 (62.5%) median 4.1 min
+  axiarchs rush>greedy: 8-0 (100%) median 3.3 min
+  axiarchs greedy>turtle: 5-3 (62.5%) median 8 min
+  axiarchs turtle>rush: 2-6 (25%) median 4.5 min
+  axiarchs contain>greedy: 2-6 (25%) median 10.5 min
+  axiarchs contain>turtle: 3-5 (37.5%) median 12.3 min
+  axiarchs contain>rush: 6-2 (75%) median 13.3 min
