@@ -10,11 +10,13 @@ function runMatch(spec) {
   const S = loadSim(seed, { file: spec.file, instrument: (spec.diag ? INSTRUMENT : '') + (spec.code ? `\n;${spec.code}` : '') || undefined }); // code: an experiment's changes to SIM values (audit only)
   const per = p => (p && p !== 'random' ? p : undefined);
   if (sides[1].bot && !sides[0].bot) throw new Error('a scripted bot on side 1 needs one on side 0 (bot against bot)');
-  const bot = sides[0].bot ? require('./greedy').greedyBot(S, sides[0].botOpts || {}) : null; // Phase 7a: a scripted bot (Greedy) in the player's slot
-  const bot1 = sides[1].bot ? require('./greedy').greedyBot(S, sides[1].botOpts || {}) : null; // bot against bot: side 1's AI is switched off
+  const mkBot = x => x.bot === 'strat' ? require('./strat').stratBot(S, x.botOpts || {}) : require('./greedy').greedyBot(S, x.botOpts || {}); // Phase 7b: 'strat' (strat.js), else Greedy
+  const bot = sides[0].bot ? mkBot(sides[0]) : null; // Phase 7a: a scripted bot (Greedy) in the player's slot
+  const bot1 = sides[1].bot ? mkBot(sides[1]) : null; // bot against bot: side 1's AI is switched off
   const g = S.newGame(diff, { autoPlayer: !bot, autoDiff: diff, factions: [sides[0].faction, sides[1].faction],
     autoAi: sides[0].ai, ai: sides[1].ai, autoPersona: per(sides[0].persona), persona: per(sides[1].persona) });
   g.countdown = 0;
+  if (bot1 && spec.holdStart !== false) S.setStance(g, 1, 'hold'); // v2.42 (phase 7b): a bot on side 1 starts on Hold like the player's side, not on the AI's Retreat (which holds fire)
   // optional per-side dial overrides (A.dial: { scout: 0, fix: { leash: false } }) for experiments
   for (let i = 0; i < 2; i++) { const o = sides[i].dial, P = g.sides[i].persona; if (o && P && P.dial) { for (const k in o) if (k === 'paths') P.paths = Object.assign({}, P.paths, o.paths); else if (k !== 'fix') P.dial[k] = o[k]; if (o.fix && P.dial.fix) Object.assign(P.dial.fix, o.fix); } }
   const samples = [];

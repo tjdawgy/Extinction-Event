@@ -1,0 +1,8 @@
+== hqonly: for (const B of [BDEF, BDEF_AX]) { B.hq.gun[1].dmg = 22; B.hq.gun[1].range = 450; B.hq.gun[2].dmg = 48; B.hq.gun[2].range = 490; B.hq.gun[3].dmg = 62; B.hq.gun[3].range = 530; }
+cross-faction shares: lastfist 33-7, bloomhost 10-30, axiarchs 17-23 draws 0
+== hqrange: for (const B of [BDEF, BDEF_AX]) { B.hq.gun[1].range = 450; B.hq.gun[2].range = 490; B.hq.gun[3].range = 530; }
+cross-faction shares: lastfist 37-3, bloomhost 4-36, axiarchs 19-21 draws 0
+== hqdmg: for (const B of [BDEF, BDEF_AX]) { B.hq.gun[1].dmg = 22; B.hq.gun[2].dmg = 48; B.hq.gun[3].dmg = 62; }
+cross-faction shares: lastfist 38-2, bloomhost 10-30, axiarchs 12-28 draws 0
+== ecoonly: BDEF.refinery.cost.c = 175; for (const B of [BDEF, BDEF_BH, BDEF_AX]) { B.refinery.time = 13; B.turret.time = 9; } BDEF.turret.cost.c = 150; BDEF.turret.cost.e = 40; NODE_INC.c = 4; NODE_INC.e = 1.5;
+cross-faction shares: lastfist 25-15, bloomhost 13-27, axiarchs 22-18 draws 0

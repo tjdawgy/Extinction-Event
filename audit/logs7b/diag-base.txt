@@ -1,0 +1,5 @@
+cross-faction shares: lastfist 39-1, bloomhost 13-27, axiarchs 8-32 draws 0
+
+real	2m33.312s
+user	9m12.786s
+sys	0m12.354s

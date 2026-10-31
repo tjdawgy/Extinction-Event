@@ -1,0 +1,6 @@
+== va: UDEF.tank.cost={c:280,e:70};DMG.flame.vehicle=0.2;DMG.flame.heavy=0.9;
+cross-faction shares: lastfist 39-1, bloomhost 13-27, axiarchs 8-32 draws 0
+== vb: UDEF.tank.cost={c:280,e:70};DMG.flame.vehicle=0.2;DMG.flame.heavy=0.9;DMG.cannon.light=0.75;UDEF.tank.splash=22;
+cross-faction shares: lastfist 39-1, bloomhost 13-27, axiarchs 8-32 draws 0
+== vc: UDEF.tank.cost={c:280,e:70};UDEF.tank.splash=20;DMG.cannon.light=0.6;DMG.flame.vehicle=0.15;DMG.flame.heavy=0.8;
+cross-faction shares: lastfist 39-1, bloomhost 13-27, axiarchs 8-32 draws 0

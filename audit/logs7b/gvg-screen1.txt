@@ -1,0 +1,8 @@
+== v1: BDEF.refinery.cost.c = 175; for (const B of [BDEF, BDEF_BH, BDEF_AX]) { B.refinery.time = 13; B.turret.time = 9; } BDEF.turret.cost.c = 150; BDEF.turret.cost.e = 40; NODE_INC.c = 4; NODE_INC.e = 1.5; UDEF.skitterling.hp = 66; UDEF.bulwark.hp = 840; UDEF.spitter.cost = { c: 70, e: 20 };
+cross-faction shares: lastfist 24-16, bloomhost 14-26, axiarchs 22-18 draws 0
+== v2: BDEF.refinery.cost.c = 175; for (const B of [BDEF, BDEF_BH, BDEF_AX]) { B.refinery.time = 13; B.turret.time = 9; } BDEF.turret.cost.c = 150; BDEF.turret.cost.e = 40; NODE_INC.c = 4; NODE_INC.e = 1.5; UDEF.rifle.dmg = 6.5; UDEF.tank.cost = { c: 280, e: 70 }; DMG.flame.vehicle = 0.2;
+cross-faction shares: lastfist 26-14, bloomhost 13-27, axiarchs 21-19 draws 0
+== v3: BDEF.refinery.cost.c = 175; for (const B of [BDEF, BDEF_BH, BDEF_AX]) { B.refinery.time = 13; B.turret.time = 9; } BDEF.turret.cost.c = 150; BDEF.turret.cost.e = 40; NODE_INC.c = 4; NODE_INC.e = 1.5; UDEF.skitterling.hp = 66; UDEF.bulwark.hp = 840; UDEF.spitter.cost = { c: 70, e: 20 }; UDEF.rifle.dmg = 6.5; UDEF.tank.cost = { c: 280, e: 70 }; DMG.flame.vehicle = 0.2;
+cross-faction shares: lastfist 25-15, bloomhost 14-26, axiarchs 21-19 draws 0
+== v4: BDEF.refinery.cost.c = 175; for (const B of [BDEF, BDEF_BH, BDEF_AX]) { B.refinery.time = 13; B.turret.time = 9; } BDEF.turret.cost.c = 150; BDEF.turret.cost.e = 40; NODE_INC.c = 4; NODE_INC.e = 1.5; UDEF.skitterling.hp = 66; UDEF.bulwark.hp = 840; UDEF.spitter.cost = { c: 70, e: 20 }; UDEF.rifle.dmg = 6.5; UDEF.tank.cost = { c: 280, e: 70 }; DMG.flame.vehicle = 0.2; for (const B of [BDEF, BDEF_AX]) { B.hq.gun[1].dmg = 22; B.hq.gun[2].dmg = 48; B.hq.gun[3].dmg = 62; }
+cross-faction shares: lastfist 25-15, bloomhost 14-26, axiarchs 21-19 draws 0

@@ -1,0 +1,60 @@
+
+== lastfist vs bloomhost: won 20/20, median end 443 s, Salvage 727/match, node-seconds 799
+  earned  1m 709  2m 2013  3m 3347  4m 5139  5m 7366  6m 9616
+  army    1m 0  2m 460  3m 1469  4m 1536  5m 1780  6m 2428
+  unit: value trained / lost / killed per match, killed÷lost
+    flame         3012  2292  1002  0.44
+    heavy         2872  1432  2998  2.09
+    rifle         2673  2010  1941  0.97
+    tank           992   224   721  3.22
+  other kills/match: 
+
+== bloomhost vs lastfist: won 0/20, median end 443 s, Salvage 0/match, node-seconds 196
+  earned  1m 709  2m 2115  3m 3727  4m 5057  5m 6316  6m 7554
+  army    1m 0  2m 70  3m 856  4m 1209  5m 1173  6m 509
+  unit: value trained / lost / killed per match, killed÷lost
+    bulwark       2223  2223     3  0.00
+    skitterling   2218  2218     0  0.00
+    spitter       1397  1397  2099  1.50
+    razorwing      703   703    22  0.03
+    thornback      121   121     0  0.00
+  other kills/match: hqgun 3835
+
+== lastfist vs axiarchs: won 19/20, median end 353 s, Salvage 312/match, node-seconds 429
+  earned  1m 709  2m 2023  3m 3355  4m 4864  5m 6666  6m 8285
+  army    1m 0  2m 410  3m 1664  4m 2376  5m 2595  6m 1740
+  unit: value trained / lost / killed per match, killed÷lost
+    rifle         1978  1150  1150  1.00
+    heavy         1952   832  1037  1.25
+    flame          948   444    44  0.10
+    tank           416   160   414  2.58
+  other kills/match: hqgun 48
+
+== axiarchs vs lastfist: won 1/20, median end 353 s, Salvage 0/match, node-seconds 284
+  earned  1m 709  2m 2085  3m 3725  4m 5257  5m 6460  6m 7788
+  army    1m 0  2m 220  3m 488  4m 741  5m 79  6m 500
+  unit: value trained / lost / killed per match, killed÷lost
+    shardling     1732  1716    34  0.02
+    lancer         957   908   674  0.74
+    bastion        104    69    20  0.29
+  other kills/match: hqbeam 1859
+
+== bloomhost vs axiarchs: won 13/20, median end 344 s, Salvage 0/match, node-seconds 465
+  earned  1m 709  2m 2115  3m 3726  4m 5244  5m 6772  6m 7585
+  army    1m 0  2m 80  3m 874  4m 1511  5m 1694  6m 1365
+  unit: value trained / lost / killed per match, killed÷lost
+    bulwark       2286  1971  1738  0.88
+    skitterling   1976  1658   249  0.15
+    spitter       1328   977  2178  2.23
+    razorwing     1007   760   388  0.51
+    thornback      319   176    91  0.51
+  other kills/match: hqgun 1535
+
+== axiarchs vs bloomhost: won 7/20, median end 344 s, Salvage 0/match, node-seconds 458
+  earned  1m 709  2m 2034  3m 3393  4m 4851  5m 6267  6m 8170
+  army    1m 0  2m 560  3m 1120  4m 482  5m 533  6m 734
+  unit: value trained / lost / killed per match, killed÷lost
+    shardling     4308  4108   879  0.21
+    bastion       1760  1294   699  0.54
+    lancer        1081   776  3000  3.87
+  other kills/match: hqbeam 965
