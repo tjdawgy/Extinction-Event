@@ -1,0 +1,14 @@
+contain: 1/96contain: 2/96contain: 3/96contain: 4/96contain: 5/96contain: 6/96contain: 7/96contain: 8/96contain: 9/96contain: 10/96contain: 11/96contain: 12/96contain: 13/96contain: 14/96contain: 15/96contain: 16/96contain: 17/96contain: 18/96contain: 19/96contain: 20/96contain: 21/96contain: 22/96contain: 23/96contain: 24/96contain: 25/96contain: 26/96contain: 27/96contain: 28/96contain: 29/96contain: 30/96contain: 31/96contain: 32/96contain: 33/96contain: 34/96contain: 35/96contain: 36/96contain: 37/96contain: 38/96contain: 39/96contain: 40/96contain: 41/96contain: 42/96contain: 43/96contain: 44/96contain: 45/96contain: 46/96contain: 47/96contain: 48/96contain: 49/96contain: 50/96contain: 51/96contain: 52/96contain: 53/96contain: 54/96contain: 55/96contain: 56/96contain: 57/96contain: 58/96contain: 59/96contain: 60/96contain: 61/96contain: 62/96contain: 63/96contain: 64/96contain: 65/96contain: 66/96contain: 67/96contain: 68/96contain: 69/96contain: 70/96contain: 71/96contain: 72/96contain: 73/96contain: 74/96contain: 75/96contain: 76/96contain: 77/96contain: 78/96contain: 79/96contain: 80/96contain: 81/96contain: 82/96contain: 83/96contain: 84/96contain: 85/96contain: 86/96contain: 87/96contain: 88/96contain: 89/96contain: 90/96contain: 91/96contain: 92/96contain: 93/96contain: 94/96contain: 95/96contain: 96/96 (197 s)
+set contain, n 4 per side, seed 97000
+  lastfist light-contain>break: 0-8 (0%) median 5.8 min
+  lastfist heavy-contain>break: 8-0 (100%) median 4.9 min
+  lastfist light-contain>naive: 1-7 (12.5%) median 21.8 min
+  lastfist heavy-contain>naive: 8-0 (100%) median 4.3 min
+  bloomhost light-contain>break: 3-5 (37.5%) median 5.8 min
+  bloomhost heavy-contain>break: 7-1 (87.5%) median 4.8 min
+  bloomhost light-contain>naive: 8-0 (100%) median 3.7 min
+  bloomhost heavy-contain>naive: 8-0 (100%) median 3.9 min
+  axiarchs light-contain>break: 2-6 (25%) median 5.6 min
+  axiarchs heavy-contain>break: 5-3 (62.5%) median 5.1 min
+  axiarchs light-contain>naive: 5-3 (62.5%) median 17.6 min
+  axiarchs heavy-contain>naive: 8-0 (100%) median 3.9 min

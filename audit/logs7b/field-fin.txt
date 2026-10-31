@@ -1,0 +1,47 @@
+field: 1/360field: 2/360field: 3/360field: 4/360field: 5/360field: 6/360field: 7/360field: 8/360field: 9/360field: 10/360field: 11/360field: 12/360field: 13/360field: 14/360field: 15/360field: 16/360field: 17/360field: 18/360field: 19/360field: 20/360field: 21/360field: 22/360field: 23/360field: 24/360field: 25/360field: 26/360field: 27/360field: 28/360field: 29/360field: 30/360field: 31/360field: 32/360field: 33/360field: 34/360field: 35/360field: 36/360field: 37/360field: 38/360field: 39/360field: 40/360field: 41/360field: 42/360field: 43/360field: 44/360field: 45/360field: 46/360field: 47/360field: 48/360field: 49/360field: 50/360field: 51/360field: 52/360field: 53/360field: 54/360field: 55/360field: 56/360field: 57/360field: 58/360field: 59/360field: 60/360field: 61/360field: 62/360field: 63/360field: 64/360field: 65/360field: 66/360field: 67/360field: 68/360field: 69/360field: 70/360field: 71/360field: 72/360field: 73/360field: 74/360field: 75/360field: 76/360field: 77/360field: 78/360field: 79/360field: 80/360field: 81/360field: 82/360field: 83/360field: 84/360field: 85/360field: 86/360field: 87/360field: 88/360field: 89/360field: 90/360field: 91/360field: 92/360field: 93/360field: 94/360field: 95/360field: 96/360field: 97/360field: 98/360field: 99/360field: 100/360field: 101/360field: 102/360field: 103/360field: 104/360field: 105/360field: 106/360field: 107/360field: 108/360field: 109/360field: 110/360field: 111/360field: 112/360field: 113/360field: 114/360field: 115/360field: 116/360field: 117/360field: 118/360field: 119/360field: 120/360field: 121/360field: 122/360field: 123/360field: 124/360field: 125/360field: 126/360field: 127/360field: 128/360field: 129/360field: 130/360field: 131/360field: 132/360field: 133/360field: 134/360field: 135/360field: 136/360field: 137/360field: 138/360field: 139/360field: 140/360field: 141/360field: 142/360field: 143/360field: 144/360field: 145/360field: 146/360field: 147/360field: 148/360field: 149/360field: 150/360field: 151/360field: 152/360field: 153/360field: 154/360field: 155/360field: 156/360field: 157/360field: 158/360field: 159/360field: 160/360field: 161/360field: 162/360field: 163/360field: 164/360field: 165/360field: 166/360field: 167/360field: 168/360field: 169/360field: 170/360field: 171/360field: 172/360field: 173/360field: 174/360field: 175/360field: 176/360field: 177/360field: 178/360field: 179/360field: 180/360field: 181/360field: 182/360field: 183/360field: 184/360field: 185/360field: 186/360field: 187/360field: 188/360field: 189/360field: 190/360field: 191/360field: 192/360field: 193/360field: 194/360field: 195/360field: 196/360field: 197/360field: 198/360field: 199/360field: 200/360field: 201/360field: 202/360field: 203/360field: 204/360field: 205/360field: 206/360field: 207/360field: 208/360field: 209/360field: 210/360field: 211/360field: 212/360field: 213/360field: 214/360field: 215/360field: 216/360field: 217/360field: 218/360field: 219/360field: 220/360field: 221/360field: 222/360field: 223/360field: 224/360field: 225/360field: 226/360field: 227/360field: 228/360field: 229/360field: 230/360field: 231/360field: 232/360field: 233/360field: 234/360field: 235/360field: 236/360field: 237/360field: 238/360field: 239/360field: 240/360field: 241/360field: 242/360field: 243/360field: 244/360field: 245/360field: 246/360field: 247/360field: 248/360field: 249/360field: 250/360field: 251/360field: 252/360field: 253/360field: 254/360field: 255/360field: 256/360field: 257/360field: 258/360field: 259/360field: 260/360field: 261/360field: 262/360field: 263/360field: 264/360field: 265/360field: 266/360field: 267/360field: 268/360field: 269/360field: 270/360field: 271/360field: 272/360field: 273/360field: 274/360field: 275/360field: 276/360field: 277/360field: 278/360field: 279/360field: 280/360field: 281/360field: 282/360field: 283/360field: 284/360field: 285/360field: 286/360field: 287/360field: 288/360field: 289/360field: 290/360field: 291/360field: 292/360field: 293/360field: 294/360field: 295/360field: 296/360field: 297/360field: 298/360field: 299/360field: 300/360field: 301/360field: 302/360field: 303/360field: 304/360field: 305/360field: 306/360field: 307/360field: 308/360field: 309/360field: 310/360field: 311/360field: 312/360field: 313/360field: 314/360field: 315/360field: 316/360field: 317/360field: 318/360field: 319/360field: 320/360field: 321/360field: 322/360field: 323/360field: 324/360field: 325/360field: 326/360field: 327/360field: 328/360field: 329/360field: 330/360field: 331/360field: 332/360field: 333/360field: 334/360field: 335/360field: 336/360field: 337/360field: 338/360field: 339/360field: 340/360field: 341/360field: 342/360field: 343/360field: 344/360field: 345/360field: 346/360field: 347/360field: 348/360field: 349/360field: 350/360field: 351/360field: 352/360field: 353/360field: 354/360field: 355/360field: 356/360field: 357/360field: 358/360field: 359/360field: 360/360 (600 s)
+set field, n 1 per side, seed 97000
+  field: 190-170 (52.8%) median 5.7 min
+faction shares (cross-faction):
+  lastfist: 118-42 (73.8%)
+  bloomhost: 38-122 (23.8%)
+  axiarchs: 84-76 (52.5%)
+openings vs field:
+  rush: 67-77 (46.5%)
+  turtle: 41-103 (28.5%)
+  standard: 75-69 (52.1%)
+  greedy: 88-56 (61.1%)
+  contain: 89-55 (61.8%)
+branches vs field:
+  timing: 90-90 (50%)
+  air: 90-90 (50%)
+  contain: 46-134 (25.6%)
+  tech: 134-46 (74.4%)
+faction x opening:
+  lastfist rush: 33-15 (68.8%)
+  lastfist turtle: 21-27 (43.8%)
+  lastfist standard: 28-20 (58.3%)
+  lastfist greedy: 34-14 (70.8%)
+  lastfist contain: 42-6 (87.5%)
+  bloomhost rush: 6-42 (12.5%)
+  bloomhost turtle: 4-44 (8.3%)
+  bloomhost standard: 19-29 (39.6%)
+  bloomhost greedy: 24-24 (50%)
+  bloomhost contain: 25-23 (52.1%)
+  axiarchs rush: 28-20 (58.3%)
+  axiarchs turtle: 16-32 (33.3%)
+  axiarchs standard: 28-20 (58.3%)
+  axiarchs greedy: 30-18 (62.5%)
+  axiarchs contain: 22-26 (45.8%)
+faction x branch:
+  lastfist timing: 46-14 (76.7%)
+  lastfist air: 38-22 (63.3%)
+  lastfist contain: 23-37 (38.3%)
+  lastfist tech: 51-9 (85%)
+  bloomhost air: 23-37 (38.3%)
+  bloomhost tech: 27-33 (45%)
+  bloomhost contain: 10-50 (16.7%)
+  bloomhost timing: 18-42 (30%)
+  axiarchs air: 29-31 (48.3%)
+  axiarchs tech: 56-4 (93.3%)
+  axiarchs contain: 13-47 (21.7%)
+  axiarchs timing: 26-34 (43.3%)

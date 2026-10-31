@@ -339,7 +339,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.41'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.42'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -938,10 +938,13 @@ const AI_PRESETS = {
   // v2.41 (audit phase 7a, audit/hard-vs-human-report.md): the Boomer opening for every faction (the search with the Greedy
   // bot in the field picked it over all four personalities), reaction 0.6 (Bloomhost 1), no signature building, and the
   // phase 7a rules it kept (HARD_FIX). Its v2.40 form is the hard240 preset.
+  // v2.42 (audit phase 7b, audit/strategy-report.md): Hard varies its opening per match (kinds: one picked at random, a
+  // repeat weights it), from the openings the phase 7b search scored well with each faction, and adapts after scouting
+  // (HARD_FIX_7B: read, adapt, punish); the flood share for its Flame Tank answer is 0.4 (was 0.55)
   hard: { name: 'Hard', smart: true, dials: Object.assign({}, AI_DIALS, { scout: 70, comp: {} }), fix: null, byFac: {
-    lastfist: { kinds: ['boomer'], dials: { delay: 0.6, sigAt: 99999 } },
-    bloomhost: { kinds: ['boomer'], dials: { delay: 1, sigAt: 99999 } },
-    axiarchs: { kinds: ['boomer'], dials: { delay: 0.6, sigAt: 99999 } } } },
+    lastfist: { kinds: ['boomer', 'boomer', 'economist', 'turtle'], dials: { delay: 0.6, sigAt: 99999, flood: 0.4 } },
+    bloomhost: { kinds: ['boomer', 'boomer', 'boomer', 'turtle'], dials: { delay: 1, sigAt: 99999, flood: 0.4 } },
+    axiarchs: { kinds: ['boomer', 'turtle', 'turtle'], dials: { delay: 0.6, sigAt: 99999, flood: 0.4 } } } },
   // v2.41's Hard exactly (with v2.41's numbers via setBalance7b(false)): the baseline for phase 7b
   hard241: { name: 'Hard v2.41', smart: true, dials: Object.assign({}, AI_DIALS, { scout: 70, comp: {} }), fix: null, byFac: {
     lastfist: { kinds: ['boomer'], dials: { delay: 0.6, sigAt: 99999 } },
@@ -959,8 +962,8 @@ const AI_PRESETS = {
 // v2.41: the phase 7a rules Hard keeps (each A/B in the report; punish measured worse and stays off)
 const HARD_FIX = { read: true, contest: true, counter: true, nowave: true, shield: true, power: true, fill: true, est: true };
 // v2.42 (audit phase 7b): Hard adds breakout (no trickling out of a contained base, Turrets as soon as pressure starts) and
-// adapt (the scout's read changes the opening)
-const HARD_FIX_7B = Object.assign({}, HARD_FIX, { breakout: true, adapt: true });
+// adapt (the scout's read changes the opening), and punish again
+const HARD_FIX_7B = Object.assign({}, HARD_FIX, { breakout: true, adapt: true, punish: true }); // punish: the timed attack on a greedy opening its scout saw (off in v2.41; the 7b numbers make it pay)
 AI_PRESETS.hard.fix = Object.assign({}, AI_PRESETS.default.fix, HARD_FIX_7B);
 AI_PRESETS.hard240.fix = Object.assign({}, AI_PRESETS.default.fix);
 AI_PRESETS.hard241.fix = Object.assign({}, AI_PRESETS.default.fix, HARD_FIX);

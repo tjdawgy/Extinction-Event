@@ -1,0 +1,3 @@
+Round 6 (code-injected on round 5 file; identical to the final patch list): skitterling speed 58, bulwark 140/25, rifle range 110
+cross-faction shares: lastfist 21-19, bloomhost 18-22, axiarchs 21-19 draws 0
+{"lastfist-bloomhost":[12,8],"lastfist-axiarchs":[9,11],"bloomhost-axiarchs":[10,10]}

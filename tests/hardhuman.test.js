@@ -31,13 +31,14 @@ test('the Boomer opening: three economy buildings first; never rolled at random;
   for (const k of ['read', 'punish', 'contest', 'counter', 'nowave', 'shield', 'power', 'fill', 'est']) assert.strictEqual(s.AI_PRESETS.default.fix[k], false, k);
 });
 
-test('the Hard preset: the Boomer opening and the kept rules for every faction', () => {
+test('the Hard preset: an opening from its list and the kept rules for every faction (v2.42: punish on again; hard241 keeps v2.41)', () => {
   const s = loadSim({ random: mulberry(6) });
   for (const f of ['lastfist', 'bloomhost', 'axiarchs']) {
     const g = s.newGame('hard', { factions: ['lastfist', f] }), P = g.sides[1].persona;
-    assert.strictEqual(P.preset, 'hard'); assert.strictEqual(P.kind, 'boomer', f);
-    for (const k of ['read', 'contest', 'counter', 'nowave', 'shield', 'power', 'fill', 'est']) assert.strictEqual(P.dial.fix[k], true, `${f} ${k}`);
-    assert.strictEqual(P.dial.fix.punish, false, `${f} punish`);
+    assert.strictEqual(P.preset, 'hard'); assert.ok(s.AI_PRESETS.hard.byFac[f].kinds.includes(P.kind), `${f} ${P.kind}`);
+    for (const k of ['read', 'contest', 'counter', 'nowave', 'shield', 'power', 'fill', 'est', 'breakout', 'adapt', 'punish']) assert.strictEqual(P.dial.fix[k], true, `${f} ${k}`);
+    const Q = s.rollPersona(undefined, 'hard241', f, 'hard');
+    assert.strictEqual(Q.kind, 'boomer'); assert.strictEqual(Q.dial.fix.punish, false, `${f} hard241 punish`);
   }
 });
 

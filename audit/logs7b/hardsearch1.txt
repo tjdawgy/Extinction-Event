@@ -1,0 +1,16 @@
+lastfist {"persona":"boomer","dial":{"delay":0.6,"sigAt":99999,"flood":0.4}}: Greedy 12-0-0 (100%), Default 10-0-0 (100%), bots 18-0-0 (100%) [rush 6-0, turtle 6-0, contain 6-0], score 100
+lastfist {"persona":"aggressor","dial":{"delay":0.6,"sigAt":99999,"flood":0.4}}: Greedy 4-8-0 (33%), Default 8-2-0 (80%), bots 6-12-0 (33%) [rush 1-5, turtle 4-2, contain 1-5], score 49
+lastfist {"persona":"turtle","dial":{"delay":0.6,"sigAt":99999,"flood":0.4}}: Greedy 9-3-0 (75%), Default 6-4-0 (60%), bots 13-5-0 (72%) [rush 6-0, turtle 6-0, contain 1-5], score 69
+lastfist {"persona":"economist","dial":{"delay":0.6,"sigAt":99999,"flood":0.4}}: Greedy 9-3-0 (75%), Default 10-0-0 (100%), bots 15-3-0 (83%) [rush 6-0, turtle 6-0, contain 3-3], score 86
+lastfist {"persona":"boomer","dial":{"delay":0.6,"sigAt":99999,"flood":0.4},"fix":{"punish":true}}: Greedy 12-0-0 (100%), Default 10-0-0 (100%), bots 18-0-0 (100%) [rush 6-0, turtle 6-0, contain 6-0], score 100
+bloomhost {"persona":"boomer","dial":{"delay":1,"sigAt":99999,"flood":0.4}}: Greedy 11-1-0 (92%), Default 10-0-0 (100%), bots 13-5-0 (72%) [rush 6-0, turtle 5-1, contain 2-4], score 88
+bloomhost {"persona":"aggressor","dial":{"delay":1,"sigAt":99999,"flood":0.4}}: Greedy 1-11-0 (8%), Default 6-4-0 (60%), bots 5-13-0 (28%) [rush 0-6, turtle 5-1, contain 0-6], score 32
+bloomhost {"persona":"turtle","dial":{"delay":1,"sigAt":99999,"flood":0.4}}: Greedy 5-7-0 (42%), Default 9-1-0 (90%), bots 11-7-0 (61%) [rush 5-1, turtle 6-0, contain 0-6], score 64
+bloomhost {"persona":"economist","dial":{"delay":1,"sigAt":99999,"flood":0.4}}: Greedy 4-8-0 (33%), Default 10-0-0 (100%), bots 8-10-0 (44%) [rush 2-4, turtle 6-0, contain 0-6], score 59
+bloomhost {"persona":"boomer","dial":{"delay":1,"sigAt":99999,"flood":0.4},"fix":{"punish":true}}: Greedy 11-1-0 (92%), Default 10-0-0 (100%), bots 14-4-0 (78%) [rush 6-0, turtle 5-1, contain 3-3], score 90
+axiarchs {"persona":"boomer","dial":{"delay":0.6,"sigAt":99999,"flood":0.4}}: Greedy 7-5-0 (58%), Default 10-0-0 (100%), bots 17-1-0 (94%) [rush 6-0, turtle 6-0, contain 5-1], score 84
+axiarchs {"persona":"aggressor","dial":{"delay":0.6,"sigAt":99999,"flood":0.4}}: Greedy 3-9-0 (25%), Default 5-5-0 (50%), bots 2-16-0 (11%) [rush 0-6, turtle 1-5, contain 1-5], score 29
+axiarchs {"persona":"turtle","dial":{"delay":0.6,"sigAt":99999,"flood":0.4}}: Greedy 10-2-0 (83%), Default 8-2-0 (80%), bots 16-2-0 (89%) [rush 6-0, turtle 6-0, contain 4-2], score 84
+axiarchs {"persona":"economist","dial":{"delay":0.6,"sigAt":99999,"flood":0.4}}: Greedy 5-7-0 (42%), Default 9-1-0 (90%), bots 14-4-0 (78%) [rush 5-1, turtle 6-0, contain 3-3], score 70
+axiarchs {"persona":"boomer","dial":{"delay":0.6,"sigAt":99999,"flood":0.4},"fix":{"punish":true}}: Greedy 9-3-0 (75%), Default 10-0-0 (100%), bots 16-2-0 (89%) [rush 6-0, turtle 6-0, contain 4-2], score 88
+done

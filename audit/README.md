@@ -6,6 +6,7 @@ Files in this folder:
 - `balance-diagnosis.md`, `balance-report.md`: the phase 5 balance pass (why the factions won, what changed, the results).
 - `ai-tactics-report.md`: the phase 6a AI tactics rules (each A/B), the Hard-mode strategy search and the Hard-vs-Hard matrix.
 - `hard-vs-human-report.md`: phase 7a, Hard against the scripted Greedy bot (human-style greedy play): the bot, each fix's A/B, the re-search, Hard vs Hard, Greedy vs Greedy. Raw logs in `logs7a/`.
+- `strategy-diagnosis.md`, `strategy-report.md`: phase 7b, balance and the strategy triangle (why Last Fist won identical play, why greed and containment carried no risk, the scripted strategy bots, every change and the matrices). Raw logs in `logs7b/`.
 - `sim/`: the simulation harness, described below.
 
 ## The simulation harness (`audit/sim/`)
@@ -150,3 +151,18 @@ On the start screen, tap the version number (top right) for the dev menu:
 - The spectator sees the whole field; nothing can be built or ordered.
 - A spectated match is never saved, so the player's save is left alone.
 - Pause → Main menu leaves.
+
+### Phase 7b tools (balance and the strategy triangle)
+- **`strat.js`:** the strategy bots (`stratBot(S, opts)`): an opening (`greedy`, `rush`, `turtle`, `contain`, `standard`) and a mid-game branch (`timing`, `contain`, `tech`, `air`). Player controls only. Options: `defend` (`break`, the correct defence, or `naive`), `containV`, `sig` (`'A'`/`'B'`: a signature building takes the branch's last pad), `nodes` (1–3), `pairs` (Last Fist rush with Mass Deployment).
+  - In a match spec: `{ faction, bot: 'strat', botOpts: { opener: 'rush', branch: 'timing' } }`. A bot on side 1 now starts on Hold, like the player.
+- **`stratrun.js`:** the matrices: `--set=tri` (the triangle and Contain, same faction), `gvg` (greedy.js vs greedy.js), `contain` (light and heavy Contain against a correct and a naive defender), `nodes`, `sig`, `field` (every opening × branch against a sampled field, all faction pairings).
+  ```
+  node audit/sim/stratrun.js --set=tri --n=4 [--code="SIM changes"] [--tag=name]
+  ```
+- **`diag7b.js`, `an7b.js`:** Greedy vs Greedy cross-faction with the damage counters, and its analysis.
+- **`trace7b.js`:** one bot match, every 15 s: army value and position, each death and where, nodes, bank.
+- **`duelx.js`:** duel.js with an experiment's changes.
+- **`hardsearch7b.js`:** the Hard search with the strategy bots in the field (Greedy, Default, Rush/Turtle/Contain).
+- **`validate7b.js`:** Hard vs Greedy, vs the strategy bots, vs Default, Hard vs Hard, Easy and Normal vs Greedy, and the openings Hard picks. `EE_HTML` points it at another copy of the game (v2.41 for the before columns).
+- **`nodes7b.js`:** node control against the result, from a field run.
+- **The balance layer:** `BALANCE7B` in index.html, `setBalance7b(false)` restores v2.41. **Presets:** `hard` is v2.42's Hard; `hard241` is v2.41's Hard.
