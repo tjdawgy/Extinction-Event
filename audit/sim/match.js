@@ -3,10 +3,11 @@
 // Side 0 is the player's slot played by the autoplayer, side 1 the normal AI: both run the same AI brain.
 // A match still going at maxT game seconds (20 minutes by default) counts as a draw.
 const { loadSim } = require('./load');
+const INSTRUMENT = require('./instrument');
 
 function runMatch(spec) {
   const { seed, sides, diff = 'hard', maxT = 1200, sample = 30 } = spec;
-  const S = loadSim(seed, { file: spec.file });
+  const S = loadSim(seed, { file: spec.file, instrument: (spec.diag ? INSTRUMENT : '') + (spec.code ? `\n;${spec.code}` : '') || undefined }); // code: an experiment's changes to SIM values (audit only)
   const per = p => (p && p !== 'random' ? p : undefined);
   const g = S.newGame(diff, { autoPlayer: true, autoDiff: diff, factions: [sides[0].faction, sides[1].faction],
     autoAi: sides[0].ai, ai: sides[1].ai, autoPersona: per(sides[0].persona), persona: per(sides[1].persona) });
@@ -14,7 +15,15 @@ function runMatch(spec) {
   // optional per-side dial overrides (A.dial: { scout: 0, fix: { leash: false } }) for experiments
   for (let i = 0; i < 2; i++) { const o = sides[i].dial, P = g.sides[i].persona; if (o && P && P.dial) { for (const k in o) if (k !== 'fix') P.dial[k] = o[k]; if (o.fix && P.dial.fix) Object.assign(P.dial.fix, o.fix); } }
   const samples = [];
+  const tech = [{}, {}]; // first game time each side had a finished production building at T2 / T3 (by role and path), and its signature buildings
+  const techScan = () => {
+    for (const e of g.ents) if (e.kind === 'b' && e.built && e.hp > 0 && (e.side === 0 || e.side === 1)) {
+      const k = e.type + (e.path ? ':' + e.path : '') + ':T' + e.tier;
+      if (e.tier >= 2 || e.type === 'sigA' || e.type === 'sigB') { if (tech[e.side][k] === undefined) tech[e.side][k] = Math.round(g.t); }
+    }
+  };
   const take = () => {
+    techScan();
     const army = [0, 0];
     for (const e of g.ents) if (e.kind === 'u' && e.hp > 0) army[e.side] += S.UDEF[e.type].cost.c + S.UDEF[e.type].cost.e;
     samples.push({ t: Math.round(g.t), bank: g.sides.map(sd => Math.round(sd.res.c)), energy: g.sides.map(sd => Math.round(sd.res.e)),
@@ -36,7 +45,8 @@ function runMatch(spec) {
       const spent = Object.values(T.spent).reduce((a, b) => [a[0] + b[0], a[1] + b[1]], [0, 0]);
       return { faction: g.sides[s].faction, ai: P.preset || 'legacy', persona: P.kind, trained: T.trained, lost: T.lost, alive,
         earned: [Math.round(T.earn[0]), Math.round(T.earn[1])], spent: spent.map(Math.round), salvage: Math.round(T.salv || 0),
-        nodeTime: Math.round(T.nodeTime), buildings: T.bBuilt, aiLog: g.sides[s].aiLog ? { attacks: g.sides[s].aiLog.attacks, firstAttack: g.sides[s].aiLog.firstAttack, abil: g.sides[s].aiLog.abil || {} } : null };
+        nodeTime: Math.round(T.nodeTime), buildings: T.bBuilt, tech: tech[s], killed: T.killed, lostTo: T.lostTo || {}, ab: T.ab, mites: T.mites, echoes: T.echoes || 0, bkHeal: Math.round(T.bkHeal || 0), od: T.od || 0,
+        diag: S.diag ? { dmg: S.diag.dmg[s], kills: S.diag.kills[s] } : undefined, aiLog: g.sides[s].aiLog ? { attacks: g.sides[s].aiLog.attacks, firstAttack: g.sides[s].aiLog.firstAttack, abil: g.sides[s].aiLog.abil || {} } : null };
     }),
     samples,
   };
