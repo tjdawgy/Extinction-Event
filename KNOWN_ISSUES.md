@@ -2,6 +2,47 @@
 
 Issues found during testing that are deliberately deferred. Each lists the step that should address it.
 
+## Audit phase 5: balance pass, conservative (v2.39)
+- **Diagnosis:** audit/balance-diagnosis.md.
+- **Changes and results:** audit/balance-report.md.
+- **Tools:** audit/sim balance.js, analyze.js, instrument.js, ab2.js, duel.js, rush.js, s3.js (audit/README.md).
+- **Why Last Fist won 77.5% cross-faction** (Default vs Default, random personalities):
+  - Not economy: income is even at 4:00.
+  - From 4 to 8 minutes it wins the first fights and holds the middle node with ranged units, while Bloomhost and Axiarch melee armies attack it in small groups.
+  - By 6:00 it fields 2–3× their army and takes the nodes; then it breaks bases (about 10,800 building damage per match against their 3,700–3,800).
+  - No single Last Fist unit carries it: removing the Tank, Heavy, Gunship or Flame Tank cost at most 2 wins in 30.
+- **Changes** (the `BALANCE` block; `setBalance(false)` restores v2.38): costs and build times first, then two small stat fixes, no mechanic changes.
+  - **Last Fist:**
+    - Tank 200/40 → 260/60 and 11 → 13 s; Heavy 100/25 → 125/35.
+    - Salvage 10% → 7%, the Yard 20% → 14%.
+  - **Bloomhost:**
+    - Bulwark 190/40 → 150/30 and 11 → 10 s.
+    - Razorwing 170/70 → 140/50 and 170 → 200 HP.
+    - Spitter 90/30 → 80/25; Leaper 90/20 → 80/20.
+  - **Axiarchs:**
+    - Shardling 80/20 → 65/15, 6 → 5 s and 60 → 75 shields.
+    - Lancer 150/60 → 120/45; Prismwing 120/50 → 100/40.
+    - Wraithwing 260/120 → 230/100; Bastion 280/90 → 260/85.
+- **Results** (40 matches per pairing, 30-minute cap, no true draws):
+
+  | Faction | Cross-faction, before → after | Same-personality sets, before → after |
+  |---|---|---|
+  | Last Fist | 77.5% → **63.8%** | 95.3% → 82.8% |
+  | Bloomhost | 32.5% → **40.0%** | 23.4% → 23.4% |
+  | Axiarchs | 40.0% → **46.3%** | 31.3% → 43.8% |
+
+  - **The target (40–60%) was not met for Last Fist after the 5 allowed rounds; stopped as the brief requires.**
+  - The rest is AI skill (the Phase 6 list under Audit). Sensitivity: every Bloomhost and Axiarch unit 20% cheaper, or +15% HP and shields, moved Last Fist by only 3–4 wins in 30.
+- **Phase 2 buffs measured:**
+  - **Flame Tank aim:** triples or quadruples the Flame Tank's damage, but 0 and +1 wins of 40.
+  - **Instant Axis beam:** about +3 Axiarch wins of 40 in both pairings, within noise.
+- **Matches open at 20:00:** 10–27% of Bloomhost and Axiarch matches (v2.38). All of them end by 22:30 through the storm. The causes are AI: finishing a base, army trading.
+- **Tests:**
+  - **Flaky tests fixed:** the Medicopter retreat test is seeded; the Sovereign beam scene waits up to 2 s (it failed 3 runs in 20 at v2.38 too).
+  - **Pinned to the mechanic's own numbers:** the Salvage and signature tests run with `setBalance(false)`; a new test pins the v2.39 values.
+  - **Determinism:** pinned replays run with the balance off and match unchanged; two new fingerprints record it on.
+  - **Re-targeted, with the reason in the test:** the Bloomhost Economist Worldrender test now plays an Axiarch Turtle (it beats the Last Fist Turtle before any Worldrender now); the Axiarch abilities test plays 5 matches instead of 3.
+
 ## Audit phase 4: simulation harness and AI competence (v2.38)
 - **Harness** (audit/sim, audit/README.md): headless, seeded matches on the real SIM, a parallel runner with JSON and markdown summaries, a unit-usage tool and the validation script.
 - **One AI brain with dials and presets:**
@@ -106,7 +147,23 @@ Items for the strategy explorer and full balance audit. Logged only, nothing tun
   - **What doesn't decide matches:** the unit-competence fixes, spending and grouped reinforcements each measured neutral within noise over 24–48 matches. Default even leads in army value at 10 minutes (about 1,000 vs 820) and in nodes held.
   - **What looks like it does:** army trading. Both AIs attack 13–19 times a match and rebuild, so supply stays at half the limit.
   - **For Phase 6:** engagement choice (when to fight, when to fall back), concentration, and finishing a base.
-- **Faction balance in AI play (v2.38, Phase 5):** in Default vs Legacy, Last Fist beats Bloomhost and the Axiarchs about 88% of decided matches either way round, and the Axiarchs win only 9–32% against the other factions. Mirror draws: Bloomhost 22% and Axiarchs 21% reach 20:00 (Last Fist 9%).
+- (Phase 5, v2.39: tuned within the conservative rules; see audit/balance-report.md and "Audit phase 5" above.) **Faction balance in AI play (v2.38, Phase 5):** in Default vs Legacy, Last Fist beats Bloomhost and the Axiarchs about 88% of decided matches either way round, and the Axiarchs win only 9–32% against the other factions. Mirror draws: Bloomhost 22% and Axiarchs 21% reach 20:00 (Last Fist 9%).
+- **Phase 6 (AI training): AI skill problems found in the Phase 5 diagnosis** (audit/balance-diagnosis.md). Not compensated with stat buffs:
+  - **Piecemeal melee attacks into a ranged line (the main cause of the faction gap).** Bloomhost and Axiarch armies attack a Last Fist line holding the middle node in groups of 5–11 and die to it. In the traced Last Fist vs Bloomhost match (seed 50010), Bloomhost lost 40 units to Last Fist's 15 by 6:00. Their own HQ gun is their biggest damage dealer (about 6,000 per match). Cost and stat sensitivity runs confirm it: every Bloomhost and Axiarch unit 20% cheaper, or with 15% more HP and shields, moved Last Fist by only 3–4 wins of 30. Needs: concentration and engagement choice, especially for melee armies.
+  - **Signature buildings hurt every AI.** Switched off (paired, 40 matches): Last Fist +6 wins, Bloomhost +10, the Axiarchs +6. The plan gives up a second Refinery or Reactor for one and builds it at 0:30–1:00 (`aiPlanWith`, `sigReady`).
+  - **Commander abilities:**
+    - Switched off, Last Fist gains 4 wins and Bloomhost 4; the Axiarchs lose 4.
+    - Mass Warp is cast 0.01 times a match and Emergency Brood 0.33.
+    - Last Fist's two Orbital Strikes a match (300 credits and 300 energy) seem to be worth less than the army they replace.
+  - **Finishing a base:** at 19:00 in about half of the matches still open, the leading side has 1,500–3,800 army value, 25–34 supply and all three nodes against an empty enemy army, and still doesn't win before the storm.
+  - **Rebuilding inside a lost base:** a Bloomhost AI rebuilt its Hatchery 13 times in a minute while its base fell (seed 50010, 6:30–7:00).
+  - **Composition:**
+    - The Default AI keeps Razorwings "always in the mix" (`aiSmartScores`): 20% of Bloomhost spending, even against Rifle and Heavy armies that shoot them down.
+    - The Axiarch AI spends 44% on Shardlings.
+  - **Axiarch power field:** the AI never sets a forward warp point and almost never casts Mass Warp. Its armies fight in the open, away from the field's shield regen.
+  - **S3, bomber supply:** lowering it (Leviathan 6, Worldrender 7, Sovereign 7) changed no side's choice in 96 Economist matches. The AI never reaches the Bloomhost and Axiarch bombers' T3 before a match ends. Kept at 7, 8 and 9; re-check after the upgrade order is fixed.
+  - **T3 capstones:** `AI_UPG` puts the Tech Lab role's T3 16th of 20, so the Worldrender (3.5% of Bloomhost sides), Cloudwing (2.8%) and Sovereign (0.7%) come at about the time matches end. Proposal: keep them late-game luxuries and fix the order in Phase 6.
+  - **The scripted Rifleman rush** (tests/bots.js `rushBot`) wins 0 of 36 against the Default AI on Normal and on Hard (all three factions); on Easy only against Bloomhost (7 of 12 at v2.39, late wins). The v2.8 calibration predates the Default AI. Recalibrate the bot before using it to judge rush strength.
 - **Units under 5% in Default mirrors:**
   - **Astral Sovereign (0%):** it needs the Celestial Array's Ascendant path at T3, which only the Economist and Trickster take, and matches end at about 13 minutes.
   - **Worldrender (2.5%):** the same reason. It reaches 45% when an Economist plays a long match (tests/ai-stats).
@@ -192,9 +249,10 @@ Every Bloomhost item for the audit and AI training, in one place (details in the
 - **Army value samples stop at 120** (30 minutes, `logTick`); a longer match's graph ends early. Matches end by the Extinction Event's limit, so this shouldn't show in practice.
 
 
-### Flaky test: a Medicopter on Retreat (seen at v2.38)
+### (Resolved in v2.39: that part of the test runs on its own seeded SIM.) Flaky test: a Medicopter on Retreat (seen at v2.38)
 - `every combat unit stops to fight ...` (tests/orders-weapons.test.js) is unseeded. About 1 run in 12, a Medicopter on Retreat ends up 40+ ahead of the retreating Riflemen it follows (it lags their centre as they run home).
 - No AI code is involved. Fix: seed it, or measure against the infantry's centre.
+- v2.39: 2 of 120 seeds failed: after the retreat the Medicopter settles about 60 ahead of the Rifleman (a steady hover over the infantry, not a lag). Seeded (mulberry 7).
 
 ### (Resolved in v2.38: the statistical tests in tests/ai-stats.test.js replace it.) Flaky test: the Aggressor's defence strike (seen at v2.29)
 - `the AI uses abilities under the same rules ... each personality in its own way` (`tests/abilities.test.js`) is unseeded: it plays 3 random Last Fist matches per personality and needs at least one Aggressor Orbital Strike on defences. It failed once in a v2.29 `npm test` run, then passed 3 of 3 on v2.29 and 3 of 3 on v2.28. Last Fist play is identical between the two versions, so the change didn't cause it. Fix: seed it, or count over more matches.

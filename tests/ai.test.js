@@ -98,5 +98,5 @@ test('enemy Interceptors do not set off an Interceptor race, and count little to
   assert.ok(made <= 1, `AI built ${made} Interceptors against Interceptors`);
   const unit = t => ({ type: t });
   assert.strictEqual(sim.armyValue([unit('interceptor')]), (150 + 60 * 1.5) * 0.25); // v2.15 cost 150/60
-  assert.strictEqual(sim.armyValue([unit('tank')]), 200 + 40 * 1.5);
+  assert.strictEqual(sim.armyValue([unit('tank')]), sim.UDEF.tank.cost.c + sim.UDEF.tank.cost.e * 1.5); // v2.39: the Tank's cost comes from UDEF (260/60 since the balance pass)
 });

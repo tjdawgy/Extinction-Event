@@ -14,11 +14,14 @@
 // v2.36 (audit phase 2): the Flame Tank burns along its target's line (FLAME.aim). The old replays run with FLAME.aim false; the
 // main fingerprint is re-recorded and, with FLAME.aim false, still matches v2.35 (FP_V235). The Axis beam changes only matches
 // with an Axiarch side, which none of these are.
+// v2.39 (audit phase 5): the balance pass (BALANCE, setBalance) is off in every pinned replay, so they still prove nothing
+// else changed; FP_V239 and FP_V239_BA record the same two matches with it on.
 const test = require('node:test');
 const assert = require('node:assert');
 const crypto = require('crypto');
 const { loadSim } = require('./load-sim');
 
+const FP_V239 = '2309a628fd3e06dc9ad1ff9cc8cd979517f3f1ae57a89c1bade2b8c9d477dbe2', FP_V239_BA = 'f0a68f971f602872ddfa574ad31eea4ddfc261737cecb9920df74223ceb63c1e'; // v2.39 (audit phase 5): the same two matches with the balance pass on (setBalance(true), the game's state)
 const FP_V237 = 'c067f11db9a0fa3d5ff21fda7d734ef0ad981e1fb037d901cc5fa366b300e9fb'; // v2.37 (audit phase 3b): a Bloomhost vs Axiarchs match with the unit redesign on (bh_ax(true); 8:44, Bloomhost wins). The Last Fist mirror below has no redesigned unit in its 8 minutes, so it hashes the same either way
 const FINGERPRINT = '27e6859083378eec966f493c37ea4a9065532b70465c737bf62579b3e4021a9a'; // v2.36: the Flame Tank aims its strip at its target (FLAME.aim); with FLAME.aim false the match is v2.35's (FP_V235)
 const FP_V235 = '4be0c9891986796cd10fa32ce44a5d76cf81a0ce0d42ca9e878d919deca11535'; // v2.34: only the save version changed (29 → 30); the match state is the same as v2.32's
@@ -31,8 +34,8 @@ const V229_OFF = '856b576e7c8dfa7ee14e35e1bf1c6629c1705e40513c942a3eed7070700779
 const stripPreset = o => { for (const sd of o.sides) if (sd.persona) { delete sd.persona.preset; delete sd.persona.smart; delete sd.persona.dial; } };
 function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 
-function fingerprint(salvageOff, aimOff, redesign) {
-  const sim = loadSim({ random: mulberry(2024) }); sim.setRedesign(!!redesign); // v2.37: the unit redesign off unless asked for (the pinned replays are v2.36's)
+function fingerprint(salvageOff, aimOff, redesign, balance) {
+  const sim = loadSim({ random: mulberry(2024) }); sim.setRedesign(!!redesign); sim.setBalance(!!balance); // v2.37: the unit redesign off unless asked for (the pinned replays are v2.36's); v2.39: the balance pass too
   if (salvageOff || aimOff) sim.FLAME.aim = false;
   if (salvageOff) { sim.SALVAGE.pct = 0; sim.SIG.on = false; sim.RETREAT.fire = true; }
   const g = sim.newGame('hard', { autoPlayer: true, autoDiff: 'hard', ai: 'legacy', autoAi: 'legacy', persona: 'trickster', autoPersona: 'turtle' });
@@ -44,7 +47,7 @@ function fingerprint(salvageOff, aimOff, redesign) {
 }
 
 function lfBh() { // Last Fist (autoplayer, Turtle) vs Bloomhost (Aggressor), Hard, to the end of the match
-  const sim = loadSim({ random: mulberry(2024) }); sim.setRedesign(false); sim.RETREAT.fire = true; sim.FLAME.aim = false; // v2.35: the v2.34 retreat rule; v2.36: the v2.35 Flame Tank
+  const sim = loadSim({ random: mulberry(2024) }); sim.setRedesign(false); sim.setBalance(false); sim.RETREAT.fire = true; sim.FLAME.aim = false; // v2.35: the v2.34 retreat rule; v2.36: the v2.35 Flame Tank; v2.39: no balance pass
   const g = sim.newGame('hard', { autoPlayer: true, autoDiff: 'hard', ai: 'legacy', autoAi: 'legacy', persona: 'aggressor', autoPersona: 'turtle', factions: ['lastfist', 'bloomhost'] });
   for (let i = 0; i < 30 * 1700 && !g.over; i++) sim.update(g, 1 / 30);
   const o = JSON.parse(sim.serialize(g, {})); delete o.log; stripPreset(o); delete o.v; // the save version
@@ -56,8 +59,8 @@ test('a fixed Last Fist vs Bloomhost match plays exactly as v2.33 did, apart fro
   assert.strictEqual(lfBh(), LF_BH_V233);
 });
 
-function bhAx(redesign) { // Bloomhost (Aggressor) vs Axiarchs (Economist autoplayer), Hard, to the end or 12 minutes
-  const sim = loadSim({ random: mulberry(2024) }); sim.setRedesign(redesign);
+function bhAx(redesign, balance) { // Bloomhost (Aggressor) vs Axiarchs (Economist autoplayer), Hard, to the end or 12 minutes
+  const sim = loadSim({ random: mulberry(2024) }); sim.setRedesign(redesign); sim.setBalance(!!balance);
   const g = sim.newGame('hard', { autoPlayer: true, autoDiff: 'hard', ai: 'legacy', autoAi: 'legacy', persona: 'aggressor', autoPersona: 'economist', factions: ['bloomhost', 'axiarchs'] });
   for (let i = 0; i < 30 * 720 && !g.over; i++) sim.update(g, 1 / 30);
   const o = JSON.parse(sim.serialize(g, {})); delete o.log; stripPreset(o);
@@ -67,6 +70,11 @@ function bhAx(redesign) { // Bloomhost (Aggressor) vs Axiarchs (Economist autopl
 test('seeded AI-vs-AI match matches the recorded SIM fingerprint (rules change only on purpose)', () => {
   assert.strictEqual(fingerprint(false, false, true), FINGERPRINT); // no redesigned unit in this match
   assert.strictEqual(bhAx(true), FP_V237); // v2.37: the redesign at work (Skitterlings at half supply, corrosion)
+});
+
+test('v2.39: with the balance pass on, the same two matches match their recorded fingerprints; with it off they are v2.38\'s (above)', () => {
+  assert.strictEqual(fingerprint(false, false, true, true), FP_V239);
+  assert.strictEqual(bhAx(true, true), FP_V239_BA);
 });
 
 test('with the unit redesign off (setRedesign(false)) the same match plays exactly as v2.36 did; the targeting index (v2.37) changes nothing', () => {
@@ -81,4 +89,4 @@ test('with Salvage and signature buildings switched off (SALVAGE.pct 0, SIG.on f
   assert.strictEqual(fingerprint(true), V229_OFF);
 });
 
-if (require.main === module && process.argv[2] === '--print') console.log(fingerprint(false, false, true), bhAx(true));
+if (require.main === module && process.argv[2] === '--print') console.log(fingerprint(false, false, true), bhAx(true), fingerprint(false, false, true, true), bhAx(true, true));

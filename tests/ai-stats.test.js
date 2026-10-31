@@ -54,7 +54,10 @@ test('Bloomhost AI (Turtle vs a Last Fist Aggressor): economy, Maws, all three b
 });
 
 test('Bloomhost AI (Economist): the Bloomspire path through its taste, Brood Tyrants and Worldrenders (rates over N matches)', () => {
-  const rows = playN(N, 300, { persona: 'economist', autoPersona: 'turtle', factions: ['lastfist', 'bloomhost'] }, 1200,
+  // v2.39: against an Axiarch Turtle (was a Last Fist Turtle). After the balance pass the Bloomhost Economist beats the Last
+  // Fist Turtle in about 9 minutes (10 of 10 on these seeds), before any Worldrender; against the Axiarch Turtle the matches
+  // run about 16 minutes: path 100%, Apex 100%, Brood Tyrants 100%, a Worldrender 80% (seeds 300-309)
+  const rows = playN(N, 300, { persona: 'economist', autoPersona: 'turtle', factions: ['axiarchs', 'bloomhost'] }, 1200,
     (g, S, st) => { for (const e of g.ents) if (e.side === 1 && e.type === 'techlab' && e.path) st.path = e.path; },
     (g, S, st) => ({ path: st.path || null, tr: g.sides[1].aiLog.trained }));
   const pathed = rows.filter(r => r.path);

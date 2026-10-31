@@ -242,27 +242,27 @@ test('AI remembers a failed base attack: no new base attack until its army clear
   const spawn = (n, type) => { for (let i = 0; i < n; i++) sim.spawnUnit(g, 1, type, 1200 - i * 5, 0); };
   const value = () => army().reduce((a, u) => a + sim.UDEF[u.type].cost.c + sim.UDEF[u.type].cost.e * 1.5, 0);
   const tick = () => { side.aiT = 0; sim.aiUpdate(g, 1, STEP); };
-  spawn(4, 'tank'); // 4 × 260 = 1040
-  // it is attacking the base with 1040, then sees a much bigger army and pulls back
+  spawn(4, 'tank'); const V = value(); // 4 Tanks (v2.38: 4 × 260 = 1040; v2.39: 4 × 350 = 1400)
+  // it is attacking the base with V, then sees a much bigger army and pulls back
   side.stance = 'attack'; side.pushTo = null; side.stanceAt = g.t - 20; side.launchV = value();
   for (let i = 0; i < 8; i++) g.fog[1].intel[9000 + i] = { type: 'titan', u: 700, t: g.t };
   tick();
   assert.strictEqual(side.stance, 'retreat');
-  assert.strictEqual(side.failV, 1040 * sim.FAIL_MARGIN);
-  assert.strictEqual(sim.attackBar(g, 1), 1040 * 1.3);
-  // the big army is forgotten (thV 0): 1040 would normally be plenty for an all-in, but it is below the bar
+  assert.strictEqual(side.failV, V * sim.FAIL_MARGIN);
+  assert.strictEqual(sim.attackBar(g, 1), V * 1.3);
+  // the big army is forgotten (thV 0): V would normally be plenty for an all-in, but it is below the bar
   g.fog[1].intel = {}; side.stanceAt = g.t - 20;
   for (let i = 0; i < 5; i++) { tick(); assert.ok(!(side.stance === 'attack' && side.pushTo !== sim.L / 2 - 20), `no base attack below the bar (pushTo ${side.pushTo})`); g.t += 1; }
   // half-way through the memory the bar has halved, so the same army goes again
   g.t = side.failT + sim.FAIL_MEMORY / 2;
-  assert.ok(Math.abs(sim.attackBar(g, 1) - 1040 * 1.3 / 2) < 1e-6);
+  assert.ok(Math.abs(sim.attackBar(g, 1) - V * 1.3 / 2) < 1e-6);
   side.stance = 'retreat'; side.stanceAt = g.t - 20; tick();
   assert.ok(side.stance === 'attack' && side.pushTo !== sim.L / 2 - 20, 'attacks again once the bar has faded below its army');
   g.t = side.failT + sim.FAIL_MEMORY + 1;
   assert.strictEqual(sim.attackBar(g, 1), 0, 'fully faded');
   // a big enough army goes straight away
-  const g2 = sim.newGame('easy'); g2.sides[0].aiT = 1e9; g2.t = 200; g2.sides[1].failV = 1352; g2.sides[1].failT = 200;
-  for (let i = 0; i < 6; i++) sim.spawnUnit(g2, 1, 'tank', 1200 - i * 5, 0); // 1560 > 1352
+  const g2 = sim.newGame('easy'); g2.sides[0].aiT = 1e9; g2.t = 200; g2.sides[1].failV = V * 1.3; g2.sides[1].failT = 200;
+  for (let i = 0; i < 6; i++) sim.spawnUnit(g2, 1, 'tank', 1200 - i * 5, 0); // 6 Tanks = 1.5 V > 1.3 V
   g2.sides[1].aiT = 0; g2.sides[1].stanceAt = 180; sim.aiUpdate(g2, 1, STEP);
   assert.ok(g2.sides[1].stance === 'attack' && g2.sides[1].pushTo !== sim.L / 2 - 20, 'a clearly bigger army attacks');
 });

@@ -216,7 +216,7 @@ test('the AI casts all three under one shared cooldown; Mass Warp only for 4+ un
   step(g, A.mwarp.ch + 0.1); const wp2 = sim.warpPoint(g, 0); assert.ok(far.every(e => Math.hypot(e.u - wp2.u, e.v - wp2.v) < 80), 'and they arrived');
   // seeded Hard matches (Axiarch AI vs the Last Fist autoplayer): every cast respects the shared cooldown, and all three are used
   const used = {};
-  for (const [seed, persona] of [[2, 'turtle'], [3, 'aggressor'], [5, 'economist']]) {
+  for (const [seed, persona] of [[2, 'turtle'], [3, 'aggressor'], [5, 'economist'], [3, 'turtle'], [8, 'economist']]) { // v2.39: two more matches; after the balance pass the first three cast only Overcharge (the Beam came in 6 of 9 seeds checked)
     const S = loadSim({ random: mul(seed) });
     const m = S.newGame('hard', { autoPlayer: true, autoDiff: 'hard', persona, autoPersona: 'turtle', factions: ['lastfist', 'axiarchs'] });
     let last = null;

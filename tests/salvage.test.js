@@ -7,7 +7,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { loadSim } = require('./load-sim');
 
-const sim = loadSim();
+const sim = loadSim(); sim.setBalance(false); // v2.39: these tests pin the mechanic at its own numbers (v2.30 Salvage, v2.32 Yard and unit costs); the balance pass values are pinned in tests/salvage.test.js
 const U = sim.UDEF, S = sim.SALVAGE, MID = sim.L / 2;
 const quiet = (f0 = 'lastfist', f1 = 'bloomhost') => { const g = sim.newGame('normal', { factions: [f0, f1] }); g.countdown = 0; g.t = 30; for (const s of g.sides) { s.aiT = 1e9; s.res.c = s.res.e = 1000; } sim.setStance(g, 0, 'hold'); sim.setStance(g, 1, 'hold'); return g; };
 const put = (g, s, t, u, v = 0) => { const e = sim.spawnUnit(g, s, t, u, v); e.holdU = u; e.holdV = v; e.cd = 1e6; return e; };
@@ -18,6 +18,22 @@ const step = (g, secs) => { for (let i = 0; i < Math.round(secs * 30); i++) sim.
 
 test('the SALVAGE block holds every number: 10%, within 200, at most 200 credits per side per game minute', () => {
   assert.deepStrictEqual({ ...S }, { pct: 0.1, r: 200, cap: 200, per: 60 });
+});
+
+test('v2.39 balance pass (on in the game): Salvage 7%, the Salvage Yard 14%; a kill pays on the new costs; the Yard card says so; off restores 10% and 20%', () => {
+  const s2 = loadSim(), U2 = s2.UDEF;
+  assert.strictEqual(s2.BALANCE.on, true);
+  assert.strictEqual(s2.SALVAGE.pct, 0.07); assert.strictEqual(s2.YARD.pct, 0.14);
+  assert.deepStrictEqual({ ...U2.bulwark.cost }, { c: 150, e: 30 });
+  const g = s2.newGame('normal', { factions: ['lastfist', 'bloomhost'] }); g.countdown = 0; g.t = 30; for (const s of g.sides) s.aiT = 1e9;
+  for (const f of g.fog) { f.vis.fill(1); f.exp.fill(1); }
+  const p = (s, t, u) => { const e = s2.spawnUnit(g, s, t, u, 0); e.holdU = u; e.holdV = 0; e.cd = 1e6; return e; };
+  p(0, 'rifle', MID); const c0 = g.sides[0].res.c; s2.kill(g, p(1, 'bulwark', MID + 100), 0);
+  assert.strictEqual(g.sides[0].res.c, c0 + Math.round(150 * 0.07), 'Bulwark 150 → 11');
+  assert.match(s2.BDEF.sigA.tiers[1], /14% .*base 7%/);
+  s2.setBalance(false);
+  assert.strictEqual(s2.SALVAGE.pct, 0.1); assert.strictEqual(s2.YARD.pct, 0.2); assert.deepStrictEqual({ ...U2.bulwark.cost }, { c: 190, e: 40 });
+  assert.match(s2.BDEF.sigA.tiers[1], /20% .*base 10%/);
 });
 
 test('an enemy unit destroyed near a Last Fist unit gives 10% of its credit cost, rounded; the enemy (Bloomhost) gets nothing', () => {

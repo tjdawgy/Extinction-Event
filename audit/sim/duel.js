@@ -12,8 +12,9 @@ function army(U, spec, value, pop) {
   for (const [t, w] of parts) { const d = U[t], per = value ? (d.cost.c + d.cost.e) : d.pop; const n = Math.max(1, Math.round((value || pop) * w / W / per)); for (let i = 0; i < n; i++) out.push(t); }
   return out;
 }
-function fight(aSpec, bSpec, { value, pop, seed, facA, facB, maxT = 120 }) {
+function fight(aSpec, bSpec, { value, pop, seed, facA, facB, maxT = 120, mod }) {
   const sim = loadSim({ random: mulberry(seed) }), U = sim.UDEF;
+  if (mod) mod(sim); // an experiment's changes (UDEF values)
   const g = sim.newGame('normal', { factions: [facA, facB] }); g.countdown = 0;
   for (const s of g.sides) { s.aiT = 1e9; s.res.c = s.res.e = 0; }
   for (const f of g.fog) { f.vis.fill(1); f.exp.fill(1); }

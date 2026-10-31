@@ -139,7 +139,7 @@ test('P10 Leviathan: a line of 4 smaller bombs along its path; P12 Sovereign: a 
   const g2 = quiet('axiarchs', 'lastfist'); seeAll(g2); fin(g2, 1, 'barracks');
   const sv = put(g2, 0, 'sovereign', MID), b = fin(g2, 1, 'refinery'); sv.u = b.u; sv.holdU = b.u; sv.v = b.v; sv.holdV = b.v;
   const h0 = b.hp; step(g2, 1.5); assert.strictEqual(b.hp, h0, 'still charging');
-  let beam = false; for (let i = 0; i < 30; i++) { sim.update(g2, 1 / 30); if (g2.fx.some(f => f.k === 'beam' && f.hq && f.w === 5)) beam = true; }
+  let beam = false; for (let i = 0; i < 60 && !(beam && b.hp < h0); i++) { sim.update(g2, 1 / 30); if (g2.fx.some(f => f.k === 'beam' && f.hq && f.w === 5)) beam = true; } // v2.39: up to 2 s (the charge starts after its first, random cooldown; 1 s failed 3 runs in 20)
   assert.ok(b.hp < h0, 'then the beam lands'); assert.ok(beam, 'drawn as the heavy beam');
   assert.ok(!g2.projs.some(p => p.weapon === 'sovereign'), 'no projectile');
 });

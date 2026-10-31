@@ -3,6 +3,7 @@
 Files in this folder:
 - `unit-roster.md`: the unit roster and redesign record (phases 3a and 3b).
 - `validation.md`: the phase 4 validation results.
+- `balance-diagnosis.md`, `balance-report.md`: the phase 5 balance pass (why the factions won, what changed, the results).
 - `sim/`: the simulation harness, described below.
 
 ## The simulation harness (`audit/sim/`)
@@ -49,6 +50,38 @@ node audit/sim/validate.js [--mirror=100] [--vs=40] [--jobs=4]
 - **Default mirrors:** 100 per faction (crashes, endings, side balance, unit usage).
 - **Default vs Legacy:** 40 matches for every faction pairing.
 - Writes `audit/validation.md`. About an hour on 4 cores.
+
+### Phase 5 balance tools
+- **`balance.js`:** the balance matrix.
+  ```
+  node audit/sim/balance.js [--n=40] [--mirror=20] [--persona=8] [--diag] [--tag=name] [--code="UDEF.tank.cost={c:260,e:60};"]
+  ```
+  - Plays every cross-faction pairing, the mirrors, and each personality on both sides, on the Default AI.
+  - The cap is 30 minutes: the Extinction Event decides every match by 27:00.
+  - Endings are reported separately: HQ before 20:00, after 20:00, true draw.
+  - Also reports units in winning armies.
+  - `--code` runs an experiment's changes in every match first.
+  - Writes `out/balance-<tag>.json` and `.md`.
+- **`analyze.js <tag>`:** the diagnosis tables for a `--diag` run:
+  - economy and army curves;
+  - damage and value killed by weapon;
+  - abilities and signature-building effects;
+  - T2/T3 timing.
+- **`instrument.js`:** the `--diag` counters. It wraps `damage()` and `kill()` inside the match's context; counting only, so a match plays identically.
+- **`ab2.js`:** one pairing on the balance run's seeds, with a change. A paired A/B:
+  ```
+  node audit/sim/ab2.js lastfist bloomhost "FLAME.aim=false" flame 40
+  ```
+- **`ab.js`:** the same pairing on the same seeds, as is and with the change, in one command.
+- **`duel.js`:** controlled fights, no AI: two equal-value (or equal-supply) armies meet mid-lane.
+  ```
+  node audit/sim/duel.js --a=rifle:3,tank:2 --b=skitterling:3,bulwark:2 --value=2000
+  ```
+- **`rush.js`:** the scripted Rifleman rush (tests/bots.js) against each faction's Default AI.
+  ```
+  node audit/sim/rush.js --n=12 --diff=normal
+  ```
+- **`s3.js`:** whether the bombers' supply keeps the AI from training them (Economist sides, as is and with lower supply).
 
 ### Experiments
 A side can override its preset's dials, for example to switch one competence rule off:

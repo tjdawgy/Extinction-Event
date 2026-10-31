@@ -339,7 +339,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.38'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.39'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -770,6 +770,34 @@ function setRedesign(on) {
   REDESIGN.on = on;
 }
 setRedesign(true);
+/* ---------- Balance pass (v2.39, audit phase 5; audit/balance-report.md) ----------
+   Conservative: costs and build times first, then two small stat fixes where controlled duels showed a unit losing at equal
+   value. No mechanic changes. Each change and its reason is in the report. setBalance(false) restores every v2.38 value, so
+   a match then plays exactly as v2.38 did (the pinned replays in tests/determinism.test.js use it). */
+const BALANCE = { on: false, orig: {}, units: {
+  tank:       { cost: { c: 260, e: 60 }, time: 13 },  // was 200/40, 11 s: beat every Bloomhost and Axiarch ground unit but the Bastion at equal value
+  heavy:      { cost: { c: 125, e: 35 } },            // was 100/25: with Riflemen it out-shot every Bloomhost and Axiarch flyer
+  bulwark:    { cost: { c: 150, e: 30 }, time: 10 },  // was 190/40, 11 s: lost to the Tank at equal value and equal supply
+  razorwing:  { cost: { c: 140, e: 50 }, hp: 200 },   // was 170/70, 170 HP: lost to Riflemen and Heavies at equal value
+  spitter:    { cost: { c: 80, e: 25 } },             // was 90/30
+  leaper:     { cost: { c: 80, e: 20 } },             // was 90/20
+  shardling:  { cost: { c: 65, e: 15 }, time: 5, shp: 75 }, // was 80/20, 6 s, 60 shields: lost to Riflemen at equal value and supply; 44% of Axiarch spending
+  lancer:     { cost: { c: 120, e: 45 } },            // was 150/60
+  prismwing:  { cost: { c: 100, e: 40 } },            // was 120/50
+  wraithwing: { cost: { c: 230, e: 100 } },           // was 260/120
+  bastion:    { cost: { c: 260, e: 85 } },            // was 280/90
+}, salvage: 0.07, yard: 0.14 }; // Salvage was 10% (Yard 20%): worth about 4 wins in 40 for Last Fist, 8-16% extra income
+function setBalance(on) {
+  for (const t in BALANCE.units) {
+    const d = UDEF[t], o = BALANCE.orig[t] || (BALANCE.orig[t] = Object.fromEntries(Object.keys(BALANCE.units[t]).map(k => [k, d[k]])));
+    for (const k in o) d[k] = on ? BALANCE.units[t][k] : o[k];
+  }
+  const s0 = BALANCE.orig.salvage || (BALANCE.orig.salvage = [SALVAGE.pct, YARD.pct]);
+  SALVAGE.pct = on ? BALANCE.salvage : s0[0]; YARD.pct = on ? BALANCE.yard : s0[1];
+  BDEF.sigA.tiers[1] = `Salvage returns ${Math.round(YARD.pct * 100)}% of a unit's credit cost (base ${Math.round(SALVAGE.pct * 100)}%)`;
+  BALANCE.on = on;
+}
+setBalance(true);
 const UNIT_ORDER = ['rifle', 'heavy', 'sniper', 'tank', 'artillery', 'titan', 'flame', 'hydra', 'aircraft', 'interceptor', 'leviathan', 'medic', 'drone', 'skitterling', 'mite', 'leaper', 'ravager', 'spitter', 'bilecaster', 'bulwark', 'bilelobber', 'ruinmaw', 'thornback', 'dreadthorn', 'razorwing', 'needlewing', 'cloudwing', 'broodtyrant', 'worldrender', 'shardling', 'riftstalker', 'parallax', 'lancer', 'marksman', 'bastion', 'riftmortar', 'worldbreaker', 'gravemantle', 'eventide', 'wraithwing', 'prismwing', 'shardstorm', 'voidcarrier', 'sovereign'];
 // Credits first (Refineries before tech); Reactors are skipped while energy is plentiful
 const AI_PLAN = ['barracks', 'refinery', 'refinery', 'reactor', 'habitat', 'factory', 'reactor', 'techlab']; // roles: the same plan builds either faction's base

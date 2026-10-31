@@ -18,7 +18,7 @@ function simSource(file) {
 }
 // mulberry32: the same generator the test kit uses
 function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
-const EXPORTS = ['VERSION', 'newGame', 'update', 'UDEF', 'BDEF', 'BD', 'FACTIONS', 'FACTION_KEYS', 'PERSONAS', 'AI_PRESETS', 'UNIT_ORDER', 'popUsed', 'popCap', 'armyValue', 'income', 'setRedesign', 'REDESIGN', 'RETREAT', 'FLAME', 'SALVAGE', 'SIG', 'serialize', 'EXT', 'L', 'hqU', 'facOf', 'ABIL'];
+const EXPORTS = ['VERSION', 'BALANCE', 'setBalance', 'YARD', 'newGame', 'update', 'UDEF', 'BDEF', 'BD', 'FACTIONS', 'FACTION_KEYS', 'PERSONAS', 'AI_PRESETS', 'UNIT_ORDER', 'popUsed', 'popCap', 'armyValue', 'income', 'setRedesign', 'REDESIGN', 'RETREAT', 'FLAME', 'SALVAGE', 'SIG', 'serialize', 'EXT', 'L', 'hqU', 'facOf', 'ABIL'];
 // opts.instrument: extra code run in the match's context after the SIM loads (audit/sim/instrument.js; diagnostics only:
 // it may wrap SIM functions to count things, never change what they do)
 function loadSim(seed, opts = {}) {

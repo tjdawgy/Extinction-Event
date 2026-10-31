@@ -6,7 +6,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { loadSim } = require('./load-sim');
 
-const sim = loadSim();
+const sim = loadSim(); sim.setBalance(false); // v2.39: these tests pin the mechanic at its own numbers (v2.30 Salvage, v2.32 Yard and unit costs); the balance pass values are pinned in tests/salvage.test.js
 const U = sim.UDEF, B = sim.BDEF, S = sim.SALVAGE, Y = sim.YARD, MID = sim.L / 2;
 const step = (g, secs) => { for (let i = 0; i < Math.round(secs * 30); i++) sim.update(g, 1 / 30); };
 const quiet = (f0 = 'lastfist', f1 = 'bloomhost') => { const g = sim.newGame('normal', { factions: [f0, f1] }); g.countdown = 0; g.t = 30; for (const s of g.sides) { s.aiT = 1e9; s.res.c = s.res.e = 9000; } sim.setStance(g, 0, 'hold'); sim.setStance(g, 1, 'hold'); return g; };
