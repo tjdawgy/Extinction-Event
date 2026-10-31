@@ -1,0 +1,29 @@
+sig: 1/192sig: 2/192sig: 3/192sig: 4/192sig: 5/192sig: 6/192sig: 7/192sig: 8/192sig: 9/192sig: 10/192sig: 11/192sig: 12/192sig: 13/192sig: 14/192sig: 15/192sig: 16/192sig: 17/192sig: 18/192sig: 19/192sig: 20/192sig: 21/192sig: 22/192sig: 23/192sig: 24/192sig: 25/192sig: 26/192sig: 27/192sig: 28/192sig: 29/192sig: 30/192sig: 31/192sig: 32/192sig: 33/192sig: 34/192sig: 35/192sig: 36/192sig: 37/192sig: 38/192sig: 39/192sig: 40/192sig: 41/192sig: 42/192sig: 43/192sig: 44/192sig: 45/192sig: 46/192sig: 47/192sig: 48/192sig: 49/192sig: 50/192sig: 51/192sig: 52/192sig: 53/192sig: 54/192sig: 55/192sig: 56/192sig: 57/192sig: 58/192sig: 59/192sig: 60/192sig: 61/192sig: 62/192sig: 63/192sig: 64/192sig: 65/192sig: 66/192sig: 67/192sig: 68/192sig: 69/192sig: 70/192sig: 71/192sig: 72/192sig: 73/192sig: 74/192sig: 75/192sig: 76/192sig: 77/192sig: 78/192sig: 79/192sig: 80/192sig: 81/192sig: 82/192sig: 83/192sig: 84/192sig: 85/192sig: 86/192sig: 87/192sig: 88/192sig: 89/192sig: 90/192sig: 91/192sig: 92/192sig: 93/192sig: 94/192sig: 95/192sig: 96/192sig: 97/192sig: 98/192sig: 99/192sig: 100/192sig: 101/192sig: 102/192sig: 103/192sig: 104/192sig: 105/192sig: 106/192sig: 107/192sig: 108/192sig: 109/192sig: 110/192sig: 111/192sig: 112/192sig: 113/192sig: 114/192sig: 115/192sig: 116/192sig: 117/192sig: 118/192sig: 119/192sig: 120/192sig: 121/192sig: 122/192sig: 123/192sig: 124/192sig: 125/192sig: 126/192sig: 127/192sig: 128/192sig: 129/192sig: 130/192sig: 131/192sig: 132/192sig: 133/192sig: 134/192sig: 135/192sig: 136/192sig: 137/192sig: 138/192sig: 139/192sig: 140/192sig: 141/192sig: 142/192sig: 143/192sig: 144/192sig: 145/192sig: 146/192sig: 147/192sig: 148/192sig: 149/192sig: 150/192sig: 151/192sig: 152/192sig: 153/192sig: 154/192sig: 155/192sig: 156/192sig: 157/192sig: 158/192sig: 159/192sig: 160/192sig: 161/192sig: 162/192sig: 163/192sig: 164/192sig: 165/192sig: 166/192sig: 167/192sig: 168/192sig: 169/192sig: 170/192sig: 171/192sig: 172/192sig: 173/192sig: 174/192sig: 175/192sig: 176/192sig: 177/192sig: 178/192sig: 179/192sig: 180/192sig: 181/192sig: 182/192sig: 183/192sig: 184/192sig: 185/192sig: 186/192sig: 187/192sig: 188/192sig: 189/192sig: 190/192sig: 191/192sig: 192/192 (476 s)
+set sig, n 4 per side, seed 97000
+  lastfist greedy/timing sigA>none: 8-0 (100%) median 7 min
+  lastfist greedy/timing sigB>none: 7-1 (87.5%) median 6.5 min
+  lastfist turtle/tech sigA>none: 5-3 (62.5%) median 21.8 min
+  lastfist turtle/tech sigB>none: 3-5 (37.5%) median 21.8 min
+  lastfist contain/contain sigA>none: 6-2 (75%) median 7.8 min
+  lastfist contain/contain sigB>none: 3-5 (37.5%) median 8.3 min
+  lastfist greedy/air sigA>none: 5-3 (62.5%) median 7.1 min
+  lastfist greedy/air sigB>none: 4-4 (50%) median 7.8 min
+  bloomhost greedy/timing sigA>none: 4-4 (50%) median 7.4 min
+  bloomhost greedy/timing sigB>none: 4-4 (50%) median 7.4 min
+  bloomhost turtle/tech sigA>none: 5-3 (62.5%) median 21.8 min
+  bloomhost turtle/tech sigB>none: 5-3 (62.5%) median 21.8 min
+  bloomhost contain/contain sigA>none: 4-4 (50%) median 5.8 min
+  bloomhost contain/contain sigB>none: 5-3 (62.5%) median 5.2 min
+  bloomhost greedy/air sigA>none: 3-5 (37.5%) median 6.3 min
+  bloomhost greedy/air sigB>none: 3-5 (37.5%) median 6.3 min
+  axiarchs greedy/timing sigA>none: 4-4 (50%) median 4.7 min
+  axiarchs greedy/timing sigB>none: 4-4 (50%) median 4.7 min
+  axiarchs turtle/tech sigA>none: 0-8 (0%) median 22.1 min
+  axiarchs turtle/tech sigB>none: 0-8 (0%) median 18.9 min
+  axiarchs contain/contain sigA>none: 7-1 (87.5%) median 4.4 min
+  axiarchs contain/contain sigB>none: 3-5 (37.5%) median 4.2 min
+  axiarchs greedy/air sigA>none: 4-4 (50%) median 4.7 min
+  axiarchs greedy/air sigB>none: 4-4 (50%) median 4.7 min
+ReferenceError: pair is not defined
+    at main (/home/user/Extinction-Event/audit/sim/stratrun.js:80:5)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)

@@ -3,7 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { loadSim } = require('./load-sim');
 
-const sim = loadSim();
+const sim = loadSim(); sim.setBalance7b(false); // v2.42: these tests pin the mechanics at v2.41's numbers (the phase 7b layer off; tests/strategy.test.js covers it)
 const STEP = 1 / 30;
 const run = (g, sec, each) => { for (let i = Math.round(sec / STEP); i > 0; i--) { sim.update(g, STEP); if (each && each(g) === false) return; } };
 const quiet = (diff = 'normal') => { const g = sim.newGame(diff); g.sides[0].aiT = g.sides[1].aiT = 1e9; return g; };

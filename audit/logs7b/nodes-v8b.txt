@@ -1,0 +1,6 @@
+nodes: 1/72nodes: 2/72nodes: 3/72nodes: 4/72nodes: 5/72nodes: 6/72nodes: 7/72nodes: 8/72nodes: 9/72nodes: 10/72nodes: 11/72nodes: 12/72nodes: 13/72nodes: 14/72nodes: 15/72nodes: 16/72nodes: 17/72nodes: 18/72nodes: 19/72nodes: 20/72nodes: 21/72nodes: 22/72nodes: 23/72nodes: 24/72nodes: 25/72nodes: 26/72nodes: 27/72nodes: 28/72nodes: 29/72nodes: 30/72nodes: 31/72nodes: 32/72nodes: 33/72nodes: 34/72nodes: 35/72nodes: 36/72nodes: 37/72nodes: 38/72nodes: 39/72nodes: 40/72nodes: 41/72nodes: 42/72nodes: 43/72nodes: 44/72nodes: 45/72nodes: 46/72nodes: 47/72nodes: 48/72nodes: 49/72nodes: 50/72nodes: 51/72nodes: 52/72nodes: 53/72nodes: 54/72nodes: 55/72nodes: 56/72nodes: 57/72nodes: 58/72nodes: 59/72nodes: 60/72nodes: 61/72nodes: 62/72nodes: 63/72nodes: 64/72nodes: 65/72nodes: 66/72nodes: 67/72nodes: 68/72nodes: 69/72nodes: 70/72nodes: 71/72nodes: 72/72 (129 s)
+ReferenceError: pair is not defined
+    at /home/user/Extinction-Event/audit/sim/stratrun.js:62:5
+    at Array.forEach (<anonymous>)
+    at main (/home/user/Extinction-Event/audit/sim/stratrun.js:57:7)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)

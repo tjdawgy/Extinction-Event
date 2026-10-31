@@ -785,6 +785,7 @@ const BALANCE7B = { on: false, orig: null, patches: [
   ['BDEF.turret.cost.c', 150], ['BDEF.turret.cost.e', 40], ['BDEF.turret.time', 9], ['BDEF_BH.turret.time', 9], ['BDEF_AX.turret.time', 9],
   ['BDEF.turret.hp', 1300], ['BDEF_BH.turret.hp', 1400], ['BDEF_AX.turret.hp', 1040], ['BDEF_AX.turret.shp', 390],
   ['BDEF_BH.turret.gun.1.dmg', 22], ['BDEF_AX.turret.gun.1.dmg', 55],
+  ['BDEF_BH.turret.gun.2.dmg', 26], ['BDEF_BH.turret.gun.3.dmg', 33], ['BDEF_AX.turret.gun.2.dmg', 24], ['BDEF_AX.turret.gun.3.dmg', 120], // their upgrades stay upgrades
   // field nodes worth fighting for
   ['NODE_INC.c', 4], ['NODE_INC.e', 1.5],
   // Last Fist: Riflemen cheaper but lighter-hitting (rush with them, don't win every trade), dearer Heavies and Tanks, Flame
@@ -807,9 +808,11 @@ function b7Texts() {
   const n = v => String(Math.round(v)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   const hqT = (fac, w, x) => { const d = BD(fac, 'hq'); for (let t = 1; t <= 3; t++) { const gn = d.gun[t]; d.tiers[t] = `${w} ${gn.dmg} damage, ${gn.range} range${x ? `; ${n(d.hp * d.hpMul[t])} HP + ${n(d.shp * d.hpMul[t])} shields` : `, ${n(d.hp * d.hpMul[t])} HP`}`; } };
   hqT('lastfist', 'Turret'); hqT('bloomhost', 'Spine launcher'); hqT('axiarchs', 'Axis lance', true);
-  const maw = BDEF_BH.turret.gun[1], lance = BDEF_AX.turret.gun[1];
-  BDEF_BH.turret.tiers[1] = `Spines ${Math.round(maw.dmg / maw.cd)} damage/s, ${maw.range} range, hits air`;
-  BDEF_AX.turret.tiers[1] = `Beam ${Math.round(lance.dmg / lance.cd)} damage/s at one target, ${lance.range} range, hits air`;
+  const mw = BDEF_BH.turret.gun, ln = BDEF_AX.turret.gun, ps = gn => Math.round(gn.dmg / gn.cd);
+  for (let t = 1; t <= 3; t++) BDEF_BH.turret.tiers[t] = `Spines ${ps(mw[t])} damage/s, ${mw[t].range} range, hits air`;
+  BDEF_AX.turret.tiers[1] = `Beam ${ps(ln[1])} damage/s at one target, ${ln[1].range} range, hits air`;
+  BDEF_AX.turret.tiers[2] = `Split Lattice: up to 3 beams of ${ps(ln[2])} damage/s, ${ln[2].range} range, hits air`;
+  BDEF_AX.turret.tiers[3] = `Event Horizon: heavy ${ln[3].dmg}-damage hits (${ps(ln[3])}/s), ${ln[3].range} range, more building damage, hits air`;
 }
 /* ---------- Balance pass (v2.39, audit phase 5; audit/balance-report.md) ----------
    Conservative: costs and build times first, then two small stat fixes where controlled duels showed a unit losing at equal
@@ -2937,8 +2940,11 @@ function aiUpdate(g, s, dt) {
   const bo = aiFix(side.persona, 'breakout'), camp = bo ? theirs.filter(e => e.fresh && Math.abs(e.u - hqU(s)) < 750 && !UDEF[e.type].support) : [];
   const campV = armyValue(camp), homeArmy = bo ? mine.filter(u => Math.abs(u.u - hqU(s)) < 800 && !UDEF[u.type].support && !UDEF[u.type].air) : [];
   if (bo) {
-    if (camp.length && campV >= 150) { if (side.pressT === undefined) side.pressT = g.t; } else side.pressT = undefined;
-    side.boHold = camp.length > 0 && campV >= 150 && aiPower(homeArmy) < aiPower(camp) * 1.4;
+    // a camp it saw in the last 15 s still counts (holding deep, it loses sight of the camp)
+    if (camp.length && campV >= 150) { if (side.pressT === undefined) side.pressT = g.t; side.campT = g.t; side.campP = aiPower(camp); side.campU = camp.reduce((a, e) => a + e.u, 0) / camp.length; }
+    else if (!(g.t - (side.campT ?? -99) < 15)) side.pressT = undefined;
+    const camped = g.t - (side.campT ?? -99) < 15;
+    side.boHold = camped && aiPower(homeArmy) < side.campP * 1.4;
     if (side.boHold) side.defU = hqU(s) + dir * 140; else if (!holdEarly && side.defU != null) side.defU = null;
   }
   if (side.spotsRush === undefined) side.spotsRush = Math.random() < D.turret; // reaction quality, decided once per match
@@ -3031,7 +3037,7 @@ function aiUpdate(g, s, dt) {
     const bar = alive(g, s, 'barracks');
     if (bar.length && bar.length < 2 && bar.every(b => aiPathFrom(side.faction, 'barracks', b.path || b.upPath) === 'B')) want = 'barracks'; // then its T2 upgrade takes Specialists
   }
-  if (want && side.slots.some(x => !x) && constructing.length < 2) {
+  if (want && side.slots.some(x => !x) && (constructing.length < 2 || (bo && want === 'turret' && side.pressT !== undefined))) { // v2.42 (breakout): the pressure Turret doesn't wait for other construction
     const d = bdS(g, s, want);
     if (!d.req || hasBuilt(g, s, d.req)) {
       const r = tryBuild(g, s, want, wantPad);
@@ -3257,8 +3263,8 @@ function aiUpdate(g, s, dt) {
   const strikeWait = side.ab.strike - g.t, holdForStrike = P.kind === 'aggressor' && D !== DIFF.easy && !threat && !late && strikeWait > 0 && strikeWait < 12 && aiFortified(g, s) && hasBuilt(g, s, 'factory');
   if (bo && side.boHold && side.stance === 'attack' && side.pushMode !== 'all' && side.pushMode !== 'siege') { side.stance = 'retreat'; side.pushTo = null; side.pushMode = null; side.stanceAt = g.t; } // v2.42 (breakout): back under the gun
   if (bo && side.boHold && side.stance !== 'attack') { /* v2.42 (breakout): hold and gather; no push while camped on */ }
-  else if (bo && camp.length && campV >= 150 && side.stance !== 'attack' && g.t < EXT.warn) { // stronger now: out together, at the camp
-    const cu = camp.reduce((a, e) => a + e.u, 0) / camp.length; go(clamp(cu, 0, L), 'field', true); side.regroupT = 0;
+  else if (bo && g.t - (side.campT ?? -99) < 15 && side.stance !== 'attack' && g.t < EXT.warn) { // stronger now: out together, at the camp
+    go(clamp(side.campU, 0, L), 'field', true); side.regroupT = 0; side.campT = -99;
   }
   else if (side.stance !== 'attack' && g.t >= EXT.warn && myV >= 200 && myV >= thV * 0.7) go(null, 'all'); // the storm is coming: everything in
   else if (side.stance !== 'attack' && punishOn && aiFix(P, 'punish') && g.t >= 105 && myV >= 400 && aiPower(mine) >= aiPower(theirs) * 1.5) go(fieldLine, 'field', true); // v2.41 (read): the timed push on a greedy opening: the field and its nodes, then the base once clearly stronger

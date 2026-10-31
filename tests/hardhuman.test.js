@@ -12,7 +12,7 @@ const V240_DEFAULT = ['a6dd32bf8bcaf1812d05d91004681f404249e769f8e593274578d6fdd
 test('the Default AI plays exactly as v2.40 on Normal, Easy and Hard (Easy and Normal unchanged)', () => {
   const got = [];
   for (const [d, f0, f1, p0, p1] of [['normal', 'lastfist', 'bloomhost', 'aggressor', 'turtle'], ['easy', 'axiarchs', 'lastfist', 'economist', 'trickster'], ['hard', 'bloomhost', 'axiarchs', 'economist', 'aggressor']]) {
-    const s = loadSim({ random: mulberry(77) });
+    const s = loadSim({ random: mulberry(77) }); s.setBalance7b(false); // v2.42: on v2.41's numbers (the phase 7b layer off) the Default AI is still v2.40's
     const g = s.newGame(d, { autoPlayer: true, autoDiff: d, ai: 'default', autoAi: 'default', persona: p1, autoPersona: p0, factions: [f0, f1] });
     for (let i = 0; i < 30 * 600 && !g.over; i++) s.update(g, 1 / 30);
     const o = JSON.parse(s.serialize(g, {})); delete o.log; for (const sd of o.sides) if (sd.persona) { delete sd.persona.preset; delete sd.persona.smart; delete sd.persona.dial; }
@@ -89,7 +89,7 @@ test('the Greedy bot (audit harness) plays a full match against Hard: economy fi
   const r = runMatch({ seed: 5, diff: 'hard', maxT: 1800, sides: [{ faction: 'lastfist', bot: 'greedy' }, { faction: 'lastfist', ai: 'hard', persona: 'random' }] });
   assert.ok(r.t < 1800 && r.winner >= 0, `ended (${r.t} s, winner ${r.winner})`);
   const s30 = r.samples.find(x => x.t >= 30), s120 = r.samples.find(x => x.t >= 120);
-  assert.ok(s30.earned[0] > 200, 'its economy is running by 0:30');
+  assert.ok(s30.earned[0] > 150, 'its economy is running by 0:30'); // v2.42: Refineries take 13 s (was 10)
   assert.ok(s120.nodes.filter(o => o === 0).length >= 1, 'holds field nodes by 2:00');
   assert.ok(r.sides[0].bot && r.sides[0].bot.attacks >= 0);
 });

@@ -15,7 +15,7 @@ const V239_DEFAULT = ['bdd98b34e8ee1fb54b2be07e1d74d212a25aced384f70fe5f13f4280c
 test('the v239 preset plays exactly as v2.39\'s Default did (the baseline the harness measures against)', () => {
   const got = [];
   for (const [f0, f1, p0, p1] of [['lastfist', 'bloomhost', 'aggressor', 'turtle'], ['axiarchs', 'lastfist', 'economist', 'trickster']]) {
-    const s = loadSim({ random: mulberry(2024) });
+    const s = loadSim({ random: mulberry(2024) }); s.setBalance7b(false); // v2.42: v2.39's Default on v2.41's numbers
     const g = s.newGame('hard', { autoPlayer: true, autoDiff: 'hard', ai: 'v239', autoAi: 'v239', persona: p1, autoPersona: p0, factions: [f0, f1] });
     for (let i = 0; i < 30 * 600 && !g.over; i++) s.update(g, 1 / 30); // to the end of the match or 10 minutes
     const o = JSON.parse(s.serialize(g, {})); delete o.log; for (const sd of o.sides) if (sd.persona) { delete sd.persona.preset; delete sd.persona.smart; delete sd.persona.dial; }

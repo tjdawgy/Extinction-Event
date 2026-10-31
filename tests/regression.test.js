@@ -3,7 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { loadSim, readHtml } = require('./load-sim');
 
-const sim = loadSim();
+const sim = loadSim(); sim.setBalance7b(false); // v2.42: these tests pin the mechanics at v2.41's numbers (the phase 7b layer off; tests/strategy.test.js covers it)
 const STEP = 1 / 30;
 const run = (g, sec) => { for (let i = Math.round(sec / STEP); i > 0; i--) sim.update(g, STEP); };
 function base(types = ['barracks']) { // a quiet game with finished buildings for side 0
