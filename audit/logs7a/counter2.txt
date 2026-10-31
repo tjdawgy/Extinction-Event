@@ -1,0 +1,2 @@
+counter rule off: Interceptors 44, Flame Tanks 0, Tanks 270, Artillery 52, Riflemen 1040 in 24 matches; AI wins 19-5
+counter rule on: Interceptors 0, Flame Tanks 3, Tanks 269, Artillery 46, Riflemen 1024 in 24 matches; AI wins 19-5

@@ -2,6 +2,38 @@
 
 Issues found during testing that are deliberately deferred. Each lists the step that should address it.
 
+## Audit phase 7a: Hard against human-style play (v2.41)
+- **Report:** audit/hard-vs-human-report.md. **Logs:** audit/logs7a/. **Tools** (audit/sim): greedy.js (the Greedy bot), greedyrun.js, ablate7a.js, hardsearch7a.js, validate7a.js, shield7a.js, counter7a.js, botvbot.js.
+- **Greedy bot:** a scripted copy of the opening that beat v2.40 Hard:
+  - three Refineries by 0:22, all at T2 by about 1:45, a node runner on all three nodes;
+  - no army until 2:30 (or until attacked);
+  - then a mixed army that regroups at a flag before attacking, and uses abilities.
+- **v2.40 Hard vs Greedy:** 11–115 (8.7%). **v2.41 Hard vs Greedy:** 79–47 (62.7%). Last Fist 33–9, Axiarchs 25–17, Bloomhost 21–21.
+- **Target missed for Bloomhost and Axiarchs (≥70%):** both lose 1–13 to a Last Fist Greedy and win 20–8 and 24–4 against the other two bot factions.
+  - Greedy vs Greedy (identical play) goes Last Fist 20–0 Bloomhost and 18–2 Axiarchs. So this looks like Last Fist faction strength, an input for 7b.
+  - Stopped after one round, as briefed.
+- **New Hard (`AI_PRESETS.hard`):**
+  - the new Boomer opening (never rolled at random) for every faction;
+  - reaction 0.6 (Bloomhost 1.0), no signature building;
+  - the `HARD_FIX` rules: `read`, `contest`, `counter`, `nowave`, `shield`, `power`, `fill`, `est`.
+  - `punish` (a timed attack on a greedy opening) measured worse (37 vs 41 of 54) and is off.
+  - v2.40's Hard is the `hard240` preset.
+- **Hard vs Default:** 39–1, 40–0, 38–2. **Easy and Normal:** unchanged bit for bit (Default replays hash as v2.40, tests/hardhuman.test.js); the new rules are Hard only.
+- **Hard vs Hard** (40 paired each):
+  - Last Fist 34–6 Bloomhost; Last Fist 33–7 Axiarchs; Bloomhost 22–18 Axiarchs.
+  - Shares: Last Fist 84%, Bloomhost 35%, Axiarchs 31% (v2.40: 85 / 6 / 59).
+- **Emergency Shield** (Hard, rule on vs off): 6 casts blocking 236 each, against 20 casts blocking 115 each, at the same record. **Interceptors** against a ground-only army: 0 against 44.
+- **Open:**
+  - The AI has no working punish of a greedy opening; it matches the economy instead.
+  - Flame and splash appear only against light-heavy armies (over 55% light).
+  - The army estimate (`est`) is coarse (a fixed 40% share).
+  - Rebuilding inside a lost base was not done (low priority, as briefed).
+- **Tests:**
+  - New: tests/hardhuman.test.js.
+  - tests/bh-spire.test.js's Bloomspire coverage test names `ai: 'default'` (a general-AI test in a Hard game).
+  - **Intermittent, pre-existing:** tests/redesign.test.js "P11 Worldrender" is unseeded (`loadSim()`) and fails about 1 run in 4. It failed 3 of 8 on v2.40's index.html, so it was not caused by this phase. Fix: seed it.
+  - The browser test "match start: GET READY" timed out once (4 s) while a simulation was loading the CPU; it passed on two reruns.
+
 ## Audit phase 6a: AI tactics and Hard mode (v2.40)
 - **Report:** audit/ai-tactics-report.md. **Tools:** audit/sim tactics.js (paired rule A/B), hardsearch.js (strategy search); run.js gained `paired`.
 - **Step 0:** v2.39 merged into main. One `npm test` run then showed 348 of 349 (failing test not identified; the rerun passed 349 of 349), and main was pushed before that result was read.

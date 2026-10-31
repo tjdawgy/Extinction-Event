@@ -1,0 +1,8 @@
+AI {"ai":"hard"} vs Greedy: lastfist 1-35, bloomhost 4-32, axiarchs 3-33; total 8-100 (AI 7.4%)
+pairs (AI<bot): lastfist<lastfist 0-12, lastfist<bloomhost 0-12, lastfist<axiarchs 1-11, bloomhost<lastfist 1-11, bloomhost<bloomhost 0-12, bloomhost<axiarchs 3-9, axiarchs<lastfist 0-12, axiarchs<bloomhost 0-12, axiarchs<axiarchs 3-9
+
+real	4m11.095s
+user	15m47.631s
+sys	0m19.887s
+
+[exited with code 0]

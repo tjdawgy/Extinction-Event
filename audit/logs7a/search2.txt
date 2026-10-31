@@ -1,0 +1,9 @@
+bloomhost {"persona":"boomer","dial":{"delay":1,"sigAt":99999,"paths":{"factory":"B"}}}: Greedy 11-7-0 (61%) [lastfist 1-5, bloomhost 4-2, axiarchs 6-0], Default 10-0-0 (100%), score 81
+bloomhost {"persona":"boomer","dial":{"delay":1,"sigAt":99999,"paths":{"barracks":"B"}}}: Greedy 8-10-0 (44%) [lastfist 0-6, bloomhost 2-4, axiarchs 6-0], Default 10-0-0 (100%), score 72
+bloomhost {"persona":"boomer","dial":{"delay":1,"sigAt":99999,"paths":{"techlab":"B"}}}: Greedy 11-7-0 (61%) [lastfist 1-5, bloomhost 4-2, axiarchs 6-0], Default 10-0-0 (100%), score 81
+bloomhost {"persona":"boomer","dial":{"delay":1,"sigAt":99999,"nodes":3}}: Greedy 11-7-0 (61%) [lastfist 1-5, bloomhost 4-2, axiarchs 6-0], Default 10-0-0 (100%), score 81
+bloomhost {"persona":"boomer","dial":{"delay":0.8,"sigAt":99999}}: Greedy 9-9-0 (50%) [lastfist 1-5, bloomhost 2-4, axiarchs 6-0], Default 10-0-0 (100%), score 75
+lastfist {"persona":"boomer","dial":{"delay":0.6,"sigAt":99999,"tech":"techlab"}}: Greedy 16-2-0 (89%) [lastfist 5-1, bloomhost 5-1, axiarchs 6-0], Default 9-1-0 (90%), score 89
+lastfist {"persona":"boomer","dial":{"delay":0.8,"sigAt":99999}}: Greedy 14-4-0 (78%) [lastfist 4-2, bloomhost 4-2, axiarchs 6-0], Default 10-0-0 (100%), score 89
+axiarchs {"persona":"boomer","dial":{"delay":0.6,"sigAt":99999,"paths":{"factory":"B"}}}: Greedy 13-5-0 (72%) [lastfist 1-5, bloomhost 6-0, axiarchs 6-0], Default 10-0-0 (100%), score 86
+axiarchs {"persona":"boomer","dial":{"delay":0.8,"sigAt":99999}}: Greedy 12-6-0 (67%) [lastfist 1-5, bloomhost 5-1, axiarchs 6-0], Default 9-1-0 (90%), score 78

@@ -1,0 +1,6 @@
+lastfist {"ai":"hard","persona":"boomer","fix":{"read":false,"contest":true,"counter":true,"nowave":true,"shield":true,"power":true,"fill":true,"est":true}}: 20-0-0 (100%)
+lastfist {"ai":"hard"}: 20-0-0 (100%)
+bloomhost {"ai":"hard","persona":"boomer","fix":{"read":false,"contest":true,"counter":true,"nowave":true,"shield":true,"power":true,"fill":true,"est":true}}: 20-0-0 (100%)
+bloomhost {"ai":"hard"}: 20-0-0 (100%)
+axiarchs {"ai":"hard","persona":"boomer","fix":{"read":false,"contest":true,"counter":true,"nowave":true,"shield":true,"power":true,"fill":true,"est":true}}: 20-0-0 (100%)
+axiarchs {"ai":"hard"}: 19-1-0 (95%)

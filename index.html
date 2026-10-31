@@ -339,7 +339,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.40'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.41'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -828,7 +828,11 @@ function aiPlanWith(plan, sig) {
    (difficulty still decides how well they are carried out). A personality adds no rules, resources or
    vision: it only reorders and reweights the AI's existing choices, with some variation per match. */
 const PERSONAS = ['aggressor', 'turtle', 'economist', 'trickster'];
-const PERSONA_NAME = { aggressor: 'The Aggressor', turtle: 'The Turtle', economist: 'The Economist', trickster: 'The Trickster' };
+const PERSONA_NAME = { aggressor: 'The Aggressor', turtle: 'The Turtle', economist: 'The Economist', trickster: 'The Trickster', boomer: 'The Boomer' };
+// v2.41 (audit phase 7a): the Boomer, the human-style greedy opening (three economy buildings first, every Refinery to T2 at
+// once, a small army until the economy is up). Never rolled at random (PERSONAS stays the four); a preset's opening list
+// (byFac kinds) can name it, and the strategy search measured it for Hard.
+const PERSONA_EXTRA = ['boomer'];
 /* ---------- AI presets (v2.38, audit phase 4) ----------
    One brain (aiUpdate and its helpers) for every AI side, driven by dials. A preset holds the dials and says whether the
    competence rules are on; the personality (rollPersona) still sets the style: build plan, attack edges, unit tastes,
@@ -851,7 +855,22 @@ const PERSONA_NAME = { aggressor: 'The Aggressor', turtle: 'The Turtle', economi
 // the harness (dial.fix); the Default preset turns on the ones that measured as an improvement: engage (+5 wins in 48 against
 // v2.39) and sig (+5). Measured and left off: mass, defend, finish, hold (neutral), tech as a fixed rule (worse; the tech
 // dial is Hard's), axf (worse).
-const AI_TACTICS = { mass: false, engage: true, defend: false, sig: true, tech: false, finish: false, axf: false, hold: false };
+const AI_TACTICS = { mass: false, engage: true, defend: false, sig: true, tech: false, finish: false, axf: false, hold: false,
+  // v2.41 (audit phase 7a, audit/hard-vs-human-report.md): rules against human-style greedy play, each A/B tested against
+  // the scripted Greedy bot (audit/sim/greedy.js); off in Default, the Hard preset turns on the ones it keeps
+  read: false,    // scout from 0:35 and read the opponent: many economy buildings, upgraded Refineries or nodes taken with a small army
+                  // mark a greedy opening, answered by a timed attack (army first until it lands)
+  punish: false,  // with read: the timed push itself (the field and its nodes from 1:45, at 1.5x the strength it has seen)
+  contest: false, // every personality contests a field node the enemy holds or is taking with little around it, from a smaller army
+  counter: false, // no anti-air-only unit without seen enemy air; an infantry flood calls for splash and flame (paths and scores)
+  nowave: false,  // no piecemeal waves: field and node pushes weigh every enemy unit it knows of, every push waits out the regroup
+                  // time, and a push leaves only with most of the army gathered
+  shield: false,  // defensive abilities (Emergency Shield, Shield Overcharge) only on units already taking fire from enemies in reach
+  est: false,     // an unseen army still counts: the enemy army is at least 40% of what its scouted economy has earned, less what it killed
+  fill: false,    // the opening's army cap (earlyFill) lifts at 2:30, or once the enemy army it knows of is worth 70% of its own
+  power: false,   // energy starved (under 100 banked, energy income under a fifth of credit income, after 2:00): another Reactor first,
+                  // else the Reactor upgrades first, else (every Reactor at T3, 600 credits banked) a Refinery traded for a Reactor
+};
 const AI_SIG_LATE = 300; // sig: the earliest time for a signature building (later with the sigAt dial)
 const AI_TECH = { economist: 'techlab', trickster: 'techlab', turtle: 'factory', aggressor: 'barracks' }; // tech: the building each personality takes to T3 first (the tech dial overrides)
 const AI_DIALS = { nodes: 2, eco: 0, bank: 2500, attackAt: 0, minArmy: 300, turrets: 0, sigAt: 0, sell: true, scout: 0, retreat: 0.7, delay: 1, late: 1080, comp: {} };
@@ -865,7 +884,15 @@ const AI_PRESETS = {
   // Each faction: the Economist opening (the best of the four for all three), decisions every 0.6 of the difficulty's
   // interval (reaction time, not information), no signature building (sigAt beyond any match), and for Last Fist the Air
   // Power Tech Lab to T3 right after T2. Searched over 768 paired matches (the report has every candidate).
+  // v2.41 (audit phase 7a, audit/hard-vs-human-report.md): the Boomer opening for every faction (the search with the Greedy
+  // bot in the field picked it over all four personalities), reaction 0.6 (Bloomhost 1), no signature building, and the
+  // phase 7a rules it kept (HARD_FIX). Its v2.40 form is the hard240 preset.
   hard: { name: 'Hard', smart: true, dials: Object.assign({}, AI_DIALS, { scout: 70, comp: {} }), fix: null, byFac: {
+    lastfist: { kinds: ['boomer'], dials: { delay: 0.6, sigAt: 99999 } },
+    bloomhost: { kinds: ['boomer'], dials: { delay: 1, sigAt: 99999 } },
+    axiarchs: { kinds: ['boomer'], dials: { delay: 0.6, sigAt: 99999 } } } },
+  // v2.40's Hard exactly: the baseline for phase 7a
+  hard240: { name: 'Hard v2.40', smart: true, dials: Object.assign({}, AI_DIALS, { scout: 70, comp: {} }), fix: null, byFac: {
     lastfist: { kinds: ['economist'], dials: { delay: 0.6, sigAt: 99999, tech: 'techlab' } },
     bloomhost: { kinds: ['economist'], dials: { delay: 0.6, sigAt: 99999 } },
     axiarchs: { kinds: ['economist'], dials: { delay: 0.6, sigAt: 99999 } } } },
@@ -873,7 +900,10 @@ const AI_PRESETS = {
   v239: { name: 'Default v2.39', smart: true, dials: Object.assign({}, AI_DIALS, { scout: 70, comp: {} }),
     fix: { scores: true, room: true, pathUnits: true, spot: true, leash: true, carrier: true, timing: true, spend: true, batch: false } },
 };
-AI_PRESETS.hard.fix = Object.assign({}, AI_PRESETS.default.fix);
+// v2.41: the phase 7a rules Hard keeps (each A/B in the report; punish measured worse and stays off)
+const HARD_FIX = { read: true, contest: true, counter: true, nowave: true, shield: true, power: true, fill: true, est: true };
+AI_PRESETS.hard.fix = Object.assign({}, AI_PRESETS.default.fix, HARD_FIX);
+AI_PRESETS.hard240.fix = Object.assign({}, AI_PRESETS.default.fix);
 const AI_PRESET_KEYS = Object.keys(AI_PRESETS);
 const aiDials = P => (P && P.dial) || AI_DIALS; // a persona without dials (an older save) reads the legacy constants
 const aiSmart = P => !!(P && P.smart);
@@ -888,11 +918,12 @@ function rollPersona(kind, preset, fac, diffKey) {
   const A = AI_PRESETS[preset] || AI_PRESETS.default, F = A.byFac && A.byFac[facOf(fac)];
   const P = rollPersona0(kind || (F && F.kinds ? pickOne(F.kinds) : kind));
   P.preset = AI_PRESETS[preset] ? preset : 'default'; P.smart = A.smart; P.dial = Object.assign({}, A.dials, F && F.dials, { comp: Object.assign({}, A.dials.comp) }, A.fix ? { fix: Object.assign({}, A.fix, F && F.fix) } : {});
+  if (F && F.paths) P.paths = Object.assign({}, P.paths, F.paths); // v2.41: a preset's per-faction production paths (Last Fist terms)
   if (A.byDiff && A.byDiff[diffKey]) Object.assign(P.dial, A.byDiff[diffKey]);
   return P;
 }
 function rollPersona0(kind) {
-  if (!PERSONAS.includes(kind)) kind = pickOne(PERSONAS);
+  if (!PERSONAS.includes(kind) && !PERSONA_EXTRA.includes(kind)) kind = pickOne(PERSONAS);
   // refDelta: Refineries vs what the difficulty allows; wave / fieldEdge / attackEdge scale the attack thresholds;
   // upShift moves the first upgrade; bias weights unit choices; feint: share of pushes that pull back;
   // deadline: by then a Turtle with a full army attacks; opportunist: punishes weak spots it can see;
@@ -914,6 +945,10 @@ function rollPersona0(kind) {
                    ['refinery', 'barracks', 'refinery', 'refinery', 'reactor', 'habitat', 'factory', 'techlab']]),
     upShift: -rand(30, 60), fieldEdge: 0.75, wave: rand(1.0, 1.2), earlyFill: rand(0.5, 0.6),
     upgFirst: [['refinery', 2], ['techlab', 2], ['refinery', 3]], bias: { aircraft: 1.25, titan: 1.2, rifle: 0.75, heavy: 0.9 }, paths: { barracks: 'A', factory: 'A', techlab: 'A' } });
+  else if (kind === 'boomer') Object.assign(P, { // v2.41: no random rolls of its own beyond the plan, so it never shifts another opening's dice
+    plan: ['refinery', 'refinery', 'refinery', 'barracks', 'reactor', 'habitat', 'factory', 'techlab'],
+    upShift: -75, fieldEdge: 0.75, wave: 1.1, earlyFill: 0.35, refDelta: 1,
+    upgFirst: [['refinery', 2], ['refinery', 2], ['refinery', 2], ['habitat', 2], ['barracks', 2], ['factory', 2]], bias: { tank: 1.15, heavy: 1.1, rifle: 0.85 }, paths: { barracks: 'A', factory: 'A', techlab: 'A' } });
   else Object.assign(P, { // trickster
     plan: pickOne([AI_PLAN, ['barracks', 'refinery', 'barracks', 'refinery', 'reactor', 'habitat', 'factory', 'techlab']]),
     wave: rand(0.8, 1.3), feint: rand(0.25, 0.4), opportunist: true, bias: { aircraft: 1.15, sniper: 1.1 }, paths: { barracks: 'B', factory: 'B', techlab: 'A' } });
@@ -1010,7 +1045,7 @@ function aiStrikeTarget(g, s, kind, lvl, seen, ctx, k = 'strike') {
 }
 function aiShieldTarget(g, s, kind, lvl, seen, ctx, k = 'shield') {
   const A = ABIL[k], side = g.sides[s], home = hqU(s), buffed = o => k === 'frenzy' ? o.frzT > g.t : k === 'overcharge' ? o.ovT > g.t : o.shT > g.t;
-  const attacking = side.stance === 'attack' && !(side.feintUntil > g.t);
+  const attacking = side.stance === 'attack' && !(side.feintUntil > g.t), sh7 = aiFix(side.persona, 'shield') && k !== 'frenzy';
   if ((kind === 'economist' || kind === 'turtle') && !ctx.threat) return null; // defensive personalities shield at home
   if (kind === 'trickster' && !attacking && !ctx.threat) return null;
   const need = [520, 460, 400][lvl] * (kind === 'aggressor' && attacking ? 0.8 : 1);
@@ -1018,8 +1053,12 @@ function aiShieldTarget(g, s, kind, lvl, seen, ctx, k = 'shield') {
   for (const m of ctx.mine) {
     if (buffed(m)) continue;
     let foe = 0;
-    for (const e of seen) if (Math.abs(e.u - m.u) < 230) foe += e.kind === 'u' ? UDEF[e.type].cost.c : (bdOf(e).gun ? 300 : 0);
+    for (const e of seen) if (Math.abs(e.u - m.u) < 230) {
+      if (sh7) { const gun = e.kind === 'u' ? UDEF[e.type] : bdOf(e).gun && bdOf(e).gun[e.tier]; if (!gun || !gun.dmg || Math.hypot(e.u - m.u, e.v - m.v) > gun.range + 40) continue; } // v2.41 (shield): only enemies with this unit in reach
+      foe += e.kind === 'u' ? UDEF[e.type].cost.c : (bdOf(e).gun ? 300 : 0);
+    }
     if (foe < 200) continue; // not in a fight
+    if (sh7 && ctx.mine.filter(o => o.lastHurt > g.t - 1.5 && Math.hypot(o.u - m.u, o.v - m.v) <= A.r).length < 2) continue; // v2.41 (shield): two or more of its units there already taking fire
     let near = 0; for (const o of ctx.mine) if (Math.abs(o.u - m.u) < 230) near += UDEF[o.type].cost.c;
     if (lvl === 2 && near > foe * 1.6) continue; // Hard: a fight already won needs no shield
     if (kind === 'turtle' && Math.abs(m.u - home) > 650) continue;
@@ -2800,9 +2839,11 @@ function aiPickPath(g, s, b, P, theirs) {
   if (D === DIFF.easy) return to(def);
   const have = g.ents.filter(e => e !== b && e.side === s && e.type === b.type && e.hp > 0).map(e => aiPathFrom(fac, b.type, e.path || e.upPath)).filter(Boolean);
   if (b.type === 'barracks' && aiArmorShare(theirs) > 0.35 && !have.includes('A')) return to('A');
+  if (b.type === 'factory' && aiFix(P, 'counter') && theirs.length >= 5 && aiLightShare(theirs) >= 0.55 && !have.includes('B')) return to('B'); // v2.41 (counter): an infantry flood, the Assault path (Flame Tanks)
   if (have.length && have.includes(def)) return to(def === 'A' ? 'B' : 'A');
   return to(def);
 }
+const aiLightShare = theirs => { let a = 0, t = 0; for (const u of theirs) { const d = UDEF[u.type], v = (d.cost.c + d.cost.e) * u.w; t += v; if (d.armor === 'light') a += v; } return t ? a / t : 0; };
 const aiArmorShare = theirs => { let a = 0, t = 0; for (const u of theirs) { const d = UDEF[u.type], v = (d.cost.c + d.cost.e) * u.w; t += v; if (d.armor === 'vehicle' || (d.air && d.hitsGround !== false)) a += v; } return t ? a / t : 0; };
 function freeProducer(g, s, unit) { return g.ents.some(e => e.side === s && canMake(e, unit) && e.queue.length < 1); }
 
@@ -2818,7 +2859,10 @@ function aiUpdate(g, s, dt) {
   for (const e of g.ents) if (e.hp > 0 && e.kind === 'u' && e.side === s) mine.push(e);
   // The enemy army as this side knows it: units it has seen, fading out over INTEL_TTL seconds
   const theirs = Object.values(fog.intel).map(m => ({ type: m.type, u: m.u, w: Math.max(0, 1 - (g.t - m.t) / INTEL_TTL), fresh: g.t - m.t <= THREAT_MEMORY }));
-  const myV = armyValue(mine), thV = armyValue(theirs);
+  const myV = armyValue(mine);
+  let thV = armyValue(theirs);
+  // v2.41 (est): the enemy army it hasn't seen still exists: at least what the economy it has scouted could have paid for
+  if (aiFix(side.persona, 'est')) thV = Math.max(thV, aiEstimate(g, s));
   const near = theirs.filter(u => u.fresh && Math.abs(u.u - hqU(s)) < 650);
   const threat = near.length > 0;
   const danger = near.some(u => Math.abs(u.u - hqU(s)) < 430); // enemies inside the base, not just nearby
@@ -2837,7 +2881,11 @@ function aiUpdate(g, s, dt) {
   const reserve = { c: 0, e: 0 };
   const fill = D.armyCap + (1 - D.armyCap) * clamp((g.t - 720) / 480, 0, 1); // share of the army limit it uses
   const P = side.persona || (side.persona = rollPersona()), dl = aiDials(P), smart = aiSmart(P); // v2.38: the preset's dials and competence
-  const fillNow = g.t < 300 && !threat ? Math.min(fill, P.earlyFill) : fill; // a greedy opening fields less until 5:00 (unless threatened)
+  // v2.41 (read): what its scouting says about the opponent's opening; a greedy one is punished (army first) for up to 2:30
+  const rd = aiFix(P, 'read');
+  if (rd) aiRead(g, s, thV);
+  const punishOn = rd && side.greedT !== undefined && !side.punished && g.t < side.greedT + 150;
+  const fillNow = g.t < (aiFix(P, 'fill') ? 150 : 300) && !threat && !punishOn && !(aiFix(P, 'fill') && thV >= myV * 0.7 && thV > 0) ? Math.min(fill, P.earlyFill) : fill; // a greedy opening fields less until 5:00 (unless threatened)
   const log = side.aiLog || (side.aiLog = { firstAttack: null, attacks: 0, feints: 0, firstUpgrade: null, trained: {} });
   if (danger) side.lastDanger = g.t;
   // Adapting: an Aggressor whose attacks keep failing turns to economy for a while;
@@ -2857,7 +2905,9 @@ function aiUpdate(g, s, dt) {
   const constructing = g.ents.filter(e => e.kind === 'b' && e.side === s && !e.built && e.hp > 0);
   const freePad = side.slots.some(x => !x);
   let want = null, wantPad = -1, planIdx = -1;
+  const inc0 = income(g, s), starved = aiFix(P, 'power') && g.t > 120 && side.res.e < 100 && inc0.e < inc0.c * 0.2; // v2.41 (power): energy starved (under a fifth of its credit income)
   if (cap < POP_MAX && used >= cap - 3 && !constructing.some(b => b.type === 'habitat') && freePad) want = 'habitat';
+  else if (starved && hasBuilt(g, s, 'barracks') && countB(g, s, 'reactor') < 3 && freePad && !constructing.some(b => b.type === 'reactor')) want = 'reactor'; // v2.41 (power)
   else if (holdEarly && hasBuilt(g, s, 'barracks') && countB(g, s, 'turret') < 1 && freePad) { want = 'turret'; wantPad = side.slots[4] ? -1 : 4; } // v2.40 (hold)
   else if (holdEarly && hasBuilt(g, s, 'barracks') && countB(g, s, 'factory') < 1 && freePad) want = 'factory'; // v2.40 (hold): the vehicle counter
   else if (side.spotsRush && infantryRush && countB(g, s, 'turret') < (armyValue(near) > 800 ? 2 : 1)) { want = 'turret'; wantPad = side.slots[4] ? -1 : 4; } // front pad
@@ -2878,6 +2928,7 @@ function aiUpdate(g, s, dt) {
       if (t === 'refinery' && (need.refinery || 0) >= refCap) continue;
       if (t === 'reactor' && side.res.e > ENERGY_PLENTY) continue; // energy to spare: no new Reactor
       if ((calm || defend) && (t === 'techlab' || t === 'reactor')) continue;  // no tech while under pressure
+      if (punishOn && (t === 'techlab' || (t === 'refinery' && (need.refinery || 0) >= 2))) continue; // v2.41 (read): army first while punishing
       need[t] = (need[t] || 0) + 1;
       if (countB(g, s, t) < need[t]) { want = t; planIdx = plan.indexOf(t); if (t === 'turret' && !side.slots[4]) wantPad = 4; break; }
     }
@@ -2900,7 +2951,7 @@ function aiUpdate(g, s, dt) {
     if (spare) { trySell(g, s, spare); want = 'habitat'; }
   }
   // Credits piling up with no energy and no free pad: trade an extra Refinery for a Reactor
-  if (!freePad && D.eco && dl.sell && side.res.e < 120 && side.res.c > 1500 && countB(g, s, 'refinery') > (aiFix(P, 'spend') && countB(g, s, 'reactor') < 2 ? 1 : 2) && !constructing.length) { // v2.38 (Default): also with 2 Refineries while it has under 2 Reactors
+  if (!freePad && D.eco && dl.sell && side.res.e < 120 && side.res.c > (starved && alive(g, s, 'reactor').every(b => b.tier >= 3) ? 600 : 1500) && countB(g, s, 'refinery') > (aiFix(P, 'spend') && countB(g, s, 'reactor') < 2 ? 1 : 2) && !constructing.length) { // v2.38 (Default): also with 2 Refineries while it has under 2 Reactors
     trySell(g, s, alive(g, s, 'refinery')[0]); want = 'reactor';
   }
   if (!want && D === DIFF.hard && !g.forcePath && freePad && !constructing.length && income(g, s).c >= 25 && aiArmorShare(theirs) > 0.35) {
@@ -2911,7 +2962,7 @@ function aiUpdate(g, s, dt) {
     const d = bdS(g, s, want);
     if (!d.req || hasBuilt(g, s, d.req)) {
       const r = tryBuild(g, s, want, wantPad);
-      if (!r.ok && (!threat || saving) && !(P.unitsFirst && planIdx >= 4 && !threat)) reserve.c = d.cost.c, reserve.e = d.cost.e;
+      if (!r.ok && (!threat || saving) && !(P.unitsFirst && planIdx >= 4 && !threat) && !(punishOn && want !== 'habitat' && want !== 'barracks')) reserve.c = d.cost.c, reserve.e = d.cost.e;
     }
   }
 
@@ -2929,8 +2980,8 @@ function aiUpdate(g, s, dt) {
   const buildDone = !want || !freePad || constructing.length > 0;
   const rich2 = aiFix(P, 'spend') && side.res.c > 1500 && g.ents.filter(b => b.kind === 'b' && b.side === s && b.upgrading && b.hp > 0).length < 2; // v2.38 (Default): rich, a second upgrade at once
   const tf = dl.tech || (aiFix(P, 'tech') ? AI_TECH[P.kind] : null), techFocus = tf ? [[tf, 2], [tf, 3]] : []; // v2.40 (tech): its strategy's building goes to T3 right after T2 (the tech dial: the Hard preset's searched order)
-  if (g.t >= D.upStart + P.upShift - (ecoMood ? 30 : 0) && (!upgrading || rich2) && (buildDone || floating) && (!(calm || defend) || floating) && !(D.maxTier < 3 && Math.random() < 0.5)) {
-    const energyShort = side.res.e < 120 && side.res.c > 800;
+  if (g.t >= D.upStart + P.upShift - (ecoMood ? 30 : 0) && (!upgrading || rich2) && (buildDone || floating) && (!(calm || defend) || floating) && !(punishOn && !floating) && !(D.maxTier < 3 && Math.random() < 0.5)) {
+    const energyShort = (side.res.e < 120 && side.res.c > 800) || starved; // v2.41 (power): starved, the Reactor upgrade first
     for (const [type, tier] of [...(energyShort ? [['reactor', 2], ['reactor', 3]] : []), ...(rich2 ? [['habitat', 2], ['habitat', 3], ['reactor', 2], ['reactor', 3]] : []), ...P.upgFirst, ...techFocus, ...AI_UPG]) {
       if (rich2 && upgrading && alive(g, s, type).some(x => x.upgrading)) continue;
       if (tier > D.maxTier) continue;
@@ -2954,6 +3005,10 @@ function aiUpdate(g, s, dt) {
   const rel = relOf(g, s);
   if (rel && rel.ech && rel.ech.length) for (let i = 0; i < rel.ech.length; i++) if (tryEcho(g, s, i).ok) { used = popUsed(g, s); break; }
   const types = UNIT_ORDER.filter(t => canTrain(g, s, t) && !(UDEF[t].max && UDEF[t].pop < 1 && unitCount(g, s, t) >= UDEF[t].max)); // v2.37: not a type at its limit (S1; the drone keeps its own rule)
+  if (rd && g.t > 30 && g.t < 240 && side.greedT === undefined && !mine.length && !g.ents.some(b => b.side === s && b.kind === 'b' && b.queue && b.queue.length)) { // v2.41 (read): a scout of its own
+    const c = types.filter(t => !UDEF[t].air && UDEF[t].cost.c <= 100).sort((a, b) => UDEF[a].cost.c - UDEF[b].cost.c)[0];
+    if (c && tryTrain(g, s, c).ok) { log.trained[c] = (log.trained[c] || 0) + 1; used = popUsed(g, s); }
+  }
   const turtle = theirs.length > 2 && theirs.filter(u => Math.abs(u.u - hqU(opp)) < 560).length / theirs.length > 0.6;
   if (types.length) {
     const comp = { light: 0, heavy: 0, vehicle: 0, air: 0 };
@@ -3029,7 +3084,14 @@ function aiUpdate(g, s, dt) {
     if (facOf(side.faction) === 'bloomhost') { const best = Math.max(...types.map(t => sc[t])); for (const t of types) if (UNIT_PATH[t] && UNIT_PATH[t].b === 'techlab' && !log.trained[t]) sc[t] = best + 0.1; }
     // Axiarchs (v2.28): the same rule on every production path (Genesis Gate, Architectum, and the Celestial Array's once it has one)
     if (facOf(side.faction) === 'axiarchs') { const best = Math.max(...types.map(t => sc[t])); for (const t of types) if (UNIT_PATH[t] && !log.trained[t]) sc[t] = best + 0.1; }
-    const spend = aiFix(P, 'spend');
+    // v2.41 (counter): no anti-air-only unit until it has seen enemy aircraft that hit the ground; an infantry flood (light
+    // units over 55% of what it knows of) calls for splash and flame over more of its own basic infantry
+    if (aiFix(P, 'counter')) for (const t of types) {
+      const d = UDEF[t];
+      if (d.hitsGround === false && !d.support && comp.air <= 0.12) sc[t] = 0.05;
+      else if (comp.light >= 0.55 && theirs.length >= 5) { if (d.splash || d.weapon === 'flame' || t === 'thornback' || t === 'gravemantle') sc[t] *= 1.4; else if (t === 'rifle' || t === 'skitterling' || t === 'shardling') sc[t] *= 0.7; }
+    }
+    const spend = aiFix(P, 'spend'), noAA = aiFix(P, 'counter') && comp.air <= 0.12;
     const fits = t => used + UDEF[t].pop <= cap * fillNow && (freeProducer(g, s, t) || (spend && side.res.c > 900 && g.ents.some(e => e.side === s && canMake(e, t) && e.queue.length < 3))); // v2.38 (Default): rich, it queues up to 3
     const top = types.filter(fits).sort((a, b) => sc[b] - sc[a])[0];
     // v2.38 (Default): a big unit it has never trained, which its army is too full to fit, gets room: it stops training
@@ -3045,7 +3107,7 @@ function aiUpdate(g, s, dt) {
     // Save for the better unit unless the enemy is already in the base (a calm AI keeps saving while merely threatened)
     const mustSpend = defend || (saving ? danger && !(lightThreat && hasBuilt(g, s, 'factory')) : threat); // vs infantry, Tanks beat trickled Riflemen
     for (let k = 0; k < D.trainPer && !saveRoom; k++) {
-      const cand = types.filter(t => { const d = UDEF[t]; return fits(t) && side.res.c - d.cost.c >= reserve.c && side.res.e - d.cost.e >= reserve.e; });
+      const cand = types.filter(t => { const d = UDEF[t]; return fits(t) && side.res.c - d.cost.c >= reserve.c && side.res.e - d.cost.e >= reserve.e && !(noAA && d.hitsGround === false && !d.support); }); // v2.41 (counter): not even as a spare buy
       if (!cand.length) break;
       const flush = spend && side.res.c > 900; // v2.38 (Default): credits piling up: buy what it can afford now instead of waiting
       if (top && !cand.includes(top) && !mustSpend && !flush && (saving || Math.random() < 0.6)) break;
@@ -3083,6 +3145,8 @@ function aiUpdate(g, s, dt) {
     if (!side.launchV) return;
     side.failV = side.launchV * FAIL_MARGIN; side.failT = g.t; side.launchV = 0;
     side.fails = (side.fails || 0) + 1;
+    if (punishOn) side.punished = true; // v2.41 (read): the punish attack is spent
+    if (nw) side.regroupT = Math.max(side.regroupT || 0, g.t + 20); // v2.41 (nowave): regroup before the next push of any kind
     if (P.kind === 'aggressor' && side.fails >= 2) { side.moodUntil = g.t + rand(180, 240); side.fails = 0; } // rethink: economy first
   };
   // v2.40 (defend): an enemy army inside the base (within 450 of the HQ) that is stronger than its own: rally inside the HQ's cover (170 out, within
@@ -3093,9 +3157,14 @@ function aiUpdate(g, s, dt) {
   const engage = aiFix(P, 'engage') && !late && g.t < EXT.warn;
   const fightAt = (u, all, own = mine) => { const foes = all ? theirs : theirs.filter(e => Math.abs(e.u - u) < 350); return aiPower(own) / Math.max(1, aiPower(foes, aiGunsNear(g, s, u, 60).map(b => ({ dps: b.dps * 0.6, hp: b.hp })))); };
   if (holdEarly && side.stance === 'attack' && side.pushMode !== 'all') { side.stance = 'retreat'; side.pushTo = null; side.pushMode = null; side.stanceAt = g.t; } // v2.40 (hold): back under the gun
-  const go = (pushTo, mode) => {
+  const nw = aiFix(P, 'nowave');
+  // v2.41 (nowave): most of the army (70% of its value) within 250 of its middle unit, so a push leaves together
+  const gathered = () => { const gr = mine.filter(u => !UDEF[u.type].support && !UDEF[u.type].air && u.id !== side.scoutId); if (gr.length < 2) return true; const xs = gr.map(u => u.u).sort((a, b) => a - b), med = xs[xs.length >> 1]; return armyValue(gr.filter(u => Math.abs(u.u - med) < 250)) >= armyValue(gr) * 0.7; };
+  const go = (pushTo, mode, force) => {
+    if (nw && !force && side.stance !== 'attack' && (side.regroupT > g.t || !gathered() || myV < (side.beatV || 0) * 1.2 * Math.max(0, 1 - (g.t - side.beatT) / 120) ||
+      (mode === 'field' && (fightAt(pushTo, true) < 1.25 || myV < thV)))) return; // v2.41 (nowave): regrouped, gathered, 1.2x the army that last turned it back, stronger than all it expects
     if (holdEarly && side.stance !== 'attack' && !(mode === 'all' && fightAt(hqU(opp), true) >= 1.5)) return; // v2.40 (hold): stay home under the gun
-    if (engage && side.stance !== 'attack' && (mode === 'node' ? fightAt(pushTo, false) < 1 : side.regroupT > g.t || fightAt(pushTo === null ? hqU(opp) : pushTo, mode === 'all' || mode === 'siege') < 1.25)) return; // not a fight it wins: build up instead
+    if (engage && !force && side.stance !== 'attack' && (mode === 'node' ? fightAt(pushTo, false) < 1 : side.regroupT > g.t || fightAt(pushTo === null ? hqU(opp) : pushTo, mode === 'all' || mode === 'siege') < 1.25)) return; // not a fight it wins: build up instead
     const was = side.stance; side.stance = 'attack'; side.pushTo = pushTo; side.pushMode = mode; side.stanceAt = g.t;
     side.launchV = mode === 'all' || mode === 'siege' ? myV : 0;
     if (was === 'attack') return;
@@ -3107,12 +3176,14 @@ function aiUpdate(g, s, dt) {
   };
   // weak spots it can see: a field node the enemy holds with little around it, or an enemy that just spent its army on us
   const oppNode = g.nodes[1]; // the middle node (the enemy's own node sits under its HQ guns)
-  const weakNode = P.opportunist && oppNode.owner === opp && myV >= 250 &&
+  const contest = aiFix(P, 'contest'); // v2.41 (contest): every personality, from a smaller army, also a node the enemy is still taking
+  const weakNode = (P.opportunist || contest) && oppNode.owner !== s && (oppNode.owner === opp || (contest && oppNode.c[opp] > 0)) && myV >= (contest ? 150 : 250) &&
     armyValue(theirs.filter(u => Math.abs(u.u - oppNode.u) < NODE_R + 200)) < myV * 0.5;
   const punish = P.opportunist && side.lastDanger !== undefined && g.t - side.lastDanger < 20 && !threat && myV >= 300 && myV >= thV * 1.2;
   // The Aggressor against a fortified base: if its Orbital Strike is only seconds away, wait for it rather than walk in head-on
   const strikeWait = side.ab.strike - g.t, holdForStrike = P.kind === 'aggressor' && D !== DIFF.easy && !threat && !late && strikeWait > 0 && strikeWait < 12 && aiFortified(g, s) && hasBuilt(g, s, 'factory');
   if (side.stance !== 'attack' && g.t >= EXT.warn && myV >= 200 && myV >= thV * 0.7) go(null, 'all'); // the storm is coming: everything in
+  else if (side.stance !== 'attack' && punishOn && aiFix(P, 'punish') && g.t >= 105 && myV >= 400 && aiPower(mine) >= aiPower(theirs) * 1.5) go(fieldLine, 'field', true); // v2.41 (read): the timed push on a greedy opening: the field and its nodes, then the base once clearly stronger
   else if (side.stance !== 'attack' && holdForStrike) { /* wait */ }
   else if (side.stance !== 'attack') {
     if (g.t < dl.attackAt && !late) { if (D.nodes && nodeLost && myV >= 250 && myV >= armyValue(atNode) * 1.15) go(myNode.u, 'node'); } // the attack-timing dial (v2.38): before it, only its own node
@@ -3122,7 +3193,7 @@ function aiUpdate(g, s, dt) {
     else if (bold && rich && full && myV >= thV * 0.85) go(null, 'all'); // money in the bank refills the army, so commit
     else if ((g.t > P.deadline && myV >= 500 && myV >= thV * 0.9) || (late && myV >= 400 && myV >= thV * 0.8)) go(nSiege >= 2 ? siegeLine : null, nSiege >= 2 ? 'siege' : 'all'); // a Turtle must attack eventually; nobody sits forever
     else if (bold && punish) go(null, 'all'); // their army just broke against our base
-    else if (D.nodes && nodeLost && myV >= 250 && myV >= armyValue(atNode) * 1.15) go(myNode.u, 'node'); // win back our node, all together
+    else if (D.nodes && nodeLost && myV >= (contest ? 150 : 250) && myV >= armyValue(atNode) * 1.15) go(myNode.u, 'node'); // win back our node, all together
     else if (P.kind === 'aggressor' && lightThreat && myV < thV * 1.3) { /* an infantry rush at the door: hold the base until clearly stronger */ }
     else if (weakNode && dl.nodes >= 2) go(fieldLine, 'field');
     else if (dl.nodes >= 2 && myV >= D.fieldMin && myV >= thV * D.fieldEdge * (threat ? Math.max(1, P.fieldEdge) : P.fieldEdge)) go(dl.nodes >= 3 && myV >= thV * 1.5 ? farLine : fieldLine, 'field'); // take and hold the field nodes (the nodes dial, v2.38)
@@ -3130,9 +3201,11 @@ function aiUpdate(g, s, dt) {
     side.feintUntil = 0; side.stance = 'retreat'; side.pushTo = null; side.pushMode = null; side.launchV = 0; side.stanceAt = g.t; // the feint pulls back
   } else if (engage && since > 4 && g.front[s] !== null && fightAt(g.front[s] + dir * 150, false, mine.filter(u => Math.abs(g.front[s] - u.u) < 400)) < 0.6) {
     failed(); // v2.40 (engage): losing where it is fighting: pull back together and regroup before trying again
-    side.stance = 'retreat'; side.pushTo = null; side.pushMode = null; side.stanceAt = g.t; side.regroupT = g.t + 12;
+    side.stance = 'retreat'; side.pushTo = null; side.pushMode = null; side.stanceAt = g.t; side.regroupT = g.t + (nw ? 20 : 12);
+    if (nw) { side.beatV = armyValue(theirs.filter(u => Math.abs(u.u - g.front[s]) < 450)); side.beatT = g.t; } // v2.41 (nowave): the army that turned it back
   } else if (since > 6 && myV < thV * (late ? 0.5 : dl.retreat)) {
     failed();
+    if (nw) { side.regroupT = Math.max(side.regroupT || 0, g.t + 20); side.beatV = thV; side.beatT = g.t; } // v2.41 (nowave)
     side.stance = 'retreat'; side.pushTo = null; side.pushMode = null; side.stanceAt = g.t;
   } else if (side.pushTo === null && since > 10 && thV < 200 && myV < hqVal * 1.2 && !rich) {
     failed();
@@ -3206,6 +3279,33 @@ function aiPathUnitsFirst(sc, types, log, threat) {
 // v2.40 (engage): fighting strength in Lanchester form, total damage per second × total health, of units ({ type, w }: w the
 // weight of a fading sighting) and of known enemy guns (fog ghosts of buildings with a gun: Turrets, HQs, bunkers) within
 // range of a point. Only what this side has seen counts.
+// v2.41 (read): a greedy opening, as this side has seen it before 4:00: three or more economy buildings (Refineries and
+// Reactors, their faction's roles), a Refinery already at T2, or two field nodes taken, while the enemy army it knows of is
+// worth under 350. Marked once (side.greedT); only what its own units have seen counts (fog ghosts, intel, node owners).
+function aiRead(g, s, thV) {
+  const side = g.sides[s];
+  if (side.greedT !== undefined || g.t > 240) return;
+  let eco = 0, up = 0;
+  for (const gh of Object.values(g.fog[s].ghosts)) if (gh.side !== s) { if (gh.type === 'refinery' || gh.type === 'reactor') eco++; if (gh.type === 'refinery' && gh.tier >= 2) up++; }
+  const nodes = g.nodes.filter(n => n.owner === 1 - s).length;
+  if (thV < 350 && (eco >= 3 || up >= 1 || nodes >= 2)) { side.greedT = g.t; lg(g, s, 'G', 'greed', eco); }
+}
+// v2.41 (est): the enemy army it should expect, from what it has seen of the enemy economy: the HQ, the Refineries it has
+// seen (their last-seen tiers; none seen yet: as much as its own) and the field nodes the enemy holds, summed over time;
+// 40% of that, phased in from 2:00 to 3:30 (no greedy opening has an army before then), less the value of enemy units it
+// has destroyed
+function aiEstimate(g, s) {
+  const side = g.sides[s], f = g.fog[s], dt = g.t - (side.estT === undefined ? 0 : side.estT);
+  side.estT = g.t;
+  let inc = BDEF.hq.inc[1].c, refs = 0;
+  for (const gh of Object.values(f.ghosts)) if (gh.side !== s && gh.type === 'refinery') { refs++; inc += BD(gh.fac, 'refinery').inc[gh.tier || 1].c; }
+  if (!refs) inc = income(g, s).c - NODE_INC.c * g.nodes.filter(n => n.owner === s).length;
+  inc += NODE_INC.c * g.nodes.filter(n => n.owner === 1 - s).length;
+  side.estE = (side.estE || 0) + inc * dt;
+  let killed = 0;
+  if (g.log) { const K = g.log.tot[s].killed; for (const t in K) { const d = UDEF[t]; if (d) killed += (d.cost.c + d.cost.e * 1.5) * K[t]; } }
+  return Math.max(0, 0.4 * (side.estE + START_RES.c) * clamp((g.t - 120) / 90, 0, 1) - killed);
+}
 // sig: make room for the signature building by selling one of the duplicates the plan has (never the only one of a type)
 function aiSigRoom(g, s, dup, sig) {
   if (!dup) return false;
@@ -3270,9 +3370,10 @@ function aiSmartArmy(g, s, mine, dl, P) {
     if (sc && (Math.abs(sc.u - side.scoutU) < 30 || g.t - side.scoutT > 30)) { side.scoutId = null; side.scoutU = null; }
     else if (!sc) { side.scoutId = null; side.scoutU = null; }
     const fresh = Object.values(g.fog[s].intel).some(m => g.t - m.t <= 20);
-    if (!side.scoutId && !fresh && side.stance !== 'attack' && g.t - (side.scoutT || 0) > dl.scout) {
+    const read = aiFix(P, 'read') && side.greedT === undefined && g.t < 240; // v2.41 (read): early scouting, to the edge of the enemy HQ's gun, where it sees the buildings
+    if (!side.scoutId && (!fresh || read) && side.stance !== 'attack' && (read ? g.t >= 35 && g.t - (side.scoutT || -99) > 30 : g.t - (side.scoutT || 0) > dl.scout)) {
       const c = mine.filter(u => !UDEF[u.type].siege && UDEF[u.type].cost.c <= 150 && u.id !== side.spotter).sort((a, b) => UDEF[b.type].speed - UDEF[a.type].speed || a.id - b.id)[0];
-      if (c) { side.scoutId = c.id; side.scoutU = clamp(hqU(opp) - dir * 560, 0, L); side.scoutT = g.t; }
+      if (c) { side.scoutId = c.id; side.scoutU = clamp(hqU(opp) - dir * (read ? 420 : 560), 0, L); side.scoutT = g.t; }
     }
   }
   // timing: a Riftstalker leaps only with its shields nearly full; a Wraithwing whose phase is spent backs off when hurt;

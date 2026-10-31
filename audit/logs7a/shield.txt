@@ -1,0 +1,2 @@
+shield rule off: 20 Emergency Shields in 24 matches, 2308 damage blocked (115 per cast); AI wins 18-6
+shield rule on: 6 Emergency Shields in 24 matches, 1416 damage blocked (236 per cast); AI wins 18-6

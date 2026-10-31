@@ -1,0 +1,7 @@
+lastfist vs lastfist: 0-0-20 (side 0 won 0)
+lastfist vs bloomhost: 20-0 (side 0 won 10)
+lastfist vs axiarchs: 18-2 (side 0 won 10)
+bloomhost vs bloomhost: 0-0-20 (side 0 won 0)
+bloomhost vs axiarchs: 13-7 (side 0 won 17)
+axiarchs vs axiarchs: 10-10 (side 0 won 16)
+cross-faction win shares: lastfist 95%, bloomhost 33%, axiarchs 23%

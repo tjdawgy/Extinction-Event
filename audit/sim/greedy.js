@@ -22,9 +22,10 @@ function greedyBot(S, o = {}) {
   let t = 0, phase = 'eco', launchV = 0, lastNode = -1;
   const log = { attacks: 0, firstAttack: null, defends: 0, abil: 0 };
   const val = us => us.reduce((a, u) => a + S.UDEF[u.type].cost.c + S.UDEF[u.type].cost.e * 1.5, 0);
+  // noAir: a ground-only army (the counter check)
   const bot = (g, s, dt) => {
     t -= dt; if (t > 0) return; t = 0.5;
-    const side = g.sides[s], fac = S.facOf(side.faction), C = COMP[fac], dir = s === 0 ? 1 : -1, home = S.hqU(s), opp = 1 - s;
+    const side = g.sides[s], fac = S.facOf(side.faction), C = o.noAir ? { units: Object.fromEntries(Object.entries(COMP[fac].units).filter(([t]) => !S.UDEF[t].air)), paths: COMP[fac].paths } : COMP[fac], dir = s === 0 ? 1 : -1, home = S.hqU(s), opp = 1 - s;
     const mine = g.ents.filter(e => e.kind === 'u' && e.side === s && e.hp > 0 && !e.temp);
     const seen = g.ents.filter(e => e.kind === 'u' && e.side === opp && e.hp > 0 && S.visibleTo(g, s, e));
     const threat = seen.filter(e => Math.abs(e.u - home) < 700 && !S.UDEF[e.type].support);

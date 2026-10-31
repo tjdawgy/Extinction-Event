@@ -5,6 +5,7 @@ Files in this folder:
 - `validation.md`: the phase 4 validation results.
 - `balance-diagnosis.md`, `balance-report.md`: the phase 5 balance pass (why the factions won, what changed, the results).
 - `ai-tactics-report.md`: the phase 6a AI tactics rules (each A/B), the Hard-mode strategy search and the Hard-vs-Hard matrix.
+- `hard-vs-human-report.md`: phase 7a, Hard against the scripted Greedy bot (human-style greedy play): the bot, each fix's A/B, the re-search, Hard vs Hard, Greedy vs Greedy. Raw logs in `logs7a/`.
 - `sim/`: the simulation harness, described below.
 
 ## The simulation harness (`audit/sim/`)
@@ -96,6 +97,21 @@ node audit/sim/validate.js [--mirror=100] [--vs=40] [--jobs=4]
   node audit/sim/hardsearch.js --faction=axiarchs --cands='[{"persona":"economist","dial":{"delay":0.6}}]' --n=20
   ```
 - **`runSet({ paired: true })`:** plays each seed twice with the sides swapped.
+
+### Phase 7a tools (Hard against human-style play)
+- **`greedy.js`:** the Greedy bot (`greedyBot(S, opts)`). It plays a side through the player's own controls; `noAir` gives it a ground-only army.
+  - In a match spec, `{ faction, bot: 'greedy', botOpts }` on side 0, or on both sides for bot against bot.
+- **`greedyrun.js`:** an AI on side 1 against the bot on side 0, all 3 × 3 faction pairings.
+  ```
+  node audit/sim/greedyrun.js --ai='{"ai":"hard"}' --n=10 [--seed=90000] [--factions=bloomhost] [--bot='{"noAir":true}']
+  ```
+- **`ablate7a.js`:** a candidate with each named rule off in turn (leave-one-out), against Greedy.
+- **`hardsearch7a.js`:** the strategy search with Greedy in the field. Score: the mean of the Greedy and Default win shares.
+  - A candidate's `dial.paths` overrides its production paths.
+- **`validate7a.js`:** the phase 7a validation (v2.40 and v2.41 Hard vs Greedy, vs Default, Hard vs Hard).
+- **`shield7a.js`, `counter7a.js`:** what the defensive casts block, and anti-air and splash choices.
+- **`botvbot.js`:** Greedy against Greedy per faction pairing: faction strength with the play held identical.
+- **Presets:** `hard` is v2.41's Hard; `hard240` is v2.40's Hard exactly.
 
 ### Experiments
 A side can override its preset's dials, for example to switch one competence rule off:

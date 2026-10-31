@@ -1,0 +1,2207 @@
+
+> extinction-event@2.41.0 test
+> node --test "tests/*.test.js"
+
+TAP version 13
+# Subtest: cost, cooldown, unlock, countdown and resources are enforced
+ok 1 - cost, cooldown, unlock, countdown and resources are enforced
+  ---
+  duration_ms: 249.667455
+  type: 'test'
+  ...
+# Subtest: targeting: Shield and Repair only on ground in view; Orbital Strike on explored ground only
+ok 2 - targeting: Shield and Repair only on ground in view; Orbital Strike on explored ground only
+  ---
+  duration_ms: 1.097691
+  type: 'test'
+  ...
+# Subtest: Emergency Shield: 40% less damage for 7 s, follows the unit, never extended
+ok 3 - Emergency Shield: 40% less damage for 7 s, follows the unit, never extended
+  ---
+  duration_ms: 42.486153
+  type: 'test'
+  ...
+# Subtest: one shared cooldown: any ability locks all three for its own cooldown (Shield and Repair 50 s, Strike 100 s); unlock times still apply
+ok 4 - one shared cooldown: any ability locks all three for its own cooldown (Shield and Repair 50 s, Strike 100 s); unlock times still apply
+  ---
+  duration_ms: 334.229089
+  type: 'test'
+  ...
+# Subtest: a v9 save (separate cooldowns) migrates: the longest cooldown still running locks all three; no free use
+ok 5 - a v9 save (separate cooldowns) migrates: the longest cooldown still running locks all three; no free use
+  ---
+  duration_ms: 3.395272
+  type: 'test'
+  ...
+# Subtest: Orbital Strike: 3 s warning, 280 at the centre to 140 at the edge, every enemy unit (aircraft too), enemies only, shielded HQ immune
+ok 6 - Orbital Strike: 3 s warning, 280 at the centre to 140 at the edge, every enemy unit (aircraft too), enemies only, shielded HQ immune
+  ---
+  duration_ms: 99.628678
+  type: 'test'
+  ...
+# Subtest: Repair Pulse: 6%/s for 6 s on units and finished buildings; paid Repair is not doubled; capped at full HP
+ok 7 - Repair Pulse: 6%/s for 6 s on units and finished buildings; paid Repair is not doubled; capped at full HP
+  ---
+  duration_ms: 73.806369
+  type: 'test'
+  ...
+# Subtest: save and resume mid-cooldown and mid-effect; a v7 save starts each ability on its first cooldown
+ok 8 - save and resume mid-cooldown and mid-effect; a v7 save starts each ability on its first cooldown
+  ---
+  duration_ms: 12.321672
+  type: 'test'
+  ...
+# Subtest: v2.11: Repair Pulse is never wasted by the AI; repairHealable tells the player when nothing in range can be healed
+ok 9 - v2.11: Repair Pulse is never wasted by the AI; repairHealable tells the player when nothing in range can be healed
+  ---
+  duration_ms: 72598.107954
+  type: 'test'
+  ...
+# Subtest: Bloomhost AI (Turtle) uses all three of its abilities, under one shared cooldown (rates over N matches)
+ok 10 - Bloomhost AI (Turtle) uses all three of its abilities, under one shared cooldown (rates over N matches)
+  ---
+  duration_ms: 222786.461532
+  type: 'test'
+  ...
+# Subtest: Bloomhost AI (Turtle vs a Last Fist Aggressor): economy, Maws, all three base units, nodes and attacks (rates over N matches)
+ok 11 - Bloomhost AI (Turtle vs a Last Fist Aggressor): economy, Maws, all three base units, nodes and attacks (rates over N matches)
+  ---
+  duration_ms: 242974.811882
+  type: 'test'
+  ...
+# Subtest: Bloomhost AI (Economist): the Bloomspire path through its taste, Brood Tyrants and Worldrenders (rates over N matches)
+ok 12 - Bloomhost AI (Economist): the Bloomspire path through its taste, Brood Tyrants and Worldrenders (rates over N matches)
+  ---
+  duration_ms: 249440.773339
+  type: 'test'
+  ...
+# Subtest: Axiarch AI with each personality: economy, base units, nodes and attacks; a Null Lance in some matches (rates over N matches)
+ok 13 - Axiarch AI with each personality: economy, base units, nodes and attacks; a Null Lance in some matches (rates over N matches)
+  ---
+  duration_ms: 90078.36202
+  type: 'test'
+  ...
+# Subtest: Last Fist AI uses its abilities with every personality, under one shared cooldown; the Aggressor strikes defences (rates over N matches)
+ok 14 - Last Fist AI uses its abilities with every personality, under one shared cooldown; the Aggressor strikes defences (rates over N matches)
+  ---
+  duration_ms: 125250.129182
+  type: 'test'
+  ...
+# Subtest: Easy never uses the Orbital Strike (3 seeded matches)
+ok 15 - Easy never uses the Orbital Strike (3 seeded matches)
+  ---
+  duration_ms: 24874.343851
+  type: 'test'
+  ...
+# Subtest: no secret AI advantages: same start and income on every difficulty
+ok 16 - no secret AI advantages: same start and income on every difficulty
+  ---
+  duration_ms: 36.497446
+  type: 'test'
+  ...
+# Subtest: the outer field nodes sit inside each HQ's T1 gun range
+ok 17 - the outer field nodes sit inside each HQ's T1 gun range
+  ---
+  duration_ms: 0.241061
+  type: 'test'
+  ...
+# Subtest: the HQ has its own weapon: 0.9x vs light armor; the Heavy trooper's rockets are unchanged
+ok 18 - the HQ has its own weapon: 0.9x vs light armor; the Heavy trooper's rockets are unchanged
+  ---
+  duration_ms: 0.21581
+  type: 'test'
+  ...
+# Subtest: an AI that spots an infantry rush builds a Turret (on its front pad when free) and a War Factory
+ok 19 - an AI that spots an infantry rush builds a Turret (on its front pad when free) and a War Factory
+  ---
+  duration_ms: 231.82446
+  type: 'test'
+  ...
+# Subtest: a couple of scouting Riflemen do not trigger the rush response
+ok 20 - a couple of scouting Riflemen do not trigger the rush response
+  ---
+  duration_ms: 150.691468
+  type: 'test'
+  ...
+# Subtest: Hard holds upgrades while threatened; Easy keeps spending on them
+ok 21 - Hard holds upgrades while threatened; Easy keeps spending on them
+  ---
+  duration_ms: 790.075914
+  type: 'test'
+  ...
+# Subtest: an AI with no Habitat and no free pad sells a spare building to rebuild one
+ok 22 - an AI with no Habitat and no free pad sells a spare building to rebuild one
+  ---
+  duration_ms: 233.32186
+  type: 'test'
+  ...
+# Subtest: enemy Interceptors do not set off an Interceptor race, and count little toward army strength
+ok 23 - enemy Interceptors do not set off an Interceptor race, and count little toward army strength
+  ---
+  duration_ms: 1116.083119
+  type: 'test'
+  ...
+# Subtest: Flame Tank: a target picked off to the side is burned (the v2.31 off-centre bug); with FLAME.aim false it is not
+ok 24 - Flame Tank: a target picked off to the side is burned (the v2.31 off-centre bug); with FLAME.aim false it is not
+  ---
+  duration_ms: 56.283977
+  type: 'test'
+  ...
+# Subtest: the Axis lance: a beam with the HQ gun's damage, rate, range and multipliers at every tier (DPS unchanged)
+ok 25 - the Axis lance: a beam with the HQ gun's damage, rate, range and multipliers at every tier (DPS unchanged)
+  ---
+  duration_ms: 50.022926
+  type: 'test'
+  ...
+# Subtest: report: gathered counts the start, income, sales and Salvage, so spent never exceeds it
+ok 26 - report: gathered counts the start, income, sales and Salvage, so spent never exceeds it
+  ---
+  duration_ms: 4376.241537
+  type: 'test'
+  ...
+# Subtest: costs, cooldowns and unlocks mirror Last Fist (Mass Warp ↔ Repair Pulse, Overcharge ↔ Emergency Shield, Beam ↔ Orbital Strike); one cast locks all three
+ok 27 - costs, cooldowns and unlocks mirror Last Fist (Mass Warp ↔ Repair Pulse, Overcharge ↔ Emergency Shield, Beam ↔ Orbital Strike); one cast locks all three
+  ---
+  duration_ms: 286.292196
+  type: 'test'
+  ...
+# Subtest: Mass Warp: up to 8 units (the most damaged first) channel 2 s, then arrive at the warp point; the total unit count never changes
+ok 28 - Mass Warp: up to 8 units (the most damaged first) channel 2 s, then arrive at the warp point; the total unit count never changes
+  ---
+  duration_ms: 193.233151
+  type: 'test'
+  ...
+# Subtest: Mass Warp never changes the total unit count (random casts, deaths, a field too small to land in, saves mid-channel)
+ok 29 - Mass Warp never changes the total unit count (random casts, deaths, a field too small to land in, saves mid-channel)
+  ---
+  duration_ms: 2613.592991
+  type: 'test'
+  ...
+# Subtest: Shield Overcharge: faster shield regen even under fire, less damage (capped with the brace), never health; expires after 7 s
+ok 30 - Shield Overcharge: faster shield regen even under fire, less damage (capped with the brace), never health; expires after 7 s
+  ---
+  duration_ms: 227.000672
+  type: 'test'
+  ...
+# Subtest: Shield Overcharge expires on game time: paused (no updates) it waits; at 3× speed it ends at the same game time; through save and load
+ok 31 - Shield Overcharge expires on game time: paused (no updates) it waits; at 3× speed it ends at the same game time; through save and load
+  ---
+  duration_ms: 705.626542
+  type: 'test'
+  ...
+# Subtest: Purification Beam: a warning, then a 1.5 s sweep along the lane; heavy damage once to ground units and buildings; no aircraft; the HQ shield holds
+ok 32 - Purification Beam: a warning, then a 1.5 s sweep along the lane; heavy damage once to ground units and buildings; no aircraft; the HQ shield holds
+  ---
+  duration_ms: 235.807406
+  type: 'test'
+  ...
+# Subtest: Purification Beam on buildings: it hits a building it crosses; a shielded HQ takes nothing, an exposed one does
+ok 33 - Purification Beam on buildings: it hits a building it crosses; a shielded HQ takes nothing, an exposed one does
+  ---
+  duration_ms: 197.274791
+  type: 'test'
+  ...
+# Subtest: saves v25 keep the Axiarch cooldowns, a Mass Warp channel and a Beam in progress; a v24 Axiarch save gets its three abilities
+ok 34 - saves v25 keep the Axiarch cooldowns, a Mass Warp channel and a Beam in progress; a v24 Axiarch save gets its three abilities
+  ---
+  duration_ms: 190.444517
+  type: 'test'
+  ...
+# Subtest: the AI casts all three under one shared cooldown; Mass Warp only for 4+ units below 40% health in one area
+ok 35 - the AI casts all three under one shared cooldown; Mass Warp only for 4+ units below 40% health in one area
+  ---
+  duration_ms: 139887.789272
+  type: 'test'
+  ...
+# Subtest: the AI trains a Gravemantle and an Eventide on the Dominion path (a prepared T3 Architectum), and a unit of each Genesis Gate path
+ok 36 - the AI trains a Gravemantle and an Eventide on the Dominion path (a prepared T3 Architectum), and a unit of each Genesis Gate path
+  ---
+  duration_ms: 5882.206108
+  type: 'test'
+  ...
+# Subtest: Celestial Array: Swarm or Ascendant Calculus at T2 locks the building; T3 deepens it; Wraithwings on both; selling resets
+ok 37 - Celestial Array: Swarm or Ascendant Calculus at T2 locks the building; T3 deepens it; Wraithwings on both; selling resets
+  ---
+  duration_ms: 67.924981
+  type: 'test'
+  ...
+# Subtest: Prismwing shield link: half of the shield damage goes evenly to up to 3 nearby Prismwings, shields only, never health
+ok 38 - Prismwing shield link: half of the shield damage goes evenly to up to 3 nearby Prismwings, shields only, never health
+  ---
+  duration_ms: 2.116096
+  type: 'test'
+  ...
+# Subtest: Shardstorm chain beam: from the target to at most 3 more enemies nearby, weaker each jump; aircraft and ground (buildings weakly since v2.31), never jumping to a building or the same enemy twice
+ok 39 - Shardstorm chain beam: from the target to at most 3 more enemies nearby, weaker each jump; aircraft and ground (buildings weakly since v2.31), never jumping to a building or the same enemy twice
+  ---
+  duration_ms: 6.599966
+  type: 'test'
+  ...
+# Subtest: Voidcarrier and Astral Sovereign never hit aircraft; they go for buildings first; the Sovereign fires a single judgement beam (v2.37)
+ok 40 - Voidcarrier and Astral Sovereign never hit aircraft; they go for buildings first; the Sovereign fires a single judgement beam (v2.37)
+  ---
+  duration_ms: 41.70844
+  type: 'test'
+  ...
+# Subtest: the four new units warp in like the others; every new unit is in the unit tables (completeness)
+ok 41 - the four new units warp in like the others; every new unit is in the unit tables (completeness)
+  ---
+  duration_ms: 192.779007
+  type: 'test'
+  ...
+# Subtest: the AI maps its Tech Lab taste onto the Celestial Array (Air Power → Ascendant, Support → Swarm) and trains every unit on each path
+ok 42 - the AI maps its Tech Lab taste onto the Celestial Array (Air Power → Ascendant, Support → Swarm) and trains every unit on each path
+  ---
+  duration_ms: 2417.087115
+  type: 'test'
+  ...
+# Subtest: saves v26 keep Celestial Array paths and the new units; a v25 save loads (a T1 Celestial Array without a path)
+ok 43 - saves v26 keep Celestial Array paths and the new units; a v25 save loads (a T1 Celestial Array without a path)
+  ---
+  duration_ms: 4.876571
+  type: 'test'
+  ...
+# Subtest: every Axiarch unit hits exactly the targets spec section 6 gives it (A aircraft, G ground units, B buildings)
+ok 44 - every Axiarch unit hits exactly the targets spec section 6 gives it (A aircraft, G ground units, B buildings)
+  ---
+  duration_ms: 2.729264
+  type: 'test'
+  ...
+# Subtest: Genesis Gate and Architectum: a path at T2 locks the building; T3 deepens it; base units on both; selling resets (the Celestial Array: tests/ax-array.test.js)
+ok 45 - Genesis Gate and Architectum: a path at T2 locks the building; T3 deepens it; base units on both; selling resets (the Celestial Array: tests/ax-array.test.js)
+  ---
+  duration_ms: 47.716579
+  type: 'test'
+  ...
+# Subtest: phase-step: the Riftstalker steps onto a target 45-130 away, never further, then waits out its cooldown; the Parallax lands behind it
+ok 46 - phase-step: the Riftstalker steps onto a target 45-130 away, never further, then waits out its cooldown; the Parallax lands behind it
+  ---
+  duration_ms: 54.873469
+  type: 'test'
+  ...
+# Subtest: disrupt: a Parallax blow makes the target deal less damage for a while; it never stacks past the cap
+ok 47 - disrupt: a Parallax blow makes the target deal less damage for a while; it never stacks past the cap
+  ---
+  duration_ms: 155.870859
+  type: 'test'
+  ...
+# Subtest: the Lancer hits aircraft, ground and buildings; the Astral Marksman charges visibly on one target before each shot and cannot hit aircraft
+ok 48 - the Lancer hits aircraft, ground and buildings; the Astral Marksman charges visibly on one target before each shot and cannot hit aircraft
+  ---
+  duration_ms: 24.77195
+  type: 'test'
+  ...
+# Subtest: Rift Mortar: Artillery mechanics with a 110 minimum range
+ok 49 - Rift Mortar: Artillery mechanics with a 110 minimum range
+  ---
+  duration_ms: 24.093216
+  type: 'test'
+  ...
+# Subtest: Worldbreaker distortion zones: in the acid-pool list under its hard cap; they expire; enemy ground units only
+ok 50 - Worldbreaker distortion zones: in the acid-pool list under its hard cap; they expire; enemy ground units only
+  ---
+  duration_ms: 87.50483
+  type: 'test'
+  ...
+# Subtest: Gravemantle: an aura that slows enemy ground units near it; slows never stack (two Gravemantles, or another slow), capped
+ok 51 - Gravemantle: an aura that slows enemy ground units near it; slows never stack (two Gravemantles, or another slow), capped
+  ---
+  duration_ms: 113.814482
+  type: 'test'
+  ...
+# Subtest: Eventide: a visible pulse pulls enemy ground units inward; never into buildings or off the lane, never aircraft; on cooldown between pulses
+ok 52 - Eventide: a visible pulse pulls enemy ground units inward; never into buildings or off the lane, never aircraft; on cooldown between pulses
+  ---
+  duration_ms: 1.60685
+  type: 'test'
+  ...
+# Subtest: path units warp in like the base units
+ok 53 - path units warp in like the base units
+  ---
+  duration_ms: 295.495367
+  type: 'test'
+  ...
+# Subtest: saves v24 keep disrupt, slow, charge and pulse timers and distortion zones; a v23 save loads
+ok 54 - saves v24 keep disrupt, slow, charge and pulse timers and distortion zones; a v23 save loads
+  ---
+  duration_ms: 7.04443
+  type: 'test'
+  ...
+# Subtest: the AI maps its Last Fist paths onto the Axiarchs and trains path units (seeded Hard)
+ok 55 - the AI maps its Last Fist paths onto the Axiarchs and trains path units (seeded Hard)
+  ---
+  duration_ms: 69971.028339
+  type: 'test'
+  ...
+# Subtest: the field grows gradually from the Axis; each Continuum Spire enlarges it; a held node gets its own and loses it gradually; Last Fist has none
+ok 56 - the field grows gradually from the Axis; each Continuum Spire enlarges it; a held node gets its own and loses it gradually; Last Fist has none
+  ---
+  duration_ms: 1090.864524
+  type: 'test'
+  ...
+# Subtest: shields recharge faster inside the friendly field
+ok 57 - shields recharge faster inside the friendly field
+  ---
+  duration_ms: 291.472129
+  type: 'test'
+  ...
+# Subtest: a trained unit warps in at the warp point after a visible channel: paid once, counted in supply, never duplicated
+ok 58 - a trained unit warps in at the warp point after a visible channel: paid once, counted in supply, never duplicated
+  ---
+  duration_ms: 292.560963
+  type: 'test'
+  ...
+# Subtest: Set warp point: only inside the field; units go there; it snaps back to the default when its field is lost
+ok 59 - Set warp point: only inside the field; units go there; it snaps back to the default when its field is lost
+  ---
+  duration_ms: 721.222644
+  type: 'test'
+  ...
+# Subtest: units never warp onto enemies, buildings or invalid ground: the nearest valid spot, else the Axis
+ok 60 - units never warp onto enemies, buildings or invalid ground: the nearest valid spot, else the Axis
+  ---
+  duration_ms: 286.021554
+  type: 'test'
+  ...
+# Subtest: fog: the enemy field is remembered only as seen, and fields grant no vision
+ok 61 - fog: the enemy field is remembered only as seen, and fields grant no vision
+  ---
+  duration_ms: 134.71459
+  type: 'test'
+  ...
+# Subtest: the AI uses the default warp point; its units warp in (seeded Hard)
+ok 62 - the AI uses the default warp point; its units warp in (seeded Hard)
+  ---
+  duration_ms: 1791.111264
+  type: 'test'
+  ...
+# Subtest: saves v23 keep the field, units mid-warp and the warp point; a v22 save grows its field from scratch
+ok 63 - saves v23 keep the field, units mid-warp and the warp point; a v22 save grows its field from scratch
+  ---
+  duration_ms: 293.605445
+  type: 'test'
+  ...
+# Subtest: as the Axiarchs: Phase Beacon and Echo Reliquary cards and info; the Echoes section on the Train tab; tapping an echo warps it back
+ok 64 - as the Axiarchs: Phase Beacon and Echo Reliquary cards and info; the Echoes section on the Train tab; tapping an echo warps it back
+  ---
+  duration_ms: 5067.375146
+  type: 'test'
+  ...
+# Subtest: the Phase Beacon and Echo Reliquary: Genesis Gate cost, time, HP, shields and upgrades
+ok 65 - the Phase Beacon and Echo Reliquary: Genesis Gate cost, time, HP, shields and upgrades
+  ---
+  duration_ms: 15.132874
+  type: 'test'
+  ...
+# Subtest: the Beacon anchor: the frontmost Axiarch ground unit; with none, the frontmost unit of any kind; with no units, the Beacon
+ok 66 - the Beacon anchor: the frontmost Axiarch ground unit; with none, the frontmost unit of any kind; with no units, the Beacon
+  ---
+  duration_ms: 31.801337
+  type: 'test'
+  ...
+# Subtest: the bubble: a node field's radius at T1, 1.5× at T2; a normal field zone that never stacks; units warp in inside it
+ok 67 - the bubble: a node field's radius at T1, 1.5× at T2; a normal field zone that never stacks; units warp in inside it
+  ---
+  duration_ms: 475.404817
+  type: 'test'
+  ...
+# Subtest: collapse: the units inside lose 35% of their combined shields plus health within 5 s; it is gone for 15 s, then re-forms at the anchor
+ok 68 - collapse: the units inside lose 35% of their combined shields plus health within 5 s; it is gone for 15 s, then re-forms at the anchor
+  ---
+  duration_ms: 380.744947
+  type: 'test'
+  ...
+# Subtest: T3: units that warp into the bubble arrive with full shields and +20% damage for 8 s; outside it, or below T3, no bonus
+ok 69 - T3: units that warp into the bubble arrive with full shields and +20% damage for 8 s; outside it, or below T3, no bonus
+  ---
+  duration_ms: 213.212189
+  type: 'test'
+  ...
+# Subtest: echoes: only Axiarch T2/T3 deaths, never temporary or recovered units; 3 kept at T1 and 5 at T2, the oldest replaced
+ok 70 - echoes: only Axiarch T2/T3 deaths, never temporary or recovered units; 3 kept at T1 and 5 at T2, the oldest replaced
+  ---
+  duration_ms: 10.950494
+  type: 'test'
+  ...
+# Subtest: a re-warp: 50% of the cost, normal supply and warp rules, consumes the echo, no production building or path needed
+ok 71 - a re-warp: 50% of the cost, normal supply and warp rules, consumes the echo, no production building or path needed
+  ---
+  duration_ms: 143.064226
+  type: 'test'
+  ...
+# Subtest: T3: recovered units arrive with an overshield of 30% of max shields for 20 s that never regenerates
+ok 72 - T3: recovered units arrive with an overshield of 30% of max shields for 20 s that never regenerates
+  ---
+  duration_ms: 225.540435
+  type: 'test'
+  ...
+# Subtest: losing the Reliquary loses every echo; echoes and warping echoes survive save and load; Salvage counts the 50% paid
+ok 73 - losing the Reliquary loses every echo; echoes and warping echoes survive save and load; Salvage counts the 50% paid
+  ---
+  duration_ms: 16.153353
+  type: 'test'
+  ...
+# Subtest: the minimal AI (Axiarchs): the Aggressor builds the Beacon, the Turtle the Reliquary, and spends an echo when it can afford one and has room
+ok 74 - the minimal AI (Axiarchs): the Aggressor builds the Beacon, the Turtle the Reliquary, and spends an echo when it can afford one and has room
+  ---
+  duration_ms: 506.891151
+  type: 'test'
+  ...
+# Subtest: saves v30; an older save with a stray Axiarch signature building drops it and frees its pad
+ok 75 - saves v30; an older save with a stray Axiarch signature building drops it and frees its pad
+  ---
+  duration_ms: 59.779272
+  type: 'test'
+  ...
+# Subtest: Set warp point: the first Train card arms it; a tap outside the field is refused; a tap inside places it; the card cancels
+ok 76 - Set warp point: the first Train card arms it; a tap outside the field is refused; a tap inside places it; the card cancels
+  ---
+  duration_ms: 4300.037405
+  type: 'test'
+  ...
+# Subtest: an enemy Axiarch field and its warps in the fog show nothing and make no sound; in view they show
+ok 77 - an enemy Axiarch field and its warps in the fog show nothing and make no sound; in view they show
+  ---
+  duration_ms: 1961.843544
+  type: 'test'
+  ...
+# Subtest: v2.28: Mass Warp, Shield Overcharge and Purification Beam cast through the buttons (tap, place, confirm); the long-press card
+ok 78 - v2.28: Mass Warp, Shield Overcharge and Purification Beam cast through the buttons (tap, place, confirm); the long-press card
+  ---
+  duration_ms: 4901.657311
+  type: 'test'
+  ...
+# Subtest: v2.28: enemy Axiarch casts in the fog show nothing, make no sound and give no warning; in view the Beam warns and shows
+ok 79 - v2.28: enemy Axiarch casts in the fog show nothing, make no sound and give no warning; in view the Beam warns and shows
+  ---
+  duration_ms: 4419.946756
+  type: 'test'
+  ...
+# Subtest: v2.29: pick a Celestial Array path through the panel (Ascendant Calculus), train a Voidcarrier from its card, then 2 game minutes of play
+ok 80 - v2.29: pick a Celestial Array path through the panel (Ascendant Calculus), train a Voidcarrier from its card, then 2 game minutes of play
+  ---
+  duration_ms: 30505.992202
+  type: 'test'
+  ...
+# Subtest: the Axiarchs: a third faction with its own names for the 8 roles; every building and unit has shields
+ok 81 - the Axiarchs: a third faction with its own names for the 8 roles; every building and unit has shields
+  ---
+  duration_ms: 21.52011
+  type: 'test'
+  ...
+# Subtest: damage hits shields first: armor and corrosion apply before the split, overflow goes to HP
+ok 82 - damage hits shields first: armor and corrosion apply before the split, overflow goes to HP
+  ---
+  duration_ms: 1.219384
+  type: 'test'
+  ...
+# Subtest: shields recharge only after the delay without damage, and never restore HP; HP never regenerates on its own
+ok 83 - shields recharge only after the delay without damage, and never restore HP; HP never regenerates on its own
+  ---
+  duration_ms: 357.811031
+  type: 'test'
+  ...
+# Subtest: buildings: shields charge once built, grow with the tier; the storm hits shields first
+ok 84 - buildings: shields charge once built, grow with the tier; the storm hits shields first
+  ---
+  duration_ms: 49.798294
+  type: 'test'
+  ...
+# Subtest: Null Lance: T1 one beam; T2 Split Lattice across up to 3 targets at lower damage each; T3 heavy, longer range, more building damage
+ok 85 - Null Lance: T1 one beam; T2 Split Lattice across up to 3 targets at lower damage each; T3 heavy, longer range, more building damage
+  ---
+  duration_ms: 3.56264
+  type: 'test'
+  ...
+# Subtest: base units: the Wraithwing hits aircraft, ground and buildings; Shardlings and Bastions hit ground and buildings only
+ok 86 - base units: the Wraithwing hits aircraft, ground and buildings; Shardlings and Bastions hit ground and buildings only
+  ---
+  duration_ms: 3.238684
+  type: 'test'
+  ...
+# Subtest: all three production buildings pick paths (v2.27 Gate and Architectum, v2.29 Celestial Array); each faction trains only its own units; its own three abilities (v2.28; locked until then)
+ok 87 - all three production buildings pick paths (v2.27 Gate and Architectum, v2.29 Celestial Array); each faction trains only its own units; its own three abilities (v2.28; locked until then)
+  ---
+  duration_ms: 1.569176
+  type: 'test'
+  ...
+# Subtest: saves v22 keep shields; a v21 save loads with no shields anywhere
+ok 88 - saves v22 keep shields; a v21 save loads with no shields anywhere
+  ---
+  duration_ms: 9.68783
+  type: 'test'
+  ...
+# Subtest: costs, cooldowns and unlocks mirror Last Fist (Frenzy ↔ Shield, Brood ↔ Repair Pulse, Corrosive ↔ Orbital Strike); one shared cooldown locks all three
+ok 89 - costs, cooldowns and unlocks mirror Last Fist (Frenzy ↔ Shield, Brood ↔ Repair Pulse, Corrosive ↔ Orbital Strike); one shared cooldown locks all three
+  ---
+  duration_ms: 13.876616
+  type: 'test'
+  ...
+# Subtest: Frenzy Bloom: faster movement and attacks for 7 s for Bloomhost units in the circle; no health; nothing for others
+ok 90 - Frenzy Bloom: faster movement and attacks for 7 s for Bloomhost units in the circle; no health; nothing for others
+  ---
+  duration_ms: 32.528419
+  type: 'test'
+  ...
+# Subtest: Emergency Brood: after a 2 s warning, 5 temporary Skitterlings: no supply, at most 8, gone after 20 s without counting as losses
+ok 91 - Emergency Brood: after a 2 s warning, 5 temporary Skitterlings: no supply, at most 8, gone after 20 s without counting as losses
+  ---
+  duration_ms: 195.364689
+  type: 'test'
+  ...
+# Subtest: Emergency Brood targeting: visible lane ground only, clear of enemies; it never lands a creature on an enemy
+ok 92 - Emergency Brood targeting: visible lane ground only, clear of enemies; it never lands a creature on an enemy
+  ---
+  duration_ms: 7.332224
+  type: 'test'
+  ...
+# Subtest: temporary units: removed at the end of the match; kept with their expiry through save and load; never carried into a new match
+ok 93 - temporary units: removed at the end of the match; kept with their expiry through save and load; never carried into a new match
+  ---
+  duration_ms: 146.889935
+  type: 'test'
+  ...
+# Subtest: Corrosive Bloom: 8 s of light damage and 15% corrosion to enemy ground units inside; never past the cap or stacked with Spitter acid; no aircraft or buildings; they can walk out
+ok 94 - Corrosive Bloom: 8 s of light damage and 15% corrosion to enemy ground units inside; never past the cap or stacked with Spitter acid; no aircraft or buildings; they can walk out
+  ---
+  duration_ms: 67.976093
+  type: 'test'
+  ...
+# Subtest: saves v20 keep Bloomhost cooldowns and active effects; a v19 Bloomhost save carries its old timers over
+ok 95 - saves v20 keep Bloomhost cooldowns and active effects; a v19 Bloomhost save carries its old timers over
+  ---
+  duration_ms: 10.259629
+  type: 'test'
+  ...
+# Subtest: Bloomspire: Swarm Bloom or Apex Bloom at T2 locks the building; T3 deepens it; Razorwings on both; selling resets
+ok 96 - Bloomspire: Swarm Bloom or Apex Bloom at T2 locks the building; T3 deepens it; Razorwings on both; selling resets
+  ---
+  duration_ms: 55.117495
+  type: 'test'
+  ...
+# Subtest: none of the four hits aircraft (Brood Tyrant and Worldrender included); all four hit ground units
+ok 97 - none of the four hits aircraft (Brood Tyrant and Worldrender included); all four hit ground units
+  ---
+  duration_ms: 1.593936
+  type: 'test'
+  ...
+# Subtest: Brood Tyrant and Worldrender prefer buildings, never shoot a shielded HQ, and the Worldrender drops a mass that splashes ground units
+ok 98 - Brood Tyrant and Worldrender prefer buildings, never shoot a shielded HQ, and the Worldrender drops a mass that splashes ground units
+  ---
+  duration_ms: 33.712357
+  type: 'test'
+  ...
+# Subtest: Needlewings hit harder in a pack (the Skitterling swarm bonus, capped)
+ok 99 - Needlewings hit harder in a pack (the Skitterling swarm bonus, capped)
+  ---
+  duration_ms: 0.784181
+  type: 'test'
+  ...
+# Subtest: Cloudwing offspring: released while fighting, their own cap (separate from Emergency Brood), half damage, no supply, expire quietly
+ok 100 - Cloudwing offspring: released while fighting, their own cap (separate from Emergency Brood), half damage, no supply, expire quietly
+  ---
+  duration_ms: 447.493432
+  type: 'test'
+  ...
+# Subtest: Cloudwing offspring through save and load (same creatures, same expiry), gone at match end, never carried into a new match
+ok 101 - Cloudwing offspring through save and load (same creatures, same expiry), gone at match end, never carried into a new match
+  ---
+  duration_ms: 115.519209
+  type: 'test'
+  ...
+# Subtest: saves v21; a v20 save loads (its Brood Skitterlings keep their lifetime; Cloudwing timers start at zero)
+ok 102 - saves v21; a v20 save loads (its Brood Skitterlings keep their lifetime; Cloudwing timers start at zero)
+  ---
+  duration_ms: 205.927
+  type: 'test'
+  ...
+# Subtest: the AI maps its Tech Lab taste onto the Bloomspire: Air Power → Apex Bloom, Support → Swarm Bloom
+ok 103 - the AI maps its Tech Lab taste onto the Bloomspire: Air Power → Apex Bloom, Support → Swarm Bloom
+  ---
+  duration_ms: 0.198469
+  type: 'test'
+  ...
+# Subtest: the AI trains every unit on its Bloomspire path (a prepared T3 Bloomspire on each path)
+not ok 104 - the AI trains every unit on its Bloomspire path (a prepared T3 Bloomspire on each path)
+  ---
+  duration_ms: 3195.142121
+  type: 'test'
+  location: '/home/user/Extinction-Event/tests/bh-spire.test.js:134:1'
+  failureType: 'testCodeFailure'
+  error: 'path B: trained {"broodtyrant":2,"razorwing":7,"skitterling":17,"spitter":1}'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: '=='
+  stack: |-
+    TestContext.<anonymous> (/home/user/Extinction-Event/tests/bh-spire.test.js:145:34)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: Larva Pit and Evolution Chamber: a path at T2 locks the building; T3 deepens it; selling resets (v2.21: the Bloomspire tree is in tests/bh-spire.test.js)
+ok 105 - Larva Pit and Evolution Chamber: a path at T2 locks the building; T3 deepens it; selling resets (v2.21: the Bloomspire tree is in tests/bh-spire.test.js)
+  ---
+  duration_ms: 22.781351
+  type: 'test'
+  ...
+# Subtest: Leaper: leaps onto a target 45–140 away, never further, then waits out its cooldown
+ok 106 - Leaper: leaps onto a target 45–140 away, never further, then waits out its cooldown
+  ---
+  duration_ms: 59.546094
+  type: 'test'
+  ...
+# Subtest: Ravager: its maul does extra damage to light armor; Spitter and Bilecaster corrosion: capped, strongest wins, never adds up
+ok 107 - Ravager: its maul does extra damage to light armor; Spitter and Bilecaster corrosion: capped, strongest wins, never adds up
+  ---
+  duration_ms: 133.192775
+  type: 'test'
+  ...
+# Subtest: Thornback: melee attackers take 20% back; retaliation never sets off more retaliation; Dreadthorn: a 60+ hit releases a spine burst, every 15 s
+ok 108 - Thornback: melee attackers take 20% back; retaliation never sets off more retaliation; Dreadthorn: a 60+ hit releases a spine burst, every 15 s
+  ---
+  duration_ms: 7.432655
+  type: 'test'
+  ...
+# Subtest: Ruinmaw acid pools: at most 6 at once (the oldest goes), they expire after 4 s, and hurt enemy ground units only
+ok 109 - Ruinmaw acid pools: at most 6 at once (the oldest goes), they expire after 4 s, and hurt enemy ground units only
+  ---
+  duration_ms: 23.870542
+  type: 'test'
+  ...
+# Subtest: Bile Lobber: Artillery mechanics (arcing shot, splash, ground and buildings) with a 110 minimum range
+ok 110 - Bile Lobber: Artillery mechanics (arcing shot, splash, ground and buildings) with a 110 minimum range
+  ---
+  duration_ms: 0.716974
+  type: 'test'
+  ...
+# Subtest: Spitters and Razorwings hit aircraft and ground (amendment F); Bilecasters and Skitterlings do not hit aircraft
+ok 111 - Spitters and Razorwings hit aircraft and ground (amendment F); Bilecasters and Skitterlings do not hit aircraft
+  ---
+  duration_ms: 4.538401
+  type: 'test'
+  ...
+# Subtest: every unit is in the Army tab tables (group, plural name), in sight and in the Train order
+ok 112 - every unit is in the Army tab tables (group, plural name), in sight and in the Train order
+  ---
+  duration_ms: 0.388423
+  type: 'test'
+  ...
+# Subtest: the AI maps its Last Fist path taste onto Bloomhost and trains path units (one seeded Hard match each way)
+ok 113 - the AI maps its Last Fist path taste onto Bloomhost and trains path units (one seeded Hard match each way)
+  ---
+  duration_ms: 32862.395373
+  type: 'test'
+  ...
+# Subtest: as Bloomhost: Brood Mound and Rootheart cards, "Already built", info cards for both and the Mite; Mites in the Army tab, never on Train
+ok 114 - as Bloomhost: Brood Mound and Rootheart cards, "Already built", info cards for both and the Mite; Mites in the Army tab, never on Train
+  ---
+  duration_ms: 3756.996218
+  type: 'test'
+  ...
+# Subtest: the Brood Mound and Rootheart: Larva Pit cost, time, HP and upgrades; the Mite: 40% of a Skitterling's HP and damage, 120% speed, free and untrainable
+ok 115 - the Brood Mound and Rootheart: Larva Pit cost, time, HP and upgrades; the Mite: 40% of a Skitterling's HP and damage, 120% speed, free and untrainable
+  ---
+  duration_ms: 7.543963
+  type: 'test'
+  ...
+# Subtest: Mites: 2 at T1 and 3 at T2 every 20 s, they expire after 30 s, and living Mites never exceed 10
+ok 116 - Mites: 2 at T1 and 3 at T2 every 20 s, they expire after 30 s, and living Mites never exceed 10
+  ---
+  duration_ms: 1348.763281
+  type: 'test'
+  ...
+# Subtest: Mites follow the army's orders, can't capture nodes and give no Salvage, Salvage Yard or not; Emergency Brood keeps its own cap
+ok 117 - Mites follow the army's orders, can't capture nodes and give no Salvage, Salvage Yard or not; Emergency Brood keeps its own cap
+  ---
+  duration_ms: 223.123377
+  type: 'test'
+  ...
+# Subtest: the T3 acid burst: a killed Mite bursts (enemy ground units only, never buildings); an expiring one never does; below T3 none
+ok 118 - the T3 acid burst: a killed Mite bursts (enemy ground units only, never buildings); an expiring one never does; below T3 none
+  ---
+  duration_ms: 7.455256
+  type: 'test'
+  ...
+# Subtest: Rootheart T1: creep spreads 1.5× faster and reaches 1.5× farther; lost, it returns to its normal reach by the usual recede
+ok 119 - Rootheart T1: creep spreads 1.5× faster and reaches 1.5× farther; lost, it returns to its normal reach by the usual recede
+  ---
+  duration_ms: 748.465635
+  type: 'test'
+  ...
+# Subtest: Rootheart: the 15% slow hits only enemy ground units standing on its creep; T2 regen is 1.5× the existing rate
+ok 120 - Rootheart: the 15% slow hits only enemy ground units standing on its creep; T2 regen is 1.5× the existing rate
+  ---
+  duration_ms: 8.41295
+  type: 'test'
+  ...
+# Subtest: Rootheart T3: every 15 s roots snare at most 5 enemy ground units on the creep's edge for 1 s (they still attack), then 10 s immunity
+ok 121 - Rootheart T3: every 15 s roots snare at most 5 enemy ground units on the creep's edge for 1 s (they still attack), then 10 s immunity
+  ---
+  duration_ms: 122.849515
+  type: 'test'
+  ...
+# Subtest: the minimal AI (Bloomhost): the Aggressor and Trickster build the Brood Mound, the Turtle and Economist the Rootheart; Mites join its army
+ok 122 - the minimal AI (Bloomhost): the Aggressor and Trickster build the Brood Mound, the Turtle and Economist the Rootheart; Mites join its army
+  ---
+  duration_ms: 5348.716261
+  type: 'test'
+  ...
+# Subtest: saves v29 keep Mites, the Mound and Rootheart timers and snares; an older save with a stray Bloomhost signature building drops it
+ok 123 - saves v29 keep Mites, the Mound and Rootheart timers and snares; an older save with a stray Bloomhost signature building drops it
+  ---
+  duration_ms: 554.244027
+  type: 'test'
+  ...
+# Subtest: setup menu at 667x375: Difficulty, You, Opponent; it fits without scrolling; choices are remembered
+ok 124 - setup menu at 667x375: Difficulty, You, Opponent; it fits without scrolling; choices are remembered
+  ---
+  duration_ms: 3322.384107
+  type: 'test'
+  ...
+# Subtest: setup menu at 858x396: Difficulty, You, Opponent; it fits without scrolling; choices are remembered
+ok 125 - setup menu at 858x396: Difficulty, You, Opponent; it fits without scrolling; choices are remembered
+  ---
+  duration_ms: 2639.786504
+  type: 'test'
+  ...
+# Subtest: a match as Bloomhost: names and cards, Train after a Larva Pit, Larva Pit and Bloomspire path pickers (v2.21), its own three abilities (v2.20)
+ok 126 - a match as Bloomhost: names and cards, Train after a Larva Pit, Larva Pit and Bloomspire path pickers (v2.21), its own three abilities (v2.20)
+  ---
+  duration_ms: 6623.454153
+  type: 'test'
+  ...
+# Subtest: the enemy faction stays out of the UI during the match (no name, toast or log); the end screen reveals both
+ok 127 - the enemy faction stays out of the UI during the match (no name, toast or log); the end screen reveals both
+  ---
+  duration_ms: 7158.752302
+  type: 'test'
+  ...
+# Subtest: v2.20: Bloomhost abilities cast through the buttons (tap, place, confirm); enemy Bloomhost casts in the fog show nothing, in view they do
+ok 128 - v2.20: Bloomhost abilities cast through the buttons (tap, place, confirm); enemy Bloomhost casts in the fog show nothing, in view they do
+  ---
+  duration_ms: 4106.290383
+  type: 'test'
+  ...
+# Subtest: the eight Bloomhost buildings fill the Last Fist roles; the Hive keeps the HQ's numbers; the Maw is its own defence
+ok 129 - the eight Bloomhost buildings fill the Last Fist roles; the Hive keeps the HQ's numbers; the Maw is its own defence
+  ---
+  duration_ms: 16.152731
+  type: 'test'
+  ...
+# Subtest: each faction trains only its own units; every production building picks a path (v2.19: Larva Pit and Evolution Chamber; v2.21: Bloomspire); the rest upgrade
+ok 130 - each faction trains only its own units; every production building picks a path (v2.19: Larva Pit and Evolution Chamber; v2.21: Bloomspire); the rest upgrade
+  ---
+  duration_ms: 416.384359
+  type: 'test'
+  ...
+# Subtest: each faction uses only its own three abilities (v2.20: Bloomhost has Frenzy Bloom, Emergency Brood, Corrosive Bloom)
+ok 131 - each faction uses only its own three abilities (v2.20: Bloomhost has Frenzy Bloom, Emergency Brood, Corrosive Bloom)
+  ---
+  duration_ms: 0.992798
+  type: 'test'
+  ...
+# Subtest: Skitterlings: melee, +15% per other Skitterling on the same target (at most +45%); they close on enemies in other lanes
+ok 132 - Skitterlings: melee, +15% per other Skitterling on the same target (at most +45%); they close on enemies in other lanes
+  ---
+  duration_ms: 120.668606
+  type: 'test'
+  ...
+# Subtest: Bulwark brace: the first hit after its cooldown hardens it (40% less damage for 3 s); the brace returns 12 s after it started
+ok 133 - Bulwark brace: the first hit after its cooldown hardens it (40% less damage for 3 s); the brace returns 12 s after it started
+  ---
+  duration_ms: 0.791007
+  type: 'test'
+  ...
+# Subtest: saves v17 keep factions, buildings and unit state; a v16 save loads as Last Fist vs Last Fist
+ok 134 - saves v17 keep factions, buildings and unit state; a v16 save loads as Last Fist vs Last Fist
+  ---
+  duration_ms: 224.521354
+  type: 'test'
+  ...
+# Subtest: the enemy faction stays hidden in the fog: the enemy HQ starts as a faceless ghost; pads count as seen only once in view
+ok 135 - the enemy faction stays hidden in the fog: the enemy HQ starts as a faceless ghost; pads count as seen only once in view
+  ---
+  duration_ms: 6.242821
+  type: 'test'
+  ...
+# Subtest: the match log names each side's buildings in its own faction and both factions
+ok 136 - the match log names each side's buildings in its own faction and both factions
+  ---
+  duration_ms: 22.794702
+  type: 'test'
+  ...
+# Subtest: rush bot plays a full match against the Normal AI
+ok 137 - rush bot plays a full match against the Normal AI
+  ---
+  duration_ms: 8224.4126
+  type: 'test'
+  ...
+# Subtest: turtle bot plays a full match against the Normal AI
+ok 138 - turtle bot plays a full match against the Normal AI
+  ---
+  duration_ms: 17336.614931
+  type: 'test'
+  ...
+# Subtest: rush bot builds several Barracks, only Riflemen, and attacks
+ok 139 - rush bot builds several Barracks, only Riflemen, and attacks
+  ---
+  duration_ms: 747.365597
+  type: 'test'
+  ...
+# Subtest: title screen: name and version
+ok 140 - title screen: name and version
+  ---
+  duration_ms: 1059.321923
+  type: 'test'
+  ...
+# Subtest: title image: shows first, covers the screen uncropped-centered, tap goes to the main menu
+ok 141 - title image: shows first, covers the screen uncropped-centered, tap goes to the main menu
+  ---
+  duration_ms: 3082.543952
+  type: 'test'
+  ...
+# Subtest: match start: wide view, GET READY 3-2-1, GO; taps wait for GO
+ok 142 - match start: wide view, GET READY 3-2-1, GO; taps wait for GO
+  ---
+  duration_ms: 8560.32282
+  type: 'test'
+  ...
+# Subtest: HQ readouts in the top bar: shielded, exposed, destroyed
+ok 143 - HQ readouts in the top bar: shielded, exposed, destroyed
+  ---
+  duration_ms: 2122.960595
+  type: 'test'
+  ...
+# Subtest: two-tap Sell refunds 50%
+ok 144 - two-tap Sell refunds 50%
+  ---
+  duration_ms: 3598.01408
+  type: 'test'
+  ...
+# Subtest: saves use colonyMobile.save / colonyMobile.diff; a restored match starts paused
+ok 145 - saves use colonyMobile.save / colonyMobile.diff; a restored match starts paused
+  ---
+  duration_ms: 6367.998519
+  type: 'test'
+  ...
+# Subtest: old-version or corrupt saves fall back to a clean New match
+ok 146 - old-version or corrupt saves fall back to a clean New match
+  ---
+  duration_ms: 6175.882687
+  type: 'test'
+  ...
+# Subtest: no main-canvas resizes during a 60-second match (each resize clears the canvas: black flash)
+ok 147 - no main-canvas resizes during a 60-second match (each resize clears the canvas: black flash)
+  ---
+  duration_ms: 30721.43015
+  type: 'test'
+  ...
+# Subtest: fog: hidden enemies are not drawn on the minimap, AI intent toasts are gone, "spotted" shows
+ok 148 - fog: hidden enemies are not drawn on the minimap, AI intent toasts are gone, "spotted" shows
+  ---
+  duration_ms: 1971.909921
+  type: 'test'
+  ...
+# Subtest: a v5 save from before fog of war resumes cleanly
+ok 149 - a v5 save from before fog of war resumes cleanly
+  ---
+  duration_ms: 5064.619353
+  type: 'test'
+  ...
+# Subtest: fog: capture progress on a node out of view is not drawn (it would reveal units)
+ok 150 - fog: capture progress on a node out of view is not drawn (it would reveal units)
+  ---
+  duration_ms: 1003.651624
+  type: 'test'
+  ...
+# Subtest: the AI personality is never shown during a match, only on the post-match screen
+ok 151 - the AI personality is never shown during a match, only on the post-match screen
+  ---
+  duration_ms: 18929.247479
+  type: 'test'
+  ...
+# Subtest: a resumed match keeps its personality (and still does not show it)
+ok 152 - a resumed match keeps its personality (and still does not show it)
+  ---
+  duration_ms: 3900.463392
+  type: 'test'
+  ...
+# Subtest: unit sprite cache: every cached pose fits its box; recoil and aircraft draw live
+ok 153 - unit sprite cache: every cached pose fits its box; recoil and aircraft draw live
+  ---
+  duration_ms: 10582.423831
+  type: 'test'
+  ...
+# Subtest: effects: nothing is spawned for hidden enemies (firing, dying, walking, buildings) and no shake from them
+ok 154 - effects: nothing is spawned for hidden enemies (firing, dying, walking, buildings) and no shake from them
+  ---
+  duration_ms: 10371.385304
+  type: 'test'
+  ...
+# Subtest: effects: pools stay within their caps in a big battle, and quality steps down and back up
+ok 155 - effects: pools stay within their caps in a big battle, and quality steps down and back up
+  ---
+  duration_ms: 23385.985782
+  type: 'test'
+  ...
+# Subtest: sound: toggle on the title screen and pause menu, remembered under its own key; save keys untouched
+ok 156 - sound: toggle on the title screen and pause menu, remembered under its own key; save keys untouched
+  ---
+  duration_ms: 3430.215527
+  type: 'test'
+  ...
+# Subtest: sound: starts on the first tap, caps voices, disconnects every node, silent off screen, survives backgrounding
+ok 157 - sound: starts on the first tap, caps voices, disconnects every node, silent off screen, survives backgrounding
+  ---
+  duration_ms: 8512.233229
+  type: 'test'
+  ...
+# Subtest: sound: every sound is baked into a buffer, so a playing sound costs at most three nodes
+ok 158 - sound: every sound is baked into a buffer, so a playing sound costs at most three nodes
+  ---
+  duration_ms: 4532.729316
+  type: 'test'
+  ...
+# Subtest: abilities at 858×396: buttons, building panel, info panel, banner, top bar and cards never overlap
+ok 159 - abilities at 858×396: buttons, building panel, info panel, banner, top bar and cards never overlap
+  ---
+  duration_ms: 1941.051666
+  type: 'test'
+  ...
+# Subtest: abilities at 667×375: buttons, building panel, info panel, banner, top bar and cards never overlap
+ok 160 - abilities at 667×375: buttons, building panel, info panel, banner, top bar and cards never overlap
+  ---
+  duration_ms: 1698.207138
+  type: 'test'
+  ...
+# Subtest: abilities: tap, place, confirm; cancel; one shared cooldown ring; blocked during GET READY, while paused and when short of resources
+ok 161 - abilities: tap, place, confirm; cancel; one shared cooldown ring; blocked during GET READY, while paused and when short of resources
+  ---
+  duration_ms: 6580.119649
+  type: 'test'
+  ...
+# Subtest: abilities and the fog: an enemy strike on ground the player cannot see shows nothing; one in view warns, even off screen
+ok 162 - abilities and the fog: an enemy strike on ground the player cannot see shows nothing; one in view warns, even off screen
+  ---
+  duration_ms: 3732.982344
+  type: 'test'
+  ...
+# Subtest: Extinction Event: warning banner (no taps), meteors only on ground the player can see, end-screen wording and flavor lines
+ok 163 - Extinction Event: warning banner (no taps), meteors only on ground the player can see, end-screen wording and flavor lines
+  ---
+  duration_ms: 18107.261648
+  type: 'test'
+  ...
+# Subtest: lastfist: the Build tab at rest for 10 game seconds: no card rebuilt or restyled; a real change still shows once
+ok 164 - lastfist: the Build tab at rest for 10 game seconds: no card rebuilt or restyled; a real change still shows once
+  ---
+  duration_ms: 12451.92584
+  type: 'test'
+  ...
+# Subtest: bloomhost: the Build tab at rest for 10 game seconds: no card rebuilt or restyled; a real change still shows once
+ok 165 - bloomhost: the Build tab at rest for 10 game seconds: no card rebuilt or restyled; a real change still shows once
+  ---
+  duration_ms: 12274.267125
+  type: 'test'
+  ...
+# Subtest: axiarchs: the Build tab at rest for 10 game seconds: no card rebuilt or restyled; a real change still shows once
+ok 166 - axiarchs: the Build tab at rest for 10 game seconds: no card rebuilt or restyled; a real change still shows once
+  ---
+  duration_ms: 11685.373275
+  type: 'test'
+  ...
+# Subtest: building art stays on its pad and below its health bar, every tier, team and gun angle; the body fits its cache box
+ok 167 - building art stays on its pad and below its health bar, every tier, team and gun angle; the body fits its cache box
+  ---
+  duration_ms: 91778.464154
+  type: 'test'
+  ...
+# Subtest: cached bodies look the same as live drawing (no flicker while the cache fills)
+ok 168 - cached bodies look the same as live drawing (no flicker while the cache fills)
+  ---
+  duration_ms: 2275.669144
+  type: 'test'
+  ...
+# Subtest: the drawn tier is always the gameplay tier: built, upgrading, under construction, ghosts, wrecks, sold, rebuilt, loaded
+ok 169 - the drawn tier is always the gameplay tier: built, upgrading, under construction, ghosts, wrecks, sold, rebuilt, loaded
+  ---
+  duration_ms: 1818.345166
+  type: 'test'
+  ...
+# Subtest: the building cache is bounded: at most one body per type, tier and team, rebuilt only on a zoom step
+ok 170 - the building cache is bounded: at most one body per type, tier and team, rebuilt only on a zoom step
+  ---
+  duration_ms: 3533.048393
+  type: 'test'
+  ...
+# Subtest: countdown defaults to 0 and is 3 seconds in the SIM
+ok 171 - countdown defaults to 0 and is 3 seconds in the SIM
+  ---
+  duration_ms: 18.962861
+  type: 'test'
+  ...
+# Subtest: during the countdown build, train, upgrade, repair and sell are refused with "Wait for GO"
+ok 172 - during the countdown build, train, upgrade, repair and sell are refused with "Wait for GO"
+  ---
+  duration_ms: 112.988638
+  type: 'test'
+  ...
+# Subtest: during the countdown nothing progresses and the AI waits
+ok 173 - during the countdown nothing progresses and the AI waits
+  ---
+  duration_ms: 8.29379
+  type: 'test'
+  ...
+# Subtest: production, upgrades, repair and regen are frozen too, and resume at GO
+ok 174 - production, upgrades, repair and regen are frozen too, and resume at GO
+  ---
+  duration_ms: 50.751704
+  type: 'test'
+  ...
+# Subtest: the match clock starts at GO and the AI only starts deciding then
+ok 175 - the match clock starts at GO and the AI only starts deciding then
+  ---
+  duration_ms: 6.938769
+  type: 'test'
+  ...
+# Subtest: HQ readouts: exposed, shielded, damaged and destroyed
+ok 176 - HQ readouts: exposed, shielded, damaged and destroyed
+  ---
+  duration_ms: 2.177283
+  type: 'test'
+  ...
+# Subtest: the countdown is not saved: a restored match does not replay it
+ok 177 - the countdown is not saved: a restored match does not replay it
+  ---
+  duration_ms: 6.919703
+  type: 'test'
+  ...
+# Subtest: creep grows gradually from the Hive (never all at once) up to its radius; other buildings add their own; Last Fist has none
+ok 178 - creep grows gradually from the Hive (never all at once) up to its radius; other buildings add their own; Last Fist has none
+  ---
+  duration_ms: 408.09208
+  type: 'test'
+  ...
+# Subtest: a held node grows creep faster; losing it, or a building, makes its creep recede gradually and vanish
+ok 179 - a held node grows creep faster; losing it, or a building, makes its creep recede gradually and vanish
+  ---
+  duration_ms: 319.32099
+  type: 'test'
+  ...
+# Subtest: +20% speed on own creep, for Bloomhost ground units only (not off creep, not aircraft, not Last Fist units)
+ok 180 - +20% speed on own creep, for Bloomhost ground units only (not off creep, not aircraft, not Last Fist units)
+  ---
+  duration_ms: 226.597864
+  type: 'test'
+  ...
+# Subtest: regeneration: on creep, out of combat (no damage taken or dealt for 5 s), Bloomhost only; the highest heal applies
+ok 181 - regeneration: on creep, out of combat (no damage taken or dealt for 5 s), Bloomhost only; the highest heal applies
+  ---
+  duration_ms: 232.785047
+  type: 'test'
+  ...
+# Subtest: enemy creep: hidden in the fog, remembered only as last seen, forgotten when seen gone; creep grants no vision
+ok 182 - enemy creep: hidden in the fog, remembered only as last seen, forgotten when seen gone; creep grants no vision
+  ---
+  duration_ms: 374.532821
+  type: 'test'
+  ...
+# Subtest: saves keep creep and the remembered enemy creep; a v17 save starts with none and grows it
+ok 183 - saves keep creep and the remembered enemy creep; a v17 save starts with none and grows it
+  ---
+  duration_ms: 112.042465
+  type: 'test'
+  ...
+# Subtest: a fixed Last Fist vs Bloomhost match plays exactly as v2.33 did, apart from the save version (batch 3 changes only the Axiarchs)
+ok 184 - a fixed Last Fist vs Bloomhost match plays exactly as v2.33 did, apart from the save version (batch 3 changes only the Axiarchs)
+  ---
+  duration_ms: 16089.19014
+  type: 'test'
+  ...
+# Subtest: seeded AI-vs-AI match matches the recorded SIM fingerprint (rules change only on purpose)
+ok 185 - seeded AI-vs-AI match matches the recorded SIM fingerprint (rules change only on purpose)
+  ---
+  duration_ms: 15431.249618
+  type: 'test'
+  ...
+# Subtest: v2.39: with the balance pass on, the same two matches match their recorded fingerprints; with it off they are v2.38's (above)
+ok 186 - v2.39: with the balance pass on, the same two matches match their recorded fingerprints; with it off they are v2.38's (above)
+  ---
+  duration_ms: 15421.532663
+  type: 'test'
+  ...
+# Subtest: with the unit redesign off (setRedesign(false)) the same match plays exactly as v2.36 did; the targeting index (v2.37) changes nothing
+ok 187 - with the unit redesign off (setRedesign(false)) the same match plays exactly as v2.36 did; the targeting index (v2.37) changes nothing
+  ---
+  duration_ms: 5807.25317
+  type: 'test'
+  ...
+# Subtest: with FLAME.aim false the same match plays exactly as v2.35 did (the Flame Tank fix is the only Last Fist change)
+ok 188 - with FLAME.aim false the same match plays exactly as v2.35 did (the Flame Tank fix is the only Last Fist change)
+  ---
+  duration_ms: 4402.243903
+  type: 'test'
+  ...
+# Subtest: with Salvage and signature buildings switched off (SALVAGE.pct 0, SIG.on false) the same match plays exactly as v2.29 did
+ok 189 - with Salvage and signature buildings switched off (SALVAGE.pct 0, SIG.on false) the same match plays exactly as v2.29 did
+  ---
+  duration_ms: 5270.285474
+  type: 'test'
+  ...
+# Subtest: schedule: countdown from 18:00, warning at 19:30, storm at 20:00 rising 0.75%/s each minute; it beats half-rate Repair at 23:36
+ok 190 - schedule: countdown from 18:00, warning at 19:30, storm at 20:00 rising 0.75%/s each minute; it beats half-rate Repair at 23:36
+  ---
+  duration_ms: 163.415307
+  type: 'test'
+  ...
+# Subtest: the storm burns every building, the shielded HQ too; with no repair they fall at about 21:45; units are untouched
+ok 191 - the storm burns every building, the shielded HQ too; with no repair they fall at about 21:45; units are untouched
+  ---
+  duration_ms: 399.970479
+  type: 'test'
+  ...
+# Subtest: in the storm: no self-repair, Repair Pulse heals units only, paid Repair at half rate; an HQ repaired non-stop still falls by about 25:43
+ok 192 - in the storm: no self-repair, Repair Pulse heals units only, paid Repair at half rate; an HQ repaired non-stop still falls by about 25:43
+  ---
+  duration_ms: 587.142522
+  type: 'test'
+  ...
+# Subtest: ending: before 20:00 at once; in the storm after a 5 s window; both HQs in the window or the 27:00 limit go to the score
+ok 193 - ending: before 20:00 at once; in the storm after a 5 s window; both HQs in the window or the 27:00 limit go to the score
+  ---
+  duration_ms: 39.847212
+  type: 'test'
+  ...
+# Subtest: tie-breaks: score, then kills, then credits earned; equal on all three is a draw ("Mutual extinction")
+ok 194 - tie-breaks: score, then kills, then credits earned; equal on all three is a draw ("Mutual extinction")
+  ---
+  duration_ms: 1.007171
+  type: 'test'
+  ...
+# Subtest: save and resume mid-storm and inside the end window; a v8 save loads
+ok 195 - save and resume mid-storm and inside the end window; a v8 save loads
+  ---
+  duration_ms: 22.706183
+  type: 'test'
+  ...
+# Subtest: AI vs AI always finishes by 27:00, on every difficulty
+ok 196 - AI vs AI always finishes by 27:00, on every difficulty
+  ---
+  duration_ms: 149004.591091
+  type: 'test'
+  ...
+# Subtest: every side has a faction, Last Fist by default; it survives save and resume
+ok 197 - every side has a faction, Last Fist by default; it survives save and resume
+  ---
+  duration_ms: 6.182519
+  type: 'test'
+  ...
+# Subtest: a v15 save (no faction) loads as Last Fist vs Last Fist
+ok 198 - a v15 save (no faction) loads as Last Fist vs Last Fist
+  ---
+  duration_ms: 447.847627
+  type: 'test'
+  ...
+# Subtest: the match log names both factions
+ok 199 - the match log names both factions
+  ---
+  duration_ms: 18.634646
+  type: 'test'
+  ...
+# Subtest: Tech Lab needs only a Barracks (no War Factory); the AI still builds one
+ok 200 - Tech Lab needs only a Barracks (no War Factory); the AI still builds one
+  ---
+  duration_ms: 968.863141
+  type: 'test'
+  ...
+# Subtest: the War Factory picks Siege or Assault at T2; Siege unlocks Artillery (T2) and Titan (T3), Assault the Flame Tank (T2) and Hydra (T3)
+ok 201 - the War Factory picks Siege or Assault at T2; Siege unlocks Artillery (T2) and Titan (T3), Assault the Flame Tank (T2) and Hydra (T3)
+  ---
+  duration_ms: 55.814989
+  type: 'test'
+  ...
+# Subtest: Flame Tank: no projectile; every enemy on the ground in the strip ahead takes the burst, nothing behind, beside or in the air
+ok 202 - Flame Tank: no projectile; every enemy on the ground in the strip ahead takes the burst, nothing behind, beside or in the air
+  ---
+  duration_ms: 24.761405
+  type: 'test'
+  ...
+# Subtest: Flame Tank: it burns buildings in reach (0.6×) but never a shielded HQ; it fires on its own in a fight
+ok 203 - Flame Tank: it burns buildings in reach (0.6×) but never a shielded HQ; it fires on its own in a fight
+  ---
+  duration_ms: 22.524636
+  type: 'test'
+  ...
+# Subtest: Hydra: hits air out to 240 (ground 200), picks aircraft over closer ground targets, deals 0.3× to buildings
+ok 204 - Hydra: hits air out to 240 (ground 200), picks aircraft over closer ground targets, deals 0.3× to buildings
+  ---
+  duration_ms: 1.219582
+  type: 'test'
+  ...
+# Subtest: Hydra: switching between ground and air targets costs 0.4 s before the next shot
+ok 205 - Hydra: switching between ground and air targets costs 0.4 s before the next shot
+  ---
+  duration_ms: 15.566601
+  type: 'test'
+  ...
+# Subtest: the AI: Aggressor and Trickster default to Assault, Turtle and Economist to Siege; Assault AIs train Flame Tanks
+ok 206 - the AI: Aggressor and Trickster default to Assault, Turtle and Economist to Siege; Assault AIs train Flame Tanks
+  ---
+  duration_ms: 37416.907847
+  type: 'test'
+  ...
+# Subtest: saves keep War Factory paths and Hydra aim; a v13 save migrates (T2+ War Factory → Siege, upgrade in progress → Siege)
+ok 207 - saves keep War Factory paths and Hydra aim; a v13 save migrates (T2+ War Factory → Siege, upgrade in progress → Siege)
+  ---
+  duration_ms: 4.349506
+  type: 'test'
+  ...
+# Subtest: the match log counts what killed your units
+ok 208 - the match log counts what killed your units
+  ---
+  duration_ms: 0.688994
+  type: 'test'
+  ...
+# Subtest: base vision always covers the HQ and Turret guns at every tier
+ok 209 - base vision always covers the HQ and Turret guns at every tier
+  ---
+  duration_ms: 8.486711
+  type: 'test'
+  ...
+# Subtest: at the start the middle of the lane is dark to both sides; the enemy HQ is a known ghost
+ok 210 - at the start the middle of the lane is dark to both sides; the enemy HQ is a known ghost
+  ---
+  duration_ms: 1.193442
+  type: 'test'
+  ...
+# Subtest: scouting reveals as it moves; explored ground stays; ghosts keep last-known state; empty ghosts are cleared
+ok 211 - scouting reveals as it moves; explored ground stays; ghosts keep last-known state; empty ghosts are cleared
+  ---
+  duration_ms: 367.471709
+  type: 'test'
+  ...
+# Subtest: a field node you hold gives vision while you hold it
+ok 212 - a field node you hold gives vision while you hold it
+  ---
+  duration_ms: 47.321898
+  type: 'test'
+  ...
+# Subtest: enemies appear and disappear with vision; "spotted" at most once per 10 s
+ok 213 - enemies appear and disappear with vision; "spotted" at most once per 10 s
+  ---
+  duration_ms: 25.251562
+  type: 'test'
+  ...
+# Subtest: Artillery and Snipers do not fire beyond sight until a spotter arrives
+ok 214 - Artillery and Snipers do not fire beyond sight until a spotter arrives
+  ---
+  duration_ms: 78.159274
+  type: 'test'
+  ...
+# Subtest: enemy HQ readout shows last-known health and shield until seen
+ok 215 - enemy HQ readout shows last-known health and shield until seen
+  ---
+  duration_ms: 0.848649
+  type: 'test'
+  ...
+# Subtest: AI memory: it remembers units it saw, fading over 45 s, and forgets them when the spot is empty
+ok 216 - AI memory: it remembers units it saw, fading over 45 s, and forgets them when the spot is empty
+  ---
+  duration_ms: 80.749075
+  type: 'test'
+  ...
+# Subtest: AI decisions use only its own vision (identical choices whatever is hidden from it)
+ok 217 - AI decisions use only its own vision (identical choices whatever is hidden from it)
+  ---
+  duration_ms: 1144.061613
+  type: 'test'
+  ...
+# Subtest: AI siege under fog: a spotter walks up and Artillery hits the player's buildings
+ok 218 - AI siege under fog: a spotter walks up and Artillery hits the player's buildings
+  ---
+  duration_ms: 799.711003
+  type: 'test'
+  ...
+# Subtest: saves: v6 keeps fog, ghosts and AI memory; v5 saves load with fog from current vision only
+ok 219 - saves: v6 keeps fog, ghosts and AI memory; v5 saves load with fog from current vision only
+  ---
+  duration_ms: 33.786969
+  type: 'test'
+  ...
+# Subtest: a big explosion out of the player's sight does not shake the screen
+ok 220 - a big explosion out of the player's sight does not shake the screen
+  ---
+  duration_ms: 1.102344
+  type: 'test'
+  ...
+# Subtest: AI defense estimate counts the enemy HQ and remembered Turrets at their last-seen tiers
+ok 221 - AI defense estimate counts the enemy HQ and remembered Turrets at their last-seen tiers
+  ---
+  duration_ms: 71.05829
+  type: 'test'
+  ...
+# Subtest: AI remembers a failed base attack: no new base attack until its army clearly beats the last one; the bar fades
+ok 222 - AI remembers a failed base attack: no new base attack until its army clearly beats the last one; the bar fades
+  ---
+  duration_ms: 6.755112
+  type: 'test'
+  ...
+# Subtest: a maxed-out AI with money banked is not held back by a failed-attack bar it can never beat
+ok 223 - a maxed-out AI with money banked is not held back by a failed-attack bar it can never beat
+  ---
+  duration_ms: 1.058112
+  type: 'test'
+  ...
+# Subtest: the Default AI plays exactly as v2.40 on Normal, Easy and Hard (Easy and Normal unchanged)
+ok 224 - the Default AI plays exactly as v2.40 on Normal, Easy and Hard (Easy and Normal unchanged)
+  ---
+  duration_ms: 28821.105099
+  type: 'test'
+  ...
+# Subtest: the Boomer opening: three economy buildings first; never rolled at random; the v2.41 rules are off in Default
+ok 225 - the Boomer opening: three economy buildings first; never rolled at random; the v2.41 rules are off in Default
+  ---
+  duration_ms: 34.41313
+  type: 'test'
+  ...
+# Subtest: the Hard preset: the Boomer opening and the kept rules for every faction
+ok 226 - the Hard preset: the Boomer opening and the kept rules for every faction
+  ---
+  duration_ms: 19.495959
+  type: 'test'
+  ...
+# Subtest: shield rule: no Emergency Shield on units that are not yet taking fire; with fire, it shields
+ok 227 - shield rule: no Emergency Shield on units that are not yet taking fire; with fire, it shields
+  ---
+  duration_ms: 41.21607
+  type: 'test'
+  ...
+# Subtest: est: the expected enemy army grows with time and with the Refineries it has seen
+ok 228 - est: the expected enemy army grows with time and with the Refineries it has seen
+  ---
+  duration_ms: 27.801867
+  type: 'test'
+  ...
+# Subtest: counter: an infantry flood sends the War Factory down the Assault path (Flame Tanks); without the rule it keeps its plan
+ok 229 - counter: an infantry flood sends the War Factory down the Assault path (Flame Tanks); without the rule it keeps its plan
+  ---
+  duration_ms: 17.222169
+  type: 'test'
+  ...
+# Subtest: the Greedy bot (audit harness) plays a full match against Hard: economy first, nodes taken, a result
+ok 230 - the Greedy bot (audit harness) plays a full match against Hard: economy first, nodes taken, a result
+  ---
+  duration_ms: 9767.070532
+  type: 'test'
+  ...
+# Subtest: tabs: Build, Train (the old Army tab) and Army; the Army tab lists only owned groups and types, with counts
+ok 231 - tabs: Build, Train (the old Army tab) and Army; the Army tab lists only owned groups and types, with counts
+  ---
+  duration_ms: 3073.046659
+  type: 'test'
+  ...
+# Subtest: tap a group or type, then an order; Regroup by tapping the battlefield; blocked while paused and during GET READY
+ok 232 - tap a group or type, then an order; Regroup by tapping the battlefield; blocked while paused and during GET READY
+  ---
+  duration_ms: 6775.340669
+  type: 'test'
+  ...
+# Subtest: Army tab at 858×396: big buttons inside the tray, no overlap with abilities, building panel, info panel or top bar
+ok 233 - Army tab at 858×396: big buttons inside the tray, no overlap with abilities, building panel, info panel or top bar
+  ---
+  duration_ms: 3395.619826
+  type: 'test'
+  ...
+# Subtest: Army tab at 667×375: big buttons inside the tray, no overlap with abilities, building panel, info panel or top bar
+ok 234 - Army tab at 667×375: big buttons inside the tray, no overlap with abilities, building panel, info panel or top bar
+  ---
+  duration_ms: 3209.029949
+  type: 'test'
+  ...
+# Subtest: group orders, the selection and a Regroup flag survive saving and reloading the page
+ok 235 - group orders, the selection and a Regroup flag survive saving and reloading the page
+  ---
+  duration_ms: 3068.664521
+  type: 'test'
+  ...
+# Subtest: a type order moves only that type; a group order only that group; the rest keep the global stance
+ok 236 - a type order moves only that type; a group order only that group; the rest keep the global stance
+  ---
+  duration_ms: 123.863576
+  type: 'test'
+  ...
+# Subtest: the most recent order wins where a group and a type order both cover a unit; a global stance clears them all
+ok 237 - the most recent order wins where a group and a type order both cover a unit; a global stance clears them all
+  ---
+  duration_ms: 5.314183
+  type: 'test'
+  ...
+# Subtest: newly trained units follow their type order, else their group order, else the global stance
+ok 238 - newly trained units follow their type order, else their group order, else the global stance
+  ---
+  duration_ms: 156.126637
+  type: 'test'
+  ...
+# Subtest: Regroup: units walk to the flag and hold there; the flag is done when all have arrived; a new order replaces it
+ok 239 - Regroup: units walk to the flag and hold there; the flag is done when all have arrived; a new order replaces it
+  ---
+  duration_ms: 212.985465
+  type: 'test'
+  ...
+# Subtest: no orders during GET READY or after the match; Regroup must target the battlefield
+ok 240 - no orders during GET READY or after the match; Regroup must target the battlefield
+  ---
+  duration_ms: 1.36779
+  type: 'test'
+  ...
+# Subtest: save and resume mid-Regroup keep orders, the selection and the flag; a v11 save starts with no group orders
+ok 241 - save and resume mid-Regroup keep orders, the selection and the flag; a v11 save starts with no group orders
+  ---
+  duration_ms: 415.611905
+  type: 'test'
+  ...
+# Subtest: orders are in the match log; the AI pulls its Artillery back when enemies it can see come close, then lets it go
+ok 242 - orders are in the match log; the AI pulls its Artillery back when enemies it can see come close, then lets it go
+  ---
+  duration_ms: 10.90712
+  type: 'test'
+  ...
+# Subtest: a unit that warps in while the army is on Hold stays at the warp point (a Hold group or type order too); on Attack it advances
+ok 243 - a unit that warps in while the army is on Hold stays at the warp point (a Hold group or type order too); on Attack it advances
+  ---
+  duration_ms: 529.483104
+  type: 'test'
+  ...
+# Subtest: Mass Warp arrivals on Hold stay where they arrive, including a unit that had no hold spot yet
+ok 244 - Mass Warp arrivals on Hold stay where they arrive, including a unit that had no hold spot yet
+  ---
+  duration_ms: 285.891334
+  type: 'test'
+  ...
+# Subtest: Emergency Brood Skitterlings and Cloudwing offspring on Hold stay where they appear
+ok 245 - Emergency Brood Skitterlings and Cloudwing offspring on Hold stay where they appear
+  ---
+  duration_ms: 230.098418
+  type: 'test'
+  ...
+# Subtest: the Gravemantle and the Eventide attack an enemy unit and an enemy building in range, and stop to fight (v2.30 walked past buildings)
+ok 246 - the Gravemantle and the Eventide attack an enemy unit and an enemy building in range, and stop to fight (v2.30 walked past buildings)
+  ---
+  duration_ms: 977.009996
+  type: 'test'
+  ...
+# Subtest: the Shardstorm stops at buildings and hits them weakly; its chain never jumps to a building
+ok 247 - the Shardstorm stops at buildings and hits them weakly; its chain never jumps to a building
+  ---
+  duration_ms: 187.274254
+  type: 'test'
+  ...
+# Subtest: every unit of all three factions has a weapon its targeting can use, or is a listed non-combat unit
+ok 248 - every unit of all three factions has a weapon its targeting can use, or is a listed non-combat unit
+  ---
+  duration_ms: 0.676627
+  type: 'test'
+  ...
+# Subtest: every combat unit stops to fight an enemy it can hit instead of walking past it; non-combat units stay with the army
+ok 249 - every combat unit stops to fight an enemy it can hit instead of walking past it; non-combat units stay with the army
+  ---
+  duration_ms: 8970.0432
+  type: 'test'
+  ...
+# Subtest: every personality exists at every difficulty; each match rolls one; it can be forced for tests
+ok 250 - every personality exists at every difficulty; each match rolls one; it can be forced for tests
+  ---
+  duration_ms: 575.073158
+  type: 'test'
+  ...
+# Subtest: personalities vary within their style from match to match
+ok 251 - personalities vary within their style from match to match
+  ---
+  duration_ms: 5.209839
+  type: 'test'
+  ...
+# Subtest: style: build plans and priorities differ as designed
+ok 252 - style: build plans and priorities differ as designed
+  ---
+  duration_ms: 0.347978
+  type: 'test'
+  ...
+# Subtest: adapting: an Aggressor whose base attacks fail twice turns to economy for a while
+ok 253 - adapting: an Aggressor whose base attacks fail twice turns to economy for a while
+  ---
+  duration_ms: 7.041206
+  type: 'test'
+  ...
+# Subtest: adapting: an outgunned Economist drops greed and defends (no upgrades or tech, trains units)
+ok 254 - adapting: an outgunned Economist drops greed and defends (no upgrades or tech, trains units)
+  ---
+  duration_ms: 213.924257
+  type: 'test'
+  ...
+# Subtest: Trickster feints pull back without counting as a failed attack
+ok 255 - Trickster feints pull back without counting as a failed attack
+  ---
+  duration_ms: 4.432787
+  type: 'test'
+  ...
+# Subtest: a Turtle attacks after its deadline even without a big edge; the ability hook is called
+ok 256 - a Turtle attacks after its deadline even without a big edge; the ability hook is called
+  ---
+  duration_ms: 0.975858
+  type: 'test'
+  ...
+# Subtest: the personality is saved with the match; older saves get one
+ok 257 - the personality is saved with the match; older saves get one
+  ---
+  duration_ms: 37.126835
+  type: 'test'
+  ...
+# Subtest: setRedesign(false) restores every v2.36 value; true puts the redesign back
+ok 258 - setRedesign(false) restores every v2.36 value; true puts the redesign back
+  ---
+  duration_ms: 15.352515
+  type: 'test'
+  ...
+# Subtest: corrosion: the strongest running effect applies (cap 25%); a weaker, longer one takes over when it ends; nothing adds up
+ok 259 - corrosion: the strongest running effect applies (cap 25%); a weaker, longer one takes over when it ends; nothing adds up
+  ---
+  duration_ms: 10.984188
+  type: 'test'
+  ...
+# Subtest: P1 Artillery: a salvo of 3 shells, a third of the damage each, landing one after another around the target
+ok 260 - P1 Artillery: a salvo of 3 shells, a third of the damage each, landing one after another around the target
+  ---
+  duration_ms: 1.106965
+  type: 'test'
+  ...
+# Subtest: P2 Bile Lobber: its splash corrodes for 3 s; P16 Bilecaster: one target, 280 range, corrosion for 14 s
+ok 261 - P2 Bile Lobber: its splash corrodes for 3 s; P16 Bilecaster: one target, 280 range, corrosion for 14 s
+  ---
+  duration_ms: 73.928156
+  type: 'test'
+  ...
+# Subtest: P3 Rift Mortar: lands exactly on the target (no scatter), tight splash, heavier hit
+ok 262 - P3 Rift Mortar: lands exactly on the target (no scatter), tight splash, heavier hit
+  ---
+  duration_ms: 7.661866
+  type: 'test'
+  ...
+# Subtest: P4 Sniper: the round pierces up to 3 more units in a line behind its target, 60% of the last each
+ok 263 - P4 Sniper: the round pierces up to 3 more units in a line behind its target, 60% of the last each
+  ---
+  duration_ms: 2.752638
+  type: 'test'
+  ...
+# Subtest: P5 Riftstalker: phase-steps onto its prey, strikes once, then steps back to where it leapt from
+ok 264 - P5 Riftstalker: phase-steps onto its prey, strikes once, then steps back to where it leapt from
+  ---
+  duration_ms: 10.079631
+  type: 'test'
+  ...
+# Subtest: P6 Bastion: no brace; when hit after its cooldown its shields surge back even under fire
+ok 265 - P6 Bastion: no brace; when hit after its cooldown its shields surge back even under fire
+  ---
+  duration_ms: 20.838249
+  type: 'test'
+  ...
+# Subtest: P7 Worldbreaker: its distortion zone disrupts enemy units inside (they deal 30% less) and no longer burns them
+ok 266 - P7 Worldbreaker: its distortion zone disrupts enemy units inside (they deal 30% less) and no longer burns them
+  ---
+  duration_ms: 14.131859
+  type: 'test'
+  ...
+# Subtest: P8 Titan: plants (2 s) before firing, +90 range planted, can't move or be pulled, unplants (1.5 s) on Retreat or when idle
+ok 267 - P8 Titan: plants (2 s) before firing, +90 range planted, can't move or be pulled, unplants (1.5 s) on Retreat or when idle
+  ---
+  duration_ms: 116.21644
+  type: 'test'
+  ...
+# Subtest: P8 Titan in AI play: the AI's Titans plant and unplant on their own
+ok 268 - P8 Titan in AI play: the AI's Titans plant and unplant on their own
+  ---
+  duration_ms: 12054.156565
+  type: 'test'
+  ...
+# Subtest: P10 Leviathan: a line of 4 smaller bombs along its path; P12 Sovereign: a 2 s charge, then one beam, no splash
+ok 269 - P10 Leviathan: a line of 4 smaller bombs along its path; P12 Sovereign: a 2 s charge, then one beam, no splash
+  ---
+  duration_ms: 51.329494
+  type: 'test'
+  ...
+# Subtest: P11 Worldrender: heals 30% of its building damage, at most 40 HP per second
+ok 270 - P11 Worldrender: heals 30% of its building damage, at most 40 HP per second
+  ---
+  duration_ms: 57.335008
+  type: 'test'
+  ...
+# Subtest: P13 Wraithwing: phases out for 1 s when hit (untouchable, untargetable, no shots), then not again for 8 s
+ok 271 - P13 Wraithwing: phases out for 1 s when hit (untouchable, untargetable, no shots), then not again for 8 s
+  ---
+  duration_ms: 3.237119
+  type: 'test'
+  ...
+# Subtest: P14 Lancer: +15% per consecutive hit on the same target, up to +60%; a new target starts over
+ok 272 - P14 Lancer: +15% per consecutive hit on the same target, up to +60%; a new target starts over
+  ---
+  duration_ms: 8.874731
+  type: 'test'
+  ...
+# Subtest: P15 Ravager: a kill frenzies it for 4 s; the next kill refreshes it, never stacks
+ok 273 - P15 Ravager: a kill frenzies it for 4 s; the next kill refreshes it, never stacks
+  ---
+  duration_ms: 2.428206
+  type: 'test'
+  ...
+# Subtest: P9 Voidcarrier: carries a power field that follows it; the default warp point moves to it; the field collapses when it dies
+ok 274 - P9 Voidcarrier: carries a power field that follows it; the default warp point moves to it; the field collapses when it dies
+  ---
+  duration_ms: 37.808783
+  type: 'test'
+  ...
+# Subtest: S1 Skitterlings: half supply each; at most 60 alive or queued per side; the AI never stalls on the limit
+ok 275 - S1 Skitterlings: half supply each; at most 60 alive or queued per side; the AI never stalls on the limit
+  ---
+  duration_ms: 1351.93279
+  type: 'test'
+  ...
+# Subtest: sell refunds 50% of everything spent, queued units in full; the HQ cannot be sold
+ok 276 - sell refunds 50% of everything spent, queued units in full; the HQ cannot be sold
+  ---
+  duration_ms: 209.679953
+  type: 'test'
+  ...
+# Subtest: paid repair costs 30% of missing HP and heals 6%/s
+ok 277 - paid repair costs 30% of missing HP and heals 6%/s
+  ---
+  duration_ms: 199.523181
+  type: 'test'
+  ...
+# Subtest: self-repair starts 8s after the last hit at 1%/s
+ok 278 - self-repair starts 8s after the last hit at 1%/s
+  ---
+  duration_ms: 125.565642
+  type: 'test'
+  ...
+# Subtest: field node: one ground unit captures in 12.5s and adds +3 credits / +1 energy per second
+ok 279 - field node: one ground unit captures in 12.5s and adds +3 credits / +1 energy per second
+  ---
+  duration_ms: 72.901283
+  type: 'test'
+  ...
+# Subtest: HQ shield: no damage while another building stands, normal damage once they are gone
+ok 280 - HQ shield: no damage while another building stands, normal damage once they are gone
+  ---
+  duration_ms: 133.21569
+  type: 'test'
+  ...
+# Subtest: stances: Attack advances, Hold stays put, Retreat returns to the rally flag
+ok 281 - stances: Attack advances, Hold stays put, Retreat returns to the rally flag
+  ---
+  duration_ms: 54.946543
+  type: 'test'
+  ...
+# Subtest: acquire() skips targets the weapon cannot damage: a Turret never locks onto a building
+ok 282 - acquire() skips targets the weapon cannot damage: a Turret never locks onto a building
+  ---
+  duration_ms: 111.467644
+  type: 'test'
+  ...
+# Subtest: Nanoweave description matches what it does (units and defenses)
+ok 283 - Nanoweave description matches what it does (units and defenses)
+  ---
+  duration_ms: 0.207142
+  type: 'test'
+  ...
+# Subtest: save keys stay colonyMobile.save and colonyMobile.diff (plus the separate sound key); plus the faction picks key (v2.17); save format is v30 and still reads v5–v29
+ok 284 - save keys stay colonyMobile.save and colonyMobile.diff (plus the separate sound key); plus the faction picks key (v2.17); save format is v30 and still reads v5–v29
+  ---
+  duration_ms: 15.185022
+  type: 'test'
+  ...
+# Subtest: old or broken saves never load into a bad state
+ok 285 - old or broken saves never load into a bad state
+  ---
+  duration_ms: 18.556902
+  type: 'test'
+  ...
+# Subtest: v2.11: spamming construction starts never shields the HQ: only finished buildings count
+ok 286 - v2.11: spamming construction starts never shields the HQ: only finished buildings count
+  ---
+  duration_ms: 103.517598
+  type: 'test'
+  ...
+# Subtest: no leaks during play: the UI reads the match log only on the end screen, and no report shows while playing
+ok 287 - no leaks during play: the UI reads the match log only on the end screen, and no report shows while playing
+  ---
+  duration_ms: 2328.377723
+  type: 'test'
+  ...
+# Subtest: report at 858×396: four tabs, opens at the top, Play again and Main menu always reachable
+ok 288 - report at 858×396: four tabs, opens at the top, Play again and Main menu always reachable
+  ---
+  duration_ms: 13753.800345
+  type: 'test'
+  ...
+# Subtest: report at 667×375: four tabs, opens at the top, Play again and Main menu always reachable
+ok 289 - report at 667×375: four tabs, opens at the top, Play again and Main menu always reachable
+  ---
+  duration_ms: 11285.27853
+  type: 'test'
+  ...
+# Subtest: the numbers and lines on screen are the recorded ones; Copy match log copies the same, with a fallback when the clipboard is blocked
+ok 290 - the numbers and lines on screen are the recorded ones; Copy match log copies the same, with a fallback when the clipboard is blocked
+  ---
+  duration_ms: 13618.727027
+  type: 'test'
+  ...
+# Subtest: the match log survives pause, saving and reloading the page
+ok 291 - the match log survives pause, saving and reloading the page
+  ---
+  duration_ms: 4253.79072
+  type: 'test'
+  ...
+# Subtest: unit grouping: a group closes after 60 s or 10 units or a 45 s pause, so nonstop production shows its pace
+ok 292 - unit grouping: a group closes after 60 s or 10 units or a 45 s pause, so nonstop production shows its pace
+  ---
+  duration_ms: 9.564913
+  type: 'test'
+  ...
+# Subtest: a build or upgrade and its finish share one line, matched by building (two at once, an unfinished one, an old log without ids)
+ok 293 - a build or upgrade and its finish share one line, matched by building (two at once, an unfinished one, an old log without ids)
+  ---
+  duration_ms: 80.062342
+  type: 'test'
+  ...
+# Subtest: the log is capped at 1200 events; unit groups never grow past 60 s / 10 units, and key events are kept
+ok 294 - the log is capped at 1200 events; unit groups never grow past 60 s / 10 units, and key events are kept
+  ---
+  duration_ms: 99.660351
+  type: 'test'
+  ...
+# Subtest: full matches: every recorded number matches the game (AI personalities, rush, turtle and eco bots)
+ok 295 - full matches: every recorded number matches the game (AI personalities, rush, turtle and eco bots)
+  ---
+  duration_ms: 69247.402917
+  type: 'test'
+  ...
+# Subtest: endings: HQ kill, the Extinction Event, a score decision and a draw are each recorded
+ok 296 - endings: HQ kill, the Extinction Event, a score decision and a draw are each recorded
+  ---
+  duration_ms: 40.364182
+  type: 'test'
+  ...
+# Subtest: save and resume keep the log; a v10 save starts an empty log and the report says what was missed
+ok 297 - save and resume keep the log; a v10 save starts an empty log and the report says what was missed
+  ---
+  duration_ms: 5549.756863
+  type: 'test'
+  ...
+# Subtest: a retreating unit never fires while it runs home; on Attack it fires
+ok 298 - a retreating unit never fires while it runs home; on Attack it fires
+  ---
+  duration_ms: 115.184825
+  type: 'test'
+  ...
+# Subtest: back at the rally flag the retreat is over: it fights there
+ok 299 - back at the rally flag the retreat is over: it fights there
+  ---
+  duration_ms: 46.657199
+  type: 'test'
+  ...
+# Subtest: RETREAT.fire true restores the v2.34 rule (firing on the move)
+ok 300 - RETREAT.fire true restores the v2.34 rule (firing on the move)
+  ---
+  duration_ms: 45.447799
+  type: 'test'
+  ...
+# Subtest: the SALVAGE block holds every number: 10%, within 200, at most 200 credits per side per game minute
+ok 301 - the SALVAGE block holds every number: 10%, within 200, at most 200 credits per side per game minute
+  ---
+  duration_ms: 10.910472
+  type: 'test'
+  ...
+# Subtest: v2.39 balance pass (on in the game): Salvage 7%, the Salvage Yard 14%; a kill pays on the new costs; the Yard card says so; off restores 10% and 20%
+ok 302 - v2.39 balance pass (on in the game): Salvage 7%, the Salvage Yard 14%; a kill pays on the new costs; the Yard card says so; off restores 10% and 20%
+  ---
+  duration_ms: 15.078961
+  type: 'test'
+  ...
+# Subtest: an enemy unit destroyed near a Last Fist unit gives 10% of its credit cost, rounded; the enemy (Bloomhost) gets nothing
+ok 303 - an enemy unit destroyed near a Last Fist unit gives 10% of its credit cost, rounded; the enemy (Bloomhost) gets nothing
+  ---
+  duration_ms: 6.074858
+  type: 'test'
+  ...
+# Subtest: a Last Fist unit lost near other Last Fist forces gives the same 10% (own losses count); a nearby building counts as forces
+ok 304 - a Last Fist unit lost near other Last Fist forces gives the same 10% (own losses count); a nearby building counts as forces
+  ---
+  duration_ms: 1.103137
+  type: 'test'
+  ...
+# Subtest: a lone unit dying with no other Last Fist forces nearby gives nothing; nor does anything just outside 200
+ok 305 - a lone unit dying with no other Last Fist forces nearby gives nothing; nor does anything just outside 200
+  ---
+  duration_ms: 0.893089
+  type: 'test'
+  ...
+# Subtest: temporary units (Emergency Brood Skitterlings, Cloudwing offspring) and buildings give nothing
+ok 306 - temporary units (Emergency Brood Skitterlings, Cloudwing offspring) and buildings give nothing
+  ---
+  duration_ms: 16.592117
+  type: 'test'
+  ...
+# Subtest: the cap: at most 200 salvage credits per side per game minute; the rest is lost; the next minute starts again
+ok 307 - the cap: at most 200 salvage credits per side per game minute; the rest is lost; the next minute starts again
+  ---
+  duration_ms: 1.404726
+  type: 'test'
+  ...
+# Subtest: storm deaths count like any other (no killer)
+ok 308 - storm deaths count like any other (no killer)
+  ---
+  duration_ms: 0.837686
+  type: 'test'
+  ...
+# Subtest: mirror: each Last Fist side salvages on its own when it has forces in range
+ok 309 - mirror: each Last Fist side salvages on its own when it has forces in range
+  ---
+  duration_ms: 5.643719
+  type: 'test'
+  ...
+# Subtest: the pop-up: only the salvaging side's player sees it, and only where they can see; no event tells the opponent
+ok 310 - the pop-up: only the salvaging side's player sees it, and only where they can see; no event tells the opponent
+  ---
+  duration_ms: 11.086773
+  type: 'test'
+  ...
+# Subtest: SALVAGE.pct 0 switches it off completely: no credits, no pop-ups, no totals
+ok 311 - SALVAGE.pct 0 switches it off completely: no credits, no pop-ups, no totals
+  ---
+  duration_ms: 9.810914
+  type: 'test'
+  ...
+# Subtest: saves v27 keep the totals and this minute's cap; a v26 save starts both at 0; the match report and log show it
+ok 312 - saves v27 keep the totals and this minute's cap; a v26 save starts both at 0; the match report and log show it
+  ---
+  duration_ms: 20.212207
+  type: 'test'
+  ...
+# Subtest: a full Last Fist vs Bloomhost match salvages, and the money still adds up
+ok 313 - a full Last Fist vs Bloomhost match salvages, and the money still adds up
+  ---
+  duration_ms: 16053.283425
+  type: 'test'
+  ...
+# Subtest: Build tab: Salvage Yard and Fortification Depot cards for Last Fist, each other faction its own pair; "Already built" while one stands; info cards for both and the bunker
+ok 314 - Build tab: Salvage Yard and Fortification Depot cards for Last Fist, each other faction its own pair; "Already built" while one stands; info cards for both and the bunker
+  ---
+  duration_ms: 6905.139352
+  type: 'test'
+  ...
+# Subtest: a node bunker's panel offers nothing to buy or sell; the Overdrive pill shows its timer, clear of the top bar and buttons (667x375)
+ok 315 - a node bunker's panel offers nothing to buy or sell; the Overdrive pill shows its timer, clear of the top bar and buttons (667x375)
+  ---
+  duration_ms: 2463.191823
+  type: 'test'
+  ...
+# Subtest: a node bunker's panel offers nothing to buy or sell; the Overdrive pill shows its timer, clear of the top bar and buttons (858x396)
+ok 316 - a node bunker's panel offers nothing to buy or sell; the Overdrive pill shows its timer, clear of the top bar and buttons (858x396)
+  ---
+  duration_ms: 2335.660797
+  type: 'test'
+  ...
+# Subtest: the signature buildings: Barracks cost, build time, HP and upgrade costs; Last Fist (v2.32), Bloomhost (v2.33) and the Axiarchs (v2.34); Build order lists both
+ok 317 - the signature buildings: Barracks cost, build time, HP and upgrade costs; Last Fist (v2.32), Bloomhost (v2.33) and the Axiarchs (v2.34); Build order lists both
+  ---
+  duration_ms: 19.009691
+  type: 'test'
+  ...
+# Subtest: only one of each at a time ("already built"), both at once is fine; a destroyed or sold one can be rebuilt and starts at T1; 8 pads
+ok 318 - only one of each at a time ("already built"), both at once is fine; a destroyed or sold one can be rebuilt and starts at T1; 8 pads
+  ---
+  duration_ms: 40.405729
+  type: 'test'
+  ...
+# Subtest: Salvage Yard T1: Salvage rises from 10% to 20%; T2 doubles the per-minute cap and returns half as much energy; lost, back to base
+ok 319 - Salvage Yard T1: Salvage rises from 10% to 20%; T2 doubles the per-minute cap and returns half as much energy; lost, back to base
+  ---
+  duration_ms: 6.748413
+  type: 'test'
+  ...
+# Subtest: Salvage counts only what was paid: temporary units, units carrying a paid price of 0 and bunkers give nothing, Yard or not
+ok 320 - Salvage counts only what was paid: temporary units, units carrying a paid price of 0 and bunkers give nothing, Yard or not
+  ---
+  duration_ms: 8.267108
+  type: 'test'
+  ...
+# Subtest: Overdrive (Yard T3): overflow starts +25% production for 20 s; new overflow restarts the timer, never stacks above +25%; it expires
+ok 321 - Overdrive (Yard T3): overflow starts +25% production for 20 s; new overflow restarts the timer, never stacks above +25%; it expires
+  ---
+  duration_ms: 418.357048
+  type: 'test'
+  ...
+# Subtest: a bunker appears when a node is captured (and at once on nodes already held when the Depot finishes); a node changing owner destroys it
+ok 322 - a bunker appears when a node is captured (and at once on nodes already held when the Depot finishes); a node changing owner destroys it
+  ---
+  duration_ms: 110.956585
+  type: 'test'
+  ...
+# Subtest: a destroyed bunker is rebuilt after 45 s only while the node is still held; the Depot lost or sold destroys every bunker
+ok 323 - a destroyed bunker is rebuilt after 45 s only while the node is still held; the Depot lost or sold destroys every bunker
+  ---
+  duration_ms: 372.465426
+  type: 'test'
+  ...
+# Subtest: bunkers: half a T1 Turret, ground only; Depot T3 doubles damage and hits aircraft; T2 heals Barracks units 2%/s in range; no HQ shield, no selling
+ok 324 - bunkers: half a T1 Turret, ground only; Depot T3 doubles damage and hits aircraft; T2 heals Barracks units 2%/s in range; no HQ shield, no selling
+  ---
+  duration_ms: 55.808478
+  type: 'test'
+  ...
+# Subtest: the minimal AI (Last Fist): the Aggressor and Trickster build the Salvage Yard, the Turtle and Economist the Depot, then upgrade it
+ok 325 - the minimal AI (Last Fist): the Aggressor and Trickster build the Salvage Yard, the Turtle and Economist the Depot, then upgrade it
+  ---
+  duration_ms: 17112.414646
+  type: 'test'
+  ...
+# Subtest: every personality and difficulty, all three factions (v2.33 Bloomhost, v2.34 Axiarchs): the build plan with its signature building keeps every building type it had without it
+ok 326 - every personality and difficulty, all three factions (v2.33 Bloomhost, v2.34 Axiarchs): the build plan with its signature building keeps every building type it had without it
+  ---
+  duration_ms: 20578.003344
+  type: 'test'
+  ...
+# Subtest: saves v28 keep Overdrive, bunkers and rebuild timers; a v27 save loads with none of them and plays on
+ok 327 - saves v28 keep Overdrive, bunkers and rebuild timers; a v27 save loads with none of them and plays on
+  ---
+  duration_ms: 263.562555
+  type: 'test'
+  ...
+# Subtest: branding and version
+ok 328 - branding and version
+  ---
+  duration_ms: 11.032495
+  type: 'test'
+  ...
+# Subtest: a new game starts with an HQ per side and starting resources
+ok 329 - a new game starts with an HQ per side and starting resources
+  ---
+  duration_ms: 2.058096
+  type: 'test'
+  ...
+# Subtest: player can build, train and upgrade
+ok 330 - player can build, train and upgrade
+  ---
+  duration_ms: 222.095007
+  type: 'test'
+  ...
+# Subtest: save and load round-trips a match in progress
+ok 331 - save and load round-trips a match in progress
+  ---
+  duration_ms: 986.062619
+  type: 'test'
+  ...
+# Subtest: AI vs AI match on easy plays to a finish without errors
+ok 332 - AI vs AI match on easy plays to a finish without errors
+  ---
+  duration_ms: 28697.154964
+  type: 'test'
+  ...
+# Subtest: AI vs AI match on normal plays to a finish without errors
+ok 333 - AI vs AI match on normal plays to a finish without errors
+  ---
+  duration_ms: 14280.113467
+  type: 'test'
+  ...
+# Subtest: AI vs AI match on hard plays to a finish without errors
+ok 334 - AI vs AI match on hard plays to a finish without errors
+  ---
+  duration_ms: 22765.059286
+  type: 'test'
+  ...
+# Subtest: the v239 preset plays exactly as v2.39's Default did (the baseline the harness measures against)
+ok 335 - the v239 preset plays exactly as v2.39's Default did (the baseline the harness measures against)
+  ---
+  duration_ms: 18645.766883
+  type: 'test'
+  ...
+# Subtest: presets: per-faction openings and dials (byFac), per-difficulty dials (byDiff); Hard games get the Hard preset unless one is given
+ok 336 - presets: per-faction openings and dials (byFac), per-difficulty dials (byDiff); Hard games get the Hard preset unless one is given
+  ---
+  duration_ms: 25.199729
+  type: 'test'
+  ...
+# Subtest: aiPower: damage per second × health, sightings weighted, support units ignored, known guns added
+ok 337 - aiPower: damage per second × health, sightings weighted, support units ignored, known guns added
+  ---
+  duration_ms: 0.49602
+  type: 'test'
+  ...
+# Subtest: engage: a Default AI does not attack into a known army its strength would lose to; with the rule off the value rule sends it
+ok 338 - engage: a Default AI does not attack into a known army its strength would lose to; with the rule off the value rule sends it
+  ---
+  duration_ms: 41.996174
+  type: 'test'
+  ...
+# Subtest: mass: a unit told to wait holds its ground and does not chase; it still fights what is in reach
+ok 339 - mass: a unit told to wait holds its ground and does not chase; it still fights what is in reach
+  ---
+  duration_ms: 69.32438
+  type: 'test'
+  ...
+# Subtest: sig: a Default AI builds its signature building only after the economy is up (not before AI_SIG_LATE); v239 builds it in the first minute
+ok 340 - sig: a Default AI builds its signature building only after the economy is up (not before AI_SIG_LATE); v239 builds it in the first minute
+  ---
+  duration_ms: 2805.296149
+  type: 'test'
+  ...
+# Subtest: the Tech Lab picks Air Power or Support at T2; Gunships from any Tech Lab; each path unlocks its own units
+ok 341 - the Tech Lab picks Air Power or Support at T2; Gunships from any Tech Lab; each path unlocks its own units
+  ---
+  duration_ms: 39.536388
+  type: 'test'
+  ...
+# Subtest: Nanoweave only on Support T3: Air Power T3 gives no buff
+ok 342 - Nanoweave only on Support T3: Air Power T3 gives no buff
+  ---
+  duration_ms: 16.534734
+  type: 'test'
+  ...
+# Subtest: Interceptor rework: 150/60, 190 HP, speed 100, still air-only; with no air target it escorts your Leviathan
+ok 343 - Interceptor rework: 150/60, 190 HP, speed 100, still air-only; with no air target it escorts your Leviathan
+  ---
+  duration_ms: 43.312336
+  type: 'test'
+  ...
+# Subtest: Leviathan: bombs what is right below it (40 range), four bombs in a line (v2.37), 2× on buildings, prefers buildings, cannot hit air, obeys the HQ shield
+ok 344 - Leviathan: bombs what is right below it (40 range), four bombs in a line (v2.37), 2× on buildings, prefers buildings, cannot hit air, obeys the HQ shield
+  ---
+  duration_ms: 53.662782
+  type: 'test'
+  ...
+# Subtest: Medicopter: heals your infantry within 120 at 2.5%/s; several never stack; no vehicles; a Repair Pulse gives the faster heal, not both
+ok 345 - Medicopter: heals your infantry within 120 at 2.5%/s; several never stack; no vehicles; a Repair Pulse gives the faster heal, not both
+  ---
+  duration_ms: 57.189064
+  type: 'test'
+  ...
+# Subtest: Medicopter follows your biggest infantry group; it has no weapon and is never a spotter
+ok 346 - Medicopter follows your biggest infantry group; it has no weapon and is never a spotter
+  ---
+  duration_ms: 230.11819
+  type: 'test'
+  ...
+# Subtest: Recon Drone: sight 420, at most 3 (counting those in training), the first choice of spotter, waits just behind the front
+ok 347 - Recon Drone: sight 420, at most 3 (counting those in training), the first choice of spotter, waits just behind the front
+  ---
+  duration_ms: 158.294618
+  type: 'test'
+  ...
+# Subtest: the AI: Economist and Trickster default to Air Power, Aggressor and Turtle to Support
+ok 348 - the AI: Economist and Trickster default to Air Power, Aggressor and Turtle to Support
+  ---
+  duration_ms: 0.984753
+  type: 'test'
+  ...
+# Subtest: saves keep Tech Lab paths; a v14 save migrates (T2 → Air Power, T3 → Support, an upgrade from T1 → Air Power)
+ok 349 - saves keep Tech Lab paths; a v14 save migrates (T2 → Air Power, T3 → Support, an upgrade from T1 → Air Power)
+  ---
+  duration_ms: 19.793129
+  type: 'test'
+  ...
+# Subtest: the path picker: Upgrade asks for a path, tap a path, then confirm; the panel then shows the path
+ok 350 - the path picker: Upgrade asks for a path, tap a path, then confirm; the panel then shows the path
+  ---
+  duration_ms: 4624.349272
+  type: 'test'
+  ...
+# Subtest: building panel at 858×396: picker and chosen path clear of the top bar and the ability buttons
+ok 351 - building panel at 858×396: picker and chosen path clear of the top bar and the ability buttons
+  ---
+  duration_ms: 1653.730861
+  type: 'test'
+  ...
+# Subtest: building panel at 667×375: picker and chosen path clear of the top bar and the ability buttons
+ok 352 - building panel at 667×375: picker and chosen path clear of the top bar and the ability buttons
+  ---
+  duration_ms: 1452.92072
+  type: 'test'
+  ...
+# Subtest: Train tab (v2.16): only units you can train now; unaffordable ones stay, greyed out; a hint when nothing is trainable
+ok 353 - Train tab (v2.16): only units you can train now; unaffordable ones stay, greyed out; a hint when nothing is trainable
+  ---
+  duration_ms: 4370.322043
+  type: 'test'
+  ...
+# Subtest: War Factory (v2.14): Siege or Assault in the picker; Assault puts Flame Tank on the Train tab, Artillery and Titans stay hidden
+ok 354 - War Factory (v2.14): Siege or Assault in the picker; Assault puts Flame Tank on the Train tab, Artillery and Titans stay hidden
+  ---
+  duration_ms: 3827.303885
+  type: 'test'
+  ...
+# Subtest: Tech Lab (v2.15): needs only a Barracks (v2.16); Air Power or Support in the picker; Support units on the Train tab; Army tab gets a Support group
+ok 355 - Tech Lab (v2.15): needs only a Barracks (v2.16); Air Power or Support in the picker; Support units on the Train tab; Army tab gets a Support group
+  ---
+  duration_ms: 7295.250078
+  type: 'test'
+  ...
+# Subtest: a Barracks picks its path at T2 (required), per building; T3 continues it; selling resets it
+ok 356 - a Barracks picks its path at T2 (required), per building; T3 continues it; selling resets it
+  ---
+  duration_ms: 36.969659
+  type: 'test'
+  ...
+# Subtest: what each path unlocks: Heavy (A, T2) and Sniper (A, T3); never from a Mass Deployment Barracks
+ok 357 - what each path unlocks: Heavy (A, T2) and Sniper (A, T3); never from a Mass Deployment Barracks
+  ---
+  duration_ms: 12.385297
+  type: 'test'
+  ...
+# Subtest: Mass Deployment: a Rifleman order is a pair (double cost and army size), trained together in 1.5× the time; Riflemen go there first
+ok 358 - Mass Deployment: a Rifleman order is a pair (double cost and army size), trained together in 1.5× the time; Riflemen go there first
+  ---
+  duration_ms: 49.092096
+  type: 'test'
+  ...
+# Subtest: Drilled Riflemen (Mass Deployment T3): +35% HP, +10% damage, capture nodes 1.5× faster
+ok 359 - Drilled Riflemen (Mass Deployment T3): +35% HP, +10% damage, capture nodes 1.5× faster
+  ---
+  duration_ms: 118.900677
+  type: 'test'
+  ...
+# Subtest: the AI: Easy follows its personality; Normal and Hard switch to Specialists against armor; a second copy takes the other path
+ok 360 - the AI: Easy follows its personality; Normal and Hard switch to Specialists against armor; a second copy takes the other path
+  ---
+  duration_ms: 1.168159
+  type: 'test'
+  ...
+# Subtest: saves keep paths; a v12 save migrates (T2/T3 Barracks → Specialists, an upgrade in progress → Specialists)
+ok 361 - saves keep paths; a v12 save migrates (T2/T3 Barracks → Specialists, an upgrade in progress → Specialists)
+  ---
+  duration_ms: 13.476829
+  type: 'test'
+  ...
+# Subtest: ghosts remember the path; the match log names it
+ok 362 - ghosts remember the path; the match log names it
+  ---
+  duration_ms: 4.011919
+  type: 'test'
+  ...
+1..362
+# tests 362
+# suites 0
+# pass 361
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 955642.00158
+npm notice
+npm notice New major version of npm available! 10.9.9 -> 12.2.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+npm notice To update run: npm install -g npm@12.2.1
+npm notice

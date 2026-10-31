@@ -13,7 +13,7 @@ async function search(faction, cands, { n = 20, seed = 70000, vs = { ai: 'defaul
   for (const c of cands) {
     const set = await runSet({ a: side(faction, c), b: side(vsFaction || faction, vs), n, seed, maxT: 1800, quiet: true, paired: true });
     const w = set.summary.wins; out.push({ c, w: w.A, l: w.B, d: w.draw, share: Math.round(1000 * w.A / Math.max(1, w.A + w.B)) / 10, len: set.summary.avgLength });
-    console.log(`${faction} ${JSON.stringify(c)}: ${w.A}-${w.B}-${w.draw} (${out.at(-1).share}%)`);
+    if (!process.env.QUIET) console.log(`${faction} ${JSON.stringify(c)}: ${w.A}-${w.B}-${w.draw} (${out.at(-1).share}%)`);
   }
   return out;
 }

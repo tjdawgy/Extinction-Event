@@ -1,0 +1,3 @@
+ends 1@371 1@408 1@1310 1@1310 1@354 1@312 0@436 0@362 0@453 0@498 1@337 1@419 1@409 0@359 1@518 1@540 1@325 1@467
+AI first attack 123 121 107 107 118 118 117 123 110 110 114 114 114 97 106 90 118 96 attacks 3 3 9 4 2 1 4 3 5 5 2 4 3 4 5 5 2 5
+bot {"attacks":1,"firstAttack":213.36666666665712,"defends":2,"abil":0} {"attacks":1,"firstAttack":211.2333333333239,"defends":2,"abil":0} {"attacks":3,"firstAttack":183.49999999999216,"defends":6,"abil":6} {"attacks":1,"firstAttack":347.7666666667277,"defends":3,"abil":1}

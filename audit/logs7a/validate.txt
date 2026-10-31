@@ -1,0 +1,10 @@
+Hard v2.40 vs Greedy: lastfist 2-40, bloomhost 4-38, axiarchs 5-37; total 11-115 (AI 8.7%)
+  pairs (AI<bot): lastfist<lastfist 0-14, lastfist<bloomhost 0-14, lastfist<axiarchs 2-12, bloomhost<lastfist 0-14, bloomhost<bloomhost 0-14, bloomhost<axiarchs 4-10, axiarchs<lastfist 0-14, axiarchs<bloomhost 0-14, axiarchs<axiarchs 5-9
+Hard v2.41 vs Greedy: lastfist 33-9, bloomhost 21-21, axiarchs 25-17; total 79-47 (AI 62.7%)
+  pairs (AI<bot): lastfist<lastfist 9-5, lastfist<bloomhost 10-4, lastfist<axiarchs 14-0, bloomhost<lastfist 1-13, bloomhost<bloomhost 6-8, bloomhost<axiarchs 14-0, axiarchs<lastfist 1-13, axiarchs<bloomhost 12-2, axiarchs<axiarchs 12-2
+Hard v2.41 vs Default, lastfist: 39-1-0
+Hard v2.41 vs Default, bloomhost: 40-0-0
+Hard v2.41 vs Default, axiarchs: 38-2-0
+Hard vs Hard, lastfist vs bloomhost: 34-6-0
+Hard vs Hard, lastfist vs axiarchs: 33-7-0
+Hard vs Hard, bloomhost vs axiarchs: 22-18-0
