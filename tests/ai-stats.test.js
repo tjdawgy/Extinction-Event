@@ -14,7 +14,7 @@ const N = +(process.env.AISTATS_N || 10), PRINT = process.argv.includes('--print
 function playN(n, seed0, opts, maxT, look, done) {
   const out = [];
   for (let i = 0; i < n; i++) {
-    const o = Object.assign({ autoPlayer: true, autoDiff: 'hard' }, opts), S = loadSim(seed0 + i), g = S.newGame(o.autoDiff, o); g.countdown = 0;
+    const o = Object.assign({ autoPlayer: true, autoDiff: 'hard', ai: 'default', autoAi: 'default' }, opts) /* v2.40: the Default AI (Hard games get the Hard preset otherwise) */, S = loadSim(seed0 + i), g = S.newGame(o.autoDiff, o); g.countdown = 0;
     const st = {};
     while (!g.over && g.t < maxT) { S.update(g, 1 / 30); if (look) look(g, S, st); g.events.length = 0; }
     out.push(done(g, S, st));

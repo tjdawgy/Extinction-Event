@@ -145,11 +145,11 @@ test('losing the Reliquary loses every echo; echoes and warping echoes survive s
 test('the minimal AI (Axiarchs): the Aggressor builds the Beacon, the Turtle the Reliquary, and spends an echo when it can afford one and has room', () => {
   for (const [persona, want] of [['aggressor', 'sigA'], ['turtle', 'sigB']]) {
     const S = loadSim({ random: (() => { let a = 3; return () => (a = (a * 16807) % 2147483647) / 2147483647; })() });
-    const g = S.newGame('hard', { factions: ['lastfist', 'axiarchs'], persona }); g.countdown = 0; g.sides[0].aiT = 1e9;
+    const g = S.newGame('hard', { factions: ['lastfist', 'axiarchs'], persona, ai: 'v239' }); /* v2.40: v2.39's minimal signature AI (the Default builds it after 5:00, tests/tactics.test.js) */ g.countdown = 0; g.sides[0].aiT = 1e9;
     let at = null; for (let i = 0; i < 30 * 300 && at === null; i++) { S.update(g, 1 / 30); if (S.countB(g, 1, want)) at = g.t; }
     assert.ok(at !== null, `${persona}: ${want}`);
   }
-  const g = sim.newGame('hard', { factions: ['lastfist', 'axiarchs'], persona: 'turtle' }); g.countdown = 0; g.sides[0].aiT = 1e9; g.t = 300;
+  const g = sim.newGame('hard', { factions: ['lastfist', 'axiarchs'], persona: 'turtle', ai: 'v239' }); g.countdown = 0; g.sides[0].aiT = 1e9; g.t = 300;
   const side = g.sides[1]; side.res.c = side.res.e = 3000;
   const f1 = k => { const r = sim.tryBuild(g, 1, k); assert.ok(r.ok, r.msg); const b = g.ents.filter(e => e.side === 1 && e.type === k).at(-1); b.built = true; b.progress = 1; b.hp = b.maxHp; return b; };
   f1('habitat'); f1('habitat'); const rel = f1('sigB'); rel.ech = ['lancer', 'parallax'];

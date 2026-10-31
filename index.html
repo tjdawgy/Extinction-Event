@@ -339,7 +339,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.39'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.40'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -847,12 +847,33 @@ const PERSONA_NAME = { aggressor: 'The Aggressor', turtle: 'The Turtle', economi
    delay      reaction delay: multiplies the difficulty's time between decisions
    late       game time after which it stops waiting for a clear edge and attacks with what it has
    comp       unit composition weights by unit type (multiply the unit's score) */
+// The tactics rules (v2.40, audit phase 6a; audit/ai-tactics-report.md has each one's A/B result). Each is switchable for
+// the harness (dial.fix); the Default preset turns on the ones that measured as an improvement: engage (+5 wins in 48 against
+// v2.39) and sig (+5). Measured and left off: mass, defend, finish, hold (neutral), tech as a fixed rule (worse; the tech
+// dial is Hard's), axf (worse).
+const AI_TACTICS = { mass: false, engage: true, defend: false, sig: true, tech: false, finish: false, axf: false, hold: false };
+const AI_SIG_LATE = 300; // sig: the earliest time for a signature building (later with the sigAt dial)
+const AI_TECH = { economist: 'techlab', trickster: 'techlab', turtle: 'factory', aggressor: 'barracks' }; // tech: the building each personality takes to T3 first (the tech dial overrides)
 const AI_DIALS = { nodes: 2, eco: 0, bank: 2500, attackAt: 0, minArmy: 300, turrets: 0, sigAt: 0, sell: true, scout: 0, retreat: 0.7, delay: 1, late: 1080, comp: {} };
 const AI_PRESETS = {
   legacy: { name: 'Legacy', smart: false, dials: AI_DIALS },
   default: { name: 'Default', smart: true, dials: Object.assign({}, AI_DIALS, { scout: 70, comp: {} }),
-    fix: { scores: true, room: true, pathUnits: true, spot: true, leash: true, carrier: true, timing: true, spend: true, batch: false } }, // batch: reinforcements in groups (measured neutral in v2.38, off) // the competence rules, each switchable (for the harness)
+    fix: { scores: true, room: true, pathUnits: true, spot: true, leash: true, carrier: true, timing: true, spend: true, batch: false, // batch: reinforcements in groups (measured neutral in v2.38, off) // the competence rules, each switchable (for the harness)
+      ...AI_TACTICS } }, // v2.40 (audit phase 6a): the tactics rules (AI_TACTICS)
+  // v2.40 (audit phase 6a): Hard plays the best strategies the harness found for each faction (byFac), with the Default's
+  // rules; no resource bonus and no information a player wouldn't have
+  // Each faction: the Economist opening (the best of the four for all three), decisions every 0.6 of the difficulty's
+  // interval (reaction time, not information), no signature building (sigAt beyond any match), and for Last Fist the Air
+  // Power Tech Lab to T3 right after T2. Searched over 768 paired matches (the report has every candidate).
+  hard: { name: 'Hard', smart: true, dials: Object.assign({}, AI_DIALS, { scout: 70, comp: {} }), fix: null, byFac: {
+    lastfist: { kinds: ['economist'], dials: { delay: 0.6, sigAt: 99999, tech: 'techlab' } },
+    bloomhost: { kinds: ['economist'], dials: { delay: 0.6, sigAt: 99999 } },
+    axiarchs: { kinds: ['economist'], dials: { delay: 0.6, sigAt: 99999 } } } },
+  // v2.39's Default exactly (none of the v2.40 tactics rules): the baseline the harness measures against
+  v239: { name: 'Default v2.39', smart: true, dials: Object.assign({}, AI_DIALS, { scout: 70, comp: {} }),
+    fix: { scores: true, room: true, pathUnits: true, spot: true, leash: true, carrier: true, timing: true, spend: true, batch: false } },
 };
+AI_PRESETS.hard.fix = Object.assign({}, AI_PRESETS.default.fix);
 const AI_PRESET_KEYS = Object.keys(AI_PRESETS);
 const aiDials = P => (P && P.dial) || AI_DIALS; // a persona without dials (an older save) reads the legacy constants
 const aiSmart = P => !!(P && P.smart);
@@ -860,9 +881,14 @@ const aiFix = (P, k) => !!(P && P.smart && (!P.dial || !P.dial.fix || P.dial.fix
 const pickOne = a => a[Math.floor(Math.random() * a.length)];
 // preset: 'legacy' or 'default' (v2.38); it adds the dials and the competence switch after the personality's own rolls,
 // with no random numbers of its own, so a Legacy personality rolls exactly as before
-function rollPersona(kind, preset) {
-  const P = rollPersona0(kind), A = AI_PRESETS[preset] || AI_PRESETS.default;
-  P.preset = AI_PRESETS[preset] ? preset : 'default'; P.smart = A.smart; P.dial = Object.assign({}, A.dials, { comp: Object.assign({}, A.dials.comp) }, A.fix ? { fix: Object.assign({}, A.fix) } : {});
+// v2.40: fac and diffKey let a preset carry per-faction settings (byFac: the openings it picks from, dials, rules; the Hard
+// preset's searched strategies) and per-difficulty dials (byDiff: Easy and Normal slowed to their v2.39 challenge). A preset
+// without them rolls exactly as before.
+function rollPersona(kind, preset, fac, diffKey) {
+  const A = AI_PRESETS[preset] || AI_PRESETS.default, F = A.byFac && A.byFac[facOf(fac)];
+  const P = rollPersona0(kind || (F && F.kinds ? pickOne(F.kinds) : kind));
+  P.preset = AI_PRESETS[preset] ? preset : 'default'; P.smart = A.smart; P.dial = Object.assign({}, A.dials, F && F.dials, { comp: Object.assign({}, A.dials.comp) }, A.fix ? { fix: Object.assign({}, A.fix, F && F.fix) } : {});
+  if (A.byDiff && A.byDiff[diffKey]) Object.assign(P.dial, A.byDiff[diffKey]);
   return P;
 }
 function rollPersona0(kind) {
@@ -1031,8 +1057,8 @@ function aiBroodTarget(g, s, kind, lvl, ctx) {
 // Mass Warp (v2.28, minimal): 4 or more of its units below 40% health within the circle of one of them, far enough from
 // the warp point for the trip to matter; the biggest such group
 function aiMassWarpTarget(g, s, ctx) {
-  const A = ABIL.mwarp, wp = warpPoint(g, s), hurt = ctx.mine.filter(m => m.hp < m.maxHp * A.aiHurt);
-  let best = null, bn = A.aiN - 1;
+  const ax = aiFix(g.sides[s].persona, 'axf'), A = ABIL.mwarp, wp = warpPoint(g, s), hurt = ctx.mine.filter(m => m.hp < m.maxHp * (ax ? 0.5 : A.aiHurt)); // v2.40 (axf): 3 units below 50%
+  let best = null, bn = (ax ? 3 : A.aiN) - 1;
   for (const c of hurt) {
     if (Math.hypot(c.u - wp.u, c.v - wp.v) < A.aiFar) continue;
     const n = hurt.filter(m => inAbil(m, c.u, c.v, A.r)).length;
@@ -1068,8 +1094,10 @@ function newGame(diffKey, opts = {}) {
     hq.built = true; hq.progress = 1; hq.hp = hq.maxHp; hq.shp = hq.maxShp;
     g.sides[s].hq = hq;
   }
-  g.sides[1].persona = rollPersona(opts.persona, opts.ai); // secret: never shown until the match is over; opts.ai: its preset (v2.38)
-  if (g.auto) g.sides[0].persona = rollPersona(opts.autoPersona, opts.autoAi);
+  // secret: never shown until the match is over; opts.ai: its preset (v2.38). v2.40: with none given, Hard plays the Hard preset
+  const presetFor = (ai, dk) => ai || (dk === 'hard' ? 'hard' : undefined);
+  g.sides[1].persona = rollPersona(opts.persona, presetFor(opts.ai, g.diffKey), g.sides[1].faction, g.diffKey);
+  if (g.auto) g.sides[0].persona = rollPersona(opts.autoPersona, presetFor(opts.autoAi, g.autoDiff), g.sides[0].faction, g.autoDiff);
   g.log = newLog(0); // the match log (never read by the SIM)
   g.fog = [newFog(g, 0), newFog(g, 1)];
   updateVision(g);
@@ -1700,7 +1728,7 @@ function updateUnit(g, u, foes, dt) {
   if (u.cd > 0) u.cd -= dt * (frz ? ABIL.frenzy.rate : 1);
   if (u.recoil > 0) u.recoil = Math.max(0, u.recoil - dt * 5);
   if (u.hitT > 0) u.hitT -= dt;
-  const side = g.sides[u.side], dir = dirOf(u.side), home = rallyU(u.side) + u.rallyOff * dir;
+  const side = g.sides[u.side], dir = dirOf(u.side), home = (side.defU != null ? side.defU : rallyU(u.side)) + u.rallyOff * dir; // defU (v2.40): a Default AI under attack rallies inside its HQ's cover
   const ord = unitOrder(side, u.type), st = ord ? ord.o : side.stance; // a group or type order overrides the global stance
   const A = d.weapon ? acquire(g, u, d, foes, d.chase) : NO_TARGET, { best, close } = A; // Medicopters and Recon Drones carry no weapon; melee: the chase search in the same pass (v2.37)
   const sp = (d.fac === 'bloomhost' && !d.air && onCreep(g, u.side, u.u, u.v) ? CREEP.speed : 1) * (frz ? ABIL.frenzy.speed : 1) * (u.slowT > g.t ? 1 - u.slow : 1) * (u.snT > g.t ? 0 : 1); // creep (v2.18), Frenzy Bloom (v2.20), a Gravemantle's slow (v2.27), a Rootheart's snare (v2.33)
@@ -1721,6 +1749,7 @@ function updateUnit(g, u, foes, dt) {
     moveToward(u, d, home, u.laneV, dt, sp);
     return;
   }
+  if (u.aiWait > g.t && !best) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // v2.40: a Default AI holds a front-runner until its army catches up (fights only what is in reach, never chases)
   const act = !(u.phT > g.t) && !d.siege; // v2.37: a phased Wraithwing can't fire (P13); a Titan fires only when planted (P8)
   u.tgt = best && act ? best.id : 0;
   if (!best || best.id !== u.chTgt || !act) u.chT = 0; // the Astral Marksman's charge starts over on a new target (v2.27)
@@ -2797,6 +2826,11 @@ function aiUpdate(g, s, dt) {
   const lightThreat = threat && nearLight >= armyValue(near) * 0.5;
   const infantryRush = lightThreat && nearLight >= 400; // a real rush (about 8 Riflemen), not a couple of scouts
   const calm = D.calmTech && threat, saving = D.calmSave && threat; // threat-aware: hold tech; save for counters
+  // v2.40 (hold): an early push by a mostly light (infantry) army at least 0.8× its strength: stay home under the HQ gun, put
+  // up the defence and the vehicle building, save for the counter (Tank, Bulwark, Bastion) instead of feeding the basic unit
+  const theirLight = theirs.filter(e => e.fresh && UDEF[e.type].armor === 'light');
+  const holdEarly = aiFix(side.persona, 'hold') && g.t < 480 && theirLight.length >= 4 && armyValue(theirLight) >= armyValue(theirs.filter(e => e.fresh)) * 0.5 && aiPower(mine) < aiPower(theirs.filter(e => e.fresh)) * 1.25;
+  if (aiFix(side.persona, 'hold')) side.defU = holdEarly ? hqU(s) + dir * 170 : (side.defU === undefined ? undefined : null);
   if (side.spotsRush === undefined) side.spotsRush = Math.random() < D.turret; // reaction quality, decided once per match
   const cap = popCap(g, s);
   let used = popUsed(g, s);
@@ -2813,8 +2847,10 @@ function aiUpdate(g, s, dt) {
   // Under real pressure every personality drops its style and plays the standard defense (the safety floor)
   const pressed = threat && (infantryRush || myV < thV * 0.8);
   const sig = SIG.on && bdS(g, s, 'sigA') ? (P.kind === 'aggressor' || P.kind === 'trickster' ? 'sigA' : 'sigB') : null;
-  const plan = aiPlanWith(pressed ? AI_PLAN : P.plan, sig);
-  const sigReady = !!sig && g.t >= dl.sigAt && !(calm || defend) && !countB(g, s, sig) && hasBuilt(g, s, 'barracks') && alive(g, s, 'refinery').filter(b => b.built).length >= Math.min(D.refineries, plan.filter(t => t === 'refinery').length);
+  const sigLate = aiFix(P, 'sig'), planBase = pressed ? AI_PLAN : P.plan; // v2.40 (sig): the plan keeps its economy; the signature building comes later
+  const plan = sigLate ? planBase : aiPlanWith(planBase, sig);
+  const sigDup = sigLate && sig ? planBase[aiPlanWith(planBase, '#').indexOf('#')] : null; // the duplicate it trades for the signature building once that pays
+  const sigReady = !!sig && g.t >= (sigLate ? Math.max(dl.sigAt, AI_SIG_LATE) : dl.sigAt) && !(calm || defend) && !countB(g, s, sig) && hasBuilt(g, s, 'barracks') && alive(g, s, 'refinery').filter(b => b.built).length >= Math.min(D.refineries, plan.filter(t => t === 'refinery').length);
   const refCap = clamp(D.refineries + P.refDelta + dl.eco + (ecoMood ? 1 : 0) - (defend && P.refDelta > 0 ? P.refDelta : 0), 1, 4);
 
   // 1) Economy and tech
@@ -2822,6 +2858,8 @@ function aiUpdate(g, s, dt) {
   const freePad = side.slots.some(x => !x);
   let want = null, wantPad = -1, planIdx = -1;
   if (cap < POP_MAX && used >= cap - 3 && !constructing.some(b => b.type === 'habitat') && freePad) want = 'habitat';
+  else if (holdEarly && hasBuilt(g, s, 'barracks') && countB(g, s, 'turret') < 1 && freePad) { want = 'turret'; wantPad = side.slots[4] ? -1 : 4; } // v2.40 (hold)
+  else if (holdEarly && hasBuilt(g, s, 'barracks') && countB(g, s, 'factory') < 1 && freePad) want = 'factory'; // v2.40 (hold): the vehicle counter
   else if (side.spotsRush && infantryRush && countB(g, s, 'turret') < (armyValue(near) > 800 ? 2 : 1)) { want = 'turret'; wantPad = side.slots[4] ? -1 : 4; } // front pad
   else if (calm && hasBuilt(g, s, 'barracks') && countB(g, s, 'factory') < 1) want = 'factory'; // the Tank counter to an infantry rush
   else if (P.kind === 'aggressor' && D !== DIFF.easy && !threat && hasBuilt(g, s, 'barracks') && countB(g, s, 'factory') < 1 && aiFortified(g, s)) want = 'factory'; // a fortified enemy: Tanks to crack it (HQ T2 for the Orbital Strike, below)
@@ -2831,7 +2869,7 @@ function aiUpdate(g, s, dt) {
     (countB(g, s, 'habitat') > 0 || side.slots.filter(x => !x).length >= 2)) want = 'reactor'; // credits to spare but no energy: another Reactor
   // its signature building (v2.32), once its economy (the difficulty's Refineries, or all its plan has if fewer) and first
   // production building are up, and not while under pressure (like tech); it takes the pad of a duplicate the plan gave up for it (aiPlanWith)
-  else if (sigReady) want = sig;
+  else if (sigReady && (freePad || !sigLate || aiSigRoom(g, s, sigDup, sig))) want = sig;
   else if (dl.turrets && !threat && countB(g, s, 'turret') < dl.turrets && hasBuilt(g, s, 'barracks') && side.slots.filter(x => !x).length >= 2) want = 'turret'; // the defense dial (v2.38)
   else {
     const need = {};
@@ -2852,6 +2890,13 @@ function aiUpdate(g, s, dt) {
   // No Habitat and no free pad: the army is stuck at the HQ's 12. Sell a spare Reactor or extra Refinery to make room.
   if (!freePad && countB(g, s, 'habitat') === 0 && cap < POP_MAX && D.eco && dl.sell) {
     const spare = alive(g, s, 'reactor').find(b => side.res.e > ENERGY_PLENTY) || (countB(g, s, 'refinery') > 2 && alive(g, s, 'refinery')[0]);
+    if (spare) { trySell(g, s, spare); want = 'habitat'; }
+  }
+  // v2.40 (finish): clearly winning (after 10:00, the enemy army it knows of under a third of its own), rich, at its army limit, every Habitat at T3 and no free pad: sell a building that has done its job (a
+  // Reactor while energy is plentiful, a third Refinery, a Turret when not threatened) for another Habitat, so the bank
+  // becomes army instead of sitting idle while it grinds down a base
+  if (aiFix(P, 'finish') && g.t > 600 && thV < myV * 0.33 && !freePad && cap < POP_MAX && used >= cap * fill - 3 && side.res.c > 1200 && !constructing.length && alive(g, s, 'habitat').every(b => b.tier >= 3)) {
+    const spare = (side.res.e > 400 && countB(g, s, 'reactor') > 1 && alive(g, s, 'reactor')[0]) || (countB(g, s, 'refinery') > 2 && alive(g, s, 'refinery')[0]) || (!threat && alive(g, s, 'turret')[0]);
     if (spare) { trySell(g, s, spare); want = 'habitat'; }
   }
   // Credits piling up with no energy and no free pad: trade an extra Refinery for a Reactor
@@ -2883,9 +2928,10 @@ function aiUpdate(g, s, dt) {
   const floating = side.res.c > 700 && side.res.e > 200;
   const buildDone = !want || !freePad || constructing.length > 0;
   const rich2 = aiFix(P, 'spend') && side.res.c > 1500 && g.ents.filter(b => b.kind === 'b' && b.side === s && b.upgrading && b.hp > 0).length < 2; // v2.38 (Default): rich, a second upgrade at once
+  const tf = dl.tech || (aiFix(P, 'tech') ? AI_TECH[P.kind] : null), techFocus = tf ? [[tf, 2], [tf, 3]] : []; // v2.40 (tech): its strategy's building goes to T3 right after T2 (the tech dial: the Hard preset's searched order)
   if (g.t >= D.upStart + P.upShift - (ecoMood ? 30 : 0) && (!upgrading || rich2) && (buildDone || floating) && (!(calm || defend) || floating) && !(D.maxTier < 3 && Math.random() < 0.5)) {
     const energyShort = side.res.e < 120 && side.res.c > 800;
-    for (const [type, tier] of [...(energyShort ? [['reactor', 2], ['reactor', 3]] : []), ...(rich2 ? [['habitat', 2], ['habitat', 3], ['reactor', 2], ['reactor', 3]] : []), ...P.upgFirst, ...AI_UPG]) {
+    for (const [type, tier] of [...(energyShort ? [['reactor', 2], ['reactor', 3]] : []), ...(rich2 ? [['habitat', 2], ['habitat', 3], ['reactor', 2], ['reactor', 3]] : []), ...P.upgFirst, ...techFocus, ...AI_UPG]) {
       if (rich2 && upgrading && alive(g, s, type).some(x => x.upgrading)) continue;
       if (tier > D.maxTier) continue;
       if (type === 'reactor' && side.res.e > ENERGY_PLENTY) continue;
@@ -2977,6 +3023,7 @@ function aiUpdate(g, s, dt) {
     if (!threat) for (const t of types) { const b = P.bias[t] || P.bias[AI_TWIN[t]]; if (b && sc[t] > 0) sc[t] *= b; } // the personality's taste in units (threats are answered on merit)
     for (const t of types) if (dl.comp[t] !== undefined) sc[t] *= dl.comp[t]; // the composition dial (v2.38; legacy has none)
     if (smart) aiSmartScores(g, s, sc, types, { comp, antiAir, theirs, mine, nFront, turtle, log, threat, P }); // v2.38: the Default AI values v2.37 roles
+    if (holdEarly) for (const t of types) { if (t === 'tank' || t === 'bulwark' || t === 'bastion') sc[t] *= 1.6; if (t === 'shardling' || t === 'skitterling') sc[t] *= 0.6; } // v2.40 (hold)
     // Bloomspire path units (v2.21, minimal): one the AI has never trained goes to the top once, so it saves for it (its
     // simple score sits below the Razorwing's, which would otherwise always win)
     if (facOf(side.faction) === 'bloomhost') { const best = Math.max(...types.map(t => sc[t])); for (const t of types) if (UNIT_PATH[t] && UNIT_PATH[t].b === 'techlab' && !log.trained[t]) sc[t] = best + 0.1; }
@@ -3038,7 +3085,17 @@ function aiUpdate(g, s, dt) {
     side.fails = (side.fails || 0) + 1;
     if (P.kind === 'aggressor' && side.fails >= 2) { side.moodUntil = g.t + rand(180, 240); side.fails = 0; } // rethink: economy first
   };
+  // v2.40 (defend): an enemy army inside the base (within 450 of the HQ) that is stronger than its own: rally inside the HQ's cover (170 out, within
+  // reach of the HQ gun but beyond an attacker's reach from outside it) and hold there, so attackers fight under the gun
+  if (aiFix(P, 'defend')) { const near0 = theirs.filter(e => e.fresh && Math.abs(e.u - hqU(s)) < 450); side.defU = danger && aiPower(mine) < aiPower(near0) ? hqU(s) + dir * 170 : null; }
+  // v2.40 (engage): is the fight it is about to start, or is in, winnable? Its army's strength against the enemy units it knows
+  // of at the target (all of them for a base attack) and the known guns there (weighted 0.6: buildings can't chase)
+  const engage = aiFix(P, 'engage') && !late && g.t < EXT.warn;
+  const fightAt = (u, all, own = mine) => { const foes = all ? theirs : theirs.filter(e => Math.abs(e.u - u) < 350); return aiPower(own) / Math.max(1, aiPower(foes, aiGunsNear(g, s, u, 60).map(b => ({ dps: b.dps * 0.6, hp: b.hp })))); };
+  if (holdEarly && side.stance === 'attack' && side.pushMode !== 'all') { side.stance = 'retreat'; side.pushTo = null; side.pushMode = null; side.stanceAt = g.t; } // v2.40 (hold): back under the gun
   const go = (pushTo, mode) => {
+    if (holdEarly && side.stance !== 'attack' && !(mode === 'all' && fightAt(hqU(opp), true) >= 1.5)) return; // v2.40 (hold): stay home under the gun
+    if (engage && side.stance !== 'attack' && (mode === 'node' ? fightAt(pushTo, false) < 1 : side.regroupT > g.t || fightAt(pushTo === null ? hqU(opp) : pushTo, mode === 'all' || mode === 'siege') < 1.25)) return; // not a fight it wins: build up instead
     const was = side.stance; side.stance = 'attack'; side.pushTo = pushTo; side.pushMode = mode; side.stanceAt = g.t;
     side.launchV = mode === 'all' || mode === 'siege' ? myV : 0;
     if (was === 'attack') return;
@@ -3071,6 +3128,9 @@ function aiUpdate(g, s, dt) {
     else if (dl.nodes >= 2 && myV >= D.fieldMin && myV >= thV * D.fieldEdge * (threat ? Math.max(1, P.fieldEdge) : P.fieldEdge)) go(dl.nodes >= 3 && myV >= thV * 1.5 ? farLine : fieldLine, 'field'); // take and hold the field nodes (the nodes dial, v2.38)
   } else if (side.feintUntil && g.t >= side.feintUntil) {
     side.feintUntil = 0; side.stance = 'retreat'; side.pushTo = null; side.pushMode = null; side.launchV = 0; side.stanceAt = g.t; // the feint pulls back
+  } else if (engage && since > 4 && g.front[s] !== null && fightAt(g.front[s] + dir * 150, false, mine.filter(u => Math.abs(g.front[s] - u.u) < 400)) < 0.6) {
+    failed(); // v2.40 (engage): losing where it is fighting: pull back together and regroup before trying again
+    side.stance = 'retreat'; side.pushTo = null; side.pushMode = null; side.stanceAt = g.t; side.regroupT = g.t + 12;
   } else if (since > 6 && myV < thV * (late ? 0.5 : dl.retreat)) {
     failed();
     side.stance = 'retreat'; side.pushTo = null; side.pushMode = null; side.stanceAt = g.t;
@@ -3143,6 +3203,33 @@ function aiPathUnitsFirst(sc, types, log, threat) {
   const best = Math.max(...types.map(t => sc[t]));
   for (const t of types) if (UNIT_PATH[t] && !log.trained[t]) sc[t] = Math.max(sc[t], best + 0.1);
 }
+// v2.40 (engage): fighting strength in Lanchester form, total damage per second × total health, of units ({ type, w }: w the
+// weight of a fading sighting) and of known enemy guns (fog ghosts of buildings with a gun: Turrets, HQs, bunkers) within
+// range of a point. Only what this side has seen counts.
+// sig: make room for the signature building by selling one of the duplicates the plan has (never the only one of a type)
+function aiSigRoom(g, s, dup, sig) {
+  if (!dup) return false;
+  const xs = alive(g, s, dup).filter(b => b.built && !b.upgrading);
+  if (xs.length < 2 || g.sides[s].res.c < bdS(g, s, sig).cost.c + 100) return false;
+  xs.sort((a, b) => a.tier - b.tier); trySell(g, s, xs[0]);
+  return true;
+}
+function aiPower(units, guns) {
+  let dps = 0, hp = 0;
+  for (const x of units) { const d = UDEF[x.type], w = x.w === undefined ? 1 : x.w; if (!d || d.support) continue; dps += (d.dmg || 0) / (d.cd || 1) * w; hp += (d.hp + (d.shp || 0)) * w; }
+  for (const b of guns || []) { dps += b.dps; hp += b.hp; }
+  return dps * hp;
+}
+function aiGunsNear(g, s, u, r) { // known enemy buildings with a gun whose reach covers u (within r more)
+  const out = [];
+  for (const gh of Object.values(g.fog[s].ghosts)) {
+    if (gh.side === s) continue;
+    const bd = BD(gh.fac, gh.type), gun = bd && bd.gun && bd.gun[gh.tier || 1];
+    if (!gun || Math.abs(gh.u - u) > gun.range + r) continue;
+    out.push({ dps: gun.dmg / gun.cd * (gun.split || 1), hp: bd.hp * hpMul(bd, gh.tier || 1) + (bd.shp || 0) });
+  }
+  return out;
+}
 // Where its units stand and when they act: the Titans' leash, the Voidcarrier's spot, scouting and unit timing
 function aiSmartArmy(g, s, mine, dl, P) {
   const side = g.sides[s], dir = dirOf(s), opp = 1 - s, ground = mine.filter(u => !UDEF[u.type].air);
@@ -3153,6 +3240,23 @@ function aiSmartArmy(g, s, mine, dl, P) {
   const fr = ground.filter(u => !UDEF[u.type].support).reduce((a, u) => a === null || dir * u.u > dir * a ? u.u : a, null);
   side.vcU = aiFix(P, 'carrier') && mine.some(u => UDEF[u.type].node) && fr !== null ? clamp(fr - dir * 110, 0, L) : null;
   side.backU = clamp(rallyU(s) + dir * 120, 0, L);
+  // v2.40 (axf): an Axiarch unit with its shields gone and its health low steps back into the power field (the warp point,
+  // the field's front edge) to recharge at the field's rate instead of dying outside it
+  if (aiFix(P, 'axf') && facOf(side.faction) === 'axiarchs') {
+    const wp = warpPoint(g, s); side.backU = wp.u;
+    for (const u of mine) if (u.maxShp && !UDEF[u.type].air && !u.siege && u.shp < u.maxShp * 0.1 && u.hp < u.maxHp * 0.55 && !onField(g, s, u.u, u.v) && Math.abs(u.u - wp.u) < 400 && !(u.aiBack > g.t)) u.aiBack = g.t + 2.5;
+  }
+  // v2.40 (mass): an attacking army moves as one. Ground fighters more than 120 ahead of the army's median hold (they fight
+  // what is in reach, never chase) until the rest is with them; stragglers far behind the front don't hold the push back
+  if (aiFix(P, 'mass') && side.stance === 'attack' && fr !== null) {
+    const grp = ground.filter(u => !UDEF[u.type].support && !UDEF[u.type].siege && u.id !== side.spotter && u.id !== side.scoutId && dir * (fr - u.u) < 600);
+    if (grp.length >= 3) {
+      const xs = grp.map(u => dir * u.u).sort((a, b) => a - b), med = xs[xs.length >> 1];
+      for (const u of grp) if (dir * u.u > med + 120) u.aiWait = g.t + 1.5;
+    }
+  }
+  // v2.40 (defend): rallied inside the HQ's cover, ground units hold there: they fight what comes in reach, never chase out
+  if (side.defU != null && side.stance !== 'attack') for (const u of ground) if (!UDEF[u.type].siege && Math.abs(u.u - side.defU) < 140) u.aiWait = g.t + 1.5;
   // reinforcements in groups: while it attacks, new units gather at the rally point until they are worth 400 together,
   // then march as one instead of walking to the front one by one
   if (aiFix(P, 'batch') && side.stance === 'attack' && fr !== null) {

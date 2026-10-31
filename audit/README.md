@@ -4,6 +4,7 @@ Files in this folder:
 - `unit-roster.md`: the unit roster and redesign record (phases 3a and 3b).
 - `validation.md`: the phase 4 validation results.
 - `balance-diagnosis.md`, `balance-report.md`: the phase 5 balance pass (why the factions won, what changed, the results).
+- `ai-tactics-report.md`: the phase 6a AI tactics rules (each A/B), the Hard-mode strategy search and the Hard-vs-Hard matrix.
 - `sim/`: the simulation harness, described below.
 
 ## The simulation harness (`audit/sim/`)
@@ -19,7 +20,7 @@ The harness plays headless matches on the game's **real** logic. `load.js` cuts 
 
 ### A side: `faction:preset:personality`
 - **faction:** `lastfist`, `bloomhost` or `axiarchs`.
-- **preset:** `default` or `legacy`.
+- **preset:** `default`, `legacy`, `v239` or `hard` (v2.40).
   - `default` is the game's AI since v2.38.
   - `legacy` is v2.37's AI, bit for bit (the replay fingerprint tests in `tests/determinism.test.js` prove it).
 - **personality:** `aggressor`, `turtle`, `economist`, `trickster`, or `random` (rolled per match, as in the game).
@@ -83,6 +84,19 @@ node audit/sim/validate.js [--mirror=100] [--vs=40] [--jobs=4]
   ```
 - **`s3.js`:** whether the bombers' supply keeps the AI from training them (Economist sides, as is and with lower supply).
 
+### Phase 6a AI tools
+- **`tactics.js`:** an A/B of AI rules. Same-faction matchups (each faction in turn), paired seeds (each seed with the sides swapped).
+  ```
+  node audit/sim/tactics.js --a='{"fix":{"hold":true}}' --b='{}' [--n=16] [--diff=hard]
+  ```
+  - A side is `{ ai, persona, fix, dial }`.
+  - The `v239` preset is v2.39's Default exactly, the baseline.
+- **`hardsearch.js`:** scores Hard-mode candidates (an opening and dials) against the Default field with random personalities.
+  ```
+  node audit/sim/hardsearch.js --faction=axiarchs --cands='[{"persona":"economist","dial":{"delay":0.6}}]' --n=20
+  ```
+- **`runSet({ paired: true })`:** plays each seed twice with the sides swapped.
+
 ### Experiments
 A side can override its preset's dials, for example to switch one competence rule off:
 ```js
@@ -108,6 +122,10 @@ All AI sides run the same brain (`aiUpdate` and its helpers in `index.html`). Th
   - **reaction delay:** `delay`.
   - **late game:** `late`.
 - **Presets** (`AI_PRESETS`): `legacy` holds the constants v2.37's AI used, with no competence rules. `default` adds the competence rules (`fix`: unit roles, room for big units, path units, spotters, Titan leash, Voidcarrier spot, unit timing, spending).
+  - v2.40: `default` also has the tactics rules `engage` and `sig` (`AI_TACTICS`).
+  - `v239` is v2.39's Default exactly.
+  - `hard` is the Default plus per-faction strategies (`byFac`: opening, dials); Hard games use it.
+  - A preset can also carry per-difficulty dials (`byDiff`).
 - **Personalities** (`rollPersona`): the style: build plan, attack edges, unit tastes, paths.
 
 ## Spectating in the game

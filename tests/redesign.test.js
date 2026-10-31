@@ -123,7 +123,7 @@ test('P8 Titan: plants (2 s) before firing, +90 range planted, can\'t move or be
 test('P8 Titan in AI play: the AI\'s Titans plant and unplant on their own', () => {
   const mul = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
   const S = loadSim({ random: mul(3) });
-  const g = S.newGame('hard', { autoPlayer: true, autoDiff: 'hard', persona: 'aggressor', autoPersona: 'turtle', factions: ['lastfist', 'lastfist'] });
+  const g = S.newGame('hard', { autoPlayer: true, autoDiff: 'hard', persona: 'aggressor', autoPersona: 'turtle', factions: ['lastfist', 'lastfist'], ai: 'default', autoAi: 'default' }); // v2.40: the Default AI
   g.countdown = 0; for (const s of [0, 1]) for (let i = 0; i < 3; i++) S.spawnUnit(g, s, 'titan', S.rallyU(s) + (i - 1) * 20, (i - 1) * 30); // the AI moves them with its own pushes and retreats
   const seen = new Set(); let fired = 0;
   for (let i = 0; i < 30 * 600 && !g.over; i++) { S.update(g, 1 / 30); for (const e of g.ents) if (e.type === 'titan') { seen.add(e.siege || 0); } for (const p of g.projs) if (p.weapon === 'siege' && !p.seen) { p.seen = 1; fired++; } }
@@ -200,7 +200,7 @@ test('S1 Skitterlings: half supply each; at most 60 alive or queued per side; th
   const r = sim.tryTrain(g, 0, 'skitterling'); assert.ok(!r.ok && /At most 60/.test(r.msg), r.msg);
   // an AI at the limit goes on training other units
   const mul = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
-  const S = loadSim({ random: mul(5) }), h = S.newGame('hard', { factions: ['lastfist', 'bloomhost'] }); h.countdown = 0; h.sides[0].aiT = 1e9; h.sides[1].res.c = h.sides[1].res.e = 1e5;
+  const S = loadSim({ random: mul(5) }), h = S.newGame('hard', { factions: ['lastfist', 'bloomhost'], ai: 'default' }); /* v2.40: the Default AI */ h.countdown = 0; h.sides[0].aiT = 1e9; h.sides[1].res.c = h.sides[1].res.e = 1e5;
   for (const k of ['barracks', 'factory', 'habitat', 'habitat', 'habitat', 'habitat', 'refinery']) { S.tryBuild(h, 1, k); for (const b of h.ents) if (b.kind === 'b' && b.side === 1) { b.built = true; b.progress = 1; b.hp = b.maxHp; } }
   for (let i = 0; i < 60; i++) S.spawnUnit(h, 1, 'skitterling', S.hqU(1) - 200 - i, 0);
   for (let i = 0; i < 30 * 120; i++) S.update(h, 1 / 30);

@@ -142,7 +142,7 @@ test('Rootheart T3: every 15 s roots snare at most 5 enemy ground units on the c
 test('the minimal AI (Bloomhost): the Aggressor and Trickster build the Brood Mound, the Turtle and Economist the Rootheart; Mites join its army', () => {
   for (const [persona, want, other] of [['aggressor', 'sigA', 'sigB'], ['turtle', 'sigB', 'sigA']]) {
     const S = loadSim({ random: (() => { let a = 3; return () => (a = (a * 16807) % 2147483647) / 2147483647; })() });
-    const g = S.newGame('hard', { factions: ['lastfist', 'bloomhost'], persona }); g.countdown = 0; g.sides[0].aiT = 1e9;
+    const g = S.newGame('hard', { factions: ['lastfist', 'bloomhost'], persona, ai: 'v239' }); /* v2.40: v2.39's minimal signature AI (the Default builds it after 5:00, tests/tactics.test.js) */ g.countdown = 0; g.sides[0].aiT = 1e9;
     let at = null, mt = 0; for (let i = 0; i < 30 * 300; i++) { S.update(g, 1 / 30); if (at === null && S.countB(g, 1, want)) at = g.t; mt = Math.max(mt, g.ents.filter(e => e.type === 'mite' && e.side === 1).length); }
     assert.ok(at !== null, `${persona}: ${want}`); assert.strictEqual(S.countB(g, 1, other), 0);
     if (want === 'sigA') assert.ok(mt > 0 && mt <= M.max, `Mites in its army: up to ${mt}`);

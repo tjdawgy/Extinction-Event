@@ -2,6 +2,38 @@
 
 Issues found during testing that are deliberately deferred. Each lists the step that should address it.
 
+## Audit phase 6a: AI tactics and Hard mode (v2.40)
+- **Report:** audit/ai-tactics-report.md. **Tools:** audit/sim tactics.js (paired rule A/B), hardsearch.js (strategy search); run.js gained `paired`.
+- **Step 0:** v2.39 merged into main. One `npm test` run then showed 348 of 349 (failing test not identified; the rerun passed 349 of 349), and main was pushed before that result was read.
+- **Kept in the Default preset** (every difficulty), rule on vs off over 48 same-faction matches:
+  - `engage`: fight strength in Lanchester form (damage per second × health) against the known enemy at the target, plus guns. No attack it doesn't win by 1.25×; pull back and regroup when losing locally. 29–19 against v2.39.
+  - `sig`: no signature building before 5:00. The plan keeps its economy; the signature building replaces a duplicate later. 29–19.
+- **Measured and left off:**
+  - `mass`, `defend` (v1 21–27, v2 22–26), `finish` (v1 21–27, v2 25–23), `hold` (25–23): neutral or worse.
+  - `tech` as a fixed rule: 18–30. Kept as the `tech` dial.
+  - `axf` (Axiarch shield recharge, looser Mass Warp): 10–22.
+- **`v239` preset:** v2.39's Default, move for move (tests/tactics.test.js).
+- **Hard preset** (`AI_PRESETS.hard`; Hard games use it unless a preset is named):
+  - Per faction: the Economist opening, decisions every 0.6 of the interval, no signature building; Last Fist also the Air Power Tech Lab to T3 first.
+  - Searched over 768 paired matches.
+  - Validation, 40 paired same-faction matches each:
+
+  | Hard vs | Last Fist | Bloomhost | Axiarchs |
+  |---|---|---|---|
+  | Default | 39–1 | 39–1 | 38–2 |
+  | Legacy | 40–0 | 39–1 | 39–1 |
+  | v2.39's Default | 37–3 | 38–2 | 39–1 |
+
+- **Easy and Normal:** the new Default against v2.39's at the same difficulty, 26–22 on Normal and 23–25 on Easy, so no slowing was needed (`byDiff` stays empty). The scripted rush still loses all 36 on Normal.
+- **Hard vs Hard** (40 paired matches each, the input for the final balance pass):
+  - Last Fist 40–0 Bloomhost; Last Fist 28–12 Axiarchs; Bloomhost 5–35 Axiarchs.
+  - Faction totals: Last Fist 85%, Axiarchs 59%, Bloomhost 6%.
+- **Tests:**
+  - New: tests/tactics.test.js (the v239 fingerprints, presets, aiPower, engage, mass hold, sig timing).
+  - Tests of the general AI in Hard games name `ai: 'default'`.
+  - Tests of v2.39's early signature-building AI name `ai: 'v239'`.
+  - The Turtle-deadline test checks v2.39's even-army rule on `v239`, and the Default's with an edge.
+
 ## Audit phase 5: balance pass, conservative (v2.39)
 - **Diagnosis:** audit/balance-diagnosis.md.
 - **Changes and results:** audit/balance-report.md.
@@ -148,7 +180,12 @@ Items for the strategy explorer and full balance audit. Logged only, nothing tun
   - **What looks like it does:** army trading. Both AIs attack 13–19 times a match and rebuild, so supply stays at half the limit.
   - **For Phase 6:** engagement choice (when to fight, when to fall back), concentration, and finishing a base.
 - (Phase 5, v2.39: tuned within the conservative rules; see audit/balance-report.md and "Audit phase 5" above.) **Faction balance in AI play (v2.38, Phase 5):** in Default vs Legacy, Last Fist beats Bloomhost and the Axiarchs about 88% of decided matches either way round, and the Axiarchs win only 9–32% against the other factions. Mirror draws: Bloomhost 22% and Axiarchs 21% reach 20:00 (Last Fist 9%).
-- **Phase 6 (AI training): AI skill problems found in the Phase 5 diagnosis** (audit/balance-diagnosis.md). Not compensated with stat buffs:
+- **For the final balance pass (from Phase 6a, audit/ai-tactics-report.md):**
+  - **Hard vs Hard:** Last Fist 85%, Axiarchs 59%, Bloomhost 6%. The v2.39 Last Fist cuts are not overshot; Bloomhost is the faction in trouble.
+  - **The Last Fist Aggressor's early push** beats the other factions' Aggressors 22–2 and 23–1 against every AI defence tried. It looks like the Rifleman vs Shardling/Skitterling exchange and two-Barracks throughput.
+  - **Signature buildings** are worth less than the Refinery or Reactor slot they cost, for all three factions: the Hard search won more without them.
+  - **The Economist opening dominates for all three factions** (85–90% against the Default field; the other openings 10–70%). Openings and node choices need numbers that make them viable (report: verdict on strategic variety).
+- (Phase 6a, v2.40: addressed as below. Engagement choice and signature timing are fixed in the Default AI. Early-push defence, finishing, faction mechanics and massing were tried and measured neutral or worse; see audit/ai-tactics-report.md.) **Phase 6 (AI training): AI skill problems found in the Phase 5 diagnosis** (audit/balance-diagnosis.md). Not compensated with stat buffs:
   - **Piecemeal melee attacks into a ranged line (the main cause of the faction gap).** Bloomhost and Axiarch armies attack a Last Fist line holding the middle node in groups of 5–11 and die to it. In the traced Last Fist vs Bloomhost match (seed 50010), Bloomhost lost 40 units to Last Fist's 15 by 6:00. Their own HQ gun is their biggest damage dealer (about 6,000 per match). Cost and stat sensitivity runs confirm it: every Bloomhost and Axiarch unit 20% cheaper, or with 15% more HP and shields, moved Last Fist by only 3–4 wins of 30. Needs: concentration and engagement choice, especially for melee armies.
   - **Signature buildings hurt every AI.** Switched off (paired, 40 matches): Last Fist +6 wins, Bloomhost +10, the Axiarchs +6. The plan gives up a second Refinery or Reactor for one and builds it at 0:30–1:00 (`aiPlanWith`, `sigReady`).
   - **Commander abilities:**

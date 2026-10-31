@@ -111,7 +111,7 @@ test('the AI maps its Tech Lab taste onto the Celestial Array (Air Power → Asc
   assert.strictEqual(sim.aiPathTo('axiarchs', 'techlab', 'A'), 'B'); assert.strictEqual(sim.aiPathTo('axiarchs', 'techlab', 'B'), 'A');
   for (const [path, want] of [['A', ['prismwing', 'shardstorm']], ['B', ['voidcarrier', 'sovereign']]]) {
     const S = loadSim({ random: mul(7) });
-    const g = S.newGame('hard', { factions: ['lastfist', 'axiarchs'] }); g.countdown = 0; g.sides[0].aiT = 1e9;
+    const g = S.newGame('hard', { factions: ['lastfist', 'axiarchs'], ai: 'default' }); /* v2.40: the Default AI (Hard games get the Hard preset) */ g.countdown = 0; g.sides[0].aiT = 1e9;
     const side = g.sides[1]; side.res.c = side.res.e = 6000;
     const fin = k => { assert.ok(S.tryBuild(g, 1, k).ok, k); const x = g.ents.filter(e => e.side === 1 && e.type === k).at(-1); x.built = true; x.progress = 1; x.hp = x.maxHp; return x; };
     fin('barracks'); fin('habitat'); fin('habitat'); fin('habitat'); const arr = fin('techlab');

@@ -83,12 +83,18 @@ test('Trickster feints pull back without counting as a failed attack', () => {
 });
 
 test('a Turtle attacks after its deadline even without a big edge; the ability hook is called', () => {
-  const g = sim.newGame('normal', { persona: 'turtle' }); g.sides[0].aiT = 1e9;
-  const side = g.sides[1]; g.t = side.persona.deadline + 1;
-  for (let i = 0; i < 4; i++) sim.spawnUnit(g, 1, 'tank', 1200 - i * 5, 0); // 1040 value
-  for (let i = 0; i < 4; i++) g.fog[1].intel[9000 + i] = { type: 'tank', u: 700, t: g.t }; // about even
-  side.stanceAt = g.t - 30; side.aiT = 0; sim.aiUpdate(g, 1, STEP);
-  assert.strictEqual(side.stance, 'attack');
+  // v2.40: v2.39's rule, on the v239 preset. The Default AI's engage rule (v2.40) keeps even a Turtle past its deadline out of
+  // a fight its strength doesn't win (below); before 18:00 (the late dial) it waits for the edge
+  const turtle = (ai, mine, foes) => {
+    const g = sim.newGame('normal', { persona: 'turtle', ai }); g.sides[0].aiT = 1e9;
+    const side = g.sides[1]; g.t = side.persona.deadline + 1;
+    for (let i = 0; i < mine; i++) sim.spawnUnit(g, 1, 'tank', 1200 - i * 5, 0);
+    for (let i = 0; i < foes; i++) g.fog[1].intel[9000 + i] = { type: 'tank', u: 700, t: g.t };
+    side.stanceAt = g.t - 30; side.aiT = 0; sim.aiUpdate(g, 1, STEP);
+    return side.stance;
+  };
+  assert.strictEqual(turtle('v239', 4, 4), 'attack', 'v2.39: about even is enough after the deadline');
+  assert.strictEqual(turtle('default', 8, 2), 'attack', 'Default: after the deadline with the edge (its strength against theirs plus the HQ gun)');
   assert.strictEqual(typeof sim.aiAbility, 'function');
 });
 

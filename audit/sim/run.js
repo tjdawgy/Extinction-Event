@@ -35,10 +35,11 @@ function runSpecs(specs, jobs = 4, onDone) {
 }
 
 // Build the specs for an A-vs-B set, play them, and re-express each result from A's and B's point of view
-async function runSet({ a, b, n = 20, seed = 1, jobs = 4, diff = 'hard', maxT = 1200, quiet = false, diag = false, code }) {
+async function runSet({ a, b, n = 20, seed = 1, jobs = 4, diff = 'hard', maxT = 1200, quiet = false, diag = false, code, paired = false }) {
   const A = typeof a === 'string' ? parseSide(a) : a, B = typeof b === 'string' ? parseSide(b) : b;
   const specs = [];
-  for (let i = 0; i < n; i++) specs.push({ seed: seed + i, diff, maxT, diag, code, sides: i % 2 ? [B, A] : [A, B], aSide: i % 2 ? 1 : 0 });
+  // paired: each seed twice, A on the left then on the right
+  for (let i = 0; i < n; i++) specs.push({ seed: seed + (paired ? i >> 1 : i), diff, maxT, diag, code, sides: i % 2 ? [B, A] : [A, B], aSide: i % 2 ? 1 : 0 });
   const t0 = Date.now();
   const res = await runSpecs(specs, jobs, quiet ? null : (d, N) => process.stderr.write(`\r${label(A)} vs ${label(B)}: ${d}/${N}`));
   if (!quiet) process.stderr.write(` (${((Date.now() - t0) / 1000).toFixed(0)} s)\n`);

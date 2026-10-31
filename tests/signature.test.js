@@ -154,7 +154,7 @@ test('bunkers: half a T1 Turret, ground only; Depot T3 doubles damage and hits a
 
 test('the minimal AI (Last Fist): the Aggressor and Trickster build the Salvage Yard, the Turtle and Economist the Depot, then upgrade it', () => {
   for (const [persona, want, other] of [['aggressor', 'sigA', 'sigB'], ['trickster', 'sigA', 'sigB'], ['turtle', 'sigB', 'sigA'], ['economist', 'sigB', 'sigA']]) {
-    const g = sim.newGame('hard', { factions: ['lastfist', 'lastfist'], persona }); g.countdown = 0; g.sides[0].aiT = 1e9;
+    const g = sim.newGame('hard', { factions: ['lastfist', 'lastfist'], persona, ai: 'v239' }); g.countdown = 0; g.sides[0].aiT = 1e9; // v2.40: v2.39's minimal signature AI
     let firstAt = null;
     for (let i = 0; i < 30 * 600 && !g.over; i++) { sim.update(g, 1 / 30); if (firstAt === null && sim.countB(g, 1, want)) firstAt = g.t; }
     assert.ok(firstAt !== null, `${persona} built its ${want}`);
@@ -165,7 +165,7 @@ test('the minimal AI (Last Fist): the Aggressor and Trickster build the Salvage 
   assert.ok(sim.AI_UPG.some(([t, n]) => t === 'sigA' && n === 3) && sim.AI_UPG.some(([t, n]) => t === 'sigB' && n === 3), 'upgraded through the normal order');
   // upgrades: an AI with its building finished and money to spare takes it to T3 like any other
   for (const persona of ['trickster', 'turtle']) {
-    const g = sim.newGame('hard', { factions: ['lastfist', 'lastfist'], persona }); g.countdown = 0; g.sides[0].aiT = 1e9; g.t = 400;
+    const g = sim.newGame('hard', { factions: ['lastfist', 'lastfist'], persona, ai: 'v239' }); g.countdown = 0; g.sides[0].aiT = 1e9; g.t = 400;
     g.sides[1].res.c = g.sides[1].res.e = 20000; const want = persona === 'turtle' ? 'sigB' : 'sigA'; for (const k of ['barracks', 'refinery', 'refinery', 'habitat', 'factory', 'reactor', want]) fin(g, 1, k);
     for (const b of g.ents) if (b.side === 1 && b.kind === 'b') b.tier = b.type === want ? 1 : 3;
     g.sides[1].res.c = g.sides[1].res.e = 20000;
@@ -173,7 +173,7 @@ test('the minimal AI (Last Fist): the Aggressor and Trickster build the Salvage 
     assert.strictEqual(g.ents.find(e => e.side === 1 && e.type === want).tier, 3, `${persona} upgraded its ${want}`);
   }
   sim.SIG.on = false; // switched off, no AI builds them
-  try { const g = sim.newGame('hard', { factions: ['lastfist', 'axiarchs'], persona: 'turtle' }); g.countdown = 0; g.sides[0].aiT = 1e9;
+  try { const g = sim.newGame('hard', { factions: ['lastfist', 'axiarchs'], persona: 'turtle', ai: 'v239' }); g.countdown = 0; g.sides[0].aiT = 1e9;
     for (let i = 0; i < 30 * 300; i++) sim.update(g, 1 / 30);
     assert.ok(!g.ents.some(e => e.side === 1 && (e.type === 'sigA' || e.type === 'sigB')), 'SIG.on false: none'); } finally { sim.SIG.on = true; }
 });
@@ -196,7 +196,7 @@ test('every personality and difficulty, all three factions (v2.33 Bloomhost, v2.
   // and the plan the AI actually follows, per faction: a seeded Hard match each, the building types it built are the plan's
   for (const fac of ['lastfist', 'bloomhost', 'axiarchs']) for (const persona of S2.PERSONAS) {
     const S3 = loadSim({ random: (() => { let a = 5; return () => (a = (a * 16807) % 2147483647) / 2147483647; })() });
-    const g = S3.newGame('hard', { factions: ['lastfist', fac], persona }); g.countdown = 0; g.sides[0].aiT = 1e9;
+    const g = S3.newGame('hard', { factions: ['lastfist', fac], persona, ai: 'v239' }); /* v2.40: v2.39's minimal signature AI */ g.countdown = 0; g.sides[0].aiT = 1e9;
     for (let i = 0; i < 30 * 240; i++) S3.update(g, 1 / 30);
     const want = persona === 'aggressor' || persona === 'trickster' ? 'sigA' : 'sigB';
     assert.ok(S3.countB(g, 1, want) === 1, `${fac} ${persona} built its ${want} by 4:00`);
