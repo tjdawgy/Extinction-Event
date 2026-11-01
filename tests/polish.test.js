@@ -27,7 +27,7 @@ test('MECH7C: on by default; off restores the v2.42 rally point (300 out) and no
 
 test('rally point inside the HQ gun\'s T1 reach; every node outside the T1 gun, the third (enemy\'s) node inside its T2/T3 reach', () => {
   const gun = sim.BDEF.hq.gun;
-  assert.ok(M.rally + 165 <= gun[1].range, 'a 165-range attacker (the longest basic range) hitting the rally point is inside the HQ gun');
+  assert.ok(M.rally + sim.UDEF.rifle.range <= gun[1].range, 'a Rifleman shooting units at the rally point stands inside the HQ gun');
   for (const s of [0, 1]) {
     const d = Math.abs(sim.NODE_U[s === 0 ? 0 : 2] - sim.hqU(s));
     assert.ok(d - sim.NODE_R >= gun[1].range, 'the whole node zone is outside the T1 gun');
@@ -80,7 +80,7 @@ test('rally on Attack: a player\'s new units wait at the rally point until the g
   void front;
 });
 
-test('rally batching is the player\'s side only (the AI groups its own reinforcements)', () => {
+test('rally batching is the player\'s side only (the AI moves its army by its own rules)', () => {
   const g = sim.newGame('normal'); assert.strictEqual(sim.playerSide(g, 0), true); assert.strictEqual(sim.playerSide(g, 1), false);
   const h = sim.newGame('normal', { autoPlayer: true }); assert.strictEqual(sim.playerSide(h, 0), false);
 });
@@ -165,7 +165,7 @@ test('Hard builds a signature building now that it costs no pad', () => {
 
 test('BALANCE7C: setBalance7c(false) restores every v2.42 value; setBalance7b(false) and setBalance(false) take it off and put it back', () => {
   const B = sim.BALANCE7C; assert.strictEqual(B.on, true);
-  const get = p => { const k = p.split('.'), R = { UDEF: sim.UDEF, BDEF: sim.BDEF, BDEF_BH: sim.BDEF_BH, BDEF_AX: sim.BDEF_AX, NODE_INC: sim.NODE_INC, DMG: sim.DMG }; let o = R[k[0]]; for (let i = 1; i < k.length; i++) o = o[k[i]]; return JSON.stringify(o); };
+  const get = p => { const k = p.split('.'), R = { UDEF: sim.UDEF, BDEF: sim.BDEF, BDEF_BH: sim.BDEF_BH, BDEF_AX: sim.BDEF_AX, NODE_INC: sim.NODE_INC, DMG: sim.DMG, DIFF: sim.DIFF }; let o = R[k[0]]; for (let i = 1; i < k.length; i++) o = o[k[i]]; return JSON.stringify(o); };
   const on = B.patches.map(([p]) => get(p));
   B.patches.forEach(([p, v], i) => assert.strictEqual(on[i], JSON.stringify(v), p));
   sim.setBalance7c(false);
@@ -175,4 +175,12 @@ test('BALANCE7C: setBalance7c(false) restores every v2.42 value; setBalance7b(fa
   sim.setBalance7b(false); assert.strictEqual(B.on, false); sim.setBalance7b(true); assert.strictEqual(B.on, true);
   sim.setBalance(false); assert.strictEqual(B.on, false); sim.setBalance(true); assert.strictEqual(B.on, true);
   B.patches.forEach(([p], i) => assert.strictEqual(get(p), on[i], p));
+});
+
+test('BALANCE7C spot checks: HQ T2/T3 reach covers the own node, Normal always answers an infantry rush with a Turret, Easy unchanged', () => {
+  const hq = sim.BD('bloomhost', 'hq').gun;
+  assert.deepStrictEqual([hq[1].range, hq[2].range, hq[3].range, hq[1].dmg, hq[3].dmg], [390, 530, 560, 16, 54]);
+  assert.ok(sim.hqU(0) + hq[2].range >= sim.NODE_U[0] + sim.NODE_R, 'the T2 gun reaches across the whole own node');
+  assert.strictEqual(sim.DIFF.normal.turret, 1); assert.strictEqual(sim.DIFF.easy.turret, 0);
+  assert.match(sim.BDEF.hq.tiers[3], /^Turret 54 damage, 560 range/, 'descriptions follow the live numbers');
 });

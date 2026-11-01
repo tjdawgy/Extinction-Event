@@ -1,0 +1,9 @@
+hard vs Default, lastfist: 21-3-0 (87.5%)
+hard vs Default, bloomhost: 19-5-0 (79.2%)
+hard vs Default, axiarchs: 17-7-0 (70.8%)
+hard vs hard, lastfist vs bloomhost: 8-16-0
+hard vs hard, lastfist vs axiarchs: 13-11-0
+hard vs hard, bloomhost vs axiarchs: 15-9-0
+openings Hard picks (300 rolls), lastfist: {"economist":69,"turtle":67,"boomer":164}
+openings Hard picks (300 rolls), bloomhost: {"boomer":220,"turtle":80}
+openings Hard picks (300 rolls), axiarchs: {"turtle":101,"boomer":199}

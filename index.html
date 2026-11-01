@@ -340,7 +340,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.42'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.43'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -795,7 +795,7 @@ const BALANCE7B = { on: false, orig: null, patches: [
   // Bloomhost: sturdier Skitterlings and Bulwarks, cheaper Spitters with the reach to answer a ranged line
   ['UDEF.skitterling.hp', 66], ['UDEF.bulwark.hp', 840], ['UDEF.bulwark.dmg', 28], ['UDEF.spitter.cost', { c: 70, e: 20 }], ['UDEF.spitter.range', 165],
 ] };
-const B7_ROOT = () => ({ UDEF, BDEF, BDEF_BH, BDEF_AX, DMG, NODE_INC, SALVAGE, YARD, BUNKER, MOUND, ROOT, BEACON, ECHO });
+const B7_ROOT = () => ({ UDEF, BDEF, BDEF_BH, BDEF_AX, DMG, DIFF, NODE_INC, SALVAGE, YARD, BUNKER, MOUND, ROOT, BEACON, ECHO });
 function b7At(path) { const k = path.split('.'), R = B7_ROOT(); let o = R[k[0]]; for (let i = 1; i < k.length - 1; i++) o = o[k[i]]; return [o, k[k.length - 1]]; }
 const b7Copy = v => v && typeof v === 'object' ? JSON.parse(JSON.stringify(v)) : v;
 function setBalance7b(on) {
@@ -810,6 +810,20 @@ function setBalance7b(on) {
    Numbers only, on top of v2.42 (BALANCE7B): the retune after the phase 7c mechanics (MECH7C). setBalance7c(false) puts back
    every v2.42 value; setBalance7b(false) and setBalance(false) also take this layer off. Same patch format as BALANCE7B. */
 const BALANCE7C = { on: false, want: false, orig: null, patches: [
+  // the upgraded HQ guns reach the whole own field node (now 390-530 out): a side that pays for HQ tiers covers its node;
+  // T3 hits softer, so a maxed turtle is less of a fortress (the Tech branch)
+  ['BDEF.hq.gun.2.range', 530], ['BDEF_AX.hq.gun.2.range', 530], ['BDEF.hq.gun.3.range', 560], ['BDEF_AX.hq.gun.3.range', 560],
+  ['BDEF.hq.gun.3.dmg', 54], ['BDEF_AX.hq.gun.3.dmg', 54],
+  // the early game a little quicker (a Refinery builds in 12 s, was 13; v2.41: 10)
+  ['BDEF.refinery.time', 12], ['BDEF_BH.refinery.time', 12], ['BDEF_AX.refinery.time', 12],
+  // Bloomhost: cheaper Skitterlings and Bulwarks (lowest in identical play once its defenders hold at the new rally point)
+  ['UDEF.skitterling.cost', { c: 36, e: 0 }], ['UDEF.bulwark.cost', { c: 140, e: 25 }],
+  // the Axiarch Tech branch: dearer Rift Mortars and Worldbreakers, a softer Null Lance T3
+  ['UDEF.riftmortar.cost', { c: 250, e: 100 }], ['UDEF.worldbreaker.cost', { c: 500, e: 210 }], ['BDEF_AX.turret.gun.3.dmg', 85],
+  // Last Fist: a dearer Tank (its Timing branch on top of the mixed field)
+  ['UDEF.tank.cost', { c: 290, e: 75 }],
+  // Normal answers an infantry rush with a Turret every match (was a 50% roll; Hard always did; Easy never)
+  ['DIFF.normal.turret', 1],
 ] };
 function setBalance7c(on, keep) { // keep: switched off only while a lower layer changes (setBalance7b, setBalance)
   if (!keep) BALANCE7C.want = on;
@@ -992,6 +1006,9 @@ AI_PRESETS.hard242.fix = Object.assign({}, AI_PRESETS.hard.fix);
 // one named per faction (sig), each the better of the two in the phase 7c A/B (audit/polish-report.md)
 const HARD_SIG_7C = { lastfist: { sigAt: 300, sig: 'sigA' }, bloomhost: { sigAt: 300, sig: 'sigB' }, axiarchs: { sigAt: 300, sig: 'sigA' } };
 for (const f in HARD_SIG_7C) Object.assign(AI_PRESETS.hard.byFac[f].dials, HARD_SIG_7C[f]);
+// v2.43: the Axiarch Turtle opening fell to 58% against the Default field (its node now has to be held; Boomer 92%,
+// Economist 71%, 24 paired each, audit/polish-report.md), so Hard's Axiarchs open Boomer two times in three (was Turtle)
+AI_PRESETS.hard.byFac.axiarchs.kinds = ['boomer', 'boomer', 'turtle'];
 const AI_PRESET_KEYS = Object.keys(AI_PRESETS);
 const aiDials = P => (P && P.dial) || AI_DIALS; // a persona without dials (an older save) reads the legacy constants
 const aiSmart = P => !!(P && P.smart);
@@ -1201,9 +1218,10 @@ setBalance7b(true); // v2.42 (audit phase 7b): the strategy balance layer, once 
 setBalance7c(true); // v2.43 (audit phase 7c): the retune layer on top
 /* ---------- Mechanics (v2.43, audit phase 7c; audit/polish-report.md) ----------
    Four rule changes, one switch: setMech7c(false) plays exactly as v2.42.
-   rally: the rally point (where new and idle units stand) sits `rally` out from the HQ, inside its gun's cover (was 300, 90
-     short of the gun's reach: attackers could hit units there from outside it). On Attack, new units of a player's side wait
-     there until the group is worth batchV or has waited batchT seconds, then walk out together (the AI does this itself).
+   rally: the rally point (where new and idle units stand) sits `rally` out from the HQ, inside its gun's cover: a Rifleman
+     (120 range) shooting units there stands inside the T1 gun's 390 (was 300: attackers hit them from outside it). 190 was
+     tried first and measured worse (Bloomhost 25% in Greedy vs Greedy against 46% at 240). On Attack, new units of a player's side wait
+     there until the group is worth batchV or has waited batchT seconds, then walk out together (the AI moves its army by its own rules).
    holdR: melee units on Hold (or on a Regroup flag) engage enemies within holdR of the spot they hold; they never chase
      further (before: a melee unit on Hold never engaged at all).
    node: each side's own field node sits `node` out from its HQ (was 380, half under the HQ's T1 gun): all three nodes are
@@ -1213,7 +1231,7 @@ setBalance7c(true); // v2.43 (audit phase 7c): the retune layer on top
      (Axiarch Greedy vs Greedy 40-0: their node field put the warp point there).
    sigPad: one signature pad per side, outside the 8 building pads; only a signature building stands there, one at a time
      (sell it to build the other), and signature buildings no longer go on the 8 pads. */
-const MECH7C = { on: false, rally: 190, holdR: 80, node: 460, batchV: 300, batchT: 15, sigPad: true, old: { node: [NODE_U[0], NODE_U[2]] } };
+const MECH7C = { on: false, rally: 240, holdR: 80, node: 460, batchV: 300, batchT: 15, sigPad: true, old: { node: [NODE_U[0], NODE_U[2]] } };
 const SIG_SLOT = 8, SIG_TILE = [2, 0]; // the signature pad: just past the HQ, at the base's outer corner
 function setMech7c(on) {
   MECH7C.on = on;
@@ -1829,7 +1847,8 @@ function giveOrder(g, s, scope, key, o, u, v, quiet) { // quiet: the AI's automa
 }
 // v2.43 (rally): on Attack, a player side's new units wait at the rally point (inside the HQ gun's cover) until the group
 // there is worth MECH7C.batchV or its first unit has waited batchT seconds, then walk out together; units already marching
-// (rwGo) are never held back. The AI batches its own reinforcements (its batch rule), so this is for the player's side.
+// (rwGo) are never held back. For the player's side (and the audit bots): the AI moves its army with its own rules (mass,
+// nowave; its batch rule has been off since v2.38).
 function updateRallyWait(g) {
   for (let s = 0; s < 2; s++) {
     if (!playerSide(g, s)) continue;
@@ -7441,7 +7460,7 @@ function showInfo(kind, type) {
       `<div class="irow">One on every field node you hold. Taking a node places it at once; losing the node destroys it. Destroyed while you still hold the node, it returns after ${BUNKER.rebuild} s. Uses no pad and no army size, and gives no Salvage.</div>`;
   } else {
     const d = BD(pFac(), type);
-    name = d.name; sub = d.sig ? 'Signature building · one at a time' + (d.req ? ` · requires ${BD(pFac(), d.req).name}` : '') : d.req ? `Requires ${BD(pFac(), d.req).name}` : '';
+    name = d.name; sub = d.sig ? (sigPadOn() ? 'Signature building · on the signature pad, one of the two at a time' : 'Signature building · one at a time') + (d.req ? ` · requires ${BD(pFac(), d.req).name}` : '') : d.req ? `Requires ${BD(pFac(), d.req).name}` : '';
     body = `<div class="istats">${stat('HP', d.hp)}${d.shp ? stat('Shields', d.shp) : ''}${stat('Build time', d.time + 's')}${stat('Credits', d.cost.c)}${stat('Energy', d.cost.e)}</div>` +
       (prodLocked(pFac(), type) ? `<div class="irow">${d.lockMsg}: it stays at T1 for now.</div>` : '') +
       [1, 2, 3].map(t => `<div class="irow"><em>T${t}${t > 1 ? ` (${d.up[t].c} credits, ${d.up[t].e} energy)` : ''}</em> ${d.tiers[t]}</div>`).join('') +
@@ -8548,19 +8567,26 @@ function sndPlay(name, x, size) {
 
 /* ---------- Main loop ---------- */
 let uiT = 0, saveT = 5;
+// v2.43 (audit phase 7c, the speed check): a fixed timestep. Real time since the last frame (at most CATCH_UP seconds of it,
+// so a stall or a hidden tab can't make the game spiral) goes into an accumulator, and the SIM steps SIM_STEP game
+// seconds at a time until it has caught up. Before, each frame advanced the game by at most 50 ms of real time: below
+// 20 frames a second the game ran slower than 1x (at 6 fps, a third of real time). The SIM itself is unchanged.
+const SIM_STEP = 1 / 60, CATCH_UP = 0.25;
+let simAcc = 0;
 function frame(ts) {
   requestAnimationFrame(frame);
   vfxQuality(ts - last, !!(game && running && !paused));
-  const dt = Math.min(0.05, Math.max(0, (ts - last) / 1000)); last = ts;
+  const real = Math.min(CATCH_UP, Math.max(0, (ts - last) / 1000)); last = ts;
+  const dt = Math.min(0.05, real); // camera glide and the end screen's effects (as before)
   if (game && running && !paused) {
-    let rem = dt * (game.countdown > 0 ? 1 : speed); // the countdown always takes real seconds
-    while (rem > 1e-6) { const st = Math.min(rem, 1 / 30); update(game, st); rem -= st; }
+    simAcc += real * (game.countdown > 0 ? 1 : speed); // the countdown always takes real seconds
+    while (simAcc >= SIM_STEP) { update(game, SIM_STEP); simAcc -= SIM_STEP; }
     updateIntro();
     handleEvents();
     if (game.over && !endTimer) { clearSave(); endTimer = setTimeout(() => { endTimer = null; if (game && game.over) { running = false; showEnd(); } }, 1900); }
-    saveT -= dt;
+    saveT -= real;
     if (saveT <= 0 && !game.over) { saveT = 5; saveGame(); }
-    uiT -= dt;
+    uiT -= real;
     if (uiT <= 0) { uiT = 0.15; refreshUI(false); }
   } else if (game && game.over) update(game, dt);
   if (!gest && Math.abs(cam.vx) > 5) { cam.x += cam.vx * dt; cam.vx *= Math.pow(0.03, dt); clampCam(); }

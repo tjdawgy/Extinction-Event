@@ -1,0 +1,12 @@
+{"label":"v2.43-wip","throttle":1,"phase":"early","ratio":1.002,"fps":37,"worstMs":67,"units":0,"errors":0}
+{"label":"v2.43-wip","throttle":1,"phase":"battle","ratio":1.005,"fps":30,"worstMs":50,"units":28,"errors":0}
+{"label":"v2.43-wip","throttle":4,"phase":"early","ratio":0.33,"fps":6.6,"worstMs":183,"units":0,"errors":0}
+{"label":"v2.43-wip","throttle":4,"phase":"battle","ratio":0.249,"fps":5,"worstMs":283,"units":59,"errors":0}
+{"label":"v2.40","throttle":1,"phase":"early","ratio":1.004,"fps":38.2,"worstMs":50,"units":0,"errors":0}
+{"label":"v2.40","throttle":1,"phase":"battle","ratio":1.006,"fps":29.6,"worstMs":50,"units":28,"errors":0}
+{"label":"v2.40","throttle":4,"phase":"early","ratio":0.314,"fps":6.3,"worstMs":183,"units":0,"errors":0}
+{"label":"v2.40","throttle":4,"phase":"battle","ratio":0.25,"fps":5,"worstMs":250,"units":57,"errors":0}
+{"label":"v2.35","throttle":1,"phase":"early","ratio":1.001,"fps":39.2,"worstMs":83,"units":0,"errors":0}
+{"label":"v2.35","throttle":1,"phase":"battle","ratio":1.006,"fps":31.4,"worstMs":50,"units":23,"errors":0}
+{"label":"v2.35","throttle":4,"phase":"early","ratio":0.318,"fps":6.4,"worstMs":184,"units":0,"errors":0}
+{"label":"v2.35","throttle":4,"phase":"battle","ratio":0.269,"fps":5.4,"worstMs":250,"units":51,"errors":0}

@@ -1,0 +1,20 @@
+== MECH7C.rally=300
+  lastfist: 12-12 (50%)
+  bloomhost: 10-14 (41.7%)
+  axiarchs: 14-10 (58.3%)
+== MECH7C.holdR=-999
+  lastfist: 16-8 (66.7%)
+  bloomhost: 6-18 (25%)
+  axiarchs: 14-10 (58.3%)
+== MECH7C.batchV=0
+  lastfist: 17-7 (70.8%)
+  bloomhost: 5-19 (20.8%)
+  axiarchs: 14-10 (58.3%)
+== MECH7C.rally=240
+  lastfist: 11-13 (45.8%)
+  bloomhost: 11-13 (45.8%)
+  axiarchs: 14-10 (58.3%)
+== MECH7C.rally=260
+  lastfist: 10-14 (41.7%)
+  bloomhost: 13-11 (54.2%)
+  axiarchs: 13-11 (54.2%)

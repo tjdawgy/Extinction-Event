@@ -1,0 +1,24 @@
+hard vs Greedy: lastfist 23-1, bloomhost 22-2, axiarchs 24-0; total 69-3 (AI 95.8%)
+  pairs (AI<bot): lastfist<lastfist 7-1, lastfist<bloomhost 8-0, lastfist<axiarchs 8-0, bloomhost<lastfist 6-2, bloomhost<bloomhost 8-0, bloomhost<axiarchs 8-0, axiarchs<lastfist 8-0, axiarchs<bloomhost 8-0, axiarchs<axiarchs 8-0
+lastfist {"ai":"hard"}: 10-2-0 (83.3%)
+hard vs Default, lastfist: 10-2-0 (83.3%)
+bloomhost {"ai":"hard"}: 10-2-0 (83.3%)
+hard vs Default, bloomhost: 10-2-0 (83.3%)
+axiarchs {"ai":"hard"}: 6-6-0 (50%)
+hard vs Default, axiarchs: 6-6-0 (50%)
+lastfist {"ai":"hard"}: 4-8-0 (33.3%)
+hard vs hard, lastfist vs bloomhost: 4-8-0
+lastfist {"ai":"hard"}: 7-5-0 (58.3%)
+hard vs hard, lastfist vs axiarchs: 7-5-0
+bloomhost {"ai":"hard"}: 11-1-0 (91.7%)
+hard vs hard, bloomhost vs axiarchs: 11-1-0
+hard vs strategy bots, lastfist: 18-0-0 [rush 6-0, turtle 6-0, contain 6-0]
+hard vs strategy bots, bloomhost: 18-0-0 [rush 6-0, turtle 6-0, contain 6-0]
+hard vs strategy bots, axiarchs: 16-2-0 [rush 6-0, turtle 6-0, contain 4-2]
+hard (signature building) vs Greedy: lastfist 23-1, bloomhost 21-3, axiarchs 22-2; total 66-6 (AI 91.7%)
+  pairs (AI<bot): lastfist<lastfist 7-1, lastfist<bloomhost 8-0, lastfist<axiarchs 8-0, bloomhost<lastfist 5-3, bloomhost<bloomhost 8-0, bloomhost<axiarchs 8-0, axiarchs<lastfist 7-1, axiarchs<bloomhost 7-1, axiarchs<axiarchs 8-0
+hard without a signature building vs Greedy: lastfist 23-1, bloomhost 21-3, axiarchs 22-2; total 66-6 (AI 91.7%)
+  pairs (AI<bot): lastfist<lastfist 7-1, lastfist<bloomhost 8-0, lastfist<axiarchs 8-0, bloomhost<lastfist 5-3, bloomhost<bloomhost 8-0, bloomhost<axiarchs 8-0, axiarchs<lastfist 7-1, axiarchs<bloomhost 7-1, axiarchs<axiarchs 8-0
+openings Hard picks (300 rolls), lastfist: {"economist":69,"turtle":67,"boomer":164}
+openings Hard picks (300 rolls), bloomhost: {"boomer":220,"turtle":80}
+openings Hard picks (300 rolls), axiarchs: {"turtle":209,"boomer":91}

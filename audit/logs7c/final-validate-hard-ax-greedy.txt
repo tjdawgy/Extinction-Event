@@ -1,0 +1,3 @@
+AI {"ai":"hard"} vs Greedy: axiarchs 21-3; total 21-3 (AI 87.5%)
+pairs (AI<bot): axiarchs<lastfist 6-2, axiarchs<bloomhost 7-1, axiarchs<axiarchs 8-0
+hard vs strategy bots, axiarchs: 17-1-0 {"rush":[6,0],"turtle":[6,0],"contain":[5,1]}

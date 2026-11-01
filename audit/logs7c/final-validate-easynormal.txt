@@ -1,0 +1,10 @@
+Default (normal) vs Greedy: lastfist 0-9, bloomhost 0-9, axiarchs 0-9; total 0-27 (AI 0%)
+  pairs (AI<bot): lastfist<lastfist 0-3, lastfist<bloomhost 0-3, lastfist<axiarchs 0-3, bloomhost<lastfist 0-3, bloomhost<bloomhost 0-3, bloomhost<axiarchs 0-3, axiarchs<lastfist 0-3, axiarchs<bloomhost 0-3, axiarchs<axiarchs 0-3
+Default (easy) vs Greedy: lastfist 0-9, bloomhost 0-9, axiarchs 0-9; total 0-27 (AI 0%)
+  pairs (AI<bot): lastfist<lastfist 0-3, lastfist<bloomhost 0-3, lastfist<axiarchs 0-3, bloomhost<lastfist 0-3, bloomhost<bloomhost 0-3, bloomhost<axiarchs 0-3, axiarchs<lastfist 0-3, axiarchs<bloomhost 0-3, axiarchs<axiarchs 0-3
+Rifleman rush vs normal lastfist: rush wins 0, AI wins 24, draws 0
+Rifleman rush vs normal bloomhost: rush wins 0, AI wins 24, draws 0
+Rifleman rush vs normal axiarchs: rush wins 0, AI wins 24, draws 0
+Rifleman rush vs easy lastfist: rush wins 13, AI wins 11, draws 0
+Rifleman rush vs easy bloomhost: rush wins 18, AI wins 6, draws 0
+Rifleman rush vs easy axiarchs: rush wins 17, AI wins 7, draws 0

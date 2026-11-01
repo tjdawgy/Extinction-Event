@@ -83,7 +83,7 @@ test('Null Lance: T1 one beam; T2 Split Lattice across up to 3 targets at lower 
   assert.strictEqual(hit(), 1, 'T2 with one target in range: one beam');
   reset(); nl.tier = 3; fireOnce();
   assert.ok(Math.abs((foes[0].maxHp - foes[0].hp) - G[3].dmg * sim.DMG.horizon.heavy) < 1e-6, 'T3: one heavy hit');
-  assert.ok(G[3].dmg > G[1].dmg * 2 && G[3].range > G[2].range && G[3].cd > G[1].cd && sim.DMG.horizon.building > sim.DMG.lance.building);
+  /* v2.43 (BALANCE7C): T3 85 against T1 55, still the heavy hit (was more than twice T1) */ assert.ok(G[3].dmg > G[1].dmg * 1.5 && G[3].range > G[2].range && G[3].cd > G[1].cd && sim.DMG.horizon.building > sim.DMG.lance.building);
   for (const t of [1, 2, 3]) assert.ok(G[t].hitsAir, `T${t} hits aircraft`);
 });
 

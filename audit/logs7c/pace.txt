@@ -1,0 +1,6 @@
+greedy, v2.41 numbers      Barracks 65 s, first unit 76 s, 3rd Refinery 51 s (18/18), earned 1:00 709, 2:00 2095, 3:00 3775, 5:00 -
+greedy, v2.42 numbers      Barracks 81 s, first unit 91 s, 3rd Refinery 70 s (18/18), earned 1:00 512, 2:00 1713, 3:00 3451, 5:00 -
+greedy, v2.43              Barracks 81 s, first unit 91 s, 3rd Refinery 70 s (18/18), earned 1:00 512, 2:00 1706, 3:00 3444, 5:00 -
+hard, v2.41 numbers        Barracks 34 s, first unit 47 s, 3rd Refinery 32 s (10/18), earned 1:00 567, 2:00 1502, 3:00 2715, 5:00 5142
+hard, v2.42 numbers        Barracks 47 s, first unit 59 s, 3rd Refinery 49 s (10/18), earned 1:00 445, 2:00 1364, 3:00 2588, 5:00 5163
+hard, v2.43                Barracks 47 s, first unit 59 s, 3rd Refinery 49 s (10/18), earned 1:00 445, 2:00 1371, 3:00 2644, 5:00 5023

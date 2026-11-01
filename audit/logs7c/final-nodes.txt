@@ -1,0 +1,10 @@
+set nodes, n 12 per side, seed 97000
+  lastfist nodes3>nodes1: 23-1 (95.8%) median 5.9 min
+  lastfist nodes2>nodes1: 22-2 (91.7%) median 6.3 min
+  lastfist nodes3>nodes2: 12-12 (50%) median 7.3 min
+  bloomhost nodes3>nodes1: 3-21 (12.5%) median 8.2 min
+  bloomhost nodes2>nodes1: 10-14 (41.7%) median 6.9 min
+  bloomhost nodes3>nodes2: 13-11 (54.2%) median 7.9 min
+  axiarchs nodes3>nodes1: 12-12 (50%) median 4.5 min
+  axiarchs nodes2>nodes1: 12-12 (50%) median 4 min
+  axiarchs nodes3>nodes2: 12-12 (50%) median 4.4 min

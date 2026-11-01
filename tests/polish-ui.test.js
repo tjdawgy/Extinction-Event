@@ -59,7 +59,7 @@ for (const dev of [PHONE, NARROW]) for (const fac of ['lastfist', 'bloomhost', '
     });
     await page.waitForTimeout(150);
     await shot('4-rally');
-    assert.ok(r3.rally - r3.hq + 165 <= r3.gun && r3.far - r3.hq <= r3.gun, JSON.stringify(r3));
+    assert.ok(r3.rally - r3.hq + 120 <= r3.gun && r3.far - r3.hq <= r3.gun, JSON.stringify(r3));
     assert.deepStrictEqual(errors, []);
     await page.close();
   });

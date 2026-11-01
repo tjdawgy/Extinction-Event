@@ -1,0 +1,4 @@
+{"label":"v2.43-fixed","throttle":1,"phase":"early","ratio":1.004,"fps":38.3,"worstMs":50,"units":0,"errors":0}
+{"label":"v2.43-fixed","throttle":1,"phase":"battle","ratio":1.008,"fps":29.6,"worstMs":50,"units":27,"errors":0}
+{"label":"v2.43-fixed","throttle":4,"phase":"early","ratio":1.023,"fps":6.3,"worstMs":200,"units":0,"errors":0}
+{"label":"v2.43-fixed","throttle":4,"phase":"battle","ratio":1.022,"fps":4.7,"worstMs":283,"units":28,"errors":0}

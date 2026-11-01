@@ -44,8 +44,12 @@ function specsFor(set, n, seed, factions, code) {
   if (set === 'field') { // every opening and every branch against a sampled field: all faction pairings
     const bots = []; for (const o of OPENERS) for (const b of BRANCHES) bots.push({ opener: o, branch: b });
     let k = 0;
-    for (const fa of factions) for (const fb of F) for (const A of bots) { const B = bots[(k * 7 + 3) % bots.length]; k++; if (A.opener === B.opener && A.branch === B.branch) continue;
-      pair(fa, A, fb, B, { cell: 'field', A, B, fa, fb }); }
+    // v2.43 (phase 7c): the opponent index shifts by 5 per faction pairing (b), so each branch meets every branch across the
+    // pairings. Phase 7b's (k * 7 + 3) tied every branch to one opponent branch (Tech always met Contain, Timing always Air),
+    // so its branch shares were two head-to-heads; --field7b=1 keeps that sampling for comparisons.
+    let b = 0;
+    for (const fa of factions) for (const fb of F) { for (const A of bots) { const B = bots[(k * 7 + 3 + (arg('field7b') ? 0 : b * 5)) % bots.length]; k++; if (A.opener === B.opener && A.branch === B.branch) continue;
+      pair(fa, A, fb, B, { cell: 'field', A, B, fa, fb }); } b++; }
   }
   return out;
 }

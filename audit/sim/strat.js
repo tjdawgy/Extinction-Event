@@ -71,7 +71,7 @@ function stratBot(S, o = {}) {
   const val = us => us.reduce((a, u) => a + S.UDEF[u.type].cost.c + S.UDEF[u.type].cost.e * 1.5, 0);
   const bot = (g, s, dt) => {
     t -= dt; if (t > 0) return; t = 0.5;
-    if (mode === null) { jit = o.jitter === false ? 1 : 0.9 + Math.random() * 0.2; mode = opener === 'greedy' ? 'eco' : opener === 'turtle' ? 'home' : 'build'; attackV = ATTACK_V[branch] * jit; }
+    if (mode === null) { jit = o.jitter === false ? 1 : 0.9 + (o.rnd || Math.random)() * 0.2; /* phase 7c: o.rnd, the match's seeded draw (match.js); Node's Math.random made bot matches unrepeatable */ mode = opener === 'greedy' ? 'eco' : opener === 'turtle' ? 'home' : 'build'; attackV = ATTACK_V[branch] * jit; }
     const side = g.sides[s], fac = S.facOf(side.faction), R = U[fac], dir = s === 0 ? 1 : -1, home = S.hqU(s), opp = 1 - s, oppHq = S.hqU(opp);
     const mine = g.ents.filter(e => e.kind === 'u' && e.side === s && e.hp > 0 && !e.temp);
     const seen = g.ents.filter(e => e.kind === 'u' && e.side === opp && e.hp > 0 && S.visibleTo(g, s, e));
@@ -162,7 +162,7 @@ function stratBot(S, o = {}) {
       }
       if (mode === 'breakout') {
         const tgt = threat.reduce((a, e) => Math.abs(e.u - home) < Math.abs(a.u - home) ? e : a, threat[0]);
-        const reach = opener === 'turtle' && !mid ? 330 : 2000; // the turtle fights inside its Turret's cover until mid-game
+        const reach = opener === 'turtle' && (!mid || branch === 'tech') ? 330 : 2000; // the turtle fights inside its Turret's cover until mid-game (phase 7c bot fix: all game while it stays a turtle, the Tech branch; it chased staging armies into the open)
         order(Math.max(0, Math.min(S.L, Math.round(home + dir * Math.min(reach, Math.abs(tgt.u - home))))));
         if (val(nearHome) < thV * 0.8) mode = 'defend';
         else if (val(nearHome) >= Math.max(1200, thV * 2.5) && (mid || g.t > 200)) { mid = true; S.setStance(g, s, 'attack'); mode = 'attack'; launchV = myV; log.attacks++; if (log.firstAttack === null) log.firstAttack = g.t; } // far stronger: counter-attack

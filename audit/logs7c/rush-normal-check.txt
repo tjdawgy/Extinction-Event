@@ -1,0 +1,2 @@
+normal as built (r5 numbers not applied: current index.html): lastfist rush 4-8-0, bloomhost rush 4-8-0, axiarchs rush 4-8-0
+normal, turret reaction 1: lastfist rush 0-12-0, bloomhost rush 0-12-0, axiarchs rush 0-12-0

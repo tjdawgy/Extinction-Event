@@ -1,0 +1,13 @@
+set contain, n 12 per side, seed 97000
+  lastfist light-contain>break: 0-24 (0%) median 6.1 min
+  lastfist heavy-contain>break: 24-0 (100%) median 5 min
+  lastfist light-contain>naive: 24-0 (100%) median 4 min
+  lastfist heavy-contain>naive: 24-0 (100%) median 4.3 min
+  bloomhost light-contain>break: 0-24 (0%) median 5.2 min
+  bloomhost heavy-contain>break: 24-0 (100%) median 4.6 min
+  bloomhost light-contain>naive: 24-0 (100%) median 3.3 min
+  bloomhost heavy-contain>naive: 24-0 (100%) median 4 min
+  axiarchs light-contain>break: 0-24 (0%) median 5.1 min
+  axiarchs heavy-contain>break: 20-4 (83.3%) median 4.2 min
+  axiarchs light-contain>naive: 24-0 (100%) median 4.1 min
+  axiarchs heavy-contain>naive: 24-0 (100%) median 3.7 min

@@ -1,0 +1,8 @@
+set gvg, n 10 per side, seed 97000
+  lastfist>bloomhost: 13-7 (65%) median 11.9 min
+  lastfist>axiarchs: 10-10 (50%) median 5.6 min
+  bloomhost>axiarchs: 7-13 (35%) median 5.6 min
+faction shares (cross-faction):
+  lastfist: 23-17 (57.5%)
+  bloomhost: 14-26 (35%)
+  axiarchs: 23-17 (57.5%)

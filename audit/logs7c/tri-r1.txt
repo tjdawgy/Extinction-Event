@@ -1,0 +1,19 @@
+set tri, n 4 per side, seed 97000, code: BALANCE7C.patches.push(['NODE_INC.c',3.5],['NODE_INC.e',1.25],['BDEF.hq.gun.3.dmg',54],['BDEF_AX.hq.gun.3.dmg',54],['BDEF.turret.cost.c',130]); BALANCE7C.orig=null; setBalance7c(true);
+  lastfist rush>greedy: 3-5 (37.5%) median 7 min
+  lastfist greedy>turtle: 8-0 (100%) median 4.9 min
+  lastfist turtle>rush: 8-0 (100%) median 8.8 min
+  lastfist contain>greedy: 0-8 (0%) median 5.3 min
+  lastfist contain>turtle: 4-4 (50%) median 10.8 min
+  lastfist contain>rush: 7-1 (87.5%) median 6.5 min
+  bloomhost rush>greedy: 4-4 (50%) median 7.3 min
+  bloomhost greedy>turtle: 8-0 (100%) median 5.3 min
+  bloomhost turtle>rush: 0-8 (0%) median 5.5 min
+  bloomhost contain>greedy: 0-8 (0%) median 6.4 min
+  bloomhost contain>turtle: 8-0 (100%) median 5.7 min
+  bloomhost contain>rush: 6-2 (75%) median 4.1 min
+  axiarchs rush>greedy: 0-8 (0%) median 4.5 min
+  axiarchs greedy>turtle: 8-0 (100%) median 6.4 min
+  axiarchs turtle>rush: 1-7 (12.5%) median 7.4 min
+  axiarchs contain>greedy: 4-4 (50%) median 4.5 min
+  axiarchs contain>turtle: 5-3 (62.5%) median 7.2 min
+  axiarchs contain>rush: 7-1 (87.5%) median 5.3 min

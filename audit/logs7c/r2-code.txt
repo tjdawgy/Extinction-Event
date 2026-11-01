@@ -1,0 +1,1 @@
+BALANCE7C.patches.push(['BDEF.hq.gun.2.range',460],['BDEF_AX.hq.gun.2.range',460],['BDEF.hq.gun.3.range',490],['BDEF_AX.hq.gun.3.range',490],['BDEF.refinery.time',12],['BDEF_BH.refinery.time',12],['BDEF_AX.refinery.time',12],['UDEF.skitterling.cost',{c:36,e:0}],['UDEF.worldbreaker.cost',{c:500,e:210}],['BDEF_AX.turret.gun.3.dmg',100]); BALANCE7C.orig=null; setBalance7c(true);

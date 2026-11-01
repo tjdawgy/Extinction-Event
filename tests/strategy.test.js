@@ -8,7 +8,7 @@ function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Ma
 const at = (s, path) => path.split('.').reduce((o, k) => o[k], { UDEF: s.UDEF, BDEF: s.BDEF, BDEF_BH: s.BDEF_BH, BDEF_AX: s.BDEF_AX, DMG: s.DMG, NODE_INC: s.NODE_INC });
 
 test('BALANCE7B: on at load; setBalance7b(false) restores every v2.41 value and true puts the layer back; setBalance(false) turns it off too', () => {
-  const s = loadSim();
+  const s = loadSim(); s.setBalance7c(false); // v2.43: the phase 7c layer on top changes some of these paths (tests/polish.test.js)
   assert.strictEqual(s.BALANCE7B.on, true);
   const on = s.BALANCE7B.patches.map(([p]) => JSON.stringify(at(s, p)));
   s.BALANCE7B.patches.forEach(([p, v], i) => assert.strictEqual(on[i], JSON.stringify(v), p));

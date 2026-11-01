@@ -1,0 +1,8 @@
+set gvg, n 10 per side, seed 97000, code: BALANCE7C.patches.push(['BDEF.hq.gun.2.range',460],['BDEF_AX.hq.gun.2.range',460],['BDEF.hq.gun.3.range',490],['BDEF_AX.hq.gun.3.range',490],['BDEF.refinery.time',12],['BDEF_BH.refinery.time',12],['BDEF_AX.refinery.time',12],['UDEF.skitterling.cost',{c:36,e:0}],['UDEF.worldbreaker.cost',{c:500,e:210}],['BDEF_AX.turret.gun.3.dmg',100]); BALANCE7C.orig=null; setBalance7c(true);
+  lastfist>bloomhost: 18-2 (90%) median 21.8 min
+  lastfist>axiarchs: 10-10 (50%) median 5.4 min
+  bloomhost>axiarchs: 8-12 (40%) median 5.5 min
+faction shares (cross-faction):
+  lastfist: 28-12 (70%)
+  bloomhost: 10-30 (25%)
+  axiarchs: 22-18 (55%)

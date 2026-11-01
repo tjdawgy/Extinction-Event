@@ -1,0 +1,3 @@
+axiarchs {"ai":"hard","persona":"boomer"}: 22-2-0 (91.7%)
+axiarchs {"ai":"hard","persona":"turtle"}: 14-10-0 (58.3%)
+axiarchs {"ai":"hard","persona":"economist"}: 17-7-0 (70.8%)

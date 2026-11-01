@@ -7,6 +7,7 @@ Files in this folder:
 - `ai-tactics-report.md`: the phase 6a AI tactics rules (each A/B), the Hard-mode strategy search and the Hard-vs-Hard matrix.
 - `hard-vs-human-report.md`: phase 7a, Hard against the scripted Greedy bot (human-style greedy play): the bot, each fix's A/B, the re-search, Hard vs Hard, Greedy vs Greedy. Raw logs in `logs7a/`.
 - `strategy-diagnosis.md`, `strategy-report.md`: phase 7b, balance and the strategy triangle (why Last Fist won identical play, why greed and containment carried no risk, the scripted strategy bots, every change and the matrices). Raw logs in `logs7b/`.
+- `polish-report.md`: phase 7c, the four mechanics (rally point, melee Hold, nodes, signature pad), the retune, the speed check. Raw logs in `logs7c/`, screenshots in `shots7c/`.
 - `sim/`: the simulation harness, described below.
 
 ## The simulation harness (`audit/sim/`)
@@ -166,3 +167,13 @@ On the start screen, tap the version number (top right) for the dev menu:
 - **`validate7b.js`:** Hard vs Greedy, vs the strategy bots, vs Default, Hard vs Hard, Easy and Normal vs Greedy, and the openings Hard picks. `EE_HTML` points it at another copy of the game (v2.41 for the before columns).
 - **`nodes7b.js`:** node control against the result, from a field run.
 - **The balance layer:** `BALANCE7B` in index.html, `setBalance7b(false)` restores v2.41. **Presets:** `hard` is v2.42's Hard; `hard241` is v2.41's Hard.
+
+### Phase 7c tools (mechanics, retune, speed check)
+- **The switches:** `MECH7C` in index.html, `setMech7c(false)` plays the v2.42 mechanics (rally point, melee Hold, node positions, signature pad); `BALANCE7C`, `setBalance7c(false)` restores the v2.42 numbers (`setBalance7b(false)` and `setBalance(false)` also take it off). **Presets:** `hard` is v2.43's Hard (it builds a signature building); `hard242` is v2.42's.
+- **`stratrun.js --set=field`** (fixed in 7c): the opponent index now shifts per faction pairing, so every branch meets every branch. In 7b each branch met one fixed opponent branch (Tech always Contain, Timing always Air); `--field7b=1` keeps that sampling.
+- **Bot matches are now repeatable:** `strat.js` draws its threshold jitter from a seeded generator `match.js` passes in (`o.rnd`); before, it used Node's `Math.random`, so the same seed could play differently.
+- **`strat.js` Turtle fix:** a Turtle that stays a turtle (the Tech branch) fights inside its cover all game; it used to chase staging armies into the open after 4:00.
+- **`round7c.sh <tag> "code"`:** one tuning round's screening runs (tri 8 per cell, gvg 20 per pairing, field). **`final7c.sh`:** the final runs (24 per cell).
+- **`validate7c.js`:** Hard vs Greedy, vs Default, Hard vs Hard, vs the strategy bots, Easy and Normal vs Greedy and the Rifleman rush, the Hard signature-building A/B, the openings Hard picks.
+- **`speed7c.js`:** game seconds per real second and frame rate in headless Chromium at iPhone size, early game and a large battle, at normal CPU and with CPU throttling (`--html` for another version).
+- **`pace7c.js`:** early-game timings (first Barracks, first unit, third Refinery, credits by 1:00–5:00) on v2.41, v2.42 and v2.43 numbers.
