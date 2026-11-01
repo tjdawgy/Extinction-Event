@@ -7,7 +7,8 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { loadSim } = require('./load-sim');
 
-const sim = loadSim(); sim.setBalance7b(false); // v2.42: these tests pin the mechanics at v2.41's numbers (the phase 7b layer off; tests/strategy.test.js covers it)
+const sim = loadSim(); sim.setMech7c(false); // v2.43: these tests pin the v2.32-v2.34 signature rules (regular pads, both at once) and v2.42 nodes; tests/polish.test.js covers the signature pad (MECH7C)
+ sim.setBalance7b(false); // v2.42: these tests pin the mechanics at v2.41's numbers (the phase 7b layer off; tests/strategy.test.js covers it)
 const U = sim.UDEF, M = sim.MOUND, R = sim.ROOT, C = sim.CREEP, MID = sim.L / 2;
 const step = (g, secs) => { for (let i = 0; i < Math.round(secs * 30); i++) sim.update(g, 1 / 30); };
 const quiet = (f0 = 'bloomhost', f1 = 'lastfist') => { const g = sim.newGame('normal', { factions: [f0, f1] }); g.countdown = 0; g.t = 30; for (const s of g.sides) { s.aiT = 1e9; s.res.c = s.res.e = 9000; } sim.setStance(g, 0, 'hold'); sim.setStance(g, 1, 'hold'); return g; };
@@ -141,7 +142,7 @@ test('Rootheart T3: every 15 s roots snare at most 5 enemy ground units on the c
 
 test('the minimal AI (Bloomhost): the Aggressor and Trickster build the Brood Mound, the Turtle and Economist the Rootheart; Mites join its army', () => {
   for (const [persona, want, other] of [['aggressor', 'sigA', 'sigB'], ['turtle', 'sigB', 'sigA']]) {
-    const S = loadSim({ random: (() => { let a = 3; return () => (a = (a * 16807) % 2147483647) / 2147483647; })() });
+    const S = loadSim({ random: (() => { let a = 3; return () => (a = (a * 16807) % 2147483647) / 2147483647; })() }); S.setMech7c(false); // v2.43: the v2.42 mechanics
     const g = S.newGame('hard', { factions: ['lastfist', 'bloomhost'], persona, ai: 'v239' }); /* v2.40: v2.39's minimal signature AI (the Default builds it after 5:00, tests/tactics.test.js) */ g.countdown = 0; g.sides[0].aiT = 1e9;
     let at = null, mt = 0; for (let i = 0; i < 30 * 300; i++) { S.update(g, 1 / 30); if (at === null && S.countB(g, 1, want)) at = g.t; mt = Math.max(mt, g.ents.filter(e => e.type === 'mite' && e.side === 1).length); }
     assert.ok(at !== null, `${persona}: ${want}`); assert.strictEqual(S.countB(g, 1, other), 0);

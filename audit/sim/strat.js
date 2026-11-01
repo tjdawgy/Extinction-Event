@@ -83,7 +83,8 @@ function stratBot(S, o = {}) {
     const paths = PATHS[mid ? branch : (opener === 'turtle' ? 'tech' : branch)][fac];
     // 1) buildings: the opening's list, then the branch's; with no free pad, sell a building the branch has no use for
     let reserve = 0;
-    const blist = o.sig ? BUILD[branch].slice(0, -1).concat(g.t >= (o.sigAt || 240) ? ['sig' + o.sig] : []) : BUILD[branch]; // sig: the signature building takes the branch's last pad
+    const padOn = S.MECH7C && S.MECH7C.on && S.MECH7C.sigPad; // v2.43: the signature building has its own pad
+    const blist = o.sig ? (padOn ? BUILD[branch] : BUILD[branch].slice(0, -1)).concat(g.t >= (o.sigAt || 240) ? ['sig' + o.sig] : []) : BUILD[branch]; // sig: the signature building takes the branch's last pad (v2.42), or the signature pad (v2.43)
     const lists = mid ? [blist] : [OPEN[opener].build];
     let next = null;
     for (const L of lists) { const need = {}; for (const b of L) { need[b] = (need[b] || 0) + 1; if ((have[b] || 0) < need[b]) { next = b; break; } } if (next) break; }

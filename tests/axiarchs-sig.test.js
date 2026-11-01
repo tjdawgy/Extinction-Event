@@ -7,7 +7,8 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { loadSim } = require('./load-sim');
 
-const sim = loadSim();
+const sim = loadSim(); sim.setMech7c(false); // v2.43: these tests pin the v2.32-v2.34 signature rules (regular pads, both at once) and v2.42 nodes; tests/polish.test.js covers the signature pad (MECH7C)
+
 const U = sim.UDEF, F = sim.FIELD, BK = sim.BEACON, E = sim.ECHO, MID = sim.L / 2;
 const step = (g, secs) => { for (let i = 0; i < Math.round(secs * 30); i++) sim.update(g, 1 / 30); };
 const quiet = (f0 = 'axiarchs', f1 = 'lastfist') => { const g = sim.newGame('normal', { factions: [f0, f1] }); g.countdown = 0; g.t = 30; for (const s of g.sides) { s.aiT = 1e9; s.res.c = s.res.e = 9000; } sim.setStance(g, 0, 'hold'); sim.setStance(g, 1, 'hold'); return g; };
@@ -144,7 +145,7 @@ test('losing the Reliquary loses every echo; echoes and warping echoes survive s
 
 test('the minimal AI (Axiarchs): the Aggressor builds the Beacon, the Turtle the Reliquary, and spends an echo when it can afford one and has room', () => {
   for (const [persona, want] of [['aggressor', 'sigA'], ['turtle', 'sigB']]) {
-    const S = loadSim({ random: (() => { let a = 3; return () => (a = (a * 16807) % 2147483647) / 2147483647; })() });
+    const S = loadSim({ random: (() => { let a = 3; return () => (a = (a * 16807) % 2147483647) / 2147483647; })() }); S.setMech7c(false); // v2.43: the v2.42 mechanics
     const g = S.newGame('hard', { factions: ['lastfist', 'axiarchs'], persona, ai: 'v239' }); /* v2.40: v2.39's minimal signature AI (the Default builds it after 5:00, tests/tactics.test.js) */ g.countdown = 0; g.sides[0].aiT = 1e9;
     let at = null; for (let i = 0; i < 30 * 300 && at === null; i++) { S.update(g, 1 / 30); if (S.countB(g, 1, want)) at = g.t; }
     assert.ok(at !== null, `${persona}: ${want}`);

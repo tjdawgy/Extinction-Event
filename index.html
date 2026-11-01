@@ -198,6 +198,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .card .bar i{display:block;height:100%;width:0;background:var(--blue)}
 .card .path{position:absolute;left:4px;top:3px;font-size:9px;font-weight:800;letter-spacing:.04em;color:#ffd34d;pointer-events:none}
 .card .path.pr:empty{display:none}
+.card .path.sg{color:#ffcf6a} /* v2.43: a signature building's card: it goes on the signature pad */
 .card .path.mx{color:#c8d4e8} .card .path.mx.full{color:#ff8a8a} /* S1 (v2.37): Skitterlings alive / limit */
 .echoHdr{flex:none;align-self:stretch;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:0 6px;border-radius:10px;background:rgba(159,232,255,.08);border:1px dashed rgba(159,232,255,.35);color:#bfefff;font-size:11px;font-weight:700;line-height:1.2;text-align:center;white-space:nowrap} /* Echoes (v2.34) */
 .echoHdr small{color:var(--muted);font-weight:600;font-size:10px}
@@ -798,9 +799,23 @@ const B7_ROOT = () => ({ UDEF, BDEF, BDEF_BH, BDEF_AX, DMG, NODE_INC, SALVAGE, Y
 function b7At(path) { const k = path.split('.'), R = B7_ROOT(); let o = R[k[0]]; for (let i = 1; i < k.length - 1; i++) o = o[k[i]]; return [o, k[k.length - 1]]; }
 const b7Copy = v => v && typeof v === 'object' ? JSON.parse(JSON.stringify(v)) : v;
 function setBalance7b(on) {
+  const c7 = typeof BALANCE7C !== 'undefined' && BALANCE7C.on; if (c7) setBalance7c(false, true); // v2.43: the phase 7c layer sits on top; off first, back on after (if wanted)
   if (!BALANCE7B.orig) BALANCE7B.orig = BALANCE7B.patches.map(([p]) => { const [o, k] = b7At(p); return b7Copy(o[k]); });
   BALANCE7B.patches.forEach(([p, v], i) => { const [o, k] = b7At(p); o[k] = b7Copy(on ? v : BALANCE7B.orig[i]); });
   BALANCE7B.on = on;
+  b7Texts();
+  if (on && typeof BALANCE7C !== 'undefined' && BALANCE7C.want) setBalance7c(true);
+}
+/* ---------- Polish retune (v2.43, audit phase 7c; audit/polish-report.md) ----------
+   Numbers only, on top of v2.42 (BALANCE7B): the retune after the phase 7c mechanics (MECH7C). setBalance7c(false) puts back
+   every v2.42 value; setBalance7b(false) and setBalance(false) also take this layer off. Same patch format as BALANCE7B. */
+const BALANCE7C = { on: false, want: false, orig: null, patches: [
+] };
+function setBalance7c(on, keep) { // keep: switched off only while a lower layer changes (setBalance7b, setBalance)
+  if (!keep) BALANCE7C.want = on;
+  if (!BALANCE7C.orig) BALANCE7C.orig = BALANCE7C.patches.map(([p]) => { const [o, k] = b7At(p); return b7Copy(o[k]); });
+  BALANCE7C.patches.forEach(([p, v], i) => { const [o, k] = b7At(p); o[k] = b7Copy(on ? v : BALANCE7C.orig[i]); });
+  BALANCE7C.on = on;
   b7Texts();
 }
 // Descriptions that quote numbers this layer changes (HQ guns, Turrets, signature buildings) follow the live values
@@ -841,7 +856,7 @@ function setBalance(on) {
   SALVAGE.pct = on ? BALANCE.salvage : s0[0]; YARD.pct = on ? BALANCE.yard : s0[1];
   BDEF.sigA.tiers[1] = `Salvage returns ${Math.round(YARD.pct * 100)}% of a unit's credit cost (base ${Math.round(SALVAGE.pct * 100)}%)`;
   BALANCE.on = on;
-  if (on && BALANCE7B.orig) setBalance7b(true); // at load the layer comes on further down, once NODE_INC exists
+  if (on && BALANCE7B.orig) setBalance7b(true); // (v2.43: which puts the phase 7c layer back if it was on) // at load the layer comes on further down, once NODE_INC exists
 }
 setBalance(true);
 const UNIT_ORDER = ['rifle', 'heavy', 'sniper', 'tank', 'artillery', 'titan', 'flame', 'hydra', 'aircraft', 'interceptor', 'leviathan', 'medic', 'drone', 'skitterling', 'mite', 'leaper', 'ravager', 'spitter', 'bilecaster', 'bulwark', 'bilelobber', 'ruinmaw', 'thornback', 'dreadthorn', 'razorwing', 'needlewing', 'cloudwing', 'broodtyrant', 'worldrender', 'shardling', 'riftstalker', 'parallax', 'lancer', 'marksman', 'bastion', 'riftmortar', 'worldbreaker', 'gravemantle', 'eventide', 'wraithwing', 'prismwing', 'shardstorm', 'voidcarrier', 'sovereign'];
@@ -945,6 +960,11 @@ const AI_PRESETS = {
     lastfist: { kinds: ['boomer', 'boomer', 'economist', 'turtle'], dials: { delay: 0.6, sigAt: 99999, flood: 0.4 } },
     bloomhost: { kinds: ['boomer', 'boomer', 'boomer', 'turtle'], dials: { delay: 1, sigAt: 99999, flood: 0.4 } },
     axiarchs: { kinds: ['boomer', 'turtle', 'turtle'], dials: { delay: 0.6, sigAt: 99999, flood: 0.4 } } } },
+  // v2.42's Hard exactly (with v2.42's numbers and mechanics via setBalance7c(false), setMech7c(false)): the baseline for phase 7c
+  hard242: { name: 'Hard v2.42', smart: true, dials: Object.assign({}, AI_DIALS, { scout: 70, comp: {} }), fix: null, byFac: {
+    lastfist: { kinds: ['boomer', 'boomer', 'economist', 'turtle'], dials: { delay: 0.6, sigAt: 99999, flood: 0.4 } },
+    bloomhost: { kinds: ['boomer', 'boomer', 'boomer', 'turtle'], dials: { delay: 1, sigAt: 99999, flood: 0.4 } },
+    axiarchs: { kinds: ['boomer', 'turtle', 'turtle'], dials: { delay: 0.6, sigAt: 99999, flood: 0.4 } } } },
   // v2.41's Hard exactly (with v2.41's numbers via setBalance7b(false)): the baseline for phase 7b
   hard241: { name: 'Hard v2.41', smart: true, dials: Object.assign({}, AI_DIALS, { scout: 70, comp: {} }), fix: null, byFac: {
     lastfist: { kinds: ['boomer'], dials: { delay: 0.6, sigAt: 99999 } },
@@ -967,6 +987,11 @@ const HARD_FIX_7B = Object.assign({}, HARD_FIX, { breakout: true, adapt: true, p
 AI_PRESETS.hard.fix = Object.assign({}, AI_PRESETS.default.fix, HARD_FIX_7B);
 AI_PRESETS.hard240.fix = Object.assign({}, AI_PRESETS.default.fix);
 AI_PRESETS.hard241.fix = Object.assign({}, AI_PRESETS.default.fix, HARD_FIX);
+AI_PRESETS.hard242.fix = Object.assign({}, AI_PRESETS.hard.fix);
+// v2.43 (audit phase 7c): the signature building costs no pad now (the signature pad), so Hard builds one: from sigAt, the
+// one named per faction (sig), each the better of the two in the phase 7c A/B (audit/polish-report.md)
+const HARD_SIG_7C = { lastfist: { sigAt: 300, sig: 'sigA' }, bloomhost: { sigAt: 300, sig: 'sigB' }, axiarchs: { sigAt: 300, sig: 'sigA' } };
+for (const f in HARD_SIG_7C) Object.assign(AI_PRESETS.hard.byFac[f].dials, HARD_SIG_7C[f]);
 const AI_PRESET_KEYS = Object.keys(AI_PRESETS);
 const aiDials = P => (P && P.dial) || AI_DIALS; // a persona without dials (an older save) reads the legacy constants
 const aiSmart = P => !!(P && P.smart);
@@ -1173,6 +1198,31 @@ const AI_UPG = [['barracks', 2], ['reactor', 2], ['refinery', 2], ['factory', 2]
 // Field nodes: neutral income points along the lane. Ground troops inside the zone capture them.
 const NODE_U = [600, L / 2, L - 600], NODE_R = 70, NODE_INC = { c: 3, e: 1 }, REGEN_DELAY = 8;
 setBalance7b(true); // v2.42 (audit phase 7b): the strategy balance layer, once NODE_INC exists
+setBalance7c(true); // v2.43 (audit phase 7c): the retune layer on top
+/* ---------- Mechanics (v2.43, audit phase 7c; audit/polish-report.md) ----------
+   Four rule changes, one switch: setMech7c(false) plays exactly as v2.42.
+   rally: the rally point (where new and idle units stand) sits `rally` out from the HQ, inside its gun's cover (was 300, 90
+     short of the gun's reach: attackers could hit units there from outside it). On Attack, new units of a player's side wait
+     there until the group is worth batchV or has waited batchT seconds, then walk out together (the AI does this itself).
+   holdR: melee units on Hold (or on a Regroup flag) engage enemies within holdR of the spot they hold; they never chase
+     further (before: a melee unit on Hold never engaged at all).
+   node: each side's own field node sits `node` out from its HQ (was 380, half under the HQ's T1 gun): all three nodes are
+     now outside the T1 gun, so each is a field fight, and the third one (the enemy's) is inside the enemy HQ's T2 and T3
+     reach (430, 470): against a greedy opponent (T1) it can be taken and held; against one that paid for HQ tiers it costs
+     units. Inside the gun (310) was tried first and measured badly: holding the enemy's node then meant sitting in its base
+     (Axiarch Greedy vs Greedy 40-0: their node field put the warp point there).
+   sigPad: one signature pad per side, outside the 8 building pads; only a signature building stands there, one at a time
+     (sell it to build the other), and signature buildings no longer go on the 8 pads. */
+const MECH7C = { on: false, rally: 190, holdR: 80, node: 460, batchV: 300, batchT: 15, sigPad: true, old: { node: [NODE_U[0], NODE_U[2]] } };
+const SIG_SLOT = 8, SIG_TILE = [2, 0]; // the signature pad: just past the HQ, at the base's outer corner
+function setMech7c(on) {
+  MECH7C.on = on;
+  NODE_U[0] = on ? HQ_U + MECH7C.node : MECH7C.old.node[0]; NODE_U[2] = on ? L - HQ_U - MECH7C.node : MECH7C.old.node[1];
+}
+setMech7c(true);
+const sigPadOn = () => MECH7C.on && MECH7C.sigPad;
+const sigOnPad = (g, s) => g.ents.find(e => e.kind === 'b' && e.side === s && e.hp > 0 && e.slot === SIG_SLOT) || null; // what stands on side s's signature pad
+const playerSide = (g, s) => s === 0 ? !g.auto : !!g.sides[s].bot; // a side the AI brain doesn't run (the player, or an audit bot)
 // Diamond of pads (tile coords i, j). The HQ takes the back tile (1, -1); the rest fill back to front.
 const PADS = [[0, -1], [1, 0], [-1, -1], [0, 0], [1, 1], [-1, 0], [0, 1], [-1, 1]];
 const HQ_TILE = [1, -1];
@@ -1180,9 +1230,9 @@ const HQ_TILE = [1, -1];
 const dirOf = s => s === 0 ? 1 : -1;
 const hqU = s => s === 0 ? HQ_U : L - HQ_U;
 const tilePos = (s, i, j) => ({ u: hqU(s) + dirOf(s) * (i + j) * TILE * IX, v: (j - i) * TILE * IY / DY });
-const slotPos = (s, k) => tilePos(s, PADS[k][0], PADS[k][1]);
+const slotPos = (s, k) => k === SIG_SLOT ? tilePos(s, SIG_TILE[0], SIG_TILE[1]) : tilePos(s, PADS[k][0], PADS[k][1]);
 const hqPos = s => tilePos(s, HQ_TILE[0], HQ_TILE[1]);
-const rallyU = s => hqU(s) + dirOf(s) * 300;
+const rallyU = s => hqU(s) + dirOf(s) * (MECH7C.on ? MECH7C.rally : 300); // v2.43: inside the HQ gun's cover
 
 const START_RES = { c: 300, e: 60 }; // what each side starts with (v2.36: named, so the match report can count it as gathered)
 function newGame(diffKey, opts = {}) {
@@ -1214,7 +1264,7 @@ function mkBuilding(g, s, type, slot) {
     cd: 0, aim: null, hitT: 0, anim: Math.random() * 10, spent: { c: 0, e: 0 }, path: null, upPath: null, // path: its upgrade-tree path (v2.13)
     shp: 0, maxShp: d.shp || 0, shpT: -99, shpHit: -99 }; // Axiarch shields (v2.25): they charge once it is built
   g.ents.push(b);
-  if (slot >= 0) g.sides[s].slots[slot] = b;
+  if (slot >= 0 && slot < SLOT_COUNT) g.sides[s].slots[slot] = b; // the signature pad (v2.43) is not one of the 8
   return b;
 }
 
@@ -1260,7 +1310,13 @@ function tryBuild(g, s, type, want = -1) {
   if (g.countdown > 0) return WAIT_GO;
   if (d.req && !hasBuilt(g, s, d.req)) return { ok: false, msg: `Requires a finished ${bdS(g, s, d.req).name}` };
   if (d.sig && countB(g, s, type)) return { ok: false, msg: `${d.name}: already built (one at a time)` }; // v2.32: at most one of each signature building
-  const slot = want >= 0 && !side.slots[want] ? want : side.slots.findIndex(x => !x);
+  let slot;
+  if (sigPadOn() && d.sig) { // v2.43: a signature building goes on the signature pad, and only there; one of the two at a time
+    const on = sigOnPad(g, s) || g.ents.find(e => e.kind === 'b' && e.side === s && e.hp > 0 && (e.type === 'sigA' || e.type === 'sigB')); // (an older save's one on a regular pad counts too)
+    if (on) return { ok: false, msg: `The signature pad holds your ${bdOf(on).name}: sell it to build this` };
+    slot = SIG_SLOT;
+  } else if (sigPadOn() && want === SIG_SLOT) return { ok: false, msg: 'Only a signature building fits the signature pad' };
+  else slot = want >= 0 && want < SLOT_COUNT && !side.slots[want] ? want : side.slots.findIndex(x => !x);
   if (slot < 0) return { ok: false, msg: 'All 8 building pads are in use' };
   if (side.res.c < d.cost.c) return { ok: false, msg: `Need ${Math.ceil(d.cost.c - side.res.c)} more credits` };
   if (side.res.e < d.cost.e) return { ok: false, msg: `Need ${Math.ceil(d.cost.e - side.res.e)} more energy` };
@@ -1477,7 +1533,7 @@ function update(g, dt) {
   updateMounds(g); // v2.33
   updateRoots(g);
   updateAbilities(g, dt);
-  if (Math.floor(g.t * 2) !== Math.floor(t0 * 2)) updateOrders(g);
+  if (Math.floor(g.t * 2) !== Math.floor(t0 * 2)) { updateOrders(g); if (MECH7C.on) updateRallyWait(g); }
   updateStorm(g, dt, t0);
   aiUpdate(g, 1, dt); aiSpotter(g, 1);
   if (g.auto) { aiUpdate(g, 0, dt); aiSpotter(g, 0); }
@@ -1771,6 +1827,27 @@ function giveOrder(g, s, scope, key, o, u, v, quiet) { // quiet: the AI's automa
   const who = scope === 'all' ? 'Army' : scope === 'group' ? GROUP_NAME[key] : PLURAL[key];
   return { ok: true, msg: o === 'move' ? `${who}: regrouping at the flag` : `${who}: ${o === 'hold' ? 'holding position' : o === 'attack' ? 'attacking' : 'retreating to the rally flag'}` };
 }
+// v2.43 (rally): on Attack, a player side's new units wait at the rally point (inside the HQ gun's cover) until the group
+// there is worth MECH7C.batchV or its first unit has waited batchT seconds, then walk out together; units already marching
+// (rwGo) are never held back. The AI batches its own reinforcements (its batch rule), so this is for the player's side.
+function updateRallyWait(g) {
+  for (let s = 0; s < 2; s++) {
+    if (!playerSide(g, s)) continue;
+    const side = g.sides[s], dir = dirOf(s), r = rallyU(s), f = g.front[s];
+    if (side.stance !== 'attack' || f === null) { if (side.rwAt !== undefined) { side.rwAt = undefined; for (const e of g.ents) if (e.kind === 'u' && e.side === s) { e.rwT = 0; e.rwS = 0; e.rwGo = 0; } } continue; }
+    if (side.rwAt !== side.stanceAt) { side.rwAt = side.stanceAt; for (const e of g.ents) if (e.kind === 'u' && e.side === s) { e.rwT = 0; e.rwGo = 1; } continue; } // the army the Attack order found goes at once
+    const grp = [];
+    for (const e of g.ents) if (e.kind === 'u' && e.side === s && e.hp > 0 && !e.rwGo && !e.temp) {
+      const d = UDEF[e.type], ord = unitOrder(side, e.type);
+      if (d.air || d.support || (ord && ord.o !== 'attack') || dir * (e.u - r) > 60 || dir * (f - e.u) < 350) { e.rwGo = dir * (e.u - r) > 60 ? 1 : e.rwGo; continue; }
+      grp.push(e); if (!e.rwS) e.rwS = g.t;
+    }
+    if (!grp.length) continue;
+    const v = grp.reduce((a, e) => a + UDEF[e.type].cost.c + UDEF[e.type].cost.e, 0), first = Math.min(...grp.map(e => e.rwS));
+    const go = v >= MECH7C.batchV || g.t - first >= MECH7C.batchT;
+    for (const e of grp) if (go) { e.rwT = 0; e.rwGo = 1; } else e.rwT = g.t + 0.6;
+  }
+}
 function updateOrders(g) { // twice a second: a Regroup flag is done once every unit it covers has arrived
   for (let s = 0; s < 2; s++) {
     const side = g.sides[s], O = side.orders; if (!O) continue;
@@ -1852,7 +1929,7 @@ function updateUnit(g, u, foes, dt) {
     moveToward(u, d, home, u.laneV, dt, sp);
     return;
   }
-  if (u.aiWait > g.t && !best) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // v2.40: a Default AI holds a front-runner until its army catches up (fights only what is in reach, never chases)
+  if (u.aiWait > g.t && !best && !(MECH7C.on && d.chase && A.prey && Math.hypot(A.prey.u - u.u, A.prey.v - u.v) <= MECH7C.holdR + d.range)) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // v2.43: a holding melee unit still engages within holdR (falls through to the chase below) // v2.40: a Default AI holds a front-runner until its army catches up (fights only what is in reach, never chases)
   const act = !(u.phT > g.t) && !d.siege; // v2.37: a phased Wraithwing can't fire (P13); a Titan fires only when planted (P8)
   u.tgt = best && act ? best.id : 0;
   if (!best || best.id !== u.chTgt || !act) u.chT = 0; // the Astral Marksman's charge starts over on a new target (v2.27)
@@ -1886,6 +1963,11 @@ function updateUnit(g, u, foes, dt) {
         return; }
     }
     if (prey) { moveToward(u, d, prey.u, prey.v, dt, sp); return; }
+  } else if (d.chase && MECH7C.on && (st === 'move' || (st === 'hold' && u.holdU !== undefined))) { // v2.43: on Hold or a Regroup flag a melee unit engages
+    // enemies within holdR of the spot it holds, and never chases further; with none, it walks back to its spot (below)
+    const [hu, hv] = st === 'move' ? slotOf(u, ord) : [u.holdU, u.holdV];
+    const prey = A.prey !== undefined ? A.prey : acquire(g, u, { ...d, range: d.chase }, foes).best;
+    if (prey && Math.hypot(prey.u - hu, prey.v - hv) <= MECH7C.holdR + d.range) { moveToward(u, d, prey.u, prey.v, dt, sp); return; }
   }
   let tu = home, tv = u.laneV;
   if (u.id === side.scoutId && side.scoutU != null && st !== 'retreat') tu = side.scoutU; // v2.38: a Default AI's scout
@@ -1903,7 +1985,7 @@ function updateUnit(g, u, foes, dt) {
       for (const e of g.ents) if (e.kind === 'u' && e.side === u.side && e.hp > 0 && (e.type === 'leviathan' || e.type === 'aircraft')) { const dd = Math.abs(e.u - u.u); if (dd < ed) { ed = dd; esc = e; } }
       if (esc) { tu = esc.u - dir * 12; tv = esc.v + (u.id % 2 ? 14 : -14); } else { const f = g.front[u.side]; tu = f === null ? home : f - dir * 40; }
     }
-    else tu = end;
+    else tu = u.rwT > g.t ? home : end; // v2.43: waiting at the rally point for its group
     if (side.leash != null && !d.siege && !d.air) tu = dir > 0 ? Math.min(tu, side.leash) : Math.max(tu, side.leash); // v2.38: a Default AI's army stays within reach of its Titans while they plant
   }
   if (!moveToward(u, d, tu, tv, dt, sp)) u.face = dir;
@@ -2969,9 +3051,10 @@ function aiUpdate(g, s, dt) {
   const defend = P.kind === 'economist' && threat && myV < thV * 0.6;
   // Under real pressure every personality drops its style and plays the standard defense (the safety floor)
   const pressed = threat && (infantryRush || myV < thV * 0.8);
-  const sig = SIG.on && bdS(g, s, 'sigA') ? (P.kind === 'aggressor' || P.kind === 'trickster' ? 'sigA' : 'sigB') : null;
+  const sig = SIG.on && bdS(g, s, 'sigA') ? (dl.sig || (P.kind === 'aggressor' || P.kind === 'trickster' ? 'sigA' : 'sigB')) : null; // v2.43: a preset can name its signature building (dial sig)
   const sigLate = aiFix(P, 'sig'), planBase = pressed ? AI_PLAN : P.plan; // v2.40 (sig): the plan keeps its economy; the signature building comes later
-  const plan = sigLate ? planBase : aiPlanWith(planBase, sig);
+  const sigPad = sigPadOn(); // v2.43: the signature building has its own pad: no plan pad given up for it
+  const plan = sigLate || sigPad ? planBase : aiPlanWith(planBase, sig);
   const sigDup = sigLate && sig ? planBase[aiPlanWith(planBase, '#').indexOf('#')] : null; // the duplicate it trades for the signature building once that pays
   const sigReady = !!sig && g.t >= (sigLate ? Math.max(dl.sigAt, AI_SIG_LATE) : dl.sigAt) && !(calm || defend) && !countB(g, s, sig) && hasBuilt(g, s, 'barracks') && alive(g, s, 'refinery').filter(b => b.built).length >= Math.min(D.refineries, plan.filter(t => t === 'refinery').length);
   const ad = rd && aiFix(P, 'adapt'); // v2.42 (adapt): read the opening and answer it
@@ -3001,7 +3084,7 @@ function aiUpdate(g, s, dt) {
     (countB(g, s, 'habitat') > 0 || side.slots.filter(x => !x).length >= 2)) want = 'reactor'; // credits to spare but no energy: another Reactor
   // its signature building (v2.32), once its economy (the difficulty's Refineries, or all its plan has if fewer) and first
   // production building are up, and not while under pressure (like tech); it takes the pad of a duplicate the plan gave up for it (aiPlanWith)
-  else if (sigReady && (freePad || !sigLate || aiSigRoom(g, s, sigDup, sig))) want = sig;
+  else if (sigReady && (sigPad ? !sigOnPad(g, s) : freePad || !sigLate || aiSigRoom(g, s, sigDup, sig))) want = sig;
   else if (dl.turrets && !threat && countB(g, s, 'turret') < dl.turrets && hasBuilt(g, s, 'barracks') && side.slots.filter(x => !x).length >= 2) want = 'turret'; // the defense dial (v2.38)
   else {
     const need = {};
@@ -3040,7 +3123,7 @@ function aiUpdate(g, s, dt) {
     const bar = alive(g, s, 'barracks');
     if (bar.length && bar.length < 2 && bar.every(b => aiPathFrom(side.faction, 'barracks', b.path || b.upPath) === 'B')) want = 'barracks'; // then its T2 upgrade takes Specialists
   }
-  if (want && side.slots.some(x => !x) && (constructing.length < 2 || (bo && want === 'turret' && side.pressT !== undefined))) { // v2.42 (breakout): the pressure Turret doesn't wait for other construction
+  if (want && (side.slots.some(x => !x) || (sigPad && want === sig)) && (constructing.length < 2 || (bo && want === 'turret' && side.pressT !== undefined))) { // v2.42 (breakout): the pressure Turret doesn't wait for other construction
     const d = bdS(g, s, want);
     if (!d.req || hasBuilt(g, s, d.req)) {
       const r = tryBuild(g, s, want, wantPad);
@@ -5562,6 +5645,20 @@ function drawPad(c, x, y, h, s, empty, time, selected, fac) {
   }
 }
 
+// The signature pad (v2.43): the faction's own pad plus a gold double border; empty, a slowly pulsing star and its label
+function drawSigPadMark(c, x, y, h, empty, time, label) {
+  const al = empty ? 0.6 + 0.3 * Math.sin(time * 2) : 0.55, H = h + 5;
+  const P4 = [pt(-H, -H), pt(H, -H), pt(H, H), pt(-H, H)].map(([a, b]) => [x + a, y + b]);
+  c.save();
+  poly(c, P4); c.strokeStyle = `rgba(255,207,106,${al})`; c.lineWidth = 2; c.setLineDash([7, 4]); c.stroke(); c.setLineDash([]);
+  if (empty) {
+    c.fillStyle = `rgba(255,207,106,${al})`; c.beginPath();
+    for (let i = 0; i < 10; i++) { const r = i % 2 ? 4 : 10, a = -Math.PI / 2 + i * Math.PI / 5; c.lineTo(x + Math.cos(a) * r, y - 3 + Math.sin(a) * r * 0.62); }
+    c.closePath(); c.fill();
+    if (label) { c.font = '700 8px system-ui, sans-serif'; c.textAlign = 'center'; c.fillStyle = 'rgba(255,207,106,0.8)'; c.fillText('SIGNATURE', x, y + 11); } // inside the pad, under the star
+  }
+  c.restore();
+}
 // Bloomhost pads (v2.17): a fleshy root bed in the shape of the pad, veined in the team colour; an empty one holds a
 // dormant bud that slowly pulses
 function drawPadBH(c, x, y, h, s, empty, time, selected) {
@@ -6929,6 +7026,14 @@ function render(c, g, time, sel, selPad) {
       const known = s === 0 ? b : (b && seen(b)) || ghosts.some(gh => gh.slot === i);
       drawPad(c, w.x, w.y, PAD_H, s, !known, time, s === 0 && (selPad === i || (sel && sel === b)), fac);
     }
+    if (sigPadOn() && SIG.on && BD(fac, 'sigA')) { // v2.43: the signature pad, marked in gold
+      const p = slotPos(s, SIG_SLOT), w = P(p.u, p.v), b = sigOnPad(g, s);
+      if (s === 0 || cellsLit(F.seen, p.u, PAD_H)) {
+        const known = s === 0 ? b : (b && seen(b)) || ghosts.some(gh => gh.slot === SIG_SLOT);
+        drawPad(c, w.x, w.y, PAD_H, s, !known, time, s === 0 && (selPad === SIG_SLOT || (sel && sel === b)), fac);
+        drawSigPadMark(c, w.x, w.y, PAD_H, !known, time, s === 0 && !g.spectate);
+      }
+    }
   }
   for (const n of g.nodes) drawNodeZone(c, n, time, lit(n.u));
   for (const b of g.ents) if (b.type === 'bunker' && b.hp > 0 && b.tier >= 2 && seen(b)) drawHealRing(c, b, time); // v2.32: Depot T2
@@ -7374,6 +7479,7 @@ function buildCards() {
     el.addEventListener('click', () => { if (lp && lp.el === el && lp.fired) { lp.fired = false; return; } hideInfo(); onCard(type, el); });
     el.addEventListener('animationend', () => el.classList.remove('shake'));
     if (tab === 'train' && UNIT_PATH[type]) el.insertAdjacentHTML('beforeend', `<span class="path">${UNIT_PATH[type].path.short}</span>`);
+    if (tab === 'build' && d.sig && sigPadOn()) el.insertAdjacentHTML('beforeend', '<span class="path sg">★ SIG PAD</span>'); // v2.43: builds on the signature pad
     if (tab === 'train' && type === 'rifle') el.insertAdjacentHTML('beforeend', '<span class="path pr"></span>');
     if (tab === 'train' && d.max) el.insertAdjacentHTML('beforeend', '<span class="path mx"></span>'); // how many of a limited unit you have (v2.37)
     wrap.appendChild(el);
@@ -7661,11 +7767,12 @@ function refreshUI(force) {
     if (tab === 'build') {
       const d = BD(pFac(), type);
       const mine = alive(game, 0, type), have = !!d.sig && mine.length > 0; // v2.32: one of each signature building at a time (v2.34: a real boolean; undefined made classList.toggle flip the card every refresh)
-      locked = !!(d.req && !hasBuilt(game, 0, d.req)) || have;
+      const padBy = d.sig && sigPadOn() && !have ? game.ents.find(e => e.kind === 'b' && e.side === 0 && e.hp > 0 && (e.type === 'sigA' || e.type === 'sigB')) : null; // v2.43: the other one stands (on the signature pad)
+      locked = !!(d.req && !hasBuilt(game, 0, d.req)) || have || !!padBy;
       poor = s.res.c < d.cost.c || s.res.e < d.cost.e;
       badge = have ? 0 : mine.length;
       for (const b of mine) if (!b.built) prog = Math.max(prog, b.progress);
-      html = have ? '<span class="lock">Already built</span>' : locked ? `<span class="lock">Requires ${BD(pFac(), d.req).name}</span>` : costHTML(d.cost, s.res);
+      html = have ? '<span class="lock">Already built</span>' : padBy ? '<span class="lock">Pad in use</span>' : locked ? `<span class="lock">Requires ${BD(pFac(), d.req).name}</span>` : costHTML(d.cost, s.res);
     } else {
       const d = UDEF[type];
       const prods = alive(game, 0, d.from).filter(b => canMake(b, type));
@@ -7711,15 +7818,17 @@ function openPad(k) {
   sel = null; selPad = k; sellArm = 0; upArm = 0; $('bp').classList.remove('hide');
   if (tab !== 'build') document.querySelector('.tabs [data-tab="build"]').click();
   refreshPanel(); placeToasts();
+  if (k === SIG_SLOT) { const c = $('cards').querySelector('.card[data-type="sigA"]'); if (c) $('cards').scrollLeft = Math.max(0, c.offsetLeft - 8); } // v2.43: the signature cards in view
 }
 function closePanel() { sel = null; selPad = -1; sellArm = 0; upArm = 0; $('bp').classList.add('hide'); placeToasts(); }
 function refreshPanel() {
   $('bpPick').classList.add('hide'); $('bp').classList.remove('wide'); // shown again below for a building choosing its path
   $('bp').classList.toggle('shp', !!(selPad < 0 && sel && sel.maxShp)); // v2.36
   if (selPad >= 0) {
-    if (!game || game.sides[0].slots[selPad]) { closePanel(); return; }
-    $('bpName').textContent = 'Empty pad'; $('bpPad').textContent = padLabel(null, selPad); setHTML($('bpPips'), '');
-    $('bpNow').textContent = 'Pick a building below to build it here.';
+    if (!game || (selPad === SIG_SLOT ? sigOnPad(game, 0) : game.sides[0].slots[selPad])) { closePanel(); return; }
+    const sp = selPad === SIG_SLOT; // v2.43: the signature pad
+    $('bpName').textContent = sp ? 'Signature pad' : 'Empty pad'; $('bpPad').textContent = sp ? `${BD(pFac(), 'sigA').name} or ${BD(pFac(), 'sigB').name}` : padLabel(null, selPad); setHTML($('bpPips'), '');
+    $('bpNow').textContent = sp ? 'Pick one of your two signature buildings (★ cards). One stands here at a time; sell it to build the other.' : 'Pick a building below to build it here.';
     setHTML($('bpNext'), '');
     $('bpUp').classList.add('hide'); $('bpSell').classList.add('hide'); $('bpRep').classList.add('hide'); $('bpHp').textContent = '';
     return;
@@ -7785,8 +7894,9 @@ function refreshPanel() {
 }
 // The panel header's second line (v2.35): which pad the building stands on. Pads count 1-8 from the HQ outward (slot order)
 function padLabel(b, k) {
-  if (!b) return `Pad ${k + 1}`;
+  if (!b) return k === SIG_SLOT ? 'Signature pad' : `Pad ${k + 1}`;
   if (b.type === 'hq') return 'HQ pad';
+  if (b.slot === SIG_SLOT) return 'Signature pad'; // v2.43
   if (bdOf(b).noPad) return `${NODE_NAME[b.node] ? NODE_NAME[b.node][0].toUpperCase() + NODE_NAME[b.node].slice(1) : 'Field'} node`;
   return b.slot >= 0 ? `Pad ${b.slot + 1}` : '';
 }
@@ -7893,6 +8003,7 @@ function handleTap(x, y) {
     const p = slotPos(0, k), q = P(p.u, p.v);
     if (!game.sides[0].slots[k] && inDiamond(w.x, w.y, q.x, q.y, PAD_H + 4)) { openPad(k); return; }
   }
+  if (sigPadOn() && SIG.on && BD(pFac(), 'sigA') && !sigOnPad(game, 0)) { const p = slotPos(0, SIG_SLOT), q = P(p.u, p.v); if (inDiamond(w.x, w.y, q.x, q.y, PAD_H + 4)) { openPad(SIG_SLOT); return; } } // v2.43
   closePanel();
 }
 cv.addEventListener('pointerdown', e => {

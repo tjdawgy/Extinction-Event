@@ -16,6 +16,7 @@ function runMatch(spec) {
   const g = S.newGame(diff, { autoPlayer: !bot, autoDiff: diff, factions: [sides[0].faction, sides[1].faction],
     autoAi: sides[0].ai, ai: sides[1].ai, autoPersona: per(sides[0].persona), persona: per(sides[1].persona) });
   g.countdown = 0;
+  if (bot1) g.sides[1].bot = true; // v2.43: a side the AI brain doesn't run (the rally rule treats it as a player's)
   if (bot1 && spec.holdStart !== false) S.setStance(g, 1, 'hold'); // v2.42 (phase 7b): a bot on side 1 starts on Hold like the player's side, not on the AI's Retreat (which holds fire)
   // optional per-side dial overrides (A.dial: { scout: 0, fix: { leash: false } }) for experiments
   for (let i = 0; i < 2; i++) { const o = sides[i].dial, P = g.sides[i].persona; if (o && P && P.dial) { for (const k in o) if (k === 'paths') P.paths = Object.assign({}, P.paths, o.paths); else if (k !== 'fix') P.dial[k] = o[k]; if (o.fix && P.dial.fix) Object.assign(P.dial.fix, o.fix); } }

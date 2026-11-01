@@ -18,9 +18,10 @@ test('no secret AI advantages: same start and income on every difficulty', () =>
   assert.doesNotMatch(readHtml(), /g\.diff\.inc|\.bonus\b/);
 });
 
-test('the outer field nodes sit inside each HQ\'s T1 gun range', () => {
-  assert.deepStrictEqual([...sim.NODE_U], [600, 850, 1100]);
-  for (const s of [0, 1]) assert.ok(Math.abs(sim.NODE_U[s ? 2 : 0] - sim.hqU(s)) <= sim.BDEF.hq.gun[1].range);
+test('v2.43: the outer field nodes sit just outside each HQ\'s T1 gun range (v2.42 and before: inside it)', () => {
+  assert.deepStrictEqual([...sim.NODE_U], [680, 850, 1020]); // v2.43 (MECH7C): all three outside the T1 gun (was 600, 850, 1100)
+  for (const s of [0, 1]) assert.ok(Math.abs(sim.NODE_U[s ? 2 : 0] - sim.hqU(s)) > sim.BDEF.hq.gun[1].range);
+  sim.setMech7c(false); try { for (const s of [0, 1]) assert.ok(Math.abs(sim.NODE_U[s ? 2 : 0] - sim.hqU(s)) <= sim.BDEF.hq.gun[1].range); } finally { sim.setMech7c(true); }
 });
 
 test('the HQ has its own weapon: 0.9x vs light armor; the Heavy trooper\'s rockets are unchanged', () => {

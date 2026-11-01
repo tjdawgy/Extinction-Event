@@ -13,6 +13,7 @@ test.after(async () => { if (browser) await browser.close(); });
 
 test('as Bloomhost: Brood Mound and Rootheart cards, "Already built", info cards for both and the Mite; Mites in the Army tab, never on Train', { skip }, async () => {
   const { page, errors } = await openPage(browser, NARROW);
+  await page.evaluate(() => setMech7c(false)); // v2.43: these checks pin the v2.32-v2.34 signature UI (regular pads, both at once); tests/polish-ui.test.js covers the signature pad
   await page.click('#meSeg [data-f="bloomhost"]'); await page.click('#foeSeg [data-f="lastfist"]'); await page.click('#bPlay'); await page.waitForTimeout(300);
   const r = await page.evaluate(() => {
     game.countdown = 0; hideCountdown(); updateIntro(); for (const s of game.sides) { s.aiT = 1e9; s.res.c = s.res.e = 9000; } refreshUI(true);

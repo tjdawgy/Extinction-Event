@@ -39,7 +39,7 @@ test('a unit that warps in while the army is on Hold stays at the warp point (a 
   // on Attack it takes the order like any unit: it walks toward the enemy
   sim.setStance(g, 0, 'attack'); sim.tryTrain(g, 0, 'shardling'); step(g, U.shardling.time + 0.1); const wp3 = { ...g.warps[0] }; arrive(g);
   const s3 = g.ents.filter(e => e.side === 0 && e.type === 'shardling').at(-1);
-  assert.strictEqual(s3.holdU, undefined); step(g, 5); assert.ok(s3.u > wp3.u + 50, 'on Attack it advances');
+  assert.strictEqual(s3.holdU, undefined); step(g, 5 + (sim.MECH7C.on ? sim.MECH7C.batchT : 0)); assert.ok(s3.u > wp3.u + 50, 'on Attack it advances'); // v2.43: alone, it first waits batchT seconds for a group (MECH7C rally)
 });
 
 test('Mass Warp arrivals on Hold stay where they arrive, including a unit that had no hold spot yet', () => {
