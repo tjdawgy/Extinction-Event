@@ -285,6 +285,57 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .rep .cpy{position:absolute;inset:44px 12px 56px;background:#0a1222;border:1px solid var(--blue);border-radius:12px;padding:8px;display:flex;flex-direction:column;gap:6px;z-index:3}
 .rep .cpy p{margin:0;font-size:12px} .rep .cpy textarea{flex:1;width:100%;background:#050a14;color:#cfd8e6;border:1px solid var(--line);border-radius:8px;font:11px ui-monospace,Menlo,monospace;padding:6px;-webkit-user-select:text;user-select:text}
 .rep .cpy .ghost{height:30px}
+/* Codex (v2.44): full-screen info pages over the menus; one column that also fits a 390-wide portrait phone */
+#codex{position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;background:var(--bg);padding:calc(env(safe-area-inset-top,0px) + 6px) calc(env(safe-area-inset-right,0px) + 12px) 0 calc(env(safe-area-inset-left,0px) + 12px);overflow:hidden}
+#codex.hide{display:none}
+.cxtop,#cxTabs,.cxin{width:100%;max-width:640px;margin:0 auto}
+.cxtop{display:flex;align-items:center;gap:8px}
+.cxtop h1{flex:1;margin:0;font-size:22px;font-weight:900;letter-spacing:.02em}
+#cxX{height:34px;padding:0 16px;border-radius:10px;border:1px solid var(--line);background:var(--glass2);font-weight:700}
+#cxTabs{display:flex;gap:4px;margin-top:6px;overflow-x:auto;scrollbar-width:none;flex:0 0 auto}
+#cxTabs::-webkit-scrollbar{display:none}
+#cxTabs button{flex:1 0 auto;height:32px;padding:0 10px;border-radius:9px;border:1px solid var(--line);background:transparent;color:var(--muted);font-weight:700;font-size:13px;white-space:nowrap}
+#cxTabs button.on{background:var(--panel3);color:var(--text);border-color:var(--blue)}
+#cxBody{flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 28px);margin-top:6px;font-size:13.5px;line-height:1.35;overflow-wrap:anywhere}
+.cxin h2{margin:18px 0 6px;font-size:18px;font-weight:900}
+.cxin h2:first-child{margin-top:6px}
+.cxin h3{margin:0 0 2px;font-size:15px;font-weight:800}
+.cxin p{margin:4px 0;color:var(--muted)}
+.cxin .cxph{padding:28px 12px;text-align:center;font-size:16px;color:var(--text);border:1px dashed var(--line);border-radius:12px}
+.cxmech{background:var(--glass2);border:1px solid var(--blue);border-radius:12px;padding:8px 10px;margin:8px 0}
+.cxmech b{color:var(--blue)}
+.cxlive{font-size:12.5px}
+.cxab{margin:4px 0;font-size:12.5px;color:var(--muted)} .cxab b{color:var(--text)}
+.cxcard{display:flex;gap:10px;align-items:flex-start;background:var(--glass2);border:1px solid var(--line);border-radius:12px;padding:8px;margin:10px 0 0;scroll-margin-top:8px}
+.cxcard .cxt{flex:1;min-width:0}
+.cxi{flex:0 0 auto;width:88px;height:66px;border-radius:9px;background:radial-gradient(ellipse at 50% 70%,#22324f,#0b1222 75%)}
+.cxi.u{width:72px;height:60px}
+.cxfacts{display:flex;flex-wrap:wrap;gap:3px 10px;margin-top:4px;font-size:12px;color:var(--muted)}
+.cxfacts b{color:var(--text);font-weight:700}
+.cxtip{font-size:12px;margin-top:3px;color:var(--muted)} .cxtip em{font-style:normal;color:var(--text)}
+.cxnote{font-size:12.5px;color:var(--text);background:rgba(57,200,255,.1);border-left:3px solid var(--blue);padding:6px 9px;border-radius:0 8px 8px 0;margin:6px 0}
+.cxtree{margin:0 0 6px 14px;padding:8px 0 0 10px;border-left:2px solid var(--line);scroll-margin-top:8px}
+.cxnode{position:relative;background:#0d1628;border:1px solid var(--line);border-radius:10px;padding:6px 8px;font-size:12.5px;color:var(--muted);min-width:0}
+.cxnode b{color:var(--text)} .cxnode .tg{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.06em;color:var(--blue);margin-right:4px}
+.cxnode .cxco{display:block;font-size:11.5px;margin:1px 0 2px}
+.cxbr{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-top:12px}
+.cxbr::before{content:'';position:absolute;top:-12px;left:25%;right:25%;height:12px;border:2px solid var(--line);border-bottom:0;border-radius:8px 8px 0 0}
+.cxcol,.cxchain{display:flex;flex-direction:column;gap:10px;min-width:0}
+.cxpath{font-size:11.5px;font-weight:800;color:var(--text);text-align:center;letter-spacing:.02em}
+.cxcol .cxnode+.cxnode::before,.cxchain .cxnode+.cxnode::before{content:'';position:absolute;left:50%;top:-11px;height:10px;border-left:2px solid var(--line)}
+.cxlink{display:inline;border:0;background:none;padding:0;margin:0 2px 0 0;color:var(--blue);font-weight:700;text-decoration:underline;text-underline-offset:2px;text-align:left}
+.cxhi{animation:cxhi 1.6s ease-out}
+@keyframes cxhi{0%,30%{box-shadow:0 0 0 3px var(--blue)}100%{box-shadow:0 0 0 0 rgba(57,200,255,0)}}
+.cxtw{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;border:1px solid var(--line);border-radius:10px;margin-top:6px}
+.cxtbl{border-collapse:separate;border-spacing:0;font-size:12.5px;white-space:nowrap;font-variant-numeric:tabular-nums;min-width:100%}
+.cxtbl th,.cxtbl td{padding:6px 8px;text-align:right}
+.cxtbl th{background:var(--panel3);font-weight:800}
+.cxtbl th button{border:0;background:none;padding:0;font-weight:800;white-space:nowrap}
+.cxtbl th.on button{color:var(--blue)}
+.cxtbl td{border-top:1px solid var(--line);color:var(--text)}
+.cxtbl th:first-child,.cxtbl td:first-child{position:sticky;left:0;z-index:1;text-align:left;background:#0d1628}
+.cxtbl th:first-child{background:var(--panel3)}
+.cxtbl td .cxlink{white-space:nowrap}
 #rotate{position:fixed;inset:0;z-index:20;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:var(--bg);text-align:center;padding:24px}
 #rotate .ph{width:40px;height:66px;border:3px solid var(--blue);border-radius:9px;animation:rot 2.2s ease-in-out infinite}
 #rotate small{color:var(--muted);font-size:13px;max-width:30ch}
@@ -335,12 +386,13 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
   </footer>
 </div>
 <div id="ov"><div class="box" id="box"></div></div>
+<div id="codex" class="hide" role="dialog" aria-label="Codex"><div class="cxtop"><h1>Codex</h1><button id="cxX">Close</button></div><div id="cxTabs" role="tablist"></div><div id="cxBody"></div></div>
 <div id="title" role="button" aria-label="Extinction Event. Tap to play"><h1>Extinction <span>Event</span></h1><b>TAP TO PLAY</b></div>
 <div id="rotate"><div class="ph"></div><b>Turn your phone sideways</b><small>Extinction Event plays in landscape. If it won’t rotate, switch off Portrait Orientation Lock in Control Center.</small></div>
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.43'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.44'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -378,12 +430,19 @@ const COUNTDOWN = 3;
 // Factions (v2.16): each side plays one. Both use the same building roles (hq, refinery, reactor, habitat, barracks,
 // turret, factory, techlab); a faction has its own names, stats, art and units for them (BDEFS, UDEF.fac).
 // abilities: has commander abilities; trees: its production buildings pick upgrade paths (TREES).
+// overview, mech: the Codex's faction overview and signature mechanic (v2.44); every unit and building has a desc for it too.
 const FACTIONS = {
-  lastfist: { name: 'Last Fist', abilities: true, trees: true, abil: ['shield', 'strike', 'repair'] },
-  bloomhost: { name: 'Bloomhost', abilities: true, trees: true, abil: ['frenzy', 'brood', 'corrosive'] }, // trees: Larva Pit and Evolution Chamber (v2.19), Bloomspire (v2.21); abilities v2.20
+  lastfist: { name: 'Last Fist', abilities: true, trees: true, abil: ['shield', 'strike', 'repair'],
+    overview: 'The last organized human army: combined arms of infantry, armor and aircraft. Straightforward and adaptable, and the easiest faction to learn.',
+    mech: { name: 'Salvage', txt: 'When any unit is destroyed near your forces, you recover part of its credit cost. Fight close to your army to keep the money flowing.' } },
+  bloomhost: { name: 'Bloomhost', abilities: true, trees: true, abil: ['frenzy', 'brood', 'corrosive'],
+    overview: 'A living swarm: cheap, fast organisms that overwhelm with numbers, with a base that grows like a body.',
+    mech: { name: 'Creep', txt: 'Your Hive, your other buildings and the field nodes you hold spread creep. On their own creep, Bloomhost ground units move faster and heal when out of combat.' } }, // trees: Larva Pit and Evolution Chamber (v2.19), Bloomspire (v2.21); abilities v2.20
   // Axiarchs (v2.25 framework, docs/AXIARCHS.md): trees on the Genesis Gate and Architectum
   // (v2.27), the Celestial Array v2.29; commander abilities v2.28
-  axiarchs: { name: 'Axiarchs', abilities: true, trees: true, abil: ['mwarp', 'overcharge', 'beam'] },
+  axiarchs: { name: 'Axiarchs', abilities: true, trees: true, abil: ['mwarp', 'overcharge', 'beam'],
+    overview: 'An ancient order of elite warriors: fewer, costlier units, each one shielded and powerful.',
+    mech: { name: 'Shields and the power field', txt: 'Every Axiarch unit and building has shields that take damage first and recharge after a few quiet seconds. Inside the power field around the Axis and the nodes you hold, shields recharge much faster and new units warp in.' } },
 }, DEFAULT_FACTION = 'lastfist', FACTION_KEYS = Object.keys(FACTIONS);
 const factionName = k => (FACTIONS[k] || FACTIONS[DEFAULT_FACTION]).name;
 // One line per faction for the setup menu (v2.30). Salvage's numbers come from SALVAGE, defined further down (read at call time).
@@ -396,35 +455,35 @@ const facOf = k => FACTIONS[k] ? k : DEFAULT_FACTION;
 
 const HPMUL = [1, 1, 1.25, 1.5];
 const BDEF = {
-  hq: { name: 'Command HQ', cost: { c: 0, e: 0 }, hp: 2800, half: 44, h: 104, time: 1,
+  hq: { name: 'Command HQ', desc: 'Your command centre: a defence gun, army size and income. Shielded while any other building stands; lose it and you lose the match.', cost: { c: 0, e: 0 }, hp: 2800, half: 44, h: 104, time: 1,
     pop: [0, 12, 12, 12], inc: [null, { c: 3, e: 1 }, { c: 3, e: 1 }, { c: 3, e: 1 }], hpMul: [1, 1, 1.3, 1.6],
     gun: [null, { weapon: 'hqgun', dmg: 32, cd: 1.1, range: 390, hitsAir: true },
                 { weapon: 'hqgun', dmg: 42, cd: 1.0, range: 430, hitsAir: true },
                 { weapon: 'hqgun', dmg: 55, cd: 0.9, range: 470, hitsAir: true }],
     up: [null, null, { c: 300, e: 100, time: 20 }, { c: 500, e: 250, time: 28 }],
     tiers: [null, 'Turret 32 damage, 390 range, 2,800 HP', 'Turret 42 damage, 430 range, 3,640 HP', 'Turret 55 damage, 470 range, 4,480 HP'] },
-  refinery: { name: 'Refinery', cost: { c: 150, e: 0 }, hp: 520, half: 32, h: 62, time: 10,
+  refinery: { name: 'Refinery', desc: 'Produces credits, your main resource. Build more early to grow your economy, but they are soft targets.', cost: { c: 150, e: 0 }, hp: 520, half: 32, h: 62, time: 10,
     inc: [null, { c: 4, e: 0 }, { c: 6, e: 0 }, { c: 9, e: 0 }],
     up: [null, null, { c: 120, e: 20, time: 12 }, { c: 200, e: 60, time: 18 }],
     tiers: [null, '+4 credits/s', '+6 credits/s', '+9 credits/s'] },
-  reactor: { name: 'Reactor', cost: { c: 125, e: 0 }, hp: 460, half: 30, h: 60, time: 12,
+  reactor: { name: 'Reactor', desc: 'Produces energy, needed for advanced units and upgrades.', cost: { c: 125, e: 0 }, hp: 460, half: 30, h: 60, time: 12,
     inc: [null, { c: 0, e: 2 }, { c: 0, e: 3 }, { c: 0, e: 4.5 }],
     up: [null, null, { c: 100, e: 30, time: 12 }, { c: 180, e: 80, time: 18 }],
     tiers: [null, '+2 energy/s', '+3 energy/s', '+4.5 energy/s'] },
-  habitat: { name: 'Habitat', cost: { c: 100, e: 0 }, hp: 420, half: 32, h: 40, time: 8,
+  habitat: { name: 'Habitat', desc: 'Raises your army size limit. Upgrade it to field a bigger army.', cost: { c: 100, e: 0 }, hp: 420, half: 32, h: 40, time: 8,
     pop: [0, 10, 16, 22],
     up: [null, null, { c: 100, e: 20, time: 10 }, { c: 160, e: 50, time: 14 }],
     tiers: [null, '+10 army size', '+16 army size', '+22 army size'] },
-  barracks: { name: 'Barracks', cost: { c: 150, e: 0 }, hp: 640, half: 32, h: 56, time: 14,
+  barracks: { name: 'Barracks', desc: 'Trains infantry. At T2 it picks one of two paths that decide which advanced infantry it unlocks.', cost: { c: 150, e: 0 }, hp: 640, half: 32, h: 56, time: 14,
     up: [null, null, { c: 150, e: 50, time: 14 }, { c: 250, e: 120, time: 20 }],
     tiers: [null, 'Trains Riflemen', 'Unlocks Heavy troopers', 'Unlocks Snipers'] },
-  factory: { name: 'War Factory', cost: { c: 300, e: 50 }, hp: 820, half: 36, h: 50, time: 20, req: 'barracks',
+  factory: { name: 'War Factory', desc: 'Builds armored vehicles and walkers. Its path chooses siege weapons or assault vehicles.', cost: { c: 300, e: 50 }, hp: 820, half: 36, h: 50, time: 20, req: 'barracks',
     up: [null, null, { c: 200, e: 100, time: 18 }, { c: 350, e: 200, time: 24 }],
     tiers: [null, 'Builds Tanks', 'Unlocks Artillery', 'Unlocks Titans'] },
-  techlab: { name: 'Tech Lab', cost: { c: 350, e: 150 }, hp: 700, half: 30, h: 96, time: 26, req: 'barracks', // v2.16: a Barracks is enough
+  techlab: { name: 'Tech Lab', desc: 'Builds aircraft. Its path chooses more air power or support units and a damage upgrade for your whole army.', cost: { c: 350, e: 150 }, hp: 700, half: 30, h: 96, time: 26, req: 'barracks', // v2.16: a Barracks is enough
     up: [null, null, { c: 250, e: 150, time: 20 }, { c: 400, e: 300, time: 28 }],
     tiers: [null, 'Builds Gunships', 'Unlocks Interceptors', 'Nanoweave: your units and defenses deal 20% more damage and take 15% less'] },
-  turret: { name: 'Turret', cost: { c: 200, e: 50 }, hp: 900, half: 26, h: 46, time: 12,
+  turret: { name: 'Turret', desc: 'Static defence gun that shoots ground and air. Solid protection for your base, but it can\'t move.', cost: { c: 200, e: 50 }, hp: 900, half: 26, h: 46, time: 12,
     gun: [null, { weapon: 'gatling', dmg: 12, cd: 0.45, range: 250, hitsAir: true },
                 { weapon: 'gatling', dmg: 17, cd: 0.4, range: 280, hitsAir: true },
                 { weapon: 'gatling', dmg: 22, cd: 0.35, range: 310, hitsAir: true }],
@@ -436,13 +495,13 @@ const BDEF = {
 // no supply. Last Fist: the Salvage Yard (A) raises Salvage (YARD), the Fortification Depot (B) puts a bunker on every field
 // node it holds (BUNKER). A faction without these roles yet (Bloomhost until v2.33, Axiarchs until v2.34) can't build them.
 const sigDef = (base, x) => Object.assign({ cost: base.cost, hp: base.hp, half: base.half, time: base.time, up: base.up, sig: true }, base.shp ? { shp: base.shp } : {}, x); // shp: an Axiarch building's shields (v2.34)
-BDEF.sigA = sigDef(BDEF.barracks, { name: 'Salvage Yard', h: 46,
+BDEF.sigA = sigDef(BDEF.barracks, { name: 'Salvage Yard', desc: 'Signature building that strengthens Salvage: more credits back from kills, and once upgraded energy too and an Overdrive production boost.', h: 46,
   tiers: [null, 'Salvage returns 20% of a unit\'s credit cost (base 10%)', 'Salvage cap doubled (400 a minute); salvage also returns half as much energy', 'Overdrive: salvage over the cap speeds your production +25% for 20 s'] });
-BDEF.sigB = sigDef(BDEF.barracks, { name: 'Fortification Depot', h: 48,
+BDEF.sigB = sigDef(BDEF.barracks, { name: 'Fortification Depot', desc: 'Signature building that puts a free bunker on every field node you hold. Upgrades let the bunkers heal infantry and hit aircraft.', h: 48,
   tiers: [null, 'A bunker on every field node you hold (ground only)', 'Bunkers heal your Barracks units in range, 2% of HP per second', 'Bunker guns deal double damage and hit aircraft'] });
 // The node bunker: the Turret's code at half a T1 Turret's HP and damage, ground only until the Depot's T3. Never built by
 // hand: the Depot places one on each held node (no pad, no supply, no cost) and its tier follows the Depot's.
-BDEF.bunker = { name: 'Node Bunker', cost: { c: 0, e: 0 }, hp: BDEF.turret.hp / 2, half: 14, h: 26, time: 1, noPad: true, up: [null, null, null, null],
+BDEF.bunker = { name: 'Node Bunker', desc: 'A small gun bunker the Fortification Depot places on each node you hold. Free and rebuilt on its own, but weaker than a Turret.', cost: { c: 0, e: 0 }, hp: BDEF.turret.hp / 2, half: 14, h: 26, time: 1, noPad: true, up: [null, null, null, null],
   gun: [null, { weapon: 'gatling', dmg: BDEF.turret.gun[1].dmg / 2, cd: BDEF.turret.gun[1].cd, range: BDEF.turret.gun[1].range, hitsAir: false },
               { weapon: 'gatling', dmg: BDEF.turret.gun[1].dmg / 2, cd: BDEF.turret.gun[1].cd, range: BDEF.turret.gun[1].range, hitsAir: false },
               { weapon: 'gatling', dmg: BDEF.turret.gun[1].dmg, cd: BDEF.turret.gun[1].cd, range: BDEF.turret.gun[1].range, hitsAir: true }],
@@ -451,15 +510,15 @@ BDEF.bunker = { name: 'Node Bunker', cost: { c: 0, e: 0 }, hp: BDEF.turret.hp / 
 // the HQ's stats and gun, so nothing about the enemy's faction leaks into the AI's estimate of a base it hasn't seen.
 const BDEF_BH = (() => {
   const o = {}, re = (k, x) => { o[k] = Object.assign({}, BDEF[k], x); };
-  re('hq', { name: 'Hive', tiers: [null, 'Spine launcher 32 damage, 390 range, 2,800 HP', 'Spine launcher 42 damage, 430 range, 3,640 HP', 'Spine launcher 55 damage, 470 range, 4,480 HP'] });
-  re('refinery', { name: 'Goremound' });
-  re('reactor', { name: 'Pulse Organ' });
-  re('habitat', { name: 'Hatchery' });
-  re('barracks', { name: 'Larva Pit', tiers: [null, 'Spawns Skitterlings', 'Predatory or Acidic Evolution', 'Predatory or Acidic Evolution'] });
-  re('factory', { name: 'Evolution Chamber', req: 'barracks', tiers: [null, 'Grows Bulwarks', 'Siege or Predator Evolution', 'Siege or Predator Evolution'] });
-  re('techlab', { name: 'Bloomspire', req: 'barracks', tiers: [null, 'Grows Razorwings', 'Swarm or Apex Bloom', 'Swarm or Apex Bloom'] }); // trees: v2.21
+  re('hq', { name: 'Hive', desc: 'The swarm\'s heart: a spine launcher, army size, income and the source of creep. Shielded while any other building stands; lose it and you lose.', tiers: [null, 'Spine launcher 32 damage, 390 range, 2,800 HP', 'Spine launcher 42 damage, 430 range, 3,640 HP', 'Spine launcher 55 damage, 470 range, 4,480 HP'] });
+  re('refinery', { name: 'Goremound', desc: 'Produces credits, your main resource. Grow more early, and protect them.' });
+  re('reactor', { name: 'Pulse Organ', desc: 'Produces energy for advanced organisms and upgrades.' });
+  re('habitat', { name: 'Hatchery', desc: 'Raises your army size limit: upgrade it to grow a larger swarm.' });
+  re('barracks', { name: 'Larva Pit', desc: 'Spawns the swarm\'s infantry. At T2 it evolves along a Predatory (melee hunters) or Acidic (ranged acid) path.', tiers: [null, 'Spawns Skitterlings', 'Predatory or Acidic Evolution', 'Predatory or Acidic Evolution'] });
+  re('factory', { name: 'Evolution Chamber', desc: 'Grows heavy ground beasts. Its evolution chooses siege beasts or armored brawlers.', req: 'barracks', tiers: [null, 'Grows Bulwarks', 'Siege or Predator Evolution', 'Siege or Predator Evolution'] });
+  re('techlab', { name: 'Bloomspire', desc: 'Grows flyers. Its bloom chooses cheap swarm flyers or huge building-breaking beasts.', req: 'barracks', tiers: [null, 'Grows Razorwings', 'Swarm or Apex Bloom', 'Swarm or Apex Bloom'] }); // trees: v2.21
   // The Maw: a living defence. Turret damage per second, a little more HP, a shorter reach; it spits spines at ground and air
-  re('turret', { name: 'Maw', hp: 1000,
+  re('turret', { name: 'Maw', desc: 'A living defence that spits spines at ground and air. Tougher than a Turret, with a shorter reach.', hp: 1000,
     gun: [null, { weapon: 'spine', dmg: 16, cd: 0.6, range: 220, hitsAir: true },
                 { weapon: 'spine', dmg: 22, cd: 0.55, range: 245, hitsAir: true },
                 { weapon: 'spine', dmg: 29, cd: 0.5, range: 270, hitsAir: true }],
@@ -470,24 +529,24 @@ const BDEF_BH = (() => {
 })();
 // Bloomhost signature buildings (v2.33): the Brood Mound (A) spawns Mites (MOUND), the Rootheart (B) strengthens creep (ROOT).
 // Larva Pit cost, build time, HP and upgrade costs (the Larva Pit copies the Barracks); drawn heights fit their low art.
-BDEF_BH.sigA = sigDef(BDEF_BH.barracks, { name: 'Brood Mound', h: 22,
+BDEF_BH.sigA = sigDef(BDEF_BH.barracks, { name: 'Brood Mound', desc: 'Signature building that spawns free, short-lived Mites. Upgrades spawn more, and at T3 a killed Mite bursts into acid.', h: 22,
   tiers: [null, 'Spawns 2 Mites every 20 s (30 s life, at most 10)', 'Spawns 3 Mites every 20 s', 'A Mite that is killed bursts into acid against enemy ground units'] });
-BDEF_BH.sigB = sigDef(BDEF_BH.barracks, { name: 'Rootheart', h: 30,
+BDEF_BH.sigB = sigDef(BDEF_BH.barracks, { name: 'Rootheart', desc: 'Signature building that makes creep spread faster and farther and slows enemies on it. Upgrades add faster healing and snaring roots.', h: 30,
   tiers: [null, 'Creep spreads 1.5× faster and 1.5× farther; enemy ground units on it move 15% slower', 'Your units regenerate 50% faster on creep', 'Every 15 s roots snare enemy ground units at the creep\'s edge for 1 s'] });
 // Axiarchs (v2.25): the same roles and costs; every building trades a fifth of its HP for shields worth 30% of the Last Fist
 // HP (docs/AXIARCHS.md has the table). The Null Lance is the defence: one beam at T1, Split Lattice (up to 3 beams at
 // lower damage) at T2, Event Horizon (longer range, heavy hits, more building damage, slower) at T3.
 const BDEF_AX = (() => {
   const o = {}, re = (k, x) => { o[k] = Object.assign({}, BDEF[k], x); o[k].shp = Math.round(BDEF[k].hp * 0.3); o[k].hp = Math.round((x.hp || BDEF[k].hp) * 0.8); };
-  re('hq', { name: 'Axis', gun: BDEF.hq.gun.map(x => x && Object.assign({}, x, { weapon: 'hqbeam', beam: true })), // v2.36: the Axis lance is a beam (same damage, rate and range; lands at once)
+  re('hq', { name: 'Axis', desc: 'The Axiarch core: a beam lance, army size, income and the base power field. Shielded while any other building stands; lose it and you lose.', gun: BDEF.hq.gun.map(x => x && Object.assign({}, x, { weapon: 'hqbeam', beam: true })), // v2.36: the Axis lance is a beam (same damage, rate and range; lands at once)
     tiers: [null, 'Axis lance 32 damage, 390 range; 2,240 HP + 840 shields', 'Axis lance 42 damage, 430 range; 2,912 HP + 1,092 shields', 'Axis lance 55 damage, 470 range; 3,584 HP + 1,344 shields'] });
-  re('refinery', { name: 'Matter Loom' });
-  re('reactor', { name: 'Singularity Well' });
-  re('habitat', { name: 'Continuum Spire' });
-  re('barracks', { name: 'Genesis Gate', tiers: [null, 'Forms Shardlings', 'Riftwalk or Lattice Doctrine', 'Riftwalk or Lattice Doctrine'] });
-  re('factory', { name: 'Architectum', req: 'barracks', tiers: [null, 'Forms Bastions', 'Rupture or Dominion Doctrine', 'Rupture or Dominion Doctrine'] });
-  re('techlab', { name: 'Celestial Array', req: 'barracks', tiers: [null, 'Forms Wraithwings', 'Swarm or Ascendant Calculus', 'Swarm or Ascendant Calculus'] }); // v2.29: paths
-  re('turret', { name: 'Null Lance',
+  re('refinery', { name: 'Matter Loom', desc: 'Produces credits, your main resource. Like every Axiarch building, it has shields over its hull.' });
+  re('reactor', { name: 'Singularity Well', desc: 'Produces energy. Axiarch units are energy-hungry, so plan for several.' });
+  re('habitat', { name: 'Continuum Spire', desc: 'Raises your army size limit and enlarges the power field around the Axis.' });
+  re('barracks', { name: 'Genesis Gate', desc: 'Forms infantry. At T2 it takes the Riftwalk (phase-stepping melee) or Lattice (long-range energy) doctrine.', tiers: [null, 'Forms Shardlings', 'Riftwalk or Lattice Doctrine', 'Riftwalk or Lattice Doctrine'] });
+  re('factory', { name: 'Architectum', desc: 'Forms heavy walkers. Its doctrine chooses long-range siege or battlefield-control walkers.', req: 'barracks', tiers: [null, 'Forms Bastions', 'Rupture or Dominion Doctrine', 'Rupture or Dominion Doctrine'] });
+  re('techlab', { name: 'Celestial Array', desc: 'Forms flyers. Its calculus chooses cheap linked swarm flyers or great flying warships.', req: 'barracks', tiers: [null, 'Forms Wraithwings', 'Swarm or Ascendant Calculus', 'Swarm or Ascendant Calculus'] }); // v2.29: paths
+  re('turret', { name: 'Null Lance', desc: 'Beam defence that hits ground and air. Upgrades split the beam over several targets, then turn it into heavy long-range shots.',
     gun: [null, { weapon: 'lance', dmg: 30, cd: 1.0, range: 260, hitsAir: true, beam: true },
                 { weapon: 'lance', dmg: 20, cd: 0.85, range: 280, hitsAir: true, beam: true, split: 3 },
                 { weapon: 'horizon', dmg: 92, cd: 1.6, range: 330, hitsAir: true, beam: true }],
@@ -498,9 +557,9 @@ const BDEF_AX = (() => {
 })();
 // Axiarch signature buildings (v2.34): the Phase Beacon (A) and the Echo Reliquary (B); Genesis Gate cost, time, HP, shields
 // and upgrade costs; drawn heights fit their art
-BDEF_AX.sigA = sigDef(BDEF_AX.barracks, { name: 'Phase Beacon', h: 50,
+BDEF_AX.sigA = sigDef(BDEF_AX.barracks, { name: 'Phase Beacon', desc: 'Signature building that carries a power-field bubble with your frontmost unit, so you can warp in at the front. It collapses after heavy losses.', h: 50,
   tiers: [null, 'A power-field bubble follows your frontmost unit (a node field\'s size); it collapses for 15 s if your units in it lose 35% within 5 s', 'Bubble 1.5× wider', 'Units that warp into the bubble arrive with full shields and +20% damage for 8 s'] });
-BDEF_AX.sigB = sigDef(BDEF_AX.barracks, { name: 'Echo Reliquary', h: 46,
+BDEF_AX.sigB = sigDef(BDEF_AX.barracks, { name: 'Echo Reliquary', desc: 'Signature building that keeps echoes of your fallen advanced units, so you can warp them back at a discount.', h: 46,
   tiers: [null, 'Keeps the echoes of your last 3 fallen T2/T3 units: warp one back for half its cost', 'Keeps 5 echoes', 'Recovered units arrive with a 30% overshield for 20 s'] });
 const BDEFS = { lastfist: BDEF, bloomhost: BDEF_BH, axiarchs: BDEF_AX };
 const BD = (fac, type) => (BDEFS[fac] || BDEF)[type];     // a faction's definition of a building role
@@ -549,66 +608,66 @@ const canMake = (b, type) => { const d = UDEF[type], q = UNIT_PATH[type]; return
 const canTrain = (g, s, type) => g.ents.some(e => e.side === s && canMake(e, type));
 
 const UDEF = {
-  rifle:     { name: 'Rifleman',  from: 'barracks', tier: 1, cost: { c: 50, e: 0 },    pop: 1, hp: 70,   dmg: 7,  cd: 0.7,  range: 120, speed: 38, hitsAir: true,  armor: 'light',   weapon: 'rifle',  time: 4,  h: 20 },
-  heavy:     { name: 'Heavy',     from: 'barracks', tier: 2, cost: { c: 100, e: 25 },  pop: 2, hp: 240,  dmg: 16, cd: 1.3,  range: 130, speed: 27, hitsAir: true,  armor: 'heavy',   weapon: 'rocket', time: 7,  h: 26 },
-  sniper:    { name: 'Sniper',    from: 'barracks', tier: 3, cost: { c: 150, e: 60 },  pop: 2, hp: 110,  dmg: 60, cd: 2.6,  range: 270, speed: 30, hitsAir: true,  armor: 'light',   weapon: 'rail',   time: 9,  h: 20 },
-  tank:      { name: 'Tank',      from: 'factory',  tier: 1, cost: { c: 200, e: 40 },  pop: 3, hp: 560,  dmg: 42, cd: 1.7,  range: 160, speed: 31, hitsAir: false, armor: 'vehicle', weapon: 'cannon', time: 11, h: 20, splash: 26 },
-  artillery: { name: 'Artillery', from: 'factory',  tier: 2, cost: { c: 175, e: 60 },  pop: 3, hp: 150,  dmg: 60, cd: 3.2,  range: 440, minRange: 110, speed: 22, hitsAir: false, armor: 'vehicle', weapon: 'shell', time: 12, h: 18, splash: 55 },
-  titan:     { name: 'Titan',     from: 'factory',  tier: 3, cost: { c: 420, e: 160 }, pop: 6, hp: 1500, dmg: 75, cd: 2.4,  range: 190, speed: 19, hitsAir: false, armor: 'vehicle', weapon: 'siege',  time: 18, h: 30, splash: 34 },
-  aircraft:  { name: 'Gunship',   from: 'techlab',  tier: 1, cost: { c: 225, e: 100 }, pop: 3, hp: 230,  dmg: 20, cd: 0.8,  range: 140, speed: 72, hitsAir: true,  armor: 'air', air: true, weapon: 'missile', time: 13, h: 12 },
+  rifle:     { name: 'Rifleman', desc: 'Cheap all-round infantry that shoots ground and air. Strong in numbers early; melts to splash, Snipers and Flame Tanks.',  from: 'barracks', tier: 1, cost: { c: 50, e: 0 },    pop: 1, hp: 70,   dmg: 7,  cd: 0.7,  range: 120, speed: 38, hitsAir: true,  armor: 'light',   weapon: 'rifle',  time: 4,  h: 20 },
+  heavy:     { name: 'Heavy', desc: 'Rocket trooper built to kill armor and aircraft. Sturdy for infantry, but slow-firing and poor against swarms.',     from: 'barracks', tier: 2, cost: { c: 100, e: 25 },  pop: 2, hp: 240,  dmg: 16, cd: 1.3,  range: 130, speed: 27, hitsAir: true,  armor: 'heavy',   weapon: 'rocket', time: 7,  h: 26 },
+  sniper:    { name: 'Sniper', desc: 'Long-range marksman whose rounds pierce a line of infantry. Fragile and slow-firing: keep it behind a front line.',    from: 'barracks', tier: 3, cost: { c: 150, e: 60 },  pop: 2, hp: 110,  dmg: 60, cd: 2.6,  range: 270, speed: 30, hitsAir: true,  armor: 'light',   weapon: 'rail',   time: 9,  h: 20 },
+  tank:      { name: 'Tank', desc: 'Armored battle tank with a splash cannon for ground units and buildings. It can\'t shoot aircraft; Heavies and Gunships punish it.',      from: 'factory',  tier: 1, cost: { c: 200, e: 40 },  pop: 3, hp: 560,  dmg: 42, cd: 1.7,  range: 160, speed: 31, hitsAir: false, armor: 'vehicle', weapon: 'cannon', time: 11, h: 20, splash: 26 },
+  artillery: { name: 'Artillery', desc: 'Long-range gun that fires shell salvos over the front line. Very fragile, and it can\'t hit targets that get too close.', from: 'factory',  tier: 2, cost: { c: 175, e: 60 },  pop: 3, hp: 150,  dmg: 60, cd: 3.2,  range: 440, minRange: 110, speed: 22, hitsAir: false, armor: 'vehicle', weapon: 'shell', time: 12, h: 18, splash: 55 },
+  titan:     { name: 'Titan', desc: 'Huge walker that plants in siege mode for extra range and building damage. Slow and rooted while planted; Heavies and aircraft wear it down.',     from: 'factory',  tier: 3, cost: { c: 420, e: 160 }, pop: 6, hp: 1500, dmg: 75, cd: 2.4,  range: 190, speed: 19, hitsAir: false, armor: 'vehicle', weapon: 'siege',  time: 18, h: 30, splash: 34 },
+  aircraft:  { name: 'Gunship', desc: 'Fast missile gunship that hits ground and air, good at picking off vehicles. Anti-air and Turrets shoot it down.',   from: 'techlab',  tier: 1, cost: { c: 225, e: 100 }, pop: 3, hp: 230,  dmg: 20, cd: 0.8,  range: 140, speed: 72, hitsAir: true,  armor: 'air', air: true, weapon: 'missile', time: 13, h: 12 },
   // Tech Lab tree (v2.15). Air Power: the Interceptor (reworked: cheaper, escorts your aircraft) and the Leviathan, a slow
   // bomber that drops on what is right below it and prefers buildings. Support: the Medicopter heals infantry nearby
   // (2.5% of max HP per second, the strongest heal applies), the Recon Drone scouts (sight 420, at most 3 per side).
-  interceptor: { name: 'Interceptor', from: 'techlab', tier: 2, cost: { c: 150, e: 60 }, pop: 2, hp: 190, dmg: 16, cd: 0.45, range: 180, speed: 100, hitsAir: true, hitsGround: false, armor: 'air', air: true, weapon: 'flak', time: 10, h: 10 },
-  leviathan: { name: 'Leviathan', from: 'techlab', tier: 3, cost: { c: 480, e: 240 }, pop: 7, hp: 1400, dmg: 140, cd: 3.0, range: 40, speed: 24, hitsAir: false, armor: 'air', air: true, weapon: 'bomb', time: 20, h: 16, splash: 60, preferB: true },
-  medic:     { name: 'Medicopter', from: 'techlab', tier: 2, cost: { c: 160, e: 80 }, pop: 2, hp: 260, dmg: 0, cd: 1, range: 0, speed: 60, hitsAir: false, hitsGround: false, armor: 'air', air: true, weapon: null, time: 10, h: 12, support: true, heal: 0.025, healR: 120 },
-  drone:     { name: 'Recon Drone', from: 'techlab', tier: 2, cost: { c: 70, e: 30 }, pop: 1, hp: 80, dmg: 0, cd: 1, range: 0, speed: 115, hitsAir: false, hitsGround: false, armor: 'air', air: true, weapon: null, time: 5, h: 8, support: true, max: 3 },
+  interceptor: { name: 'Interceptor', desc: 'Fast flak fighter that attacks only aircraft and escorts your bombers. Useless against ground units.', from: 'techlab', tier: 2, cost: { c: 150, e: 60 }, pop: 2, hp: 190, dmg: 16, cd: 0.45, range: 180, speed: 100, hitsAir: true, hitsGround: false, armor: 'air', air: true, weapon: 'flak', time: 10, h: 10 },
+  leviathan: { name: 'Leviathan', desc: 'Slow, heavy bomber that carpet-bombs the buildings below it. It can\'t hit aircraft and needs escorts against anti-air.', from: 'techlab', tier: 3, cost: { c: 480, e: 240 }, pop: 7, hp: 1400, dmg: 140, cd: 3.0, range: 40, speed: 24, hitsAir: false, armor: 'air', air: true, weapon: 'bomb', time: 20, h: 16, splash: 60, preferB: true },
+  medic:     { name: 'Medicopter', desc: 'Unarmed helicopter that heals nearby infantry. Keeps an infantry army fighting longer, but must be guarded from anti-air.', from: 'techlab', tier: 2, cost: { c: 160, e: 80 }, pop: 2, hp: 260, dmg: 0, cd: 1, range: 0, speed: 60, hitsAir: false, hitsGround: false, armor: 'air', air: true, weapon: null, time: 10, h: 12, support: true, heal: 0.025, healR: 120 },
+  drone:     { name: 'Recon Drone', desc: 'Fast, unarmed scout with very long sight that spots for Artillery. Fragile, and only a few can fly at once.', from: 'techlab', tier: 2, cost: { c: 70, e: 30 }, pop: 1, hp: 80, dmg: 0, cd: 1, range: 0, speed: 115, hitsAir: false, hitsGround: false, armor: 'air', air: true, weapon: null, time: 5, h: 8, support: true, max: 3 },
   // War Factory, Assault path (v2.14). Flame Tank: every 0.25 s it burns every enemy on the ground in a 95 × 48 strip ahead.
   // Hydra: twin rotary guns, one target at a time, prefers aircraft; swinging between ground and air takes 0.4 s.
-  flame:     { name: 'Flame Tank', from: 'factory', tier: 2, cost: { c: 190, e: 50 }, pop: 3, hp: 520, dmg: 10, cd: 0.25, range: 95, speed: 34, hitsAir: false, armor: 'vehicle', weapon: 'flame', time: 12, h: 18, strip: 24 },
-  hydra:     { name: 'Hydra', from: 'factory', tier: 3, cost: { c: 360, e: 140 }, pop: 5, hp: 1100, dmg: 22, cd: 0.3, range: 200, airRange: 240, speed: 22, hitsAir: true, armor: 'vehicle', weapon: 'hydra', time: 16, h: 28, preferAir: true, swing: 0.4 },
+  flame:     { name: 'Flame Tank', desc: 'Short-range flamethrower tank that burns packed infantry. Weak against vehicles and anything that out-ranges it.', from: 'factory', tier: 2, cost: { c: 190, e: 50 }, pop: 3, hp: 520, dmg: 10, cd: 0.25, range: 95, speed: 34, hitsAir: false, armor: 'vehicle', weapon: 'flame', time: 12, h: 18, strip: 24 },
+  hydra:     { name: 'Hydra', desc: 'Heavy walker with rotary guns that targets aircraft first. Strong air cover for an army; slow and vulnerable to Tanks.', from: 'factory', tier: 3, cost: { c: 360, e: 140 }, pop: 5, hp: 1100, dmg: 22, cd: 0.3, range: 200, airRange: 240, speed: 22, hitsAir: true, armor: 'vehicle', weapon: 'hydra', time: 16, h: 28, preferAir: true, swing: 0.4 },
   // Bloomhost base units (v2.17). melee: strikes land at once (no projectile); chase: it closes on a visible enemy within
   // this range instead of walking past it in its own lane. Skitterling swarm: +15% damage for each other Skitterling on the
   // same target, up to +45%. Bulwark brace: the first hit after its cooldown hardens it (40% less damage for 3 s, every 12 s).
-  skitterling: { name: 'Skitterling', fac: 'bloomhost', from: 'barracks', tier: 1, cost: { c: 40, e: 0 }, pop: 1, hp: 60, dmg: 6, cd: 0.5, range: 20, speed: 52, hitsAir: false, armor: 'light', weapon: 'claw', time: 3, h: 10, melee: true, chase: 150, swarm: { per: 0.15, max: 0.45 } },
-  bulwark:   { name: 'Bulwark', fac: 'bloomhost', from: 'factory', tier: 1, cost: { c: 190, e: 40 }, pop: 3, hp: 760, dmg: 26, cd: 1.6, range: 34, speed: 24, hitsAir: false, armor: 'vehicle', weapon: 'slam', time: 11, h: 20, melee: true, chase: 150, brace: { cut: 0.4, dur: 3, cd: 12 } },
-  razorwing: { name: 'Razorwing', fac: 'bloomhost', from: 'techlab', tier: 1, cost: { c: 170, e: 70 }, pop: 2, hp: 170, dmg: 15, cd: 0.75, range: 50, speed: 95, hitsAir: true, armor: 'air', air: true, weapon: 'talon', time: 10, h: 10, melee: true, chase: 200 }, // v2.19: hits air too (amendment F)
+  skitterling: { name: 'Skitterling', desc: 'Cheap, fast melee swarmer that bites harder when several attack one target. Dies quickly to splash and can\'t hit aircraft.', fac: 'bloomhost', from: 'barracks', tier: 1, cost: { c: 40, e: 0 }, pop: 1, hp: 60, dmg: 6, cd: 0.5, range: 20, speed: 52, hitsAir: false, armor: 'light', weapon: 'claw', time: 3, h: 10, melee: true, chase: 150, swarm: { per: 0.15, max: 0.45 } },
+  bulwark:   { name: 'Bulwark', desc: 'Hulking melee frontliner that braces to take less damage when hit. Soaks fire well, but is slow and can\'t hit aircraft.', fac: 'bloomhost', from: 'factory', tier: 1, cost: { c: 190, e: 40 }, pop: 3, hp: 760, dmg: 26, cd: 1.6, range: 34, speed: 24, hitsAir: false, armor: 'vehicle', weapon: 'slam', time: 11, h: 20, melee: true, chase: 150, brace: { cut: 0.4, dur: 3, cd: 12 } },
+  razorwing: { name: 'Razorwing', desc: 'Fast melee flyer that dives on ground units and aircraft. Fragile against dedicated anti-air and Maws or Turrets.', fac: 'bloomhost', from: 'techlab', tier: 1, cost: { c: 170, e: 70 }, pop: 2, hp: 170, dmg: 15, cd: 0.75, range: 50, speed: 95, hitsAir: true, armor: 'air', air: true, weapon: 'talon', time: 10, h: 10, melee: true, chase: 200 }, // v2.19: hits air too (amendment F)
   // Bloomhost tree units (v2.19). Larva Pit, Predatory Evolution: Leaper (leap: closes up to 140 in one jump, every 7 s),
   // Ravager (its maul does 1.6x to light armor). Acidic Evolution: Spitter (hits air and ground; corrodes), Bilecaster
   // (ground splash, stronger corrosion). Corrosion: the target takes more damage for a few seconds; a new hit keeps the
   // strongest level and the later end, never adding up, and never past CORR.cap.
-  leaper:    { name: 'Leaper', fac: 'bloomhost', from: 'barracks', tier: 2, cost: { c: 90, e: 20 }, pop: 2, hp: 150, dmg: 14, cd: 0.8, range: 22, speed: 46, hitsAir: false, armor: 'light', weapon: 'rend', time: 6, h: 14, melee: true, chase: 160, leap: { range: 140, min: 45, speed: 280, cd: 7 } },
-  ravager:   { name: 'Ravager', fac: 'bloomhost', from: 'barracks', tier: 3, cost: { c: 160, e: 50 }, pop: 3, hp: 340, dmg: 30, cd: 1.0, range: 24, speed: 44, hitsAir: false, armor: 'heavy', weapon: 'maul', time: 9, h: 22, melee: true, chase: 170 },
-  spitter:   { name: 'Spitter', fac: 'bloomhost', from: 'barracks', tier: 2, cost: { c: 90, e: 30 }, pop: 2, hp: 110, dmg: 11, cd: 1.0, range: 150, speed: 34, hitsAir: true, armor: 'light', weapon: 'acid', time: 6, h: 16, corrode: { amt: 0.12, dur: 5 } },
-  bilecaster: { name: 'Bilecaster', fac: 'bloomhost', from: 'barracks', tier: 3, cost: { c: 170, e: 70 }, pop: 3, hp: 160, dmg: 26, cd: 2.2, range: 220, speed: 28, hitsAir: false, armor: 'light', weapon: 'bile', time: 9, h: 20, splash: 40, corrode: { amt: 0.2, dur: 6 } },
+  leaper:    { name: 'Leaper', desc: 'Melee hunter that leaps onto ranged units from a distance. Great for diving a backline; falls to splash and focused fire.', fac: 'bloomhost', from: 'barracks', tier: 2, cost: { c: 90, e: 20 }, pop: 2, hp: 150, dmg: 14, cd: 0.8, range: 22, speed: 46, hitsAir: false, armor: 'light', weapon: 'rend', time: 6, h: 14, melee: true, chase: 160, leap: { range: 140, min: 45, speed: 280, cd: 7 } },
+  ravager:   { name: 'Ravager', desc: 'Heavy melee brute that shreds light armor and frenzies after a kill. Strong against infantry; struggles against Tanks and defences.', fac: 'bloomhost', from: 'barracks', tier: 3, cost: { c: 160, e: 50 }, pop: 3, hp: 340, dmg: 30, cd: 1.0, range: 24, speed: 44, hitsAir: false, armor: 'heavy', weapon: 'maul', time: 9, h: 22, melee: true, chase: 170 },
+  spitter:   { name: 'Spitter', desc: 'Ranged acid thrower that hits air and ground and makes its targets take more damage. Fragile once enemies close in.', fac: 'bloomhost', from: 'barracks', tier: 2, cost: { c: 90, e: 30 }, pop: 2, hp: 110, dmg: 11, cd: 1.0, range: 150, speed: 34, hitsAir: true, armor: 'light', weapon: 'acid', time: 6, h: 16, corrode: { amt: 0.12, dur: 5 } },
+  bilecaster: { name: 'Bilecaster', desc: 'Long-range caster whose bile darts mark a target with lasting corrosion. One target at a time, and it can\'t hit aircraft.', fac: 'bloomhost', from: 'barracks', tier: 3, cost: { c: 170, e: 70 }, pop: 3, hp: 160, dmg: 26, cd: 2.2, range: 220, speed: 28, hitsAir: false, armor: 'light', weapon: 'bile', time: 9, h: 20, splash: 40, corrode: { amt: 0.2, dur: 6 } },
   // Evolution Chamber, Siege Evolution: Bile Lobber (Artillery's mechanics: arcing shot, minimum range, splash), Ruinmaw
   // (heavy building damage; each hit leaves a short acid pool). Predator Evolution: Thornback (melee attackers take 20% of
   // the damage back), Dreadthorn (a hit of 60+ releases a spine burst around it, every 15 s).
-  bilelobber: { name: 'Bile Lobber', fac: 'bloomhost', from: 'factory', tier: 2, cost: { c: 170, e: 60 }, pop: 3, hp: 160, dmg: 55, cd: 3.4, range: 420, minRange: 110, speed: 22, hitsAir: false, armor: 'heavy', weapon: 'lob', lob: true, time: 12, h: 20, splash: 55 },
-  ruinmaw:   { name: 'Ruinmaw', fac: 'bloomhost', from: 'factory', tier: 3, cost: { c: 400, e: 150 }, pop: 6, hp: 1300, dmg: 70, cd: 2.8, range: 200, speed: 18, hitsAir: false, armor: 'vehicle', weapon: 'ruin', time: 18, h: 28, splash: 34, acid: true },
-  thornback: { name: 'Thornback', fac: 'bloomhost', from: 'factory', tier: 2, cost: { c: 180, e: 40 }, pop: 3, hp: 700, dmg: 22, cd: 1.1, range: 30, speed: 28, hitsAir: false, armor: 'heavy', weapon: 'gore', time: 11, h: 20, melee: true, chase: 150, thorns: { frac: 0.2, range: 60 } },
-  dreadthorn: { name: 'Dreadthorn', fac: 'bloomhost', from: 'factory', tier: 3, cost: { c: 380, e: 140 }, pop: 5, hp: 1350, dmg: 34, cd: 1.2, range: 34, speed: 24, hitsAir: false, armor: 'heavy', weapon: 'gore', time: 16, h: 28, melee: true, chase: 150, burst: { trigger: 60, r: 80, dmg: 45, cd: 15 } },
+  bilelobber: { name: 'Bile Lobber', desc: 'Living artillery that lobs corrosive bile over the front from long range. Defenceless up close and against aircraft.', fac: 'bloomhost', from: 'factory', tier: 2, cost: { c: 170, e: 60 }, pop: 3, hp: 160, dmg: 55, cd: 3.4, range: 420, minRange: 110, speed: 22, hitsAir: false, armor: 'heavy', weapon: 'lob', lob: true, time: 12, h: 20, splash: 55 },
+  ruinmaw:   { name: 'Ruinmaw', desc: 'Massive siege beast built to break buildings; its hits leave acid pools. Slow, and weak to fast attackers and aircraft.', fac: 'bloomhost', from: 'factory', tier: 3, cost: { c: 400, e: 150 }, pop: 6, hp: 1300, dmg: 70, cd: 2.8, range: 200, speed: 18, hitsAir: false, armor: 'vehicle', weapon: 'ruin', time: 18, h: 28, splash: 34, acid: true },
+  thornback: { name: 'Thornback', desc: 'Armored melee brawler that hurts anyone who strikes it up close. Holds the front line; vulnerable to ranged focus fire.', fac: 'bloomhost', from: 'factory', tier: 2, cost: { c: 180, e: 40 }, pop: 3, hp: 700, dmg: 22, cd: 1.1, range: 30, speed: 28, hitsAir: false, armor: 'heavy', weapon: 'gore', time: 11, h: 20, melee: true, chase: 150, thorns: { frac: 0.2, range: 60 } },
+  dreadthorn: { name: 'Dreadthorn', desc: 'Huge armored brute that bursts spines around it when hit hard. Punishes packed infantry; ranged units and aircraft beat it.', fac: 'bloomhost', from: 'factory', tier: 3, cost: { c: 380, e: 140 }, pop: 5, hp: 1350, dmg: 34, cd: 1.2, range: 34, speed: 24, hitsAir: false, armor: 'heavy', weapon: 'gore', time: 16, h: 28, melee: true, chase: 150, burst: { trigger: 60, r: 80, dmg: 45, cd: 15 } },
   // Bloomspire tree (v2.21). Swarm Bloom: Needlewing (cheap, fast, ground only; the Skitterling's swarm bonus), Cloudwing
   // (swarm flyer; while fighting it releases offspring: temporary Needlewings at half damage, see SPAWN). Apex Bloom:
   // Brood Tyrant (slow, heavy globs, prefers buildings like the Leviathan), Worldrender (drops a crushing mass from above
   // like the Leviathan's bomb: heavy building damage, splash on ground units). None of the four can hit aircraft.
-  needlewing: { name: 'Needlewing', fac: 'bloomhost', from: 'techlab', tier: 2, cost: { c: 70, e: 30 }, pop: 1, hp: 80, dmg: 8, cd: 0.6, range: 40, speed: 115, hitsAir: false, armor: 'air', air: true, weapon: 'needle', time: 5, h: 8, melee: true, chase: 200, swarm: { per: 0.12, max: 0.36 } },
-  cloudwing: { name: 'Cloudwing', fac: 'bloomhost', from: 'techlab', tier: 3, cost: { c: 220, e: 100 }, pop: 3, hp: 280, dmg: 14, cd: 0.6, range: 45, speed: 85, hitsAir: false, armor: 'air', air: true, weapon: 'needle', time: 12, h: 12, melee: true, chase: 200, swarm: { per: 0.12, max: 0.36 }, spawn: { n: 2, cd: 14, life: 12 } },
-  broodtyrant: { name: 'Brood Tyrant', fac: 'bloomhost', from: 'techlab', tier: 2, cost: { c: 320, e: 150 }, pop: 5, hp: 950, dmg: 60, cd: 2.4, range: 150, speed: 40, hitsAir: false, armor: 'air', air: true, weapon: 'glob', time: 16, h: 16, splash: 24, preferB: true },
-  worldrender: { name: 'Worldrender', fac: 'bloomhost', from: 'techlab', tier: 3, cost: { c: 520, e: 260 }, pop: 8, hp: 1700, dmg: 170, cd: 4.0, range: 50, speed: 20, hitsAir: false, armor: 'air', air: true, weapon: 'crush', drop: true, time: 22, h: 20, splash: 70, preferB: true },
+  needlewing: { name: 'Needlewing', desc: 'Cheap, fast flyer that hits ground targets harder in a pack. It can\'t hit aircraft and dies quickly to anti-air.', fac: 'bloomhost', from: 'techlab', tier: 2, cost: { c: 70, e: 30 }, pop: 1, hp: 80, dmg: 8, cd: 0.6, range: 40, speed: 115, hitsAir: false, armor: 'air', air: true, weapon: 'needle', time: 5, h: 8, melee: true, chase: 200, swarm: { per: 0.12, max: 0.36 } },
+  cloudwing: { name: 'Cloudwing', desc: 'Swarm flyer that releases short-lived offspring while it fights. Overwhelms ground targets but can\'t hit aircraft.', fac: 'bloomhost', from: 'techlab', tier: 3, cost: { c: 220, e: 100 }, pop: 3, hp: 280, dmg: 14, cd: 0.6, range: 45, speed: 85, hitsAir: false, armor: 'air', air: true, weapon: 'needle', time: 12, h: 12, melee: true, chase: 200, swarm: { per: 0.12, max: 0.36 }, spawn: { n: 2, cd: 14, life: 12 } },
+  broodtyrant: { name: 'Brood Tyrant', desc: 'Heavy flying beast that lobs globs at buildings first. Tough, but slow and helpless against aircraft.', fac: 'bloomhost', from: 'techlab', tier: 2, cost: { c: 320, e: 150 }, pop: 5, hp: 950, dmg: 60, cd: 2.4, range: 150, speed: 40, hitsAir: false, armor: 'air', air: true, weapon: 'glob', time: 16, h: 16, splash: 24, preferB: true },
+  worldrender: { name: 'Worldrender', desc: 'Colossal aerial base-breaker that crushes buildings from above and feeds on them. It can\'t hit aircraft; burst anti-air brings it down.', fac: 'bloomhost', from: 'techlab', tier: 3, cost: { c: 520, e: 260 }, pop: 8, hp: 1700, dmg: 170, cd: 4.0, range: 50, speed: 20, hitsAir: false, armor: 'air', air: true, weapon: 'crush', drop: true, time: 22, h: 20, splash: 70, preferB: true },
 };
 // The Mite (v2.33): spawned by the Brood Mound, never trained (noTrain) and never counted for node capture (noCap). A fast
 // melee biter at 40% of a Skitterling's HP and damage and 120% of its speed; a temporary unit (MOUND.life), no supply, no cost.
-UDEF.mite = { name: 'Mite', fac: 'bloomhost', from: 'sigA', tier: 1, cost: { c: 0, e: 0 }, pop: 0, hp: UDEF.skitterling.hp * 0.4, dmg: UDEF.skitterling.dmg * 0.4, cd: UDEF.skitterling.cd,
+UDEF.mite = { name: 'Mite', desc: 'Free, short-lived biter spawned by the Brood Mound. Tiny and fragile: it harasses, but never captures nodes.', fac: 'bloomhost', from: 'sigA', tier: 1, cost: { c: 0, e: 0 }, pop: 0, hp: UDEF.skitterling.hp * 0.4, dmg: UDEF.skitterling.dmg * 0.4, cd: UDEF.skitterling.cd,
   range: UDEF.skitterling.range, speed: UDEF.skitterling.speed * 1.2, hitsAir: false, armor: 'light', weapon: 'claw', time: 0, h: 7, melee: true, chase: 150, noTrain: true, noCap: true, spawned: true };
 // Axiarch base units (v2.25). Every Axiarch unit has shields (shp) on top of its HP: damage hits shields first, they
 // regenerate after SHIELD.delay quiet seconds, and they never restore HP. Shardling: fast melee. Bastion: a slow,
 // heavily shielded frontline with the Bulwark's brace (40% less damage for 3 s, every 12 s). Wraithwing: a fast flyer that
 // hits aircraft, ground and buildings. More credits, energy and supply than the other factions' counterparts.
 Object.assign(UDEF, {
-  shardling: { name: 'Shardling', fac: 'axiarchs', from: 'barracks', tier: 1, cost: { c: 80, e: 20 }, pop: 2, hp: 80, shp: 60, dmg: 11, cd: 0.6, range: 22, speed: 50, hitsAir: false, armor: 'light', weapon: 'blade', time: 6, h: 18, melee: true, chase: 150 },
-  bastion: { name: 'Bastion', fac: 'axiarchs', from: 'factory', tier: 1, cost: { c: 280, e: 90 }, pop: 4, hp: 620, shp: 420, dmg: 36, cd: 1.6, range: 100, speed: 23, hitsAir: false, armor: 'vehicle', weapon: 'pulse', time: 14, h: 24, brace: { cut: 0.4, dur: 3, cd: 12 } },
-  wraithwing: { name: 'Wraithwing', fac: 'axiarchs', from: 'techlab', tier: 1, cost: { c: 260, e: 120 }, pop: 3, hp: 160, shp: 140, dmg: 20, cd: 0.8, range: 140, speed: 86, hitsAir: true, armor: 'air', air: true, weapon: 'phase', time: 13, h: 12 },
+  shardling: { name: 'Shardling', desc: 'Fast, shielded melee blade for raids and node captures. Pricey for basic infantry, and it can\'t hit aircraft.', fac: 'axiarchs', from: 'barracks', tier: 1, cost: { c: 80, e: 20 }, pop: 2, hp: 80, shp: 60, dmg: 11, cd: 0.6, range: 22, speed: 50, hitsAir: false, armor: 'light', weapon: 'blade', time: 6, h: 18, melee: true, chase: 150 },
+  bastion: { name: 'Bastion', desc: 'Heavily shielded frontline walker whose shields surge back when struck. Holds ground; burst damage and aircraft get through.', fac: 'axiarchs', from: 'factory', tier: 1, cost: { c: 280, e: 90 }, pop: 4, hp: 620, shp: 420, dmg: 36, cd: 1.6, range: 100, speed: 23, hitsAir: false, armor: 'vehicle', weapon: 'pulse', time: 14, h: 24, brace: { cut: 0.4, dur: 3, cd: 12 } },
+  wraithwing: { name: 'Wraithwing', desc: 'Fast shielded flyer that hits air, ground and buildings, and phases out for a moment when hit. Rapid-fire anti-air counters it.', fac: 'axiarchs', from: 'techlab', tier: 1, cost: { c: 260, e: 120 }, pop: 3, hp: 160, shp: 140, dmg: 20, cd: 0.8, range: 140, speed: 86, hitsAir: true, armor: 'air', air: true, weapon: 'phase', time: 13, h: 12 },
 });
 // Axiarch tree units (v2.27). Genesis Gate, Riftwalk Doctrine: Riftstalker (phase-step: the Leaper's leap code; bonus vs
 // light), Parallax (its phase-step lands just behind the target; its blows disrupt: the target deals less damage for 2 s,
@@ -619,14 +678,14 @@ Object.assign(UDEF, {
 // (an aura that slows enemy ground units; slows never stack, the strongest applies, capped at SLOW.cap), Eventide (every
 // pulse.cd seconds a gravity pulse pulls enemy ground units inward; never into buildings or off the lane, never aircraft).
 Object.assign(UDEF, {
-  riftstalker: { name: 'Riftstalker', fac: 'axiarchs', from: 'barracks', tier: 2, cost: { c: 140, e: 50 }, pop: 3, hp: 170, shp: 110, dmg: 18, cd: 0.8, range: 24, speed: 48, hitsAir: false, armor: 'light', weapon: 'riftblade', time: 8, h: 20, melee: true, chase: 160, leap: { range: 130, min: 45, speed: 420, cd: 8 } },
-  parallax: { name: 'Parallax', fac: 'axiarchs', from: 'barracks', tier: 3, cost: { c: 220, e: 90 }, pop: 4, hp: 260, shp: 180, dmg: 30, cd: 0.9, range: 26, speed: 46, hitsAir: false, armor: 'heavy', weapon: 'parallax', time: 11, h: 24, melee: true, chase: 170, leap: { range: 150, min: 40, speed: 480, cd: 9, behind: true }, disrupt: { amt: 0.3, dur: 2 } },
-  lancer: { name: 'Lancer', fac: 'axiarchs', from: 'barracks', tier: 2, cost: { c: 150, e: 60 }, pop: 3, hp: 150, shp: 110, dmg: 16, cd: 0.9, range: 170, speed: 32, hitsAir: true, armor: 'light', weapon: 'bolt', time: 8, h: 22 },
-  marksman: { name: 'Astral Marksman', fac: 'axiarchs', from: 'barracks', tier: 3, cost: { c: 240, e: 110 }, pop: 4, hp: 140, shp: 120, dmg: 85, cd: 3.0, range: 330, speed: 28, hitsAir: false, armor: 'light', weapon: 'astral', time: 11, h: 24, charge: 1.2 },
-  riftmortar: { name: 'Rift Mortar', fac: 'axiarchs', from: 'factory', tier: 2, cost: { c: 220, e: 90 }, pop: 4, hp: 160, shp: 120, dmg: 60, cd: 3.3, range: 430, minRange: 110, speed: 21, hitsAir: false, armor: 'vehicle', weapon: 'rift', lob: true, time: 13, h: 22, splash: 55 },
-  worldbreaker: { name: 'Worldbreaker', fac: 'axiarchs', from: 'factory', tier: 3, cost: { c: 460, e: 190 }, pop: 7, hp: 1150, shp: 650, dmg: 80, cd: 2.8, range: 210, speed: 17, hitsAir: false, armor: 'vehicle', weapon: 'breaker', time: 19, h: 30, splash: 34, acid: 'dist' },
-  gravemantle: { name: 'Gravemantle', fac: 'axiarchs', from: 'factory', tier: 2, cost: { c: 230, e: 100 }, pop: 4, hp: 520, shp: 380, dmg: 14, cd: 1.2, range: 120, speed: 24, hitsAir: false, armor: 'heavy', weapon: 'grav', time: 13, h: 24, aura: { r: 110, slow: 0.3 } },
-  eventide: { name: 'Eventide', fac: 'axiarchs', from: 'factory', tier: 3, cost: { c: 420, e: 180 }, pop: 6, hp: 1000, shp: 650, dmg: 24, cd: 1.3, range: 140, speed: 20, hitsAir: false, armor: 'vehicle', weapon: 'grav', time: 17, h: 30, pulse: { r: 130, pull: 40, cd: 14 } },
+  riftstalker: { name: 'Riftstalker', desc: 'Melee hunter that phase-steps onto a ranged target, strikes and steps back. Strong against exposed backlines; weak to burst.', fac: 'axiarchs', from: 'barracks', tier: 2, cost: { c: 140, e: 50 }, pop: 3, hp: 170, shp: 110, dmg: 18, cd: 0.8, range: 24, speed: 48, hitsAir: false, armor: 'light', weapon: 'riftblade', time: 8, h: 20, melee: true, chase: 160, leap: { range: 130, min: 45, speed: 420, cd: 8 } },
+  parallax: { name: 'Parallax', desc: 'Armored melee duelist that steps behind its target; its blows weaken enemy fire. Struggles against focus fire and defences.', fac: 'axiarchs', from: 'barracks', tier: 3, cost: { c: 220, e: 90 }, pop: 4, hp: 260, shp: 180, dmg: 30, cd: 0.9, range: 26, speed: 46, hitsAir: false, armor: 'heavy', weapon: 'parallax', time: 11, h: 24, melee: true, chase: 170, leap: { range: 150, min: 40, speed: 480, cd: 9, behind: true }, disrupt: { amt: 0.3, dur: 2 } },
+  lancer: { name: 'Lancer', desc: 'Ranged infantry whose bolts grow stronger on the same target, air or ground. Good against tough targets; poor against swarms.', fac: 'axiarchs', from: 'barracks', tier: 2, cost: { c: 150, e: 60 }, pop: 3, hp: 150, shp: 110, dmg: 16, cd: 0.9, range: 170, speed: 32, hitsAir: true, armor: 'light', weapon: 'bolt', time: 8, h: 22 },
+  marksman: { name: 'Astral Marksman', desc: 'Very long-range sniper that charges each shot. Deadly against infantry; it can\'t hit aircraft and is weak against buildings.', fac: 'axiarchs', from: 'barracks', tier: 3, cost: { c: 240, e: 110 }, pop: 4, hp: 140, shp: 120, dmg: 85, cd: 3.0, range: 330, speed: 28, hitsAir: false, armor: 'light', weapon: 'astral', time: 11, h: 24, charge: 1.2 },
+  riftmortar: { name: 'Rift Mortar', desc: 'Precise long-range artillery for high-value targets and buildings. Little splash, and helpless up close.', fac: 'axiarchs', from: 'factory', tier: 2, cost: { c: 220, e: 90 }, pop: 4, hp: 160, shp: 120, dmg: 60, cd: 3.3, range: 430, minRange: 110, speed: 21, hitsAir: false, armor: 'vehicle', weapon: 'rift', lob: true, time: 13, h: 22, splash: 55 },
+  worldbreaker: { name: 'Worldbreaker', desc: 'Heavy siege walker whose hits leave zones that weaken enemy fire. Slow; aircraft and mobile armies avoid it.', fac: 'axiarchs', from: 'factory', tier: 3, cost: { c: 460, e: 190 }, pop: 7, hp: 1150, shp: 650, dmg: 80, cd: 2.8, range: 210, speed: 17, hitsAir: false, armor: 'vehicle', weapon: 'breaker', time: 19, h: 30, splash: 34, acid: 'dist' },
+  gravemantle: { name: 'Gravemantle', desc: 'Support walker with an aura that slows nearby enemy ground units. A weak shot, and it can\'t hit aircraft.', fac: 'axiarchs', from: 'factory', tier: 2, cost: { c: 230, e: 100 }, pop: 4, hp: 520, shp: 380, dmg: 14, cd: 1.2, range: 120, speed: 24, hitsAir: false, armor: 'heavy', weapon: 'grav', time: 13, h: 24, aura: { r: 110, slow: 0.3 } },
+  eventide: { name: 'Eventide', desc: 'Heavy walker that pulses gravity to pull enemy ground units together. Sets up splash damage; it can\'t hit aircraft.', fac: 'axiarchs', from: 'factory', tier: 3, cost: { c: 420, e: 180 }, pop: 6, hp: 1000, shp: 650, dmg: 24, cd: 1.3, range: 140, speed: 20, hitsAir: false, armor: 'vehicle', weapon: 'grav', time: 17, h: 30, pulse: { r: 130, pull: 40, cd: 14 } },
 });
 // Celestial Array tree units (v2.29). Swarm Calculus: Prismwing (fragile, cheaper; shield link: when its shield takes damage,
 // link.share of that is spread evenly over the shields of up to link.n other Prismwings within link.r; shields only, never
@@ -635,10 +694,10 @@ Object.assign(UDEF, {
 // powerful projectiles, prefers buildings like the Brood Tyrant), Astral Sovereign (drops a heavy mass from above like the
 // Worldrender: area damage, structures first). Neither of the Ascendant two can hit aircraft.
 Object.assign(UDEF, {
-  prismwing: { name: 'Prismwing', fac: 'axiarchs', from: 'techlab', tier: 2, cost: { c: 120, e: 50 }, pop: 2, hp: 100, shp: 90, dmg: 11, cd: 0.7, range: 120, speed: 100, hitsAir: false, armor: 'air', air: true, weapon: 'prism', time: 7, h: 10, link: { share: 0.5, n: 3, r: 110 } },
-  shardstorm: { name: 'Shardstorm', fac: 'axiarchs', from: 'techlab', tier: 3, cost: { c: 280, e: 130 }, pop: 4, hp: 220, shp: 190, dmg: 24, cd: 1.1, range: 160, speed: 80, hitsAir: true, armor: 'air', air: true, weapon: 'storm', beam: true, time: 13, h: 14, chain: { n: 3, r: 90, fall: 0.7 } },
-  voidcarrier: { name: 'Voidcarrier', fac: 'axiarchs', from: 'techlab', tier: 2, cost: { c: 360, e: 170 }, pop: 6, hp: 900, shp: 520, dmg: 72, cd: 2.8, range: 170, speed: 34, hitsAir: false, armor: 'air', air: true, weapon: 'void', time: 17, h: 18, splash: 24, preferB: true },
-  sovereign: { name: 'Astral Sovereign', fac: 'axiarchs', from: 'techlab', tier: 3, cost: { c: 600, e: 300 }, pop: 9, hp: 1500, shp: 900, dmg: 190, cd: 4.2, range: 50, speed: 17, hitsAir: false, armor: 'air', air: true, weapon: 'sovereign', drop: true, time: 24, h: 22, splash: 75, preferB: true },
+  prismwing: { name: 'Prismwing', desc: 'Cheap flyer whose linked shields share damage across the pack. It can\'t hit aircraft; splash anti-air hurts it.', fac: 'axiarchs', from: 'techlab', tier: 2, cost: { c: 120, e: 50 }, pop: 2, hp: 100, shp: 90, dmg: 11, cd: 0.7, range: 120, speed: 100, hitsAir: false, armor: 'air', air: true, weapon: 'prism', time: 7, h: 10, link: { share: 0.5, n: 3, r: 110 } },
+  shardstorm: { name: 'Shardstorm', desc: 'Flyer with a beam that chains between enemies, air and ground. Great against swarms; weak against single heavy targets and buildings.', fac: 'axiarchs', from: 'techlab', tier: 3, cost: { c: 280, e: 130 }, pop: 4, hp: 220, shp: 190, dmg: 24, cd: 1.1, range: 160, speed: 80, hitsAir: true, armor: 'air', air: true, weapon: 'storm', beam: true, time: 13, h: 14, chain: { n: 3, r: 90, fall: 0.7 } },
+  voidcarrier: { name: 'Voidcarrier', desc: 'Slow flying power node: Axiarch shields recharge and units warp in beneath it. It can\'t hit aircraft, and losing it collapses the field.', fac: 'axiarchs', from: 'techlab', tier: 2, cost: { c: 360, e: 170 }, pop: 6, hp: 900, shp: 520, dmg: 72, cd: 2.8, range: 170, speed: 34, hitsAir: false, armor: 'air', air: true, weapon: 'void', time: 17, h: 18, splash: 24, preferB: true },
+  sovereign: { name: 'Astral Sovereign', desc: 'Huge flyer that charges a judgement beam for massive single-target damage. Slow, can\'t hit aircraft, and exposed while charging.', fac: 'axiarchs', from: 'techlab', tier: 3, cost: { c: 600, e: 300 }, pop: 9, hp: 1500, shp: 900, dmg: 190, cd: 4.2, range: 50, speed: 17, hitsAir: false, armor: 'air', air: true, weapon: 'sovereign', drop: true, time: 24, h: 22, splash: 75, preferB: true },
 });
 const DISRUPT = { cap: 0.3 }, SLOW = { cap: 0.35, dur: 0.35 }; // the strongest wins, never added up
 const SHIELD = { delay: 4, rate: 0.1 }; // Axiarch shields: regen 10% of max per second after 4 s without damage (the power field's faster rate comes in v2.26)
@@ -8129,8 +8188,9 @@ function showStart() {
       <div><b>Command your army</b>Attack pushes forward, Hold stops everyone where they stand, Retreat pulls back to your flag without firing. Drag sideways to look around.</div>
     </div>
     <div class="setup"><span class="lbl">Difficulty</span>${diffSeg()}<span class="lbl">You</span>${facSeg('meSeg', 'me')}<span class="lbl">Opponent</span>${facSeg('foeSeg', 'foe')}<p class="fdesc" id="facDesc">${factionDesc(facPick.me)}</p></div>
-    <div class="row">${sv ? `<button class="big" id="bResume">Resume match</button><button class="ghost" id="bPlay">New match</button><span class="lbl">${DIFF[sv.diffKey] ? DIFF[sv.diffKey].label : ''}, ${fmtTime(sv.t)} in</span>` : '<button class="big" id="bPlay">Start match</button>'}<button class="ghost" id="bSound">${sndLabel()}</button></div>`);
+    <div class="row">${sv ? `<button class="big" id="bResume">Resume match</button><button class="ghost" id="bPlay">New match</button><span class="lbl">${DIFF[sv.diffKey] ? DIFF[sv.diffKey].label : ''}, ${fmtTime(sv.t)} in</span>` : '<button class="big" id="bPlay">Start match</button>'}<button class="ghost" id="bCodex">Codex</button><button class="ghost" id="bSound">${sndLabel()}</button></div>`);
   wireDiff(); wireFactions(); wireSound();
+  $('bCodex').addEventListener('click', () => openCodex(CX.tab));
   $('bPlay').addEventListener('click', startGame);
   if (sv) $('bResume').addEventListener('click', resumeGame);
   $('box').querySelector('.ver').addEventListener('click', showDev); // the dev menu (v2.38): tap the version
@@ -8201,8 +8261,9 @@ function startGame() {
 function pauseGame(restored) {
   paused = true; endAim(); saveGame();
   overlay(`<h1>${restored === true ? 'Match restored' : 'Paused'}</h1><p>${DIFF[game.diffKey].label} match, ${fmtTime(game.t)} elapsed.</p>
-    <div class="row"><button class="big" id="bRes">Resume</button><button class="ghost" id="bRe">Restart</button><button class="ghost" id="bMenu">Main menu</button><button class="ghost" id="bSound">${sndLabel()}</button></div>`);
+    <div class="row"><button class="big" id="bRes">Resume</button><button class="ghost" id="bRe">Restart</button><button class="ghost" id="bMenu">Main menu</button><button class="ghost" id="bCodex">Codex</button><button class="ghost" id="bSound">${sndLabel()}</button></div>`);
   wireSound();
+  $('bCodex').addEventListener('click', () => openCodex(game ? game.sides[0].faction : CX.tab));
   $('bRes').addEventListener('click', () => { paused = false; hideOverlay(); });
   $('bRe').addEventListener('click', startGame);
   $('bMenu').addEventListener('click', showStart);
@@ -8573,8 +8634,173 @@ let uiT = 0, saveT = 5;
 // 20 frames a second the game ran slower than 1x (at 6 fps, a third of real time). The SIM itself is unchanged.
 const SIM_STEP = 1 / 60, CATCH_UP = 0.25;
 let simAcc = 0;
+/* ---------- Codex (v2.44): the info pages ----------
+   Opened from the main menu and the pause menu (opening it mid-match pauses first, so closing it leaves the paused match as
+   it was: the menu underneath is never touched). Tabs: How to Play (CODEX_HOWTO, its own section for the tutorial task),
+   then one per faction. Every name, number, cost, tree and unlock is read when a tab is drawn, from the game data
+   (FACTIONS, BDEFS, TREE_SETS, UNIT_PATH, UDEF, UNIT_TIPS, ABIL, SALVAGE, CREEP, SHIELD, FIELD): change the data and the
+   Codex follows. Pictures come from the game's own draw functions (DRAW_U, drawBOf), drawn once onto small canvases.
+   openCodex(tab, item) is the deep link (for the tutorial): tab 'how' or a faction key; item 'building:<role>',
+   'tree:<role>', 'unit:<type>', 'stats' or 'mech' (short forms b:, t:, u:). It returns false when the item isn't there. */
+const CODEX_HOWTO = { title: 'How to Play', html: () => `<h2>How to Play</h2><p class="cxph">Tutorial coming soon.</p>` }; // the tutorial task replaces html()
+const CX = { open: false, tab: 'how', sort: {} };
+const CX_TABS = () => [['how', CODEX_HOWTO.title], ...FACTION_KEYS.map(k => [k, factionName(k)])];
+const CX_PROD = ['barracks', 'factory', 'techlab'];
+const cxN = v => typeof v !== 'number' ? v : Number.isInteger(v) ? v.toLocaleString('en') : String(+v.toFixed(2));
+const cxPct = v => +(v * 100).toFixed(1) + '%';
+const cxEsc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+const cxCost = k => !k || (!k.c && !k.e) ? 'Free' : `<i class="dot c"></i>${cxN(k.c)}${k.e ? ` <i class="dot e"></i>${cxN(k.e)}` : ''}`;
+const cxLink = (go, txt) => `<button class="cxlink" data-go="${go}">${cxEsc(txt)}</button>`;
+const cxArmor = a => ({ light: 'Light', heavy: 'Heavy', vehicle: 'Vehicle', air: 'Air' })[a] || a;
+// A faction's buildings: the pad buildings (HQ first, Build tab order), its signature pair, and anything else it has (the bunker)
+function cxRoles(fac) {
+  const B = BDEFS[fac], main = ['hq', ...BUILD_ORDER.filter(t => B[t] && !B[t].sig)], sig = Object.keys(B).filter(t => B[t].sig);
+  return { main, sig, other: Object.keys(B).filter(t => !main.includes(t) && !sig.includes(t)) };
+}
+// A faction's units: by building (Barracks, Factory, Tech Lab, then the rest), then path, then tier
+function cxUnits(fac) {
+  const bi = t => { const i = CX_PROD.indexOf(UDEF[t].from); return i < 0 ? 9 : i; }, pi = t => UNIT_PATH[t] ? UNIT_PATH[t].p : '';
+  return Object.keys(UDEF).filter(t => (UDEF[t].fac || DEFAULT_FACTION) === fac)
+    .sort((a, b) => bi(a) - bi(b) || pi(a).localeCompare(pi(b)) || UDEF[a].tier - UDEF[b].tier || UNIT_ORDER.indexOf(a) - UNIT_ORDER.indexOf(b));
+}
+// The units a building tier opens without a path (T1 units, or a building without a tree)
+const cxTierUnits = (fac, type, t) => cxUnits(fac).filter(u => UDEF[u].from === type && UDEF[u].tier === t && !UNIT_PATH[u] && !UDEF[u].noTrain);
+const cxUnitLinks = list => list.length ? `<span class="cxco">Troops: ${list.map(u => cxLink('u:' + u, UDEF[u].name)).join(', ')}</span>` : '';
+function cxUnlock(fac, t) {
+  const d = UDEF[t], b = BD(fac, d.from), q = UNIT_PATH[t], bl = cxLink((q ? 't:' : 'b:') + d.from, b.name);
+  if (d.noTrain || d.spawned) return `Spawned free by the ${bl}${d.tier > 1 ? ` at T${d.tier}` : ''}`;
+  if (q) return `${bl} T${d.tier}, ${cxEsc(q.path.name)} path`;
+  return `${bl}${d.tier > 1 ? ` T${d.tier}` : ', from the start'}`;
+}
+const cxMechFacts = {
+  lastfist: () => SALVAGE.pct > 0 ? `Now: ${cxPct(SALVAGE.pct)} of the credit cost, for kills within ${SALVAGE.r} of your units or buildings, at most ${SALVAGE.cap} credits a minute.` : 'Salvage is switched off.',
+  bloomhost: () => `Now: ${cxPct(CREEP.speed - 1)} faster on creep, and ${cxPct(CREEP.regen)} of max HP healed per second after ${CREEP.calm} s out of combat.`,
+  axiarchs: () => `Now: shields recharge ${cxPct(SHIELD.rate)} of max per second after ${SHIELD.delay} s without damage, and ${cxPct(FIELD.regen)} per second inside the power field.`,
+};
+function cxOverview(fac) {
+  const F = FACTIONS[fac], m = F.mech || {};
+  return `<h2 id="cx-mech">${cxEsc(F.name)}</h2><p>${cxEsc(F.overview || '')}</p>
+    <div class="cxmech"><b>Signature mechanic: ${cxEsc(m.name || '')}</b><p>${cxEsc(m.txt || '')}</p>${cxMechFacts[fac] ? `<p class="cxlive">${cxMechFacts[fac]()}</p>` : ''}</div>` +
+    (F.abilities ? `<h3>Commander abilities</h3>` + F.abil.map(k => { const A = ABIL[k]; return `<p class="cxab"><b>${cxEsc(A.name)}</b> (${cxCost(A.cost)}, ${A.cd} s cooldown): ${cxEsc(A.tip || '')}</p>`; }).join('') : '');
+}
+function cxBuilding(fac, type) {
+  const d = BD(fac, type), req = d.req ? BD(fac, d.req) : null;
+  const facts = [type === 'hq' ? 'Starts built' : d.noPad ? 'Free' : `Cost ${cxCost(d.cost)}`, `HP <b>${cxN(d.hp)}</b>`, d.shp ? `Shields <b>${cxN(d.shp)}</b>` : '',
+    type === 'hq' || d.noPad ? '' : `Build <b>${cxN(d.time)} s</b>`, req ? `Requires ${cxLink('b:' + d.req, req.name)}` : ''].filter(Boolean);
+  return `<article class="cxcard" id="cx-b-${type}"><canvas class="cxi" data-k="b" data-f="${fac}" data-t="${type}"></canvas><div class="cxt"><h3>${cxEsc(d.name)}</h3><p>${cxEsc(d.desc || '')}</p><div class="cxfacts">${facts.map(x => `<span>${x}</span>`).join('')}</div></div></article>` + cxTree(fac, type);
+}
+const cxUpCost = (d, t) => d.up && d.up[t] ? `<span class="cxco">${cxCost(d.up[t])} · ${cxN(d.up[t].time)} s</span>` : '';
+// The upgrade tree under a building: T1, then the two paths side by side (a building with a tree), or a T1-T3 chain
+function cxTree(fac, type) {
+  const d = BD(fac, type), T = treeOf(fac, type), tiers = d.tiers || [];
+  const root = `<div class="cxnode"><span class="tg">T1</span>${type === 'hq' ? 'Starting tier' : d.noPad ? 'Placed for free' : 'Built'}<span class="cxco"></span>${cxEsc(tiers[1] || '')}${cxUnitLinks(cxTierUnits(fac, type, 1))}</div>`;
+  if (T) return `<div class="cxtree" id="cx-t-${type}">${root}<div class="cxbr">${Object.keys(T).map(p => {
+    const P = T[p];
+    return `<div class="cxcol"><div class="cxpath">Path ${p}: ${cxEsc(P.name)}</div>${[2, 3].map(t => { const st = P.steps[t] || {};
+      return `<div class="cxnode"><span class="tg">T${t}</span><b>${cxEsc(st.short || '')}</b>${cxUpCost(d, t)}${st.unlock ? cxUnitLinks(st.unlock) : cxEsc(st.txt || '')}</div>`; }).join('')}</div>`;
+  }).join('')}</div></div>`;
+  const src = d.noPad && BDEFS[fac].sigB ? 'sigB' : null; // the bunker follows the Depot's tier
+  return `<div class="cxtree" id="cx-t-${type}"><div class="cxchain">${root}${[2, 3].filter(t => tiers[t]).map(t => `<div class="cxnode"><span class="tg">T${t}</span>${d.up && d.up[t] ? 'Upgrade' : src ? `With the ${cxLink('b:' + src, BD(fac, src).name)} at T${t}` : ''}${cxUpCost(d, t)}${cxEsc(tiers[t])}${cxUnitLinks(cxTierUnits(fac, type, t))}</div>`).join('')}</div></div>`;
+}
+function cxTroop(fac, t) {
+  const d = UDEF[t], tip = UNIT_TIPS[t];
+  const facts = [`Cost ${cxCost(d.cost)}`, d.pop ? `Army size <b>${fmtPop(d.pop)}</b>` : '', `HP <b>${cxN(d.hp)}</b>`, d.shp ? `Shields <b>${cxN(d.shp)}</b>` : ''].filter(Boolean);
+  return `<article class="cxcard" id="cx-u-${t}"><canvas class="cxi u" data-k="u" data-f="${fac}" data-t="${t}"></canvas><div class="cxt"><h3>${cxEsc(d.name)}</h3><p>${cxEsc(d.desc || '')}</p>
+    <div class="cxfacts"><span>Unlock: ${cxUnlock(fac, t)}</span>${facts.map(x => `<span>${x}</span>`).join('')}</div>
+    ${tip ? `<div class="cxtip"><em>Strong against</em> ${cxEsc(tip[0])}</div><div class="cxtip"><em>Weak against</em> ${cxEsc(tip[1])}</div>` : ''}</div></article>`;
+}
+// The troop stats table: columns read straight from UDEF; Shields only for a faction whose units have them
+const CX_COLS = [
+  { k: 'name', h: 'Troop', v: d => d.name, s: true },
+  { k: 'hp', h: 'HP', v: d => d.hp },
+  { k: 'shp', h: 'Shields', v: d => d.shp || 0, only: us => us.some(t => UDEF[t].shp) },
+  { k: 'armor', h: 'Armor', v: d => cxArmor(d.armor), s: true },
+  { k: 'dmg', h: 'Damage', v: d => d.weapon ? d.dmg : 0 },
+  { k: 'cd', h: 'Attack (s)', v: d => d.weapon ? d.cd : 0, f: v => v ? cxN(v) + ' s' : '–' },
+  { k: 'dps', h: 'Dmg/s', v: d => d.weapon ? d.dmg / d.cd : 0, f: v => v ? cxN(Math.round(v * 10) / 10) : '–' },
+  { k: 'range', h: 'Range', v: d => d.range, f: (v, d) => v ? cxN(v) + (d.minRange ? ` (min ${d.minRange})` : '') : '–' },
+  { k: 'speed', h: 'Speed', v: d => d.speed },
+  { k: 'cost', h: 'Cost', v: d => d.cost.c + d.cost.e, f: (v, d) => cxCost(d.cost) },
+  { k: 'pop', h: 'Army size', v: d => d.pop, f: v => fmtPop(v) },
+  { k: 'time', h: 'Build (s)', v: d => d.time, f: (v, d) => d.noTrain ? 'spawned' : cxN(v) + ' s' },
+];
+function cxTable(fac) {
+  const us = cxUnits(fac), cols = CX_COLS.filter(c => !c.only || c.only(us)), S = CX.sort[fac];
+  if (S) { const c = cols.find(x => x.k === S.k); if (c) us.sort((a, b) => { const x = c.v(UDEF[a]), y = c.v(UDEF[b]); return (c.s ? String(x).localeCompare(String(y)) : x - y) * S.dir; }); }
+  return `<table class="cxtbl"><thead><tr>${cols.map(c => `<th class="${S && S.k === c.k ? 'on' : ''}"><button data-sort="${c.k}">${c.h}${S && S.k === c.k ? (S.dir > 0 ? ' ▲' : ' ▼') : ''}</button></th>`).join('')}</tr></thead>
+    <tbody>${us.map(t => { const d = UDEF[t]; return `<tr data-t="${t}">${cols.map(c => { const v = c.v(d); return `<td>${c.k === 'name' ? cxLink('u:' + t, v) : c.f ? c.f(v, d) : cxEsc(cxN(v))}</td>`; }).join('')}</tr>`; }).join('')}</tbody></table>`;
+}
+function cxFaction(fac) {
+  const R = cxRoles(fac), B = BDEFS[fac];
+  return cxOverview(fac) +
+    `<h2>Buildings</h2>` + R.main.map(t => cxBuilding(fac, t)).join('') +
+    (R.sig.length ? `<h2>Signature buildings</h2><div class="cxnote">${sigPadOn() ? `You choose 1 of these ${R.sig.length} per match, built on your dedicated signature pad (outside the ${SLOT_COUNT} building pads). Only one can stand there at a time.` : `You choose 1 of these ${R.sig.length}: only one can stand at a time.`}</div>` + R.sig.map(t => cxBuilding(fac, t)).join('') : '') +
+    R.other.map(t => cxBuilding(fac, t)).join('') +
+    `<h2>Troops</h2>` + cxUnits(fac).map(t => cxTroop(fac, t)).join('') +
+    `<h2 id="cx-stats">Troop stats</h2><p>Tap a column to sort. Damage is per attack; Attack is the time between attacks.</p><div class="cxtw" id="cxTw">${cxTable(fac)}</div>`;
+}
+// Pictures: draw with the game's art at a fixed scale onto a scratch canvas, then fit the drawn pixels into the card's canvas
+let cxScratch = null;
+function cxPic(cvs) {
+  const k = cvs.dataset.k, fac = cvs.dataset.f, t = cvs.dataset.t, dpr = Math.min(2, window.devicePixelRatio || 1);
+  const W = cvs.clientWidth || (k === 'u' ? 72 : 88), H = cvs.clientHeight || (k === 'u' ? 60 : 66);
+  cvs.width = Math.round(W * dpr); cvs.height = Math.round(H * dpr);
+  const sc = cxScratch || (cxScratch = document.createElement('canvas')), SW = 480, SH = 360, Z = 2;
+  sc.width = SW; sc.height = SH;
+  const c = sc.getContext('2d');
+  c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, SW, SH);
+  try {
+    if (k === 'b') { c.translate(SW / 2, SH * 0.72); c.scale(Z, Z); drawBOf(fac)[t](c, TEAM[0], 1.2, null, 1); }
+    else { c.translate(SW / 2, UDEF[t].air ? SH / 2 : SH * 0.72); c.scale(Z, Z); DRAW_U[t](c, TEAM[0], { anim: 0, moving: false, recoil: 0 }); }
+  } catch (e) { cvs.dataset.err = e.message; return false; }
+  const px = c.getImageData(0, 0, SW, SH).data;
+  let x0 = SW, y0 = SH, x1 = -1, y1 = -1;
+  for (let y = 0; y < SH; y++) for (let x = 0; x < SW; x++) if (px[(y * SW + x) * 4 + 3] > 24) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  if (x1 < 0) return false;
+  const bw = x1 - x0 + 1, bh = y1 - y0 + 1, pad = 4 * dpr, s = Math.min((cvs.width - 2 * pad) / bw, (cvs.height - 2 * pad) / bh, dpr * 1.3);
+  const o = cvs.getContext('2d'); o.imageSmoothingQuality = 'high';
+  o.drawImage(sc, x0, y0, bw, bh, (cvs.width - bw * s) / 2, (cvs.height - bh * s) / 2, bw * s, bh * s);
+  return true;
+}
+function cxShow(tabKey) {
+  CX.tab = tabKey;
+  for (const b of $('cxTabs').children) { const on = b.dataset.t === tabKey; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); }
+  $('cxBody').innerHTML = `<div class="cxin">${tabKey === 'how' ? CODEX_HOWTO.html() : cxFaction(tabKey)}</div>`;
+  $('cxBody').scrollTop = 0;
+  for (const el of $('cxBody').querySelectorAll('canvas.cxi')) cxPic(el);
+}
+function cxGo(item) {
+  const [k, t] = String(item).split(':'), pre = { b: 'cx-b-', building: 'cx-b-', t: 'cx-t-', tree: 'cx-t-', u: 'cx-u-', unit: 'cx-u-', troop: 'cx-u-' }[k];
+  const el = k === 'stats' ? $('cx-stats') : k === 'mech' ? $('cx-mech') : pre && t ? $(pre + t) : null;
+  if (!el || !$('cxBody').contains(el)) return false;
+  const sc = $('cxBody');
+  sc.scrollTop += el.getBoundingClientRect().top - sc.getBoundingClientRect().top - 8;
+  el.classList.remove('cxhi'); void el.offsetWidth; el.classList.add('cxhi');
+  return true;
+}
+// The deep link: opens the Codex on a tab ('how' or a faction key; another value: the player's faction) and an item
+function openCodex(tabKey, item) {
+  if (game && running && !paused && !game.over) pauseGame(); // mid-match: pause first; closing leaves the paused match
+  hideInfo();
+  if (!$('cxTabs').children.length) $('cxTabs').innerHTML = CX_TABS().map(([k, n]) => `<button role="tab" data-t="${k}">${cxEsc(n)}</button>`).join('');
+  CX.open = true; $('codex').classList.remove('hide');
+  const tk = tabKey === 'how' || FACTIONS[tabKey] ? tabKey : tabKey ? facOf(game ? game.sides[0].faction : tabKey) : CX.tab;
+  cxShow(tk);
+  return item ? cxGo(item) : true;
+}
+function closeCodex() { CX.open = false; $('codex').classList.add('hide'); $('cxBody').innerHTML = ''; }
+$('cxX').addEventListener('click', closeCodex);
+$('cxTabs').addEventListener('click', e => { const b = e.target.closest('button[data-t]'); if (b) cxShow(b.dataset.t); });
+$('cxBody').addEventListener('click', e => {
+  const go = e.target.closest('[data-go]'); if (go) { cxGo(go.dataset.go); return; }
+  const so = e.target.closest('[data-sort]'); if (!so) return;
+  const fac = CX.tab, S = CX.sort[fac], k = so.dataset.sort, col = CX_COLS.find(c => c.k === k);
+  CX.sort[fac] = { k, dir: S && S.k === k ? -S.dir : col.s ? 1 : -1 }; // numbers: largest first; tap again to flip
+  const tw = $('cxTw'), x = tw.scrollLeft; tw.innerHTML = cxTable(fac); tw.scrollLeft = x;
+});
 function frame(ts) {
   requestAnimationFrame(frame);
+  if (CX.open) { last = ts; return; } // the Codex covers the screen: nothing to draw (the match is paused)
   vfxQuality(ts - last, !!(game && running && !paused));
   const real = Math.min(CATCH_UP, Math.max(0, (ts - last) / 1000)); last = ts;
   const dt = Math.min(0.05, real); // camera glide and the end screen's effects (as before)
