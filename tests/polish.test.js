@@ -6,7 +6,11 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { loadSim } = require('./load-sim');
 
-const sim = loadSim();
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+// v2.45: the SIM's Math.random goes through rnd, so one test can pin it (seeded) while the rest keep real randomness
+let rnd = Math.random;
+const seeded = (seed, fn) => { rnd = mulberry(seed); try { return fn(); } finally { rnd = Math.random; } };
+const sim = loadSim({ random: () => rnd() });
 const M = sim.MECH7C, L = sim.L;
 const step = (g, secs) => { for (let i = 0; i < Math.round(secs * 30); i++) sim.update(g, 1 / 30); };
 const quiet = (f0 = 'lastfist', f1 = 'bloomhost') => { const g = sim.newGame('normal', { factions: [f0, f1] }); g.countdown = 0; g.t = 30; for (const s of g.sides) { s.aiT = 1e9; s.res.c = s.res.e = 9000; } sim.setStance(g, 0, 'hold'); sim.setStance(g, 1, 'hold'); return g; };
@@ -64,21 +68,25 @@ test('melee on a Regroup flag engages within holdR of its flag spot too', () => 
   assert.ok(Math.abs(sk.u - 500) < 120);
 });
 
-test('rally on Attack: a player\'s new units wait at the rally point until the group there is worth batchV (or batchT seconds), then go together', () => {
+// v2.45: was flaky (about 1 run in 10 failed). Each unit's rallyOff (where it waits, 0-100 behind the flag) is random; a lone
+// Rifleman that rolled near -100 waited so far back that 6 s after its release it was still short of r + 40. Every unit here
+// now waits at rallyOff -50 (the middle of the range; 0 failures in 300 seeds at -50, 0 and -80), and the run is seeded.
+test('rally on Attack: a player\'s new units wait at the rally point until the group there is worth batchV (or batchT seconds), then go together', () => seeded(11, () => {
   const g = quiet('lastfist', 'lastfist');
-  const front = sim.spawnUnit(g, 0, 'tank', 900, 0); // the army already out in the field
+  const spawn = (t, u, v) => { const e = sim.spawnUnit(g, 0, t, u, v); e.rallyOff = -50; return e; }; // a fixed spot behind the flag
+  const front = spawn('tank', 900, 0); // the army already out in the field
   sim.setStance(g, 0, 'attack'); step(g, 1); // the army the Attack order found goes at once
-  const r = sim.rallyU(0), a = sim.spawnUnit(g, 0, 'rifle', r, 0);
+  const r = sim.rallyU(0), a = spawn('rifle', r, 0);
   step(g, 4);
   const atRally = u => u < r + 30 && u > r - 130; // the rally point, spread back by each unit's own offset (rallyOff)
   assert.ok(atRally(a.u), `one Rifleman (45) waits at the rally point: ${Math.round(a.u)} vs ${r}`);
-  const more = []; for (let i = 0; i < 6; i++) more.push(sim.spawnUnit(g, 0, 'rifle', r - 10, (i - 3) * 10)); // 7 x 45 = 315 >= 300
+  const more = []; for (let i = 0; i < 6; i++) more.push(spawn('rifle', r - 10, (i - 3) * 10)); // 7 x 45 = 315 >= 300
   const a0 = a.u; step(g, 4);
   assert.ok(a.u > a0 + 60 && more.every(x => x.u > r + 40), 'the group left together');
   // a lone unit still goes after batchT seconds
-  const b = sim.spawnUnit(g, 0, 'rifle', r, 0); step(g, M.batchT - 2); assert.ok(atRally(b.u)); step(g, 6); assert.ok(b.u > r + 40);
+  const b = spawn('rifle', r, 0); step(g, M.batchT - 2); assert.ok(atRally(b.u)); step(g, 6); assert.ok(b.u > r + 40);
   void front;
-});
+}));
 
 test('rally batching is the player\'s side only (the AI moves its army by its own rules)', () => {
   const g = sim.newGame('normal'); assert.strictEqual(sim.playerSide(g, 0), true); assert.strictEqual(sim.playerSide(g, 1), false);

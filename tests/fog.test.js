@@ -3,7 +3,11 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { loadSim } = require('./load-sim');
 
-const sim = loadSim(); sim.setBalance7b(false); // v2.42: these tests pin the mechanics at v2.41's numbers (the phase 7b layer off; tests/strategy.test.js covers it)
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+// v2.45: the SIM's Math.random goes through rnd, so one test can pin it (seeded) while the rest keep real randomness
+let rnd = Math.random;
+const seeded = (seed, fn) => { rnd = mulberry(seed); try { return fn(); } finally { rnd = Math.random; } };
+const sim = loadSim({ random: () => rnd() }); sim.setBalance7b(false); // v2.42: these tests pin the mechanics at v2.41's numbers (the phase 7b layer off; tests/strategy.test.js covers it)
 const STEP = 1 / 30;
 const run = (g, sec, each) => { for (let i = Math.round(sec / STEP); i > 0; i--) { sim.update(g, STEP); if (each && each(g) === false) return; } };
 const quiet = (diff = 'normal') => { const g = sim.newGame(diff); g.sides[0].aiT = g.sides[1].aiT = 1e9; return g; };
@@ -159,10 +163,15 @@ test('AI decisions use only its own vision (identical choices whatever is hidden
   assert.ok(differs, 'a visible army does change what the AI does');
 });
 
-test('AI siege under fog: a spotter walks up and Artillery hits the player\'s buildings', () => {
+// v2.45: was flaky (about 1 run in 4 failed). On the first free pads the nearest building (the Refinery, u 281) sat right at the
+// edge of what the spotter could see from where the HQ gun stops it, so tiny random differences (rallyOff spread, salvo
+// scatter, the HQ gun's timing) decided whether the Artillery ever got a target. The four buildings now stand on the front
+// pads (4, 1, 6, 3: the nearest at u 341), which the spotter reveals with margin (0 failures in 300 seeds, at most 69% of the
+// HP left against the 80% bar; the spotterless control still never fires), and the run is seeded so it is the same every time.
+test('AI siege under fog: a spotter walks up and Artillery hits the player\'s buildings', () => seeded(7, () => {
   const setup = withSpotter => {
     const g = quiet(); give(g, 0);
-    for (const t of ['barracks', 'refinery', 'reactor', 'habitat']) assert.ok(sim.tryBuild(g, 0, t).ok);
+    ['barracks', 'refinery', 'reactor', 'habitat'].forEach((t, i) => assert.ok(sim.tryBuild(g, 0, t, [4, 1, 6, 3][i]).ok)); // the front pads
     run(g, 16);
     for (let i = 0; i < 3; i++) sim.spawnUnit(g, 1, 'artillery', 1180 - i * 15, 0);
     if (withSpotter) { sim.spawnUnit(g, 1, 'aircraft', 1190, 0); sim.spawnUnit(g, 1, 'heavy', 1195, 0); sim.spawnUnit(g, 1, 'heavy', 1200, 0); }
@@ -180,7 +189,7 @@ test('AI siege under fog: a spotter walks up and Artillery hits the player\'s bu
   const lone = setup(false), hpL = hpOf(lone);
   run(lone, 70);
   assert.strictEqual(hpOf(lone), hpL, 'without a spotter the Artillery cannot see the base and does not fire');
-});
+}));
 
 test('saves: v6 keeps fog, ghosts and AI memory; v5 saves load with fog from current vision only', () => {
   const g = quiet(); give(g, 1);

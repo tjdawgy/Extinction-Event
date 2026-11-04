@@ -392,7 +392,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.44'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.45'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -460,20 +460,16 @@ const BDEF = {
     gun: [null, { weapon: 'hqgun', dmg: 32, cd: 1.1, range: 390, hitsAir: true },
                 { weapon: 'hqgun', dmg: 42, cd: 1.0, range: 430, hitsAir: true },
                 { weapon: 'hqgun', dmg: 55, cd: 0.9, range: 470, hitsAir: true }],
-    up: [null, null, { c: 300, e: 100, time: 20 }, { c: 500, e: 250, time: 28 }],
-    tiers: [null, 'Turret 32 damage, 390 range, 2,800 HP', 'Turret 42 damage, 430 range, 3,640 HP', 'Turret 55 damage, 470 range, 4,480 HP'] },
+    up: [null, null, { c: 300, e: 100, time: 20 }, { c: 500, e: 250, time: 28 }] },
   refinery: { name: 'Refinery', desc: 'Produces credits, your main resource. Build more early to grow your economy, but they are soft targets.', cost: { c: 150, e: 0 }, hp: 520, half: 32, h: 62, time: 10,
     inc: [null, { c: 4, e: 0 }, { c: 6, e: 0 }, { c: 9, e: 0 }],
-    up: [null, null, { c: 120, e: 20, time: 12 }, { c: 200, e: 60, time: 18 }],
-    tiers: [null, '+4 credits/s', '+6 credits/s', '+9 credits/s'] },
+    up: [null, null, { c: 120, e: 20, time: 12 }, { c: 200, e: 60, time: 18 }] },
   reactor: { name: 'Reactor', desc: 'Produces energy, needed for advanced units and upgrades.', cost: { c: 125, e: 0 }, hp: 460, half: 30, h: 60, time: 12,
     inc: [null, { c: 0, e: 2 }, { c: 0, e: 3 }, { c: 0, e: 4.5 }],
-    up: [null, null, { c: 100, e: 30, time: 12 }, { c: 180, e: 80, time: 18 }],
-    tiers: [null, '+2 energy/s', '+3 energy/s', '+4.5 energy/s'] },
+    up: [null, null, { c: 100, e: 30, time: 12 }, { c: 180, e: 80, time: 18 }] },
   habitat: { name: 'Habitat', desc: 'Raises your army size limit. Upgrade it to field a bigger army.', cost: { c: 100, e: 0 }, hp: 420, half: 32, h: 40, time: 8,
     pop: [0, 10, 16, 22],
-    up: [null, null, { c: 100, e: 20, time: 10 }, { c: 160, e: 50, time: 14 }],
-    tiers: [null, '+10 army size', '+16 army size', '+22 army size'] },
+    up: [null, null, { c: 100, e: 20, time: 10 }, { c: 160, e: 50, time: 14 }] },
   barracks: { name: 'Barracks', desc: 'Trains infantry. At T2 it picks one of two paths that decide which advanced infantry it unlocks.', cost: { c: 150, e: 0 }, hp: 640, half: 32, h: 56, time: 14,
     up: [null, null, { c: 150, e: 50, time: 14 }, { c: 250, e: 120, time: 20 }],
     tiers: [null, 'Trains Riflemen', 'Unlocks Heavy troopers', 'Unlocks Snipers'] },
@@ -482,35 +478,31 @@ const BDEF = {
     tiers: [null, 'Builds Tanks', 'Unlocks Artillery', 'Unlocks Titans'] },
   techlab: { name: 'Tech Lab', desc: 'Builds aircraft. Its path chooses more air power or support units and a damage upgrade for your whole army.', cost: { c: 350, e: 150 }, hp: 700, half: 30, h: 96, time: 26, req: 'barracks', // v2.16: a Barracks is enough
     up: [null, null, { c: 250, e: 150, time: 20 }, { c: 400, e: 300, time: 28 }],
-    tiers: [null, 'Builds Gunships', 'Unlocks Interceptors', 'Nanoweave: your units and defenses deal 20% more damage and take 15% less'] },
+    tiers: [null, 'Builds Gunships', 'Unlocks Interceptors', null] }, // T3: Nanoweave's text is live (v2.45)
   turret: { name: 'Turret', desc: 'Static defence gun that shoots ground and air. Solid protection for your base, but it can\'t move.', cost: { c: 200, e: 50 }, hp: 900, half: 26, h: 46, time: 12,
     gun: [null, { weapon: 'gatling', dmg: 12, cd: 0.45, range: 250, hitsAir: true },
                 { weapon: 'gatling', dmg: 17, cd: 0.4, range: 280, hitsAir: true },
                 { weapon: 'gatling', dmg: 22, cd: 0.35, range: 310, hitsAir: true }],
-    up: [null, null, { c: 150, e: 60, time: 12 }, { c: 250, e: 120, time: 16 }],
-    tiers: [null, 'Gun 27 damage/s, 250 range, hits air', 'Gun 42 damage/s, 280 range, hits air', 'Gun 63 damage/s, 310 range, hits air'] },
+    up: [null, null, { c: 150, e: 60, time: 12 }, { c: 250, e: 120, time: 16 }] },
 };
 // Signature buildings (v2.32, docs/SIGNATURE_BUILDINGS.md): two roles, sigA and sigB, at most one of each per side at a time.
 // Cost, build time, HP and upgrade costs are the faction's light production building's (Last Fist: the Barracks); no tree,
 // no supply. Last Fist: the Salvage Yard (A) raises Salvage (YARD), the Fortification Depot (B) puts a bunker on every field
 // node it holds (BUNKER). A faction without these roles yet (Bloomhost until v2.33, Axiarchs until v2.34) can't build them.
 const sigDef = (base, x) => Object.assign({ cost: base.cost, hp: base.hp, half: base.half, time: base.time, up: base.up, sig: true }, base.shp ? { shp: base.shp } : {}, x); // shp: an Axiarch building's shields (v2.34)
-BDEF.sigA = sigDef(BDEF.barracks, { name: 'Salvage Yard', desc: 'Signature building that strengthens Salvage: more credits back from kills, and once upgraded energy too and an Overdrive production boost.', h: 46,
-  tiers: [null, 'Salvage returns 20% of a unit\'s credit cost (base 10%)', 'Salvage cap doubled (400 a minute); salvage also returns half as much energy', 'Overdrive: salvage over the cap speeds your production +25% for 20 s'] });
-BDEF.sigB = sigDef(BDEF.barracks, { name: 'Fortification Depot', desc: 'Signature building that puts a free bunker on every field node you hold. Upgrades let the bunkers heal infantry and hit aircraft.', h: 48,
-  tiers: [null, 'A bunker on every field node you hold (ground only)', 'Bunkers heal your Barracks units in range, 2% of HP per second', 'Bunker guns deal double damage and hit aircraft'] });
+BDEF.sigA = sigDef(BDEF.barracks, { name: 'Salvage Yard', desc: 'Signature building that strengthens Salvage: more credits back from kills, and once upgraded energy too and an Overdrive production boost.', h: 46 });
+BDEF.sigB = sigDef(BDEF.barracks, { name: 'Fortification Depot', desc: 'Signature building that puts a free bunker on every field node you hold. Upgrades let the bunkers heal infantry and hit aircraft.', h: 48 });
 // The node bunker: the Turret's code at half a T1 Turret's HP and damage, ground only until the Depot's T3. Never built by
 // hand: the Depot places one on each held node (no pad, no supply, no cost) and its tier follows the Depot's.
 BDEF.bunker = { name: 'Node Bunker', desc: 'A small gun bunker the Fortification Depot places on each node you hold. Free and rebuilt on its own, but weaker than a Turret.', cost: { c: 0, e: 0 }, hp: BDEF.turret.hp / 2, half: 14, h: 26, time: 1, noPad: true, up: [null, null, null, null],
   gun: [null, { weapon: 'gatling', dmg: BDEF.turret.gun[1].dmg / 2, cd: BDEF.turret.gun[1].cd, range: BDEF.turret.gun[1].range, hitsAir: false },
               { weapon: 'gatling', dmg: BDEF.turret.gun[1].dmg / 2, cd: BDEF.turret.gun[1].cd, range: BDEF.turret.gun[1].range, hitsAir: false },
-              { weapon: 'gatling', dmg: BDEF.turret.gun[1].dmg, cd: BDEF.turret.gun[1].cd, range: BDEF.turret.gun[1].range, hitsAir: true }],
-  tiers: [null, 'Gun 13 damage/s, 250 range, ground only', 'Also heals your Barracks units in range (2% of HP per second)', 'Gun 27 damage/s, hits air too; still heals'] };
+              { weapon: 'gatling', dmg: BDEF.turret.gun[1].dmg, cd: BDEF.turret.gun[1].cd, range: BDEF.turret.gun[1].range, hitsAir: true }] };
 // Bloomhost (v2.17): the same roles; first-pass numbers mirror Last Fist (docs/BLOOMHOST.md has the table). The Hive keeps
 // the HQ's stats and gun, so nothing about the enemy's faction leaks into the AI's estimate of a base it hasn't seen.
 const BDEF_BH = (() => {
   const o = {}, re = (k, x) => { o[k] = Object.assign({}, BDEF[k], x); };
-  re('hq', { name: 'Hive', desc: 'The swarm\'s heart: a spine launcher, army size, income and the source of creep. Shielded while any other building stands; lose it and you lose.', tiers: [null, 'Spine launcher 32 damage, 390 range, 2,800 HP', 'Spine launcher 42 damage, 430 range, 3,640 HP', 'Spine launcher 55 damage, 470 range, 4,480 HP'] });
+  re('hq', { name: 'Hive', desc: 'The swarm\'s heart: a spine launcher, army size, income and the source of creep. Shielded while any other building stands; lose it and you lose.' });
   re('refinery', { name: 'Goremound', desc: 'Produces credits, your main resource. Grow more early, and protect them.' });
   re('reactor', { name: 'Pulse Organ', desc: 'Produces energy for advanced organisms and upgrades.' });
   re('habitat', { name: 'Hatchery', desc: 'Raises your army size limit: upgrade it to grow a larger swarm.' });
@@ -521,25 +513,21 @@ const BDEF_BH = (() => {
   re('turret', { name: 'Maw', desc: 'A living defence that spits spines at ground and air. Tougher than a Turret, with a shorter reach.', hp: 1000,
     gun: [null, { weapon: 'spine', dmg: 16, cd: 0.6, range: 220, hitsAir: true },
                 { weapon: 'spine', dmg: 22, cd: 0.55, range: 245, hitsAir: true },
-                { weapon: 'spine', dmg: 29, cd: 0.5, range: 270, hitsAir: true }],
-    tiers: [null, 'Spines 27 damage/s, 220 range, hits air', 'Spines 40 damage/s, 245 range, hits air', 'Spines 58 damage/s, 270 range, hits air'] });
+                { weapon: 'spine', dmg: 29, cd: 0.5, range: 270, hitsAir: true }] });
   // drawn heights: living structures are lower than Last Fist's towers (health bars, aim points and smoke follow h)
   for (const [k, h] of Object.entries({ hq: 56, refinery: 30, reactor: 24, habitat: 6, barracks: 12, factory: 16, turret: 18, techlab: 52 })) o[k].h = h;
   return o;
 })();
 // Bloomhost signature buildings (v2.33): the Brood Mound (A) spawns Mites (MOUND), the Rootheart (B) strengthens creep (ROOT).
 // Larva Pit cost, build time, HP and upgrade costs (the Larva Pit copies the Barracks); drawn heights fit their low art.
-BDEF_BH.sigA = sigDef(BDEF_BH.barracks, { name: 'Brood Mound', desc: 'Signature building that spawns free, short-lived Mites. Upgrades spawn more, and at T3 a killed Mite bursts into acid.', h: 22,
-  tiers: [null, 'Spawns 2 Mites every 20 s (30 s life, at most 10)', 'Spawns 3 Mites every 20 s', 'A Mite that is killed bursts into acid against enemy ground units'] });
-BDEF_BH.sigB = sigDef(BDEF_BH.barracks, { name: 'Rootheart', desc: 'Signature building that makes creep spread faster and farther and slows enemies on it. Upgrades add faster healing and snaring roots.', h: 30,
-  tiers: [null, 'Creep spreads 1.5× faster and 1.5× farther; enemy ground units on it move 15% slower', 'Your units regenerate 50% faster on creep', 'Every 15 s roots snare enemy ground units at the creep\'s edge for 1 s'] });
+BDEF_BH.sigA = sigDef(BDEF_BH.barracks, { name: 'Brood Mound', desc: 'Signature building that spawns free, short-lived Mites. Upgrades spawn more, and at T3 a killed Mite bursts into acid.', h: 22 });
+BDEF_BH.sigB = sigDef(BDEF_BH.barracks, { name: 'Rootheart', desc: 'Signature building that makes creep spread faster and farther and slows enemies on it. Upgrades add faster healing and snaring roots.', h: 30 });
 // Axiarchs (v2.25): the same roles and costs; every building trades a fifth of its HP for shields worth 30% of the Last Fist
 // HP (docs/AXIARCHS.md has the table). The Null Lance is the defence: one beam at T1, Split Lattice (up to 3 beams at
 // lower damage) at T2, Event Horizon (longer range, heavy hits, more building damage, slower) at T3.
 const BDEF_AX = (() => {
   const o = {}, re = (k, x) => { o[k] = Object.assign({}, BDEF[k], x); o[k].shp = Math.round(BDEF[k].hp * 0.3); o[k].hp = Math.round((x.hp || BDEF[k].hp) * 0.8); };
-  re('hq', { name: 'Axis', desc: 'The Axiarch core: a beam lance, army size, income and the base power field. Shielded while any other building stands; lose it and you lose.', gun: BDEF.hq.gun.map(x => x && Object.assign({}, x, { weapon: 'hqbeam', beam: true })), // v2.36: the Axis lance is a beam (same damage, rate and range; lands at once)
-    tiers: [null, 'Axis lance 32 damage, 390 range; 2,240 HP + 840 shields', 'Axis lance 42 damage, 430 range; 2,912 HP + 1,092 shields', 'Axis lance 55 damage, 470 range; 3,584 HP + 1,344 shields'] });
+  re('hq', { name: 'Axis', desc: 'The Axiarch core: a beam lance, army size, income and the base power field. Shielded while any other building stands; lose it and you lose.', gun: BDEF.hq.gun.map(x => x && Object.assign({}, x, { weapon: 'hqbeam', beam: true })) }); // v2.36: the Axis lance is a beam (same damage, rate and range; lands at once)
   re('refinery', { name: 'Matter Loom', desc: 'Produces credits, your main resource. Like every Axiarch building, it has shields over its hull.' });
   re('reactor', { name: 'Singularity Well', desc: 'Produces energy. Axiarch units are energy-hungry, so plan for several.' });
   re('habitat', { name: 'Continuum Spire', desc: 'Raises your army size limit and enlarges the power field around the Axis.' });
@@ -549,18 +537,15 @@ const BDEF_AX = (() => {
   re('turret', { name: 'Null Lance', desc: 'Beam defence that hits ground and air. Upgrades split the beam over several targets, then turn it into heavy long-range shots.',
     gun: [null, { weapon: 'lance', dmg: 30, cd: 1.0, range: 260, hitsAir: true, beam: true },
                 { weapon: 'lance', dmg: 20, cd: 0.85, range: 280, hitsAir: true, beam: true, split: 3 },
-                { weapon: 'horizon', dmg: 92, cd: 1.6, range: 330, hitsAir: true, beam: true }],
-    tiers: [null, 'Beam 30 damage/s at one target, 260 range, hits air', 'Split Lattice: up to 3 beams of 24 damage/s, 280 range, hits air', 'Event Horizon: heavy 92-damage hits (58/s), 330 range, more building damage, hits air'] });
+                { weapon: 'horizon', dmg: 92, cd: 1.6, range: 330, hitsAir: true, beam: true }] });
   // drawn heights (health bars, aim points): stone monoliths, lower than Last Fist's towers
   for (const [k, h] of Object.entries({ hq: 70, refinery: 40, reactor: 46, habitat: 30, barracks: 44, factory: 40, turret: 40, techlab: 70 })) o[k].h = h;
   return o;
 })();
 // Axiarch signature buildings (v2.34): the Phase Beacon (A) and the Echo Reliquary (B); Genesis Gate cost, time, HP, shields
 // and upgrade costs; drawn heights fit their art
-BDEF_AX.sigA = sigDef(BDEF_AX.barracks, { name: 'Phase Beacon', desc: 'Signature building that carries a power-field bubble with your frontmost unit, so you can warp in at the front. It collapses after heavy losses.', h: 50,
-  tiers: [null, 'A power-field bubble follows your frontmost unit (a node field\'s size); it collapses for 15 s if your units in it lose 35% within 5 s', 'Bubble 1.5× wider', 'Units that warp into the bubble arrive with full shields and +20% damage for 8 s'] });
-BDEF_AX.sigB = sigDef(BDEF_AX.barracks, { name: 'Echo Reliquary', desc: 'Signature building that keeps echoes of your fallen advanced units, so you can warp them back at a discount.', h: 46,
-  tiers: [null, 'Keeps the echoes of your last 3 fallen T2/T3 units: warp one back for half its cost', 'Keeps 5 echoes', 'Recovered units arrive with a 30% overshield for 20 s'] });
+BDEF_AX.sigA = sigDef(BDEF_AX.barracks, { name: 'Phase Beacon', desc: 'Signature building that carries a power-field bubble with your frontmost unit, so you can warp in at the front. It collapses after heavy losses.', h: 50 });
+BDEF_AX.sigB = sigDef(BDEF_AX.barracks, { name: 'Echo Reliquary', desc: 'Signature building that keeps echoes of your fallen advanced units, so you can warp them back at a discount.', h: 46 });
 const BDEFS = { lastfist: BDEF, bloomhost: BDEF_BH, axiarchs: BDEF_AX };
 const BD = (fac, type) => (BDEFS[fac] || BDEF)[type];     // a faction's definition of a building role
 const bdOf = e => BD(e.fac, e.type);                        // a building's own definition
@@ -573,11 +558,11 @@ const hpMul = (d, t) => (d.hpMul || HPMUL)[t];
    on a named modifier; a later faction is mostly a different TREES table. (The Tech Lab follows.) */
 const TREES = {
   barracks: { A: { name: 'Specialists', short: 'SPEC', steps: [null, null, { unlock: ['heavy'], short: 'Heavy troopers', txt: 'Unlocks Heavy troopers' }, { unlock: ['sniper'], short: 'Snipers', txt: 'Unlocks Snipers: rounds that pierce a line' }] },
-              B: { name: 'Mass Deployment', short: 'MASS', steps: [null, null, { mod: 'pairs', short: 'Riflemen in pairs', txt: 'Trains Riflemen two at a time (a pair takes 6 s)' }, { mod: 'drill', short: 'Drilled Riflemen', txt: 'Drilled Riflemen: +35% HP, +10% damage, capture nodes 1.5× faster' }] } },
-  factory:  { A: { name: 'Siege', short: 'SIEGE', steps: [null, null, { unlock: ['artillery'], short: 'Artillery', txt: 'Unlocks Artillery: three-shell salvos' }, { unlock: ['titan'], short: 'Titans', txt: 'Unlocks Titans: walkers that plant for siege range' }] },
+              B: { name: 'Mass Deployment', short: 'MASS', steps: [null, null, { mod: 'pairs', short: 'Riflemen in pairs' }, { mod: 'drill', short: 'Drilled Riflemen' }] } },
+  factory:  { A: { name: 'Siege', short: 'SIEGE', steps: [null, null, { unlock: ['artillery'], short: 'Artillery' }, { unlock: ['titan'], short: 'Titans', txt: 'Unlocks Titans: walkers that plant for siege range' }] },
               B: { name: 'Assault', short: 'ASSAULT', steps: [null, null, { unlock: ['flame'], short: 'Flame Tanks', txt: 'Unlocks Flame Tanks: burn groups of infantry at close range' }, { unlock: ['hydra'], short: 'Hydras', txt: 'Unlocks Hydras: walkers with rotary guns that prefer aircraft' }] } },
   techlab:  { A: { name: 'Air Power', short: 'AIR', steps: [null, null, { unlock: ['interceptor'], short: 'Interceptors', txt: 'Unlocks Interceptors: hunt aircraft, escort your own' }, { unlock: ['leviathan'], short: 'Leviathans', txt: 'Unlocks Leviathans: carpet bombers that wreck bases' }] },
-              B: { name: 'Support', short: 'SUPPORT', steps: [null, null, { unlock: ['medic', 'drone'], short: 'Medicopters, Recon Drones', txt: 'Unlocks Medicopters (heal infantry) and Recon Drones (scouts, at most 3)' }, { mod: 'nanoweave', short: 'Nanoweave', txt: 'Nanoweave: your units and defenses deal 20% more damage and take 15% less' }] } },
+              B: { name: 'Support', short: 'SUPPORT', steps: [null, null, { unlock: ['medic', 'drone'], short: 'Medicopters, Recon Drones' }, { mod: 'nanoweave', short: 'Nanoweave' }] } },
 };
 // Bloomhost trees: the Larva Pit and the Evolution Chamber (v2.19), the Bloomspire (v2.21)
 const TREES_BH = {
@@ -599,7 +584,8 @@ const TREES_AX = {
 };
 const TREE_SETS = { lastfist: TREES, bloomhost: TREES_BH, axiarchs: TREES_AX };
 const prodLocked = (fac, type) => !!TREES[type] && !treeOf(fac, type); // a production building with no paths yet (Axiarchs, v2.25)
-const DRILL = { hp: 1.35, dmg: 1.1, capture: 1.5 }, PAIR_TIME = 1.5; // a Mass Deployment pair takes 1.5× a Rifleman's training time
+const DRILL = { hp: 1.35, dmg: 1.1, capture: 1.5 }, PAIR_TIME = 1.5;
+const NANO = { dmg: 1.2, cut: 0.85 }; // Nanoweave (Support T3): its side deals ×dmg and takes ×cut (v2.45: named, so its description reads it; same values) // a Mass Deployment pair takes 1.5× a Rifleman's training time
 const UNIT_PATH = {}; // unit type → { b: building type, p: path, path: the path's entry } for units a path unlocks (both factions)
 for (const fac in TREE_SETS) { const S = TREE_SETS[fac]; for (const bt in S) for (const p in S[bt]) for (const st of S[bt][p].steps) if (st && st.unlock) for (const u of st.unlock) UNIT_PATH[u] = { b: bt, p, path: S[bt][p] }; }
 const pathMod = (b, mod) => { const T = treeOf(b.fac, b.type); if (!T || !b.path || !b.built) return false; const st = T[b.path].steps; for (let t = 2; t <= b.tier; t++) if (st[t] && st[t].mod === mod) return true; return false; };
@@ -891,17 +877,7 @@ function setBalance7c(on, keep) { // keep: switched off only while a lower layer
   BALANCE7C.on = on;
   b7Texts();
 }
-// Descriptions that quote numbers this layer changes (HQ guns, Turrets, signature buildings) follow the live values
-function b7Texts() {
-  const n = v => String(Math.round(v)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  const hqT = (fac, w, x) => { const d = BD(fac, 'hq'); for (let t = 1; t <= 3; t++) { const gn = d.gun[t]; d.tiers[t] = `${w} ${gn.dmg} damage, ${gn.range} range${x ? `; ${n(d.hp * d.hpMul[t])} HP + ${n(d.shp * d.hpMul[t])} shields` : `, ${n(d.hp * d.hpMul[t])} HP`}`; } };
-  hqT('lastfist', 'Turret'); hqT('bloomhost', 'Spine launcher'); hqT('axiarchs', 'Axis lance', true);
-  const mw = BDEF_BH.turret.gun, ln = BDEF_AX.turret.gun, ps = gn => Math.round(gn.dmg / gn.cd);
-  for (let t = 1; t <= 3; t++) BDEF_BH.turret.tiers[t] = `Spines ${ps(mw[t])} damage/s, ${mw[t].range} range, hits air`;
-  BDEF_AX.turret.tiers[1] = `Beam ${ps(ln[1])} damage/s at one target, ${ln[1].range} range, hits air`;
-  BDEF_AX.turret.tiers[2] = `Split Lattice: up to 3 beams of ${ps(ln[2])} damage/s, ${ln[2].range} range, hits air`;
-  BDEF_AX.turret.tiers[3] = `Event Horizon: heavy ${ln[3].dmg}-damage hits (${ps(ln[3])}/s), ${ln[3].range} range, more building damage, hits air`;
-}
+function b7Texts() {} // v2.45: building texts read the live numbers themselves (the live description block below); nothing to rewrite
 /* ---------- Balance pass (v2.39, audit phase 5; audit/balance-report.md) ----------
    Conservative: costs and build times first, then two small stat fixes where controlled duels showed a unit losing at equal
    value. No mechanic changes. Each change and its reason is in the report. setBalance(false) restores every v2.38 value, so
@@ -927,7 +903,6 @@ function setBalance(on) {
   }
   const s0 = BALANCE.orig.salvage || (BALANCE.orig.salvage = [SALVAGE.pct, YARD.pct]);
   SALVAGE.pct = on ? BALANCE.salvage : s0[0]; YARD.pct = on ? BALANCE.yard : s0[1];
-  BDEF.sigA.tiers[1] = `Salvage returns ${Math.round(YARD.pct * 100)}% of a unit's credit cost (base ${Math.round(SALVAGE.pct * 100)}%)`;
   BALANCE.on = on;
   if (on && BALANCE7B.orig) setBalance7b(true); // (v2.43: which puts the phase 7c layer back if it was on) // at load the layer comes on further down, once NODE_INC exists
 }
@@ -1297,6 +1272,51 @@ function setMech7c(on) {
   NODE_U[0] = on ? HQ_U + MECH7C.node : MECH7C.old.node[0]; NODE_U[2] = on ? L - HQ_U - MECH7C.node : MECH7C.old.node[1];
 }
 setMech7c(true);
+/* ---------- Live description texts (v2.45) ----------
+   Every number a building tier, upgrade step or ability description quotes is read from the data when the text is read
+   (getters), so the text can never disagree with the numbers (balance layers, tests or later edits change both at once).
+   Consumers still read plain strings: d.tiers[t], step.txt, ABIL[k].tip (and UNIT_TIPS in the UI section). */
+const txN = v => { const r = Math.round(v * 100) / 100; return Number.isInteger(r) ? String(r).replace(/\B(?=(\d{3})+(?!\d))/g, ',') : String(r); };
+const txP = v => txN(v * 100) + '%', txX = v => txN(v) + '×', txDps = gn => Math.round(gn.dmg / gn.cd), txAir = gn => gn.hitsAir ? 'hits air' : 'ground only';
+const liveStr = (o, k, f) => Object.defineProperty(o, k, { get: f, enumerable: true, configurable: true });
+const liveTiers = (d, f) => { const a = [null]; for (let t = 1; t <= 3; t++) liveStr(a, t, () => f(d, t)); d.tiers = a; };
+const nanoTxt = () => `Nanoweave: your units and defenses deal ${txP(NANO.dmg - 1)} more damage and take ${txP(1 - NANO.cut)} less`;
+const perMin = () => SALVAGE.per === 60 ? 'a minute' : `every ${txN(SALVAGE.per)} s`;
+for (const fac of FACTION_KEYS) {
+  const B = BDEFS[fac], w = { lastfist: 'Turret', bloomhost: 'Spine launcher', axiarchs: 'Axis lance' }[fac];
+  liveTiers(B.hq, (d, t) => { const gn = d.gun[t], hp = txN(Math.round(d.hp * d.hpMul[t])); return `${w} ${txN(gn.dmg)} damage, ${txN(gn.range)} range${d.shp ? `; ${hp} HP + ${txN(Math.round(d.shp * d.hpMul[t]))} shields` : `, ${hp} HP`}`; });
+  liveTiers(B.refinery, (d, t) => `+${txN(d.inc[t].c)} credits/s`);
+  liveTiers(B.reactor, (d, t) => `+${txN(d.inc[t].e)} energy/s`);
+  liveTiers(B.habitat, (d, t) => `+${txN(d.pop[t])} army size`);
+}
+liveTiers(BDEF.turret, (d, t) => `Gun ${txDps(d.gun[t])} damage/s, ${txN(d.gun[t].range)} range, ${txAir(d.gun[t])}`);
+liveTiers(BDEF_BH.turret, (d, t) => `Spines ${txDps(d.gun[t])} damage/s, ${txN(d.gun[t].range)} range, ${txAir(d.gun[t])}`);
+liveTiers(BDEF_AX.turret, (d, t) => { const gn = d.gun[t]; return [null, `Beam ${txDps(gn)} damage/s at one target, ${txN(gn.range)} range, ${txAir(gn)}`,
+  `Split Lattice: up to ${gn.split} beams of ${txDps(gn)} damage/s, ${txN(gn.range)} range, ${txAir(gn)}`,
+  `Event Horizon: heavy ${txN(gn.dmg)}-damage hits (${txDps(gn)}/s), ${txN(gn.range)} range, more building damage, ${txAir(gn)}`][t]; });
+liveStr(BDEF.techlab.tiers, 3, nanoTxt);
+liveTiers(BDEF.sigA, (d, t) => [null, `Salvage returns ${txP(YARD.pct)} of a unit's credit cost (base ${txP(SALVAGE.pct)})`,
+  `Salvage cap ${txX(YARD.cap)} (${txN(SALVAGE.cap * YARD.cap)} ${perMin()}); salvage also returns energy worth ${txP(YARD.energy)} of the credits`,
+  `Overdrive: salvage over the cap speeds your production +${txP(YARD.od)} for ${txN(YARD.odDur)} s`][t]);
+liveTiers(BDEF.sigB, (d, t) => { const G = BDEF.bunker.gun; return [null, `A bunker on every field node you hold (${txAir(G[1])})`,
+  `Bunkers heal your Barracks units in range, ${txP(BUNKER.heal)} of HP per second`,
+  `Bunker guns deal ${txX(G[3].dmg / G[2].dmg)} damage${G[3].hitsAir ? ' and hit aircraft' : ''}`][t]; });
+liveTiers(BDEF.bunker, (d, t) => { const G = d.gun; return [null, `Gun ${txDps(G[1])} damage/s, ${txN(G[1].range)} range, ${txAir(G[1])}`,
+  `Also heals your Barracks units in range (${txP(BUNKER.heal)} of HP per second)`, `Gun ${txDps(G[3])} damage/s${G[3].hitsAir ? ', hits air too' : ''}; still heals`][t]; });
+liveTiers(BDEF_BH.sigA, (d, t) => [null, `Spawns ${MOUND.n[1]} Mites every ${txN(MOUND.every)} s (${txN(MOUND.life)} s life, at most ${MOUND.max})`,
+  `Spawns ${MOUND.n[2]} Mites every ${txN(MOUND.every)} s`, 'A Mite that is killed bursts into acid against enemy ground units'][t]);
+liveTiers(BDEF_BH.sigB, (d, t) => [null, `Creep spreads ${txX(ROOT.grow)} faster and ${txX(ROOT.reach)} farther; enemy ground units on it move ${txP(ROOT.slow)} slower`,
+  `Your units regenerate ${txP(ROOT.regen - 1)} faster on creep`, `Every ${txN(ROOT.every)} s roots snare enemy ground units at the creep's edge for ${txN(ROOT.snare)} s`][t]);
+liveTiers(BDEF_AX.sigA, (d, t) => [null, `A power-field bubble follows your frontmost unit (a node field's size); it collapses for ${txN(BEACON.down)} s if your units in it lose ${txP(BEACON.loss)} within ${txN(BEACON.window)} s`,
+  `Bubble ${txX(BEACON.r2)} wider`, `Units that warp into the bubble arrive with full shields and +${txP(BEACON.dmg)} damage for ${txN(BEACON.dmgDur)} s`][t]);
+liveTiers(BDEF_AX.sigB, (d, t) => [null, `Keeps the echoes of your last ${ECHO.n[1]} fallen T2/T3 units: warp one back for ${txP(ECHO.cost)} of its cost`,
+  `Keeps ${ECHO.n[2]} echoes`, `Recovered units arrive with a ${txP(ECHO.osh)} overshield for ${txN(ECHO.oshDur)} s`][t]);
+// Upgrade steps that quote numbers
+liveStr(TREES.barracks.B.steps[2], 'txt', () => `Trains Riflemen two at a time (a pair takes ${txN(UDEF.rifle.time * PAIR_TIME)} s)`);
+liveStr(TREES.barracks.B.steps[3], 'txt', () => `Drilled Riflemen: +${txP(DRILL.hp - 1)} HP, +${txP(DRILL.dmg - 1)} damage, capture nodes ${txX(DRILL.capture)} faster`);
+liveStr(TREES.factory.A.steps[2], 'txt', () => `Unlocks Artillery: ${UDEF.artillery.salvo ? `salvos of ${UDEF.artillery.salvo.n} shells` : 'long-range shells'}`);
+liveStr(TREES.techlab.B.steps[2], 'txt', () => `Unlocks Medicopters (heal infantry) and Recon Drones (scouts, at most ${UDEF.drone.max})`);
+liveStr(TREES.techlab.B.steps[3], 'txt', nanoTxt);
 const sigPadOn = () => MECH7C.on && MECH7C.sigPad;
 const sigOnPad = (g, s) => g.ents.find(e => e.kind === 'b' && e.side === s && e.hp > 0 && e.slot === SIG_SLOT) || null; // what stands on side s's signature pad
 const playerSide = (g, s) => s === 0 ? !g.auto : !!g.sides[s].bot; // a side the AI brain doesn't run (the player, or an audit bot)
@@ -1780,7 +1800,7 @@ function chainBeam(g, src, first, def) {
     if (!next) break;
     mul *= C.fall; hit.push(next);
     const a = P(cur.u, cur.v, aimZ(cur)), b = P(next.u, next.v, aimZ(next));
-    damage(g, next, def.dmg * mul * (g.sides[src.side].buff ? 1.2 : 1) * outMul(g, src), def.weapon, src.side, src);
+    damage(g, next, def.dmg * mul * (g.sides[src.side].buff ? NANO.dmg : 1) * outMul(g, src), def.weapon, src.side, src);
     g.fx.push({ k: 'beam', x: a.x, y: a.y, x2: b.x, y2: b.y, t: 0, life: 0.2, w: 1.6 * mul });
     cur = next;
   }
@@ -2373,7 +2393,7 @@ function updateCreep(g, dt) {
 // burned too (before, it took nothing and the tank fired at it forever). FLAME.aim false: the strip stays on the tank's line.
 const FLAME = { aim: true };
 function flameBurst(g, src, def, t) {
-  const dir = src.face || dirOf(src.side), dmg = def.dmg * (g.sides[src.side].buff ? 1.2 : 1) * outMul(g, src), cv = FLAME.aim && t ? t.v : src.v;
+  const dir = src.face || dirOf(src.side), dmg = def.dmg * (g.sides[src.side].buff ? NANO.dmg : 1) * outMul(g, src), cv = FLAME.aim && t ? t.v : src.v;
   for (const e of g.ents) {
     if (e.side === src.side || e.hp <= 0 || (e.kind === 'u' && UDEF[e.type].air) || e.shielded) continue;
     const ahead = (e.u - src.u) * dir, reach = def.range + (e.kind === 'b' ? e.half : 0);
@@ -2427,7 +2447,7 @@ function fire(g, src, t, def) {
   if (def.melee) { meleeHit(g, src, t, def); return; }
   if (def.beam) { // the Null Lance (v2.25): the beam lands at once; the SIM leaves a short beam mark for the renderer
     const m = muzzle(src), a = P(m.u, m.v, m.z), b = P(t.u, t.v, aimZ(t));
-    damage(g, t, def.dmg * (g.sides[src.side].buff ? 1.2 : 1) * outMul(g, src), def.weapon, src.side, src);
+    damage(g, t, def.dmg * (g.sides[src.side].buff ? NANO.dmg : 1) * outMul(g, src), def.weapon, src.side, src);
     const hq = def.weapon === 'hqbeam' || def.weapon === 'sovereign'; // the Axis lance (v2.36), the Sovereign's judgement (v2.37): heavier, violet and cyan
     g.fx.push({ k: 'beam', x: a.x, y: a.y, x2: b.x, y2: b.y, t: 0, life: hq ? 0.34 : def.weapon === 'horizon' ? 0.32 : 0.2, w: def.weapon === 'sovereign' ? 5 : hq ? 3.6 : def.weapon === 'horizon' ? 3.2 : def.split ? 1.5 : 2.2, hq });
     if (def.chain) chainBeam(g, src, t, def); // the Shardstorm (v2.29)
@@ -2439,7 +2459,7 @@ function fire(g, src, t, def) {
   if (def.siege && src.siege === 2 && t.kind === 'b') mul = def.siege.bmul;
   if (def.salvo || def.carpet) { volley(g, src, t, def, m); if (src.kind === 'u') src.recoil = 1; return; } // P1, P10
   const p = { u: m.u, v: m.v, z: m.z, pu: m.u, pv: m.v, pz: m.z, tu: t.u, tv: t.v, tz: aimZ(t), target: t, side: src.side,
-    weapon: def.weapon, dmg: def.dmg * mul * (g.sides[src.side].buff ? 1.2 : 1) * (src.vet ? DRILL.dmg : 1) * outMul(g, src), splash: def.splash || 0, t: 0 }; // disrupted: less damage (v2.27)
+    weapon: def.weapon, dmg: def.dmg * mul * (g.sides[src.side].buff ? NANO.dmg : 1) * (src.vet ? DRILL.dmg : 1) * outMul(g, src), splash: def.splash || 0, t: 0 }; // disrupted: less damage (v2.27)
   if (def.focus) p.fc = src.fcN; // drawn brighter as it builds (v2.37)
   if (def.pierce) { p.ou = m.u; p.ov = m.v; p.pierce = 1; } // P4: where the line starts
   if (def.devour) p.dev = src.id; // P11: who feeds on the damage
@@ -2462,7 +2482,7 @@ function fire(g, src, t, def) {
 // shells around the target and they land one after another (gap); a carpet lays its bombs in a line along the lane,
 // centred on the target, in the direction the bomber faces.
 function volley(g, src, t, def, m) {
-  const V = def.salvo || def.carpet, dmg = def.dmg * (g.sides[src.side].buff ? 1.2 : 1) * outMul(g, src) / (def.salvo ? V.n : 1), dir = src.face || dirOf(src.side);
+  const V = def.salvo || def.carpet, dmg = def.dmg * (g.sides[src.side].buff ? NANO.dmg : 1) * outMul(g, src) / (def.salvo ? V.n : 1), dir = src.face || dirOf(src.side);
   for (let i = 0; i < V.n; i++) {
     const p = { u: m.u, v: m.v, z: m.z, pu: m.u, pv: m.v, pz: m.z, target: null, side: src.side, weapon: def.weapon, dmg, splash: def.splash || 0, t: 0, tz: 0 };
     if (def.salvo) {
@@ -2479,28 +2499,31 @@ function volley(g, src, t, def, m) {
    as the game time an ability is ready again (side.ab), so they survive save and resume.
    v2.8: one shared cooldown. Using any ability locks all three for the used ability's cooldown (side.abK, side.abEnd). */
 const ABIL = {
-  shield: { name: 'Emergency Shield', cost: { c: 75, e: 75 }, cd: 50, first: 60, r: 110, dur: 7, cut: 0.4,
-    tip: 'Your units inside the circle take 40% less damage for 7 s. The shield moves with them and never stacks.' },
-  strike: { name: 'Orbital Strike', cost: { c: 150, e: 150 }, cd: 100, first: 120, r: 70, delay: 3, dmg: 280, edge: 140, req: 'hq', reqTier: 2, // v2.16: HQ T2, hits aircraft too
-    tip: 'After a 3 s warning: 280 damage at the centre, 140 at the edge, to every enemy unit (infantry, vehicles and aircraft) and building. Not a shielded HQ. Target any explored ground.' },
-  repair: { name: 'Repair Pulse', cost: { c: 100, e: 75 }, cd: 50, first: 60, r: 120, dur: 6, rate: 0.06,
-    tip: 'Your units and finished buildings inside the circle regain 6% of their HP per second for 6 s. Where paid Repair is also running, the faster one applies.' },
+  shield: { name: 'Emergency Shield', cost: { c: 75, e: 75 }, cd: 50, first: 60, r: 110, dur: 7, cut: 0.4 },
+  strike: { name: 'Orbital Strike', cost: { c: 150, e: 150 }, cd: 100, first: 120, r: 70, delay: 3, dmg: 280, edge: 140, req: 'hq', reqTier: 2 }, // v2.16: HQ T2, hits aircraft too
+  repair: { name: 'Repair Pulse', cost: { c: 100, e: 75 }, cd: 50, first: 60, r: 120, dur: 6, rate: 0.06 },
   // Bloomhost (v2.20). like: the Last Fist ability each one mirrors for cost, cooldown, unlock and the AI's timing.
-  frenzy: { name: 'Frenzy Bloom', like: 'shield', cost: { c: 75, e: 75 }, cd: 50, first: 60, r: 110, dur: 7, speed: 1.3, rate: 1.35,
-    tip: 'Your organisms inside the circle move 30% faster and attack 35% faster for 7 s. No extra health, no protection.' },
-  brood: { name: 'Emergency Brood', like: 'repair', cost: { c: 100, e: 75 }, cd: 50, first: 60, r: 60, delay: 2, n: 5, life: 20, clear: 60,
-    tip: 'A brood pod lands after a 2 s warning and releases 5 Skitterlings that live for 20 s and use no supply (at most 8 such creatures at once). Target ground you can see, clear of enemies.' },
-  corrosive: { name: 'Corrosive Bloom', like: 'strike', cost: { c: 150, e: 150 }, cd: 100, first: 120, r: 85, dur: 8, dps: 14, corr: 0.15, req: 'hq', reqTier: 2,
-    tip: 'A spore cloud for 8 s: enemy ground units inside take 14 damage per second and are corroded (15% more damage taken; the 25% corrosion cap still applies). Not aircraft or buildings; they can walk out. Target any explored ground.' },
+  frenzy: { name: 'Frenzy Bloom', like: 'shield', cost: { c: 75, e: 75 }, cd: 50, first: 60, r: 110, dur: 7, speed: 1.3, rate: 1.35 },
+  brood: { name: 'Emergency Brood', like: 'repair', cost: { c: 100, e: 75 }, cd: 50, first: 60, r: 60, delay: 2, n: 5, life: 20, clear: 60 },
+  corrosive: { name: 'Corrosive Bloom', like: 'strike', cost: { c: 150, e: 150 }, cd: 100, first: 120, r: 85, dur: 8, dps: 14, corr: 0.15, req: 'hq', reqTier: 2 },
   // Axiarchs (v2.28, docs/AXIARCHS.md section 7): cost, cooldown, first use and unlock from the Last Fist counterpart (like)
-  mwarp: { name: 'Mass Warp', like: 'repair', cost: { c: 100, e: 75 }, cd: 50, first: 60, r: 120, ch: 2, n: 8, aiHurt: 0.4, aiN: 4, aiFar: 200,
-    tip: 'Up to 8 of your units inside the circle (the most damaged first) channel for 2 s, then warp to your warp point. It moves units; it never creates any. Target ground you can see with your units on it.' },
-  overcharge: { name: 'Shield Overcharge', like: 'shield', cost: { c: 75, e: 75 }, cd: 50, first: 60, r: 110, dur: 7, regen: 0.3, cut: 0.25, cap: 0.5,
-    tip: 'Your units inside the circle regain 30% of their shields per second, even under fire, and take 25% less damage for 7 s (with a Bastion\'s brace, never more than 50% less). Shields only: no health, no invulnerability.' },
-  beam: { name: 'Purification Beam', like: 'strike', cost: { c: 150, e: 150 }, cd: 100, first: 120, r: 70, delay: 3, sweep: 1.5, len: 220, w: 40, dmg: 240, req: 'hq', reqTier: 2,
-    tip: 'After a 3 s warning, a beam sweeps 220 along the lane over 1.5 s: 240 damage to every enemy ground unit and building it passes. Not aircraft, not a shielded HQ. Target explored ground on the lane.' },
+  mwarp: { name: 'Mass Warp', like: 'repair', cost: { c: 100, e: 75 }, cd: 50, first: 60, r: 120, ch: 2, n: 8, aiHurt: 0.4, aiN: 4, aiFar: 200 },
+  overcharge: { name: 'Shield Overcharge', like: 'shield', cost: { c: 75, e: 75 }, cd: 50, first: 60, r: 110, dur: 7, regen: 0.3, cut: 0.25, cap: 0.5 },
+  beam: { name: 'Purification Beam', like: 'strike', cost: { c: 150, e: 150 }, cd: 100, first: 120, r: 70, delay: 3, sweep: 1.5, len: 220, w: 40, dmg: 240, req: 'hq', reqTier: 2 },
 };
 const ABIL_ORDER = ['shield', 'strike', 'repair']; // Last Fist's; each faction's list is FACTIONS[...].abil
+// v2.45: the ability descriptions read their numbers from ABIL (and TEMP, CORR) when read
+for (const [k, f] of Object.entries({
+  shield: A => `Your units inside the circle take ${txP(A.cut)} less damage for ${txN(A.dur)} s. The shield moves with them and never stacks.`,
+  strike: A => `After a ${txN(A.delay)} s warning: ${txN(A.dmg)} damage at the centre, ${txN(A.edge)} at the edge, to every enemy unit (infantry, vehicles and aircraft) and building. Not a shielded HQ. Target any explored ground.`,
+  repair: A => `Your units and finished buildings inside the circle regain ${txP(A.rate)} of their HP per second for ${txN(A.dur)} s. Where paid Repair is also running, the faster one applies.`,
+  frenzy: A => `Your organisms inside the circle move ${txP(A.speed - 1)} faster and attack ${txP(A.rate - 1)} faster for ${txN(A.dur)} s. No extra health, no protection.`,
+  brood: A => `A brood pod lands after a ${txN(A.delay)} s warning and releases ${A.n} Skitterlings that live for ${txN(A.life)} s and use no supply (at most ${TEMP.max} such creatures at once). Target ground you can see, clear of enemies.`,
+  corrosive: A => `A spore cloud for ${txN(A.dur)} s: enemy ground units inside take ${txN(A.dps)} damage per second and are corroded (${txP(A.corr)} more damage taken; the ${txP(CORR.cap)} corrosion cap still applies). Not aircraft or buildings; they can walk out. Target any explored ground.`,
+  mwarp: A => `Up to ${A.n} of your units inside the circle (the most damaged first) channel for ${txN(A.ch)} s, then warp to your warp point. It moves units; it never creates any. Target ground you can see with your units on it.`,
+  overcharge: A => `Your units inside the circle regain ${txP(A.regen)} of their shields per second, even under fire, and take ${txP(A.cut)} less damage for ${txN(A.dur)} s (with a Bastion's brace, never more than ${txP(A.cap)} less). Shields only: no health, no invulnerability.`,
+  beam: A => `After a ${txN(A.delay)} s warning, a beam sweeps ${txN(A.len)} along the lane over ${txN(A.sweep)} s: ${txN(A.dmg)} damage to every enemy ground unit and building it passes. Not aircraft, not a shielded HQ. Target explored ground on the lane.`,
+})) liveStr(ABIL[k], 'tip', () => f(ABIL[k]));
 const abList = side => FACTIONS[facOf(side.faction)].abil; // the abilities this side can use (one shared cooldown)
 // Temporary units (v2.20; the Cloudwing reuses this in v2.21): unit.temp = the game time it expires. No supply, a hard
 // cap per side, removed on expiry and at the end of the match.
@@ -2910,7 +2933,7 @@ function damage1(g, e, amt, weapon, fromSide, src) {
   const armor = e.kind === 'b' ? 'building' : UDEF[e.type].armor;
   const mult = DMG[weapon][armor];
   if (!mult) return;
-  let dmg = amt * mult * (g.sides[e.side].buff ? 0.85 : 1) * (1 + corrNow(e, g.t)); // corroded: takes more (v2.19; v2.37 the second slot)
+  let dmg = amt * mult * (g.sides[e.side].buff ? NANO.cut : 1) * (1 + corrNow(e, g.t)); // corroded: takes more (v2.19; v2.37 the second slot)
   const br = e.kind === 'u' && UDEF[e.type].brace, pre = dmg;
   if (br) { // the Bulwark braces on the first hit after its cooldown (v2.17)
     if (!(e.braceT > g.t) && g.t >= e.braceCd) { e.braceT = g.t + br.dur; e.braceCd = g.t + br.cd; }
@@ -7439,51 +7462,52 @@ function drawIcon(cvs, kind, type, fac) {
 }
 
 /* ---------- Hold a card for details ---------- */
+// v2.45: tips that quote a number read it from the data when read (getters), so they never disagree with the stats
 const UNIT_TIPS = {
   rifle: ['Infantry swarms, and aircraft in numbers', 'Snipers, Tanks, Artillery, Turrets'],
   heavy: ['Tanks, Titans and aircraft', 'Snipers, Tanks'],
-  sniper: ['Infantry, best in a line: the round goes through its target and hits up to 3 more behind it, weaker each time', 'Tanks, Gunships; units spread out'], // v2.37
+  get sniper() { const u = UDEF.sniper; return [`Infantry, best in a line: the round goes through its target and hits up to ${u.pierce?.n} more behind it, weaker each time`, 'Tanks, Gunships; units spread out']; }, // v2.37
   tank: ['Infantry, vehicles and buildings', 'Heavies, Gunships'],
-  artillery: ['Clumps and buildings from 440 range: every shot is a salvo of 3 shells that blankets the area (minimum range 110)', 'Anything that gets close, Gunships; a lone fast unit (the shells land wide)'], // v2.37
-  titan: ['Buildings and everything on the ground once planted: siege lock takes 2 s, then +90 range and +30% against buildings; it can\'t move until it unplants (1.5 s)', 'Heavies, Gunships; fast units that arrive while it plants or unplants'], // v2.37
+  get artillery() { const u = UDEF.artillery; return [`Clumps and buildings from ${txN(u.range)} range: every shot is a salvo of ${u.salvo?.n} shells that blankets the area (minimum range ${txN(u.minRange)})`, 'Anything that gets close, Gunships; a lone fast unit (the shells land wide)']; }, // v2.37
+  get titan() { const u = UDEF.titan; return [`Buildings and everything on the ground once planted: siege lock takes ${txN(u.siege?.plant)} s, then +${txN(u.siege?.reach)} range and +${txP((u.siege?.bmul) - 1)} against buildings; it can't move until it unplants (${txN(u.siege?.unplant)} s)`, 'Heavies, Gunships; fast units that arrive while it plants or unplants']; }, // v2.37
   aircraft: ['Vehicles and Artillery', 'Interceptors, Heavies, Turrets'],
   interceptor: ['Aircraft only; escorts your Leviathans and Gunships', 'Heavies, Riflemen, Turrets'],
-  leviathan: ['Buildings in a row: it carpet-bombs a line of 4 bombs along its path; it can\'t hit aircraft', 'Interceptors, Heavies, Hydras, Turrets; a single hardened target'], // v2.37
-  medic: ['No weapon: heals your infantry nearby (2.5% of HP per second)', 'Anything that hits air'],
-  drone: ['No weapon: sees 420 far, spots for Artillery (at most 3)', 'Anything that hits air'],
+  get leviathan() { const u = UDEF.leviathan; return [`Buildings in a row: it carpet-bombs a line of ${u.carpet?.n} bombs along its path; it can't hit aircraft`, 'Interceptors, Heavies, Hydras, Turrets; a single hardened target']; }, // v2.37
+  get medic() { const u = UDEF.medic; return [`No weapon: heals your infantry nearby (${txP(u.heal)} of HP per second)`, 'Anything that hits air']; },
+  get drone() { const u = UDEF.drone; return [`No weapon: sees ${txN(SIGHT.drone)} far, spots for Artillery (at most ${u.max})`, 'Anything that hits air']; },
   flame: ['Massed infantry at close range, anyone on a node', 'Tanks, Artillery, Heavies, Titans'],
   hydra: ['Aircraft first, then infantry swarms; slowly chips buildings', 'Tanks, Titans, Artillery'],
-  skitterling: ['Lone ranged units and nodes; hits harder when several bite the same target (up to +45%). Half supply each, at most 60 alive', 'Splash damage, Flame Tanks, Turrets; it can\'t hit aircraft'], // v2.37
-  mite: ['Swarming lone units and buildings for free: a clutch every 20 s from the Brood Mound; at T3 a killed Mite bursts into acid', 'Anything at all: very little HP; it can\'t hit aircraft or capture nodes'],
-  bulwark: ['Soaking up fire at the front; braces when hit (40% less damage for 3 s, every 12 s)', 'Heavies, Tanks; being surrounded'],
+  get skitterling() { const u = UDEF.skitterling; return [`Lone ranged units and nodes; hits harder when several bite the same target (up to +${txP(u.swarm.max)}). ${txN(u.pop)} supply each, at most ${u.max} alive`, "Splash damage, Flame Tanks, Turrets; it can't hit aircraft"]; }, // v2.37
+  get mite() { const u = UDEF.mite; return [`Swarming lone units and buildings for free: a clutch every ${txN(MOUND.every)} s from the Brood Mound; at T3 a killed Mite bursts into acid`, "Anything at all: very little HP; it can't hit aircraft or capture nodes"]; },
+  get bulwark() { const u = UDEF.bulwark; return [`Soaking up fire at the front; braces when hit (${txP(u.brace.cut)} less damage for ${txN(u.brace.dur)} s, every ${txN(u.brace.cd)} s)`, 'Heavies, Tanks; being surrounded']; },
   razorwing: ['Exposed ground units and aircraft; dives from the air', 'Anything that hits air, Turrets'],
-  leaper: ['Snipers, Artillery and other ranged units: it leaps up to 140 onto them (every 7 s)', 'Splash, Flame Tanks, focused fire'],
-  ravager: ['Light armor (its maul does 1.6×); every kill sends it into a 4 s frenzy (faster attacks and movement), refreshed by the next kill', 'Tanks, Turrets, focused fire'], // v2.37
+  get leaper() { const u = UDEF.leaper; return [`Snipers, Artillery and other ranged units: it leaps up to ${txN(u.leap.range)} onto them (every ${txN(u.leap.cd)} s)`, 'Splash, Flame Tanks, focused fire']; },
+  get ravager() { const u = UDEF.ravager; return [`Light armor (its maul does ${txX(DMG[u.weapon].light)}); every kill sends it into a ${txN(u.bloodfrenzy?.dur)} s frenzy (faster attacks and movement), refreshed by the next kill`, 'Tanks, Turrets, focused fire']; }, // v2.37
   spitter: ['Aircraft and ground from range; its acid makes targets take more damage (corrosion)', 'Anything that reaches it, splash'],
-  bilecaster: ['Marking targets from 280 range: a single bile dart whose corrosion lasts 14 s (+20% damage taken)', 'Swarms (one target at a time), anything that reaches it; it can\'t hit aircraft'], // v2.37
-  bilelobber: ['Softening an army from 420 range: its splash corrodes everything it hits for 3 s (minimum range 110)', 'Anything that gets close, aircraft; weak against buildings on its own'], // v2.37
+  get bilecaster() { const u = UDEF.bilecaster; return [`Marking targets from ${txN(u.range)} range: a single bile dart whose corrosion lasts ${txN(u.corrode.dur)} s (+${txP(u.corrode.amt)} damage taken)`, "Swarms (one target at a time), anything that reaches it; it can't hit aircraft"]; }, // v2.37
+  get bilelobber() { const u = UDEF.bilelobber; return [`Softening an army from ${txN(u.range)} range: its splash corrodes everything it hits for ${txN(u.corrode?.dur)} s (minimum range ${txN(u.minRange)})`, 'Anything that gets close, aircraft; weak against buildings on its own']; }, // v2.37
   ruinmaw: ['Buildings above all; every hit leaves a short acid pool', 'Fast attackers, aircraft, Heavies'],
-  thornback: ['The front line; anyone who hits it up close takes 20% of the damage back', 'Ranged focus, Tanks, aircraft'],
-  dreadthorn: ['Packed infantry: a hit of 60+ releases a spine burst around it (every 15 s)', 'Ranged focus, Tanks, aircraft'],
+  get thornback() { const u = UDEF.thornback; return [`The front line; anyone who hits it up close takes ${txP(u.thorns.frac)} of the damage back`, 'Ranged focus, Tanks, aircraft']; },
+  get dreadthorn() { const u = UDEF.dreadthorn; return [`Packed infantry: a hit of ${txN(u.burst.trigger)}+ releases a spine burst around it (every ${txN(u.burst.cd)} s)`, 'Ranged focus, Tanks, aircraft']; },
   shardling: ['Lone ranged units and nodes: fast light blades, ground and buildings', 'Focus fire, splash, Flame Tanks; it can\'t hit aircraft'],
-  bastion: ['Holding the front: when hit after its 12 s cooldown its shields surge back (35% per second for 3 s, even under fire)', 'Burst that breaks through to its health, corrosion; aircraft'], // v2.37
-  wraithwing: ['A fast flyer that phases out for 1 s when hit (it can\'t be touched or fire), then can\'t phase again for 8 s', 'Rapid-fire anti-air: Interceptors, Hydras, Turrets'], // v2.37
-  riftstalker: ['Lone ranged units: it phase-steps onto them (up to 130, every 8 s), strikes once and steps back to where it leapt from', 'A guarded backline; burst when it lands'], // v2.37
-  parallax: ['Ranged units: it phase-steps behind them; its blows disrupt (30% less damage for 2 s)', 'Focus fire, heavy frontline units, Turrets'],
-  lancer: ['Tanky single targets and aircraft: every hit on the same target does 15% more, up to +60%', 'Swarms (it starts over on a new target); melee units that reach it'], // v2.37
+  get bastion() { const u = UDEF.bastion; return [`Holding the front: when hit after its ${txN(u.surge?.cd)} s cooldown its shields surge back (${txP(u.surge?.rate)} per second for ${txN(u.surge?.dur)} s, even under fire)`, 'Burst that breaks through to its health, corrosion; aircraft']; }, // v2.37
+  get wraithwing() { const u = UDEF.wraithwing; return [`A fast flyer that phases out for ${txN(u.phase?.dur)} s when hit (it can't be touched or fire), then can't phase again for ${txN(u.phase?.cd)} s`, 'Rapid-fire anti-air: Interceptors, Hydras, Turrets']; }, // v2.37
+  get riftstalker() { const u = UDEF.riftstalker; return [`Lone ranged units: it phase-steps onto them (up to ${txN(u.leap.range)}, every ${txN(u.leap.cd)} s), strikes once and steps back to where it leapt from`, 'A guarded backline; burst when it lands']; }, // v2.37
+  get parallax() { const u = UDEF.parallax; return [`Ranged units: it phase-steps behind them; its blows disrupt (${txP(u.disrupt.amt)} less damage for ${txN(u.disrupt.dur)} s)`, 'Focus fire, heavy frontline units, Turrets']; },
+  get lancer() { const u = UDEF.lancer; return [`Tanky single targets and aircraft: every hit on the same target does ${txP(u.focus?.per)} more, up to +${txP(u.focus?.per * u.focus?.max)}`, 'Swarms (it starts over on a new target); melee units that reach it']; }, // v2.37
   marksman: ['Infantry from very long range, after a visible charge-up on its target', 'Fast attackers, aircraft (it can\'t hit them); weak against buildings'],
-  riftmortar: ['Single high-value targets and buildings from 430 range: a precise, heavy strike with a tight blast (minimum range 110)', 'Swarms (little splash), anything that gets close, aircraft'], // v2.37
-  worldbreaker: ['Armies dug in: every hit leaves a distortion zone where enemy units deal 30% less damage', 'Mobile armies that step out, aircraft, Heavies'], // v2.37
-  gravemantle: ['Holding ground: enemy ground units near it are slowed 30%; a weak shot at ground units and buildings', 'Ranged focus, aircraft (it can\'t hit them)'],
-  eventide: ['Packed ground units: a gravity pulse pulls them in (every 14 s); a weak shot at ground units and buildings', 'Ranged focus, aircraft (it can\'t hit them)'],
-  prismwing: ['Ground units and buildings in numbers: linked Prismwings share half of the shield damage each one takes', 'Anything that hits air, splash on the pack; it can\'t hit aircraft'],
-  shardstorm: ['Swarms of aircraft and infantry: its beam chains to up to 3 more enemies, weaker each jump', 'Heavy single targets; weak against buildings'],
-  voidcarrier: ['Taking the power field forward: it carries a field (radius 120) where Axiarch shields recharge fast and units warp in; slow orbs from 170 range', 'Interceptors, Lancers, Hydras, defences: kill it and the field collapses; it can\'t hit aircraft'], // v2.37
-  sovereign: ['One building at a time: a visible 2 s charge, then a judgement beam for heavy single-target damage', 'Anti-air during the charge; units and spread-out bases'], // v2.37
-  needlewing: ['Exposed ground units in a pack: +12% damage for each other Needlewing on the target (up to +36%)', 'Anything that hits air, splash; it can\'t hit aircraft'],
-  cloudwing: ['Overwhelming ground targets; while fighting it releases 2 offspring every 14 s (12 s life, at most 6)', 'Anything that hits air; it can\'t hit aircraft'],
-  broodtyrant: ['Buildings first, then ground units, with heavy globs from 150 range', 'Interceptors, Heavies, Hydras, Turrets; it can\'t hit aircraft'],
-  worldrender: ['Buildings above all, from right above them: it heals for 30% of the damage it does to buildings (at most 40 HP/s)', 'Burst anti-air before it starts feeding; it can\'t hit aircraft'], // v2.37
+  get riftmortar() { const u = UDEF.riftmortar; return [`Single high-value targets and buildings from ${txN(u.range)} range: a precise, heavy strike with a tight blast (minimum range ${txN(u.minRange)})`, 'Swarms (little splash), anything that gets close, aircraft']; }, // v2.37
+  get worldbreaker() { const u = UDEF.worldbreaker; return [`Armies dug in: every hit leaves a distortion zone where enemy units deal ${txP(DIST.amt)} less damage`, 'Mobile armies that step out, aircraft, Heavies']; }, // v2.37
+  get gravemantle() { const u = UDEF.gravemantle; return [`Holding ground: enemy ground units near it are slowed ${txP(u.aura.slow)}; a weak shot at ground units and buildings`, "Ranged focus, aircraft (it can't hit them)"]; },
+  get eventide() { const u = UDEF.eventide; return [`Packed ground units: a gravity pulse pulls them in (every ${txN(u.pulse.cd)} s); a weak shot at ground units and buildings`, "Ranged focus, aircraft (it can't hit them)"]; },
+  get prismwing() { const u = UDEF.prismwing; return [`Ground units and buildings in numbers: linked Prismwings share ${txP(u.link.share)} of the shield damage each one takes`, "Anything that hits air, splash on the pack; it can't hit aircraft"]; },
+  get shardstorm() { const u = UDEF.shardstorm; return [`Swarms of aircraft and infantry: its beam chains to up to ${u.chain.n} more enemies, weaker each jump`, 'Heavy single targets; weak against buildings']; },
+  get voidcarrier() { const u = UDEF.voidcarrier; return [`Taking the power field forward: it carries a field (radius ${txN(u.node?.r)}) where Axiarch shields recharge fast and units warp in; slow orbs from ${txN(u.range)} range`, "Interceptors, Lancers, Hydras, defences: kill it and the field collapses; it can't hit aircraft"]; }, // v2.37
+  get sovereign() { const u = UDEF.sovereign; return [`One building at a time: a visible ${txN(u.charge)} s charge, then a judgement beam for heavy single-target damage`, 'Anti-air during the charge; units and spread-out bases']; }, // v2.37
+  get needlewing() { const u = UDEF.needlewing; return [`Exposed ground units in a pack: +${txP(u.swarm.per)} damage for each other Needlewing on the target (up to +${txP(u.swarm.max)})`, "Anything that hits air, splash; it can't hit aircraft"]; },
+  get cloudwing() { const u = UDEF.cloudwing; return [`Overwhelming ground targets; while fighting it releases ${u.spawn.n} offspring every ${txN(u.spawn.cd)} s (${txN(u.spawn.life)} s life, at most ${SPAWN.max})`, "Anything that hits air; it can't hit aircraft"]; },
+  get broodtyrant() { const u = UDEF.broodtyrant; return [`Buildings first, then ground units, with heavy globs from ${txN(u.range)} range`, "Interceptors, Heavies, Hydras, Turrets; it can't hit aircraft"]; },
+  get worldrender() { const u = UDEF.worldrender; return [`Buildings above all, from right above them: it heals for ${txP(u.devour?.frac)} of the damage it does to buildings (at most ${txN(u.devour?.cap)} HP/s)`, "Burst anti-air before it starts feeding; it can't hit aircraft"]; }, // v2.37
 };
 const pFac = () => game ? game.sides[0].faction : DEFAULT_FACTION; // the player's faction (cards, panel and info)
 const stat = (label, val) => `<div><small>${label}</small><b>${val}</b></div>`;
