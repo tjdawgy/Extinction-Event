@@ -9,6 +9,7 @@ Issues found during testing that are deliberately deferred. Each lists the step 
 - **Codex links:** Army "See stats" (unit:<first troop trained>), Upgrades "View in Codex" (tree:<building upgraded>), Factions "Open the Codex" (Last Fist tab, ends the chapter). From the tutorial the Codex's button reads Back to Tutorial and returns to the same step with the match still held.
 - **Mid-match:** starting a chapter from the Codex during a real match asks "Leave this match and start the tutorial?"; Cancel closes the Codex back to the paused match; Yes leaves it (it stays saved: Resume match brings it back).
 - **Storage:** `extinctionEvent.tutorial` ({ seen, done }), every access in try/catch; without storage the prompt shows once per page load and nothing is remembered. The test kit marks the prompt answered so other tests start at the main menu; the storage-key tests list the new key.
+- **Flaky test fixed (test only):** "P11 Worldrender" (tests/redesign.test.js) looked for the 0.9 s feeding effect only at the end of a 5 s run, so it failed whenever the last drop landed earlier (1 of 30 runs on v2.45, 4 of 30 on v2.46: the same flaw); it now watches the whole 5 s (50 runs in a row passed). tests/codex.test.js expects the chapter list where the placeholder was.
 - **Notes:** the Combat chapter is the longest (the army walks the whole lane to the enemy HQ; its length at 1× was not measured, the tests play at 3×); the 1–3× speed button works in the tutorial. Chapter texts are written for Last Fist only.
 
 ## Test reliability and live description numbers (v2.45)

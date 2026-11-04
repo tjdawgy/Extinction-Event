@@ -147,10 +147,12 @@ test('P10 Leviathan: a line of 4 smaller bombs along its path; P12 Sovereign: a 
 test('P11 Worldrender: heals 30% of its building damage, at most 40 HP per second', () => {
   const g = quiet('bloomhost', 'lastfist'); seeAll(g); fin(g, 1, 'barracks'); const b = fin(g, 1, 'refinery'); b.hp = b.maxHp = 1e5;
   g.sides[1].hq.cd = 1e9; const w = put(g, 0, 'worldrender', b.u, b.v); w.hp = 1000; w.cd = 0;
-  step(g, 5);
+  // v2.46: the feeding effect lives 0.9 s and a drop comes every few seconds, so look for it during the 5 s, not only at the end
+  // (checking only at the end failed whenever the last drop landed more than 0.9 s before it: about 1 run in 20)
+  let fed = false; for (let i = 0; i < 5 * 30; i++) { step(g, 1 / 30); fed = fed || g.fx.some(f => f.k === 'devour'); }
   const healed = w.hp - 1000;
   assert.ok(healed > 0 && healed <= 40 * 5 + 40 + 1e-6, `healed ${healed}`);
-  assert.ok(g.fx.some(f => f.k === 'devour'));
+  assert.ok(fed, 'the feeding effect was shown');
 });
 
 test('P13 Wraithwing: phases out for 1 s when hit (untouchable, untargetable, no shots), then not again for 8 s', () => {

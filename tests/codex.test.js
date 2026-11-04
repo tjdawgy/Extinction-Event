@@ -25,7 +25,7 @@ test('Codex: main menu, tabs, every unit and building, pictures, no sideways scr
   const tabs = await page.evaluate(() => [...$('cxTabs').children].map(b => b.textContent));
   assert.deepStrictEqual(tabs, ['How to Play', 'Last Fist', 'Bloomhost', 'Axiarchs']);
   await page.click('#cxTabs [data-t="how"]');
-  assert.match(await page.textContent('#cxBody'), /Tutorial coming soon\./);
+  assert.strictEqual(await page.evaluate(() => document.querySelectorAll('#cxBody .cxch .cxplay').length), 7, 'How to Play: the tutorial chapters (v2.46; was the placeholder)');
   for (const fac of FACS) {
     await page.click(`#cxTabs [data-t="${fac}"]`); await page.waitForTimeout(100);
     const r = await page.evaluate(fac => {
