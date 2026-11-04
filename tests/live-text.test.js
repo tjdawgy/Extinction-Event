@@ -56,3 +56,28 @@ test('the texts follow the data: change a number and its description changes wit
     assert.strictEqual(txt(), before, 'back to the original text');
   }
 });
+
+// v2.46: the tutorial's bubble texts (the TUTORIAL TEXT block) follow the same rule: every string and template string in it,
+// with its ${...} parts (live values) taken out, has no digit and no number word
+function literals(src) {
+  const out = []; let i = 0;
+  const skipExpr = () => { let d = 1; i += 2; while (i < src.length && d) { const c = src[i]; if (c === '{') d++; else if (c === '}') d--; else if (c === '`' || c === "'" || c === '"') { readStr(c); continue; } i++; } };
+  const readStr = q => { let s = ''; i++; while (i < src.length && src[i] !== q) { if (src[i] === '\\') { s += src[i + 1]; i += 2; continue; } if (q === '`' && src[i] === '$' && src[i + 1] === '{') { s += ' '; skipExpr(); continue; } s += src[i++]; } i++; out.push(s); };
+  while (i < src.length) {
+    const c = src[i];
+    if (c === '/' && src[i + 1] === '/') { while (i < src.length && src[i] !== '\n') i++; continue; }
+    if (c === '/' && src[i + 1] === '*') { i = src.indexOf('*/', i + 2) + 2; continue; }
+    if (c === '`' || c === "'" || c === '"') { readStr(c); continue; }
+    i++;
+  }
+  return out;
+}
+test('the tutorial texts quote no hard-coded number', () => {
+  const a = SRC.indexOf('/* TUTORIAL TEXT START'), b = SRC.indexOf('/* TUTORIAL TEXT END */');
+  assert.ok(a > 0 && b > a, 'the tutorial text block is marked');
+  const lits = literals(SRC.slice(SRC.indexOf('*/', a) + 2, b)), words = lits.filter(s => / [a-z]+ [a-z]+ /i.test(s)); // the sentences (selectors and keys aside)
+  assert.ok(words.length > 40, `the scan found the texts (${words.length})`);
+  assert.deepStrictEqual(lits.filter(s => digits(s) || NUMWORD.test(s)), []);
+  // the scanner itself: a digit in a template's text is caught, one inside ${...} is not
+  assert.deepStrictEqual(literals("x(`a ${n + 2} b`, 'c 3', `d ${f(`e`)} f`)").filter(s => digits(s)), ['c 3']);
+});

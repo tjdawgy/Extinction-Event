@@ -125,7 +125,8 @@ test('save keys stay colonyMobile.save and colonyMobile.diff (plus the separate 
   assert.match(html, /localStorage\.getItem\('colonyMobile\.diff'\)/);
   assert.match(html, /localStorage\.setItem\('colonyMobile\.diff', diffKey\)/);
   const keys = new Set([...html.matchAll(/localStorage\.\w+Item\(([^,)]+)/g)].map(m => m[1].trim()));
-  assert.deepStrictEqual([...keys].sort(), ["'colonyMobile.diff'", 'FACTION_KEY', 'SAVE_KEY', 'SOUND_KEY']); // v2.4 adds the sound setting, v2.17 the faction picks
+  assert.deepStrictEqual([...keys].sort(), ["'colonyMobile.diff'", 'FACTION_KEY', 'SAVE_KEY', 'SOUND_KEY', 'TUT_KEY']); // v2.4 adds the sound setting, v2.17 the faction picks, v2.46 the tutorial's progress
+  assert.match(html, /const TUT_KEY = 'extinctionEvent\.tutorial'/);
   assert.match(html, /const FACTION_KEY = 'extinctionEvent\.factions'/);
   assert.match(html, /const SOUND_KEY = 'extinctionEvent\.sound';/);
   assert.strictEqual(sim.SAVE_VER, 30); // v2.34: Axiarch signature buildings

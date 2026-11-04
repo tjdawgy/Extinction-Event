@@ -121,7 +121,7 @@ test('saves use colonyMobile.save / colonyMobile.diff; a restored match starts p
   await page.click('#bPlay');
   await page.evaluate(() => { game.countdown = 0; for (let i = 0; i < 300; i++) update(game, 1 / 30); saveGame(); });
   const keys = await page.evaluate(() => Object.keys(localStorage).sort());
-  assert.deepStrictEqual(keys, ['colonyMobile.diff', 'colonyMobile.save']);
+  assert.deepStrictEqual(keys, ['colonyMobile.diff', 'colonyMobile.save', 'extinctionEvent.tutorial']); // v2.46: the tutorial's progress key (the test kit answers its first-launch prompt)
   assert.strictEqual(await page.evaluate(() => localStorage.getItem('colonyMobile.diff')), 'hard');
   await page.reload(); await page.waitForTimeout(300);
   await page.click('#bResume');
@@ -366,7 +366,7 @@ test('sound: toggle on the title screen and pause menu, remembered under its own
   await page.click('#bSound');
   assert.strictEqual(await page.textContent('#bSound'), 'Sound: On');
   const keys = await page.evaluate(() => Object.keys(localStorage).sort());
-  assert.deepStrictEqual(keys.filter(k => !['colonyMobile.diff', 'colonyMobile.save', 'extinctionEvent.sound'].includes(k)), [], 'only the save keys and the sound key');
+  assert.deepStrictEqual(keys.filter(k => !['colonyMobile.diff', 'colonyMobile.save', 'extinctionEvent.sound', 'extinctionEvent.tutorial'].includes(k)), [], 'only the save keys, the sound key and the tutorial key');
   assert.ok(keys.includes('colonyMobile.save') && keys.includes('extinctionEvent.sound'));
   assert.deepStrictEqual(errors, []);
   await page.close();

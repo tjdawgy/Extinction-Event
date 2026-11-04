@@ -30,10 +30,12 @@ const COUNT_CANVAS_RESIZES = `(() => {
   Object.defineProperty(HTMLCanvasElement.prototype, 'height', { get: h.get, set(v) { bump(this); h.set.call(this, v); }, configurable: true });
 })();`;
 
-async function openPage(browser, device = PHONE, { countCanvasResizes = false, init = null, title = false } = {}) {
+async function openPage(browser, device = PHONE, { countCanvasResizes = false, init = null, title = false, firstRun = false } = {}) {
   const page = await browser.newPage({ viewport: { width: device.width, height: device.height }, deviceScaleFactor: 2 });
   if (countCanvasResizes) await page.addInitScript(COUNT_CANVAS_RESIZES);
   if (init) await page.addInitScript(init);
+  // v2.46: the first-launch tutorial prompt was already answered, so tests start at the main menu (firstRun: true shows it)
+  if (!firstRun) await page.addInitScript(() => { try { if (!localStorage.getItem('extinctionEvent.tutorial')) localStorage.setItem('extinctionEvent.tutorial', '{"seen":1}'); } catch (e) {} });
   // Most tests start at the main menu, including after a reload; title: true keeps the title screen
   if (!title) await page.addInitScript(() => document.addEventListener('DOMContentLoaded', () => { const t = document.getElementById('title'); if (t) t.remove(); }));
   const errors = [];
