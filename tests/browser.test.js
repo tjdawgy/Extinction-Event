@@ -71,29 +71,27 @@ test('match start: wide view, GET READY 3-2-1, GO; taps wait for GO', { skip }, 
   await page.close();
 });
 
-test('HQ readouts in the top bar: shielded, exposed, destroyed', { skip }, async () => {
+test('HQ readouts: yours in the top bar, the enemy\'s last seen on the minimap', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
   await page.click('#bPlay');
   await page.evaluate(() => { game.countdown = 0; tryBuild(game, 0, 'refinery'); for (const b of game.ents) if (b.type === 'refinery') { b.built = true; b.progress = 1; } update(game, 1 / 30); refreshUI(true); }); // only a finished building shields the HQ (v2.11)
-  const read = () => page.evaluate(() => [0, 1].map(k => ({ cls: $('hq' + k).className, txt: $('hq' + k).querySelector('small').textContent, w: $('hq' + k).querySelector('.hb i').style.width, aria: $('hq' + k).getAttribute('aria-label') })));
-  let r = await read();
-  assert.strictEqual(r[0].cls, 'hqr shielded'); assert.strictEqual(r[0].txt, 'Shielded');
-  assert.strictEqual(r[1].cls, 'hqr exposed stale', 'enemy HQ is out of sight: last-known values');
-  assert.match(r[1].aria, /^Enemy HQ: last seen with 2800 of 2800 HP, exposed$/);
-  assert.strictEqual(r[1].txt, 'Last seen');
-  await page.evaluate(() => { const hq = game.sides[1].hq; hq.hp = hq.maxHp / 4; refreshUI(true); });
-  r = await read();
-  assert.strictEqual(parseFloat(r[1].w), 100, 'damage out of sight does not leak');
-  await page.evaluate(() => { updateVision = (orig => g => { orig(g); g.fog[0].vis.fill(1); })(updateVision); updateVision(game); refreshUI(true); }); // put it in view
-  r = await read();
-  assert.ok(Math.abs(parseFloat(r[1].w) - 25) < 1, `in view: real health (${r[1].w}, plus a moment of self-repair)`);
-  assert.strictEqual(r[1].cls, 'hqr exposed');
-  await page.evaluate(() => { kill(game, game.sides[1].hq, 0); refreshUI(true); });
-  r = await read();
-  assert.strictEqual(r[1].cls, 'hqr destroyed'); assert.strictEqual(r[1].txt, 'Destroyed'); assert.strictEqual(parseFloat(r[1].w), 0);
+  const r0 = await page.evaluate(() => ({ cls: $('hq0').className, txt: $('hq0').querySelector('small').textContent, hq1: !!$('hq1') }));
+  assert.strictEqual(r0.cls, 'hqr shielded'); assert.strictEqual(r0.txt, 'Shielded');
+  assert.strictEqual(r0.hq1, false, 'v2.47: the enemy HQ block left the top bar');
+  // v2.47: the minimap bar under the enemy HQ: hidden until scouted, then last-seen health (no leak out of sight)
+  const bar = () => page.evaluate(() => { const fr = []; const orig = CanvasRenderingContext2D.prototype.fillRect, hc = ['#5dff8a', '#ffd34d', '#ff5a5a'];
+    const c = mctx; c.fillRect = function (x, y, w, h) { if (h === 2 && w <= 14 && hc.includes(this.fillStyle)) fr.push({ w, a: this.globalAlpha }); return orig.call(this, x, y, w, h); };
+    drawMinimapNow(); delete c.fillRect; return fr; });
+  assert.deepStrictEqual(await bar(), [], 'not scouted yet: no bar');
+  await page.evaluate(() => { const f = game.fog[0], hq = game.sides[1].hq; f.ghosts[hq.id] = ghostOf(hq); hq.hp = hq.maxHp / 4; });
+  let b = await bar();
+  assert.strictEqual(b.length, 1); assert.ok(Math.abs(b[0].w - 14) < 0.01 && b[0].a < 1, `out of sight: last-seen full health, faded (${JSON.stringify(b)})`);
+  await page.evaluate(() => { updateVision = (orig => g => { orig(g); g.fog[0].vis.fill(1); })(updateVision); updateVision(game); });
+  b = await bar();
+  assert.ok(Math.abs(b[0].w - 3.5) < 0.3 && b[0].a === 1, `in view: real health (${JSON.stringify(b)})`);
   // the world HQ bar is drawn below the top bar
-  const bar = await page.evaluate(() => { const hq = game.sides[0].hq, barMin = (V.ft - V.A) / V.S + Y_BOT + 12 / V.S, y = Math.max(bTop(hq) - 8, barMin); return { y: (y - Y_BOT) * V.S + V.A, hudBottom: $('hud').getBoundingClientRect().bottom }; });
-  assert.ok(bar.y - 8 >= bar.hudBottom, `world bar and pips (${bar.y}) clear the top bar (${bar.hudBottom})`);
+  const wb = await page.evaluate(() => { const hq = game.sides[0].hq, barMin = (V.ft - V.A) / V.S + Y_BOT + 12 / V.S, y = Math.max(bTop(hq) - 8, barMin); return { y: (y - Y_BOT) * V.S + V.A, hudBottom: $('hud').getBoundingClientRect().bottom }; });
+  assert.ok(wb.y - 8 >= wb.hudBottom, `world bar and pips (${wb.y}) clear the top bar (${wb.hudBottom})`);
   assert.deepStrictEqual(errors, []);
   await page.close();
 });

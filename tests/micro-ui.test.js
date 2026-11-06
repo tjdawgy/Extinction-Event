@@ -110,3 +110,32 @@ test('group orders, the selection and a Regroup flag survive saving and reloadin
   assert.deepStrictEqual(errors, []);
   await page.close();
 });
+
+test('v2.47: the top bar Regroup sends the whole army (the Army tab Regroup with nothing selected), and cancels on a second tap', { skip }, async () => {
+  const { page, errors } = await openPage(browser, PHONE);
+  await page.click('#bPlay'); await page.waitForTimeout(300);
+  await page.evaluate(SETUP);
+  await page.click('.tabs [data-tab="army"]');
+  await page.click('#asel [data-k="g:inf"]'); // a group selected in the Army tab does not narrow the top-bar Regroup
+  const box = await page.$eval('#bRegroup', b => { const r = b.getBoundingClientRect(), h = document.querySelector('#stance button').getBoundingClientRect(); return { h: r.height, sh: h.height, cls: b.parentElement.className, top: r.top, stop: h.top }; });
+  assert.strictEqual(box.cls, 'seg'); assert.strictEqual(box.h, box.sh, 'same height as Hold / Attack / Retreat'); assert.strictEqual(box.top, box.stop);
+  await page.click('#bRegroup');
+  assert.deepStrictEqual(await page.evaluate(() => ({ on: $('bRegroup').classList.contains('on'), rg, aim: !$('aim').classList.contains('hide') })), { on: true, rg: { k: null, top: true }, aim: true });
+  await page.click('#bRegroup'); // cancel
+  assert.deepStrictEqual(await page.evaluate(() => ({ on: $('bRegroup').classList.contains('on'), rg, all: game.sides[0].orders.all })), { on: false, rg: null, all: null });
+  await page.click('#bRegroup');
+  await tapWorld(page, 900, 0);
+  const o = await page.evaluate(() => { const s = game.sides[0]; return { all: s.orders.all && s.orders.all.o, u: s.orders.all && Math.round(s.orders.all.u), rg, on: $('bRegroup').classList.contains('on'), cover: game.ents.filter(e => e.kind === 'u' && e.side === 0).every(e => unitOrder(s, e.type) === s.orders.all) }; });
+  assert.strictEqual(o.all, 'move'); assert.ok(Math.abs(o.u - 900) < 20, `flag where tapped (${o.u})`);
+  assert.strictEqual(o.rg, null); assert.strictEqual(o.on, false); assert.ok(o.cover, 'every army unit follows the whole-army Regroup');
+  // the Army tab Regroup still works for a group
+  await page.click('#asel [data-k="g:arm"]');
+  await page.click('#acmd [data-o="move"]');
+  await tapWorld(page, 820, -30);
+  assert.strictEqual(await page.evaluate(() => game.sides[0].orders.groups.arm && game.sides[0].orders.groups.arm.o), 'move');
+  // Hold / Attack / Retreat unchanged: a stance clears the Regroup
+  await page.click('#stance [data-s="attack"]');
+  assert.deepStrictEqual(await page.evaluate(() => ({ st: game.sides[0].stance, all: game.sides[0].orders.all })), { st: 'attack', all: null });
+  assert.deepStrictEqual(errors, []);
+  await page.close();
+});
