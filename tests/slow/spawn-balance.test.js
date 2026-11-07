@@ -8,7 +8,7 @@
 // Axiarch mirrors (an AI-played side 0 started on Hold).
 const test = require('node:test');
 const assert = require('node:assert');
-const { runSpecs } = require('../audit/sim/run');
+const { runSpecs } = require('../../audit/sim/run');
 
 const N = 50, MAX = 0.6, DEC = [0, 0]; // DEC: decided matches over all three factions, by side
 const ahead = r => r.winner >= 0 ? r.winner : r.score && r.score[0] !== r.score[1] ? (r.score[0] > r.score[1] ? 0 : 1) : r.loser === 0 || r.loser === 1 ? 1 - r.loser : -1;

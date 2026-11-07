@@ -175,7 +175,7 @@ test('save and resume mid-cooldown and mid-effect; a v7 save starts each ability
 });
 
 // v2.38 (audit phase 4): "the AI uses abilities under the same rules (one shared cooldown), each personality in its own way" was one seeded match, re-seeded whenever a rule change moved it.
-// It is now a statistical test over N seeded matches on the current rules: tests/ai-stats.test.js.
+// It is now a statistical test over N seeded matches on the current rules: tests/slow/ai-stats.test.js.
 
 test('v2.11: Repair Pulse is never wasted by the AI; repairHealable tells the player when nothing in range can be healed', () => {
   // in the storm buildings can't be healed: a base full of damaged buildings and no hurt units gives nothing to heal

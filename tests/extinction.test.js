@@ -112,10 +112,4 @@ test('save and resume mid-storm and inside the end window; a v8 save loads', () 
   const hp = g3.sides[0].hq.hp; step(g3, 1); assert.ok(g3.sides[0].hq.hp < hp, 'resumed into the storm');
 });
 
-test('AI vs AI always finishes by 27:00, on every difficulty', () => {
-  for (const d of ['easy', 'normal', 'hard']) for (let m = 0; m < 3; m++) {
-    const g = sim.newGame(d, { autoPlayer: true, autoDiff: d });
-    for (let i = 0; i < 30 * 1800 && !g.over; i++) sim.update(g, 1 / 30);
-    assert.ok(g.over && g.t <= E.limit + 0.1, `${d}: over ${g.over} at ${g.t.toFixed(0)} s`);
-  }
-});
+// 'AI vs AI always finishes by 27:00, on every difficulty' (9 full matches) is in tests/slow/storm-limit.test.js (v2.58)

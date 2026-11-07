@@ -125,4 +125,4 @@ test('saves v20 keep Bloomhost cooldowns and active effects; a v19 Bloomhost sav
 });
 
 // v2.38 (audit phase 4): "the Bloomhost AI casts all three in a seeded Hard match (Turtle), under the same shared cooldown" was one seeded match, re-seeded whenever a rule change moved it.
-// It is now a statistical test over N seeded matches on the current rules: tests/ai-stats.test.js.
+// It is now a statistical test over N seeded matches on the current rules: tests/slow/ai-stats.test.js.

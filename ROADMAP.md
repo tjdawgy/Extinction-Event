@@ -48,7 +48,8 @@ Every feature must pass one test: does this add a decision, or just a tap?
 
 Map data format: [docs/MAP_FORMAT.md](docs/MAP_FORMAT.md) (approved after Phase 0, with display fields for a map-select screen and a 2D fog performance check).
 
-- [ ] **Test suite split.** `npm test` stays fast for every push; the long statistical tests move to `npm run test:slow`, run before any commit that touches the SIM or the AI.
+- [x] **Test suite split.** `npm test` stays fast for every push; the long statistical tests move to `npm run test:slow`, run before any commit that touches the SIM or the AI.
+  *Done in v2.58: tests/slow/ (ai-stats, spawn-balance, storm-limit).*
 - [ ] **Classic in the map format.** Today's map ported to docs/MAP_FORMAT.md with no gameplay change (the replay fingerprints must match), plus the map validation tests.
 - [ ] **AI attack decisions / stalemate fix** (on Classic). Diagnose why Hard never attacks Hard; make the AI fight for nodes, attack when clearly ahead, press harder as the storm nears, and raid when a full push isn't worth it. Targets for Hard vs Hard: median 12–18 min, at least 50% decided before 20:00, under 5% with no fight, draws under 25%. AI changes only.
 - [ ] **Map system.**

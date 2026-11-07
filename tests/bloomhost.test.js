@@ -126,4 +126,4 @@ test('the match log names each side\'s buildings in its own faction and both fac
 });
 
 // v2.38 (audit phase 4): "one Hard match, Bloomhost (Turtle) against Last Fist: it builds its economy and Maws, trains all three base units, takes nodes and attacks" was one seeded match, re-seeded whenever a rule change moved it.
-// It is now a statistical test over N seeded matches on the current rules: tests/ai-stats.test.js.
+// It is now a statistical test over N seeded matches on the current rules: tests/slow/ai-stats.test.js.

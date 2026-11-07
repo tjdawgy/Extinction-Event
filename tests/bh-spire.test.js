@@ -147,4 +147,4 @@ test('the AI trains every unit on its Bloomspire path (a prepared T3 Bloomspire 
 });
 
 // v2.38 (audit phase 4): "in a seeded Hard match the Bloomhost AI picks a Bloomspire path through its Tech Lab taste and trains its units" was one seeded match, re-seeded whenever a rule change moved it.
-// It is now a statistical test over N seeded matches on the current rules: tests/ai-stats.test.js.
+// It is now a statistical test over N seeded matches on the current rules: tests/slow/ai-stats.test.js.

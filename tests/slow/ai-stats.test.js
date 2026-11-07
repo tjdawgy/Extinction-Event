@@ -4,10 +4,10 @@
 // the unit redesign on, retreating units holding fire) through the real SIM (audit/sim/load.js) and asserts a rate: the
 // behaviour must show up in at least that share of matches. The thresholds sit well below the rates measured over 20
 // matches (in the comments), so a rule change that merely reshuffles matches doesn't fail them, but losing a behaviour
-// does. AISTATS_N=20 node tests/ai-stats.test.js --print prints the measured rates instead.
+// does. AISTATS_N=20 node tests/slow/ai-stats.test.js --print prints the measured rates instead.
 const test = require('node:test');
 const assert = require('node:assert');
-const { loadSim } = require('../audit/sim/load');
+const { loadSim } = require('../../audit/sim/load');
 
 const N = +(process.env.AISTATS_N || 10), PRINT = process.argv.includes('--print');
 // Plays n seeded matches; per tick, look(g, S) can record what it needs; done(g, S) returns the match's facts

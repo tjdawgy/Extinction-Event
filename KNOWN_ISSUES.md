@@ -2,6 +2,10 @@
 
 Issues found during testing that are deliberately deferred. Each lists the step that should address it.
 
+## Test suite split (v2.58)
+- `npm test` is the fast suite (tests/*.test.js), for every push. The long statistical tests moved to tests/slow/ and run with `npm run test:slow`: ai-stats (seeded AI rates, about 11 minutes alone), spawn-balance (150 Hard mirrors, about 9 minutes) and storm-limit (9 full AI-vs-AI matches, from extinction.test.js). Rule (CLAUDE.md): run test:slow too before any commit that touches the SIM or the AI.
+- Measured per file (each alone, 4 at a time): the fast suite's longest file is now the tutorial's browser flow (about 5 minutes; functional, so it stays).
+
 ## Phase 0: index.html split (v2.57)
 - **What:** the source is in src/ (33 parts: head.html, style.css, body.html, 12 in sim/, 7 in render/, 10 in ui/, end.html), cut at existing section comments. build.js joins them in its `PARTS` order, byte for byte (no dependencies, no transforms) and writes index.html, which stays committed and self-contained (GitHub Pages and the test kit read it as before). `npm run build`, `npm run check`.
 - **Proof:** the first build of v2.57 was byte-identical to v2.57's single file (`cmp`, SHA-256 c01f3b28… both); `git diff` of index.html against v2.56 shows only the VERSION line; tests/determinism.test.js (the replay fingerprints back to v2.29) passes on the built file.
