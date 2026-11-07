@@ -46,8 +46,13 @@ Every feature must pass one test: does this add a decision, or just a tap?
 
 ## Phase 1 — Replayability
 
+Map data format: [docs/MAP_FORMAT.md](docs/MAP_FORMAT.md) (approved after Phase 0, with display fields for a map-select screen and a 2D fog performance check).
+
+- [ ] **Test suite split.** `npm test` stays fast for every push; the long statistical tests move to `npm run test:slow`, run before any commit that touches the SIM or the AI.
+- [ ] **Classic in the map format.** Today's map ported to docs/MAP_FORMAT.md with no gameplay change (the replay fingerprints must match), plus the map validation tests.
+- [ ] **AI attack decisions / stalemate fix** (on Classic). Diagnose why Hard never attacks Hard; make the AI fight for nodes, attack when clearly ahead, press harder as the storm nears, and raid when a full push isn't worth it. Targets for Hard vs Hard: median 12–18 min, at least 50% decided before 20:00, under 5% with no fight, draws under 25%. AI changes only.
 - [ ] **Map system.**
-  - Each map defines its own paths, pads, nodes, army size limit and number of bases.
+  - Each map defines its own paths, pads, nodes, army size limit and number of bases (format: docs/MAP_FORMAT.md).
   - Support up to four bases from day one, for future 2v2 and free-for-all.
 - [ ] **Maps.** Build them in this order:
   1. Classic — the current single lane, for short matches.
