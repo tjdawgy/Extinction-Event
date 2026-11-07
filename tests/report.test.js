@@ -128,12 +128,13 @@ test('endings: HQ kill, the Extinction Event, a score decision and a draw are ea
   let g = quiet(600); sim.kill(g, g.sides[1].hq, 0); sim.update(g, 1 / 30);
   same(g.log.ev.slice(-2).map(e => e[2]), ['D', 'E']); assert.strictEqual(g.log.ev.at(-1)[3], 'hq');
   g = quiet(1165); step(g, 40); sim.kill(g, g.sides[1].hq, -1); step(g, 5.5);
-  same(g.log.ev.filter(e => e[1] === -1).map(e => e[2]), ['W', 'X', 'E']); assert.strictEqual(g.log.ev.at(-1)[3], 'storm');
+  same(g.log.ev.filter(e => e[1] === -1).map(e => e[2]), ['W', 'X', 'E']); assert.strictEqual(g.log.ev.at(-1)[3], 'draw'); // v2.48: an HQ lost to the storm is a draw
   assert.ok(g.log.ev.some(e => e[2] === 'D' && e[3] === 'hq' && e[5] === -1), 'destroyed by the storm');
   assert.ok(g.log.tot[0].storm > 0 && g.log.tot[1].storm > 0, 'storm damage recorded');
   g = quiet(1500); sim.tieBreak(g, 'limit'); assert.strictEqual(g.log.ev.at(-1)[3], 'draw');
-  assert.strictEqual(sim.logLines(g, 0).at(-1).txt, 'Match ended: mutual extinction');
-  g = quiet(1500); g.sides[0].hq.hp -= 1; sim.tieBreak(g, 'limit'); same(g.log.ev.at(-1).slice(2), ['E', 'score', 1]);
+  assert.strictEqual(sim.logLines(g, 0).at(-1).txt, 'Match ended: draw (the Extinction Event)');
+  assert.strictEqual(sim.logLines(g, 1).at(-1).txt, 'Match ended: draw (the Extinction Event)', 'both sides get the draw');
+  g = quiet(1100); g.sides[0].hq.hp -= 1; sim.tieBreak(g, 'both'); same(g.log.ev.at(-1).slice(2), ['E', 'score', 1]); // before the storm the score still decides
   assert.strictEqual(sim.logLines(g, 1).at(-1).txt, 'Match ended: you lost', 'always the player\'s view');
 });
 

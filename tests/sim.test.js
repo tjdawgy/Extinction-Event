@@ -59,7 +59,7 @@ for (const diff of ['easy', 'normal', 'hard']) {
     run(g, 60 * 30);
     for (const e of g.ents) assert.ok(Number.isFinite(e.u) && Number.isFinite(e.hp), 'no NaN positions or HP');
     assert.ok(g.t > 60, 'match lasted a while');
-    assert.ok(g.over, 'someone wins within 30 minutes');
-    assert.ok(g.winner === 0 || g.winner === 1);
+    assert.ok(g.over, 'the match ends within 30 minutes');
+    assert.ok(g.winner === 0 || g.winner === 1 || (g.winner === -1 && g.result.how === 'draw' && g.t >= sim.EXT.start), 'a winner, or a storm draw (v2.48)');
   });
 }

@@ -550,7 +550,7 @@ test('Extinction Event: warning banner (no taps), meteors only on ground the pla
     const texts = [
       shot({ winner: 0, result: { how: 'score', reason: 'both', by: 'score', score: [5200, 3100] } }),
       shot({ winner: 1, result: { how: 'storm' } }),
-      shot({ winner: -1, result: { how: 'draw', reason: 'limit', by: 'credits', score: [1000, 1000] } }),
+      shot({ winner: -1, result: { how: 'draw', reason: 'limit', by: 'storm', score: [1000, 1000] } }),
       shot({ winner: 0, result: { how: 'hq' } }),
       shot({ winner: 1, result: { how: 'hq' } }),
       shot({ winner: 0, result: { how: 'storm' } }),
@@ -566,7 +566,7 @@ test('Extinction Event: warning banner (no taps), meteors only on ground the pla
   assert.deepStrictEqual(r.bad, [], 'no meteors drawn on hidden enemy buildings');
   assert.match(r.texts[0], /^Victory \| Survived the Extinction Event.* You won\. Barely\. Live to die another day\. /);
   assert.match(r.texts[1], /^Defeat \| Your Command HQ fell to the Extinction Event\. You lost\. The extinction came for you first\. /);
-  assert.match(r.texts[2], /^Mutual extinction \| Both commands fell.* Nobody won\. Nothing survives\. /);
+  assert.match(r.texts[2], /^Draw \| The Extinction Event reached its peak.* Nobody won\. Nothing survives\. /); // v2.48
   assert.match(r.texts[3], /^Victory \| The enemy Command HQ has fallen\. You won\. Live to die another day\. /);
   assert.match(r.texts[4], /^Defeat \| Your Command HQ was destroyed\. You lost\. Your colony went extinct\. /);
   assert.match(r.texts[5], /^Victory \| The enemy base fell to the Extinction Event\. You won\. Outlasted the extinction\. /);

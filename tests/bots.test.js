@@ -8,7 +8,7 @@ const sim = loadSim();
 for (const bot of ['rush', 'turtle']) {
   test(`${bot} bot plays a full match against the Normal AI`, () => {
     const r = playMatch(sim, 'normal', bot);
-    assert.ok(r.winner === 0 || r.winner === 1, 'match finishes within 30 minutes');
+    assert.ok(r.g.over && r.winner >= -1 && r.winner <= 1, 'match finishes within 30 minutes'); // v2.48: a storm ending is a draw (-1)
     assert.ok(r.stats[0].built > 5, 'bot trained an army');
     for (const e of r.g.ents) assert.ok(Number.isFinite(e.u) && Number.isFinite(e.hp));
   });

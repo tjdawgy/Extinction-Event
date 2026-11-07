@@ -226,6 +226,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .box h1 span{color:var(--blue)}
 .box h1.win{color:var(--good)}
 .box h1.lose{color:var(--bad)}
+.box h1.draw{color:#ffd166}
 .box .kicker{margin:0 0 4px;font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--blue)}
 .box .ver{position:absolute;top:10px;right:14px;margin:0;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;cursor:pointer;padding:6px 0 6px 10px} /* tap: the dev menu (v2.38) */
 .spectate #panel{visibility:hidden} .spectate #abil{display:none} .setup.dev{grid-template-columns:auto 1fr} .dvsub{font-size:12px;font-weight:500;color:var(--muted);margin-left:8px} .setup.dev .dvrow .big,.setup.dev .dvrow .ghost{height:34px;padding:0 16px;font-size:14px} .setup.dev .dvrow{display:flex;flex-wrap:wrap;gap:4px 6px} .setup.dev .seg button{height:28px;font-size:12px;padding:0 9px} /* spectating (v2.38): no build tray, no abilities */
@@ -421,7 +422,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.47'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.48'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -2777,7 +2778,8 @@ function updateAbilities(g, dt) {
    buildings, and halves paid Repair, which it outpaces at 23:36. Before 20:00 a fallen HQ ends the match at once;
    from 20:00 the match runs 5 more seconds, and if the other HQ falls too, the score decides. At 27:00 the score
    decides anyway. Score: HP of every standing building plus army value. */
-const EXT = { show: 1080, warn: 1170, start: 1200, base: 0.003, ramp: 0.0075, repairMul: 0.5, window: 5, limit: 1620 };
+const EXT = { show: 1080, warn: 1170, start: 1200, base: 0.003, ramp: 0.0075, repairMul: 0.5, window: 5, limit: 1620,
+  draw: true }; // v2.48: an ending the storm decides (an HQ lost to the storm, both HQs in the window, the 27:00 limit) is a draw for both sides; false = v2.47's score tie-break
 const stormRate = t => t < EXT.start ? 0 : EXT.base + EXT.ramp * (t - EXT.start) / 60; // share of max HP lost per second
 function updateStorm(g, dt, t0) {
   if (g.noStorm) return; // v2.46: the tutorial's practice match only (set by the UI, never saved); every other match has a storm
@@ -2809,6 +2811,7 @@ function tieBreak(g, reason) { // score, then kills, then credits earned; equal 
   let w = pick(sc), by = 'score';
   if (w < 0) { w = pick(k); by = 'kills'; }
   if (w < 0) { w = pick(c); by = 'credits'; }
+  if (EXT.draw && g.t >= EXT.start) return finish(g, -1, 'draw', { reason, by: 'storm', score: sc }); // v2.48: the storm decided it, so nobody won
   finish(g, w, w < 0 ? 'draw' : 'score', { reason, by, score: sc });
 }
 function resolveEnd(g) {
@@ -2819,7 +2822,7 @@ function resolveEnd(g) {
     const loser = fell[0], how = g.sides[loser].hqBy === -1 ? 'storm' : 'hq';
     if (g.t < EXT.start) return finish(g, 1 - loser, how);
     if (!g.endHold) g.endHold = { loser, until: g.t + EXT.window };
-    if (g.t >= g.endHold.until) return finish(g, 1 - loser, how);
+    if (g.t >= g.endHold.until) return how === 'storm' && EXT.draw ? finish(g, -1, 'draw', { reason: 'storm', loser }) : finish(g, 1 - loser, how);
     return;
   }
   if (g.t >= EXT.limit && !g.noStorm) tieBreak(g, 'limit');
@@ -3916,7 +3919,7 @@ function logEvText(e, me, g) { // one log event as a line of text (me: written f
     case 'G': return b ? 'Feint attack launched (pulled back)' : `Attack launched${a === 'siege' ? ' (siege)' : ''}`;
     case 'W': return 'Extinction Event warning (30 s)';
     case 'X': return 'Extinction Event began';
-    case 'E': return a === 'draw' ? 'Match ended: mutual extinction' : `Match ended: ${b === 0 ? 'you won' : 'you lost'}`; // the player's view, in both columns
+    case 'E': return a === 'draw' ? 'Match ended: draw (the Extinction Event)' : `Match ended: ${b === 0 ? 'you won' : 'you lost'}`; // the player's view, in both columns
     case 'T': case 'K': { const n = UDEF[a] ? UDEF[a].name : a; return `${c === 'K' ? 'Lost ' : ''}${n}${b > 1 ? ` ×${b}, ${mmss(e[0])}–${mmss(x)}` : ''}`; }
   }
   return c;
@@ -8363,8 +8366,8 @@ const REP_TABS = ['Summary', 'Timeline', 'Key moments', 'Stats']; // v2.35: Stat
 let repTab = 'Summary';
 function showEnd() {
   const g = game, win = g.winner === 0, R = g.result || { how: 'hq' }, L = g.log;
-  const title = R.how === 'draw' ? 'Mutual extinction' : win ? 'Victory' : 'Defeat';
-  const how = R.how === 'draw' ? 'Both commands fell to the Extinction Event and nothing could separate them.'
+  const title = R.how === 'draw' ? 'Draw' : win ? 'Victory' : 'Defeat'; // v2.48: an ending the storm decides is a draw for both sides
+  const how = R.how === 'draw' ? (R.reason === 'storm' ? 'A Command HQ fell to the Extinction Event: the storm decided it, not the battle.' : R.reason === 'limit' ? 'The Extinction Event reached its peak with both commands still standing.' : R.reason === 'both' && R.by === 'storm' ? 'Both Command HQs fell in the Extinction Event.' : 'Both commands fell and nothing could separate them.')
     : R.how === 'score' ? `${win ? 'Survived the Extinction Event' : 'Lost to the Extinction Event'}: ${R.reason === 'limit' ? 'the storm reached its peak' : 'both Command HQs fell together'}, and the stronger side remains.`
     : R.how === 'storm' ? (win ? 'The enemy base fell to the Extinction Event.' : 'Your Command HQ fell to the Extinction Event.')
     : win ? 'The enemy Command HQ has fallen.' : 'Your Command HQ was destroyed.';
@@ -8374,7 +8377,7 @@ function showEnd() {
   const line = `${how} <span class="flav">${flavor}</span>`;
   const persona = PERSONA_NAME[(g.sides[1].persona || {}).kind] || 'an unknown commander';
   closePanel(); repTab = 'Summary';
-  overlay(`<div class="top"><h1 class="${win ? 'win' : 'lose'}">${title}</h1><div class="seg rtabs" id="repTabs">${REP_TABS.map(t => `<button data-t="${t}">${t}</button>`).join('')}</div></div>
+  overlay(`<div class="top"><h1 class="${R.how === 'draw' ? 'draw' : win ? 'win' : 'lose'}">${title}</h1><div class="seg rtabs" id="repTabs">${REP_TABS.map(t => `<button data-t="${t}">${t}</button>`).join('')}</div></div>
     <p class="sub">${line} <b>${fmtTime(g.t)}</b> · ${(DIFF[g.diffKey] || DIFF.normal).label} · You faced <b>${persona}</b> · ${factionName(g.sides[0].faction)} vs ${factionName(g.sides[1].faction)}</p>
     <div class="pane" id="repPane"></div>
     <div class="foot"><button class="big" id="bAgain">Play again</button><button class="ghost" id="bMenu2">Main menu</button><span style="flex:1"></span>${diffSeg()}</div>`);
@@ -8410,7 +8413,7 @@ function repSummary(g) {
   const behave = [`${real.length} attack${real.length === 1 ? '' : 's'}${real.length ? ` (first at ${mmss(real[0][0])})` : ''}`, `${att.length - real.length} feint${att.length - real.length === 1 ? '' : 's'}`,
     `${T[1].bBuilt.turret || 0} ${logBName(g, 1, 'turret')}${T[1].bBuilt.turret === 1 ? '' : 's'} built`, ...(T[1].micro ? [`Artillery pulled back ${T[1].micro} time${T[1].micro === 1 ? '' : 's'}`] : []), aiLog.firstUpgrade != null ? `first upgrade at ${mmss(aiLog.firstUpgrade)}` : 'no upgrades'].join(' · ');
   const ext = L.ev.some(e => e[2] === 'X') ? `Reached at 20:00${R.how === 'storm' || R.how === 'score' || R.how === 'draw' ? '; it decided the match' : ''}` : `Not reached (the match ended at ${mmss(g.t)})`;
-  const score = R.score ? `<p class="note">Remaining strength (buildings + army): <b>you ${R.score[0].toLocaleString('en')}</b> · enemy ${R.score[1].toLocaleString('en')}${R.by !== 'score' ? ` (decided by ${R.by})` : ''}</p>` : '';
+  const score = R.score ? `<p class="note">Remaining strength (buildings + army): <b>you ${R.score[0].toLocaleString('en')}</b> · enemy ${R.score[1].toLocaleString('en')}${R.by === 'storm' ? ' (for the record: the Extinction Event makes it a draw)' : R.by !== 'score' ? ` (decided by ${R.by})` : ''}</p>` : '';
   return `${score}<table><tr><th></th><td><b>You</b></td><td class="e"><b>Enemy</b></td></tr>
     ${row('Faction', t => factionName(g.sides[T.indexOf(t)].faction))}
     ${row('Credits gathered / spent', t => `${fmtN(logGathered(L, t, 0))} / ${fmtN(sp(t, 0))}${t.sold[0] ? ` (${fmtN(t.sold[0])} from sales)` : ''}`)}
@@ -8465,7 +8468,7 @@ function repStats(g) {
 }
 function repText(g) {
   const R = g.result || {}, win = g.winner === 0;
-  const res = R.how === 'draw' ? 'Draw (mutual extinction)' : `${win ? 'Victory' : 'Defeat'}, ${R.how === 'score' ? `decided by ${R.by || 'score'} (${R.reason === 'limit' ? 'storm peak' : 'both HQs fell'})` : R.how === 'storm' ? `${win ? 'enemy' : 'your'} HQ fell to the Extinction Event` : `${win ? 'enemy' : 'your'} HQ destroyed`}`;
+  const res = R.how === 'draw' ? `Draw (${R.by === 'storm' || R.reason === 'storm' ? 'the Extinction Event' : 'mutual extinction'})` : `${win ? 'Victory' : 'Defeat'}, ${R.how === 'score' ? `decided by ${R.by || 'score'} (${R.reason === 'limit' ? 'storm peak' : 'both HQs fell'})` : R.how === 'storm' ? `${win ? 'enemy' : 'your'} HQ fell to the Extinction Event` : `${win ? 'enemy' : 'your'} HQ destroyed`}`;
   return logText(g, { version: VERSION, diff: (DIFF[g.diffKey] || DIFF.normal).label, persona: PERSONA_NAME[(g.sides[1].persona || {}).kind] || 'unknown', result: res });
 }
 function repCopy() {

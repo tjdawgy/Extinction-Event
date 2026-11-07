@@ -72,18 +72,28 @@ test('ending: before 20:00 at once; in the storm after a 5 s window; both HQs in
   g = quiet(1300); sim.kill(g, g.sides[1].hq, -1); sim.update(g, 1 / 30);
   assert.ok(!g.over && g.endHold && g.endHold.loser === 1);
   step(g, 4.8); assert.ok(!g.over);
-  step(g, 0.3); assert.ok(g.over && g.winner === 0 && g.result.how === 'storm');
+  step(g, 0.3); assert.ok(g.over && g.winner === -1 && g.result.how === 'draw' && g.result.reason === 'storm', JSON.stringify(g.result)); // v2.48: the storm decided it: a draw
   // storm: the other HQ falls inside the window: score decides (side 1 has the bigger army)
   g = quiet(1300); for (let i = 0; i < 3; i++) { const t = sim.spawnUnit(g, 1, 'tank', 1400, 0); t.holdU = t.u; t.holdV = 0; t.cd = 1e6; }
   sim.kill(g, g.sides[1].hq, -1); sim.update(g, 1 / 30); step(g, 2); sim.kill(g, g.sides[0].hq, -1); sim.update(g, 1 / 30);
-  assert.ok(g.over && g.result.how === 'score' && g.winner === 1, JSON.stringify(g.result));
+  assert.ok(g.over && g.result.how === 'draw' && g.result.reason === 'both' && g.winner === -1, JSON.stringify(g.result)); // v2.48: a draw (score kept for the record)
+  assert.ok(g.result.score[1] > g.result.score[0]);
   // the hard limit
   g = quiet(E.limit - 0.5); build(g, 0, 'turret'); step(g, 1);
-  assert.ok(g.over && g.result.how === 'score' && g.result.reason === 'limit' && g.winner === 0, JSON.stringify(g.result));
+  assert.ok(g.over && g.result.how === 'draw' && g.result.reason === 'limit' && g.winner === -1, JSON.stringify(g.result));
+  // a units' HQ kill inside the storm still wins
+  g = quiet(1300); sim.kill(g, g.sides[1].hq, 0); sim.update(g, 1 / 30); step(g, 5.2);
+  assert.ok(g.over && g.winner === 0 && g.result.how === 'hq', JSON.stringify(g.result));
+  // EXT.draw false: v2.47's endings
+  E.draw = false;
+  try {
+    g = quiet(1300); sim.kill(g, g.sides[1].hq, -1); sim.update(g, 1 / 30); step(g, 5.2); assert.ok(g.winner === 0 && g.result.how === 'storm');
+    g = quiet(E.limit - 0.5); build(g, 0, 'turret'); step(g, 1); assert.ok(g.result.how === 'score' && g.winner === 0);
+  } finally { E.draw = true; }
 });
 
-test('tie-breaks: score, then kills, then credits earned; equal on all three is a draw ("Mutual extinction")', () => {
-  const mk = () => { const g = quiet(1500); for (const s of [0, 1]) { g.sides[s].hq.hp = 1000; g.sides[s].stats.kills = 0; g.sides[s].stats.earned = 500; } return g; };
+test('tie-breaks before the storm: score, then kills, then credits earned; equal on all three is a draw ("Mutual extinction")', () => {
+  const mk = () => { const g = quiet(1100); for (const s of [0, 1]) { g.sides[s].hq.hp = 1000; g.sides[s].stats.kills = 0; g.sides[s].stats.earned = 500; } return g; };
   let g = mk(); sim.tieBreak(g, 'limit'); assert.ok(g.over && g.winner === -1 && g.result.how === 'draw');
   g = mk(); g.sides[1].stats.kills = 2; sim.tieBreak(g, 'limit'); assert.ok(g.winner === 1 && g.result.by === 'kills');
   g = mk(); g.sides[0].stats.earned = 501; sim.tieBreak(g, 'limit'); assert.ok(g.winner === 0 && g.result.by === 'credits');
@@ -95,7 +105,7 @@ test('save and resume mid-storm and inside the end window; a v8 save loads', () 
   const g = quiet(1300); sim.kill(g, g.sides[1].hq, -1); sim.update(g, 1 / 30);
   const g2 = sim.deserialize(sim.serialize(g, {}));
   assert.ok(g2.endHold && g2.endHold.loser === 1, 'end window kept');
-  step(g2, 5.2); assert.ok(g2.over && g2.winner === 0);
+  step(g2, 5.2); assert.ok(g2.over && g2.winner === -1 && g2.result.reason === 'storm'); // v2.48: a draw
   const o = JSON.parse(sim.serialize(quiet(1250), {})); o.v = 8; delete o.endHold; for (const sd of o.sides) delete sd.stats.earned;
   const g3 = sim.deserialize(JSON.stringify(o));
   assert.ok(g3 && g3.endHold === null);
