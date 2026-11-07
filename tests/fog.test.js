@@ -143,7 +143,7 @@ test('AI decisions use only its own vision (identical choices whatever is hidden
     seed = 42; const g = det.newGame('hard');
     if (extra) for (let i = 0; i < extra.n; i++) { const t = det.spawnUnit(g, 0, 'tank', extra.u + i * 8, 0); t.holdU = t.u; t.holdV = t.v; }
     g.sides[0].stance = 'hold'; g.sides[0].aiT = 1e9;
-    g.seed = 7; return g;
+    det.seedGame(g, 7); g.seed = 7; return g; // v2.50: the game's own streams restart too, after the setup spawns
   };
   const step = g => { seed = g.seed; det.update(g, STEP); g.seed = seed; };
   const aiState = g => JSON.stringify({ res: g.sides[1].res, stance: g.sides[1].stance, push: g.sides[1].pushTo,

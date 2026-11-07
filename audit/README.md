@@ -180,3 +180,5 @@ On the start screen, tap the version number (top right) for the dev menu:
 
 ### Phase 0 tools (v2.49 on)
 - **`mirror.js`:** Hard-vs-Hard mirrors per faction with wins by spawn side (side 0 always left), draws and who was ahead in them, openings, and a z-score for the left side's share. `node audit/sim/mirror.js [--n=200] [--maxT=1620] [--factions=...] [--out=file.json]`. Results and the stance experiment in `logs-p0/`.
+- **`determinism.js`** (v2.50): each seed played twice in VM contexts with different Math.random, at the game's `TICK`, a state hash compared every 100 ticks. `node audit/sim/determinism.js [--seeds=1,2] [--ticks=36000]`. Exit code 1 on any difference.
+- **Seeds** (v2.50): `match.js` passes the match seed to `newGame` (`g.seed`); game logic draws only from the game's own stream, so the context's seeded Math.random no longer decides a match. Results from before v2.50 can't be replayed seed for seed on v2.50 (`RNG.legacy = true` plays the old way).

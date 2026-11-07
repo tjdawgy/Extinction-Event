@@ -422,7 +422,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.49'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.50'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -433,7 +433,26 @@ const SLOT_COUNT = 8, POP_MAX = 80, LANE_V = 115, DV_W = 0.4, US = 1.3, BS = 0.7
 const IX = 0.866, IY = 0.5, DY = 0.5;
 const lerp = (a, b, k) => a + (b - a) * k;
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
-const rand = (a, b) => a + Math.random() * (b - a);
+/* ---------- Random numbers (v2.50, Phase 0 item 3: a deterministic SIM) ----------
+   Game logic draws from simRnd: mulberry32, seeded per match (g.seed), its state on the game (g.rs, saved and restored),
+   so the same seed and the same inputs play the same match tick for tick. Visual-only randomness in the SIM (particles,
+   explosion debris, the idle-animation phase of units and buildings) draws from fxRnd, a second stream seeded from the same
+   match seed (g.fs): it never feeds a rule, so effects can change without changing a match. RNG.g is the game the streams
+   belong to (set by newGame, update, deserialize and the entry points that can roll from the UI). RNG.legacy true sends
+   both back to Math.random in v2.49's call order: the pinned replays in tests/determinism.test.js run that way. */
+const RNG = { legacy: false, g: null };
+const m32 = st => { let t = Math.imul(st ^ st >>> 15, 1 | st); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+function simRnd() { const g = RNG.g; if (RNG.legacy || !g || g.rs === undefined) return Math.random(); g.rs = g.rs + 0x6D2B79F5 | 0; return m32(g.rs); }
+function fxRnd() { const g = RNG.g; if (RNG.legacy || !g || g.fs === undefined) return Math.random(); g.fs = g.fs + 0x6D2B79F5 | 0; return m32(g.fs); }
+const rand = (a, b) => a + simRnd() * (b - a);
+const fxRand = (a, b) => a + fxRnd() * (b - a);
+function seedGame(g, seed) { // a new match's two streams (none in legacy mode, so the pinned replays hash as before)
+  RNG.g = g;
+  if (RNG.legacy) return;
+  g.seed = (seed === undefined || seed === null ? Math.floor(Math.random() * 4294967296) : seed) >>> 0;
+  g.rs = g.seed | 0; g.fs = (g.seed ^ 0x9E3779B9) | 0;
+}
+const TICK = 1 / 60; // the SIM's fixed step: the game calls update(g, TICK); 1-3x speed runs more ticks per frame, never longer ones
 // Side-scrolling view: u is screen x, depth v is foreshortened, z is height
 const P = (u, v, z = 0) => ({ x: u, y: v * DY - z });
 
@@ -1077,7 +1096,7 @@ const AI_PRESET_KEYS = Object.keys(AI_PRESETS);
 const aiDials = P => (P && P.dial) || AI_DIALS; // a persona without dials (an older save) reads the legacy constants
 const aiSmart = P => !!(P && P.smart);
 const aiFix = (P, k) => !!(P && P.smart && (!P.dial || !P.dial.fix || P.dial.fix[k])); // one competence rule on (the harness can switch each off)
-const pickOne = a => a[Math.floor(Math.random() * a.length)];
+const pickOne = a => a[Math.floor(simRnd() * a.length)];
 // preset: 'legacy' or 'default' (v2.38); it adds the dials and the competence switch after the personality's own rolls,
 // with no random numbers of its own, so a Legacy personality rolls exactly as before
 // v2.40: fac and diffKey let a preset carry per-faction settings (byFac: the openings it picks from, dials, rules; the Hard
@@ -1132,7 +1151,7 @@ function aiAbility(g, s, P, ctx) {
   if (!FACTIONS[facOf(g.sides[s].faction)].abilities) return;
   const D = s === 1 ? g.diff : (DIFF[g.autoDiff] || DIFF.normal), lvl = D === DIFF.easy ? 0 : D === DIFF.hard ? 2 : 1;
   const side = g.sides[s], f = g.fog[s], log = side.aiLog, kind = P.kind;
-  if (g.t < ABIL.shield.first || Math.random() > [0.2, 0.5, 1][lvl]) return; // slower to react on lower difficulties
+  if (g.t < ABIL.shield.first || simRnd() > [0.2, 0.5, 1][lvl]) return; // slower to react on lower difficulties
   const seen = g.ents.filter(e => e.side !== s && e.hp > 0 && visibleTo(g, s, e));
   const use = (k, t) => {
     if (!t || !useAbility(g, s, k, t.u, t.v).ok) return false;
@@ -1367,6 +1386,7 @@ function newGame(diffKey, opts = {}) {
     diff: DIFF[diffKey] || DIFF.normal, diffKey, events: [], auto: !!opts.autoPlayer, autoDiff: opts.autoDiff || 'normal', shake: 0, front: [null, null], countdown: opts.countdown || 0,
     nodes: NODE_U.map((u, i) => ({ id: i, u, v: 0, prog: 0, owner: null, c: [0, 0] })), log: null, forcePath: opts.forcePath || null,
     creep: [[], []], acid: [], field: [[], []], warps: [] }; // creep patches per side (v2.18; Bloomhost only); acid: Ruinmaw pools (v2.19); field: Axiarch power field patches, warps: units mid-warp (v2.26)
+  seedGame(g, opts.seed); // v2.50: the match's random streams (opts.seed, else a fresh one)
   for (let s = 0; s < 2; s++) {
     g.sides.push({ faction: (opts.factions && opts.factions[s]) || DEFAULT_FACTION, res: { c: START_RES.c, e: START_RES.e }, stance: s === 0 ? 'hold' : 'retreat', stanceAt: 0, pushTo: null, slots: new Array(SLOT_COUNT).fill(null),
       hq: null, aiT: 1 + s * 0.5, stats: { built: 0, kills: 0, lost: 0, earned: 0 }, lastAlert: -99, buff: false, ab: newAb(0, (opts.factions && opts.factions[s]) || DEFAULT_FACTION), abK: null, abEnd: 0, orders: newOrders(), sel: null, warp: null, salv: newSalv(), od: 0 }); // od: Overdrive's end time (v2.32) // salv: Salvage (v2.30); warp: the player's chosen warp point (Axiarchs, v2.26); null = the default
@@ -1388,7 +1408,7 @@ function mkBuilding(g, s, type, slot) {
   const fac = facOf(g.sides[s].faction), d = BD(fac, type), pos = slot < 0 ? hqPos(s) : slotPos(s, slot);
   const b = { id: g.nid++, kind: 'b', type, fac, side: s, slot, u: pos.u, v: pos.v, half: d.half, h: d.h * BS, tier: 1,
     hp: d.hp * 0.15, maxHp: d.hp, built: false, progress: 0, upgrading: false, upProg: 0, queue: [], prodT: 0,
-    cd: 0, aim: null, hitT: 0, anim: Math.random() * 10, spent: { c: 0, e: 0 }, path: null, upPath: null, // path: its upgrade-tree path (v2.13)
+    cd: 0, aim: null, hitT: 0, anim: fxRnd() * 10, spent: { c: 0, e: 0 }, path: null, upPath: null, // path: its upgrade-tree path (v2.13)
     shp: 0, maxShp: d.shp || 0, shpT: -99, shpHit: -99 }; // Axiarch shields (v2.25): they charge once it is built
   g.ents.push(b);
   if (slot >= 0 && slot < SLOT_COUNT) g.sides[s].slots[slot] = b; // the signature pad (v2.43) is not one of the 8
@@ -1471,8 +1491,8 @@ function trySell(g, s, b) {
   b.queue.length = 0; b.hp = 0; b.dead = true; b.sold = true;
   if (b.slot >= 0 && side.slots[b.slot] === b) side.slots[b.slot] = null;
   for (let i = 0; i < 10; i++) {
-    const w = P(b.u + rand(-b.half, b.half), b.v + rand(-b.half, b.half), rand(0, b.h * 0.5));
-    addPart(g, { x: w.x, y: w.y, vx: rand(-20, 20), vy: rand(-30, -8), life: rand(0.6, 1.2), size: rand(4, 8), smoke: true, light: true, grav: -5 });
+    const w = P(b.u + fxRand(-b.half, b.half), b.v + fxRand(-b.half, b.half), fxRand(0, b.h * 0.5));
+    addPart(g, { x: w.x, y: w.y, vx: fxRand(-20, 20), vy: fxRand(-30, -8), life: fxRand(0.6, 1.2), size: fxRand(4, 8), smoke: true, light: true, grav: -5 });
   }
   return { ok: true, msg: `${d.name} sold for ${r.c} credits` + (r.e ? ` and ${r.e} energy` : '') };
 }
@@ -1524,10 +1544,11 @@ function tryTrain(g, s, type) {
 }
 
 function spawnUnit(g, s, type, u, v) {
+  RNG.g = g; // v2.50: roll from this match's stream (these can run from the UI, between ticks)
   const d = UDEF[type];
   const unit = { id: g.nid++, kind: 'u', type, side: s, u, v, z: d.air ? (type === 'interceptor' ? rand(100, 124) : type === 'leviathan' ? rand(88, 98) : type === 'drone' ? rand(104, 114) : type === 'razorwing' ? rand(56, 72) : type === 'needlewing' ? rand(50, 64) : type === 'cloudwing' ? rand(62, 76) : type === 'broodtyrant' ? rand(78, 88) : type === 'worldrender' ? rand(84, 94) : type === 'wraithwing' ? rand(64, 80) : type === 'prismwing' ? rand(56, 70) : type === 'shardstorm' ? rand(66, 80) : type === 'voidcarrier' ? rand(78, 88) : type === 'sovereign' ? rand(84, 94) : rand(70, 94)) : 0,
-    laneV: rand(-LANE_V, LANE_V), hp: d.hp, maxHp: d.hp, cd: Math.random() * 0.5, face: dirOf(s), anim: Math.random() * 10,
-    moving: false, rallyOff: -Math.random() * 100, recoil: 0, hitT: 0, shT: 0, vet: 0, aimAir: 0, medAt: -1, tgt: 0, braceT: 0, braceCd: 0, lastHurt: -99, lastAct: -99, creepAt: -1, temp: 0, tLife: 0, tSrc: null, kid: 0, spawnT: 0, dis: 0, disT: 0, slow: 0, slowT: 0, chT: 0, chTgt: 0, pulseCd: 0, shp: d.shp || 0, maxShp: d.shp || 0, shpT: -99, shpHit: -99, ovT: 0, frzT: 0, leapCd: 0, leaping: 0, lu: 0, lv: 0, ld: 0, corr: 0, corrT: 0, burstCd: 0 }; // tgt: what it last attacked; braceT/braceCd: the Bulwark's brace (v2.17); lastHurt/lastAct: last damage taken/dealt, creepAt: last creep regen (v2.18); leap*: the Leaper's jump, corr/corrT: corrosion, burstCd: the Dreadthorn's spines (v2.19) // vet: a Drilled Rifleman (v2.13); aimAir: where a Hydra's guns point (v2.14); medAt: last healed by a Medicopter (v2.15) // shT (shield until) set from the start keeps every unit the same shape for the JS engine
+    laneV: rand(-LANE_V, LANE_V), hp: d.hp, maxHp: d.hp, cd: simRnd() * 0.5, face: dirOf(s), anim: fxRnd() * 10,
+    moving: false, rallyOff: -simRnd() * 100, recoil: 0, hitT: 0, shT: 0, vet: 0, aimAir: 0, medAt: -1, tgt: 0, braceT: 0, braceCd: 0, lastHurt: -99, lastAct: -99, creepAt: -1, temp: 0, tLife: 0, tSrc: null, kid: 0, spawnT: 0, dis: 0, disT: 0, slow: 0, slowT: 0, chT: 0, chTgt: 0, pulseCd: 0, shp: d.shp || 0, maxShp: d.shp || 0, shpT: -99, shpHit: -99, ovT: 0, frzT: 0, leapCd: 0, leaping: 0, lu: 0, lv: 0, ld: 0, corr: 0, corrT: 0, burstCd: 0 }; // tgt: what it last attacked; braceT/braceCd: the Bulwark's brace (v2.17); lastHurt/lastAct: last damage taken/dealt, creepAt: last creep regen (v2.18); leap*: the Leaper's jump, corr/corrT: corrosion, burstCd: the Dreadthorn's spines (v2.19) // vet: a Drilled Rifleman (v2.13); aimAir: where a Hydra's guns point (v2.14); medAt: last healed by a Medicopter (v2.15) // shT (shield until) set from the start keeps every unit the same shape for the JS engine
   g.ents.push(unit);
   g.sides[s].stats.built++;
   return unit;
@@ -1609,6 +1630,7 @@ function updateVision(g) {
 }
 
 function update(g, dt) {
+  RNG.g = g; // v2.50
   updateFx(g, dt);
   if (g.over) return;
   refreshShields(g);
@@ -1760,7 +1782,7 @@ function updateBuilding(g, b, foes, dt) {
     const h = Math.min(b.repair, b.maxHp * 0.06 * (g.t >= EXT.start ? EXT.repairMul : 1) * dt, b.maxHp - b.hp); // half rate in the storm
     b.hp += h; b.repair -= h;
     if (b.hp >= b.maxHp - 0.01) b.repair = 0;
-    if (Math.random() < dt * 6) { const w = P(b.u + rand(-b.half, b.half) * 0.6, b.v + rand(-b.half, b.half) * 0.6, b.h * rand(0.2, 0.9)); addPart(g, { x: w.x, y: w.y, vx: rand(-8, 8), vy: rand(-30, -10), life: 0.5, size: 1.6, color: '#7dffb0', grav: 0 }); }
+    if (fxRnd() < dt * 6) { const w = P(b.u + fxRand(-b.half, b.half) * 0.6, b.v + fxRand(-b.half, b.half) * 0.6, b.h * fxRand(0.2, 0.9)); addPart(g, { x: w.x, y: w.y, vx: fxRand(-8, 8), vy: fxRand(-30, -10), life: 0.5, size: 1.6, color: '#7dffb0', grav: 0 }); }
   } else if (!b.maxShp && g.t < EXT.start && g.t - (b.lastHit ?? -99) > REGEN_DELAY && b.hp < b.maxHp) b.hp = Math.min(b.maxHp, b.hp + b.maxHp * 0.01 * dt);
   if (b.upgrading) {
     const up = d.up[b.tier + 1];
@@ -1790,13 +1812,13 @@ function updateBuilding(g, b, foes, dt) {
       }
     }
   }
-  if (b.type === 'refinery' && Math.random() < dt * 2.2) {
+  if (b.type === 'refinery' && fxRnd() < dt * 2.2) {
     const w = P(b.u, b.v - 32 * BS, (50 + (b.tier >= 3 ? 10 : 0)) * BS);
-    addPart(g, { x: w.x, y: w.y, vx: rand(-4, 4), vy: rand(-22, -12), life: rand(1.2, 2), size: rand(3, 5), smoke: true, light: true, grav: -4 });
+    addPart(g, { x: w.x, y: w.y, vx: fxRand(-4, 4), vy: fxRand(-22, -12), life: fxRand(1.2, 2), size: fxRand(3, 5), smoke: true, light: true, grav: -4 });
   }
-  if (b.hp < b.maxHp * 0.5 && Math.random() < dt * 3) {
-    const w = P(b.u + rand(-b.half, b.half), b.v + rand(-b.half, b.half), b.h * rand(0.3, 0.7));
-    addPart(g, { x: w.x, y: w.y, vx: rand(-6, 6), vy: rand(-28, -14), life: rand(1, 1.8), size: rand(4, 7), smoke: true, grav: -6 });
+  if (b.hp < b.maxHp * 0.5 && fxRnd() < dt * 3) {
+    const w = P(b.u + fxRand(-b.half, b.half), b.v + fxRand(-b.half, b.half), b.h * fxRand(0.3, 0.7));
+    addPart(g, { x: w.x, y: w.y, vx: fxRand(-6, 6), vy: fxRand(-28, -14), life: fxRand(1, 1.8), size: fxRand(4, 7), smoke: true, grav: -6 });
   }
   const gun = d.gun && d.gun[b.tier];
   if (gun) {
@@ -2347,6 +2369,7 @@ function warpSpot(g, s, u, v, taken) {
 // A finished unit starts its warp: a channel of WARP.ch seconds at a valid spot near the warp point. It is already paid
 // for and counts toward supply until it arrives (popUsed).
 function startWarp(g, s, type, extra) { // extra: an echo's flags (v2.34)
+  RNG.g = g; // v2.50: roll from this match's stream (these can run from the UI, between ticks)
   const w = warpPoint(g, s), p = warpSpot(g, s, w.u, w.v);
   g.warps.push(Object.assign({ side: s, type, u: p.u, v: p.v, t0: g.t, end: g.t + WARP.ch }, extra));
 }
@@ -2472,6 +2495,7 @@ function meleeHit(g, src, t, def) {
   if (src.kind === 'u') src.recoil = 1;
 }
 function fire(g, src, t, def) {
+  RNG.g = g; // v2.50: roll from this match's stream (these can run from the UI, between ticks)
   if (src.kind === 'u') src.lastAct = g.t; // in combat (creep regen waits, v2.18)
   if (def.weapon === 'flame') { flameBurst(g, src, def, t); return; }
   if (def.melee) { meleeHit(g, src, t, def); return; }
@@ -2589,6 +2613,7 @@ function abilityCheck(g, s, k, u, v) {
   return { ok: true };
 }
 function useAbility(g, s, k, u, v) {
+  RNG.g = g; // v2.50: roll from this match's stream (these can run from the UI, between ticks)
   const r = abilityCheck(g, s, k, u, v);
   if (!r.ok) return r;
   const A = ABIL[k], side = g.sides[s];
@@ -2836,7 +2861,7 @@ function updateProjs(g, dt) {
       const k = Math.min(1, p.t / p.T);
       p.u = lerp(p.su, p.tu, k); p.v = lerp(p.sv, p.tv, k);
       p.z = lerp(p.sz, 0, k) + p.arc * 4 * k * (1 - k);
-      if (Math.random() < 0.5) { const w = P(p.u, p.v, p.z); addPart(g, { x: w.x, y: w.y, vx: 0, vy: 0, life: 0.35, size: 2, smoke: true, light: true }); }
+      if (fxRnd() < 0.5) { const w = P(p.u, p.v, p.z); addPart(g, { x: w.x, y: w.y, vx: 0, vy: 0, life: 0.35, size: 2, smoke: true, light: true }); }
       if (k >= 1) { impact(g, p, null); p.done = true; }
       continue;
     }
@@ -2845,9 +2870,9 @@ function updateProjs(g, dt) {
     const du = p.tu - p.u, dv = p.tv - p.v, dz = p.tz - p.z, dist = Math.hypot(du, dv, dz), step = p.speed * dt;
     if (dist <= step + 2) { p.u = p.tu; p.v = p.tv; p.z = p.tz; impact(g, p, p.target); p.done = true; continue; }
     p.u += du / dist * step; p.v += dv / dist * step; p.z += dz / dist * step;
-    if ((p.weapon === 'rocket' || p.weapon === 'hqgun' || p.weapon === 'missile') && Math.random() < 0.7) {
+    if ((p.weapon === 'rocket' || p.weapon === 'hqgun' || p.weapon === 'missile') && fxRnd() < 0.7) {
       const w = P(p.u, p.v, p.z);
-      addPart(g, { x: w.x, y: w.y, vx: rand(-5, 5), vy: rand(-5, 5), life: 0.4, size: 2.2, smoke: true, light: true });
+      addPart(g, { x: w.x, y: w.y, vx: fxRand(-5, 5), vy: fxRand(-5, 5), life: 0.4, size: 2.2, smoke: true, light: true });
     }
     if (p.t > 4) p.done = true;
   }
@@ -2906,7 +2931,7 @@ function impact1(g, p, hit) {
   if (p.acid) addAcid(g, p.side, p.u, p.v, p.acid === 'dist' ? 'dist' : undefined);
   if (p.weapon === 'rifle' || p.weapon === 'rail' || p.weapon === 'gatling') {
     for (let i = 0; i < (p.weapon === 'rail' ? 5 : 2); i++)
-      addPart(g, { x: w.x, y: w.y, vx: rand(-40, 40), vy: rand(-50, 0), life: 0.18, size: 1.3, color: p.weapon === 'rail' ? '#c9f6ff' : '#fff3b0', grav: 200 });
+      addPart(g, { x: w.x, y: w.y, vx: fxRand(-40, 40), vy: fxRand(-50, 0), life: 0.18, size: 1.3, color: p.weapon === 'rail' ? '#c9f6ff' : '#fff3b0', grav: 200 });
   } else fxBoom(g, w.x, w.y, p.weapon === 'siege' ? 26 : p.weapon === 'cannon' ? 18 : p.weapon === 'flak' ? 8 : 12);
 }
 
@@ -3026,12 +3051,12 @@ function kill(g, e, by, weapon) {
   }
   if (e.slot >= 0 && side.slots[e.slot] === e) side.slots[e.slot] = null;
   if (e.type === 'bunker') { const dep = depotOf(g, e.side), n = g.nodes[e.node]; if (dep && n && n.owner === e.side) (dep.bk || (dep.bk = {}))[e.node] = g.t + BUNKER.rebuild; } // v2.32: back in 45 s if the node is still held
-  for (let i = 0; i < 3; i++) { const w = P(e.u + rand(-e.half, e.half) * 0.6, e.v + rand(-e.half, e.half) * 0.6, rand(10, e.h * 0.7)); fxBoom(g, w.x, w.y, rand(36, 56)); }
+  for (let i = 0; i < 3; i++) { const w = P(e.u + fxRand(-e.half, e.half) * 0.6, e.v + fxRand(-e.half, e.half) * 0.6, fxRand(10, e.h * 0.7)); fxBoom(g, w.x, w.y, fxRand(36, 56)); }
   ev(g, { type: 'destroyed', side: e.side, name: bdOf(e).name, hq: e.type === 'hq', seen: visibleTo(g, 1 - e.side, e) });
   if (g.log) { logAdd(g.log.tot[e.side].bLost, e.type); lg(g, e.side, 'D', e.type, e.tier, by); }
   if (e.type === 'hq') {
     side.hqBy = by; side.hqT = g.t; // the match result is settled at the end of this tick (resolveEnd), never by code order
-    for (let i = 0; i < 6; i++) { const w = P(e.u + rand(-50, 50), e.v + rand(-50, 50), rand(0, 100)); fxBoom(g, w.x, w.y, rand(50, 80)); }
+    for (let i = 0; i < 6; i++) { const w = P(e.u + fxRand(-50, 50), e.v + fxRand(-50, 50), fxRand(0, 100)); fxBoom(g, w.x, w.y, fxRand(50, 80)); }
   }
 }
 
@@ -3077,11 +3102,11 @@ function fxBoom(g, x, y, size) {
   g.fx.push({ k: 'boom', x, y, r: size, t: 0, life: 0.3 + size / 110 });
   const n = Math.min(16, 4 + (size / 4 | 0));
   for (let i = 0; i < n; i++) {
-    const a = rand(-Math.PI, 0), sp = rand(40, 130) * size / 30;
-    addPart(g, { x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: rand(0.25, 0.7), size: rand(1.2, 2.6) * Math.max(1, size / 24), color: i % 3 ? '#ffb347' : '#fff1a8', grav: 240 });
+    const a = fxRand(-Math.PI, 0), sp = fxRand(40, 130) * size / 30;
+    addPart(g, { x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: fxRand(0.25, 0.7), size: fxRand(1.2, 2.6) * Math.max(1, size / 24), color: i % 3 ? '#ffb347' : '#fff1a8', grav: 240 });
   }
   for (let i = 0; i < n / 2; i++)
-    addPart(g, { x: x + rand(-size / 3, size / 3), y: y - rand(0, size / 3), vx: rand(-14, 14), vy: rand(-32, -8), life: rand(0.8, 1.5), size: rand(3, 7) * Math.max(1, size / 30), smoke: true, grav: -8 });
+    addPart(g, { x: x + fxRand(-size / 3, size / 3), y: y - fxRand(0, size / 3), vx: fxRand(-14, 14), vy: fxRand(-32, -8), life: fxRand(0.8, 1.5), size: fxRand(3, 7) * Math.max(1, size / 30), smoke: true, grav: -8 });
   if (size > 40 && (!g.fog || g.fog[0].vis[cellOf(x)])) g.shake = Math.max(g.shake, size / 14); // only for blasts the player can see
 }
 function updateFx(g, dt) {
@@ -3166,7 +3191,7 @@ function aiUpdate(g, s, dt) {
     side.boHold = camped && aiPower(homeArmy) < side.campP * 1.4;
     if (side.boHold) side.defU = hqU(s) + dir * 140; else if (!holdEarly && side.defU != null) side.defU = null;
   }
-  if (side.spotsRush === undefined) side.spotsRush = Math.random() < D.turret; // reaction quality, decided once per match
+  if (side.spotsRush === undefined) side.spotsRush = simRnd() < D.turret; // reaction quality, decided once per match
   const cap = popCap(g, s);
   let used = popUsed(g, s);
   const reserve = { c: 0, e: 0 };
@@ -3279,7 +3304,7 @@ function aiUpdate(g, s, dt) {
   const buildDone = !want || !freePad || constructing.length > 0;
   const rich2 = aiFix(P, 'spend') && side.res.c > 1500 && g.ents.filter(b => b.kind === 'b' && b.side === s && b.upgrading && b.hp > 0).length < 2; // v2.38 (Default): rich, a second upgrade at once
   const tf = dl.tech || (aiFix(P, 'tech') ? AI_TECH[P.kind] : null), techFocus = tf ? [[tf, 2], [tf, 3]] : []; // v2.40 (tech): its strategy's building goes to T3 right after T2 (the tech dial: the Hard preset's searched order)
-  if (g.t >= D.upStart + P.upShift - (ecoMood ? 30 : 0) && (!upgrading || rich2) && (buildDone || floating) && (!(calm || defend) || floating) && !(punishOn && !floating) && !(D.maxTier < 3 && Math.random() < 0.5)) {
+  if (g.t >= D.upStart + P.upShift - (ecoMood ? 30 : 0) && (!upgrading || rich2) && (buildDone || floating) && (!(calm || defend) || floating) && !(punishOn && !floating) && !(D.maxTier < 3 && simRnd() < 0.5)) {
     const energyShort = (side.res.e < 120 && side.res.c > 800) || starved; // v2.41 (power): starved, the Reactor upgrade first
     for (const [type, tier] of [...(energyShort ? [['reactor', 2], ['reactor', 3]] : []), ...(rich2 ? [['habitat', 2], ['habitat', 3], ['reactor', 2], ['reactor', 3]] : []), ...P.upgFirst, ...techFocus, ...AI_UPG]) {
       if (rich2 && upgrading && alive(g, s, type).some(x => x.upgrading)) continue;
@@ -3409,14 +3434,14 @@ function aiUpdate(g, s, dt) {
       const cand = types.filter(t => { const d = UDEF[t]; return fits(t) && side.res.c - d.cost.c >= reserve.c && side.res.e - d.cost.e >= reserve.e && !(noAA && d.hitsGround === false && !d.support); }); // v2.41 (counter): not even as a spare buy
       if (!cand.length) break;
       const flush = spend && side.res.c > 900; // v2.38 (Default): credits piling up: buy what it can afford now instead of waiting
-      if (top && !cand.includes(top) && !mustSpend && !flush && (saving || Math.random() < 0.6)) break;
+      if (top && !cand.includes(top) && !mustSpend && !flush && (saving || simRnd() < 0.6)) break;
       if (flush && side.res.e < 80) { const free = cand.filter(t => UDEF[t].cost.e <= 10); if (free.length) cand.splice(0, cand.length, ...free); } // energy-starved: credit-only units
       let pick;
-      if (Math.random() < D.smart) pick = cand.slice().sort((a, b) => sc[b] - sc[a])[0];
+      if (simRnd() < D.smart) pick = cand.slice().sort((a, b) => sc[b] - sc[a])[0];
       else {
         let sum = 0;
         const w = cand.map(t => { const v = Math.max(0.05, sc[t]) ** 2; sum += v; return v; });
-        let r = Math.random() * sum; pick = cand[0];
+        let r = simRnd() * sum; pick = cand[0];
         for (let i = 0; i < cand.length; i++) { r -= w[i]; if (r <= 0) { pick = cand[i]; break; } }
       }
       if (!tryTrain(g, s, pick).ok) break;
@@ -3469,7 +3494,7 @@ function aiUpdate(g, s, dt) {
     if (was === 'attack') return;
     // Trickster: some pushes are feints that pull back; two feints in a row and the next push is real
     let feint = 0;
-    if (P.feint && (side.feintStreak || 0) < 2 && Math.random() < P.feint) { side.feintUntil = g.t + rand(8, 15); side.feintStreak = (side.feintStreak || 0) + 1; side.launchV = 0; log.feints++; feint = 1; }
+    if (P.feint && (side.feintStreak || 0) < 2 && simRnd() < P.feint) { side.feintUntil = g.t + rand(8, 15); side.feintStreak = (side.feintStreak || 0) + 1; side.launchV = 0; log.feints++; feint = 1; }
     else { side.feintStreak = 0; log.attacks++; if (log.firstAttack === null) log.firstAttack = g.t; if (P.kind === 'trickster') P.wave = rand(0.8, 1.3); }
     ev(g, { type: 'aiAttack', side: s, mode }); lg(g, s, 'G', mode, feint);
   };
@@ -3802,12 +3827,13 @@ function serialize(g, extra) {
   const projs = g.projs.map(p => Object.assign({}, p, { target: p.target ? p.target.id : null }));
   const sides = g.sides.map(sd => Object.assign({}, sd, { hq: sd.hq.id, slots: sd.slots.map(b => b ? b.id : null), res: Object.assign({}, sd.res), stats: Object.assign({}, sd.stats), salv: Object.assign({}, sd.salv) }));
   const fog = g.fog.map(f => ({ exp: Array.from(f.exp).join(''), seen: Array.from(f.seen).join(''), ghosts: f.ghosts, creep: f.creep, field: f.field, intel: f.intel, lastHQ: f.lastHQ, lastSpot: f.lastSpot, seenUnits: f.seenUnits }));
-  return JSON.stringify({ v: SAVE_VER, t: g.t, nid: g.nid, diffKey: g.diffKey, ents, projs, sides, nodes: g.nodes, fog, abil: g.abil, endHold: g.endHold || null, log: g.log, creep: g.creep, field: g.field, warps: g.warps, acid: g.acid, extra });
+  return JSON.stringify({ v: SAVE_VER, t: g.t, nid: g.nid, diffKey: g.diffKey, ents, projs, sides, nodes: g.nodes, fog, abil: g.abil, endHold: g.endHold || null, log: g.log, creep: g.creep, field: g.field, warps: g.warps, acid: g.acid, seed: g.seed, rs: g.rs, fs: g.fs, extra }); // seed/rs/fs (v2.50): the random streams, so a resumed match rolls on where it stopped
 }
 function deserialize(str) {
   const o = JSON.parse(str);
   if (!o || !SAVE_OK.includes(o.v)) return null;
   const g = newGame(o.diffKey);
+  if (o.rs !== undefined && !RNG.legacy) { g.seed = o.seed >>> 0; g.rs = o.rs | 0; g.fs = o.fs | 0; } // v2.50: an older save keeps the fresh seed newGame drew
   g.t = o.t; g.nid = o.nid; g.ents = o.ents; g.nodes = o.nodes;
   const byId = new Map(g.ents.map(e => [e.id, e]));
   g.projs = o.projs.map(p => Object.assign(p, { target: p.target != null ? byId.get(p.target) || null : null }));
@@ -8723,7 +8749,7 @@ let uiT = 0, saveT = 5;
 // so a stall or a hidden tab can't make the game spiral) goes into an accumulator, and the SIM steps SIM_STEP game
 // seconds at a time until it has caught up. Before, each frame advanced the game by at most 50 ms of real time: below
 // 20 frames a second the game ran slower than 1x (at 6 fps, a third of real time). The SIM itself is unchanged.
-const SIM_STEP = 1 / 60, CATCH_UP = 0.25;
+const SIM_STEP = TICK, CATCH_UP = 0.25; // v2.50: the SIM's own fixed tick (TICK); speed changes how many run per frame
 let simAcc = 0;
 /* ---------- Codex (v2.44): the info pages ----------
    Opened from the main menu and the pause menu (opening it mid-match pauses first, so closing it leaves the paused match as

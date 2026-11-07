@@ -2,6 +2,24 @@
 
 Issues found during testing that are deliberately deferred. Each lists the step that should address it.
 
+## Phase 0, item 3: deterministic simulation (v2.50)
+- **What:** game logic draws every random number from `simRnd` (mulberry32) seeded per match: `newGame(diff, { seed })`, else a fresh seed; the seed is `g.seed`, the stream's state `g.rs`, saved and restored with the match. Visual-only randomness inside the SIM (particles, explosion debris, the idle-animation phase `anim` of units and buildings) draws from `fxRnd`, a second stream (`g.fs`) from the same seed, so effects can never change a match. Math.random is left to the UI (random faction pick, sound, render effects). `RNG.legacy = true` sends both back to Math.random in the old call order: the pinned replays in tests/determinism.test.js, tactics.test.js and hardhuman.test.js run that way and still match their recorded hashes; three seeded scenario tests (ax-abilities, signature, fog) run legacy or reseed.
+- **Fixed tick:** `TICK` = 1/60 s is the SIM's step. The frame loop already ran fixed steps (v2.43); it now uses `TICK`, and 1–3× runs 1–3 times as many ticks per frame. The audit harness still steps 1/30 s (its results stay comparable with every earlier report; a switch to `TICK` would double its cost).
+- **Test:** `node audit/sim/determinism.js` plays one match per faction pairing twice, in two VM contexts whose Math.random differ, at `TICK`, and compares a SHA-1 of the serialized state every 100 ticks: 6 seeds, 10 minutes each, all 360 hashes identical (one match ended at 4:59, identical to the end). tests/determinism.test.js has a short version (100 s, plus "another seed plays another match" and "a save keeps the streams").
+- **Not exact:** a match resumed from a save is not tick-for-tick the same as the unsaved one (deserialize resets some AI timers, as before v2.50); the streams themselves are restored.
+- **Balance re-run** (audit/sim/run.js, 40 matches per cell, 20:00 cap, seeds 1–40; before = v2.49, after = v2.50; A–B–draws):
+
+  | Pairing | before | after |
+  |---|---|---|
+  | Last Fist Hard vs Bloomhost Hard | 6–13–21 | 8–12–20 |
+  | Last Fist Hard vs Axiarch Hard | 5–6–29 | 6–4–30 |
+  | Bloomhost Hard vs Axiarch Hard | 11–5–24 | 10–4–26 |
+  | Last Fist Hard vs Default | 29–3–8 | 25–2–13 |
+  | Bloomhost Hard vs Default | 27–1–12 | 29–1–10 |
+  | Axiarch Hard vs Default | 25–1–14 | 25–1–14 |
+
+  No cell moved by more than 5 of 40; every shift is inside what a different random stream gives (the matches are different matches, so they can't be identical). No big shift. Note how many Hard-vs-Hard matches run past 20:00 (21–30 of 40).
+
 ## Phase 0, item 2: mirror-match check, spawn side (v2.49, report only: nothing fixed)
 - **Run:** `node audit/sim/mirror.js --n=200 --maxT=1620` on v2.48 (storm endings are draws): 200 Hard-vs-Hard matches per faction against itself, both sides `faction:hard:random` (Hard picks its opening per match), seeds 1–200, side 0 always on the left (u = 220, the player's slot, played by the autoplayer) and side 1 on the right (the normal AI slot). Raw results in audit/logs-p0/.
 

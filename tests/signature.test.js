@@ -196,7 +196,7 @@ test('every personality and difficulty, all three factions (v2.33 Bloomhost, v2.
   assert.strictEqual(S2.aiPlanWith(S2.AI_PLAN, null), S2.AI_PLAN, 'no signature building (SIG.on false): the plan is unchanged');
   // and the plan the AI actually follows, per faction: a seeded Hard match each, the building types it built are the plan's
   for (const fac of ['lastfist', 'bloomhost', 'axiarchs']) for (const persona of S2.PERSONAS) {
-    const S3 = loadSim({ random: (() => { let a = 5; return () => (a = (a * 16807) % 2147483647) / 2147483647; })() });
+    const S3 = loadSim({ random: (() => { let a = 5; return () => (a = (a * 16807) % 2147483647) / 2147483647; })() }); S3.RNG.legacy = true; // v2.50: seeded on this Math.random stream
     const g = S3.newGame('hard', { factions: ['lastfist', fac], persona, ai: 'v239' }); /* v2.40: v2.39's minimal signature AI */ g.countdown = 0; g.sides[0].aiT = 1e9;
     for (let i = 0; i < 30 * 240; i++) S3.update(g, 1 / 30);
     const want = persona === 'aggressor' || persona === 'trickster' ? 'sigA' : 'sigB';

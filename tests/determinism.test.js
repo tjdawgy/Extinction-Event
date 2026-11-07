@@ -35,7 +35,7 @@ const stripPreset = o => { for (const sd of o.sides) if (sd.persona) { delete sd
 function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 
 function fingerprint(salvageOff, aimOff, redesign, balance) {
-  const sim = loadSim({ random: mulberry(2024) }); sim.setMech7c(false); /* v2.43: the pinned replays play the v2.42 mechanics (MECH7C off) */ sim.setRedesign(!!redesign); sim.setBalance(!!balance); if (balance) sim.setBalance7b(false); // v2.42: FP_V239_BA pins the v2.39-v2.41 numbers (the phase 7b layer off) // v2.37: the unit redesign off unless asked for (the pinned replays are v2.36's); v2.39: the balance pass too
+  const sim = loadSim({ random: mulberry(2024) }); sim.RNG.legacy = true; /* v2.50: the pinned replays draw every random number from Math.random, as before the seeded streams */ sim.setMech7c(false); /* v2.43: the pinned replays play the v2.42 mechanics (MECH7C off) */ sim.setRedesign(!!redesign); sim.setBalance(!!balance); if (balance) sim.setBalance7b(false); // v2.42: FP_V239_BA pins the v2.39-v2.41 numbers (the phase 7b layer off) // v2.37: the unit redesign off unless asked for (the pinned replays are v2.36's); v2.39: the balance pass too
   if (salvageOff || aimOff) sim.FLAME.aim = false;
   if (salvageOff) { sim.SALVAGE.pct = 0; sim.SIG.on = false; sim.RETREAT.fire = true; }
   const g = sim.newGame('hard', { autoPlayer: true, autoDiff: 'hard', ai: 'legacy', autoAi: 'legacy', persona: 'trickster', autoPersona: 'turtle' });
@@ -47,7 +47,7 @@ function fingerprint(salvageOff, aimOff, redesign, balance) {
 }
 
 function lfBh() { // Last Fist (autoplayer, Turtle) vs Bloomhost (Aggressor), Hard, to the end of the match
-  const sim = loadSim({ random: mulberry(2024) }); sim.setMech7c(false); /* v2.43: the pinned replays play the v2.42 mechanics (MECH7C off) */ sim.setRedesign(false); sim.setBalance(false); sim.RETREAT.fire = true; sim.FLAME.aim = false; // v2.35: the v2.34 retreat rule; v2.36: the v2.35 Flame Tank; v2.39: no balance pass
+  const sim = loadSim({ random: mulberry(2024) }); sim.RNG.legacy = true; /* v2.50: the pinned replays draw every random number from Math.random, as before the seeded streams */ sim.setMech7c(false); /* v2.43: the pinned replays play the v2.42 mechanics (MECH7C off) */ sim.setRedesign(false); sim.setBalance(false); sim.RETREAT.fire = true; sim.FLAME.aim = false; // v2.35: the v2.34 retreat rule; v2.36: the v2.35 Flame Tank; v2.39: no balance pass
   const g = sim.newGame('hard', { autoPlayer: true, autoDiff: 'hard', ai: 'legacy', autoAi: 'legacy', persona: 'aggressor', autoPersona: 'turtle', factions: ['lastfist', 'bloomhost'] });
   for (let i = 0; i < 30 * 1700 && !g.over; i++) sim.update(g, 1 / 30);
   const o = JSON.parse(sim.serialize(g, {})); delete o.log; stripPreset(o); delete o.v; // the save version
@@ -60,7 +60,7 @@ test('a fixed Last Fist vs Bloomhost match plays exactly as v2.33 did, apart fro
 });
 
 function bhAx(redesign, balance) { // Bloomhost (Aggressor) vs Axiarchs (Economist autoplayer), Hard, to the end or 12 minutes
-  const sim = loadSim({ random: mulberry(2024) }); sim.setMech7c(false); /* v2.43: the pinned replays play the v2.42 mechanics (MECH7C off) */ sim.setRedesign(redesign); sim.setBalance(!!balance); if (balance) sim.setBalance7b(false); // v2.42: the v2.39-v2.41 numbers
+  const sim = loadSim({ random: mulberry(2024) }); sim.RNG.legacy = true; /* v2.50: the pinned replays draw every random number from Math.random, as before the seeded streams */ sim.setMech7c(false); /* v2.43: the pinned replays play the v2.42 mechanics (MECH7C off) */ sim.setRedesign(redesign); sim.setBalance(!!balance); if (balance) sim.setBalance7b(false); // v2.42: the v2.39-v2.41 numbers
   const g = sim.newGame('hard', { autoPlayer: true, autoDiff: 'hard', ai: 'legacy', autoAi: 'legacy', persona: 'aggressor', autoPersona: 'economist', factions: ['bloomhost', 'axiarchs'] });
   for (let i = 0; i < 30 * 720 && !g.over; i++) sim.update(g, 1 / 30);
   const o = JSON.parse(sim.serialize(g, {})); delete o.log; stripPreset(o);
@@ -87,6 +87,30 @@ test('with FLAME.aim false the same match plays exactly as v2.35 did (the Flame 
 
 test('with Salvage and signature buildings switched off (SALVAGE.pct 0, SIG.on false) the same match plays exactly as v2.29 did', () => {
   assert.strictEqual(fingerprint(true), V229_OFF);
+});
+
+// v2.50 (Phase 0 item 3): the seeded streams. Same seed, same match, tick for tick, whatever Math.random does; a different
+// seed plays a different match; a save keeps the seed and where both streams stand.
+function seededRun(seed, ticks, noise) {
+  const sim = loadSim({ random: noise ? Math.random : mulberry(7) }); // noise: a real, unseeded Math.random
+  const g = sim.newGame('hard', { autoPlayer: true, autoDiff: 'hard', seed, factions: ['bloomhost', 'axiarchs'] });
+  const hashes = [];
+  for (let i = 1; i <= ticks && !g.over; i++) {
+    sim.update(g, sim.TICK);
+    if (i % 100 === 0) { const o = JSON.parse(sim.serialize(g, {})); delete o.log; hashes.push(crypto.createHash('sha1').update(JSON.stringify(o)).digest('hex')); }
+  }
+  return hashes;
+}
+test('v2.50: the same seed plays the same match (state hash every 100 ticks), even with an unseeded Math.random; a save keeps the streams', () => {
+  const a = seededRun(4242, 6000, false), b = seededRun(4242, 6000, true);
+  assert.strictEqual(a.length, 60);
+  assert.deepStrictEqual(b, a);
+  const c = seededRun(4243, 6000, false);
+  assert.notDeepStrictEqual(c, a, 'another seed plays another match');
+  // a save keeps the seed and both streams (a resumed match is not bit-exact: deserialize resets some AI timers, as before)
+  const sim = loadSim(), g = sim.newGame('normal', { seed: 99 }); for (let i = 0; i < 600; i++) sim.update(g, sim.TICK);
+  const g2 = sim.deserialize(sim.serialize(g, {}));
+  assert.deepStrictEqual([g2.seed, g2.rs, g2.fs], [g.seed, g.rs, g.fs]);
 });
 
 if (require.main === module && process.argv[2] === '--print') console.log(fingerprint(false, false, true), bhAx(true), fingerprint(false, false, true, true), bhAx(true, true));
