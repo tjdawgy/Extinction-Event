@@ -125,7 +125,8 @@ test('save keys stay colonyMobile.save and colonyMobile.diff (plus the separate 
   assert.match(html, /localStorage\.getItem\('colonyMobile\.diff'\)/);
   assert.match(html, /localStorage\.setItem\('colonyMobile\.diff', diffKey\)/);
   const keys = new Set([...html.matchAll(/localStorage\.\w+Item\(([^,)]+)/g)].map(m => m[1].trim()));
-  assert.deepStrictEqual([...keys].sort(), ["'colonyMobile.diff'", 'FACTION_KEY', 'SAVE_KEY', 'SOUND_KEY', 'TUT_KEY']); // v2.4 adds the sound setting, v2.17 the faction picks, v2.46 the tutorial's progress
+  assert.deepStrictEqual([...keys].sort(), ["'colonyMobile.diff'", 'FACTION_KEY', 'HISTORY_KEY', 'SAVE_KEY', 'SOUND_KEY', 'TUT_KEY']); // v2.51: the match history
+  assert.match(html, /const HISTORY_KEY = 'extinctionEvent\.history'/); // v2.4 adds the sound setting, v2.17 the faction picks, v2.46 the tutorial's progress
   assert.match(html, /const TUT_KEY = 'extinctionEvent\.tutorial'/);
   assert.match(html, /const FACTION_KEY = 'extinctionEvent\.factions'/);
   assert.match(html, /const SOUND_KEY = 'extinctionEvent\.sound';/);
@@ -133,7 +134,7 @@ test('save keys stay colonyMobile.save and colonyMobile.diff (plus the separate 
   assert.deepStrictEqual([...sim.SAVE_OK], [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]);
   const o = JSON.parse(sim.serialize(sim.newGame('easy'), {}));
   assert.strictEqual(o.v, 30);
-  assert.deepStrictEqual(Object.keys(o).sort(), ['abil', 'acid', 'creep', 'diffKey', 'endHold', 'ents', 'extra', 'field', 'fog', 'fs', 'log', 'nid', 'nodes', 'projs', 'rs', 'seed', 'sides', 't', 'v', 'warps']); // v2.50: seed, rs, fs (the random streams)
+  assert.deepStrictEqual(Object.keys(o).sort(), ['abil', 'acid', 'creep', 'diffKey', 'endHold', 'ents', 'extra', 'field', 'fog', 'fs', 'log', 'nid', 'nodes', 'projs', 'rs', 'seed', 'sides', 'stats', 't', 'v', 'warps']); // v2.50: seed, rs, fs (the random streams); v2.51: stats
 });
 
 test('old or broken saves never load into a bad state', () => {

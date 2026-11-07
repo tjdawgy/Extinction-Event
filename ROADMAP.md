@@ -15,7 +15,7 @@
 - [x] 3. **Deterministic simulation.** A seeded PRNG (mulberry32) per match for all game logic; visual-only effects
   on a separate generator. A fixed tick; 1–3× changes ticks per frame, not tick length. A same-seed test in
   audit/sim comparing a state hash every 100 ticks. Re-run the balance suite and report shifts.
-- [ ] 4. **Stats tracker.** One module recording per side: credits income, energy, army size and units alive every
+- [x] 4. **Stats tracker.** One module recording per side: credits income, energy, army size and units alive every
   10 s; units built and lost by type; buildings built and destroyed; damage dealt; node captures; tech-path
   choices, signature building and ability uses with timestamps; result, faction, difficulty, match length. A
   compact summary of each finished match saved to a match history in localStorage (try/catch).

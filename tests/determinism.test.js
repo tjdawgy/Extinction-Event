@@ -40,7 +40,7 @@ function fingerprint(salvageOff, aimOff, redesign, balance) {
   if (salvageOff) { sim.SALVAGE.pct = 0; sim.SIG.on = false; sim.RETREAT.fire = true; }
   const g = sim.newGame('hard', { autoPlayer: true, autoDiff: 'hard', ai: 'legacy', autoAi: 'legacy', persona: 'trickster', autoPersona: 'turtle' });
   for (let i = 0; i < 30 * 480 && !g.over; i++) sim.update(g, 1 / 30);
-  const o = JSON.parse(sim.serialize(g, {})); delete o.log; stripPreset(o); // the match log (v2.9) is a record, not game state: left out so it can change freely
+  const o = JSON.parse(sim.serialize(g, {})); delete o.log; delete o.stats; stripPreset(o); // the match log (v2.9) is a record, not game state: left out so it can change freely
   if (salvageOff) { delete o.v; for (const s of o.sides) { delete s.salv; delete s.od; } }
   const state = JSON.stringify(o) + JSON.stringify({ parts: g.parts, fx: g.fx, shake: g.shake, over: g.over, winner: g.winner });
   return crypto.createHash('sha256').update(state).digest('hex');
@@ -50,7 +50,7 @@ function lfBh() { // Last Fist (autoplayer, Turtle) vs Bloomhost (Aggressor), Ha
   const sim = loadSim({ random: mulberry(2024) }); sim.RNG.legacy = true; /* v2.50: the pinned replays draw every random number from Math.random, as before the seeded streams */ sim.setMech7c(false); /* v2.43: the pinned replays play the v2.42 mechanics (MECH7C off) */ sim.setRedesign(false); sim.setBalance(false); sim.RETREAT.fire = true; sim.FLAME.aim = false; // v2.35: the v2.34 retreat rule; v2.36: the v2.35 Flame Tank; v2.39: no balance pass
   const g = sim.newGame('hard', { autoPlayer: true, autoDiff: 'hard', ai: 'legacy', autoAi: 'legacy', persona: 'aggressor', autoPersona: 'turtle', factions: ['lastfist', 'bloomhost'] });
   for (let i = 0; i < 30 * 1700 && !g.over; i++) sim.update(g, 1 / 30);
-  const o = JSON.parse(sim.serialize(g, {})); delete o.log; stripPreset(o); delete o.v; // the save version
+  const o = JSON.parse(sim.serialize(g, {})); delete o.log; delete o.stats; stripPreset(o); delete o.v; // the save version
   const state = JSON.stringify(o) + JSON.stringify({ parts: g.parts, fx: g.fx, shake: g.shake, over: g.over, winner: g.winner });
   return crypto.createHash('sha256').update(state).digest('hex');
 }
@@ -63,7 +63,7 @@ function bhAx(redesign, balance) { // Bloomhost (Aggressor) vs Axiarchs (Economi
   const sim = loadSim({ random: mulberry(2024) }); sim.RNG.legacy = true; /* v2.50: the pinned replays draw every random number from Math.random, as before the seeded streams */ sim.setMech7c(false); /* v2.43: the pinned replays play the v2.42 mechanics (MECH7C off) */ sim.setRedesign(redesign); sim.setBalance(!!balance); if (balance) sim.setBalance7b(false); // v2.42: the v2.39-v2.41 numbers
   const g = sim.newGame('hard', { autoPlayer: true, autoDiff: 'hard', ai: 'legacy', autoAi: 'legacy', persona: 'aggressor', autoPersona: 'economist', factions: ['bloomhost', 'axiarchs'] });
   for (let i = 0; i < 30 * 720 && !g.over; i++) sim.update(g, 1 / 30);
-  const o = JSON.parse(sim.serialize(g, {})); delete o.log; stripPreset(o);
+  const o = JSON.parse(sim.serialize(g, {})); delete o.log; delete o.stats; stripPreset(o);
   return crypto.createHash('sha256').update(JSON.stringify(o) + JSON.stringify({ parts: g.parts, fx: g.fx, shake: g.shake, over: g.over, winner: g.winner })).digest('hex');
 }
 
@@ -97,7 +97,7 @@ function seededRun(seed, ticks, noise) {
   const hashes = [];
   for (let i = 1; i <= ticks && !g.over; i++) {
     sim.update(g, sim.TICK);
-    if (i % 100 === 0) { const o = JSON.parse(sim.serialize(g, {})); delete o.log; hashes.push(crypto.createHash('sha1').update(JSON.stringify(o)).digest('hex')); }
+    if (i % 100 === 0) { const o = JSON.parse(sim.serialize(g, {})); delete o.log; delete o.stats; hashes.push(crypto.createHash('sha1').update(JSON.stringify(o)).digest('hex')); }
   }
   return hashes;
 }

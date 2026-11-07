@@ -2,6 +2,11 @@
 
 Issues found during testing that are deliberately deferred. Each lists the step that should address it.
 
+## Phase 0, item 4: stats tracker and match history (v2.51)
+- **What:** the "Stats tracker" block (`STATS`, `g.stats`), fed by `lg`/`lgUnit` (every key event, units trained and lost), the income loop and Salvage (gathered per 10 s; sales not counted), and `damage1` (HP and shields actually taken off, to the attacker's side). It reads nothing back and draws no random numbers: tests/stats.test.js plays the same seed with and without it and gets the same match. Saved with the match (an older save starts its record at load).
+- **History:** at the end of a match (not the tutorial or spectate) `statsSummary` (about 1–3 KB) is appended to localStorage `extinctionEvent.history`, the last 50 kept, every access in try/catch (tests/history-ui.test.js, including storage that throws). Nothing reads the history yet.
+- **Bounds:** 200 samples per side (a 27:00 match takes 163) and 120 entries per timestamped list.
+
 ## Phase 0, item 3: deterministic simulation (v2.50)
 - **What:** game logic draws every random number from `simRnd` (mulberry32) seeded per match: `newGame(diff, { seed })`, else a fresh seed; the seed is `g.seed`, the stream's state `g.rs`, saved and restored with the match. Visual-only randomness inside the SIM (particles, explosion debris, the idle-animation phase `anim` of units and buildings) draws from `fxRnd`, a second stream (`g.fs`) from the same seed, so effects can never change a match. Math.random is left to the UI (random faction pick, sound, render effects). `RNG.legacy = true` sends both back to Math.random in the old call order: the pinned replays in tests/determinism.test.js, tactics.test.js and hardhuman.test.js run that way and still match their recorded hashes; three seeded scenario tests (ax-abilities, signature, fog) run legacy or reseed.
 - **Fixed tick:** `TICK` = 1/60 s is the SIM's step. The frame loop already ran fixed steps (v2.43); it now uses `TICK`, and 1–3× runs 1–3 times as many ticks per frame. The audit harness still steps 1/30 s (its results stay comparable with every earlier report; a switch to `TICK` would double its cost).
