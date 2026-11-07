@@ -1,7 +1,7 @@
 # Map data format (Phase 1)
 
 Approved after Phase 0 (v2.57), with two additions: display fields for a map-select screen, and a performance check
-of the 2D fog grid. Status: the format is defined here; Classic is the first map ported to it (ROADMAP.md Phase 1).
+of the 2D fog grid. Status: Classic is in this format since v2.59 (src/sim/maps.js, validated by tests/maps.test.js).
 
 ## Principles
 

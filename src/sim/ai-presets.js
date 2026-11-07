@@ -313,6 +313,7 @@ function aiMassWarpTarget(g, s, ctx) {
 const AI_UPG = [['barracks', 2], ['reactor', 2], ['refinery', 2], ['factory', 2], ['habitat', 2], ['sigA', 2], ['sigB', 2], ['reactor', 3], ['hq', 2], ['techlab', 2],
   ['factory', 3], ['barracks', 3], ['turret', 2], ['habitat', 3], ['refinery', 3], ['techlab', 3], ['sigA', 3], ['sigB', 3], ['hq', 3], ['turret', 3]]; // sig: v2.32
 // Field nodes: neutral income points along the lane. Ground troops inside the zone capture them.
-const NODE_U = [600, L / 2, L - 600], NODE_R = 70, NODE_INC = { c: 3, e: 1 }, REGEN_DELAY = 8;
+const NODE_U = [600, L / 2, L - 600], NODE_R = MAP.nodes[0].r, // v2.59: NODE_U starts at the v2.42 spots (setMech7c(false)); setMech7c(true) puts the map's nodes there
+   NODE_INC = { c: 3, e: 1 }, REGEN_DELAY = 8;
 setBalance7b(true); // v2.42 (audit phase 7b): the strategy balance layer, once NODE_INC exists
 setBalance7c(true); // v2.43 (audit phase 7c): the retune layer on top

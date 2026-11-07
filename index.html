@@ -439,15 +439,122 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 <div id="rotate"><div class="ph"></div><b>Turn your phone sideways</b><small>Extinction Event plays in landscape. If it won’t rotate, switch off Portrait Orientation Lock in Control Center.</small></div>
 
 <script>
+/* ---------- Maps (v2.59): docs/MAP_FORMAT.md ----------
+   A map is data: the SIM reads it through MAP (and g.map). Classic is today's single lane, ported number for number:
+   every coordinate below is the exact value the v2.58 formulas gave (tilePos with TILE 70, IX 0.866), so the replay
+   fingerprints still match. x is along the lane (the SIM's u), y is depth centred on 0 (the SIM's v). */
+const MAPS = {};
+MAPS.classic = {
+  id: 'classic', v: 1,
+  display: { name: 'Classic', desc: 'One lane with field nodes between the bases. Short, direct matches.', thumb: { style: 'lane', tint: '#24324a' } },
+  size: { w: 1700, h: 400 },
+  armyCap: 80,
+  symmetry: 'mirror-x',
+  bases: [
+    { id: 'west', hq: [220, -140], face: [1, 0], sigPad: [341.24, -140], rally: [460, 0],
+      pads: [[159.38, -70], [280.62, -70], [98.76, 0], [220, 0], [341.24, 0], [159.38, 70], [280.62, 70], [220, 140]] },
+    { id: 'east', hq: [1480, -140], face: [-1, 0], sigPad: [1358.76, -140], rally: [1240, 0],
+      pads: [[1540.62, -70], [1419.38, -70], [1601.24, 0], [1480, 0], [1358.76, 0], [1540.62, 70], [1419.38, 70], [1480, 140]] },
+  ],
+  modes: { '1v1': [['west'], ['east']] },
+  lanes: [{ id: 'main', path: [[0, 0], [1700, 0]], width: 230 }],
+  blockers: [],
+  nodes: [ // income nodes use NODE_TYPES.income's yield (NODE_INC, which the balance layers set)
+    { id: 'west', type: 'income', at: [680, 0], r: 70 },
+    { id: 'centre', type: 'income', at: [850, 0], r: 70 },
+    { id: 'east', type: 'income', at: [1020, 0], r: 70 },
+  ],
+  conditions: [],
+};
+const MAP = MAPS.classic; // the map every match plays (the only one until Phase 1 adds more)
+// Node types: how each behaves is code (NODE_TYPES); a map only places them. live: false = in the format, not built yet
+const NODE_TYPES = { income: { live: true }, watchtower: { live: false }, forwardPad: { live: false }, repair: { live: false }, relic: { live: false } };
+// Map validation (a test runs it on every map): returns a list of problems, empty when the map is sound
+const MAP_RULES = { capMin: 20, capMax: 200, gap: 60, cell: 10, eps: 1e-6, symmetry: ['mirror-x', 'rot180', 'rot90', 'none'] };
+function validateMap(m) {
+  const P = [], R = MAP_RULES, bad = s => P.push(s), H = m.size ? m.size.h / 2 : 0;
+  const isPt = p => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite);
+  const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+  const inBounds = p => p[0] >= 0 && p[0] <= m.size.w && Math.abs(p[1]) <= H;
+  const inPoly = (p, poly) => { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [xi, yi] = poly[i], [xj, yj] = poly[j]; if ((yi > p[1]) !== (yj > p[1]) && p[0] < (xj - xi) * (p[1] - yi) / (yj - yi) + xi) c = !c; } return c; };
+  const blocked = p => (m.blockers || []).some(b => inPoly(p, b.poly));
+  if (!m.id || !m.display || typeof m.display.name !== 'string' || typeof m.display.desc !== 'string' || !m.display.name || !m.display.desc) bad('display: needs a name and a description');
+  if (!m.size || !(m.size.w > 0) || !(m.size.h > 0)) { bad('size: w and h must be positive'); return P; }
+  if (!Number.isInteger(m.armyCap) || m.armyCap < R.capMin || m.armyCap > R.capMax) bad(`armyCap ${m.armyCap}: must be a whole number from ${R.capMin} to ${R.capMax}`);
+  const B = m.bases || [];
+  if (B.length < 2 || B.length > 4) bad(`bases: ${B.length} (2 to 4)`);
+  if (new Set(B.map(b => b.id)).size !== B.length) bad('bases: ids must be unique');
+  // every point a map places, with a label
+  const spots = []; // build spots (HQ, pads, signature pads, forward pads): none may overlap
+  for (const b of B) {
+    if (!isPt(b.hq) || !isPt(b.sigPad) || !isPt(b.rally) || !isPt(b.face) || !Array.isArray(b.pads) || b.pads.length !== 8 || !b.pads.every(isPt)) { bad(`base ${b.id}: needs hq, face, 8 pads, sigPad and rally as [x, y]`); continue; }
+    if (Math.abs(Math.hypot(b.face[0], b.face[1]) - 1) > R.eps) bad(`base ${b.id}: face must be a unit vector`);
+    spots.push([`${b.id} HQ`, b.hq], [`${b.id} signature pad`, b.sigPad], ...b.pads.map((p, k) => [`${b.id} pad ${k}`, p]));
+    for (const [k, p] of [['rally', b.rally]]) if (!inBounds(p) || blocked(p)) bad(`base ${b.id}: ${k} off the map or blocked`);
+  }
+  const modes = m.modes || {};
+  if (!Object.keys(modes).length) bad('modes: at least one');
+  for (const [k, teams] of Object.entries(modes)) { const used = teams.flat(); if (teams.length < 2) bad(`mode ${k}: at least two teams`); if (new Set(used).size !== used.length) bad(`mode ${k}: a base twice`); for (const id of used) if (!B.some(b => b.id === id)) bad(`mode ${k}: no base ${id}`); }
+  for (const b of B) if (!Object.values(modes).some(t => t.flat().includes(b.id))) bad(`base ${b.id}: in no mode`);
+  const N = m.nodes || [];
+  if (new Set(N.map(n => n.id)).size !== N.length) bad('nodes: ids must be unique');
+  for (const n of N) {
+    if (!NODE_TYPES[n.type]) bad(`node ${n.id}: unknown type ${n.type}`);
+    if (!isPt(n.at) || !(n.r > 0 || n.r === undefined)) { bad(`node ${n.id}: needs at [x, y]`); continue; }
+    for (const gd of n.guards || []) if (!UDEF[gd.unit]) bad(`node ${n.id}: unknown guard unit ${gd.unit}`);
+    for (const [k, p] of (n.pads || []).entries()) { if (!isPt(p)) bad(`node ${n.id}: pad ${k} is not [x, y]`); else spots.push([`${n.id} pad ${k}`, p]); }
+  }
+  for (const [lab, p] of spots) if (!inBounds(p)) bad(`${lab}: off the map`); else if (blocked(p)) bad(`${lab}: inside a blocker`);
+  for (let i = 0; i < spots.length; i++) for (let j = i + 1; j < spots.length; j++) if (dist(spots[i][1], spots[j][1]) < R.gap) bad(`${spots[i][0]} and ${spots[j][0]} overlap (${dist(spots[i][1], spots[j][1]).toFixed(1)} apart, need ${R.gap})`);
+  const nr = n => n.r || 70;
+  for (let i = 0; i < N.length; i++) {
+    if (!isPt(N[i].at)) continue;
+    if (!inBounds(N[i].at) || blocked(N[i].at)) bad(`node ${N[i].id}: off the map or blocked`);
+    for (let j = i + 1; j < N.length; j++) if (isPt(N[j].at) && dist(N[i].at, N[j].at) < nr(N[i]) + nr(N[j])) bad(`nodes ${N[i].id} and ${N[j].id} overlap`);
+    for (const [lab, p] of spots) if (!(N[i].pads || []).some(q => q === p) && dist(N[i].at, p) < nr(N[i]) + R.gap / 2) bad(`node ${N[i].id} overlaps ${lab}`);
+  }
+  // reachability on the ground: a grid of walkable cells (inside a lane, or anywhere on an open map, never in a blocker)
+  const segD = (p, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy, t = l2 ? clamp(((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2, 0, 1) : 0; return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy); };
+  const lanes = m.lanes || [];
+  const walk = p => inBounds(p) && !blocked(p) && (!lanes.length || lanes.some(l => l.path.some((a, i) => i && segD(p, l.path[i - 1], a) <= l.width / 2)));
+  const C = R.cell, nx = Math.floor(m.size.w / C) + 1, ny = Math.floor(m.size.h / C) + 1, cellAt = p => [Math.round(p[0] / C), Math.round((p[1] + H) / C)];
+  const ok = new Uint8Array(nx * ny); for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) ok[j * nx + i] = walk([i * C, j * C - H]) ? 1 : 0;
+  const reach = from => { const seen = new Uint8Array(nx * ny), q = []; const [i0, j0] = cellAt(from); if (!ok[j0 * nx + i0]) return seen; seen[j0 * nx + i0] = 1; q.push(j0 * nx + i0);
+    while (q.length) { const c = q.pop(), i = c % nx, j = (c - i) / nx; for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const a = i + di, b2 = j + dj; if (a < 0 || b2 < 0 || a >= nx || b2 >= ny) continue; const k = b2 * nx + a; if (ok[k] && !seen[k]) { seen[k] = 1; q.push(k); } } } return seen; };
+  const at = (seen, p) => { const [i, j] = cellAt(p); return i >= 0 && j >= 0 && i < nx && j < ny && seen[j * nx + i] === 1; };
+  const good = B.filter(b => isPt(b.rally));
+  if (good.length) {
+    const seen = reach(good[0].rally);
+    for (const b of good) if (!at(seen, b.rally)) bad(`base ${b.id}: its rally point can't be reached on the ground from base ${good[0].id}`);
+    for (const n of N) if (isPt(n.at) && !at(seen, n.at)) bad(`node ${n.id}: can't be reached on the ground`);
+  }
+  // declared symmetry: every base, node, lane and blocker has its image under the map's transform
+  if (!R.symmetry.includes(m.symmetry)) bad(`symmetry: ${m.symmetry} is not one of ${R.symmetry.join(', ')}`);
+  else if (m.symmetry !== 'none') {
+    const w = m.size.w, T = { 'mirror-x': p => [w - p[0], p[1]], rot180: p => [w - p[0], -p[1]], rot90: p => [w / 2 - p[1], p[0] - w / 2] }[m.symmetry];
+    const same = (a, b) => dist(a, b) < 1e-6 * Math.max(1, w);
+    if (m.symmetry === 'rot90' && m.size.w !== m.size.h) bad('symmetry rot90: the map must be square');
+    for (const b of good) {
+      const img = B.find(o => isPt(o.hq) && same(T(b.hq), o.hq));
+      if (!img) { bad(`symmetry: base ${b.id} has no image`); continue; }
+      if (!same(T(b.sigPad), img.sigPad) || !same(T(b.rally), img.rally) || b.pads.some((p, k) => !same(T(p), img.pads[k]))) bad(`symmetry: base ${b.id}'s pads, signature pad or rally don't mirror base ${img.id}'s`);
+    }
+    for (const n of N) if (isPt(n.at) && !N.some(o => o.type === n.type && isPt(o.at) && same(T(n.at), o.at))) bad(`symmetry: node ${n.id} has no image`);
+    const setEq = (A, Bs) => A.length === Bs.length && A.every(p => Bs.some(q => same(T(p), q)));
+    for (const l of lanes) if (!lanes.some(o => setEq(l.path, o.path))) bad(`symmetry: lane ${l.id} has no image`);
+    for (const [k, bl] of (m.blockers || []).entries()) if (!(m.blockers || []).some(o => setEq(bl.poly, o.poly))) bad(`symmetry: blocker ${k} has no image`);
+  }
+  return P;
+}
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.58'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.59'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
    Bases are a Colony-style diamond of pads; the HQ sits on the back pad.
    ===================================================================== */
-const L = 1700, HQ_U = 220, TILE = 70;
-const SLOT_COUNT = 8, POP_MAX = 80, LANE_V = 115, DV_W = 0.4, US = 1.3, BS = 0.75;
+const L = MAP.size.w, HQ_U = MAP.bases[0].hq[0], TILE = 70; // v2.59: from the map (sim/maps.js)
+const SLOT_COUNT = 8, POP_MAX = MAP.armyCap, LANE_V = MAP.lanes[0].width / 2, DV_W = 0.4, US = 1.3, BS = 0.75;
 const IX = 0.866, IY = 0.5, DY = 0.5;
 const lerp = (a, b, k) => a + (b - a) * k;
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
@@ -1314,7 +1421,8 @@ function aiMassWarpTarget(g, s, ctx) {
 const AI_UPG = [['barracks', 2], ['reactor', 2], ['refinery', 2], ['factory', 2], ['habitat', 2], ['sigA', 2], ['sigB', 2], ['reactor', 3], ['hq', 2], ['techlab', 2],
   ['factory', 3], ['barracks', 3], ['turret', 2], ['habitat', 3], ['refinery', 3], ['techlab', 3], ['sigA', 3], ['sigB', 3], ['hq', 3], ['turret', 3]]; // sig: v2.32
 // Field nodes: neutral income points along the lane. Ground troops inside the zone capture them.
-const NODE_U = [600, L / 2, L - 600], NODE_R = 70, NODE_INC = { c: 3, e: 1 }, REGEN_DELAY = 8;
+const NODE_U = [600, L / 2, L - 600], NODE_R = MAP.nodes[0].r, // v2.59: NODE_U starts at the v2.42 spots (setMech7c(false)); setMech7c(true) puts the map's nodes there
+   NODE_INC = { c: 3, e: 1 }, REGEN_DELAY = 8;
 setBalance7b(true); // v2.42 (audit phase 7b): the strategy balance layer, once NODE_INC exists
 setBalance7c(true); // v2.43 (audit phase 7c): the retune layer on top
 /* ---------- Mechanics (v2.43, audit phase 7c; audit/polish-report.md) ----------
@@ -1336,7 +1444,7 @@ const MECH7C = { on: false, rally: 240, holdR: 80, node: 460, batchV: 300, batch
 const SIG_SLOT = 8, SIG_TILE = [2, 0]; // the signature pad: just past the HQ, at the base's outer corner
 function setMech7c(on) {
   MECH7C.on = on;
-  NODE_U[0] = on ? HQ_U + MECH7C.node : MECH7C.old.node[0]; NODE_U[2] = on ? L - HQ_U - MECH7C.node : MECH7C.old.node[1];
+  NODE_U[0] = on ? MAP.nodes[0].at[0] : MECH7C.old.node[0]; NODE_U[2] = on ? MAP.nodes[2].at[0] : MECH7C.old.node[1]; // v2.59: the map's nodes (MECH7C.node out from each HQ)
 }
 setMech7c(true);
 /* ---------- Live description texts (v2.45) ----------
@@ -1387,16 +1495,18 @@ liveStr(TREES.techlab.B.steps[3], 'txt', nanoTxt);
 const sigPadOn = () => MECH7C.on && MECH7C.sigPad;
 const sigOnPad = (g, s) => g.ents.find(e => e.kind === 'b' && e.side === s && e.hp > 0 && e.slot === SIG_SLOT) || null; // what stands on side s's signature pad
 const playerSide = (g, s) => s === 0 ? !g.auto : !!g.sides[s].bot; // a side the AI brain doesn't run (the player, or an audit bot)
-// Diamond of pads (tile coords i, j). The HQ takes the back tile (1, -1); the rest fill back to front.
+// Diamond of pads (tile coords i, j). The HQ takes the back tile (1, -1); the rest fill back to front. Since v2.59 the map
+// holds the pads (sim/maps.js); these and tilePos stay so tests/maps.test.js can prove Classic's are the same numbers.
 const PADS = [[0, -1], [1, 0], [-1, -1], [0, 0], [1, 1], [-1, 0], [0, 1], [-1, 1]];
 const HQ_TILE = [1, -1];
 
-const dirOf = s => s === 0 ? 1 : -1;
-const hqU = s => s === 0 ? HQ_U : L - HQ_U;
+const dirOf = s => MAP.bases[s].face[0]; // v2.59: the map's bases (sim/maps.js)
+const hqU = s => MAP.bases[s].hq[0];
 const tilePos = (s, i, j) => ({ u: hqU(s) + dirOf(s) * (i + j) * TILE * IX, v: (j - i) * TILE * IY / DY });
-const slotPos = (s, k) => k === SIG_SLOT ? tilePos(s, SIG_TILE[0], SIG_TILE[1]) : tilePos(s, PADS[k][0], PADS[k][1]);
-const hqPos = s => tilePos(s, HQ_TILE[0], HQ_TILE[1]);
-const rallyU = s => hqU(s) + dirOf(s) * (MECH7C.on ? MECH7C.rally : 300); // v2.43: inside the HQ gun's cover
+const mapPt = p => ({ u: p[0], v: p[1] });
+const slotPos = (s, k) => mapPt(k === SIG_SLOT ? MAP.bases[s].sigPad : MAP.bases[s].pads[k]); // v2.59: the map's pads (the same numbers tilePos gave)
+const hqPos = s => mapPt(MAP.bases[s].hq);
+const rallyU = s => MECH7C.on ? MAP.bases[s].rally[0] : hqU(s) + dirOf(s) * 300; // v2.43: inside the HQ gun's cover (v2.59: the map's rally point)
 
 // v2.55 (Phase 0 stance fix): an AI-played side 0 (the harness, spectate) starts on Retreat like the AI's side 1. It started
 // on the player's Hold, which left its new units standing where they were made until its first attack: the right side won
@@ -1406,7 +1516,7 @@ const START_RES = { c: 300, e: 60 }; // what each side starts with (v2.36: named
 function newGame(diffKey, opts = {}) {
   const g = { t: 0, ents: [], projs: [], fx: [], parts: [], sides: [], abil: [], over: false, winner: -1, nid: 1,
     diff: DIFF[diffKey] || DIFF.normal, diffKey, events: [], auto: !!opts.autoPlayer, autoDiff: opts.autoDiff || 'normal', shake: 0, front: [null, null], countdown: opts.countdown || 0,
-    nodes: NODE_U.map((u, i) => ({ id: i, u, v: 0, prog: 0, owner: null, c: [0, 0] })), log: null, forcePath: opts.forcePath || null,
+    nodes: NODE_U.map((u, i) => ({ id: i, u, v: MAP.nodes[i].at[1], prog: 0, owner: null, c: [0, 0] })), map: MAP, log: null, forcePath: opts.forcePath || null,
     creep: [[], []], acid: [], field: [[], []], warps: [] }; // creep patches per side (v2.18; Bloomhost only); acid: Ruinmaw pools (v2.19); field: Axiarch power field patches, warps: units mid-warp (v2.26)
   seedGame(g, opts.seed); // v2.50: the match's random streams (opts.seed, else a fresh one)
   for (let s = 0; s < 2; s++) {

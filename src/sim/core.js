@@ -1,12 +1,12 @@
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.58'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.59'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
    Bases are a Colony-style diamond of pads; the HQ sits on the back pad.
    ===================================================================== */
-const L = 1700, HQ_U = 220, TILE = 70;
-const SLOT_COUNT = 8, POP_MAX = 80, LANE_V = 115, DV_W = 0.4, US = 1.3, BS = 0.75;
+const L = MAP.size.w, HQ_U = MAP.bases[0].hq[0], TILE = 70; // v2.59: from the map (sim/maps.js)
+const SLOT_COUNT = 8, POP_MAX = MAP.armyCap, LANE_V = MAP.lanes[0].width / 2, DV_W = 0.4, US = 1.3, BS = 0.75;
 const IX = 0.866, IY = 0.5, DY = 0.5;
 const lerp = (a, b, k) => a + (b - a) * k;
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;

@@ -17,7 +17,7 @@ const MECH7C = { on: false, rally: 240, holdR: 80, node: 460, batchV: 300, batch
 const SIG_SLOT = 8, SIG_TILE = [2, 0]; // the signature pad: just past the HQ, at the base's outer corner
 function setMech7c(on) {
   MECH7C.on = on;
-  NODE_U[0] = on ? HQ_U + MECH7C.node : MECH7C.old.node[0]; NODE_U[2] = on ? L - HQ_U - MECH7C.node : MECH7C.old.node[1];
+  NODE_U[0] = on ? MAP.nodes[0].at[0] : MECH7C.old.node[0]; NODE_U[2] = on ? MAP.nodes[2].at[0] : MECH7C.old.node[1]; // v2.59: the map's nodes (MECH7C.node out from each HQ)
 }
 setMech7c(true);
 /* ---------- Live description texts (v2.45) ----------
@@ -68,16 +68,18 @@ liveStr(TREES.techlab.B.steps[3], 'txt', nanoTxt);
 const sigPadOn = () => MECH7C.on && MECH7C.sigPad;
 const sigOnPad = (g, s) => g.ents.find(e => e.kind === 'b' && e.side === s && e.hp > 0 && e.slot === SIG_SLOT) || null; // what stands on side s's signature pad
 const playerSide = (g, s) => s === 0 ? !g.auto : !!g.sides[s].bot; // a side the AI brain doesn't run (the player, or an audit bot)
-// Diamond of pads (tile coords i, j). The HQ takes the back tile (1, -1); the rest fill back to front.
+// Diamond of pads (tile coords i, j). The HQ takes the back tile (1, -1); the rest fill back to front. Since v2.59 the map
+// holds the pads (sim/maps.js); these and tilePos stay so tests/maps.test.js can prove Classic's are the same numbers.
 const PADS = [[0, -1], [1, 0], [-1, -1], [0, 0], [1, 1], [-1, 0], [0, 1], [-1, 1]];
 const HQ_TILE = [1, -1];
 
-const dirOf = s => s === 0 ? 1 : -1;
-const hqU = s => s === 0 ? HQ_U : L - HQ_U;
+const dirOf = s => MAP.bases[s].face[0]; // v2.59: the map's bases (sim/maps.js)
+const hqU = s => MAP.bases[s].hq[0];
 const tilePos = (s, i, j) => ({ u: hqU(s) + dirOf(s) * (i + j) * TILE * IX, v: (j - i) * TILE * IY / DY });
-const slotPos = (s, k) => k === SIG_SLOT ? tilePos(s, SIG_TILE[0], SIG_TILE[1]) : tilePos(s, PADS[k][0], PADS[k][1]);
-const hqPos = s => tilePos(s, HQ_TILE[0], HQ_TILE[1]);
-const rallyU = s => hqU(s) + dirOf(s) * (MECH7C.on ? MECH7C.rally : 300); // v2.43: inside the HQ gun's cover
+const mapPt = p => ({ u: p[0], v: p[1] });
+const slotPos = (s, k) => mapPt(k === SIG_SLOT ? MAP.bases[s].sigPad : MAP.bases[s].pads[k]); // v2.59: the map's pads (the same numbers tilePos gave)
+const hqPos = s => mapPt(MAP.bases[s].hq);
+const rallyU = s => MECH7C.on ? MAP.bases[s].rally[0] : hqU(s) + dirOf(s) * 300; // v2.43: inside the HQ gun's cover (v2.59: the map's rally point)
 
 // v2.55 (Phase 0 stance fix): an AI-played side 0 (the harness, spectate) starts on Retreat like the AI's side 1. It started
 // on the player's Hold, which left its new units standing where they were made until its first attack: the right side won
@@ -87,7 +89,7 @@ const START_RES = { c: 300, e: 60 }; // what each side starts with (v2.36: named
 function newGame(diffKey, opts = {}) {
   const g = { t: 0, ents: [], projs: [], fx: [], parts: [], sides: [], abil: [], over: false, winner: -1, nid: 1,
     diff: DIFF[diffKey] || DIFF.normal, diffKey, events: [], auto: !!opts.autoPlayer, autoDiff: opts.autoDiff || 'normal', shake: 0, front: [null, null], countdown: opts.countdown || 0,
-    nodes: NODE_U.map((u, i) => ({ id: i, u, v: 0, prog: 0, owner: null, c: [0, 0] })), log: null, forcePath: opts.forcePath || null,
+    nodes: NODE_U.map((u, i) => ({ id: i, u, v: MAP.nodes[i].at[1], prog: 0, owner: null, c: [0, 0] })), map: MAP, log: null, forcePath: opts.forcePath || null,
     creep: [[], []], acid: [], field: [[], []], warps: [] }; // creep patches per side (v2.18; Bloomhost only); acid: Ruinmaw pools (v2.19); field: Axiarch power field patches, warps: units mid-warp (v2.26)
   seedGame(g, opts.seed); // v2.50: the match's random streams (opts.seed, else a fresh one)
   for (let s = 0; s < 2; s++) {
