@@ -154,7 +154,7 @@ test('the AI maps its Last Fist paths onto the Axiarchs and trains path units (s
   const mul = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
   const paths = new Set(), units = new Set(), pathUnits = new Set(['riftstalker', 'parallax', 'lancer', 'marksman', 'riftmortar', 'worldbreaker', 'gravemantle', 'eventide']);
   for (const [seed, persona] of [[9, 'economist'], [4, 'trickster']]) {
-    const S = loadSim({ random: mul(seed) }); S.setMech7c(false); S.setBalance7c(false); // v2.43: these seeded matches are v2.42's (the path mapping is unchanged)
+    const S = loadSim({ random: mul(seed) }); S.AUTO_STANCE.retreat = false; /* v2.55: these seeds were found with side 0 on Hold */ S.setMech7c(false); S.setBalance7c(false); // v2.43: these seeded matches are v2.42's (the path mapping is unchanged)
     const g = S.newGame('hard', { autoPlayer: true, autoDiff: 'hard', persona, autoPersona: 'turtle', factions: ['lastfist', 'axiarchs'] });
     for (let i = 0; i < 30 * 1700 && !g.over; i++) { S.update(g, 1 / 30); for (const e of g.ents) if (e.side === 1 && e.kind === 'b' && e.path) paths.add(e.type + e.path); g.events.length = 0; }
     assert.ok(g.over, 'the match ends');

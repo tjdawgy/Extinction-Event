@@ -1,0 +1,3 @@
+lastfist: left (side 0) 23 – right (side 1) 18, draws 159 (ahead at the end: left 19, right 14); decided before 20:00 22–17; left share of decided 56.1% (z 0.78); mean 1266 s; endings {"draw":159,"hq":41}
+bloomhost: left (side 0) 10 – right (side 1) 15, draws 175 (ahead at the end: left 13, right 5); decided before 20:00 2–5; left share of decided 40.0% (z -1.00); mean 1343 s; endings {"hq":25,"draw":175}
+axiarchs: left (side 0) 32 – right (side 1) 29, draws 139 (ahead at the end: left 18, right 22); decided before 20:00 17–10; left share of decided 52.5% (z 0.38); mean 1303 s; endings {"draw":139,"hq":61}

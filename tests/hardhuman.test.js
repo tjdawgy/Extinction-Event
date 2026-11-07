@@ -12,7 +12,7 @@ const V240_DEFAULT = ['a6dd32bf8bcaf1812d05d91004681f404249e769f8e593274578d6fdd
 test('the Default AI plays exactly as v2.40 on Normal, Easy and Hard (Easy and Normal unchanged)', () => {
   const got = [];
   for (const [d, f0, f1, p0, p1] of [['normal', 'lastfist', 'bloomhost', 'aggressor', 'turtle'], ['easy', 'axiarchs', 'lastfist', 'economist', 'trickster'], ['hard', 'bloomhost', 'axiarchs', 'economist', 'aggressor']]) {
-    const s = loadSim({ random: mulberry(77) }); s.RNG.legacy = true; /* v2.50: a pinned replay draws from Math.random, as recorded */ s.setBalance7b(false); s.setMech7c(false); // v2.43: and the v2.42 mechanics. v2.42: on v2.41's numbers (the phase 7b layer off) the Default AI is still v2.40's
+    const s = loadSim({ random: mulberry(77) }); s.RNG.legacy = true; s.AUTO_STANCE.retreat = false; /* v2.50/v2.55: a pinned replay draws from Math.random and starts side 0 on Hold, as recorded */ s.setBalance7b(false); s.setMech7c(false); // v2.43: and the v2.42 mechanics. v2.42: on v2.41's numbers (the phase 7b layer off) the Default AI is still v2.40's
     const g = s.newGame(d, { autoPlayer: true, autoDiff: d, ai: 'default', autoAi: 'default', persona: p1, autoPersona: p0, factions: [f0, f1] });
     for (let i = 0; i < 30 * 600 && !g.over; i++) s.update(g, 1 / 30);
     const o = JSON.parse(s.serialize(g, {})); delete o.log; delete o.stats; for (const sd of o.sides) if (sd.persona) { delete sd.persona.preset; delete sd.persona.smart; delete sd.persona.dial; }

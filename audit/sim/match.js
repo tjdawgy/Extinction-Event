@@ -48,7 +48,7 @@ function runMatch(spec) {
   const draw = !g.over || g.winner < 0;
   const res = {
     seed, t: Math.round(g.t), winner: draw ? -1 : g.winner, how: g.over ? (g.result || {}).how : 'timeout', timeout: !g.over,
-    reason: g.over ? (g.result || {}).reason : undefined, score: g.over && g.result && g.result.score ? [...g.result.score] : undefined, // v2.48: a storm draw keeps the score for the record
+    reason: g.over ? (g.result || {}).reason : undefined, score: g.over && g.result && g.result.score ? [...g.result.score] : undefined, loser: g.over && g.result ? g.result.loser : undefined, // v2.55: the side whose HQ the storm took in a storm draw // v2.48: a storm draw keeps the score for the record
     sides: [0, 1].map(s => {
       const T = g.log.tot[s], P = g.sides[s].persona || {}, alive = {};
       for (const e of g.ents) if (e.kind === 'u' && e.side === s && e.hp > 0 && !e.temp) alive[e.type] = (alive[e.type] || 0) + 1;

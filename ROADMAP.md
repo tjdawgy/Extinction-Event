@@ -37,7 +37,8 @@ Every feature must pass one test: does this add a decision, or just a tap?
   *Done in v2.54: icons drawn from the game's art; offline play tested on a GitHub Pages-style path; not yet tried on a real iPhone.*
 - [ ] **Decision: split index.html into modules?** A small build step could still output one HTML file. Decide this before Phase 1, because the map system will grow the code a lot.
   *Recommended: yes, a mechanical split into src/ files concatenated by a dependency-free script into the same committed index.html, first build byte-identical; awaiting your decision.*
-- [ ] **Stance fix** (from the mirror check): an autoplayed side 0 starts on Retreat like the AI. Awaiting approval.
+- [x] **Stance fix** (from the mirror check): an autoplayed side 0 starts on Retreat like the AI.
+  *Done in v2.55: 200 mirrors per faction now 23–18, 10–15, 32–29; tests/spawn-balance.test.js.*
 - [ ] **New audit baseline**: re-run the mirrors, Hard vs Hard and Hard vs Default after the stance fix, since every earlier AI-vs-AI number had one handicapped side.
 - [ ] **index.html split**, if the decision above is yes.
 
