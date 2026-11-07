@@ -49,8 +49,8 @@ test('Tech Lab needs only a Barracks (no War Factory); the AI still builds one',
   assert.ok(sim.tryTrain(g, 0, 'aircraft').ok, 'a Gunship with no War Factory');
   // the AI: Hard plays a match and builds a Tech Lab
   let built = 0;
-  for (let m = 0; m < 2 && !built; m++) {
-    const a = sim.newGame('hard', { autoPlayer: true, autoDiff: 'hard', persona: 'economist', autoPersona: 'economist' });
+  for (let m = 0; m < 4 && !built; m++) { // v2.54: fixed seeds (about 2 in 3 such matches finish a Tech Lab by 15:00, so 2 random ones failed about 1 run in 10)
+    const a = sim.newGame('hard', { seed: 11 + m, autoPlayer: true, autoDiff: 'hard', persona: 'economist', autoPersona: 'economist' });
     for (let i = 0; i < 30 * 900 && !a.over && !built; i++) { sim.update(a, 1 / 30); if (a.ents.some(e => e.type === 'techlab' && e.built)) built = 1; a.events.length = 0; }
   }
   assert.ok(built, 'an AI builds a Tech Lab');
