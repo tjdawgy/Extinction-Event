@@ -246,7 +246,7 @@ test('AI defense estimate counts the enemy HQ and remembered Turrets at their la
 });
 
 test('AI remembers a failed base attack: no new base attack until its army clearly beats the last one; the bar fades', () => {
-  const g = sim.newGame('easy'); g.sides[0].aiT = 1e9; g.t = 200;
+  const g = sim.newGame('easy', { ai: 'default260' }); g.sides[0].aiT = 1e9; g.t = 200; // v2.61: v2.60's Default (no army estimate on Easy), the rule as recorded
   const side = g.sides[1], army = () => g.ents.filter(e => e.side === 1 && e.kind === 'u');
   const spawn = (n, type) => { for (let i = 0; i < n; i++) sim.spawnUnit(g, 1, type, 1200 - i * 5, 0); };
   const value = () => army().reduce((a, u) => a + sim.UDEF[u.type].cost.c + sim.UDEF[u.type].cost.e * 1.5, 0);
@@ -270,21 +270,21 @@ test('AI remembers a failed base attack: no new base attack until its army clear
   g.t = side.failT + sim.FAIL_MEMORY + 1;
   assert.strictEqual(sim.attackBar(g, 1), 0, 'fully faded');
   // a big enough army goes straight away
-  const g2 = sim.newGame('easy'); g2.sides[0].aiT = 1e9; g2.t = 200; g2.sides[1].failV = V * 1.3; g2.sides[1].failT = 200;
+  const g2 = sim.newGame('easy', { ai: 'default260' }); g2.sides[0].aiT = 1e9; g2.t = 200; g2.sides[1].failV = V * 1.3; g2.sides[1].failT = 200;
   for (let i = 0; i < 6; i++) sim.spawnUnit(g2, 1, 'tank', 1200 - i * 5, 0); // 6 Tanks = 1.5 V > 1.3 V
   g2.sides[1].aiT = 0; g2.sides[1].stanceAt = 180; sim.aiUpdate(g2, 1, STEP);
   assert.ok(g2.sides[1].stance === 'attack' && g2.sides[1].pushTo !== sim.L / 2 - 20, 'a clearly bigger army attacks');
 });
 
 test('a maxed-out AI with money banked is not held back by a failed-attack bar it can never beat', () => {
-  const g = sim.newGame('easy'); g.sides[0].aiT = 1e9; g.t = 400;
+  const g = sim.newGame('easy', { ai: 'default260' }); g.sides[0].aiT = 1e9; g.t = 400; // v2.61: as recorded (v2.60's Default)
   const side = g.sides[1];
   side.failV = 99999; side.failT = g.t; // an impossible bar
   while (sim.popUsed(g, 1) < sim.popCap(g, 1) - 1) sim.spawnUnit(g, 1, 'rifle', 1200, 0);
   side.res.c = 3000; side.stanceAt = g.t - 30; side.aiT = 0;
   sim.aiUpdate(g, 1, STEP);
   assert.ok(side.stance === 'attack' && side.pushTo !== sim.L / 2 - 20, 'full army + 3000 credits: commits anyway');
-  const g2 = sim.newGame('easy'); g2.sides[0].aiT = 1e9; g2.t = 400;
+  const g2 = sim.newGame('easy', { ai: 'default260' }); g2.sides[0].aiT = 1e9; g2.t = 400;
   g2.sides[1].failV = 99999; g2.sides[1].failT = g2.t;
   while (sim.popUsed(g2, 1) < sim.popCap(g2, 1) - 1) sim.spawnUnit(g2, 1, 'rifle', 1200, 0);
   g2.sides[1].res.c = 500; g2.sides[1].stanceAt = g2.t - 30; g2.sides[1].aiT = 0;

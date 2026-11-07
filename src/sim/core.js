@@ -1,5 +1,5 @@
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.60'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.61'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -49,6 +49,22 @@ const DIFF = {
   normal: { delay: 1.0, wave: 1.0, label: 'Normal', maxTier: 3, upStart: 90, smart: 0.65, calmSave: true,  calmTech: false, eco: true,  turret: 0.5,  nodes: false, refineries: 2, trainPer: 2, fieldEdge: 0.9, fieldMin: 300, armyCap: 1 },
   hard:   { delay: 1.0, wave: 1.0, label: 'Hard',   maxTier: 3, upStart: 90, smart: 0.65, calmSave: true,  calmTech: true,  eco: true,  turret: 1,  nodes: true,  refineries: 2, trainPer: 2, fieldEdge: 0.9, fieldMin: 300, armyCap: 1 },
 };
+/* v2.61 (Phase 1, the difficulty ladder): how hard each difficulty plays, on purpose (the v2.60 bug fixes now apply to all).
+   A preset with the 'ladder' rule (default, hard) reads these on top of DIFF through aiDiff; the presets the pinned replays
+   use (legacy, v239, default260, hard259...) don't, so they still play their recorded DIFF. press: the edges for the press
+   rule (ATTACK.press, none = off; power: never into a known stronger army); raid: ATTACK.raid's settings (true = as they are, false = no raids); fix and dials: added
+   to the persona when it is rolled for that difficulty (rollPersona). */
+const LADDER = {
+  easy: { delay: 1.3, armyCap: 0.9, refineries: 2, smart: 0.35, press: { edge: 1.4, edgeLate: 0.9, field: 1.15, from: 360, power: true }, raid: false },
+  normal: { nodes: true, dials: { delay: 0.8 }, press: { edge: 1.2, edgeLate: 0.55, late0: 720, field: 0.9, from: 270 }, raid: { every: 110, n: 3 }, fix: { breakout: true, shield: true, power: true, fill: true, counter: true, nowave: true } },
+  hard: { press: {}, raid: true },
+};
+const LADDER_D = {};
+for (const k in DIFF) LADDER_D[k] = Object.assign(Object.create(DIFF[k]), LADDER[k] || {});
+function aiDiff(g, s) { // the difficulty a side's AI plays: its DIFF entry, with the ladder's settings when its preset uses them
+  const base = s === 1 ? g.diff : (DIFF[g.autoDiff] || DIFF.normal);
+  return aiFix(g.sides[s].persona, 'ladder') ? LADDER_D[base.label.toLowerCase()] : base;
+}
 
 // Seconds of "GET READY" at match start. The world is frozen and the clock (g.t) starts at GO.
 const COUNTDOWN = 3;

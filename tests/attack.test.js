@@ -1,5 +1,6 @@
-// v2.60 (Phase 1 stalemate fix, KNOWN_ISSUES.md "AI attack decisions"): Hard's scoutGo, estFix, press, raid and supply
-// rules. Easy and Normal (the Default preset) don't have them; hard259 is v2.59's Hard.
+// v2.60 (Phase 1 stalemate fix, KNOWN_ISSUES.md "AI attack decisions"): the scoutGo, estFix, press, raid and supply
+// rules. v2.61: every difficulty has them (Easy and Normal with their own press and raid settings, LADDER); hard259 is
+// v2.59's Hard and default260 v2.60's Default.
 const test = require('node:test');
 const assert = require('node:assert');
 const { loadSim } = require('./load-sim');
@@ -7,9 +8,9 @@ const { loadSim } = require('./load-sim');
 const sim = loadSim();
 const quiet = (seed = 1) => { const g = sim.newGame('hard', { seed, factions: ['lastfist', 'lastfist'] }); g.countdown = 0; for (const s of [0, 1]) g.sides[s].aiT = 1e9; return g; };
 
-test('the rules are Hard only: Default (Easy, Normal) and hard259 have none of them', () => {
+test('Hard and Default (v2.61: Easy, Normal) have the rules; hard259 and default260 have none of them', () => {
   const k = ['scoutGo', 'estFix', 'press', 'raid', 'supply'];
-  for (const r of k) { assert.ok(sim.AI_PRESETS.hard.fix[r], `hard has ${r}`); assert.ok(!sim.AI_PRESETS.default.fix[r] && !sim.AI_PRESETS.hard259.fix[r], `default and hard259 lack ${r}`); }
+  for (const r of k) { assert.ok(sim.AI_PRESETS.hard.fix[r] && sim.AI_PRESETS.default.fix[r], `hard and default have ${r}`); assert.ok(!sim.AI_PRESETS.default260.fix[r] && !sim.AI_PRESETS.hard259.fix[r], `default260 and hard259 lack ${r}`); }
 });
 
 test('estFix: unseen, the enemy army is a capped time curve; a good look resets it to what it saw, then it rebuilds', () => {
@@ -34,10 +35,10 @@ test('scoutGo: a Hard scout walks out while its side is on Retreat (it used to r
   g.sides[s].stance = 'retreat'; g.sides[s].scoutId = sc.id; g.sides[s].scoutU = 700;
   for (let i = 0; i < 60 * 6; i++) sim.update(g, sim.TICK);
   assert.ok(sc.u < 1200, `went out (${Math.round(sc.u)})`);
-  const g2 = sim.newGame('normal', { seed: 1, factions: ['lastfist', 'lastfist'] }); g2.countdown = 0; for (const x of [0, 1]) g2.sides[x].aiT = 1e9;
+  const g2 = sim.newGame('normal', { seed: 1, factions: ['lastfist', 'lastfist'], ai: 'default260' }); g2.countdown = 0; for (const x of [0, 1]) g2.sides[x].aiT = 1e9;
   const sc2 = sim.spawnUnit(g2, s, 'rifle', 1300, 0); g2.sides[s].stance = 'retreat'; g2.sides[s].scoutId = sc2.id; g2.sides[s].scoutU = 700;
   for (let i = 0; i < 60 * 6; i++) sim.update(g2, sim.TICK);
-  assert.ok(sc2.u > 1200, `Normal keeps the old rule (${Math.round(sc2.u)})`);
+  assert.ok(sc2.u > 1200, `v2.60's Default (default260) had the old rule (${Math.round(sc2.u)})`);
 });
 
 test('raid: a few fast units head for the enemy node, at most a third of the army; they come home when hurt', () => {

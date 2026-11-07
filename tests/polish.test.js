@@ -153,14 +153,14 @@ test('saves: a building on the signature pad survives save and resume; an older 
 });
 
 test('the AI builds its signature building on the signature pad and keeps all 8 pads for its plan', () => {
-  const g = sim.newGame('normal', { autoPlayer: true, autoDiff: 'normal', factions: ['lastfist', 'axiarchs'], ai: 'default', autoAi: 'default', persona: 'economist', autoPersona: 'aggressor' });
-  g.countdown = 0;
-  for (let i = 0; i < 30 * 600 && !g.over; i++) sim.update(g, 1 / 30);
+  const g = sim.newGame('normal', { seed: 3, autoPlayer: true, autoDiff: 'normal', factions: ['lastfist', 'axiarchs'], ai: 'default', autoAi: 'default', persona: 'economist', autoPersona: 'aggressor' }); // v2.63: seeded (unseeded, one could be built and then destroyed before 10:00)
+  g.countdown = 0; let built = false;
+  for (let i = 0; i < 30 * 600 && !g.over; i++) { sim.update(g, 1 / 30); if (!built && [0, 1].some(s => sim.sigOnPad(g, s))) built = true; }
   for (const s of [0, 1]) {
     const sg = g.ents.filter(e => e.kind === 'b' && e.side === s && (e.type === 'sigA' || e.type === 'sigB'));
     assert.ok(sg.every(e => e.slot === sim.SIG_SLOT), 'only on the signature pad');
   }
-  assert.ok([0, 1].some(s => sim.sigOnPad(g, s)), 'at least one AI built one by 10:00');
+  assert.ok(built, 'at least one AI built one by 10:00');
 });
 
 test('Hard builds a signature building now that it costs no pad', () => {

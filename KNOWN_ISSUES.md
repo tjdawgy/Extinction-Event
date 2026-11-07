@@ -2,6 +2,36 @@
 
 Issues found during testing that are deliberately deferred. Each lists the step that should address it.
 
+## Difficulty ladder (v2.61, Phase 1)
+- **The v2.60 fixes now apply to every difficulty.** The Default preset (Easy and Normal) gains `scoutGo` (the scout really runs while its side sits on Retreat), `estFix` (the capped estimate of an unseen army) and `supply` (trade a spare building for a Habitat when supply-blocked with money banked), plus `est` (use the estimate at all: without it, an Easy or Normal AI that had seen nothing treated the enemy army as zero and attacked into it), `press` and `raid` with each difficulty's own settings. The supply rule now asks for every Habitat at the side's top tier (Easy stops at T2: before, an Easy AI stood at 28 supply all match).
+- **How hard each difficulty plays is set on purpose** (`LADDER` in src/sim/core.js, read through `aiDiff` by any preset with the `ladder` rule; the pinned presets `default260`, `hard259`, `v239`, `legacy`... don't have it and play their recorded DIFF):
+
+  | | Easy | Normal | Hard |
+  |---|---|---|---|
+  | Decisions (DIFF delay × dial) | every 1.3 s (DIFF had 2.5) | every 0.8 s | every 0.6 s (Bloomhost 1.0; unchanged) |
+  | Army it fills | 90% of the limit (DIFF had 60%) | 100% | 100% |
+  | Top tier | T2 | T3 | T3 |
+  | Unit handling (`smart`), Refineries | 0.35 (DIFF 0.2), 2 (DIFF 1) | 0.65, 2 | 0.65, 2 |
+  | Attack edge (press): early → late, from | 1.4× → 0.9×, from 6:00, and never into a known stronger army | 1.2× → 0.55× (from 12:00 to the storm warning), from 4:30 | 1.15× → 0.75×, from 4:00 (v2.60) |
+  | Raids | none | every 110 s, up to 3 units | every 75 s, up to 4 (v2.60) |
+  | Hard's defensive rules | none | breakout, shield, power, fill, counter, nowave | all (v2.60) |
+
+  Easy is still the slowest, smallest, most cautious side and never raids; Normal sits between. Note: Easy's decision speed, army share, unit handling and Refineries went **up** from DIFF's: with the bug fixes in place, the old Easy numbers made it lose to Normal over 90% of the time, so to bring Normal-beats-Easy into 70–80% Easy had to be given more than before. Against a person, v2.61 Easy is therefore a stronger opponent than v2.60 Easy (measured: v2.61 Easy against v2.60 Easy, 40 mixed-faction matches, 36–0–4; Normal, by contrast, plays about as well as before: v2.61 Normal against v2.60 Normal, 40 matches, 12–8–20).
+- **Results** (audit/sim/ladder.js: 200 matches per matchup, mixed factions (all nine pairings in turn), sides alternating, seeds 8000–8199, to 27:00; audit/logs-p1/ladder-v261.md and .json):
+
+  | Matchup (A vs B) | A–B–draw | A share | median length | decided before 20:00 | draws | no fight |
+  |---|---|---|---|---|---|---|
+  | hard vs normal | 152–21–27 | 82.8% | 8:00 | 83.0% | 13.5% | 0.0% |
+  | normal vs easy | 138–40–22 | 74.5% | 12:24 | 86.0% | 11.0% | 0.0% |
+  | normal vs normal | 90–66–44 | 56.0% | 14:43 | 74.5% | 22.0% | 0.0% |
+  | easy vs easy | 99–88–13 | 52.8% | 13:09 | 79.0% | 6.5% | 0.0% |
+
+  Before (v2.60, the same tool, 40 matches each): Hard beat Normal 90%, Normal beat Easy 91.3%, Normal vs Normal 30% draws, Easy vs Easy 32.5% draws.
+  Met: Normal beats Easy (74.5%), both mirror draw rates (22%, 6.5%), no-fight (0% everywhere). **Not met: Hard beats Normal 82.8%, 2.8 points above the 70–80% band** (see the tuning history).
+- **Tuning history** (22 configurations, so the next pass doesn't repeat them): Hard vs Normal stayed at 80–84% over 200 matches across every Normal setting tried (decision speed 0.6–0.8, attack edges and their late fall-off, raids, with or without Hard's `contest` and `power` rules), so it's mostly Hard's v2.60 rules, not Normal's settings; lower would take a weaker Hard or a much stronger Normal. Normal-vs-Normal draws were the touchy number: 30.5% with Normal deciding every 0.7 s (and giving up on a perfect edge at 15:00), 22% at 0.8 s with the usual 18:00 (a quicker Normal defends well enough to stall another Normal); dropping Normal's `power` rule looked better on 100 seeds (35% → 27%) but not over 200 (30.5%); `contest` raised them (33%). The runs are deterministic: the same settings give the same table (checked: l13 and the final run match exactly).
+- **Tutorial:** unaffected. Its practice match switches the enemy AI off (`tutStart`), so nothing in it relies on how Easy or Normal play; tests/tutorial.test.js passes.
+- **Tests:** tests/ladder.test.js (the fixes on every difficulty and absent from the pinned presets; the ladder's ordering; a supply-blocked Easy side still grows past one T2 Habitat). Tests that pinned v2.60's Default behaviour now name the `default260` preset (attack, fog bar, hardhuman, tactics).
+
 ## AI attack decisions: the stalemate fix (v2.60, Phase 1)
 - **Problem (v2.56 baseline):** two Hard AIs reached 20:00 undecided 80–96% of the time, and 23–56% of those matches had no fight at all.
 - **Diagnosis (why two Hard AIs never finished each other), from traces of v2.59 Hard vs Hard:**

@@ -129,6 +129,12 @@ const ATTACK = {
 };
 AI_PRESETS.hard259 = Object.assign({}, AI_PRESETS.hard, { name: 'Hard v2.59', fix: Object.assign({}, AI_PRESETS.hard.fix) });
 Object.assign(AI_PRESETS.hard.fix, { scoutGo: true, estFix: true, press: true, raid: true, supply: true });
+// v2.61 (the difficulty ladder): the three v2.60 fixes (scoutGo, estFix, supply) are bug fixes, so Easy and Normal (the
+// Default preset) get them too; how hard each difficulty plays is set on purpose in DIFF (LADDER fields). default260
+// keeps v2.60's Default for the pinned replays.
+AI_PRESETS.default260 = Object.assign({}, AI_PRESETS.default, { name: 'Default v2.60', fix: Object.assign({}, AI_PRESETS.default.fix) });
+Object.assign(AI_PRESETS.default.fix, { est: true, scoutGo: true, estFix: true, supply: true, press: true, raid: true, ladder: true }); // est: use the estimate at all (estFix makes it sound); press and raid: per difficulty (LADDER)
+AI_PRESETS.hard.fix.ladder = true;
 const AI_PRESET_KEYS = Object.keys(AI_PRESETS);
 const aiDials = P => (P && P.dial) || AI_DIALS; // a persona without dials (an older save) reads the legacy constants
 const aiSmart = P => !!(P && P.smart);
@@ -144,7 +150,10 @@ function rollPersona(kind, preset, fac, diffKey) {
   const P = rollPersona0(kind || (F && F.kinds ? pickOne(F.kinds) : kind));
   P.preset = AI_PRESETS[preset] ? preset : 'default'; P.smart = A.smart; P.dial = Object.assign({}, A.dials, F && F.dials, { comp: Object.assign({}, A.dials.comp) }, A.fix ? { fix: Object.assign({}, A.fix, F && F.fix) } : {});
   if (F && F.paths) P.paths = Object.assign({}, P.paths, F.paths); // v2.41: a preset's per-faction production paths (Last Fist terms)
-  if (A.byDiff && A.byDiff[diffKey]) Object.assign(P.dial, A.byDiff[diffKey]);
+  const LD = A.fix && A.fix.ladder && LADDER[diffKey]; // v2.61: a difficulty's own competence rules and dials (LADDER)
+  if (LD && LD.fix) Object.assign(P.dial.fix, LD.fix);
+  if (LD && LD.dials) Object.assign(P.dial, LD.dials);
+  if (A.byDiff && A.byDiff[diffKey]) Object.assign(P.dial, A.byDiff[diffKey]); // an experiment's per-difficulty dials win (no preset sets them today)
   return P;
 }
 function rollPersona0(kind) {
@@ -186,7 +195,7 @@ const AB_BVAL = { hq: 300, turret: 320, refinery: 220 };
 const aiFortified = (g, s) => !!g.sides[s].failV || Object.values(g.fog[s].ghosts).some(gh => gh.side !== s && gh.type === 'turret');
 function aiAbility(g, s, P, ctx) {
   if (!FACTIONS[facOf(g.sides[s].faction)].abilities) return;
-  const D = s === 1 ? g.diff : (DIFF[g.autoDiff] || DIFF.normal), lvl = D === DIFF.easy ? 0 : D === DIFF.hard ? 2 : 1;
+  const D = aiDiff(g, s), lvl = D.label === 'Easy' ? 0 : D.label === 'Hard' ? 2 : 1;
   const side = g.sides[s], f = g.fog[s], log = side.aiLog, kind = P.kind;
   if (g.t < ABIL.shield.first || simRnd() > [0.2, 0.5, 1][lvl]) return; // slower to react on lower difficulties
   const seen = g.ents.filter(e => e.side !== s && e.hp > 0 && visibleTo(g, s, e));

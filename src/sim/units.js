@@ -71,7 +71,7 @@ function updateOrders(g) { // twice a second: a Regroup flag is done once every 
 // The AI's only micro so far (Normal and Hard): pull Artillery back when enemy ground units it can see get close
 const AI_ART = ['artillery', 'bilelobber', 'riftmortar'], AI_SIEGE = ['artillery', 'titan', 'bilelobber', 'ruinmaw', 'riftmortar', 'worldbreaker']; // units the AI's siege rules count (v2.19: Bloomhost's too; v2.27: Axiarchs')
 function aiMicro(g, s, D, mine) {
-  if (D === DIFF.easy) return;
+  if (D.label === 'Easy') return;
   const side = g.sides[s], O = side.orders || (side.orders = newOrders());
   for (const at of AI_ART) { // Artillery, and the Bile Lobber the same way (v2.19)
     const art = mine.filter(u => u.type === at);

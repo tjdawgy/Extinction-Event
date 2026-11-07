@@ -16,8 +16,8 @@ function attackBar(g, s) {
 function aiPickPath(g, s, b, P, theirs) {
   if (g.forcePath && g.forcePath[s] && g.forcePath[s][b.type]) return g.forcePath[s][b.type]; // test hook (forced-path matrix)
   const fac = g.sides[s].faction, to = p => aiPathTo(fac, b.type, p); // decided in Last Fist terms, then translated (Bloomhost, v2.19)
-  const D = s === 1 ? g.diff : (DIFF[g.autoDiff] || DIFF.normal), def = (P.paths && P.paths[b.type]) || 'A';
-  if (D === DIFF.easy) return to(def);
+  const D = aiDiff(g, s), def = (P.paths && P.paths[b.type]) || 'A';
+  if (D.label === 'Easy') return to(def);
   const have = g.ents.filter(e => e !== b && e.side === s && e.type === b.type && e.hp > 0).map(e => aiPathFrom(fac, b.type, e.path || e.upPath)).filter(Boolean);
   if (b.type === 'barracks' && aiArmorShare(theirs) > 0.35 && !have.includes('A')) return to('A');
   if (b.type === 'factory' && aiFix(P, 'counter') && theirs.length >= 5 && aiLightShare(theirs) >= (aiDials(P).flood || 0.55) && !have.includes('B')) return to('B'); // v2.41 (counter): an infantry flood, the Assault path (Flame Tanks)
@@ -32,7 +32,7 @@ function aiUpdate(g, s, dt) {
   const side = g.sides[s];
   side.aiT -= dt;
   if (side.aiT > 0) return;
-  const D = s === 1 ? g.diff : (DIFF[g.autoDiff] || DIFF.normal);
+  const D = aiDiff(g, s);
   side.aiT = D.delay * aiDials(side.persona).delay * rand(0.8, 1.2); // v2.38: the reaction-delay dial (legacy 1)
   const opp = 1 - s, dir = dirOf(s), fog = g.fog[s], oppTier = fog.lastHQ.tier;
 
@@ -112,7 +112,7 @@ function aiUpdate(g, s, dt) {
   else if (bo && side.pressT !== undefined && g.t - side.pressT > 5 && hasBuilt(g, s, 'barracks') && countB(g, s, 'turret') < (campV > 900 ? 2 : 1) && freePad) { want = 'turret'; wantPad = side.slots[4] ? -1 : 4; } // v2.42 (breakout): pressure, a Turret at once
   else if (side.spotsRush && infantryRush && countB(g, s, 'turret') < (armyValue(near) > 800 ? 2 : 1)) { want = 'turret'; wantPad = side.slots[4] ? -1 : 4; } // front pad
   else if (calm && hasBuilt(g, s, 'barracks') && countB(g, s, 'factory') < 1) want = 'factory'; // the Tank counter to an infantry rush
-  else if (P.kind === 'aggressor' && D !== DIFF.easy && !threat && hasBuilt(g, s, 'barracks') && countB(g, s, 'factory') < 1 && aiFortified(g, s)) want = 'factory'; // a fortified enemy: Tanks to crack it (HQ T2 for the Orbital Strike, below)
+  else if (P.kind === 'aggressor' && D.label !== 'Easy' && !threat && hasBuilt(g, s, 'barracks') && countB(g, s, 'factory') < 1 && aiFortified(g, s)) want = 'factory'; // a fortified enemy: Tanks to crack it (HQ T2 for the Orbital Strike, below)
   else if (D.eco && !defend && side.res.e > ENERGY_PLENTY * 2 && side.res.c < 300 && countB(g, s, 'refinery') < 4 &&
     (countB(g, s, 'habitat') > 0 || side.slots.filter(x => !x).length >= 2)) want = 'refinery'; // turn spare energy into credits (leaving room for a Habitat)
   else if (D.eco && side.res.e < 120 && side.res.c > 800 && countB(g, s, 'reactor') < 3 &&
@@ -134,7 +134,7 @@ function aiUpdate(g, s, dt) {
     }
   }
   // A fortified enemy: the Aggressor gets HQ T2 at once, which unlocks the Orbital Strike (until v2.16 it built a War Factory)
-  if (P.kind === 'aggressor' && D !== DIFF.easy && abList(side).includes('strike') && !threat && side.hq.tier < 2 && !side.hq.upgrading && aiFortified(g, s)) {
+  if (P.kind === 'aggressor' && D.label !== 'Easy' && abList(side).includes('strike') && !threat && side.hq.tier < 2 && !side.hq.upgrading && aiFortified(g, s)) {
     const r = tryUpgrade(g, s, side.hq);
     if (!r.ok) { const up = bdS(g, s, 'hq').up[2]; reserve.c = Math.max(reserve.c, up.c); reserve.e = Math.max(reserve.e, up.e); }
   }
@@ -153,7 +153,7 @@ function aiUpdate(g, s, dt) {
   // v2.60 (supply, ATTACK.supply): at its army limit with money banked, every Habitat at T3 and no free pad, trade a
   // building that has done its job for another Habitat, winning or not (before, only 'finish' did this, when 3x ahead):
   // two Hard AIs stood at 34 supply with 5,000+ banked, so every loss was rebuilt at once and no army could grow
-  if (aiFix(P, 'supply') && g.t > ATTACK.supply.from && !freePad && cap < POP_MAX && used >= cap * fill - 3 && side.res.c > ATTACK.supply.bank && !constructing.length && alive(g, s, 'habitat').every(b => b.tier >= 3)) {
+  if (aiFix(P, 'supply') && g.t > ATTACK.supply.from && !freePad && cap < POP_MAX && used >= cap * fill - 3 && side.res.c > ATTACK.supply.bank && !constructing.length && alive(g, s, 'habitat').every(b => b.tier >= Math.min(3, D.maxTier))) { // v2.61: its own top tier (Easy stops at T2)
     const rich = side.res.c > ATTACK.supply.bank * 3;
     const spare = (side.res.e > 400 && countB(g, s, 'reactor') > 1 && alive(g, s, 'reactor')[0]) || (countB(g, s, 'refinery') > (rich ? 1 : 2) && alive(g, s, 'refinery')[0]) || (!threat && alive(g, s, 'turret')[0]);
     if (spare) { trySell(g, s, spare); want = 'habitat'; }
@@ -162,7 +162,7 @@ function aiUpdate(g, s, dt) {
   if (!freePad && D.eco && dl.sell && side.res.e < 120 && side.res.c > (starved && alive(g, s, 'reactor').every(b => b.tier >= 3) ? 600 : 1500) && countB(g, s, 'refinery') > (aiFix(P, 'spend') && countB(g, s, 'reactor') < 2 ? 1 : 2) && !constructing.length) { // v2.38 (Default): also with 2 Refineries while it has under 2 Reactors
     trySell(g, s, alive(g, s, 'refinery')[0]); want = 'reactor';
   }
-  if (!want && D === DIFF.hard && !g.forcePath && freePad && !constructing.length && income(g, s).c >= 25 && aiArmorShare(theirs) > 0.35) {
+  if (!want && D.label === 'Hard' && !g.forcePath && freePad && !constructing.length && income(g, s).c >= 25 && aiArmorShare(theirs) > 0.35) {
     const bar = alive(g, s, 'barracks');
     if (bar.length && bar.length < 2 && bar.every(b => aiPathFrom(side.faction, 'barracks', b.path || b.upPath) === 'B')) want = 'barracks'; // then its T2 upgrade takes Specialists
   }
@@ -205,7 +205,7 @@ function aiUpdate(g, s, dt) {
   }
 
   // The Aggressor's answer to a fortified enemy: keep enough back for an Orbital Strike on its known defences
-  if (P.kind === 'aggressor' && D !== DIFF.easy && !threat && abilUnlocked(g, s, ABIL.strike) && side.ab.strike - g.t < 15 && aiFortified(g, s) && (side.stance === 'attack' || side.ab.strike > g.t)) {
+  if (P.kind === 'aggressor' && D.label !== 'Easy' && !threat && abilUnlocked(g, s, ABIL.strike) && side.ab.strike - g.t < 15 && aiFortified(g, s) && (side.stance === 'attack' || side.ab.strike > g.t)) {
     reserve.c = Math.max(reserve.c, ABIL.strike.cost.c); reserve.e = Math.max(reserve.e, ABIL.strike.cost.e);
   }
   // 3) Army: counter what the opponent fields, bring siege guns against a turtle
@@ -390,14 +390,16 @@ function aiUpdate(g, s, dt) {
     armyValue(theirs.filter(u => Math.abs(u.u - oppNode.u) < NODE_R + 200)) < myV * 0.5;
   const punish = P.opportunist && side.lastDanger !== undefined && g.t - side.lastDanger < 20 && !threat && myV >= 300 && myV >= thV * 1.2;
   // The Aggressor against a fortified base: if its Orbital Strike is only seconds away, wait for it rather than walk in head-on
-  const strikeWait = side.ab.strike - g.t, holdForStrike = P.kind === 'aggressor' && D !== DIFF.easy && !threat && !late && strikeWait > 0 && strikeWait < 12 && aiFortified(g, s) && hasBuilt(g, s, 'factory');
+  const strikeWait = side.ab.strike - g.t, holdForStrike = P.kind === 'aggressor' && D.label !== 'Easy' && !threat && !late && strikeWait > 0 && strikeWait < 12 && aiFortified(g, s) && hasBuilt(g, s, 'factory');
   // v2.60 (press, ATTACK.press): attack when clearly ahead on army or economy, fight for the centre node at parity, and
   // need a smaller edge as the storm nears
-  const pr = aiFix(P, 'press') && g.t >= ATTACK.press.from && !(side.regroupT > g.t) && !holdForStrike;
-  const prNeed = lerp(ATTACK.press.edge, ATTACK.press.edgeLate, clamp((g.t - ATTACK.press.late0) / (EXT.warn - ATTACK.press.late0), 0, 1));
-  const ecoAhead = pr && income(g, s).c >= (side.estInc || 1e9) * ATTACK.press.eco;
-  const prPush = pr && myV >= dl.minArmy && (myV >= thV * prNeed || (ecoAhead && myV >= thV * prNeed * 0.9));
-  const prField = pr && g.nodes[1].owner !== s && myV >= 250 && myV >= thV * ATTACK.press.field * prNeed / ATTACK.press.edge;
+  const PR = D.press ? Object.assign({}, ATTACK.press, D.press) : null; // v2.61: each difficulty's own edges (DIFF.press; none = the rule is off)
+  const pr = aiFix(P, 'press') && !!PR && g.t >= PR.from && !(side.regroupT > g.t) && !holdForStrike;
+  const prNeed = PR ? lerp(PR.edge, PR.edgeLate, clamp((g.t - PR.late0) / (EXT.warn - PR.late0), 0, 1)) : 1;
+  const ecoAhead = pr && income(g, s).c >= (side.estInc || 1e9) * PR.eco;
+  const prSafe = !PR || !PR.power || aiPower(mine) >= aiPower(theirs); // v2.61: a cautious difficulty never presses into a known army stronger than its own
+  const prPush = pr && prSafe && myV >= dl.minArmy && (myV >= thV * prNeed || (ecoAhead && myV >= thV * prNeed * 0.9));
+  const prField = pr && prSafe && g.nodes[1].owner !== s && myV >= 250 && myV >= thV * PR.field * prNeed / PR.edge;
   if (bo && side.boHold && side.stance === 'attack' && side.pushMode !== 'all' && side.pushMode !== 'siege') { side.stance = 'retreat'; side.pushTo = null; side.pushMode = null; side.stanceAt = g.t; } // v2.42 (breakout): back under the gun
   if (bo && side.boHold && side.stance !== 'attack') { /* v2.42 (breakout): hold and gather; no push while camped on */ }
   else if (bo && g.t - (side.campT ?? -99) < 15 && side.stance !== 'attack' && g.t < EXT.warn) { // stronger now: out together, at the camp
@@ -442,7 +444,7 @@ function aiUpdate(g, s, dt) {
   } else if (side.pushTo !== null && bold && (myV > (thV + hqVal) * 1.3 || (since > 50 && myV > thV * 1.1))) {
     side.pushTo = null; side.pushMode = 'all'; side.stanceAt = g.t;
   }
-  if (aiFix(P, 'raid')) aiRaid(g, s, mine, myV); // v2.60
+  if (aiFix(P, 'raid') && D.raid) aiRaid(g, s, mine, myV, D.raid); // v2.60; v2.61: per difficulty (DIFF.raid)
   aiAbility(g, s, P, { mine, theirs, threat, myV, thV });
   aiMicro(g, s, D, mine);
   if (smart) aiSmartArmy(g, s, mine, dl, P); // v2.38: the Default AI's unit handling
@@ -542,8 +544,8 @@ function aiEstimate(g, s) {
 }
 // v2.60 (raid, ATTACK.raid): with no push on, a few of its fastest ground units (at most share of its army) take the enemy's
 // own node, or the centre if it already holds theirs; they come home when hurt, after dur seconds, or when the army attacks
-function aiRaid(g, s, mine, myV) {
-  const side = g.sides[s], R = ATTACK.raid;
+function aiRaid(g, s, mine, myV, dr) {
+  const side = g.sides[s], R = Object.assign({}, ATTACK.raid, dr && dr !== true ? dr : {});
   if (side.raid) {
     const live = mine.filter(u => side.raid.ids.includes(u.id)), hp = live.reduce((a, u) => a + u.hp, 0);
     side.raid.ids = live.map(u => u.id);

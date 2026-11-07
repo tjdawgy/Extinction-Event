@@ -14,7 +14,8 @@ function runMatch(spec) {
   const mkBot = (x, k) => x.bot === 'strat' ? require('./strat').stratBot(S, Object.assign({ rnd: mulberry((seed | 0) * 2 + 1 + k) }, x.botOpts || {})) : require('./greedy').greedyBot(S, x.botOpts || {}); // Phase 7b: 'strat' (strat.js), else Greedy
   const bot = sides[0].bot ? mkBot(sides[0], 0) : null; // Phase 7a: a scripted bot (Greedy) in the player's slot
   const bot1 = sides[1].bot ? mkBot(sides[1], 1) : null; // bot against bot: side 1's AI is switched off
-  const g = S.newGame(diff, { seed, autoPlayer: !bot, autoDiff: diff, factions: [sides[0].faction, sides[1].faction],
+  const g = S.newGame(sides[1].diff || diff, { seed, autoPlayer: !bot, autoDiff: sides[0].diff || diff, // v2.61: a side may name its own difficulty (the ladder)
+    factions: [sides[0].faction, sides[1].faction],
     autoAi: sides[0].ai, ai: sides[1].ai, autoPersona: per(sides[0].persona), persona: per(sides[1].persona) });
   g.countdown = 0;
   if (bot1) g.sides[1].bot = true; // v2.43: a side the AI brain doesn't run (the rally rule treats it as a player's)

@@ -13,7 +13,7 @@ test('the Default AI plays exactly as v2.40 on Normal, Easy and Hard (Easy and N
   const got = [];
   for (const [d, f0, f1, p0, p1] of [['normal', 'lastfist', 'bloomhost', 'aggressor', 'turtle'], ['easy', 'axiarchs', 'lastfist', 'economist', 'trickster'], ['hard', 'bloomhost', 'axiarchs', 'economist', 'aggressor']]) {
     const s = loadSim({ random: mulberry(77) }); s.RNG.legacy = true; s.AUTO_STANCE.retreat = false; /* v2.50/v2.55: a pinned replay draws from Math.random and starts side 0 on Hold, as recorded */ s.setBalance7b(false); s.setMech7c(false); // v2.43: and the v2.42 mechanics. v2.42: on v2.41's numbers (the phase 7b layer off) the Default AI is still v2.40's
-    const g = s.newGame(d, { autoPlayer: true, autoDiff: d, ai: 'default', autoAi: 'default', persona: p1, autoPersona: p0, factions: [f0, f1] });
+    const g = s.newGame(d, { autoPlayer: true, autoDiff: d, ai: 'default260', autoAi: 'default260', /* v2.61: v2.60's Default, as recorded */ persona: p1, autoPersona: p0, factions: [f0, f1] });
     for (let i = 0; i < 30 * 600 && !g.over; i++) s.update(g, 1 / 30);
     const o = JSON.parse(s.serialize(g, {})); delete o.log; delete o.stats; for (const sd of o.sides) if (sd.persona) { delete sd.persona.preset; delete sd.persona.smart; delete sd.persona.dial; }
     got.push(crypto.createHash('sha256').update(JSON.stringify(o) + JSON.stringify({ parts: g.parts, fx: g.fx, over: g.over, winner: g.winner })).digest('hex'));
@@ -28,7 +28,9 @@ test('the Boomer opening: three economy buildings first; never rolled at random;
   const P = s.rollPersona('boomer', 'hard', 'lastfist', 'hard');
   assert.strictEqual(P.kind, 'boomer'); assert.strictEqual(P.plan.slice(0, 3).join(), 'refinery,refinery,refinery');
   for (let i = 0; i < 200; i++) assert.notStrictEqual(s.rollPersona(undefined, 'default', 'lastfist', 'normal').kind, 'boomer');
-  for (const k of ['read', 'punish', 'contest', 'counter', 'nowave', 'shield', 'power', 'fill', 'est']) assert.strictEqual(s.AI_PRESETS.default.fix[k], false, k);
+  for (const k of ['read', 'punish', 'contest', 'counter', 'nowave', 'shield', 'power', 'fill']) assert.strictEqual(s.AI_PRESETS.default.fix[k], false, k);
+  assert.strictEqual(s.AI_PRESETS.default.fix.est, true, 'v2.61: the capped army estimate is on for every difficulty');
+  assert.strictEqual(s.AI_PRESETS.default260.fix.est, false, 'v2.60\'s Default kept it off');
 });
 
 test('the Hard preset: an opening from its list and the kept rules for every faction (v2.42: punish on again; hard241 keeps v2.41)', () => {
