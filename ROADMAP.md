@@ -22,7 +22,7 @@
 - [x] 5. **Post-match screen (replaces Lessons).** Tabs Overview, Economy (canvas line graphs of income and army
   size, both sides), Army (built/lost by unit type), Enemy Timeline (what they built, when they teched, when they
   changed strategy). Fits landscape iPhone, matches the UI style.
-- [ ] 6. **Alerts.** Node contested; HQ or any building under attack. Tapping an alert or its minimap ping jumps
+- [x] 6. **Alerts.** Node contested; HQ or any building under attack. Tapping an alert or its minimap ping jumps
   the camera there. Each alert type at most once every 10 s per location.
 - [ ] 7. **Installable fullscreen.** manifest.json (landscape, fullscreen, theme colors), app icons drawn from
   in-game art, a service worker caching index.html for offline play, Apple home-screen meta tags. Works on GitHub

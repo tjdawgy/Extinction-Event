@@ -2,6 +2,11 @@
 
 Issues found during testing that are deliberately deferred. Each lists the step that should address it.
 
+## Phase 0, item 6: alerts (v2.53)
+- **What:** the "Alerts" block in the UI: `alertTick` (every UI refresh, 0.15 s) raises an alert for the HQ hit in the last 0.6 game s, any other building hit (keyed by a 160-wide strip of the base, so a battle in the base is one alert, not eight), and a field node the player owns or is capturing with enemy ground units it can see standing on it. Each key alerts at most once every 10 game seconds (`ALERT.gap`). An alert is a tappable toast (› marks it) in its own column at the left edge under the top bar (other toasts move to its right while it shows) and a ping on the minimap for 5 s; tapping the toast, or the minimap within 12 px of a ping, moves the camera there. While an ability, Regroup or a warp point is being aimed, alerts let taps through to the field (an alert in the middle of the screen swallowed an ability placement in tests/bloomhost-ui.test.js, which is why the column moved to the edge).
+- **Changed:** the SIM's `alert` event (one per side every 10 s, "Your base is under attack", no place) no longer shows a toast; the event itself is unchanged. UI only: no SIM change.
+- **Notes:** the HQ alert does not fire while its shield is up (the SIM ignores hits on a shielded HQ). Alerts are off in spectate mode. A contested-node alert uses only what the player can see, so it can't reveal a hidden army.
+
 ## Phase 0, item 5: post-match screen (v2.52)
 - **Tabs:** Overview (the result table, key moments, Copy match log), Economy (four canvas line graphs from the stats tracker, both sides: credits income per minute (30 s average), energy income, army value, units alive; a totals table), Army (built / lost bars per unit type, damage dealt and to buildings, buildings built and destroyed), Enemy Timeline (`repEnemyEvents`: opening, buildings finished, first unit of each type, tech tiers with their path, strategy moves (attacks, sieges, feints, the AI's reads of turtle / rush / greed), production shifts (the unit role it spent most on per 2 minutes, when it changes), abilities, nodes).
 - **Removed:** the Summary, Timeline (both sides' columns), Key moments and Stats tabs; their content moved into Overview and Army, and the full two-sided timeline stays in Copy match log.

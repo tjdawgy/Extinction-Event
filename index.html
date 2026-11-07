@@ -85,6 +85,12 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .t.ok{border-color:rgba(93,255,138,.55)}
 .t.warn{border-color:rgba(255,211,77,.75);color:#ffeab0}
 .t.out{opacity:0}
+/* v2.53: alerts, a compact column at the left edge under the top bar (clear of the middle of the field, where taps go);
+   each can be tapped (the camera jumps there), except while an ability, Regroup or a warp point is being aimed */
+#alerts{position:fixed;z-index:3;top:calc(env(safe-area-inset-top,0px) + 50px);left:calc(env(safe-area-inset-left,0px) + 8px);display:flex;flex-direction:column;align-items:flex-start;gap:4px;pointer-events:none;max-width:42vw}
+#alerts .t{pointer-events:auto;cursor:pointer;font-size:11.5px;font-weight:700;padding:4px 10px;white-space:normal;border-radius:12px;line-height:1.2}
+#alerts.thru .t{pointer-events:none;opacity:.55}
+.ext-on #alerts{top:calc(env(safe-area-inset-top,0px) + 84px)}
 @keyframes tin{from{transform:translateY(-6px);opacity:0}}
 /* While a building panel is open, toasts move to the column left of it so they never cover its title (placeToasts) */
 #toasts.side{transform:none;align-items:flex-start}
@@ -400,6 +406,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
   </header>
   <main id="field">
     <div id="toasts"></div>
+    <div id="alerts" aria-live="polite"></div>
     <div id="cd" class="hide" aria-live="assertive"><small></small><b></b></div>
     <div id="bp" class="hide">
       <div class="bph"><span class="bpt"><b id="bpName"></b><small id="bpPad"></small></span><span class="pips" id="bpPips"></span><span id="bpHp"></span><button id="bpX" aria-label="Close">×</button></div>
@@ -428,7 +435,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.52'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.53'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -7468,6 +7475,13 @@ function drawMinimap(c, g, w, h) {
       c.globalAlpha = 1;
     }
   }
+  if (g && typeof alerts !== 'undefined' && alerts.g === g) for (const p of alerts.pings) { // v2.53: alert pings, expanding rings
+    const a = (g.t - p.t) / ALERT.ping; if (a < 0 || a >= 1) continue;
+    const x = mx(p.u), y = my(p.v), ph = (a * ALERT.ping * 1.4) % 1;
+    c.strokeStyle = p.kind === 'node' ? '#ffd34d' : '#ff5a6e'; c.lineWidth = 1.5;
+    c.globalAlpha = (1 - ph) * (1 - a * 0.5); c.beginPath(); c.arc(x, y, 3 + ph * 9, 0, 7); c.stroke();
+    c.globalAlpha = 1 - a * 0.6; c.beginPath(); c.arc(x, y, 2.5, 0, 7); c.stroke(); c.globalAlpha = 1;
+  }
   const hw = V.cw / 2 / V.S;
   const x0 = clamp(mx(cam.x - hw), 1, w - 1), x1 = clamp(mx(cam.x + hw), 1, w - 1);
   c.strokeStyle = 'rgba(255,255,255,0.85)'; c.lineWidth = 1.2;
@@ -7583,8 +7597,10 @@ function placeToasts() {
   const box = $('toasts'), bp = $('bp');
   const r = bp.classList.contains('hide') || getComputedStyle(bp).visibility === 'hidden' ? null : bp.getBoundingClientRect();
   const l = $('hud').getBoundingClientRect().left;
-  box.classList.toggle('side', !!r);
-  box.style.left = r ? `${l}px` : ''; box.style.width = r ? `${Math.max(120, r.left - 8 - l)}px` : '';
+  const al = $('alerts'), a = al && al.children.length ? al.getBoundingClientRect() : null; // v2.53: beside the alert column while alerts show
+  const x0 = a ? a.right + 8 : l, x1 = r ? r.left - 8 : a ? innerWidth - l - 66 : 0; // 66: clear of the ability buttons
+  box.classList.toggle('side', !!(r || a));
+  box.style.left = r || a ? `${x0}px` : ''; box.style.width = r || a ? `${Math.max(120, x1 - x0)}px` : '';
 }
 function toast(msg, kind = '') {
   const box = $('toasts');
@@ -8209,11 +8225,51 @@ $('bpSell').addEventListener('click', () => {
   refreshUI(true);
 });
 
+/* ---------- Alerts (v2.53, Phase 0 item 6) ----------
+   The UI watches the match (never the SIM's rules) for three kinds of trouble on the player's side: the HQ under attack,
+   any other building under attack (hit in the last ALERT.hit game seconds), and a field node contested (one it owns or is
+   capturing, with enemy ground units it can see on it). Each kind shows at most once every ALERT.gap game seconds per
+   location: per node, the HQ, or a strip of the base ALERT.cell wide for buildings. An alert is a toast that can be tapped
+   and a ping on the minimap for ALERT.ping s; tapping either moves the camera there. */
+const ALERT = { gap: 10, hit: 0.6, cell: 160, ping: 5, show: 3.5 };
+const alerts = { g: null, last: {}, pings: [] };
+function camJump(u) { camTouched = true; cam.x = u; cam.vx = 0; clampCam(); }
+function alertRaise(kind, key, u, v, msg) {
+  const g = game, k = kind + ':' + key;
+  if (alerts.last[k] !== undefined && g.t - alerts.last[k] < ALERT.gap) return false;
+  alerts.last[k] = g.t;
+  alerts.pings.push({ u, v, t: g.t, kind }); if (alerts.pings.length > 8) alerts.pings.shift();
+  const box = $('alerts');
+  while (box.children.length > 2) box.firstChild.remove();
+  const el = document.createElement('div');
+  el.className = `t alrt ${kind === 'node' ? 'warn' : 'bad'}`; el.textContent = msg + ' ›'; el.dataset.u = Math.round(u); el.setAttribute('role', 'button');
+  el.addEventListener('pointerdown', ev => { ev.stopPropagation(); camJump(u); el.remove(); placeToasts(); });
+  box.appendChild(el); placeToasts();
+  setTimeout(() => el.classList.add('out'), ALERT.show * 1000);
+  setTimeout(() => { el.remove(); placeToasts(); }, ALERT.show * 1000 + 350);
+  sndPlay(kind === 'node' ? 'ping' : 'alarm');
+  return true;
+}
+function alertTick() {
+  const g = game; if (!g || g.over || g.countdown > 0 || g.spectate) return;
+  if (alerts.g !== g) { alerts.g = g; alerts.last = {}; alerts.pings = []; $('alerts').textContent = ''; } // a new or resumed match starts clean
+  $('alerts').classList.toggle('thru', !!(aim || rg || wpt)); // aiming: taps go through to the field
+  for (const b of g.ents) {
+    if (b.kind !== 'b' || b.side !== 0 || b.hp <= 0 || b.lastHit === undefined || g.t - b.lastHit > ALERT.hit) continue;
+    if (b.type === 'hq') alertRaise('hq', 0, b.u, b.v, 'Your HQ is under attack');
+    else alertRaise('bld', Math.round(b.u / ALERT.cell), b.u, b.v, `${logBName(g, 0, b.type)} under attack`);
+  }
+  for (const n of g.nodes) {
+    if (n.owner !== 0 && !(n.c && n.c[0] > 0)) continue; // ours, or ours being taken
+    if (g.ents.some(e => e.kind === 'u' && e.side === 1 && e.hp > 0 && !UDEF[e.type].air && !UDEF[e.type].noCap && Math.abs(e.u - n.u) <= NODE_R && visibleTo(g, 0, e)))
+      alertRaise('node', n.id, n.u, n.v, `The ${NODE_NAME[n.id]} field node is contested`);
+  }
+}
 function handleEvents() {
   for (const e of game.events) {
     if (e.type === 'built' && e.side === 0) { toast(`${e.name} is ready`, 'ok'); sndPlay('built'); }
     else if (e.type === 'upgraded' && e.side === 0) { toast(`${e.name} reached T${e.tier}`, 'ok'); sndPlay('upgrade'); }
-    else if (e.type === 'alert' && e.side === 0) { toast(e.hq ? 'Your HQ is under attack' : 'Your base is under attack', 'warn'); sndPlay('alarm'); }
+    else if (e.type === 'alert') continue; // v2.53: alertTick shows these, per building strip and with a camera jump
     else if (e.type === 'over') sndPlay(e.winner === 0 ? 'victory' : 'defeat'); // a draw sounds like a defeat
     else if (e.type === 'destroyed' && e.side === 1 && !e.seen && !e.hq) continue; // happened out of sight
     else if (e.type === 'destroyed') toast(e.side === 0 ? `${e.name} destroyed` : `Enemy ${e.seen ? e.name : 'HQ'} destroyed`, e.side === 0 ? 'bad' : 'ok'); // an unseen enemy HQ isn't named (v2.17: the name would tell its faction)
@@ -8295,7 +8351,9 @@ cv.addEventListener('pointerup', endPtr);
 cv.addEventListener('pointercancel', endPtr);
 // Overview map in the top bar: tap or drag to jump
 let mmDrag = false;
-function mmJump(e) { camTouched = true; TUT.sig.mm = true; const r = mm.getBoundingClientRect(), k = (r.width - 8) / (UMAX - UMIN); cam.x = UMIN + (e.clientX - r.left - 4) / k; cam.vx = 0; clampCam(); }
+function mmJump(e) { camTouched = true; TUT.sig.mm = true; const r = mm.getBoundingClientRect(), k = (r.width - 8) / (UMAX - UMIN); cam.x = UMIN + (e.clientX - r.left - 4) / k; cam.vx = 0;
+  if (e.type === 'pointerdown' && game) { const p = alerts.pings.filter(p => game.t - p.t < ALERT.ping).sort((a, b) => Math.abs(a.u - cam.x) - Math.abs(b.u - cam.x))[0]; if (p && Math.abs(p.u - cam.x) * k <= 12) cam.x = p.u; } // v2.53: a tap on an alert's ping lands on it
+  clampCam(); }
 mm.addEventListener('pointerdown', e => { mmDrag = true; try { mm.setPointerCapture(e.pointerId); } catch (_) {} mmJump(e); });
 mm.addEventListener('pointermove', e => { if (mmDrag) mmJump(e); });
 mm.addEventListener('pointerup', () => { mmDrag = false; });
@@ -9365,7 +9423,7 @@ function frame(ts) {
     saveT -= real;
     if (saveT <= 0 && !game.over) { saveT = 5; saveGame(); }
     uiT -= real;
-    if (uiT <= 0) { uiT = 0.15; refreshUI(false); }
+    if (uiT <= 0) { uiT = 0.15; refreshUI(false); alertTick(); }
   } else if (game && game.over) update(game, dt);
   if (!gest && Math.abs(cam.vx) > 5) { cam.x += cam.vx * dt; cam.vx *= Math.pow(0.03, dt); clampCam(); }
   if (TUT.on) tutTick(real);
