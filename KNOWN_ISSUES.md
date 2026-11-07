@@ -2,6 +2,12 @@
 
 Issues found during testing that are deliberately deferred. Each lists the step that should address it.
 
+## Phase 0, item 5: post-match screen (v2.52)
+- **Tabs:** Overview (the result table, key moments, Copy match log), Economy (four canvas line graphs from the stats tracker, both sides: credits income per minute (30 s average), energy income, army value, units alive; a totals table), Army (built / lost bars per unit type, damage dealt and to buildings, buildings built and destroyed), Enemy Timeline (`repEnemyEvents`: opening, buildings finished, first unit of each type, tech tiers with their path, strategy moves (attacks, sieges, feints, the AI's reads of turtle / rush / greed), production shifts (the unit role it spent most on per 2 minutes, when it changes), abilities, nodes).
+- **Removed:** the Summary, Timeline (both sides' columns), Key moments and Stats tabs; their content moved into Overview and Army, and the full two-sided timeline stays in Copy match log.
+- **Fixed on the way:** the match log printed the AI's reads (`G` turtle / rush / greed) as "Attack launched"; they now read "Read the enemy's …; changed plan".
+- **Checked:** screenshots at 858×396 and 667×375 (tests/report-shots.js); tests/report-ui.test.js checks every tab at both sizes, that the Army table and Enemy Timeline show the recorded numbers and events, and that both lines are drawn on every graph. A match resumed from a save older than v2.51 has no stats record and says so on Economy and Army.
+
 ## Phase 0, item 4: stats tracker and match history (v2.51)
 - **What:** the "Stats tracker" block (`STATS`, `g.stats`), fed by `lg`/`lgUnit` (every key event, units trained and lost), the income loop and Salvage (gathered per 10 s; sales not counted), and `damage1` (HP and shields actually taken off, to the attacker's side). It reads nothing back and draws no random numbers: tests/stats.test.js plays the same seed with and without it and gets the same match. Saved with the match (an older save starts its record at load).
 - **History:** at the end of a match (not the tutorial or spectate) `statsSummary` (about 1–3 KB) is appended to localStorage `extinctionEvent.history`, the last 50 kept, every access in try/catch (tests/history-ui.test.js, including storage that throws). Nothing reads the history yet.

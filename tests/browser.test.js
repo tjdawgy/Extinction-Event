@@ -556,8 +556,8 @@ test('Extinction Event: warning banner (no taps), meteors only on ground the pla
       shot({ winner: 0, result: { how: 'storm' } }),
       shot({ winner: 1, result: { how: 'score', reason: 'limit', by: 'score', score: [3100, 5200] } }),
     ];
-    repShow('Stats'); $('box').scrollTop = 1e4; $('repPane').scrollTop = 1e4; showEnd(); // a scrolled screen before must not hide the title
-    const atTop = $('box').scrollTop === 0 && $('repPane').scrollTop === 0 && repTab === 'Summary';
+    repShow('Economy'); $('box').scrollTop = 1e4; $('repPane').scrollTop = 1e4; showEnd(); // a scrolled screen before must not hide the title
+    const atTop = $('box').scrollTop === 0 && $('repPane').scrollTop === 0 && repTab === 'Overview';
     return { atTop, banner, bad, meteors, texts, scoreLine: (shot({ winner: 0, result: { how: 'score', reason: 'limit', by: 'score', score: [5200, 3100] } }), document.body.innerText.includes('Remaining strength')) };
   });
   assert.ok(r.banner.shown && /Extinction event in 0:2\d/.test(r.banner.text), JSON.stringify(r.banner));

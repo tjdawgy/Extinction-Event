@@ -24,13 +24,13 @@ async function main() {
       running = false; showEnd();
     }, { persona: opt('persona') || 'turtle', diff: opt('diff') || 'normal' });
     const snap = async label => { await page.waitForTimeout(80); shots.push({ label, img: (await page.screenshot()).toString('base64') }); };
-    for (const t of ['Summary', 'Timeline', 'Key moments', 'Stats']) { await page.click(`#repTabs [data-t="${t}"]`); await snap(t); }
-    await page.click('#repTabs [data-t="Timeline"]');
-    await page.evaluate(() => { $('repPane').scrollTop = 1e6; }); await snap('Timeline, scrolled to the end');
+    for (const t of ['Overview', 'Economy', 'Army', 'Enemy Timeline']) { await page.click(`#repTabs [data-t="${t}"]`); await snap(t); }
+    await page.click('#repTabs [data-t="Enemy Timeline"]');
+    await page.evaluate(() => { $('repPane').scrollTop = 1e6; }); await snap('Enemy Timeline, scrolled to the end');
+    await page.click('#repTabs [data-t="Overview"]');
     await page.evaluate(() => { $('repPane').scrollTop = 0; });
     await page.evaluate(() => { window.__copied = null; Object.defineProperty(navigator, 'clipboard', { value: { writeText: t => { window.__copied = t; return Promise.resolve(); } }, configurable: true }); });
     await page.click('#bCopy'); await page.waitForTimeout(150); await snap('Copy match log: copied');
-    await page.click('#repTabs [data-t="Timeline"]');
     await page.evaluate(() => { Object.defineProperty(navigator, 'clipboard', { value: { writeText: () => Promise.reject(new Error('blocked')) }, configurable: true }); document.execCommand = () => false; });
     await page.click('#bCopy'); await page.waitForTimeout(150); await snap('Copy match log: clipboard blocked (fallback)');
     const text = await page.evaluate(() => repText(game));

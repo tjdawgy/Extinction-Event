@@ -19,7 +19,7 @@
   10 s; units built and lost by type; buildings built and destroyed; damage dealt; node captures; tech-path
   choices, signature building and ability uses with timestamps; result, faction, difficulty, match length. A
   compact summary of each finished match saved to a match history in localStorage (try/catch).
-- [ ] 5. **Post-match screen (replaces Lessons).** Tabs Overview, Economy (canvas line graphs of income and army
+- [x] 5. **Post-match screen (replaces Lessons).** Tabs Overview, Economy (canvas line graphs of income and army
   size, both sides), Army (built/lost by unit type), Enemy Timeline (what they built, when they teched, when they
   changed strategy). Fits landscape iPhone, matches the UI style.
 - [ ] 6. **Alerts.** Node contested; HQ or any building under attack. Tapping an alert or its minimap ping jumps

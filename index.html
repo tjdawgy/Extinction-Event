@@ -277,6 +277,12 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .rep .tbar{display:flex;align-items:center;gap:8px;margin-bottom:4px}
 .rep .tbar .ghost{height:30px;padding:0 10px;font-size:12.5px;border-radius:9px}
 .rep .ok{color:var(--good);font-weight:800;font-size:12.5px}
+.rep .rgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 14px} .rep canvas.rgraph{display:block;width:100%;height:96px} /* v2.52: Economy */
+.rep .rarmy td{width:38%} .rep .rbar{display:inline-block;position:relative;width:calc(100% - 70px);height:9px;vertical-align:middle;background:rgba(120,150,200,.10);border-radius:4px;overflow:hidden}
+.rep .rbar i{position:absolute;left:0;top:0;bottom:0;border-radius:4px} .rep .rbar i.l{background:rgba(0,0,0,.45)}
+.rep .rn{display:inline-block;width:66px;text-align:right;font-weight:700} .rep .rn small,.rep small{color:var(--muted);font-weight:400}
+.rep .ren .tag{min-width:58px;text-align:center} .rep .ren .tTech{color:#c9a7ff} .rep .ren .tStrategy{color:#ffd166} .rep .ren .tBuild,.rep .ren .tSignature{color:#9be7a0} .rep .ren .tUnit{color:#8fdcff} .rep .ren .tAbility{color:#ff9a9a}
+@media (max-width:560px){.rep .rgrid{grid-template-columns:1fr}}
 .rep .tw{display:grid;grid-template-columns:46px 1fr 54px 1fr;font-size:12px;font-variant-numeric:tabular-nums}
 .rep .tw>*{padding:2px 4px;border-bottom:1px solid rgba(120,150,200,.08)}
 .rep .tw h4{margin:0;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid var(--line)}
@@ -422,7 +428,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.51'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.52'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -4016,7 +4022,7 @@ function logEvText(e, me, g) { // one log event as a line of text (me: written f
       : a === 'beam' ? `Purification Beam: ${Math.round(b || 0)} damage, ${x || 0} destroyed` : `Corrosive Bloom: ${Math.round(b || 0)} damage, ${x || 0} destroyed`;
     case 'H': return 'HQ shield down';
     case 'O': return `Order: ${a === 'all' ? 'whole army' : a === 'group' ? GROUP_NAME[b] : (PLURAL[b] || b)} ${ORDER_NAME[x] ? ORDER_NAME[x].toLowerCase() : x}`;
-    case 'G': return b ? 'Feint attack launched (pulled back)' : `Attack launched${a === 'siege' ? ' (siege)' : ''}`;
+    case 'G': return b ? 'Feint attack launched (pulled back)' : a === 'turtle' || a === 'rush' || a === 'greed' ? `Read the enemy's ${a === 'turtle' ? 'Turrets' : a === 'rush' ? 'rush' : 'greedy economy'}; changed plan` : `Attack launched${a === 'siege' ? ' (siege)' : ''}`; // v2.52: a read is not an attack
     case 'W': return 'Extinction Event warning (30 s)';
     case 'X': return 'Extinction Event began';
     case 'E': return a === 'draw' ? 'Match ended: draw (the Extinction Event)' : `Match ended: ${b === 0 ? 'you won' : 'you lost'}`; // the player's view, in both columns
@@ -8462,8 +8468,8 @@ function pauseGame(restored) {
 function fmtTime(t) { t = Math.floor(t); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; }
 // Post-match report (v2.9): built from the match log, which the UI reads only now that the match is over.
 // The enemy's moves and stats are revealed here (never during play).
-const REP_TABS = ['Summary', 'Timeline', 'Key moments', 'Stats']; // v2.35: Stats replaced Lessons
-let repTab = 'Summary';
+const REP_TABS = ['Overview', 'Economy', 'Army', 'Enemy Timeline']; // v2.52 (Phase 0 item 5): replaces Summary, Timeline, Key moments and Stats
+let repTab = 'Overview';
 function showEnd() {
   const g = game, win = g.winner === 0, R = g.result || { how: 'hq' }, L = g.log;
   const title = R.how === 'draw' ? 'Draw' : win ? 'Victory' : 'Defeat'; // v2.48: an ending the storm decides is a draw for both sides
@@ -8476,14 +8482,14 @@ function showEnd() {
     : R.how === 'storm' ? 'You lost. The extinction came for you first.' : 'You lost. Your colony went extinct.';
   const line = `${how} <span class="flav">${flavor}</span>`;
   const persona = PERSONA_NAME[(g.sides[1].persona || {}).kind] || 'an unknown commander';
-  closePanel(); repTab = 'Summary';
+  closePanel(); repTab = 'Overview';
   overlay(`<div class="top"><h1 class="${R.how === 'draw' ? 'draw' : win ? 'win' : 'lose'}">${title}</h1><div class="seg rtabs" id="repTabs">${REP_TABS.map(t => `<button data-t="${t}">${t}</button>`).join('')}</div></div>
     <p class="sub">${line} <b>${fmtTime(g.t)}</b> · ${(DIFF[g.diffKey] || DIFF.normal).label} · You faced <b>${persona}</b> · ${factionName(g.sides[0].faction)} vs ${factionName(g.sides[1].faction)}</p>
     <div class="pane" id="repPane"></div>
     <div class="foot"><button class="big" id="bAgain">Play again</button><button class="ghost" id="bMenu2">Main menu</button><span style="flex:1"></span>${diffSeg()}</div>`);
   $('box').classList.add('rep');
   for (const b of $('repTabs').children) b.addEventListener('click', () => repShow(b.dataset.t));
-  repShow('Summary');
+  repShow('Overview');
   wireDiff();
   $('bAgain').addEventListener('click', startGame);
   $('bMenu2').addEventListener('click', showStart);
@@ -8493,9 +8499,10 @@ function repShow(tab) {
   const cp = $('box').querySelector('.cpy'); if (cp) cp.remove();
   for (const b of $('repTabs').children) b.classList.toggle('on', b.dataset.t === tab);
   const pane = $('repPane'), g = game;
-  pane.innerHTML = !g.log ? '<p class="note">This match was not recorded.</p>' : tab === 'Summary' ? repSummary(g) : tab === 'Timeline' ? repTimeline(g) : tab === 'Key moments' ? repMoments(g) : repStats(g);
+  pane.innerHTML = !g.log ? '<p class="note">This match was not recorded.</p>' : tab === 'Overview' ? repOverview(g) : tab === 'Economy' ? repEconomy(g) : tab === 'Army' ? repArmy(g) : repEnemy(g);
   pane.scrollTop = 0;
-  if (tab === 'Timeline') $('bCopy').addEventListener('click', repCopy);
+  if (tab === 'Overview' && g.log) $('bCopy').addEventListener('click', repCopy);
+  if (tab === 'Economy') repGraphs(g);
 }
 const fmtN = n => Math.round(n).toLocaleString('en');
 const repFrom = L => L.from > 0 ? `<p class="note">Recorded from ${mmss(L.from)} (this match was resumed from an older save); earlier events are not included.</p>` : '';
@@ -8530,41 +8537,116 @@ function repSummary(g) {
     <tr><th>Enemy behavior</th><td colspan="2">${behave}</td></tr></table>
     <p class="note">Enemy numbers are revealed after the match; during play you saw only what your units could see. Node time adds up all three nodes. Gathered counts the ${START_RES.c} credits and ${START_RES.e} energy each side starts with, income, sales and Salvage.</p>${repFrom(L)}`;
 }
-function repTimeline(g) {
-  const A = logLines(g, 0), B = logLines(g, 1), n = Math.max(A.length, B.length), cell = (l, c) => l ? `<b class="t${c}">${mmss(l.t)}</b><span class="${l.key ? 'k' : 'u'} ${c}">${l.txt}</span>` : '<b></b><span></span>';
-  let rows = ''; for (let i = 0; i < n; i++) rows += cell(A[i], 'me') + cell(B[i], 'them');
-  return `<div class="tbar"><button class="ghost" id="bCopy">Copy match log</button><span class="note" id="copyMsg" style="margin:0">Units trained or lost close together are grouped</span></div>
-    <div class="tw"><h4 class="mh">You</h4><h4 class="th">Enemy (${PERSONA_NAME[(g.sides[1].persona || {}).kind] || 'enemy'})</h4>${rows}</div>${repFrom(g.log)}`;
+/* ---------- Post-match screen tabs (v2.52, Phase 0 item 5) ----------
+   Overview: the result in numbers, key moments, Copy match log. Economy: canvas line graphs from the stats tracker
+   (STATS, every 10 s): income per minute, army value and units alive, both sides. Army: units built and lost by type,
+   damage dealt, buildings built and lost. Enemy Timeline: what the enemy built and when, when it teched (tier and path),
+   its first unit of each type, and when it changed strategy (attacks, feints, sieges, the reads that change an AI's plan,
+   and shifts in what it produced). The enemy's side is revealed only here, after the match. */
+const REP_COL = ['#39c8ff', '#ff4d4d'];
+function repOverview(g) {
+  const L = g.log, M = logMoments(g);
+  return `<div class="tbar"><button class="ghost" id="bCopy">Copy match log</button><span class="note" id="copyMsg" style="margin:0">The full log of both sides, as text</span></div>${repSummary(g)}
+    <h4 class="sh">Key moments</h4><ul class="tl">${M.map(m => `<li><b>${mmss(m.t)}</b><span>${m.txt}</span>${m.tag ? `<span class="tag">${m.tag}</span>` : ''}</li>`).join('') || '<li>No major moments were recorded.</li>'}</ul>${repFrom(L)}`;
 }
-function repMoments(g) {
-  const L = g.log, M = logMoments(g), top = Math.max(1, ...L.army[0], ...L.army[1]), n = Math.max(L.army[0].length, 2);
-  const pl = a => a.map((v, i) => `${(i / (n - 1) * 300).toFixed(1)},${(44 - v / top * 40).toFixed(1)}`).join(' ');
-  return `<svg viewBox="0 0 300 46" preserveAspectRatio="none"><polyline fill="none" stroke="#39c8ff" stroke-width="1.6" points="${pl(L.army[0])}"/><polyline fill="none" stroke="#ff4d4d" stroke-width="1.6" points="${pl(L.army[1])}"/></svg>
-    <p class="note" style="margin-top:0">Army value every 15 s${L.from > 0 ? ` from ${mmss(L.from)}` : ''} (you blue, enemy red; peak ${fmtN(top)})</p>
-    <ul class="tl">${M.map(m => `<li><b>${mmss(m.t)}</b><span>${m.txt}</span>${m.tag ? `<span class="tag">${m.tag}</span>` : ''}</li>`).join('') || '<li>No major moments were recorded.</li>'}</ul>${repFrom(L)}`;
-}
-// Stats (v2.35, audit; replaces Lessons): match length, army value over time, units built and lost by type, resources
-// gathered and spent, and Salvage for a Last Fist side. Read from the match log only.
-function repStats(g) {
-  const L = g.log, T = L.tot, sp = (t, i) => Object.values(t.spent).reduce((a, b) => a + b[i], 0), A = L.army, n = Math.max(A[0].length, A[1].length);
-  const top = Math.max(1, ...A[0], ...A[1]), W = 600, H = 112, x0 = 46, x1 = W - 8, y0 = 8, y1 = H - 20, t0 = L.from, t1 = L.from + Math.max(1, n - 1) * LOG_SAMPLE;
-  const X = i => (x0 + (n > 1 ? i / (n - 1) : 0) * (x1 - x0)).toFixed(1), Y = v => (y1 - v / top * (y1 - y0)).toFixed(1);
-  const line = (a, col) => a.length ? `<polyline fill="none" stroke="${col}" stroke-width="2.2" stroke-linejoin="round" points="${a.map((v, i) => `${X(i)},${Y(v)}`).join(' ')}"/>` : '';
-  const grid = [0, 0.5, 1].map(f => `<line x1="${x0}" x2="${x1}" y1="${Y(top * f)}" y2="${Y(top * f)}" stroke="rgba(120,150,200,.18)"/><text x="${x0 - 6}" y="${(+Y(top * f) + 4).toFixed(1)}" text-anchor="end">${fmtN(top * f)}</text>`).join('');
-  const ticks = [0, 0.5, 1].map(f => `<text x="${(x0 + f * (x1 - x0)).toFixed(1)}" y="${H - 5}" text-anchor="${f === 0 ? 'start' : f === 1 ? 'end' : 'middle'}">${mmss(t0 + f * (t1 - t0))}</text>`).join('');
-  const graph = n ? `<svg class="sgraph" viewBox="0 0 ${W} ${H}" role="img" aria-label="Army value over time">${grid}${ticks}${line(A[1], '#ff4d4d')}${line(A[0], '#39c8ff')}</svg>` : '<p class="note">No army samples were recorded.</p>';
-  const units = s => { const t = T[s], ks = Object.keys(UDEF).filter(k => t.trained[k] || t.lost[k]);
-    return `<table><tr><th>${s ? 'Enemy units' : 'Your units'}</th><td><b>Built</b></td><td><b>Lost</b></td></tr>${ks.map(k => `<tr><th>${UDEF[k].name}</th><td>${t.trained[k] || 0}</td><td>${t.lost[k] || 0}</td></tr>`).join('') || '<tr><th>None</th><td></td><td></td></tr>'}</table>`; };
-  const lf = [0, 1].filter(s => facOf(g.sides[s].faction) === 'lastfist');
-  const salv = lf.length ? `<tr><th>Salvage recovered</th>${[0, 1].map(s => `<td${s ? ' class="e"' : ''}>${lf.includes(s) ? `${fmtN(T[s].salv || 0)} credits${T[s].salvE ? `, ${fmtN(T[s].salvE)} energy` : ''}` : '–'}</td>`).join('')}</tr>` : '';
-  return `<h4 class="sh">Match length <b class="len">${mmss(g.t)}</b></h4>
-    <h4 class="sh">Army value over time <span class="note">(credits + energy of living units, every ${LOG_SAMPLE} s; <span style="color:#39c8ff">you</span>, <span style="color:#ff4d4d">enemy</span>)</span></h4>${graph}
-    <h4 class="sh">Resources</h4>
+const repNoStats = '<p class="note">This match has no stats record (it was resumed from a save older than v2.51).</p>';
+// Income per minute from the 10 s windows, averaged over 30 s so one sale or Salvage burst doesn't spike the line
+const repPerMin = a => a.map((_, i) => { const w = a.slice(Math.max(0, i - 2), i + 1); return w.reduce((x, y) => x + y, 0) / w.length * 60 / STATS.every; });
+const REP_GRAPHS = [
+  { id: 'rgInc', title: 'Income', note: 'credits gathered per minute (income and Salvage; 30 s average)', get: D => repPerMin(D.c) },
+  { id: 'rgEn', title: 'Energy income', note: 'energy gathered per minute', get: D => repPerMin(D.e) },
+  { id: 'rgArmy', title: 'Army value', note: 'credits + energy of living units', get: D => D.army },
+  { id: 'rgAlive', title: 'Units alive', note: 'temporary units not counted', get: D => D.alive },
+];
+function repEconomy(g) {
+  const S = g.stats; if (!S || !S.sides[0].c.length) return S ? '<p class="note">The match ended before the first 10 s sample.</p>' : repNoStats;
+  const sum = a => a.reduce((x, y) => x + y, 0), D = S.sides, mins = Math.max(1 / 6, D[0].c.length * STATS.every / 60);
+  const row = (h, f) => `<tr><th>${h}</th><td>${f(D[0])}</td><td class="e">${f(D[1])}</td></tr>`;
+  return `<p class="note" style="margin-top:0"><span style="color:${REP_COL[0]}">■ You</span> · <span style="color:${REP_COL[1]}">■ Enemy</span> · sampled every ${STATS.every} s of game time${S.from > 0 ? ` from ${mmss(S.from)}` : ''}</p>
+    <div class="rgrid">${REP_GRAPHS.map(G => `<div><h4 class="sh">${G.title} <span class="note">(${G.note})</span></h4><canvas class="rgraph" id="${G.id}" role="img" aria-label="${G.title} over time, both sides"></canvas></div>`).join('')}</div>
     <table><tr><th></th><td><b>You</b></td><td class="e"><b>Enemy</b></td></tr>
-    <tr><th>Credits gathered / spent</th><td>${fmtN(logGathered(L, T[0], 0))} / ${fmtN(sp(T[0], 0))}</td><td class="e">${fmtN(logGathered(L, T[1], 0))} / ${fmtN(sp(T[1], 0))}</td></tr>
-    <tr><th>Energy gathered / spent</th><td>${fmtN(logGathered(L, T[0], 1))} / ${fmtN(sp(T[0], 1))}</td><td class="e">${fmtN(logGathered(L, T[1], 1))} / ${fmtN(sp(T[1], 1))}</td></tr>${salv}</table>
-    <p class="note">Gathered counts the ${START_RES.c} credits and ${START_RES.e} energy each side starts with, income, sales and Salvage.</p>
-    <h4 class="sh">Units built and lost</h4><div class="scols">${units(0)}${units(1)}</div>${repFrom(L)}`;
+    ${row('Credits gathered', d => fmtN(sum(d.c)))}${row('Energy gathered', d => fmtN(sum(d.e)))}
+    ${row('Average income per minute', d => `${fmtN(sum(d.c) / mins)} credits, ${fmtN(sum(d.e) / mins)} energy`)}
+    ${row('Peak army value', d => fmtN(Math.max(0, ...d.army)))}${row('Most units alive', d => fmtN(Math.max(0, ...d.alive)))}</table>`;
+}
+function repGraphs(g) { // draws the Economy tab's canvases at the size the layout gave them
+  const S = g.stats; if (!S) return;
+  for (const G of REP_GRAPHS) { const cv = $(G.id); if (cv) repGraph(cv, [G.get(S.sides[0]), G.get(S.sides[1])], S.from); }
+}
+function repGraph(cv, series, t0) {
+  const dpr = Math.min(3, window.devicePixelRatio || 1), W = Math.max(120, cv.clientWidth || 280), H = Math.max(60, cv.clientHeight || 96);
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  const c = cv.getContext('2d'); if (!c) return;
+  c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, W, H);
+  const n = Math.max(series[0].length, series[1].length), top = Math.max(1, ...series[0], ...series[1]);
+  const x0 = 38, x1 = W - 6, y0 = 6, y1 = H - 16;
+  const X = i => x0 + (n > 1 ? i / (n - 1) : 0) * (x1 - x0), Y = v => y1 - v / top * (y1 - y0);
+  c.font = '10px system-ui, -apple-system, sans-serif'; c.fillStyle = '#8fa3c4'; c.strokeStyle = 'rgba(120,150,200,.18)'; c.lineWidth = 1;
+  for (const f of [0, 0.5, 1]) { const y = Math.round(Y(top * f)) + 0.5; c.beginPath(); c.moveTo(x0, y); c.lineTo(x1, y); c.stroke(); c.textAlign = 'right'; c.fillText(fmtN(top * f), x0 - 4, y + 3); }
+  const t1 = t0 + Math.max(1, n) * STATS.every;
+  for (const f of [0, 0.5, 1]) { c.textAlign = f === 0 ? 'left' : f === 1 ? 'right' : 'center'; c.fillText(mmss(t0 + STATS.every + f * (t1 - t0 - STATS.every)), x0 + f * (x1 - x0), H - 3); }
+  c.lineJoin = 'round'; c.lineWidth = 2;
+  for (const s of [1, 0]) { const a = series[s]; if (!a.length) continue; c.strokeStyle = REP_COL[s]; c.beginPath(); a.forEach((v, i) => i ? c.lineTo(X(i), Y(v)) : c.moveTo(X(i), Y(v))); c.stroke(); }
+}
+function repArmy(g) {
+  const S = g.stats; if (!S) return repNoStats;
+  const D = S.sides, ks = Object.keys(UDEF).filter(k => D[0].built[k] || D[0].lost[k] || D[1].built[k] || D[1].lost[k]);
+  const top = Math.max(1, ...ks.flatMap(k => [D[0].built[k] || 0, D[1].built[k] || 0]));
+  const bar = (n, lost, s) => `<span class="rbar"><i style="width:${(n / top * 100).toFixed(1)}%;background:${REP_COL[s]}"></i><i class="l" style="width:${(Math.min(lost, n || lost) / top * 100).toFixed(1)}%"></i></span><span class="rn">${n || 0}<small> / ${lost || 0}</small></span>`;
+  const bRow = (h, o) => `<tr><th>${h}</th>${[0, 1].map(s => `<td${s ? ' class="e"' : ''}>${Object.keys(o(D[s])).map(k => `${logBName(g, s, k)}${o(D[s])[k] > 1 ? ' ×' + o(D[s])[k] : ''}`).join(', ') || '–'}</td>`).join('')}</tr>`;
+  const sum = o => Object.values(o).reduce((a, b) => a + b, 0);
+  return `<table class="rarmy"><tr><th>Unit</th><td><b>You</b> <small>built / lost</small></td><td class="e"><b>Enemy</b> <small>built / lost</small></td></tr>
+    ${ks.map(k => `<tr><th>${UDEF[k].name}</th><td>${bar(D[0].built[k] || 0, D[0].lost[k] || 0, 0)}</td><td>${bar(D[1].built[k] || 0, D[1].lost[k] || 0, 1)}</td></tr>`).join('') || '<tr><th>No units were trained.</th><td></td><td></td></tr>'}
+    <tr><th>All units</th><td>${sum(D[0].built)} built, ${sum(D[0].lost)} lost</td><td class="e">${sum(D[1].built)} built, ${sum(D[1].lost)} lost</td></tr></table>
+    <p class="note">The bar is units built; its darker end, units lost.</p>
+    <h4 class="sh">Damage and buildings</h4>
+    <table><tr><th></th><td><b>You</b></td><td class="e"><b>Enemy</b></td></tr>
+    <tr><th>Damage dealt</th><td>${fmtN(D[0].dmg)} <small>(${fmtN(D[0].dmgB)} to buildings)</small></td><td class="e">${fmtN(D[1].dmg)} <small>(${fmtN(D[1].dmgB)} to buildings)</small></td></tr>
+    ${bRow('Buildings built', d => d.bBuilt)}${bRow('Buildings destroyed', d => d.bLost)}</table>`;
+}
+// What changed the AI's plan, in the player's words (log 'G': an attack's mode, a feint, or a read)
+const REP_STRAT = { turtle: 'Saw your Turrets and changed its plan', rush: 'Saw your early rush and changed its plan', greed: 'Saw your greedy economy and changed its plan',
+  siege: 'Moved up to siege your base', all: 'Attacked with its whole army', field: 'Pushed out to fight for the field' };
+const UNIT_ROLE = t => { const d = UDEF[t]; return d.air ? 'aircraft' : d.range >= 300 ? 'long-range units' : (d.cost.c + d.cost.e) >= 250 ? 'heavy units' : d.melee ? 'melee units' : 'light infantry'; };
+function repEnemyEvents(g) {
+  const L = g.log, S = g.stats, s = 1, out = [], P = g.sides[s].persona || {}, fac = g.sides[s].faction;
+  if (P.kind) out.push({ t: 0, tag: 'Strategy', txt: `Opened as ${PERSONA_NAME[P.kind] || P.kind}` });
+  const seenUnit = {};
+  for (const e of L ? L.ev : []) {
+    if (e[1] !== s) continue;
+    const [t, , k, a] = e;
+    if (k === 'F') out.push({ t, tag: a === 'sigA' || a === 'sigB' ? 'Signature' : 'Build', txt: `Built ${logBName(g, s, a)}` });
+    else if (k === 'T' && !seenUnit[a]) { seenUnit[a] = 1; if (UDEF[a]) out.push({ t, tag: 'Unit', txt: `First ${UDEF[a].name}` }); }
+  }
+  if (S) {
+    const D = S.sides[s], started = {};
+    for (const x of D.tech) {
+      if (x[3] === 'start') { started[x[1] + x[2]] = x[4]; continue; }
+      const path = started[x[1] + x[2]], T = treeOf(fac, x[1]);
+      out.push({ t: x[0], tag: 'Tech', txt: `${logBName(g, s, x[1])} reached T${x[2]}${path && T && T[path] ? ` · ${T[path].name}` : ''}` });
+    }
+    for (const x of D.strat) out.push({ t: x[0], tag: 'Strategy', txt: x[2] ? 'Feinted an attack, then pulled back' : REP_STRAT[x[1]] || 'Launched an attack' });
+    for (const x of D.abil) out.push({ t: x[0], tag: 'Ability', txt: `Used ${ABIL[x[1]] ? ABIL[x[1]].name : x[1]}` });
+    for (const x of D.nodes) out.push({ t: x[0], tag: 'Node', txt: `${x[2] ? 'Captured' : 'Lost'} the ${NODE_NAME[x[1]]} field node` });
+  }
+  // shifts in production: the unit role it spent most on, per 2-minute window, when that changes
+  if (L) {
+    const W = 120, win = {};
+    for (const e of L.ev) if (e[1] === s && e[2] === 'T' && UDEF[e[3]]) { const w = Math.floor(e[0] / W), r = UNIT_ROLE(e[3]), d = UDEF[e[3]], o = win[w] || (win[w] = {}); o[r] = (o[r] || 0) + e[4] * (d.cost.c + d.cost.e); }
+    let prev = null;
+    for (const w of Object.keys(win).map(Number).sort((a, b) => a - b)) {
+      const o = win[w], tot = Object.values(o).reduce((a, b) => a + b, 0), top = Object.keys(o).sort((a, b) => o[b] - o[a])[0];
+      if (tot < 400 || o[top] < tot * 0.5) continue; // too little, or no clear focus
+      if (prev && top !== prev) out.push({ t: w * W, tag: 'Strategy', txt: `Switched production to mostly ${top}` });
+      prev = top;
+    }
+  }
+  return out.sort((a, b) => a.t - b.t);
+}
+function repEnemy(g) {
+  const E = repEnemyEvents(g), P = g.sides[1].persona || {};
+  return `<p class="note" style="margin-top:0">${factionName(g.sides[1].faction)}, played by ${PERSONA_NAME[P.kind] || 'the AI'}. Revealed after the match: during play you saw only what your units could see.</p>
+    <ul class="tl ren">${E.map(m => `<li><b>${mmss(m.t)}</b><span class="tag t${m.tag}">${m.tag}</span><span>${m.txt}</span></li>`).join('') || '<li>Nothing was recorded.</li>'}</ul>${repFrom(g.log)}`;
 }
 function repText(g) {
   const R = g.result || {}, win = g.winner === 0;
