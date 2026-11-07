@@ -6,9 +6,14 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Extinction">
+<meta name="application-name" content="Extinction Event">
+<meta name="format-detection" content="telephone=no">
 <meta name="theme-color" content="#070b14">
 <title>Extinction Event</title>
-<link rel="apple-touch-icon" href="apple-touch-icon-2.PNG">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
 <style>
 :root{
   --bg:#060914;--glass:rgba(10,17,33,.82);--glass2:rgba(20,32,56,.9);--panel3:#1d2e4c;--line:rgba(110,150,210,.22);
@@ -435,7 +440,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 
 <script>
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.53'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.54'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -9437,6 +9442,9 @@ showStart();
 // Title screen covers the main menu on load; a tap (click, so no ghost tap reaches the menu) fades it away
 $('title').addEventListener('click', () => { const t = $('title'); t.classList.add('out'); setTimeout(() => t.remove(), 400); });
 requestAnimationFrame(frame);
+// Offline play for the home-screen app (v2.54, Phase 0 item 7): sw.js caches the page. Only over http(s); any failure
+// (file://, private mode, the test kit's page) is ignored and the game plays as before.
+try { if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && !/__phone\.html$/.test(location.pathname)) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {})); } catch (e) {}
 </script>
 </body>
 </html>
