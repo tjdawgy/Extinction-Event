@@ -2,6 +2,17 @@
 
 A single-file mobile real-time strategy game. Open `index.html` in a browser (best in landscape on a phone).
 
+## Editing and building (v2.57)
+
+The game ships as one self-contained `index.html`, but you edit it in `src/`:
+
+- `src/head.html`, `src/style.css`, `src/body.html`: the page head, the CSS, and the markup up to `<script>`.
+- `src/sim/`: rules, combat and AI (it ends with the `SIM END` marker the tests slice by).
+- `src/render/`: drawing (ends with `RENDER END`). `src/ui/`: HUD, input, menus, report, sound, main loop, Codex, tutorial.
+- `src/end.html`: the closing tags.
+
+After editing, run `npm run build` (or `node build.js`). It joins the parts in the order listed in `build.js`, byte for byte, with no dependencies and no transforms, and writes `index.html`. Commit `src/` and `index.html` together: GitHub Pages serves `index.html` as it is. `npm run check` (and `npm test`, in `tests/build.test.js`) fails if `index.html` isn't exactly a fresh build of `src/`, or if a file in `src/` isn't listed in `build.js`. To add a file, create it in `src/` and add it to `PARTS` in `build.js` at the right place. Everything shares one global scope, as before, so order matters.
+
 ## Tests
 
 ```

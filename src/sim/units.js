@@ -1,0 +1,265 @@
+/* ---------- Unit micro controls (v2.12) ----------
+   Orders for a group (Infantry, Armor, Air), a unit type, or the whole army (Regroup with nothing selected). An order
+   overrides the global stance for the units it covers; where a group and a type order both cover a unit, the most
+   recent wins (order.n counts up). A global stance clears them all. 'move' (Regroup) walks to a point, fighting what
+   it meets on the way like any stance, then holds there; its flag is done once every unit it covers has arrived. */
+const UGROUPS = { inf: ['rifle', 'heavy', 'sniper', 'skitterling', 'mite', 'leaper', 'ravager', 'spitter', 'bilecaster', 'shardling', 'riftstalker', 'parallax', 'lancer', 'marksman'], arm: ['tank', 'artillery', 'titan', 'flame', 'hydra', 'bulwark', 'bilelobber', 'ruinmaw', 'thornback', 'dreadthorn', 'bastion', 'riftmortar', 'worldbreaker', 'gravemantle', 'eventide'], air: ['aircraft', 'interceptor', 'leviathan', 'razorwing', 'needlewing', 'cloudwing', 'broodtyrant', 'worldrender', 'wraithwing', 'prismwing', 'shardstorm', 'voidcarrier', 'sovereign'], sup: ['medic', 'drone'] }; // v2.18: Bloomhost units join the groups
+const GROUP_NAME = { inf: 'Infantry', arm: 'Armor', air: 'Air', sup: 'Support' };
+const GROUP_OF = {}; for (const k in UGROUPS) for (const t of UGROUPS[k]) GROUP_OF[t] = k;
+const ORDER_NAME = { hold: 'Hold', attack: 'Attack', retreat: 'Retreat', move: 'Regroup' };
+const PLURAL = { rifle: 'Riflemen', heavy: 'Heavies', sniper: 'Snipers', tank: 'Tanks', artillery: 'Artillery', titan: 'Titans', flame: 'Flame Tanks', hydra: 'Hydras', aircraft: 'Gunships', interceptor: 'Interceptors', leviathan: 'Leviathans', medic: 'Medicopters', drone: 'Recon Drones', skitterling: 'Skitterlings', mite: 'Mites', bulwark: 'Bulwarks', razorwing: 'Razorwings', leaper: 'Leapers', ravager: 'Ravagers', spitter: 'Spitters', bilecaster: 'Bilecasters', bilelobber: 'Bile Lobbers', ruinmaw: 'Ruinmaws', thornback: 'Thornbacks', dreadthorn: 'Dreadthorns', needlewing: 'Needlewings', cloudwing: 'Cloudwings', broodtyrant: 'Brood Tyrants', worldrender: 'Worldrenders', shardling: 'Shardlings', bastion: 'Bastions', wraithwing: 'Wraithwings', riftstalker: 'Riftstalkers', parallax: 'Parallaxes', lancer: 'Lancers', marksman: 'Astral Marksmen', riftmortar: 'Rift Mortars', worldbreaker: 'Worldbreakers', gravemantle: 'Gravemantles', eventide: 'Eventides', prismwing: 'Prismwings', shardstorm: 'Shardstorms', voidcarrier: 'Voidcarriers', sovereign: 'Astral Sovereigns' };
+const newOrders = () => ({ all: null, groups: {}, types: {}, n: 0 });
+function unitOrder(side, type) { // the order a unit of this type follows, or null for the global stance
+  const O = side.orders; if (!O) return null;
+  let best = O.all; const gr = O.groups[GROUP_OF[type]], ty = O.types[type];
+  if (gr && (!best || gr.n > best.n)) best = gr;
+  if (ty && (!best || ty.n > best.n)) best = ty;
+  return best;
+}
+const orderCovers = (scope, key, type) => scope === 'all' || (scope === 'group' ? GROUP_OF[type] === key : type === key);
+const slotOf = (u, o) => [o.u + ((u.id * 37) % 9 - 4) * 9, o.v + ((u.id * 53) % 9 - 4) * 7]; // a spread spot around the flag, fixed per unit
+function giveOrder(g, s, scope, key, o, u, v, quiet) { // quiet: the AI's automatic micro is counted, not listed, in the match log
+  if (g.over) return { ok: false, msg: 'The match is over' };
+  if (g.countdown > 0) return WAIT_GO;
+  if (!ORDER_NAME[o] || !(scope === 'all' ? o === 'move' : scope === 'group' ? UGROUPS[key] : UDEF[key])) return { ok: false, msg: 'Unknown order' };
+  if (o === 'move' && !(u >= 0 && u <= L && Math.abs(v) <= 220)) return { ok: false, msg: 'Target the battlefield' };
+  const side = g.sides[s], O = side.orders || (side.orders = newOrders()), ord = { o, n: ++O.n, t: g.t };
+  if (o === 'move') { ord.u = u; ord.v = v; ord.done = false; }
+  if (scope === 'all') O.all = ord; else if (scope === 'group') O.groups[key] = ord; else O.types[key] = ord;
+  for (const e of g.ents) if (e.kind === 'u' && e.side === s && e.hp > 0 && orderCovers(scope, key, e.type)) {
+    if (o === 'hold') { e.holdU = e.u; e.holdV = e.v; } else { e.holdU = undefined; e.holdV = undefined; }
+  }
+  if (quiet) { if (g.log) g.log.tot[s].micro = (g.log.tot[s].micro || 0) + 1; } else lg(g, s, 'O', scope, key, o);
+  const who = scope === 'all' ? 'Army' : scope === 'group' ? GROUP_NAME[key] : PLURAL[key];
+  return { ok: true, msg: o === 'move' ? `${who}: regrouping at the flag` : `${who}: ${o === 'hold' ? 'holding position' : o === 'attack' ? 'attacking' : 'retreating to the rally flag'}` };
+}
+// v2.43 (rally): on Attack, a player side's new units wait at the rally point (inside the HQ gun's cover) until the group
+// there is worth MECH7C.batchV or its first unit has waited batchT seconds, then walk out together; units already marching
+// (rwGo) are never held back. For the player's side (and the audit bots): the AI moves its army with its own rules (mass,
+// nowave; its batch rule has been off since v2.38).
+function updateRallyWait(g) {
+  for (let s = 0; s < 2; s++) {
+    if (!playerSide(g, s)) continue;
+    const side = g.sides[s], dir = dirOf(s), r = rallyU(s), f = g.front[s];
+    if (side.stance !== 'attack' || f === null) { if (side.rwAt !== undefined) { side.rwAt = undefined; for (const e of g.ents) if (e.kind === 'u' && e.side === s) { e.rwT = 0; e.rwS = 0; e.rwGo = 0; } } continue; }
+    if (side.rwAt !== side.stanceAt) { side.rwAt = side.stanceAt; for (const e of g.ents) if (e.kind === 'u' && e.side === s) { e.rwT = 0; e.rwGo = 1; } continue; } // the army the Attack order found goes at once
+    const grp = [];
+    for (const e of g.ents) if (e.kind === 'u' && e.side === s && e.hp > 0 && !e.rwGo && !e.temp) {
+      const d = UDEF[e.type], ord = unitOrder(side, e.type);
+      if (d.air || d.support || (ord && ord.o !== 'attack') || dir * (e.u - r) > 60 || dir * (f - e.u) < 350) { e.rwGo = dir * (e.u - r) > 60 ? 1 : e.rwGo; continue; }
+      grp.push(e); if (!e.rwS) e.rwS = g.t;
+    }
+    if (!grp.length) continue;
+    const v = grp.reduce((a, e) => a + UDEF[e.type].cost.c + UDEF[e.type].cost.e, 0), first = Math.min(...grp.map(e => e.rwS));
+    const go = v >= MECH7C.batchV || g.t - first >= MECH7C.batchT;
+    for (const e of grp) if (go) { e.rwT = 0; e.rwGo = 1; } else e.rwT = g.t + 0.6;
+  }
+}
+function updateOrders(g) { // twice a second: a Regroup flag is done once every unit it covers has arrived
+  for (let s = 0; s < 2; s++) {
+    const side = g.sides[s], O = side.orders; if (!O) continue;
+    const list = [O.all, ...Object.values(O.groups), ...Object.values(O.types)].filter(o => o && o.o === 'move' && !o.done);
+    if (!list.length) continue;
+    const away = new Set();
+    for (const e of g.ents) if (e.kind === 'u' && e.side === s && e.hp > 0) {
+      const o = unitOrder(side, e.type);
+      if (o && o.o === 'move' && !o.done) { const [su, sv] = slotOf(e, o); if (Math.abs(e.u - su) > 14 || Math.abs(e.v - sv) > 14) away.add(o); }
+    }
+    for (const o of list) if (!away.has(o)) o.done = true;
+  }
+}
+// The AI's only micro so far (Normal and Hard): pull Artillery back when enemy ground units it can see get close
+const AI_ART = ['artillery', 'bilelobber', 'riftmortar'], AI_SIEGE = ['artillery', 'titan', 'bilelobber', 'ruinmaw', 'riftmortar', 'worldbreaker']; // units the AI's siege rules count (v2.19: Bloomhost's too; v2.27: Axiarchs')
+function aiMicro(g, s, D, mine) {
+  if (D === DIFF.easy) return;
+  const side = g.sides[s], O = side.orders || (side.orders = newOrders());
+  for (const at of AI_ART) { // Artillery, and the Bile Lobber the same way (v2.19)
+    const art = mine.filter(u => u.type === at);
+    const near = art.some(a => g.ents.some(e => e.kind === 'u' && e.side !== s && e.hp > 0 && !UDEF[e.type].air && Math.abs(e.u - a.u) < 160 && visibleTo(g, s, e)));
+    const cur = O.types[at];
+    if (near && !cur) giveOrder(g, s, 'type', at, 'retreat', undefined, undefined, true);
+    else if (!near && cur && cur.o === 'retreat' && g.t - cur.t > 6) { delete O.types[at]; for (const a of art) { a.holdU = undefined; a.holdV = undefined; } }
+  }
+}
+
+// A unit that appears somewhere other than its own building (a warp-in, a Mass Warp arrival, Emergency Brood, Cloudwing
+// offspring; v2.31) follows the army's current orders like a trained unit. On Hold (the stance or a group or type order) it
+// holds where it arrived; before v2.31 it had no hold spot and walked back to the rally flag.
+function arriveOrders(g, e) {
+  const side = g.sides[e.side], ord = unitOrder(side, e.type);
+  if ((ord ? ord.o : side.stance) === 'hold') { e.holdU = e.u; e.holdV = e.v; } else { e.holdU = undefined; e.holdV = undefined; }
+}
+function setStance(g, s, v) {
+  const side = g.sides[s];
+  side.stance = v; side.stanceAt = g.t; side.pushTo = null; side.pushMode = null;
+  side.orders = newOrders(); // a global stance clears every group, type and Regroup order (v2.12)
+  for (const u of g.ents) if (u.kind === 'u' && u.side === s) {
+    if (v === 'hold') { u.holdU = u.u; u.holdV = u.v; } else { u.holdU = undefined; u.holdV = undefined; }
+  }
+}
+
+function moveToward(u, d, tu, tv, dt, mul = 1) { // mul: speed multiplier (creep, v2.18)
+  const du = tu - u.u, dv = tv - u.v;
+  if (Math.abs(du) < 2 && Math.abs(dv) < 2) { u.moving = false; return false; }
+  if (Math.abs(du) >= 2) { u.u = clamp(u.u + Math.sign(du) * Math.min(Math.abs(du), d.speed * mul * dt), 0, L); u.face = Math.sign(du); }
+  if (Math.abs(dv) >= 1) u.v += Math.sign(dv) * Math.min(Math.abs(dv), d.speed * mul * 0.45 * dt);
+  u.moving = true;
+  return true;
+}
+
+const RETREAT = { fire: false }; // v2.35 (audit): retreating units hold their fire; fire true restores the v2.34 rule (firing on the move)
+function updateUnit(g, u, foes, dt) {
+  const d = UDEF[u.type];
+  u.anim += dt;
+  const frz = u.frzT > g.t; // Frenzy Bloom (v2.20): faster attacks and movement
+  if (u.cd > 0) u.cd -= dt * (frz ? ABIL.frenzy.rate : 1);
+  if (u.recoil > 0) u.recoil = Math.max(0, u.recoil - dt * 5);
+  if (u.hitT > 0) u.hitT -= dt;
+  const side = g.sides[u.side], dir = dirOf(u.side), home = (side.defU != null ? side.defU : rallyU(u.side)) + u.rallyOff * dir; // defU (v2.40): a Default AI under attack rallies inside its HQ's cover
+  const ord = unitOrder(side, u.type), st = ord ? ord.o : side.stance; // a group or type order overrides the global stance
+  const A = d.weapon ? acquire(g, u, d, foes, d.chase) : NO_TARGET, { best, close } = A; // Medicopters and Recon Drones carry no weapon; melee: the chase search in the same pass (v2.37)
+  const sp = (d.fac === 'bloomhost' && !d.air && onCreep(g, u.side, u.u, u.v) ? CREEP.speed : 1) * (frz ? ABIL.frenzy.speed : 1) * (u.slowT > g.t ? 1 - u.slow : 1) * (u.snT > g.t ? 0 : 1); // creep (v2.18), Frenzy Bloom (v2.20), a Gravemantle's slow (v2.27), a Rootheart's snare (v2.33)
+  if (u.leaping) { // mid-leap (v2.19): fly to the landing spot, nothing else
+    const du = u.lu - u.u, dv = u.lv - u.v, dd = Math.hypot(du, dv), st = d.leap.speed * dt;
+    if (dd <= st) { u.u = u.lu; u.v = u.lv; u.z = 0; u.leaping = 0; u.leapCd = g.t + d.leap.cd; }
+    else { u.u += du / dd * st; u.v += dv / dd * st; u.z = Math.sin(Math.PI * clamp(1 - dd / u.ld, 0, 1)) * Math.min(26, u.ld * 0.18); u.face = du >= 0 ? 1 : -1; }
+    u.moving = true; return;
+  }
+  if (u.aiBack > g.t && !u.siege) { u.tgt = 0; u.chT = 0; moveToward(u, d, side.backU != null ? side.backU : home, u.laneV, dt, sp); return; } // v2.38: a Default AI pulls it back for a moment (unit timing)
+  if (d.siege && titanSiege(g, u, d, st, foes)) return; // P8 (v2.37): planting, planted or unplanting
+  if (u.phT > g.t) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // P13 (v2.37): a phased Wraithwing holds still and can't fire
+  // Retreat: keep running home until back at the rally flag. A retreating unit holds its fire (v2.35, audit): it
+  // attacks again only once the retreat ends, back at the flag or under a new order
+  if (st === 'retreat' && Math.abs(home - u.u) > 12) {
+    if (!RETREAT.fire) { u.tgt = 0; u.chT = 0; }
+    else if (best && u.cd <= 0) { fire(g, u, best, d); u.cd = d.cd * rand(0.9, 1.1); } // the v2.34 rule, for the tests' fixed replays
+    moveToward(u, d, home, u.laneV, dt, sp);
+    return;
+  }
+  if (u.aiWait > g.t && !best && !(MECH7C.on && d.chase && A.prey && Math.hypot(A.prey.u - u.u, A.prey.v - u.v) <= MECH7C.holdR + d.range)) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // v2.43: a holding melee unit still engages within holdR (falls through to the chase below) // v2.40: a Default AI holds a front-runner until its army catches up (fights only what is in reach, never chases)
+  const act = !(u.phT > g.t) && !d.siege; // v2.37: a phased Wraithwing can't fire (P13); a Titan fires only when planted (P8)
+  u.tgt = best && act ? best.id : 0;
+  if (!best || best.id !== u.chTgt || !act) u.chT = 0; // the Astral Marksman's charge starts over on a new target (v2.27)
+  if (best && act) {
+    u.moving = false;
+    if (Math.abs(best.u - u.u) > 1) u.face = best.u >= u.u ? 1 : -1;
+    if (d.swing) { const air = best.kind === 'u' && UDEF[best.type].air ? 1 : 0; if (air !== u.aimAir) { u.aimAir = air; u.cd = Math.max(u.cd, d.swing); } } // the Hydra's guns swing between ground and air
+    if (u.cd <= 0 && d.charge) { // v2.27: a visible charge-up on the same target before each shot
+      if (!u.chT) { u.chT = g.t + d.charge; u.chTgt = best.id; }
+      else if (g.t >= u.chT) { fire(g, u, best, d); u.cd = d.cd * rand(0.9, 1.1); u.chT = 0; }
+      return;
+    }
+    if (u.cd <= 0) {
+      fire(g, u, best, d); u.cd = d.cd * rand(0.9, 1.1);
+      if (d.fade && u.fadeArm) { // P5 (v2.37): the Riftstalker's strike landed: phase-step back to where it leapt from
+        u.fadeArm = 0; u.lu = u.fu; u.lv = u.fv; u.ld = Math.max(1, Math.hypot(u.lu - u.u, u.lv - u.v)); u.leaping = 1;
+        const w = P(u.u, u.v, 10); g.fx.push({ k: 'blink', side: u.side, u: u.u, x: w.x, y: w.y, t: 0, life: 0.4 });
+      }
+    }
+    return;
+  }
+  if (close) { u.moving = false; return; } // artillery: enemy is inside minimum range
+  if (d.chase && st !== 'move' && !(st === 'hold' && u.holdU !== undefined)) { // melee (v2.17): close on the nearest enemy it can see and hurt
+    const prey = A.prey !== undefined ? A.prey : acquire(g, u, { ...d, range: d.chase }, foes).best;
+    if (prey && d.leap && g.t >= u.leapCd && !(u.snT > g.t) && !(u.aiHold > g.t)) { // v2.38: a Default AI holds a Riftstalker's leap while its shields recharge // snared: no leap either (v2.33) // the Leaper jumps the last stretch (v2.19), never further than leap.range
+      const dist = effDist(u, prey);
+      if (dist <= d.leap.range && dist >= d.leap.min) { const k = Math.max(0, (Math.hypot(prey.u - u.u, prey.v - u.v) - d.range * 0.7) / Math.max(1, Math.hypot(prey.u - u.u, prey.v - u.v))); u.lu = u.u + (prey.u - u.u) * k; u.lv = u.v + (prey.v - u.v) * k;
+        if (d.leap.behind) { const pd = Math.max(1, Math.hypot(prey.u - u.u, prey.v - u.v)); u.lu = clamp(prey.u + (prey.u - u.u) / pd * d.range * 0.7, 0, L); u.lv = clamp(prey.v + (prey.v - u.v) / pd * d.range * 0.7, -LANE_V, LANE_V); } // the Parallax lands just behind its target (v2.27)
+        u.ld = Math.max(1, Math.hypot(u.lu - u.u, u.lv - u.v)); u.leaping = 1;
+        if (d.fade) { u.fu = u.u; u.fv = u.v; u.fadeArm = 1; } // P5: remember where it leapt from
+        return; }
+    }
+    if (prey) { moveToward(u, d, prey.u, prey.v, dt, sp); return; }
+  } else if (d.chase && MECH7C.on && (st === 'move' || (st === 'hold' && u.holdU !== undefined))) { // v2.43: on Hold or a Regroup flag a melee unit engages
+    // enemies within holdR of the spot it holds, and never chases further; with none, it walks back to its spot (below)
+    const [hu, hv] = st === 'move' ? slotOf(u, ord) : [u.holdU, u.holdV];
+    const prey = A.prey !== undefined ? A.prey : acquire(g, u, { ...d, range: d.chase }, foes).best;
+    if (prey && Math.hypot(prey.u - hu, prey.v - hv) <= MECH7C.holdR + d.range) { moveToward(u, d, prey.u, prey.v, dt, sp); return; }
+  }
+  let tu = home, tv = u.laneV;
+  if (u.id === side.scoutId && side.scoutU != null && st !== 'retreat') tu = side.scoutU; // v2.38: a Default AI's scout
+  else if (st === 'move') [tu, tv] = slotOf(u, ord); // Regroup: walk to the flag, then hold there
+  else if (st === 'hold' && u.holdU !== undefined) { tu = u.holdU; tv = u.holdV; }
+  else if (d.support) [tu, tv] = supportSpot(g, u, d, st, home);
+  else if (d.node && side.vcU != null && st === 'attack') tu = side.vcU; // v2.38: a Default AI keeps its Voidcarrier just behind the front
+  else if (st === 'attack') {
+    // a field push spreads forward of its line; a siege spreads back from it, so nobody stands inside the enemy HQ's range
+    const spread = side.pushMode === 'siege' ? -1 : 1;
+    const end = side.pushTo !== null ? side.pushTo - spread * u.rallyOff * dir * 0.6 : (dir > 0 ? L : 0);
+    if (u.id === side.spotter && side.spotU != null && (side.pushTo !== null || side.spotAny)) tu = side.spotU; // spotAny (v2.38): a Default AI spots for its long guns on any push
+    else if (u.type === 'interceptor') { // escort the nearest of your Leviathans and Gunships; with none, wait behind the front
+      let esc = null, ed = 1e9;
+      for (const e of g.ents) if (e.kind === 'u' && e.side === u.side && e.hp > 0 && (e.type === 'leviathan' || e.type === 'aircraft')) { const dd = Math.abs(e.u - u.u); if (dd < ed) { ed = dd; esc = e; } }
+      if (esc) { tu = esc.u - dir * 12; tv = esc.v + (u.id % 2 ? 14 : -14); } else { const f = g.front[u.side]; tu = f === null ? home : f - dir * 40; }
+    }
+    else tu = u.rwT > g.t ? home : end; // v2.43: waiting at the rally point for its group
+    if (side.leash != null && !d.siege && !d.air) tu = dir > 0 ? Math.min(tu, side.leash) : Math.max(tu, side.leash); // v2.38: a Default AI's army stays within reach of its Titans while they plant
+  }
+  if (!moveToward(u, d, tu, tv, dt, sp)) u.face = dir;
+}
+
+const NO_TARGET = { best: null, close: false };
+// P8 (v2.37): the Titan's siege lock. It fires only when planted: planting takes plant seconds, then it can't move, reaches
+// reach further and hits buildings bmul harder; it unplants (unplant seconds, no shots either way) when ordered to retreat
+// or regroup, or after idle seconds with nothing in reach. Mobile, it plants as soon as an enemy is within planted reach
+// (on any stance but Retreat and Regroup). The player and the AI both get this behaviour; neither has to order it.
+// u.siege: 0 mobile, 1 planting, 2 planted, 3 unplanting; u.sgT: when the change ends; u.sgIdle: last time it had a target.
+function titanSiege(g, u, d, st, foes) {
+  const S = d.siege, R2 = d.range + S.reach, go = st === 'retreat' || st === 'move';
+  if (u.siege === 1 || u.siege === 3) {
+    u.moving = false; u.tgt = 0;
+    if (g.t >= u.sgT) { u.siege = u.siege === 1 ? 2 : 0; u.sgIdle = g.t; }
+    return true;
+  }
+  if (u.siege === 2) {
+    const best = acquire(g, u, Object.assign({}, d, { range: R2 }), foes).best;
+    if (best) u.sgIdle = g.t;
+    if (go || (!best && g.t - u.sgIdle >= S.idle)) { u.siege = 3; u.sgT = g.t + S.unplant; u.tgt = 0; return true; }
+    u.moving = false; u.tgt = best ? best.id : 0;
+    if (best) { if (Math.abs(best.u - u.u) > 1) u.face = best.u >= u.u ? 1 : -1; if (u.cd <= 0) { fire(g, u, best, d); u.cd = d.cd * rand(0.9, 1.1); } }
+    return true;
+  }
+  if (go) return false;
+  const best = acquire(g, u, Object.assign({}, d, { range: R2 }), foes).best;
+  if (!best) return false;
+  u.siege = 1; u.sgT = g.t + S.plant; u.moving = false; u.tgt = 0; if (Math.abs(best.u - u.u) > 1) u.face = best.u >= u.u ? 1 : -1;
+  return true;
+}
+// Where a support unit goes (v2.15). Medicopter: over your biggest group of infantry (none: home). Recon Drone: on Attack,
+// just behind your front (or on the spotter's mark while sieging); otherwise home.
+function supportSpot(g, u, d, st, home) {
+  const side = g.sides[u.side], dir = dirOf(u.side);
+  if (u.type === 'medic') { const c = infantryCentre(g, u.side); return c ? [c.u - dir * 10, c.v] : [home, u.laneV]; }
+  if (st !== 'attack') return [home, u.laneV];
+  if (u.id === side.spotter && side.spotU != null && (side.pushTo !== null || side.spotAny)) return [side.spotU, u.laneV];
+  const f = g.front[u.side];
+  return [clamp((f === null ? rallyU(u.side) : f) - dir * 30, 0, L), u.laneV]; // just behind the front: its sight reaches far ahead
+}
+// The centre of side s's biggest infantry cluster (the infantry unit with the most infantry within 120), cached per tick
+function infantryCentre(g, s) {
+  const C = g._inf || (g._inf = [{ t: -1, c: null }, { t: -1, c: null }]), k = C[s];
+  if (k.t === g.t) return k.c;
+  const inf = g.ents.filter(e => e.kind === 'u' && e.side === s && e.hp > 0 && GROUP_OF[e.type] === 'inf');
+  let best = null, bn = -1;
+  for (let i = 0; i < inf.length; i += Math.max(1, inf.length >> 4)) { // at most ~16 candidates
+    const a = inf[i]; let n = 0;
+    for (const b of inf) if (Math.abs(b.u - a.u) < 120 && Math.abs(b.v - a.v) < 120) n++;
+    if (n > bn) { bn = n; best = a; }
+  }
+  k.t = g.t; k.c = best ? { u: best.u, v: best.v } : null;
+  return k.c;
+}
+// Medicopters heal your infantry within 120 at 2.5% of max HP per second; several never stack (v2.15)
+function updateMedics(g, dt) {
+  const D = UDEF.medic;
+  let any = false;
+  for (const m of g.ents) {
+    if (m.kind !== 'u' || m.type !== 'medic' || m.hp <= 0) continue;
+    for (const e of g.ents) if (e.kind === 'u' && e.side === m.side && e.hp > 0 && GROUP_OF[e.type] === 'inf' && e.medAt !== g.t && Math.hypot(e.u - m.u, e.v - m.v) <= D.healR) { e.medAt = g.t; any = true; }
+  }
+  if (!any) return;
+  for (const e of g.ents) if (e.kind === 'u' && e.medAt === g.t && e.hp < e.maxHp) {
+    const h0 = e.hp; e.hp = Math.min(e.maxHp, e.hp + e.maxHp * D.heal * dt);
+    if (g.log) g.log.tot[e.side].healed = (g.log.tot[e.side].healed || 0) + e.hp - h0;
+  }
+}

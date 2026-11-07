@@ -35,13 +35,14 @@ Every feature must pass one test: does this add a decision, or just a tap?
   *Done in v2.53: once per 10 s per location; the toast or its minimap ping jumps the camera.*
 - [x] **Installable fullscreen.** Add a web app manifest, icons and a service worker so players can Add to Home Screen and play in fullscreen landscape, offline.
   *Done in v2.54: icons drawn from the game's art; offline play tested on a GitHub Pages-style path; not yet tried on a real iPhone.*
-- [ ] **Decision: split index.html into modules?** A small build step could still output one HTML file. Decide this before Phase 1, because the map system will grow the code a lot.
-  *Recommended: yes, a mechanical split into src/ files concatenated by a dependency-free script into the same committed index.html, first build byte-identical; awaiting your decision.*
+- [x] **Decision: split index.html into modules?** A small build step could still output one HTML file. Decide this before Phase 1, because the map system will grow the code a lot.
+  *Decided: yes (a mechanical split into src/ with a dependency-free build into the same committed index.html).*
 - [x] **Stance fix** (from the mirror check): an autoplayed side 0 starts on Retreat like the AI.
   *Done in v2.55: 200 mirrors per faction now 23–18, 10–15, 32–29; tests/spawn-balance.test.js.*
 - [x] **New audit baseline**: re-run the mirrors, Hard vs Hard and Hard vs Default after the stance fix, since every earlier AI-vs-AI number had one handicapped side.
   *Done in v2.56 (audit/sim/baseline.js, KNOWN_ISSUES.md "Audit baseline"): Tech 58.1%, Contain 37.8%; two Hard AIs reach 20:00 undecided 80–96% of the time, often without a fight.*
-- [ ] **index.html split**, if the decision above is yes.
+- [x] **index.html split**, if the decision above is yes.
+  *Done in v2.57: 33 parts in src/, build.js, the first build byte-identical to the single file (cmp, same SHA-256) and the replay fingerprints unchanged; tests/build.test.js fails if index.html isn't a fresh build.*
 
 ## Phase 1 — Replayability
 

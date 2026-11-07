@@ -2,6 +2,12 @@
 
 Issues found during testing that are deliberately deferred. Each lists the step that should address it.
 
+## Phase 0: index.html split (v2.57)
+- **What:** the source is in src/ (33 parts: head.html, style.css, body.html, 12 in sim/, 7 in render/, 10 in ui/, end.html), cut at existing section comments. build.js joins them in its `PARTS` order, byte for byte (no dependencies, no transforms) and writes index.html, which stays committed and self-contained (GitHub Pages and the test kit read it as before). `npm run build`, `npm run check`.
+- **Proof:** the first build of v2.57 was byte-identical to v2.57's single file (`cmp`, SHA-256 c01f3b28… both); `git diff` of index.html against v2.56 shows only the VERSION line; tests/determinism.test.js (the replay fingerprints back to v2.29) passes on the built file.
+- **Guard:** tests/build.test.js fails if index.html differs from a fresh build (checked: one line appended to src/ui/main.js without building fails it), if a file in src/ isn't a part, or if the SIM / RENDER END markers move or repeat.
+- **Rule:** edit src/, never index.html; build; commit both (CLAUDE.md, README "Editing and building"). One global scope as before: part order matters.
+
 ## Audit baseline (v2.56, after the stance fix): the current numbers
 - **Why:** every AI-vs-AI figure measured before v2.55 (the audit phases 4–7c, the item 2 mirror check) was played with the side-0 Hold handicap: an AI-played left side kept the player's Hold stance until its first attack (KNOWN_ISSUES "Phase 0, item 2"). Paired and alternating runs cancelled the side bias in the faction shares, but every match had one handicapped side. Those figures are kept in their sections as history and marked; these are the current ones. The scripted strategy bots (triangle, field, Greedy vs Greedy) were never handicapped (both bot slots play on Hold), but their numbers also moved with the seeded random stream (v2.50) and storm draws (v2.48), so they are re-measured here too.
 - **Run:** `node audit/sim/baseline.js --nm=200 --nh=40 --nd=40 --nt=12` on v2.55 code (seeds as in the script; AI sets to the 27:00 limit, bot sets to 30:00 as in stratrun.js). Full tables: audit/logs-p0/baseline/baseline.md, per match: baseline.json. "Share" = (wins + draws/2) / matches. "No fight" = both sides together dealt under 1,000 damage all match (a few shots); measured for the AI sets only (the bots always fight).
