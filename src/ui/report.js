@@ -66,7 +66,7 @@ function repArmy(g) {
     ${bRow('Buildings built', d => d.bBuilt)}${bRow('Buildings destroyed', d => d.bLost)}</table>`;
 }
 // What changed the AI's plan, in the player's words (log 'G': an attack's mode, a feint, or a read)
-const REP_STRAT = { turtle: 'Saw your Turrets and changed its plan', rush: 'Saw your early rush and changed its plan', greed: 'Saw your greedy economy and changed its plan',
+const REP_STRAT = { raid: 'Sent a raid at a field node', turtle: 'Saw your Turrets and changed its plan', rush: 'Saw your early rush and changed its plan', greed: 'Saw your greedy economy and changed its plan',
   siege: 'Moved up to siege your base', all: 'Attacked with its whole army', field: 'Pushed out to fight for the field' };
 const UNIT_ROLE = t => { const d = UDEF[t]; return d.air ? 'aircraft' : d.range >= 300 ? 'long-range units' : (d.cost.c + d.cost.e) >= 250 ? 'heavy units' : d.melee ? 'melee units' : 'light infantry'; };
 function repEnemyEvents(g) {

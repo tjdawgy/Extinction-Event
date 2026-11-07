@@ -2,6 +2,41 @@
 
 Issues found during testing that are deliberately deferred. Each lists the step that should address it.
 
+## AI attack decisions: the stalemate fix (v2.60, Phase 1)
+- **Problem (v2.56 baseline):** two Hard AIs reached 20:00 undecided 80–96% of the time, and 23–56% of those matches had no fight at all.
+- **Diagnosis (why two Hard AIs never finished each other), from traces of v2.59 Hard vs Hard:**
+  1. **It never saw the enemy.** The scout rule sends a unit toward the enemy base, but `updateUnit` ran any unit on its side's Retreat stance home first (and held its fire), and an AI sits on Retreat whenever it isn't attacking. Before v2.55 the left side sat on Hold, so it did scout; after the stance fix neither side did. 3 of 12 traced matches never saw an enemy unit in 20 minutes.
+  2. **Unseen, the enemy army was a runaway guess.** `aiEstimate` (Hard's `est` rule) was 40% of every credit the enemy had ever earned, minus every kill. Unseen, it grew without limit: 13,542 against a real 2,320 at 19:00 (seed 2). Every attack rule needs its own army to beat that number by a margin, so no rule ever fired, not even "the storm is coming, everything in" (seed 31: estimate 10,272, real 1,853, own army capped at 2,363). Once fights happened, the subtracted kills drove it to 0 while the real army stood at 2,000–3,000, and the AI attacked into it. Fitted on 456 samples, the old estimate was off by 2,010 on average; a capped time curve is off by 566.
+  3. **The armies couldn't grow, and the bank rebuilt every loss.** This turned out to be the main cause. Hard filled its 8 pads with production and economy and built one Habitat: 12 (HQ) + 22 (one T3 Habitat) = **34 supply** of the 80 allowed, all match, while the bank reached 5,000–7,600 credits. Every lost unit was rebuilt at once at home, so after the first two fixes the armies fought in the middle for 15 minutes and not one building fell (Bloomhost mirror, seed 3). The existing rules that trade a building for a Habitat fired only with no Habitat at all, or when 3× ahead.
+  4. Not the cause (tested): the HQ gun's reach (back at v2.42's 430/470: no change), the siege line (turning every siege push into a full push: no change).
+- **Changes (Hard only, `AI_PRESETS.hard.fix`; the `ATTACK` block in src/sim/ai-presets.js; `hard259` keeps v2.59's Hard; Easy and Normal play the Default preset, unchanged: three seeded Easy/Normal matches hash identically to v2.59):**
+  - `scoutGo`: a Hard scout (and raiders) move on their own stance, so the scout really runs.
+  - `estFix`: the unseen enemy army is min(250 + 4 × t, 2,500), or the last good look at it plus 8 a second (a look counts when it shows at least half the curve, or more than expected).
+  - `supply`: at its army limit with 800+ banked, every Habitat at T3 and no free pad, it trades a spare Reactor, Refinery (a second one when 2,400+ banked) or an unneeded Turret for another Habitat.
+  - `press`: from 4:00, a full push when its army is 1.15× the enemy's (falling to 0.75× from 14:00 to the storm warning at 19:30), or 1.035× with a 25% income lead; a push for the centre node at 0.85× while it doesn't hold it; a field push turns into a base push once the edge is there; a "siege" against an HQ gun of 500+ range is a full push (the siege line would be mid-field).
+  - `raid`: with no push on, from 4:00 and every 75 s, up to 4 of its fastest ground units (at most 30% of the army) take the enemy's node, coming home when below half health, after 45 s, or when the army attacks.
+  - Ablation on a quick sample (84 matches): `supply` alone gave a median of 11.9 min and 19% draws; all five give 13.9 min and 14%.
+- **Results (audit/sim/baseline.js, the same seeds and sizes as the v2.56 baseline; full tables in audit/logs-p1/baseline-v260/):**
+
+  | Matchup | v2.56 A–B–draw | v2.60 A–B–draw | median v2.56 → v2.60 | decided before 20:00 | draws | no fight |
+  |---|---|---|---|---|---|---|
+  | LF mirror | 23–18–159 | 79–74–47 | 23:54 → 15:16 | 19.5 → 73.0% | 79.5 → 23.5% | 56.0 → 0% |
+  | BH mirror | 10–15–175 | 79–89–32 | 22:24 → 12:47 | 3.5 → 80.0% | 87.5 → 16.0% | 23.0 → 0% |
+  | AX mirror | 32–29–139 | 66–79–55 | 23:49 → 14:09 | 13.5 → 68.5% | 69.5 → 27.5% | 49.5 → 0% |
+  | LF Hard vs BH Hard | 9–4–67 | 52–20–8 | 22:26 → 14:01 | 10.0 → 85.0% | 83.8 → 10.0% | 32.5 → 0% |
+  | LF Hard vs AX Hard | 7–8–65 | 29–31–20 | 23:51 → 13:10 | 15.0 → 71.3% | 81.3 → 25.0% | 51.3 → 0% |
+  | BH Hard vs AX Hard | 5–22–53 | 28–42–10 | 22:24 → 10:30 | 21.3 → 85.0% | 66.3 → 12.5% | 32.5 → 0% |
+  | LF Hard vs LF Default | 40–5–35 | 79–0–1 | 16:17 → 6:18 | 55.0 → 97.5% | 43.8 → 1.3% | 0% |
+  | BH Hard vs BH Default | 43–1–36 | 77–1–2 | 21:30 → 6:45 | 43.8 → 97.5% | 45.0 → 2.5% | 0% |
+  | AX Hard vs AX Default | 49–4–27 | 74–3–3 | 21:28 → 8:39 | 47.5 → 90.0% | 33.8 → 3.8% | 0% |
+
+  - **Targets, Hard vs Hard (840 matches):** median 12–18 min: met in the mirrors (12:47–15:16) and two of three cross pairings (13:10, 14:01); Bloomhost vs Axiarchs is shorter (10:30). At least 50% decided before 20:00: met everywhere (68.5–85%). Under 5% with no fight: met (0%). Draws under 25%: met overall (172 of 840, 20.5%) and in four of six matchups; the Axiarch mirror is at 27.5% and Last Fist vs Axiarchs at 25.0%.
+  - **Spawn sides stay even:** mirrors 79–74, 79–89, 66–79.
+  - **Faction shares in Hard vs Hard moved:** Last Fist 59.4%, Bloomhost 35.6%, Axiarchs 55.0% (v2.56: 51.3 / 43.1 / 55.6). Bloomhost loses most of its matches now that matches are decided: a balance item for the Phase 1 balance pass (no stats changed here).
+  - **Hard vs Default is now 94–99%** (was 72–78%): Hard is much stronger than Normal, so the difficulty gap widened. Hard against a human was not measured (no bot plays like one); its aggression is the new behaviour to watch in playtests.
+  - **Tech and Contain:** 58.1% and 37.8% against the field, unchanged: the strategy field, triangle and Greedy-vs-Greedy sets are scripted bots that don't use the Hard AI, so they play identically (Tech within ≤60%, Contain still under 40%).
+- **Tests:** tests/attack.test.js (each rule, Hard only, Default and hard259 unchanged); hardhuman.test.js's v2.41 `est` test and its Greedy scenario run on `hard259`.
+
 ## Classic in the map format (v2.59)
 - **What:** src/sim/maps.js (a new build part before sim/core.js) holds `MAPS.classic` in the docs/MAP_FORMAT.md format: display fields, size 1700 × 400, army cap 80, `mirror-x` symmetry, two bases (HQ, face, 8 pads, signature pad, rally), the 1v1 mode, one lane 230 wide, three income nodes at 680 / 850 / 1020. `MAP` is the map every match plays; `g.map` points to it. The SIM now reads the map: `L`, `HQ_U`, `POP_MAX`, `LANE_V`, `NODE_R`, `dirOf`, `hqU`, `hqPos`, `slotPos`, `rallyU`, the node spots (`setMech7c(true)`; false still gives v2.42's 600 / 850 / 1100) and the node depth.
 - **No gameplay change:** every coordinate is the exact double the v2.58 formulas gave (tests/maps.test.js compares each pad, HQ and signature pad with `tilePos` bit for bit). The pinned replay fingerprints all match (determinism, tactics, hardhuman), and three full seeded Hard matches on current rules (Last Fist/Bloomhost, Axiarchs/Last Fist, Bloomhost/Axiarchs) hash identically on v2.58 and v2.59 every 100 ticks to the end.

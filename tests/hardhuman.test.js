@@ -57,10 +57,10 @@ test('shield rule: no Emergency Shield on units that are not yet taking fire; wi
   assert.ok(pick(true, true), 'rule on: units under fire get it');
 });
 
-test('est: the expected enemy army grows with time and with the Refineries it has seen', () => {
+test('est: the expected enemy army grows with time and with the Refineries it has seen (v2.41 rule, the hard259 preset; v2.60 Hard uses estFix)', () => {
   const s = loadSim({ random: mulberry(10) });
   const run = refTier => {
-    const g = s.newGame('hard', { factions: ['lastfist', 'lastfist'] }); g.countdown = 0;
+    const g = s.newGame('hard', { factions: ['lastfist', 'lastfist'], ai: 'hard259' }); g.countdown = 0;
     if (refTier) for (let i = 0; i < 3; i++) g.fog[1].ghosts[9000 + i] = { id: 9000 + i, type: 'refinery', fac: 'lastfist', side: 0, tier: refTier, u: 300, v: 0, half: 30 };
     const out = [];
     for (const t of [60, 120, 180, 240]) { g.t = t; out.push(s.aiEstimate(g, 1)); }
@@ -87,7 +87,7 @@ test('counter: an infantry flood sends the War Factory down the Assault path (Fl
 
 test('the Greedy bot (audit harness) plays a full match against Hard: economy first, nodes taken, a result', () => {
   const { runMatch } = require('../audit/sim/match');
-  const r = runMatch({ seed: 5, diff: 'hard', maxT: 1800, sides: [{ faction: 'lastfist', bot: 'greedy' }, { faction: 'lastfist', ai: 'hard', persona: 'random' }] });
+  const r = runMatch({ seed: 5, diff: 'hard', maxT: 1800, sides: [{ faction: 'lastfist', bot: 'greedy' }, { faction: 'lastfist', ai: 'hard259', persona: 'random' }] }); // v2.60: the scenario as written, against v2.59's Hard
   assert.ok(r.t < 1800 && r.winner >= 0, `ended (${r.t} s, winner ${r.winner})`);
   const s30 = r.samples.find(x => x.t >= 30), s120 = r.samples.find(x => x.t >= 120);
   assert.ok(s30.earned[0] > 150, 'its economy is running by 0:30'); // v2.42: Refineries take 13 s (was 10)

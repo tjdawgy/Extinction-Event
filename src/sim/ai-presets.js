@@ -109,6 +109,26 @@ for (const f in HARD_SIG_7C) Object.assign(AI_PRESETS.hard.byFac[f].dials, HARD_
 // v2.43: the Axiarch Turtle opening fell to 58% against the Default field (its node now has to be held; Boomer 92%,
 // Economist 71%, 24 paired each, audit/polish-report.md), so Hard's Axiarchs open Boomer two times in three (was Turtle)
 AI_PRESETS.hard.byFac.axiarchs.kinds = ['boomer', 'boomer', 'turtle'];
+/* ---------- AI attack decisions (v2.60, Phase 1 stalemate fix; KNOWN_ISSUES.md "AI attack decisions") ----------
+   Two Hard AIs reached 20:00 undecided in most matches. Hard's rules for it (Easy and Normal play the Default preset,
+   unchanged; hard259 keeps v2.59's Hard):
+   scoutGo: its scout (and raiders) really go: a unit on the side's Retreat ran home and held its fire, so an AI that
+     never left Retreat never saw the enemy.
+   estFix: the unseen enemy army is estimated from time (ATTACK.est: base + rate * t, at most cap) and from what it last
+     saw (that army plus ATTACK.est.rebuild per second), not from 40% of every credit the enemy ever earned minus every
+     kill (that grew without bound while nothing was seen, and fell to 0 after a few fights).
+   press: attack when clearly ahead on army or economy, fight for the centre node at parity, and need a smaller edge
+     as the storm nears (ATTACK.press).
+   raid: when no push is worth it, a few fast units raid the enemy's node (ATTACK.raid).
+   supply: at its army limit with money banked, trade a spare building for another Habitat (ATTACK.supply). */
+const ATTACK = {
+  est: { base: 250, rate: 4, cap: 2500, rebuild: 8, seen: 0.5 },
+  press: { from: 240, edge: 1.15, edgeLate: 0.75, late0: 840, eco: 1.25, field: 0.85, siegeMax: 500 }, // siegeMax: from this HQ gun range a siege line is mid-field
+  raid: { at: 240, every: 75, n: 4, share: 0.3, dur: 45, minHp: 0.5 },
+  supply: { from: 300, bank: 800 },
+};
+AI_PRESETS.hard259 = Object.assign({}, AI_PRESETS.hard, { name: 'Hard v2.59', fix: Object.assign({}, AI_PRESETS.hard.fix) });
+Object.assign(AI_PRESETS.hard.fix, { scoutGo: true, estFix: true, press: true, raid: true, supply: true });
 const AI_PRESET_KEYS = Object.keys(AI_PRESETS);
 const aiDials = P => (P && P.dial) || AI_DIALS; // a persona without dials (an older save) reads the legacy constants
 const aiSmart = P => !!(P && P.smart);

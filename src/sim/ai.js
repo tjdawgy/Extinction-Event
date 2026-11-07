@@ -150,6 +150,14 @@ function aiUpdate(g, s, dt) {
     const spare = (side.res.e > 400 && countB(g, s, 'reactor') > 1 && alive(g, s, 'reactor')[0]) || (countB(g, s, 'refinery') > 2 && alive(g, s, 'refinery')[0]) || (!threat && alive(g, s, 'turret')[0]);
     if (spare) { trySell(g, s, spare); want = 'habitat'; }
   }
+  // v2.60 (supply, ATTACK.supply): at its army limit with money banked, every Habitat at T3 and no free pad, trade a
+  // building that has done its job for another Habitat, winning or not (before, only 'finish' did this, when 3x ahead):
+  // two Hard AIs stood at 34 supply with 5,000+ banked, so every loss was rebuilt at once and no army could grow
+  if (aiFix(P, 'supply') && g.t > ATTACK.supply.from && !freePad && cap < POP_MAX && used >= cap * fill - 3 && side.res.c > ATTACK.supply.bank && !constructing.length && alive(g, s, 'habitat').every(b => b.tier >= 3)) {
+    const rich = side.res.c > ATTACK.supply.bank * 3;
+    const spare = (side.res.e > 400 && countB(g, s, 'reactor') > 1 && alive(g, s, 'reactor')[0]) || (countB(g, s, 'refinery') > (rich ? 1 : 2) && alive(g, s, 'refinery')[0]) || (!threat && alive(g, s, 'turret')[0]);
+    if (spare) { trySell(g, s, spare); want = 'habitat'; }
+  }
   // Credits piling up with no energy and no free pad: trade an extra Refinery for a Reactor
   if (!freePad && D.eco && dl.sell && side.res.e < 120 && side.res.c > (starved && alive(g, s, 'reactor').every(b => b.tier >= 3) ? 600 : 1500) && countB(g, s, 'refinery') > (aiFix(P, 'spend') && countB(g, s, 'reactor') < 2 ? 1 : 2) && !constructing.length) { // v2.38 (Default): also with 2 Refineries while it has under 2 Reactors
     trySell(g, s, alive(g, s, 'refinery')[0]); want = 'reactor';
@@ -361,6 +369,7 @@ function aiUpdate(g, s, dt) {
   // v2.41 (nowave): most of the army (70% of its value) within 250 of its middle unit, so a push leaves together
   const gathered = () => { const gr = mine.filter(u => !UDEF[u.type].support && !UDEF[u.type].air && u.id !== side.scoutId); if (gr.length < 2) return true; const xs = gr.map(u => u.u).sort((a, b) => a - b), med = xs[xs.length >> 1]; return armyValue(gr.filter(u => Math.abs(u.u - med) < 250)) >= armyValue(gr) * 0.7; };
   const go = (pushTo, mode, force) => {
+    if (mode === 'siege' && aiFix(P, 'press') && hqGun.range >= ATTACK.press.siegeMax) { pushTo = null; mode = 'all'; } // v2.60 (press): a siege line outside a long HQ gun is mid-field: go in
     if (nw && !force && side.stance !== 'attack' && (side.regroupT > g.t || !gathered() || myV < (side.beatV || 0) * 1.2 * Math.max(0, 1 - (g.t - side.beatT) / 120) ||
       (mode === 'field' && (fightAt(pushTo, true) < 1.25 || myV < thV)))) return; // v2.41 (nowave): regrouped, gathered, 1.2x the army that last turned it back, stronger than all it expects
     if (holdEarly && side.stance !== 'attack' && !(mode === 'all' && fightAt(hqU(opp), true) >= 1.5)) return; // v2.40 (hold): stay home under the gun
@@ -382,6 +391,13 @@ function aiUpdate(g, s, dt) {
   const punish = P.opportunist && side.lastDanger !== undefined && g.t - side.lastDanger < 20 && !threat && myV >= 300 && myV >= thV * 1.2;
   // The Aggressor against a fortified base: if its Orbital Strike is only seconds away, wait for it rather than walk in head-on
   const strikeWait = side.ab.strike - g.t, holdForStrike = P.kind === 'aggressor' && D !== DIFF.easy && !threat && !late && strikeWait > 0 && strikeWait < 12 && aiFortified(g, s) && hasBuilt(g, s, 'factory');
+  // v2.60 (press, ATTACK.press): attack when clearly ahead on army or economy, fight for the centre node at parity, and
+  // need a smaller edge as the storm nears
+  const pr = aiFix(P, 'press') && g.t >= ATTACK.press.from && !(side.regroupT > g.t) && !holdForStrike;
+  const prNeed = lerp(ATTACK.press.edge, ATTACK.press.edgeLate, clamp((g.t - ATTACK.press.late0) / (EXT.warn - ATTACK.press.late0), 0, 1));
+  const ecoAhead = pr && income(g, s).c >= (side.estInc || 1e9) * ATTACK.press.eco;
+  const prPush = pr && myV >= dl.minArmy && (myV >= thV * prNeed || (ecoAhead && myV >= thV * prNeed * 0.9));
+  const prField = pr && g.nodes[1].owner !== s && myV >= 250 && myV >= thV * ATTACK.press.field * prNeed / ATTACK.press.edge;
   if (bo && side.boHold && side.stance === 'attack' && side.pushMode !== 'all' && side.pushMode !== 'siege') { side.stance = 'retreat'; side.pushTo = null; side.pushMode = null; side.stanceAt = g.t; } // v2.42 (breakout): back under the gun
   if (bo && side.boHold && side.stance !== 'attack') { /* v2.42 (breakout): hold and gather; no push while camped on */ }
   else if (bo && g.t - (side.campT ?? -99) < 15 && side.stance !== 'attack' && g.t < EXT.warn) { // stronger now: out together, at the camp
@@ -389,6 +405,8 @@ function aiUpdate(g, s, dt) {
   }
   else if (side.stance !== 'attack' && g.t >= EXT.warn && myV >= 200 && myV >= thV * 0.7) go(null, 'all'); // the storm is coming: everything in
   else if (side.stance !== 'attack' && punishOn && aiFix(P, 'punish') && g.t >= 105 && myV >= 400 && aiPower(mine) >= aiPower(theirs) * 1.5) go(fieldLine, 'field', true); // v2.41 (read): the timed push on a greedy opening: the field and its nodes, then the base once clearly stronger
+  else if (side.stance !== 'attack' && prPush) go(nSiege >= 2 ? siegeLine : null, nSiege >= 2 ? 'siege' : 'all', true); // v2.60 (press)
+  else if (side.stance !== 'attack' && prField) go(fieldLine, 'field', true); // v2.60 (press): the centre node, at parity
   else if (side.stance !== 'attack' && holdForStrike) { /* wait */ }
   else if (side.stance !== 'attack') {
     if (g.t < dl.attackAt && !late) { if (D.nodes && nodeLost && myV >= 250 && myV >= armyValue(atNode) * 1.15) go(myNode.u, 'node'); } // the attack-timing dial (v2.38): before it, only its own node
@@ -415,6 +433,8 @@ function aiUpdate(g, s, dt) {
   } else if (side.pushTo === null && since > 10 && thV < 200 && myV < hqVal * 1.2 && !rich) {
     failed();
     side.stance = 'retreat'; side.pushMode = null; side.stanceAt = g.t; // too few to crack the base defenses: regroup instead of trickling in
+  } else if ((side.pushMode === 'field' || side.pushMode === 'node') && prPush) { // v2.60 (press): from the field on to their base
+    const sg = nSiege >= 2 && hqGun.range < ATTACK.press.siegeMax; side.pushTo = sg ? siegeLine : null; side.pushMode = sg ? 'siege' : 'all'; side.launchV = myV; side.stanceAt = g.t; lg(g, s, 'G', side.pushMode, 0);
   } else if (side.pushMode === 'field' || side.pushMode === 'node') {
     if (bold && nSiege >= 2 && myV >= thV && (myV >= wave * 0.7 || full)) { side.pushTo = siegeLine; side.pushMode = 'siege'; side.launchV = myV; side.stanceAt = g.t; ev(g, { type: 'aiAttack', side: s, mode: 'siege' }); lg(g, s, 'G', 'siege'); }
     else if (bold && myV >= dl.minArmy && ((myV >= (thV + hqVal) * 1.35 && myV >= wave * 0.6) || (full && myV > (thV + hqVal) * 1.05))) { side.pushTo = null; side.pushMode = 'all'; side.launchV = myV; side.stanceAt = g.t; }
@@ -422,6 +442,7 @@ function aiUpdate(g, s, dt) {
   } else if (side.pushTo !== null && bold && (myV > (thV + hqVal) * 1.3 || (since > 50 && myV > thV * 1.1))) {
     side.pushTo = null; side.pushMode = 'all'; side.stanceAt = g.t;
   }
+  if (aiFix(P, 'raid')) aiRaid(g, s, mine, myV); // v2.60
   aiAbility(g, s, P, { mine, theirs, threat, myV, thV });
   aiMicro(g, s, D, mine);
   if (smart) aiSmartArmy(g, s, mine, dl, P); // v2.38: the Default AI's unit handling
@@ -502,6 +523,14 @@ function aiRead(g, s, thV) {
 function aiEstimate(g, s) {
   const side = g.sides[s], f = g.fog[s], dt = g.t - (side.estT === undefined ? 0 : side.estT);
   side.estT = g.t;
+  if (aiFix(side.persona, 'estFix')) { // v2.60: from time and from the last good look at its army (ATTACK.est)
+    const E = ATTACK.est, curve = Math.min(E.cap, E.base + E.rate * g.t);
+    let seen = 0; for (const e of g.ents) if (e.kind === 'u' && e.side !== s && e.hp > 0 && !e.temp && visibleTo(g, s, e)) seen += UDEF[e.type].cost.c + UDEF[e.type].cost.e;
+    const last = side.estSeen ? side.estSeen.v + E.rebuild * (g.t - side.estSeen.t) : Infinity;
+    if (seen >= E.seen * curve || (side.estSeen && seen >= last)) side.estSeen = { v: seen, t: g.t }; // a good share of what an army that size would be, or more than it expected: trust what it sees
+    side.estInc = aiEnemyIncome(g, s);
+    return Math.min(curve, side.estSeen ? side.estSeen.v + E.rebuild * (g.t - side.estSeen.t) : curve);
+  }
   let inc = BDEF.hq.inc[1].c, refs = 0;
   for (const gh of Object.values(f.ghosts)) if (gh.side !== s && gh.type === 'refinery') { refs++; inc += BD(gh.fac, 'refinery').inc[gh.tier || 1].c; }
   if (!refs) inc = income(g, s).c - NODE_INC.c * g.nodes.filter(n => n.owner === s).length;
@@ -510,6 +539,33 @@ function aiEstimate(g, s) {
   let killed = 0;
   if (g.log) { const K = g.log.tot[s].killed; for (const t in K) { const d = UDEF[t]; if (d) killed += (d.cost.c + d.cost.e * 1.5) * K[t]; } }
   return Math.max(0, 0.4 * (side.estE + START_RES.c) * clamp((g.t - 120) / 90, 0, 1) - killed);
+}
+// v2.60 (raid, ATTACK.raid): with no push on, a few of its fastest ground units (at most share of its army) take the enemy's
+// own node, or the centre if it already holds theirs; they come home when hurt, after dur seconds, or when the army attacks
+function aiRaid(g, s, mine, myV) {
+  const side = g.sides[s], R = ATTACK.raid;
+  if (side.raid) {
+    const live = mine.filter(u => side.raid.ids.includes(u.id)), hp = live.reduce((a, u) => a + u.hp, 0);
+    side.raid.ids = live.map(u => u.id);
+    if (!live.length || g.t > side.raid.until || side.stance === 'attack' || hp < side.raid.hp0 * R.minHp) { side.raid = null; side.raidT = g.t; }
+    return;
+  }
+  if (side.stance === 'attack' || g.t < R.at || g.t - (side.raidT ?? -1e9) < R.every) return;
+  const theirNode = g.nodes[s === 0 ? g.nodes.length - 1 : 0], tgt = theirNode.owner === s ? g.nodes[1] : theirNode;
+  if (tgt.owner === s) return;
+  const fast = mine.filter(u => { const d = UDEF[u.type]; return !d.air && !d.support && !d.siege && !d.noCap && !u.temp && u.id !== side.scoutId; }).sort((a, b) => UDEF[b.type].speed - UDEF[a.type].speed);
+  const ids = []; let v = 0, hp0 = 0;
+  for (const u of fast) { const c = UDEF[u.type].cost.c + UDEF[u.type].cost.e; if (ids.length >= R.n || v + c > myV * R.share) continue; ids.push(u.id); v += c; hp0 += u.hp; }
+  side.raidT = g.t;
+  if (ids.length < 2) return;
+  side.raid = { ids, u: tgt.u, until: g.t + R.dur, hp0 };
+  lg(g, s, 'G', 'raid', 0);
+}
+// v2.60: the enemy's credit income as this side can know it: its HQ, the Refineries it has seen, and the nodes it holds
+function aiEnemyIncome(g, s) {
+  let inc = BDEF.hq.inc[1].c;
+  for (const gh of Object.values(g.fog[s].ghosts)) if (gh.side !== s && gh.type === 'refinery') inc += BD(gh.fac, 'refinery').inc[gh.tier || 1].c;
+  return inc + NODE_INC.c * g.nodes.filter(n => n.owner === 1 - s).length;
 }
 // sig: make room for the signature building by selling one of the duplicates the plan has (never the only one of a type)
 function aiSigRoom(g, s, dup, sig) {

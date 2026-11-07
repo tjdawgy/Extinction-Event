@@ -26,7 +26,7 @@ for (const f of ['lastfist', 'bloomhost', 'axiarchs']) {
   });
 }
 // The decided matches pooled over the three factions (about 30 on these seeds): neither side wins more than 60% of them.
-// Measured: 15-13 with the fix; 26-55 (68% for the right) with AUTO_STANCE.retreat false.
+// Measured: 15-13 with the fix (v2.55), 62-63 on v2.60's Hard (more matches are decided); 26-55 (68% for the right) with AUTO_STANCE.retreat false.
 test('all three mirrors together: neither spawn side wins more than 60% of the decided matches', () => {
   const n = DEC[0] + DEC[1];
   assert.ok(n >= 20, `${n} decided`);
