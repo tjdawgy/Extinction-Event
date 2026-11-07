@@ -2,6 +2,30 @@
 
 Issues found during testing that are deliberately deferred. Each lists the step that should address it.
 
+## Phase 0, item 2: mirror-match check, spawn side (v2.49, report only: nothing fixed)
+- **Run:** `node audit/sim/mirror.js --n=200 --maxT=1620` on v2.48 (storm endings are draws): 200 Hard-vs-Hard matches per faction against itself, both sides `faction:hard:random` (Hard picks its opening per match), seeds 1–200, side 0 always on the left (u = 220, the player's slot, played by the autoplayer) and side 1 on the right (the normal AI slot). Raw results in audit/logs-p0/.
+
+  | Mirror | left (side 0) wins | right (side 1) wins | draws | decided before 20:00 (L–R) | left share of decided |
+  |---|---|---|---|---|---|
+  | Last Fist | 48 | 80 | 72 | 44–77 | 37.5% (z −2.8) |
+  | Bloomhost | 23 | 52 | 125 | 12–40 | 30.7% (z −3.4) |
+  | Axiarchs | 23 | 83 | 94 | 3–61 | 21.7% (z −5.8) |
+
+  The right side wins well above 50% in every mirror; for the Axiarchs almost every match decided before the storm goes to the right.
+- **"Bloomhost wins 64.6% of mirror matches":** it is not a mirror. The number is from the v2.43 validation (audit/logs7c/final-validate-hard-dh.txt, audit/polish-report.md): Bloomhost's share of its **cross-faction** Hard-vs-Hard matches, 24 paired matches per pairing: 16 of 24 against Last Fist plus 15 of 24 against the Axiarchs = 31 of 48 = 64.6%. Bloomhost vs Bloomhost was never part of it.
+- **Cause: the starting stance of the left side, not the map.** `newGame` gives side 0 the player's default stance, **Hold**, and side 1 the AI's default, **Retreat** (`stance: s === 0 ? 'hold' : 'retreat'`). When side 0 is played by the AI (the harness, spectate mode), it keeps Hold until its first attack (2–3 minutes in, sometimes never: one traced Axiarch match lost at 5:02 without ever leaving Hold). On Hold every new unit stands where it was made (`holdU` = its spawn spot, or for the Axiarchs where it warped in at the field's front edge), melee units engage only within 80 of that spot, and nothing gathers at the rally point under the HQ gun, so the left army is spread out and fights piecemeal; the right army gathers under its gun.
+- **Proof:** the same 200 seeds per faction with one change, both sides starting on Retreat when side 0 is autoplayed (`stance: s === 0 && !opts.autoPlayer ? 'hold' : 'retreat'`, a copy of v2.48, 20:00 cap):
+
+  | Mirror | as is: decided before 20:00 (L–R) | both on Retreat (L–R) |
+  |---|---|---|
+  | Last Fist | 44–77 (z −3.0) | 20–18 (z 0.3) |
+  | Bloomhost | 12–40 (z −3.9) | 2–3 (z −0.4) |
+  | Axiarchs | 3–61 (z −7.3) | 19–16 (z 0.5) |
+
+  With the stance equal the spawn sides are even: 41 left, 37 right over the 600 matches. Ruled out by reading the code: the map is a mirror in u (HQs at 220 and 1480, nodes at 680 / 850 / 1020, pads by `tilePos` with the same v on both sides); fog cells line up symmetrically (L = 1700 is a multiple of the 10-wide cells); node capture and targeting have no side preference. Not separately measured: the AI update order (side 1's AI runs first each tick) and the first AI think (side 0 at 1.0 s, side 1 at 1.5 s); with the stance equal they leave no measurable bias in 600 matches.
+- **What it touches:** human games are not affected (the player is side 0 and chooses the stance; the AI is always side 1 on Retreat). Every AI-vs-AI number is: spectate matches, and every audit result since the harness (v2.38). The runner alternates or pairs sides (run.js, the paired validations), so the bias cancels in the faction shares, but every match was played with one handicapped side, so those shares (including Bloomhost's 64.6% and the strategy-bot results where the bot sat on side 0) describe handicapped play. A second finding: with the handicap gone, a Hard mirror is mostly a standoff until the storm (decided before 20:00: Last Fist 38, Axiarchs 35, Bloomhost 5 of 200).
+- **Suggested fix (not made, waiting for approval):** start an autoplayed side 0 on Retreat like the AI (one line in `newGame`; the player's side keeps Hold), then re-run the mirrors and the Hard-vs-Hard and Hard-vs-Default matrices, since every earlier AI-vs-AI number moves. The pinned replays in the tests would need re-recording or a legacy switch.
+
 ## Phase 0, item 1: storm endings are draws (v2.48)
 - **What:** an ending the Extinction Event decides is now a **draw for both sides** (`EXT.draw`, true; false = v2.47's score tie-break): an HQ lost to the storm (`reason: 'storm'`), both HQs falling inside the 5 s window after 20:00 (`'both'`), and the 27:00 limit (`'limit'`). `g.winner` is −1 and `g.result.how` is `'draw'`; the remaining-strength score is still recorded and shown "for the record". An HQ destroyed by units after 20:00 still wins, and before 20:00 nothing changed (both HQs in the same tick still go to the score, kills, credits).
 - **Why "both were told they won":** the match log's end line was written from the player's point of view and shown in both timeline columns ("Match ended: you won" under You and under Enemy). A draw now reads "Match ended: draw (the Extinction Event)" in both columns; the end screen's title reads **Draw** (amber).

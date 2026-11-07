@@ -1,0 +1,13 @@
+before lastfist-hard-random_vs_bloomhost-hard-random {"A":6,"B":13,"draw":21}
+before lastfist-hard-random_vs_axiarchs-hard-random {"A":5,"B":6,"draw":29}
+before bloomhost-hard-random_vs_axiarchs-hard-random {"A":11,"B":5,"draw":24}
+before lastfist-hard-random_vs_lastfist-default-random {"A":29,"B":3,"draw":8}
+before bloomhost-hard-random_vs_bloomhost-default-random {"A":27,"B":1,"draw":12}
+before axiarchs-hard-random_vs_axiarchs-default-random {"A":25,"B":1,"draw":14}
+after lastfist-hard-random_vs_bloomhost-hard-random {"A":8,"B":12,"draw":20}
+after lastfist-hard-random_vs_axiarchs-hard-random {"A":6,"B":4,"draw":30}
+after bloomhost-hard-random_vs_axiarchs-hard-random {"A":10,"B":4,"draw":26}
+after lastfist-hard-random_vs_lastfist-default-random {"A":25,"B":2,"draw":13}
+after bloomhost-hard-random_vs_bloomhost-default-random {"A":29,"B":1,"draw":10}
+after axiarchs-hard-random_vs_axiarchs-default-random {"A":25,"B":1,"draw":14}
+BALDONE

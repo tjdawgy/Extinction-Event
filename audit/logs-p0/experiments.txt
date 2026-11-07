@@ -1,0 +1,6 @@
+axiarchs: left (side 0) 19 – right (side 1) 16, draws 165 (ahead at the end: left 0, right 0); decided before 20:00 19–16; left share of decided 54.3% (z 0.51); mean 1085 s; endings {"timeout":165,"hq":35}
+^ stance axiarchs n=200
+lastfist: left (side 0) 20 – right (side 1) 18, draws 162 (ahead at the end: left 0, right 0); decided before 20:00 20–18; left share of decided 52.6% (z 0.32); mean 1065 s; endings {"timeout":162,"hq":38}
+^ stance lastfist n=200
+bloomhost: left (side 0) 2 – right (side 1) 3, draws 195 (ahead at the end: left 0, right 0); decided before 20:00 2–3; left share of decided 40.0% (z -0.45); mean 1189 s; endings {"timeout":195,"hq":5}
+^ stance bloomhost n=200

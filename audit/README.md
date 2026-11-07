@@ -177,3 +177,6 @@ On the start screen, tap the version number (top right) for the dev menu:
 - **`validate7c.js`:** Hard vs Greedy, vs Default, Hard vs Hard, vs the strategy bots, Easy and Normal vs Greedy and the Rifleman rush, the Hard signature-building A/B, the openings Hard picks.
 - **`speed7c.js`:** game seconds per real second and frame rate in headless Chromium at iPhone size, early game and a large battle, at normal CPU and with CPU throttling (`--html` for another version).
 - **`pace7c.js`:** early-game timings (first Barracks, first unit, third Refinery, credits by 1:00–5:00) on v2.41, v2.42 and v2.43 numbers.
+
+### Phase 0 tools (v2.49 on)
+- **`mirror.js`:** Hard-vs-Hard mirrors per faction with wins by spawn side (side 0 always left), draws and who was ahead in them, openings, and a z-score for the left side's share. `node audit/sim/mirror.js [--n=200] [--maxT=1620] [--factions=...] [--out=file.json]`. Results and the stance experiment in `logs-p0/`.
