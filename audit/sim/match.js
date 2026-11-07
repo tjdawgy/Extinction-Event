@@ -55,7 +55,7 @@ function runMatch(spec) {
       const spent = Object.values(T.spent).reduce((a, b) => [a[0] + b[0], a[1] + b[1]], [0, 0]);
       return { faction: g.sides[s].faction, ai: P.preset || 'legacy', persona: P.kind, trained: T.trained, lost: T.lost, alive,
         earned: [Math.round(T.earn[0]), Math.round(T.earn[1])], spent: spent.map(Math.round), salvage: Math.round(T.salv || 0),
-        nodeTime: Math.round(T.nodeTime), buildings: T.bBuilt, tech: tech[s], killed: T.killed, lostTo: T.lostTo || {}, ab: T.ab, mites: T.mites, echoes: T.echoes || 0, bkHeal: Math.round(T.bkHeal || 0), od: T.od || 0,
+        nodeTime: Math.round(T.nodeTime), dmg: g.stats ? Math.round(g.stats.sides[s].dmg) : undefined /* v2.56: damage dealt (the stats tracker) */, buildings: T.bBuilt, tech: tech[s], killed: T.killed, lostTo: T.lostTo || {}, ab: T.ab, mites: T.mites, echoes: T.echoes || 0, bkHeal: Math.round(T.bkHeal || 0), od: T.od || 0,
         bot: s === 0 ? (bot ? bot.log : undefined) : (bot1 ? bot1.log : undefined),
         diag: S.diag ? { dmg: S.diag.dmg[s], kills: S.diag.kills[s] } : undefined, aiLog: g.sides[s].aiLog ? { attacks: g.sides[s].aiLog.attacks, firstAttack: g.sides[s].aiLog.firstAttack, abil: g.sides[s].aiLog.abil || {} } : null };
     }),

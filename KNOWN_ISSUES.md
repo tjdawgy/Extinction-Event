@@ -2,6 +2,33 @@
 
 Issues found during testing that are deliberately deferred. Each lists the step that should address it.
 
+## Audit baseline (v2.56, after the stance fix): the current numbers
+- **Why:** every AI-vs-AI figure measured before v2.55 (the audit phases 4–7c, the item 2 mirror check) was played with the side-0 Hold handicap: an AI-played left side kept the player's Hold stance until its first attack (KNOWN_ISSUES "Phase 0, item 2"). Paired and alternating runs cancelled the side bias in the faction shares, but every match had one handicapped side. Those figures are kept in their sections as history and marked; these are the current ones. The scripted strategy bots (triangle, field, Greedy vs Greedy) were never handicapped (both bot slots play on Hold), but their numbers also moved with the seeded random stream (v2.50) and storm draws (v2.48), so they are re-measured here too.
+- **Run:** `node audit/sim/baseline.js --nm=200 --nh=40 --nd=40 --nt=12` on v2.55 code (seeds as in the script; AI sets to the 27:00 limit, bot sets to 30:00 as in stratrun.js). Full tables: audit/logs-p0/baseline/baseline.md, per match: baseline.json. "Share" = (wins + draws/2) / matches. "No fight" = both sides together dealt under 1,000 damage all match (a few shots); measured for the AI sets only (the bots always fight).
+
+  | Matchup | A–B–draw | A share | median length | decided before 20:00 | draws | no fight |
+  |---|---|---|---|---|---|---|
+  | LF mirror (A = left) | 23–18–159 | 51.3% | 23:54 | 19.5% | 79.5% | 56.0% |
+  | BH mirror (A = left) | 10–15–175 | 48.8% | 22:24 | 3.5% | 87.5% | 23.0% |
+  | AX mirror (A = left) | 32–29–139 | 50.8% | 23:49 | 13.5% | 69.5% | 49.5% |
+  | LF Hard vs BH Hard | 9–4–67 | 53.1% | 22:26 | 10.0% | 83.8% | 32.5% |
+  | LF Hard vs AX Hard | 7–8–65 | 49.4% | 23:51 | 15.0% | 81.3% | 51.3% |
+  | BH Hard vs AX Hard | 5–22–53 | 39.4% | 22:24 | 21.3% | 66.3% | 32.5% |
+  | LF Hard vs LF Default | 40–5–35 | 71.9% | 16:17 | 55.0% | 43.8% | 0% |
+  | BH Hard vs BH Default | 43–1–36 | 76.3% | 21:30 | 43.8% | 45.0% | 0% |
+  | AX Hard vs AX Default | 49–4–27 | 78.1% | 21:28 | 47.5% | 33.8% | 0% |
+  | Strategy field, every match | 157–141–46 | 52.3% | 6:27 | 86.0% | 13.4% | – |
+  | Greedy vs Greedy: LF > BH / LF > AX / BH > AX | 8–12–4 / 12–12–0 / 6–18–0 | 41.7 / 50.0 / 25.0% | 6:26 / 5:05 / 6:10 | 83 / 100 / 100% | 17 / 0 / 0% | – |
+
+  - Hard vs Hard faction shares (160 matches each): Last Fist 51.3%, Bloomhost 43.1%, Axiarchs 55.6% (v2.43 with the handicap: 43.8 / 64.6 / 41.7). Greedy vs Greedy faction shares: Last Fist 45.8%, Bloomhost 41.7%, Axiarchs 62.5% (v2.43: 47.9 / 41.7 / 60.4).
+  - Strategy field, branches against the field: Timing 54.9% (88–71–13), Air 49.1% (76–79–17), **Tech 58.1%** (73–45–54, 31% draws), **Contain 37.8%** (61–103–8). Openings: Greedy 65.1%, Contain 58.8%, Standard 51.1%, Rush 46.7%, **Turtle 29.5%**. (v2.43: Tech 62.8%, Contain 35.5%, Turtle 29%.)
+  - Triangle (24 per cell, A share): Rush > Greedy 91.7 / 100 / 50% (LF / BH / AX); Greedy > Turtle 100 / 100 / 95.8%; Turtle > Rush 100 / **0 / 0**%; Contain > Greedy 0 / 25 / 50%; Contain > Turtle 62.5 / 100 / 85.4%; Contain > Rush 58.3 / 83.3 / 87.5%. Still a switch per cell (scripted bots), and the Bloomhost and Axiarch Turtle still lose every game to Rush.
+- **Answers:**
+  - **Tech:** 58.1% against the field, now inside the ≤60% target (v2.43: 62.8%), but a third of its matches are draws (31%): Tech wins outright 73–45 and stalls often. Axiarch Tech per faction was not split out here.
+  - **Contain:** 37.8%, still short of the ≥40% target (v2.43: 35.5%); it loses 61–103 outright.
+  - **Stalemates to 20:00:** this is the main finding. Between two Hard AIs the match reaches 20:00 undecided 80–96% of the time (mirrors: 80.5 / 96.5 / 86.5%; cross-faction Hard: 85–90%), and 23–56% of them have no fight at all: both armies gather under their own HQ guns and neither AI's engage rule finds a fight it wins. Hard vs Default is decided before 20:00 44–55% of the time. The scripted bots, which always attack, are decided before 20:00 in 86% of field matches (median 6:27). With the left side no longer handicapped, Hard against Hard has nobody who attacks first.
+- **Open:** the Hard-vs-Hard standoff is an AI issue (Phase 1 "AI learns the new maps" / the balance pass), not fixed here; Hard vs Default is 72–78%, under the 75% target for Last Fist; Contain < 40%; Turtle opening 29.5%; Axiarchs 62.5% in Greedy vs Greedy; Bloomhost and Axiarch Turtle lose every game to Rush.
+
 ## Phase 0: stance fix (v2.55)
 - **What:** an AI-played side 0 (the audit harness, spectate mode) starts on Retreat like the AI's side 1 (`AUTO_STANCE.retreat`; false = v2.54). A human player still starts on Hold. One line in `newGame`; no other rule, AI or balance change. The pinned replays (tests/determinism, tactics, hardhuman) run with it off, as recorded.
 - **Result, 200 Hard mirrors per faction to 27:00** (audit/sim/mirror.js, seeds 1–200, side 0 left; logs-p0/mirror-v255.*): Last Fist 23–18 (z 0.8), Bloomhost 10–15 (z −1.0), Axiarchs 32–29 (z 0.4); 159, 175 and 139 of 200 are storm draws. Before (v2.48, same seeds but the old random stream): 48–80, 23–52, 23–83.
@@ -103,23 +130,25 @@ Issues found during testing that are deliberately deferred. Each lists the step 
 - **Caveats:** the upgrade nodes show each building's `tiers` sentences and the troop cards the UNIT_TIPS lines as written; where those sentences quote numbers, they are only as current as the text (the stats, costs and HP shown beside them are read from the numbers). Finding, not changed: the Mite's HP (24) and damage are fixed at 40% of the Skitterling's v2.33 values when UDEF.mite is defined, so later Skitterling patches (66 HP) don't reach it.
 
 ## Audit phase 7c: mechanics, strategy polish and the speed check (v2.43)
+- **Handicap note (v2.56):** the AI-vs-AI figures in this section (Hard vs Hard, Hard vs Default, Hard vs Greedy, Default vs Legacy, mirrors) were measured with an AI-played side 0 on the player's Hold stance until its first attack ("Phase 0, item 2"). They are history; the current numbers are in "Audit baseline (v2.56)".
 - **Report:** audit/polish-report.md. **Logs:** audit/logs7c/. **Screenshots:** audit/shots7c/. **Tools** (audit/sim): validate7c.js, speed7c.js, pace7c.js, round7c.sh, final7c.sh; stratrun.js's field sampling fixed; strat.js seeded and its Turtle fixed.
 - **Mechanics** (`MECH7C`, `setMech7c(false)` = v2.42): rally point 240 out (inside the HQ gun; a player's new units on Attack go out in groups of 300 or after 15 s); melee units on Hold or a Regroup flag engage within 80 of their spot; field nodes at 680 / 850 / 1020 (outside every T1 HQ gun; the upgraded guns cover the own node); one signature pad per side outside the 8 pads (one of the two signature buildings at a time; sell to swap). The AI uses all four; Hard now builds a signature building (Yard / Rootheart / Beacon).
 - **Retune** (`BALANCE7C`, `setBalance7c(false)` = v2.42): HQ gun T2/T3 range 530/560, T3 damage 54; Refinery 12 s; Skitterling 36; Bulwark 140 + 25; Rift Mortar 250 + 100; Worldbreaker 500 + 210; Null Lance T3 85; Tank 290 + 75; Normal always answers an infantry rush with a Turret. Six rounds, round 5 shipped.
 - **Speed:** below 20 fps the 1× clock lost time (each frame capped at 50 ms; at 4× CPU throttling 0.25–0.33× in v2.35, v2.40 and v2.42 alike). Fixed with a fixed 1/60 s timestep and a 0.25 s catch-up cap (UI frame loop only; SIM and replays unchanged): 1.02× at 5 fps. The early game is also genuinely slower since v2.42's economy numbers (first unit 76 → 91 s for a greedy start).
-- **Results:** Greedy vs Greedy 47.9 / 41.7 / 60.4%; mixed field 59.9 / 41.0 / 48.7% (v2.42: 71.7 / 20.8 / 55.9); Hard vs Hard 43.8 / 64.6 / 41.7%; every faction ≥3 viable openings (4 / 4 / 4) and ≥3 viable branches (4 / 3 / 3); containment as targeted (light Contain broken 24–0 ×3, heavy wins 24–0, 24–0, 20–4); nodes in the mixed field 2 → 69%, 3 → 72%, 1 → 48%; Hard vs Greedy 96 / 92 / 87.5%, vs Default 87.5 / 79.2 / 70.8%, vs the strategy bots 53–1; Normal beats the Rifleman rush 72–0.
+- **Results:** Greedy vs Greedy 47.9 / 41.7 / 60.4%; mixed field 59.9 / 41.0 / 48.7% (v2.42: 71.7 / 20.8 / 55.9); Hard vs Hard 43.8 / 64.6 / 41.7% (handicapped; now 51.3 / 43.1 / 55.6%, see the baseline); every faction ≥3 viable openings (4 / 4 / 4) and ≥3 viable branches (4 / 3 / 3); containment as targeted (light Contain broken 24–0 ×3, heavy wins 24–0, 24–0, 20–4); nodes in the mixed field 2 → 69%, 3 → 72%, 1 → 48%; Hard vs Greedy 96 / 92 / 87.5%, vs Default 87.5 / 79.2 / 70.8%, vs the strategy bots 53–1; Normal beats the Rifleman rush 72–0.
 - **Harness finding:** 7b's field paired each branch with one opponent branch (Tech always met Contain), so its "Tech 74% / Contain 26%" was one head-to-head. On the corrected field v2.42 measures Tech 58.7%, Contain 40.1%.
 - **Open (targets not met, budget spent):**
   - **The triangle is not softer:** Greedy > Turtle 100% in every faction; **Bloomhost and Axiarch Turtle now lose every game to Rush** (v2.42: 92% / 58% wins). The Turtle no longer keeps its node for free, and the Turtle bot counter-attacks on partial vision. Scripted bots make every cell a switch (0% or 100%); measuring with adaptive bots is the next step.
-  - Tech branch 62.8% (target ≤60), Contain branch 35.5% (target ≥40); both slightly worse than v2.42 on the corrected field. Axiarch Tech 77.6%; Bloomhost and Axiarch Contain 27–28%.
+  - Tech branch 62.8% (target ≤60), Contain branch 35.5% (target ≥40); both slightly worse than v2.42 on the corrected field. (v2.56: Tech 58.1%, Contain 37.8%.) Axiarch Tech 77.6%; Bloomhost and Axiarch Contain 27–28%.
   - The Turtle opening is weak everywhere (29% against the field).
-  - Axiarchs 60.4% in Greedy vs Greedy (0.4 over); **Bloomhost 64.6% in Hard vs Hard**.
-  - **Axiarch Hard vs Default 70.8%** (target 75%): its Turtle opening fell to 58% with the node change; the opening mix moved to Boomer 2/3, and dropping the Turtle from its list is the next step (not done: it would be tuned on the validation seeds).
+  - Axiarchs 60.4% in Greedy vs Greedy (0.4 over; v2.56: 62.5%); **Bloomhost 64.6% in Hard vs Hard** (handicapped; v2.56: 43.1%, and most Hard-vs-Hard matches are draws: see the baseline).
+  - **Axiarch Hard vs Default 70.8%** (handicapped; v2.56: 78.1%; Last Fist now the low one at 71.9%) (target 75%): its Turtle opening fell to 58% with the node change; the opening mix moved to Boomer 2/3, and dropping the Turtle from its list is the next step (not done: it would be tuned on the validation seeds).
   - Controlled node set: Bloomhost's 3-node bot loses to its 1-node bot (3–21).
   - Easy still loses most games to the Rifleman rush (as in v2.42).
 - **Tests:** new tests/polish.test.js (SIM) and tests/polish-ui.test.js (browser, both iPhone sizes, three factions). Tests that pin v2.42 mechanics now call `setMech7c(false)` (determinism, tactics' v239 replays, hardhuman's Default replays, signature, bloomhost-sig, axiarchs-sig, their UI tests, ax-abilities); ai.test.js pins the new node positions; tactics' mass test stands its target beyond the Hold radius; orders-weapons' warp test waits out the rally batch; strategy.test.js checks the 7b layer with the 7c layer off.
 
 ## Audit phase 7b: balance and the strategy triangle (v2.42)
+- **Handicap note (v2.56):** the AI-vs-AI figures in this section (Hard vs Hard, Hard vs Default, Hard vs Greedy, Default vs Legacy, mirrors) were measured with an AI-played side 0 on the player's Hold stance until its first attack ("Phase 0, item 2"). They are history; the current numbers are in "Audit baseline (v2.56)".
 - **Report:** audit/strategy-report.md. **Diagnosis:** audit/strategy-diagnosis.md. **Logs:** audit/logs7b/. **Tools** (audit/sim): strat.js (Rush, Turtle, Contain, Standard and Greedy openings with timing, contain, tech and air branches), stratrun.js, diag7b.js, an7b.js, trace7b.js, duelx.js, hardsearch7b.js, validate7b.js, nodes7b.js.
 - **Why Last Fist won identical play:** containment. Its all-ranged army parks at the edge of the enemy HQ gun, which barely reaches the defender's own node; melee defenders at the rally flag chase out of cover and die one by one; nodes and Salvage pay for the siege. Its Tank and Flame Tank also won every open duel.
 - **Changes:** numbers only, in `BALANCE7B` (`setBalance7b(false)` = v2.41): Refinery 175 / 13 s / 420 HP; HQ gun 16 / 48 / 62 by tier; Turret 150 + 40, 9 s, tougher, Maw and Null Lance harder-hitting; nodes 4 + 1.5; Rifleman 45 credits, 6.5 damage; Heavy 135 + 40; Tank 280 + 70; Flame ×0.2 against vehicles; Skitterling 66 HP; Bulwark 840 HP, 28 damage; Spitter 70 + 20, range 165. Six rounds; round 6 (Skitterling speed, Bulwark cost, Rifleman range) broke the triangle and was reverted.
@@ -141,6 +170,7 @@ Issues found during testing that are deliberately deferred. Each lists the step 
 - **Tests:** new tests/strategy.test.js; tests that pin v2.41 numbers for a mechanic now call `setBalance7b(false)` (ax-abilities, bloomhost-sig, fog, regression, trees, tactics' v239 replays, determinism's balance-on fingerprints, hardhuman's Default replays). Intermittent, pre-existing: tests/fog.test.js "AI siege under fog" is unseeded and failed 1 of 6 runs on v2.41's index.html too.
 
 ## Audit phase 7a: Hard against human-style play (v2.41)
+- **Handicap note (v2.56):** the AI-vs-AI figures in this section (Hard vs Hard, Hard vs Default, Hard vs Greedy, Default vs Legacy, mirrors) were measured with an AI-played side 0 on the player's Hold stance until its first attack ("Phase 0, item 2"). They are history; the current numbers are in "Audit baseline (v2.56)".
 - **Report:** audit/hard-vs-human-report.md. **Logs:** audit/logs7a/. **Tools** (audit/sim): greedy.js (the Greedy bot), greedyrun.js, ablate7a.js, hardsearch7a.js, validate7a.js, shield7a.js, counter7a.js, botvbot.js.
 - **Greedy bot:** a scripted copy of the opening that beat v2.40 Hard:
   - three Refineries by 0:22, all at T2 by about 1:45, a node runner on all three nodes;
@@ -173,6 +203,7 @@ Issues found during testing that are deliberately deferred. Each lists the step 
   - The browser test "match start: GET READY" timed out once (4 s) while a simulation was loading the CPU; it passed on two reruns.
 
 ## Audit phase 6a: AI tactics and Hard mode (v2.40)
+- **Handicap note (v2.56):** the AI-vs-AI figures in this section (Hard vs Hard, Hard vs Default, Hard vs Greedy, Default vs Legacy, mirrors) were measured with an AI-played side 0 on the player's Hold stance until its first attack ("Phase 0, item 2"). They are history; the current numbers are in "Audit baseline (v2.56)".
 - **Report:** audit/ai-tactics-report.md. **Tools:** audit/sim tactics.js (paired rule A/B), hardsearch.js (strategy search); run.js gained `paired`.
 - **Step 0:** v2.39 merged into main. One `npm test` run then showed 348 of 349 (failing test not identified; the rerun passed 349 of 349), and main was pushed before that result was read.
 - **Kept in the Default preset** (every difficulty), rule on vs off over 48 same-faction matches:
@@ -205,6 +236,7 @@ Issues found during testing that are deliberately deferred. Each lists the step 
   - The Turtle-deadline test checks v2.39's even-army rule on `v239`, and the Default's with an edge.
 
 ## Audit phase 5: balance pass, conservative (v2.39)
+- **Handicap note (v2.56):** the AI-vs-AI figures in this section (Hard vs Hard, Hard vs Default, Hard vs Greedy, Default vs Legacy, mirrors) were measured with an AI-played side 0 on the player's Hold stance until its first attack ("Phase 0, item 2"). They are history; the current numbers are in "Audit baseline (v2.56)".
 - **Diagnosis:** audit/balance-diagnosis.md.
 - **Changes and results:** audit/balance-report.md.
 - **Tools:** audit/sim balance.js, analyze.js, instrument.js, ab2.js, duel.js, rush.js, s3.js (audit/README.md).
@@ -246,6 +278,7 @@ Issues found during testing that are deliberately deferred. Each lists the step 
   - **Re-targeted, with the reason in the test:** the Bloomhost Economist Worldrender test now plays an Axiarch Turtle (it beats the Last Fist Turtle before any Worldrender now); the Axiarch abilities test plays 5 matches instead of 3.
 
 ## Audit phase 4: simulation harness and AI competence (v2.38)
+- **Handicap note (v2.56):** the AI-vs-AI figures in this section (Hard vs Hard, Hard vs Default, Hard vs Greedy, Default vs Legacy, mirrors) were measured with an AI-played side 0 on the player's Hold stance until its first attack ("Phase 0, item 2"). They are history; the current numbers are in "Audit baseline (v2.56)".
 - **Harness** (audit/sim, audit/README.md): headless, seeded matches on the real SIM, a parallel runner with JSON and markdown summaries, a unit-usage tool and the validation script.
 - **One AI brain with dials and presets:**
   - **Legacy** is v2.37's AI exactly: all five replay fingerprints pass on it unchanged.

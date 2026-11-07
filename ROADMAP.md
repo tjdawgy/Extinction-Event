@@ -39,7 +39,8 @@ Every feature must pass one test: does this add a decision, or just a tap?
   *Recommended: yes, a mechanical split into src/ files concatenated by a dependency-free script into the same committed index.html, first build byte-identical; awaiting your decision.*
 - [x] **Stance fix** (from the mirror check): an autoplayed side 0 starts on Retreat like the AI.
   *Done in v2.55: 200 mirrors per faction now 23–18, 10–15, 32–29; tests/spawn-balance.test.js.*
-- [ ] **New audit baseline**: re-run the mirrors, Hard vs Hard and Hard vs Default after the stance fix, since every earlier AI-vs-AI number had one handicapped side.
+- [x] **New audit baseline**: re-run the mirrors, Hard vs Hard and Hard vs Default after the stance fix, since every earlier AI-vs-AI number had one handicapped side.
+  *Done in v2.56 (audit/sim/baseline.js, KNOWN_ISSUES.md "Audit baseline"): Tech 58.1%, Contain 37.8%; two Hard AIs reach 20:00 undecided 80–96% of the time, often without a fight.*
 - [ ] **index.html split**, if the decision above is yes.
 
 ## Phase 1 — Replayability
