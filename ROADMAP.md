@@ -63,7 +63,7 @@ Map data format: [docs/MAP_FORMAT.md](docs/MAP_FORMAT.md) (approved after Phase 
   - [ ] Blockers and the navigation grid (open maps), new node types (watchtower, forward pad), drawing a multi-lane map, the lane-aware AI.
 - [ ] **Maps.** Build them in this order:
   1. Classic — the current single lane, for short matches.
-  2. Two-lane — two lanes with a contested center.
+  2. Two-lane — two lanes with a contested center. Design: [docs/TWO_LANE.md](docs/TWO_LANE.md) (approved after v2.63, with a map-select screen).
   3. Open field — no lanes, just obstacles you can flank around.
   4. Three-lane — a big map for long games, built last.
 - [ ] **Node types:**
@@ -74,7 +74,7 @@ Map data format: [docs/MAP_FORMAT.md](docs/MAP_FORMAT.md) (approved after Phase 
   - Guarded relic — neutral defenders, big payoff.
 - [ ] **Battlefield conditions** (optional per match): heavy fog, rich center nodes, scarce resources, meteor strikes.
 - [ ] **Army control:**
-  - Split Army — assign squads to lanes. This ships with multi-lane maps.
+  - Split Army — assign squads to lanes. This ships with multi-lane maps. Design: [docs/SPLIT_ARMY.md](docs/SPLIT_ARMY.md) (approved after v2.63).
   - [x] Two rally points — one defensive, one forward. *(v2.62)*
   - [x] "Send damaged home" button. *(v2.62: under 40% health)*
 - [ ] **AI learns the new maps.** Expect real tuning time for each layout.
