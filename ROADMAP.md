@@ -63,7 +63,7 @@ Map data format: [docs/MAP_FORMAT.md](docs/MAP_FORMAT.md) (approved after Phase 
   - Support up to four bases from day one, for future 2v2 and free-for-all.
   - [x] Multi-lane engine: 2D fog (after the performance check in docs/MAP_FORMAT.md), movement and targeting along any lane, army orders for one lane, and the save recording the map's id and version; proven on a test-only two-lane map that two AIs play to a finish. *(v2.63; KNOWN_ISSUES.md "Multi-lane engine")*
   - [x] Blockers with ground navigation, the watchtower and forward-pad node types, drawing a deep map (camera panning up and down, a minimap with both lanes), maps chosen per match with a map-select screen. *(v2.65, with the Two-Lane map)*
-  - [ ] The lane-aware AI.
+  - [x] The lane-aware AI. *(v2.67: splitting, shifting, the centre and watchtowers, forward pads, one-lane attacks, breakthroughs; KNOWN_ISSUES.md "AI on two lanes")*
 - [ ] **Maps.** Build them in this order:
   1. Classic — the current single lane, for short matches.
   2. [x] Two-lane — two lanes with a contested center. Design: [docs/TWO_LANE.md](docs/TWO_LANE.md) (approved after v2.63, with a map-select screen). *(v2.65)*
@@ -81,8 +81,10 @@ Map data format: [docs/MAP_FORMAT.md](docs/MAP_FORMAT.md) (approved after Phase 
   - [x] Two rally points — one defensive, one forward. *(v2.62)*
   - [x] "Send damaged home" button. *(v2.62: under 40% health)*
 - [ ] **AI learns the new maps.** Expect real tuning time for each layout.
+  - [x] Two-Lane: all three difficulties. *(v2.67)*
+  - [ ] Open field, three-lane.
 - [ ] **Balance pass.**
-  - Extend the sim harness to run on every map.
+  - [x] Extend the sim harness to run on every map. *(v2.67: `--map` in audit/sim/ladder.js, `mapId` in match.js; audit/sim/shares.js)*
   - Fix the Tech vs Contain spread.
   - Check faction win rates per map.
   - Target 10–15 minute matches.

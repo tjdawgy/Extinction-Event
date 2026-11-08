@@ -35,7 +35,8 @@ map-select screen comes before each match. Format: docs/MAP_FORMAT.md. Engine: t
 - **Forward pads:** two per lane per side, just past each side's own lane node: (880, ±280) for the west, (1320,
   ±280) for the east. They take the **Turret and Barracks roles**, so each faction builds its own: Last Fist Turret
   and Barracks, Bloomhost Maw and Larva Pit, Axiarch Null Lance and Genesis Gate. New node type `forwardPad`. They let a
-  side hold a lane without walking every unit from the base.
+  side hold a lane without walking every unit from the base. A building on a forward pad does not keep its side's HQ
+  shielded (v2.67): only the base's buildings do.
 - **Army cap: 100** (Classic 80). Two fronts split the army, so a bigger cap keeps each lane's fight worth having.
 
 ## Map-select screen

@@ -368,7 +368,7 @@ function setLane(g, s, scope, key, lane) {
 // The HQ is shielded while any other building on that side still stands
 function refreshShields(g) {
   for (let s = 0; s < 2; s++) {
-    const hq = g.sides[s].hq, sh = g.ents.some(b => b.kind === 'b' && b.side === s && b.type !== 'hq' && b.type !== 'bunker' && b.hp > 0 && b.built); // v2.32: node bunkers don't hold the shield up // v2.11: finished buildings only (no shield from construction starts)
+    const hq = g.sides[s].hq, sh = g.ents.some(b => b.kind === 'b' && b.side === s && b.type !== 'hq' && b.type !== 'bunker' && !(b.slot >= FWD_SLOT) && b.hp > 0 && b.built); // v2.32: node bunkers don't hold the shield up; v2.67: nor buildings out on forward pads (only the base's) // v2.11: finished buildings only (no shield from construction starts)
     if (hq.shielded && !sh) { ev(g, { type: 'shieldDown', side: s, seen: !!g.fog && visibleTo(g, 1 - s, hq) }); lg(g, s, 'H'); }
     hq.shielded = sh;
   }

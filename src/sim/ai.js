@@ -39,7 +39,7 @@ function aiUpdate(g, s, dt) {
   const mine = [];
   for (const e of g.ents) if (e.hp > 0 && e.kind === 'u' && e.side === s) mine.push(e);
   // The enemy army as this side knows it: units it has seen, fading out over INTEL_TTL seconds
-  const theirs = Object.values(fog.intel).map(m => ({ type: m.type, u: m.u, w: Math.max(0, 1 - (g.t - m.t) / INTEL_TTL), fresh: g.t - m.t <= THREAT_MEMORY }));
+  const theirs = Object.values(fog.intel).map(m => ({ type: m.type, u: m.u, v: m.v, w: Math.max(0, 1 - (g.t - m.t) / INTEL_TTL), fresh: g.t - m.t <= THREAT_MEMORY })); // v: depth (a grid map's intel keeps it, v2.63)
   const myV = armyValue(mine);
   let thV = armyValue(theirs);
   // v2.41 (est): the enemy army it hasn't seen still exists: at least what the economy it has scouted could have paid for
@@ -445,6 +445,7 @@ function aiUpdate(g, s, dt) {
     side.pushTo = null; side.pushMode = 'all'; side.stanceAt = g.t;
   }
   if (aiFix(P, 'raid') && D.raid) aiRaid(g, s, mine, myV, D.raid); // v2.60; v2.61: per difficulty (DIFF.raid)
+  if (MAP_LANED) aiLanes(g, s, D, mine, theirs, threat, myV, thV); // v2.67: a lane map (never on Classic)
   aiAbility(g, s, P, { mine, theirs, threat, myV, thV });
   aiMicro(g, s, D, mine);
   if (smart) aiSmartArmy(g, s, mine, dl, P); // v2.38: the Default AI's unit handling
@@ -541,6 +542,98 @@ function aiEstimate(g, s) {
   let killed = 0;
   if (g.log) { const K = g.log.tot[s].killed; for (const t in K) { const d = UDEF[t]; if (d) killed += (d.cost.c + d.cost.e * 1.5) * K[t]; } }
   return Math.max(0, 0.4 * (side.estE + START_RES.c) * clamp((g.t - 120) / 90, 0, 1) - killed);
+}
+/* v2.67 (Phase 1, the AI on two lanes): what a lane map asks of the AI on top of its usual plan, every difficulty (Easy
+   simpler). Runs only where MAP_LANED, so Classic plays exactly as before.
+   - Reinforcements: new units go to the lane that needs them most (the enemy it knows of there, against its own squad),
+     alternating when neither does (LANE_AI.even).
+   - Shifting (Normal, Hard): a lane losing (its squad under need × the enemy there) while the other has a clear surplus
+     sends part of the surplus over, the units nearest the base or the crossing first, at most every shift seconds.
+   - Capture groups: a few fast ground units take the centre node (in the crossing, off both lanes) and, Normal and Hard,
+     the watchtowers, when the army can spare them; they come back when hurt, done, or after dur seconds.
+   - Breakthrough (Normal, Hard): clearly stronger than everything it knows of (and not under attack), it goes all in;
+     on a long two-lane field the one-lane checks otherwise keep a stronger split army at home.
+   - Base attacks: an all-in or siege push goes down one lane with the whole army (the lanes meet again before the base):
+     the lane where the enemy army is, so it fights that army together rather than passing it in the other lane (both
+     sides then race each other's bases and nobody wins), and arrives together instead of half in each lane.
+   - Forward pads (Normal, Hard): with money banked and no threat at home, a Turret (then a Barracks) on a forward pad it
+     holds on its own half; at most fwd.max of them. */
+const LANE_AI = { brk: { Easy: null, Normal: { from: 420, edge: 1.5, edgeLate: 1.1, min: 1500, hold: 0, stay: 1.0 }, Hard: { from: 360, edge: 1.3, edgeLate: 1.0, min: 1200, hold: 0, stay: 0.9 } }, every: 4, even: 150, need: 0.75, surplus: 1.5, shift: 20, cap: { n: 3, from: 150, gap: 15, minArmy: 300, dur: 60, minHp: 0.5, odds: 0.3 }, fwd: { bank: 1000, every: 90, max: { Easy: 0, Normal: 1, Hard: 2 } } }; // fwd.bank above ATTACK.supply.bank: the army's supply comes first // hold: seconds a breakthrough stays committed (0: off; 45 measured no better)
+function aiLanes(g, s, D, mine, theirs, threat, myV = 0, thV = 0) {
+  if (MAP.lanes.length !== 2) return;
+  const side = g.sides[s], LA = side.la || (side.la = { t: -99, sh: -99, fw: -99 }), easy = D.label === 'Easy';
+  aiCapture(g, s, mine, theirs, easy);
+  // Breakthrough: clearly stronger than all it knows of (BREAK.edge, falling to edgeLate by the storm warning), not under
+  // attack at home: go all in. The usual checks (gathered, a winnable fight at one spot) are written for one lane and
+  // hold a split army back on a long two-lane field; the attack itself goes down one lane (below).
+  const B = LANE_AI.brk[D.label];
+  const held = B && g.t - (LA.brkT ?? -999) < B.hold && myV >= thV * B.stay; // committed: a breakthrough holds for B.hold seconds unless it is clearly losing
+  if (B && side.stance !== 'attack' && !threat && g.t >= B.from && myV >= B.min && (held || myV >= thV * lerp(B.edge, B.edgeLate, clamp((g.t - B.from) / (EXT.warn - B.from), 0, 1)))) {
+    if (!held) LA.brkT = g.t;
+    side.stance = 'attack'; side.pushTo = null; side.pushMode = 'all'; side.stanceAt = g.t; side.launchV = myV; LA.brk = (LA.brk || 0) + 1;
+    if (!held) { ev(g, { type: 'aiAttack', side: s, mode: 'all' }); lg(g, s, 'G', 'all', 0); }
+  }
+  if (g.t - LA.t < LANE_AI.every) return;
+  LA.t = g.t;
+  const busy = u => u.id === side.scoutId || (side.capT && side.capT.ids.includes(u.id)) || (side.raid && side.raid.ids.includes(u.id));
+  const army = mine.filter(u => !UDEF[u.type].support && !busy(u));
+  const mv = [0, 1].map(k => armyValue(army.filter(u => u.lane === k)));
+  const inLane = e => e.v !== undefined && Math.abs(e.u - L / 2) < L / 2 - 320; // out in the lanes, not at a base
+  const en = [0, 1].map(k => armyValue(theirs.filter(e => inLane(e) && (e.v < 0 ? 0 : 1) === k)));
+  const need = [0, 1].map(k => en[k] * 1.1 - mv[k]);
+  if (side.stance === 'attack' && (side.pushMode === 'all' || side.pushMode === 'siege')) { // win one lane hard: a base attack goes down one lane, all of it: where the enemy army is (it attacks when stronger, so it beats that army first instead of passing it in the other lane)
+    const k = side.atkLane != null && side.atkAt === side.stanceAt ? side.atkLane : en[0] !== en[1] ? (en[0] > en[1] ? 0 : 1) : mv[0] >= mv[1] ? 0 : 1;
+    side.atkLane = k; side.atkAt = side.stanceAt; side.laneNew = k;
+    for (const u of army) if (u.lane !== k) u.lane = k;
+    if (!easy) aiForward(g, s, D, threat);
+    return;
+  }
+  side.atkLane = null;
+  side.laneNew = Math.abs(need[0] - need[1]) < LANE_AI.even ? null : need[0] > need[1] ? 0 : 1;
+  if (!easy && g.t - LA.sh >= LANE_AI.shift) for (const k of [0, 1]) {
+    const o = 1 - k;
+    if (!(en[k] > 150 && mv[k] < en[k] * LANE_AI.need && mv[o] > en[o] * LANE_AI.surplus + 200)) continue;
+    let want = Math.min(en[k] * 1.1 - mv[k], mv[o] - en[o] * 1.2);
+    const pool = army.filter(u => u.lane === o).sort((a, b) => Math.min(Math.abs(a.u - hqU(s)), Math.abs(a.u - L / 2)) - Math.min(Math.abs(b.u - hqU(s)), Math.abs(b.u - L / 2)) || a.id - b.id);
+    for (const u of pool) { if (want <= 0) break; u.lane = k; want -= armyValue([u]); }
+    LA.sh = g.t; LA.n = (LA.n || 0) + 1; break; // LA.n: how many shifts (the harness reads it)
+  }
+  if (!easy) aiForward(g, s, D, threat);
+}
+function aiCapture(g, s, mine, theirs, easy) {
+  const side = g.sides[s], C = LANE_AI.cap;
+  if (side.capT) {
+    const T = side.capT, n = g.nodes[T.node], live = mine.filter(u => T.ids.includes(u.id) && u.hp > 0);
+    const hurt = live.reduce((a, u) => a + u.hp, 0) < live.reduce((a, u) => a + u.maxHp, 0) * C.minHp;
+    if (!live.length || hurt || g.t > T.end || (n.owner === s && Math.abs(n.prog) >= 100) || (side.stance === 'attack' && side.pushMode === 'all')) { side.capT = null; side.capAt = g.t; }
+    else T.ids = live.map(u => u.id);
+    return;
+  }
+  if (g.t < C.from || g.t - (side.capAt ?? -99) < C.gap || (side.stance === 'attack' && side.pushMode === 'all')) return;
+  const myV = armyValue(mine); if (myV < C.minArmy) return;
+  const near = n => armyValue(theirs.filter(e => e.fresh && e.v !== undefined && Math.hypot(e.u - n.u, e.v - n.v) < 260));
+  const cand = g.nodes.map((n, i) => i).filter(i => g.nodes[i].owner !== s && (i === 1 || (!easy && g.nodes[i].type === 'watchtower')) && near(g.nodes[i]) < myV * C.odds);
+  if (!cand.length) return;
+  cand.sort((a, b) => near(g.nodes[a]) - near(g.nodes[b]) || a - b);
+  const i = cand[0], n = g.nodes[i], need = near(n) * 1.3 + 150;
+  const pool = mine.filter(u => !UDEF[u.type].air && !UDEF[u.type].support && !UDEF[u.type].noCap && !UDEF[u.type].siege && u.id !== side.scoutId && !(side.raid && side.raid.ids.includes(u.id)) && u.hp >= u.maxHp * 0.7)
+    .sort((a, b) => UDEF[b.type].speed - UDEF[a.type].speed || Math.hypot(a.u - n.u, a.v - n.v) - Math.hypot(b.u - n.u, b.v - n.v) || a.id - b.id);
+  const ids = []; let v = 0;
+  for (const u of pool) { if (ids.length >= C.n || v >= need) break; ids.push(u.id); v += armyValue([u]); }
+  if (!ids.length || v < need * 0.6) return;
+  side.capT = { node: i, ids, end: g.t + C.dur, u: n.u, v: n.v }; side.capAt = g.t;
+}
+function aiForward(g, s, D, threat) {
+  const side = g.sides[s], LA = side.la, F = LANE_AI.fwd, max = F.max[D.label] || 0, dir = dirOf(s);
+  if (!max || threat || g.t - LA.fw < F.every || side.res.c < F.bank || !hasBuilt(g, s, 'barracks')) return;
+  const have = g.ents.filter(e => e.kind === 'b' && e.side === s && e.hp > 0 && e.slot >= FWD_SLOT);
+  if (have.length >= max) return;
+  LA.fw = g.t;
+  const type = have.some(b => b.type === 'turret') ? 'barracks' : 'turret';
+  for (let k = 0; k < FWD_PADS.length; k++) {
+    const Fp = FWD_PADS[k]; if (dir * (Fp.at[0] - L / 2) > 0 || g.nodes[Fp.node].owner !== s || fwdAt(g, FWD_SLOT + k)) continue; // its own half
+    if (tryBuild(g, s, type, FWD_SLOT + k).ok) return;
+  }
 }
 // v2.60 (raid, ATTACK.raid): with no push on, a few of its fastest ground units (at most share of its army) take the enemy's
 // own node, or the centre if it already holds theirs; they come home when hurt, after dur seconds, or when the army attacks

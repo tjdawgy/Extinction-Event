@@ -81,6 +81,15 @@ test('forward pads: build there only while holding the post, only the Turret and
   }
 });
 
+test('a building on a forward pad does not keep its HQ shielded (only the base\'s buildings do)', () => {
+  const g = quiet(), FS = sim.FWD_SLOT; g.sides[0].res.c = 5000; g.sides[0].res.e = 5000;
+  const F = sim.cur().FWD_PADS, k = F.findIndex(f => f.at[0] === 820); g.nodes[F[k].node].owner = 0; g.nodes[F[k].node].prog = 100;
+  assert.ok(sim.tryBuild(g, 0, 'turret', FS + k).ok); const t = sim.fwdAt(g, FS + k); t.built = true; t.hp = t.maxHp;
+  for (const b of g.ents) if (b.kind === 'b' && b.side === 0 && b.type !== 'hq' && b !== t) b.hp = 0;
+  sim.update(g, sim.TICK);
+  assert.strictEqual(g.sides[0].hq.shielded, false, 'the HQ is open with only a forward Turret left');
+});
+
 test('a save carries its map: resuming a Two-Lane match switches to Two-Lane; Classic saves still load', () => {
   const g = quiet(); step(g, 2);
   const s = sim.serialize(g, {}); sim.newGame('normal', { map: 'classic' });

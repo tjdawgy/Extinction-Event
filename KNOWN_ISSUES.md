@@ -2,6 +2,53 @@
 
 Issues found during testing that are deliberately deferred. Each lists the step that should address it.
 
+## AI on two lanes (v2.67, Phase 1)
+- **The lane layer** (`aiLanes` in src/sim/ai.js, `LANE_AI`; runs only on a lane map, so Classic plays exactly as before), on top of each difficulty's usual plan:
+  - **Splitting:** new units go to the lane that needs them most (the enemy it knows of there against its own squad), alternating when neither does.
+  - **Shifting (Normal, Hard):** a lane losing (its squad under 0.75× the enemy there) while the other has a clear surplus sends part of the surplus over, nearest the base or the crossing first, at most every 20 s.
+  - **The centre and the watchtowers:** capture groups of up to 3 fast ground units take the centre node (in the crossing, off both lanes; all difficulties) and the watchtowers (Normal, Hard) when the army can spare them; they come back hurt, done, or after 60 s.
+  - **Forward pads (Normal 1, Hard 2):** with 1,000 banked (above the supply rule's 800, so the army's supply comes first) and no threat at home, a Turret then a Barracks on a forward pad it holds on its own half, at most one every 90 s.
+  - **Base attacks go down one lane, all of it:** the lane where the enemy army is, so it fights that army together instead of passing it in the other lane (both sides then raced each other's bases and nobody won).
+  - **Breakthrough (Normal, Hard):** clearly stronger than all it knows of (Hard 1.3× falling to 1.0× by the storm warning, Normal 1.5× → 1.1×) and not under attack at home, it goes all in. The usual "gathered" and "winnable fight here" checks are written for one lane and kept a stronger split army at home on the long two-lane field.
+  - **Easy is simpler:** splitting and the centre only (no shifting, watchtowers, forward pads or breakthrough).
+- **Rule change found while testing:** buildings on forward pads no longer keep their HQ shielded (only the base's buildings do). A forward Turret far out on a lane kept the HQ invulnerable after the whole base had fallen.
+- **Navigation fixes found while testing:** lane-following could step a unit into the closed band beside the ridge, and the "never inside a wall" guard pushed it back up: a clump of units could hover at the crossing's corner for the rest of the match. Lane-following now hands over to navigation whenever its next step is closed, and the guard picks the nearest open cell. 2D fog lookups are inlined (a Two-Lane tick is about twice as fast, identical results).
+- **Harness bug (fixed):** an edit to audit/sim/match.js for `mapId` dropped each side's difficulty, so side 0 played Normal against Hard; it showed up as a huge spawn-side bias. Every run before the fix was discarded; results now record each side's difficulty and map (`diffs`, `map`), and tests/ladder.test.js checks them.
+- **Results: Hard vs Hard on Two-Lane** (audit/sim/ladder.js --map=twolane, 200 matches, mixed factions, sides alternating; audit/logs-p1/twolane-v267.md and .json):
+
+  | Matchup (A vs B) | A–B–draw | A share | median length | decided before 20:00 | draws | no fight |
+  |---|---|---|---|---|---|---|
+  | hard vs hard | 57–69–74 | 47.0% | 16:53 | 57.0% | 37.0% | 0.0% |
+
+  Spawn sides: left 72, right 54, draws 74; left share of decided 57.1%.
+
+  Against the targets: median 16:53 (12–18 ✓), 57.0% decided before 20:00 (at least 50% ✓), 0% no fight (under 5% ✓), sides 72–54 of the decided matches (57/43; about what chance gives at this size, p ≈ 0.11, so roughly even ✓), **draws 37.0% (under 25% ✗, not met)**. For comparison, Classic with the same build: Hard vs Hard 72–81–47, median 13:27, 23.5% draws, sides 78–75. Why Two-Lane draws more: evenly matched armies meet mid-field and trade until the storm; after a won fight the survivors have about 1,700 to walk to the enemy base while the loser rebuilds at home. Levers not tried yet: a shorter map (the approved design is 2,200 long), forward Barracks the AI rallies new units from, or a later-game rule that sends everything down one lane earlier.
+- **Measured build:** the runs above were made just before one small fix moved into v2.66: a ground unit that would appear on the ridge (an Axiarch warp-in there) now starts on the nearest open ground instead of being moved there on its first step, one tick later. It is the same spot one tick earlier; the numbers were not re-run for it.
+- **What was tried** (24-match samples): the lane layer alone 54–58% draws; plus one-lane attacks at the weaker lane and the HQ-shield rule 42%; plus breakthroughs 42%; attacks at the enemy army 50%; plus the navigation fix 29%; a 45 s breakthrough commitment 38% (dropped). The 200-match run is the last configuration.
+- **The difficulty ladder on Two-Lane** (30 matches per matchup):
+
+  | Matchup (A vs B) | A–B–draw | A share | median length | decided before 20:00 | draws | no fight |
+  |---|---|---|---|---|---|---|
+  | hard vs normal | 17–1–12 | 76.7% | 13:13 | 56.7% | 40.0% | 0.0% |
+  | normal vs easy | 24–1–5 | 88.3% | 14:38 | 76.7% | 16.7% | 0.0% |
+  | normal vs normal | 6–6–18 | 50.0% | 21:50 | 36.7% | 60.0% | 0.0% |
+  | easy vs easy | 5–7–18 | 46.7% | 21:56 | 16.7% | 60.0% | 0.0% |
+
+  Hard beats Normal 76.7% and Normal beats Easy 88.3% (the same ordering as on Classic), but Normal vs Normal and Easy vs Easy draw 60% of the time on Two-Lane (Classic: 22% and 17.5%): Easy and Normal have no breakthrough rule (Normal's needs 1.5×), and their cautious attack edges rarely fire on the long field. 30 matches each (a Two-Lane ladder takes hours), so each figure is ±9 points.
+
+- **Faction win shares** (cross-faction matches only; audit/sim/shares.js):
+
+  | Faction | Two-Lane | Classic |
+  |---|---|---|
+  | lastfist | 42.7% | 58.4% |
+  | bloomhost | 45.5% | 37.1% |
+  | axiarchs | 61.9% | 54.5% |
+
+  On Two-Lane the Axiarchs lead (probably their warp-in, which puts new units at the front without the long walk; not measured); on Classic Last Fist leads and Bloomhost trails, as before.
+
+- **Classic is unchanged:** Hard against v2.60 (three full seeded matches, every 100 ticks) identical at every checkpoint (799, 284 and 777 checkpoints); Normal and Easy against v2.64 (one full seeded match each) identical (508 and 761 checkpoints).
+- **Tests:** tests/twolane-ai.test.js (reinforcements, shifting not on Easy, capture groups for the centre then a watchtower, forward pads per difficulty, one-lane attacks at the enemy army, breakthrough per difficulty, Classic never runs the layer), tests/twolane.test.js (+ the HQ shield and forward pads), tests/ladder.test.js (the harness plays the named difficulty and map), tests/slow/twolane-ai.test.js.
+
 ## Split Army (v2.66, Phase 1)
 - **As docs/SPLIT_ARMY.md.** Squads are lanes: on a lane map every unit belongs to the squad of its lane (`u.lane`). The Army tab gets a squad column (84 px, left of Hold / Attack / Retreat / Regroup): All on top, N and S below, each with a unit count. With a squad selected (`side.squad`), the four orders act on that squad only (`giveOrder(…, 'lane', …)`); its Regroup gathers it at its lane's Forward flag; Rally switches it between the Base flag and its own Forward flag (`useRally(…, lane)`, `R.sq`). A squad and a unit chip are never both selected. All commands everyone as before (on a lane map the army's Rally sends each squad to its own lane's flag).
 - **Flags on a lane map** (`flagPt`, `flagSpots`): the Base flag in the middle where the lanes leave the base, and a Forward flag on each lane (at the forward flag's x on that lane's centre line); moving a flag moves both lanes' copies, and squads on a Regroup to it follow. A move order onto the ridge goes to the nearest open ground (`navOpen`).

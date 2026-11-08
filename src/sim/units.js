@@ -131,6 +131,7 @@ function moveLane(u, d, tu, tv, dt, mul) {
   const k = (laneY(ln, x0 + sg * LANE_GO.probe) - laneY(ln, x0)) / LANE_GO.probe, ax = step / Math.sqrt(1 + k * k);
   const nx = clamp(x0 + sg * Math.min(Math.abs(du), ax), 0, L), want = clamp(tv - laneY(ln, tu), -hw, hw);
   const noff = off + Math.sign(want - off) * Math.min(Math.abs(want - off), step * 0.45);
+  if (NAV.on && navShut(nx, laneY(ln, nx) + noff)) { const ax2 = clamp(x0 + sg * LANE_GO.ahead, 0, L); return moveStraight(u, d, ax2, laneY(ln, ax2), dt, mul); } // v2.67: never step into a wall: navigate back onto the lane
   u.u = nx; u.v = laneY(ln, nx) + noff; u.face = sg; u.moving = true;
   return true;
 }
@@ -207,12 +208,17 @@ function moveNav(u, d, tu, tv, dt, mul) {
   return true;
 }
 function navOpen(u, v) { const p = { u, v }; navEject(p); return [p.u, p.v]; } // the nearest open point
-function navEject(u) { // put a ground unit standing on closed ground back on the nearest open cell
+function navEject(u) { // put a ground unit standing on closed ground back on the nearest open cell (v2.67: the nearest by distance, not the first in a ring)
   const [i0, j0] = navCell(u.u, u.v), C = NAV.cell;
-  for (let r = 1; r < 12; r++) for (let dj = -r; dj <= r; dj++) for (let di = -r; di <= r; di++) {
-    if (Math.max(Math.abs(di), Math.abs(dj)) !== r) continue;
-    const i = i0 + di, j = j0 + dj; if (i < 0 || j < 0 || i >= NAV.nx || j >= NAV.ny || NAV.b[j * NAV.nx + i]) continue;
-    u.u = (i + 0.5) * C; u.v = NAV.y0 + (j + 0.5) * C; return;
+  for (let r = 1; r < 12; r++) {
+    let best = null, bd = 1e9;
+    for (let dj = -r; dj <= r; dj++) for (let di = -r; di <= r; di++) {
+      if (Math.max(Math.abs(di), Math.abs(dj)) !== r) continue;
+      const i = i0 + di, j = j0 + dj; if (i < 0 || j < 0 || i >= NAV.nx || j >= NAV.ny || NAV.b[j * NAV.nx + i]) continue;
+      const x = (i + 0.5) * C, y = NAV.y0 + (j + 0.5) * C, dd = Math.hypot(x - u.u, y - u.v);
+      if (dd < bd) { bd = dd; best = [x, y]; }
+    }
+    if (best) { [u.u, u.v] = best; return; }
   }
 }
 const RETREAT = { fire: false }; // v2.35 (audit): retreating units hold their fire; fire true restores the v2.34 rule (firing on the move)
@@ -225,7 +231,7 @@ function updateUnit(g, u, foes, dt) {
   if (u.hitT > 0) u.hitT -= dt;
   const side = g.sides[u.side], dir = dirOf(u.side), home = u.medHome ? homeFlagU(g, u.side) + u.rallyOff * dir * 0.3 : (side.defU != null ? side.defU : rallyU(u.side, g)) + u.rallyOff * dir; // defU (v2.40): a Default AI under attack rallies inside its HQ's cover; v2.62: a damaged unit sent home goes to the base flag
   const ord = unitOrder(side, u.type, u.lane);
-  const runs = side.persona && aiFix(side.persona, 'scoutGo') && ((u.id === side.scoutId && side.scoutU != null) || (side.raid && side.raid.ids.includes(u.id))); // v2.60: a Hard scout or raider
+  const runs = side.persona && aiFix(side.persona, 'scoutGo') && ((u.id === side.scoutId && side.scoutU != null) || (side.raid && side.raid.ids.includes(u.id)) || (side.capT && side.capT.ids.includes(u.id))); // v2.60: a Hard scout or raider; v2.67: a capture group (lane maps)
   const st = u.medHome ? 'retreat' : runs ? 'run' : ord ? ord.o : side.stance; // a group or type order overrides the global stance; v2.62: sent home = Retreat to the base flag
   const A = d.weapon ? acquire(g, u, d, foes, d.chase) : NO_TARGET, { best, close } = A; // Medicopters and Recon Drones carry no weapon; melee: the chase search in the same pass (v2.37)
   const sp = (d.fac === 'bloomhost' && !d.air && onCreep(g, u.side, u.u, u.v) ? CREEP.speed : 1) * (frz ? ABIL.frenzy.speed : 1) * (u.slowT > g.t ? 1 - u.slow : 1) * (u.snT > g.t ? 0 : 1); // creep (v2.18), Frenzy Bloom (v2.20), a Gravemantle's slow (v2.27), a Rootheart's snare (v2.33)
@@ -292,6 +298,7 @@ function updateUnit(g, u, foes, dt) {
   }
   let tu = home, tv = u.laneV;
   if (u.id === side.scoutId && side.scoutU != null && st !== 'retreat') tu = side.scoutU; // v2.38: a Default AI's scout
+  else if (st === 'run' && side.capT && side.capT.ids.includes(u.id)) { tu = side.capT.u + ((u.id * 37) % 5 - 2) * 10; tv = side.capT.v + ((u.id * 53) % 5 - 2) * 8; } // v2.67: a capture group stands on its node
   else if (st === 'run') tu = side.raid.u; // v2.60: a raider heads for its target (fighting what it meets on the way)
   else if (st === 'move') [tu, tv] = slotOf(u, ord); // Regroup: walk to the flag, then hold there
   else if (st === 'hold' && u.holdU !== undefined) { tu = u.holdU; tv = u.holdV; }

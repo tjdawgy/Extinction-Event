@@ -5,13 +5,14 @@ let FOG_CELL, FOG_NX, FOG_Y0, FOG_NY, FOG_N, cellOf; // v2.63: a grid map has ro
 const mapFog = () => {
   FOG_CELL = MAP_2D ? MAP.fogCell || 20 : 10; FOG_NX = Math.ceil(L / FOG_CELL) + 1;
   FOG_Y0 = -MAP.size.h / 2; FOG_NY = MAP_2D ? Math.ceil(MAP.size.h / FOG_CELL) + 1 : 1; FOG_N = FOG_NX * FOG_NY;
-  cellOf = MAP_2D ? (u, v = 0) => fogRow(v) * FOG_NX + clamp(Math.floor(u / FOG_CELL), 0, FOG_NX - 1) : u => clamp(Math.floor(u / FOG_CELL), 0, FOG_N - 1); // v: depth (grid maps only)
+  cellOf = MAP_2D ? (u, v = 0) => fogRow(v) * FOG_NX + fogCol(u) : u => clamp(Math.floor(u / FOG_CELL), 0, FOG_N - 1); // v: depth (grid maps only)
 };
 mapFog(); MAP_HOOKS.push(mapFog);
 const SIGHT = { rifle: 170, heavy: 180, sniper: 220, tank: 210, artillery: 200, titan: 240, flame: 190, hydra: 260, aircraft: 260, interceptor: 280, leviathan: 220, medic: 220, drone: 420, skitterling: 170, mite: 150, bulwark: 190, razorwing: 250, leaper: 180, ravager: 190, spitter: 190, bilecaster: 230, bilelobber: 200, ruinmaw: 240, thornback: 190, dreadthorn: 220, needlewing: 220, cloudwing: 230, broodtyrant: 230, worldrender: 220, shardling: 170, bastion: 200, wraithwing: 250, riftstalker: 180, parallax: 190, lancer: 200, marksman: 230, riftmortar: 200, worldbreaker: 240, gravemantle: 200, eventide: 220, prismwing: 220, shardstorm: 240, voidcarrier: 230, sovereign: 220 };
 const B_SIGHT = { hq: 520, turret: 340 }, B_SIGHT_DEF = 200, NODE_SIGHT = 220; // HQ 520 ≥ its T3 range (470)
 const INTEL_TTL = 45, THREAT_MEMORY = 5, SPOT_GAP = 10;
-const fogRow = v => clamp(Math.floor((v - FOG_Y0) / FOG_CELL), 0, FOG_NY - 1);
+const fogRow = v => { const r = Math.floor((v - FOG_Y0) / FOG_CELL); return r < 0 ? 0 : r >= FOG_NY ? FOG_NY - 1 : r; };
+const fogCol = u => { const c = Math.floor(u / FOG_CELL); return c < 0 ? 0 : c >= FOG_NX ? FOG_NX - 1 : c; }; // v2.67: grid maps, inlined (the fog is most of a Two-Lane tick)
 const sightOf = e => e.kind === 'u' ? SIGHT[e.type] : (B_SIGHT[e.type] || B_SIGHT_DEF);
 const ghostOf = b => ({ id: b.id, type: b.type, fac: b.fac, side: b.side, slot: b.slot, tier: b.tier, path: b.path, u: b.u, v: b.v, half: b.half }); // path: the last-seen upgrade-tree path; fac: its faction (v2.17)
 function newFog(g, s) {
@@ -26,7 +27,8 @@ function newFog(g, s) {
 }
 function cellsLit(vis, u, half, v = 0, vh = half) { // v, vh: depth and its half-height, on a grid map (v2.63)
   if (!MAP_2D) { for (let i = cellOf(u - half); i <= cellOf(u + half); i++) if (vis[i]) return true; return false; }
-  for (let r = fogRow(v - vh); r <= fogRow(v + vh); r++) { const y = FOG_Y0 + r * FOG_CELL; for (let i = cellOf(u - half, y); i <= cellOf(u + half, y); i++) if (vis[i]) return true; }
+  const r1 = fogRow(v + vh), c0 = fogCol(u - half), c1 = fogCol(u + half);
+  for (let r = fogRow(v - vh); r <= r1; r++) { const b = r * FOG_NX; for (let i = b + c0; i <= b + c1; i++) if (vis[i]) return true; }
   return false;
 }
 // The vision rule, kept apart from weapon range: can side s see entity e right now?
@@ -39,7 +41,7 @@ function updateVision(g) {
     const f = g.fog[s], vis = f.vis, exp = f.exp;
     vis.fill(0);
     const reveal = MAP_2D ? (u, r, v) => { // v2.63: a circle of sight, a span per row
-      for (let row = fogRow(v - r), r1 = fogRow(v + r); row <= r1; row++) { const y = FOG_Y0 + row * FOG_CELL + FOG_CELL / 2, dy = y - v; if (dy > r || dy < -r) continue; const dx = Math.sqrt(r * r - dy * dy); vis.fill(1, cellOf(u - dx, y), cellOf(u + dx, y) + 1); }
+      for (let row = fogRow(v - r), r1 = fogRow(v + r); row <= r1; row++) { const y = FOG_Y0 + row * FOG_CELL + FOG_CELL / 2, dy = y - v; if (dy > r || dy < -r) continue; const dx = Math.sqrt(r * r - dy * dy), b = row * FOG_NX; vis.fill(1, b + fogCol(u - dx), b + fogCol(u + dx) + 1); }
     } : (u, r) => { for (let i = cellOf(u - r), b = cellOf(u + r); i <= b; i++) vis[i] = 1; };
     for (const e of g.ents) if (e.side === s && e.hp > 0) reveal(e.u, sightOf(e), e.v);
     for (const n of g.nodes) if (n.owner === s) reveal(n.u, n.sight || NODE_SIGHT, n.v); // v2.65: a watchtower sees further

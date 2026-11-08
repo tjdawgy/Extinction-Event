@@ -25,6 +25,14 @@ test('the ladder: Easy slower and smaller and never raids, Normal in between, Ha
   assert.strictEqual(h.label, 'Hard'); assert.strictEqual(e.wave, sim.DIFF.easy.wave, 'unset fields fall through to DIFF');
 });
 
+test('the harness plays each side at the difficulty it names, on the map it names (v2.67: a broken edit once dropped autoDiff)', () => {
+  const { runMatch } = require('../audit/sim/match');
+  const r = runMatch({ seed: 5, diff: 'normal', maxT: 20, mapId: 'twolane', sides: [{ faction: 'lastfist', diff: 'easy' }, { faction: 'bloomhost', diff: 'hard' }] });
+  assert.deepStrictEqual([...r.diffs, r.map], ['easy', 'hard', 'twolane']);
+  const c = runMatch({ seed: 5, diff: 'hard', maxT: 20, sides: [{ faction: 'lastfist' }, { faction: 'bloomhost' }] });
+  assert.deepStrictEqual([...c.diffs, c.map], ['hard', 'hard', 'classic']);
+});
+
 test('a supply-blocked Easy side (top tier T2) still trades a building for a Habitat', () => {
   const { runMatch } = require('../audit/sim/match');
   const r = runMatch({ seed: 8000, diff: 'easy', maxT: 900, sides: [{ faction: 'lastfist', persona: 'random' }, { faction: 'lastfist', persona: 'random' }] });
