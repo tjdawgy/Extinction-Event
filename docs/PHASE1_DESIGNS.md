@@ -1,6 +1,6 @@
 # Phase 1 designs: Three-Lane with crossings, repair depot and guarded relic, battlefield conditions
 
-Design proposals sent after v2.68 (design only; nothing here is built or approved yet).
+Design proposals sent after v2.68. Approved: Proposals D, E and F (each is built in its own Phase 1 item).
 
 ## Proposal D — Three-Lane with crossings
 

@@ -67,14 +67,14 @@ Map data format: [docs/MAP_FORMAT.md](docs/MAP_FORMAT.md) (approved after Phase 
 - [ ] **Maps.** Build them in this order:
   1. Classic — the current single lane, for short matches.
   2. [x] Two-lane — two lanes with a contested center. Design: [docs/TWO_LANE.md](docs/TWO_LANE.md) (approved after v2.63, with a map-select screen). *(v2.65)*
-  3. Three-Lane with crossings. Design proposal: [docs/PHASE1_DESIGNS.md](docs/PHASE1_DESIGNS.md) (Proposal D). (Replaces the Open field and Three-lane items; Open Field is shelved: [docs/OPEN_FIELD.md](docs/OPEN_FIELD.md), kept for reference.)
+  3. Three-Lane with crossings. Design: [docs/PHASE1_DESIGNS.md](docs/PHASE1_DESIGNS.md) (Proposal D, approved after v2.68). (Replaces the Open field and Three-lane items; Open Field is shelved: [docs/OPEN_FIELD.md](docs/OPEN_FIELD.md), kept for reference.)
 - [ ] **Node types:**
   - Credit or energy — income, as now.
   - [x] Watchtower — clears fog in a wide radius. *(v2.65)*
   - [x] Forward pad — capture it to build there. This replaces adding more pads at the home base. *(v2.65: each faction's Turret and Barracks roles)*
   - Repair depot — heals units nearby.
-  - Guarded relic — neutral defenders, big payoff. (Repair depot and guarded relic design proposal: [docs/PHASE1_DESIGNS.md](docs/PHASE1_DESIGNS.md), Proposal E.)
-- [ ] **Battlefield conditions** (optional per match): heavy fog, rich center nodes, scarce resources, meteor strikes. Design proposal: [docs/PHASE1_DESIGNS.md](docs/PHASE1_DESIGNS.md) (Proposal F).
+  - Guarded relic — neutral defenders, big payoff. (Repair depot and guarded relic design: [docs/PHASE1_DESIGNS.md](docs/PHASE1_DESIGNS.md), Proposal E, approved after v2.68.)
+- [ ] **Battlefield conditions** (optional per match): heavy fog, rich center nodes, scarce resources, meteor strikes. Design: [docs/PHASE1_DESIGNS.md](docs/PHASE1_DESIGNS.md) (Proposal F, approved after v2.68).
 - [ ] **Army control:**
   - [x] Split Army — assign squads to lanes. This ships with multi-lane maps. Design: [docs/SPLIT_ARMY.md](docs/SPLIT_ARMY.md) (approved after v2.63). *(v2.66)*
   - [x] Two rally points — one defensive, one forward. *(v2.62)*
