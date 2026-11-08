@@ -731,6 +731,7 @@ function drawFlags(c, g, time) {
   const O = g.sides[0].orders; if (!O) return;
   for (const o of [O.all, ...Object.values(O.groups), ...Object.values(O.types)]) {
     if (!o || o.o !== 'move' || o.done) continue;
+    const RL = g.sides[0].rally; if (RL && o === O.all && Math.abs(o.u - RL[RL.at]) < 1) continue; // v2.62: the army heading to its rally flag: that flag marks it
     const w = P(o.u, o.v), wave = Math.sin(time * 5) * 1.5;
     c.setLineDash([5, 5]); c.strokeStyle = 'rgba(159,230,255,0.55)'; c.lineWidth = 1.3;
     c.beginPath(); c.ellipse(w.x, w.y, 40, 40 * DY * 0.9, 0, 0, 7); c.stroke(); c.setLineDash([]);
@@ -933,7 +934,9 @@ function render(c, g, time, sel, selPad) {
   const list = g.ents.filter(seen);
   for (const gh of ghosts) list.push({ kind: 'ghost', u: gh.u, v: gh.v, gh });
   for (const n of g.nodes) list.push({ kind: 'node', u: n.u, v: n.v - 1, n });
-  if (g.sides[0].stance !== 'attack') list.push({ kind: 'flag', u: rallyU(0) + 30, v: -20 });
+  { const RL = g.sides[0].rally; // v2.62: both of the player's rally flags (the active one solid); before the player uses them, the one rally flag
+    if (RL) for (const k of ['def', 'fwd']) list.push({ kind: 'flag', u: RL[k] + 30, v: -20, fk: k, on: RL.at === k });
+    else if (g.sides[0].stance !== 'attack') list.push({ kind: 'flag', u: rallyU(0, g) + 30, v: -20, fk: 'def', on: true }); }
   list.sort((a, b) => (a.v - b.v) || (a.u - b.u));
   for (const e of list) {
     if (e.kind === 'b') drawBuilding(c, e, time);
@@ -941,12 +944,15 @@ function render(c, g, time, sel, selPad) {
     else if (e.kind === 'u') drawUnit(c, e);
     else if (e.kind === 'node') drawNode(c, e.n, time);
     else {
-      const w = P(e.u, e.v), col = g.sides[0].stance === 'retreat' ? '#ffd34d' : TEAM[0].main;
+      const w = P(e.u, e.v), col = e.fk === 'fwd' ? '#ffb347' : g.sides[0].stance === 'retreat' ? '#ffd34d' : TEAM[0].main;
+      c.globalAlpha = e.on ? 1 : 0.45; // v2.62: the inactive flag is faded
       c.strokeStyle = M.h; c.lineWidth = 1.5; c.beginPath(); c.moveTo(w.x, w.y); c.lineTo(w.x, w.y - 34); c.stroke();
       c.fillStyle = col; c.beginPath(); c.moveTo(w.x, w.y - 34);
       for (let i = 0; i <= 5; i++) c.lineTo(w.x + i * 3.4, w.y - 34 + Math.sin(time * 5 + i) * 1.3);
       for (let i = 5; i >= 0; i--) c.lineTo(w.x + i * 3.4, w.y - 25 + Math.sin(time * 5 + i) * 1.3);
       c.closePath(); c.fill();
+      if (e.fk === 'fwd') { c.fillStyle = '#1a1206'; c.font = '800 7px -apple-system,system-ui,sans-serif'; c.textAlign = 'center'; c.fillText('F', w.x + 8.5, w.y - 27.5); }
+      c.globalAlpha = 1;
     }
   }
   drawBuildingSel(c, g, time, true);

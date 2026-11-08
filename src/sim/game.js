@@ -79,7 +79,44 @@ const tilePos = (s, i, j) => ({ u: hqU(s) + dirOf(s) * (i + j) * TILE * IX, v: (
 const mapPt = p => ({ u: p[0], v: p[1] });
 const slotPos = (s, k) => mapPt(k === SIG_SLOT ? MAP.bases[s].sigPad : MAP.bases[s].pads[k]); // v2.59: the map's pads (the same numbers tilePos gave)
 const hqPos = s => mapPt(MAP.bases[s].hq);
-const rallyU = s => MECH7C.on ? MAP.bases[s].rally[0] : hqU(s) + dirOf(s) * 300; // v2.43: inside the HQ gun's cover (v2.59: the map's rally point)
+const rallyU0 = s => MECH7C.on ? MAP.bases[s].rally[0] : hqU(s) + dirOf(s) * 300; // v2.43: inside the HQ gun's cover (v2.59: the map's rally point)
+// v2.62: with a game, the player's active rally flag (side.rally) once the player has used the army controls
+const rallyU = (s, g) => g && g.sides[s].rally ? g.sides[s].rally[g.sides[s].rally.at] : rallyU0(s);
+/* ---------- Army controls (v2.62, Phase 1): two rally points and Send damaged home ----------
+   The player's side only; the AI doesn't use them yet, and a side that never touches them has no side.rally, so nothing
+   changes for it. side.rally = { at: 'def' | 'fwd', def: u, fwd: u }: the base flag (where the map's rally point was)
+   and the forward flag (RALLY.fwdOut from the HQ, just past its own field node). The active flag is where idle and new
+   units gather and where Retreat goes; switching flags sends the whole army there (a Regroup to the flag). Flags stay
+   between RALLY.min out from the HQ and RALLY.past beyond the centre.
+   Send damaged home: units under DAMAGED.thr of their HP go back to the base flag holding their fire (as on Retreat),
+   heal DAMAGED.heal of their HP a second there once DAMAGED.calm s unhurt, and rejoin at DAMAGED.done. */
+const RALLY = { fwdOut: 560, min: 120, past: 250 };
+const DAMAGED = { thr: 0.4, heal: 0.03, done: 0.95, calm: 3 };
+function rallyOf(g, s) {
+  const sd = g.sides[s];
+  if (!sd.rally) sd.rally = { at: 'def', def: rallyU0(s), fwd: hqU(s) + dirOf(s) * RALLY.fwdOut };
+  return sd.rally;
+}
+const homeFlagU = (g, s) => g.sides[s].rally ? g.sides[s].rally.def : rallyU0(s);
+function setRally(g, s, which, u) { // move a flag (the player taps it, then the ground)
+  if (which !== 'def' && which !== 'fwd') return { ok: false, msg: 'No such flag' };
+  const R = rallyOf(g, s), a = hqU(s) + dirOf(s) * RALLY.min, b = L / 2 + dirOf(s) * RALLY.past;
+  R[which] = clamp(u, Math.min(a, b), Math.max(a, b));
+  if (R.at === which && g.sides[s].orders && g.sides[s].orders.all && g.sides[s].orders.all.o === 'move') giveOrder(g, s, 'all', null, 'move', R[which], 0, true); // the army follows its flag
+  return { ok: true, msg: which === 'def' ? 'Base flag moved' : 'Forward flag moved' };
+}
+function useRally(g, s, which) { // one tap: make a flag the rally point and send the whole army to it
+  if (g.countdown > 0) return WAIT_GO;
+  const R = rallyOf(g, s); R.at = which;
+  const r = giveOrder(g, s, 'all', null, 'move', R[which], 0);
+  return { ok: true, msg: `Army to the ${which === 'def' ? 'base' : 'forward'} flag${r.ok ? '' : ' (no units yet)'}` };
+}
+function sendDamagedHome(g, s) {
+  if (g.countdown > 0) return WAIT_GO;
+  let n = 0;
+  for (const e of g.ents) if (e.kind === 'u' && e.side === s && e.hp > 0 && !e.temp && !e.medHome && e.hp < e.maxHp * DAMAGED.thr) { e.medHome = 1; n++; }
+  return n ? { ok: true, msg: `${n} damaged unit${n === 1 ? '' : 's'} heading home to heal`, n } : { ok: false, msg: `No unit is below ${Math.round(DAMAGED.thr * 100)}% health`, n: 0 };
+}
 
 // v2.55 (Phase 0 stance fix): an AI-played side 0 (the harness, spectate) starts on Retreat like the AI's side 1. It started
 // on the player's Hold, which left its new units standing where they were made until its first attack: the right side won

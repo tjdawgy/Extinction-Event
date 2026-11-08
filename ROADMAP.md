@@ -73,8 +73,8 @@ Map data format: [docs/MAP_FORMAT.md](docs/MAP_FORMAT.md) (approved after Phase 
 - [ ] **Battlefield conditions** (optional per match): heavy fog, rich center nodes, scarce resources, meteor strikes.
 - [ ] **Army control:**
   - Split Army — assign squads to lanes. This ships with multi-lane maps.
-  - Two rally points — one defensive, one forward.
-  - "Send damaged home" button.
+  - [x] Two rally points — one defensive, one forward. *(v2.62)*
+  - [x] "Send damaged home" button. *(v2.62: under 40% health)*
 - [ ] **AI learns the new maps.** Expect real tuning time for each layout.
 - [ ] **Balance pass.**
   - Extend the sim harness to run on every map.

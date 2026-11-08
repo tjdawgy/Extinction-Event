@@ -26,7 +26,13 @@ function buildArmy() {
     b.addEventListener('click', () => onCmd(o, b)); b.addEventListener('animationend', () => b.classList.remove('shake'));
     cmd.appendChild(b);
   }
-  wrap.append(box, cmd);
+  // v2.62: the army controls: the rally flag (one tap switches flags and sends the army) and Send damaged home
+  const rly = document.createElement('div'); rly.className = 'arly'; rly.id = 'arly';
+  rly.innerHTML = '<button id="bRally"><small>Rally</small><b></b></button><button id="bDamaged"><small>Send home</small><b>Damaged</b></button>';
+  rly.querySelector('#bRally').addEventListener('click', e => onRally(e.currentTarget));
+  rly.querySelector('#bDamaged').addEventListener('click', e => onDamaged(e.currentTarget));
+  for (const b of rly.children) b.addEventListener('animationend', () => b.classList.remove('shake'));
+  wrap.append(box, cmd, rly);
   armySig = Object.keys(c).sort().join(',');
   if (game) refreshArmy();
 }
@@ -43,8 +49,48 @@ function refreshArmy() {
     if (od.textContent !== txt) od.textContent = txt;
     od.classList.toggle('set', !!o);
   }
+  refreshRally();
   const cur = s.sel ? (s.sel[0] === 'g' ? O.groups[s.sel.slice(2)] : unitOrder(s, s.sel.slice(2))) : null;
   for (const b of $('acmd').children) b.classList.toggle('on', b.dataset.o === 'move' ? !!rg : s.sel ? !!cur && cur.o === b.dataset.o : !hasOrders(s) && b.dataset.o === s.stance);
+}
+// v2.62: the army controls. The Rally button shows the active flag; a tap makes the other flag active and sends the whole
+// army there. Send damaged home counts the units it would send. Move a flag: tap it on the battlefield, then tap the ground.
+let fmv = null; // a flag being moved: 'def' or 'fwd'
+function refreshRally() {
+  const b = $('bRally'), d = $('bDamaged'); if (!b || !game) return;
+  const R = game.sides[0].rally, at = R ? R.at : 'def', txt = at === 'def' ? 'Base' : 'Forward';
+  setHTML(b.querySelector('b'), txt); b.classList.toggle('fwd', at === 'fwd');
+  const n = game.ents.filter(e => e.kind === 'u' && e.side === 0 && e.hp > 0 && !e.temp && !e.medHome && e.hp < e.maxHp * DAMAGED.thr).length;
+  setHTML(d.querySelector('b'), n ? `Damaged ${n}` : 'Damaged'); d.classList.toggle('has', n > 0);
+}
+function onRally(b) {
+  if (!game || paused || !running || game.over) return;
+  const R = game.sides[0].rally, r = useRally(game, 0, R && R.at === 'fwd' ? 'def' : 'fwd');
+  toast(r.msg, r.ok ? 'ok' : 'bad'); if (!r.ok) shake(b);
+  refreshUI(true);
+}
+function onDamaged(b) {
+  if (!game || paused || !running || game.over) return;
+  const r = sendDamagedHome(game, 0);
+  toast(r.msg, r.ok ? 'ok' : 'bad'); if (!r.ok) shake(b);
+  refreshUI(true);
+}
+function flagAt(x, y) { // which of the player's flags a tap is on, if any (the pole and cloth, generously)
+  const R = rallyOf(game, 0), w = toWorld(x, y);
+  for (const k of ['fwd', 'def']) { const q = P(R[k] + 30, -20); if (Math.abs(w.x - (q.x + 8)) <= 22 && w.y >= q.y - 44 && w.y <= q.y + 10) return k; }
+  return null;
+}
+function startFlagMove(k) {
+  endAim(); closePanel(); hideInfo();
+  fmv = k;
+  $('aim').style.setProperty('--ac', k === 'def' ? TEAM[0].main : '#ffb347');
+  $('aimName').textContent = k === 'def' ? 'Base flag' : 'Forward flag'; $('aimTxt').textContent = ': tap the battlefield where it goes';
+  $('aim').classList.remove('hide');
+}
+function flagTap(x, y) {
+  const w = toWorld(x, y), r = setRally(game, 0, fmv, w.x - 30);
+  toast(r.msg, r.ok ? 'ok' : 'bad');
+  if (r.ok) { endAim(); refreshUI(true); }
 }
 function onChip(k) {
   if (!game || paused || !running || game.over) return;
@@ -142,6 +188,7 @@ function onAbil(k, el) {
 function endAim() { // ends ability targeting, Regroup targeting and Set warp point
   if (rg) { rg = null; $('aim').classList.add('hide'); if (tab === 'army') refreshArmy(); refreshRgTop(); }
   if (wpt) { wpt = false; $('aim').classList.add('hide'); refreshWarpCard(); }
+  if (fmv) { fmv = null; $('aim').classList.add('hide'); } // v2.62
   if (!aim) return; aim = null; $('aim').classList.add('hide'); refreshAbil();
 }
 $('aimX').addEventListener('click', endAim);

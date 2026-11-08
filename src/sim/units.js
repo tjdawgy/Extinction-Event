@@ -40,7 +40,7 @@ function giveOrder(g, s, scope, key, o, u, v, quiet) { // quiet: the AI's automa
 function updateRallyWait(g) {
   for (let s = 0; s < 2; s++) {
     if (!playerSide(g, s)) continue;
-    const side = g.sides[s], dir = dirOf(s), r = rallyU(s), f = g.front[s];
+    const side = g.sides[s], dir = dirOf(s), r = rallyU(s, g), f = g.front[s];
     if (side.stance !== 'attack' || f === null) { if (side.rwAt !== undefined) { side.rwAt = undefined; for (const e of g.ents) if (e.kind === 'u' && e.side === s) { e.rwT = 0; e.rwS = 0; e.rwGo = 0; } } continue; }
     if (side.rwAt !== side.stanceAt) { side.rwAt = side.stanceAt; for (const e of g.ents) if (e.kind === 'u' && e.side === s) { e.rwT = 0; e.rwGo = 1; } continue; } // the army the Attack order found goes at once
     const grp = [];
@@ -115,10 +115,10 @@ function updateUnit(g, u, foes, dt) {
   if (u.cd > 0) u.cd -= dt * (frz ? ABIL.frenzy.rate : 1);
   if (u.recoil > 0) u.recoil = Math.max(0, u.recoil - dt * 5);
   if (u.hitT > 0) u.hitT -= dt;
-  const side = g.sides[u.side], dir = dirOf(u.side), home = (side.defU != null ? side.defU : rallyU(u.side)) + u.rallyOff * dir; // defU (v2.40): a Default AI under attack rallies inside its HQ's cover
+  const side = g.sides[u.side], dir = dirOf(u.side), home = u.medHome ? homeFlagU(g, u.side) + u.rallyOff * dir * 0.3 : (side.defU != null ? side.defU : rallyU(u.side, g)) + u.rallyOff * dir; // defU (v2.40): a Default AI under attack rallies inside its HQ's cover; v2.62: a damaged unit sent home goes to the base flag
   const ord = unitOrder(side, u.type);
   const runs = side.persona && aiFix(side.persona, 'scoutGo') && ((u.id === side.scoutId && side.scoutU != null) || (side.raid && side.raid.ids.includes(u.id))); // v2.60: a Hard scout or raider
-  const st = runs ? 'run' : ord ? ord.o : side.stance; // a group or type order overrides the global stance
+  const st = u.medHome ? 'retreat' : runs ? 'run' : ord ? ord.o : side.stance; // a group or type order overrides the global stance; v2.62: sent home = Retreat to the base flag
   const A = d.weapon ? acquire(g, u, d, foes, d.chase) : NO_TARGET, { best, close } = A; // Medicopters and Recon Drones carry no weapon; melee: the chase search in the same pass (v2.37)
   const sp = (d.fac === 'bloomhost' && !d.air && onCreep(g, u.side, u.u, u.v) ? CREEP.speed : 1) * (frz ? ABIL.frenzy.speed : 1) * (u.slowT > g.t ? 1 - u.slow : 1) * (u.snT > g.t ? 0 : 1); // creep (v2.18), Frenzy Bloom (v2.20), a Gravemantle's slow (v2.27), a Rootheart's snare (v2.33)
   if (u.leaping) { // mid-leap (v2.19): fly to the landing spot, nothing else
@@ -137,6 +137,10 @@ function updateUnit(g, u, foes, dt) {
     else if (best && u.cd <= 0) { fire(g, u, best, d); u.cd = d.cd * rand(0.9, 1.1); } // the v2.34 rule, for the tests' fixed replays
     moveToward(u, d, home, u.laneV, dt, sp);
     return;
+  }
+  if (u.medHome) { // v2.62: home: heal once unhurt for a moment, rejoin when nearly whole
+    if (g.t - u.lastHurt > DAMAGED.calm) u.hp = Math.min(u.maxHp, u.hp + u.maxHp * DAMAGED.heal * dt);
+    if (u.hp >= u.maxHp * DAMAGED.done) u.medHome = 0;
   }
   if (u.aiWait > g.t && !best && !(MECH7C.on && d.chase && A.prey && Math.hypot(A.prey.u - u.u, A.prey.v - u.v) <= MECH7C.holdR + d.range)) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // v2.43: a holding melee unit still engages within holdR (falls through to the chase below) // v2.40: a Default AI holds a front-runner until its army catches up (fights only what is in reach, never chases)
   const act = !(u.phT > g.t) && !d.siege; // v2.37: a phased Wraithwing can't fire (P13); a Titan fires only when planted (P8)
@@ -236,7 +240,7 @@ function supportSpot(g, u, d, st, home) {
   if (st !== 'attack') return [home, u.laneV];
   if (u.id === side.spotter && side.spotU != null && (side.pushTo !== null || side.spotAny)) return [side.spotU, u.laneV];
   const f = g.front[u.side];
-  return [clamp((f === null ? rallyU(u.side) : f) - dir * 30, 0, L), u.laneV]; // just behind the front: its sight reaches far ahead
+  return [clamp((f === null ? rallyU(u.side, g) : f) - dir * 30, 0, L), u.laneV]; // just behind the front: its sight reaches far ahead
 }
 // The centre of side s's biggest infantry cluster (the infantry unit with the most infantry within 120), cached per tick
 function infantryCentre(g, s) {

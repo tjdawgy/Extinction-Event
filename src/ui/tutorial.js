@@ -18,7 +18,7 @@ const tMe = () => game.sides[0];
 const tMy = type => game.ents.find(e => e.kind === 'b' && e.side === 0 && e.type === type && e.hp > 0);
 const tN = t => BD('lastfist', t).name;
 function tPlace(type, slot) { const b = mkBuilding(game, 0, type, slot); b.built = true; b.progress = 1; b.hp = b.maxHp; return b; }
-function tSquad(type, n, side = 0) { const out = [], u0 = side ? L / 2 + 150 : rallyU(0) - 30; /* an enemy wave starts mid-lane */ for (let i = 0; i < n; i++) out.push(spawnUnit(game, side, type, u0 + (side ? 1 : -1) * (i % 3) * 14, ((i % 5) - 2) * 14)); return out; }
+function tSquad(type, n, side = 0) { const out = [], u0 = side ? L / 2 + 150 : rallyU(0, game) - 30; /* an enemy wave starts mid-lane */ for (let i = 0; i < n; i++) out.push(spawnUnit(game, side, type, u0 + (side ? 1 : -1) * (i % 3) * 14, ((i % 5) - 2) * 14)); return out; }
 const tMoved = () => { const O = tMe().orders; return !!O && [O.all, ...Object.values(O.groups || {}), ...Object.values(O.types || {})].some(o => o && o.o === 'move'); };
 // Targets: a DOM element ({ el }) or a rectangle in world space ({ rect }), turned into screen space every frame
 const tEl = s => { const el = document.querySelector(s); return el && el.getClientRects().length ? { el } : null; };
@@ -28,7 +28,7 @@ const tB = b => { if (!b) return null; const d = bdOf(b), p = P(b.u, b.v), hw = 
 const tPad = k => { const p = slotPos(0, k), q = P(p.u, p.v), w = 2 * PAD_H * IX, hh = 2 * PAD_H * IY; return tWorld(q.x - w, q.y - hh, q.x + w, q.y + hh); };
 const tPads = () => { const ps = []; for (let k = 0; k < SLOT_COUNT; k++) ps.push(slotPos(0, k)); const q = ps.map(p => P(p.u, p.v)), w = 2 * PAD_H * IX, hh = 2 * PAD_H * IY; return tWorld(Math.min(...q.map(p => p.x)) - w, Math.min(...q.map(p => p.y)) - hh, Math.max(...q.map(p => p.x)) + w, Math.max(...q.map(p => p.y)) + hh); };
 const tNode = n => { const q = P(n.u, n.v); return tWorld(q.x - NODE_R, q.y - NODE_R * DY - 24, q.x + NODE_R, q.y + NODE_R * DY); };
-const tFlag = () => { const q = P(rallyU(0), 0); return tWorld(q.x - 26, q.y - 64, q.x + 26, q.y + 12); };
+const tFlag = () => { const q = P(rallyU(0, game), 0); return tWorld(q.x - 26, q.y - 64, q.x + 26, q.y + 12); };
 const tField = () => ({ rect: () => ({ left: V.cw * 0.3, top: V.ft + 14, right: V.cw * 0.7, bottom: V.ft + 14 + (V.fb - V.ft) * 0.35 }), screen: true }); // a band of open battlefield, small enough to leave room for the bubble
 const tCard = t => tab === 'build' && BUILD_ORDER.includes(t) || tab === 'train' && UDEF[t] ? tEl(`#cards .card[data-type="${t}"]`) : tEl(`.tabs [data-tab="${BUILD_ORDER.includes(t) ? 'build' : 'train'}"]`);
 // The Army-tab chain for "select Infantry, Regroup, tap the spot": highlights whichever part comes next
@@ -73,7 +73,7 @@ const TUT_CH = [
       { txt: () => `Signature buildings stand only on that pad, one at a time: the ${tN('sigA')} or the ${tN('sigB')}. The Codex explains both.`, hi: () => tEl('#cards .card[data-type="sigA"]'), skipIf: () => !sigPadOn() || !SIG.on },
       { txt: () => 'To build: tap a pad, then a card. Or just tap a card and it takes the first free pad.' },
     ] },
-  { key: 'army', name: 'Army', blurb: 'Training troops, the rally flag, Hold and Attack',
+  { key: 'army', name: 'Army', blurb: 'Training troops, Hold and Attack, rally flags, sending the damaged home',
     setup: () => { tPlace('barracks', 4); tMe().res.c += UDEF.rifle.cost.c * 2; },
     steps: [
       { act: true, txt: () => `Troops come from production buildings like your ${tN('barracks')}. Open the Train tab.`, hi: () => tEl('.tabs [data-tab="train"]'), done: () => tab === 'train' },
@@ -84,6 +84,10 @@ const TUT_CH = [
       { act: true, txt: () => 'Hold keeps your army at the flag. Tap Attack in the top bar to send everyone forward.', hi: () => tEl('#stance [data-s="attack"]'), done: () => tMe().stance === 'attack' },
       { act: true, txt: () => 'Tap Hold to stop them where they stand.', hi: () => tEl('#stance [data-s="hold"]'), done: () => tMe().stance === 'hold' },
       { txt: () => 'Retreat pulls everyone back to the flag without firing. Your army fights whatever comes in range, so pick your moment to attack.' },
+      // v2.62: the army controls
+      { act: true, txt: () => 'More army controls live in the Army tab. Open it.', hi: () => tEl('.tabs [data-tab="army"]'), done: () => tab === 'army' },
+      { txt: () => 'You have two rally flags: Base, by your HQ, and Forward, at your field node. The Rally button switches the army between them in one tap. To move a flag, tap it on the battlefield, then tap where it goes.', hi: () => tEl('#bRally') },
+      { txt: () => `Send damaged home sends every unit under ${Math.round(DAMAGED.thr * 100)}% health back to the Base flag. They heal there and rejoin the army when nearly whole.`, hi: () => tEl('#bDamaged') },
     ] },
   { key: 'upgrades', name: 'Upgrades', blurb: 'Upgrade tiers, paths and what they unlock',
     setup: () => { tPlace('barracks', 4); const u = BDEF.barracks.up; tMe().res.c += u[2].c + u[3].c; tMe().res.e += u[2].e + u[3].e; },

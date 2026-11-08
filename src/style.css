@@ -178,6 +178,11 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .acmd{flex:0 0 auto;display:grid;grid-template-columns:64px 64px;grid-template-rows:1fr 1fr;gap:4px}
 .acmd button{border-radius:9px;border:1px solid var(--line);background:rgba(0,0,0,.3);font-weight:800;font-size:12.5px;color:var(--text)}
 .acmd button.on{background:var(--panel3);border-color:rgba(57,200,255,.7)}
+.arly{flex:0 0 auto;display:grid;grid-template-rows:1fr 1fr;gap:4px;width:84px} /* v2.62: rally flag and Send damaged home */
+.arly button{border-radius:9px;border:1px solid var(--line);background:rgba(0,0,0,.3);color:var(--text);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05;padding:0 4px}
+.arly small{font-size:9.5px;font-weight:700;color:var(--muted);letter-spacing:.02em} .arly b{font-size:12.5px;font-weight:800}
+#bRally b{color:#8fdcff} #bRally.fwd{border-color:rgba(255,179,71,.6)} #bRally.fwd b{color:#ffcf8a}
+#bDamaged b{color:#9be7a0} #bDamaged.has{border-color:rgba(93,255,138,.55);background:rgba(20,60,30,.35)}
 .acmd [data-o="attack"]{color:#ffb0b0} .acmd [data-o="retreat"]{color:#ffe08a} .acmd [data-o="move"]{color:#9fe6ff}
 .card{position:relative;flex:0 0 92px;height:100%;border-radius:10px;border:1px solid var(--line);background:linear-gradient(rgba(30,46,76,.9),rgba(15,24,43,.9));display:flex;flex-direction:column;align-items:center;padding:2px 4px 6px;overflow:hidden;transition:transform .08s}
 .card:active{transform:scale(.94)}

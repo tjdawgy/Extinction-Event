@@ -207,6 +207,8 @@ function handleTap(x, y) {
   if (rg) { rgTap(x, y); return; }
   if (wpt) { wptTap(x, y); return; }
   if (aim) { aimTap(x, y); return; }
+  if (fmv) { flagTap(x, y); return; } // v2.62: placing a rally flag
+  if (game.countdown <= 0 && !game.over) { const fk = flagAt(x, y); if (fk) { startFlagMove(fk); return; } } // v2.62: tap a flag to move it
   const w = toWorld(x, y), hits = [];
   for (const b of game.ents) {
     if (b.kind !== 'b' || b.side !== 0) continue;
