@@ -21,7 +21,7 @@ async function main() {
     const mins = +(((args.find(a => a.startsWith('--minutes=')) || '').split('=')[1]) || 3);
     const { page, errors } = await openPage(browser, dev);
     await page.click('#meSeg [data-f="bloomhost"]'); await page.click('#foeSeg [data-f="lastfist"]'); await page.click('#diffSeg [data-d="hard"]');
-    await page.click('#bPlay');
+    await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default)
     await page.waitForFunction(() => game && game.countdown <= 0, null, { timeout: 15000 });
     await page.click('.card[data-type="sigA"]'); await page.click('.card[data-type="sigB"]');
     const placed = await page.evaluate(() => ({ types: game.ents.filter(e => e.side === 0 && e.kind === 'b').map(e => e.type), toasts: [...$('toasts').children].map(t => t.textContent) }));
@@ -37,7 +37,7 @@ async function main() {
   const shot = async (page, name) => { await page.waitForTimeout(150); const f = path.join(outDir, `${tag}-${name}-${dev.width}x${dev.height}.png`); fs.writeFileSync(f, await page.screenshot()); console.log(f); };
   try {
     const { page, errors } = await openPage(browser, dev, { init: 'Math.random = (() => { let a = 7; return () => (a = (a * 16807) % 2147483647) / 2147483647; })();' });
-    await page.click('#meSeg [data-f="bloomhost"]'); await page.click('#foeSeg [data-f="lastfist"]'); await page.click('#bPlay'); await page.waitForTimeout(300);
+    await page.click('#meSeg [data-f="bloomhost"]'); await page.click('#foeSeg [data-f="lastfist"]'); await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
     await page.evaluate(() => {
       game.countdown = 0; hideCountdown(); updateIntro(); camTouched = true; window.updateIntro = () => {}; // keep the close-up zoom
       for (const s of game.sides) { s.aiT = 1e9; s.res.c = s.res.e = 9000; }

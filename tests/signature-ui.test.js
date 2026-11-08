@@ -14,7 +14,7 @@ test.after(async () => { if (browser) await browser.close(); });
 async function start(dev, me, foe = 'bloomhost') {
   const { page, errors } = await openPage(browser, dev);
   await page.evaluate(() => setMech7c(false)); // v2.43: these checks pin the v2.32-v2.34 signature UI (regular pads, both at once); tests/polish-ui.test.js covers the signature pad
-  await page.click(`#meSeg [data-f="${me}"]`); await page.click(`#foeSeg [data-f="${foe}"]`); await page.click('#bPlay'); await page.waitForTimeout(300);
+  await page.click(`#meSeg [data-f="${me}"]`); await page.click(`#foeSeg [data-f="${foe}"]`); await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
   await page.evaluate(() => { game.countdown = 0; hideCountdown(); updateIntro(); for (const s of game.sides) { s.aiT = 1e9; s.res.c = s.res.e = 9000; } refreshUI(true); });
   return { page, errors };
 }

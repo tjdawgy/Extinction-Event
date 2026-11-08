@@ -15,7 +15,7 @@ test.after(async () => { if (browser) await browser.close(); });
 for (const fac of ['lastfist', 'bloomhost', 'axiarchs']) {
   test(`${fac}: the Build tab at rest for 10 game seconds: no card rebuilt or restyled; a real change still shows once`, { skip }, async () => {
     const { page, errors } = await openPage(browser, NARROW);
-    await page.click(`#meSeg [data-f="${fac}"]`); await page.click('#foeSeg [data-f="lastfist"]'); await page.click('#bPlay');
+    await page.click(`#meSeg [data-f="${fac}"]`); await page.click('#foeSeg [data-f="lastfist"]'); await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default)
     await page.waitForFunction(() => game && game.countdown <= 0, null, { timeout: 15000 });
     await page.evaluate(() => { for (const s of game.sides) { s.aiT = 1e9; s.res.c = s.res.e = 9000; } speed = 3; window.__keep = [...$('cards').children]; });
     await page.waitForTimeout(800); // settle: every card affordable

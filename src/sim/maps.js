@@ -26,16 +26,26 @@ MAPS.classic = {
   conditions: [],
   fog: 'strip', depthW: 0.4, // v2.63: one row of fog cells along the lane; depth counts 0.4 in range (DV_W)
 };
-// v2.63: a map the test kit supplies (EE_MAP_DATA in its sandbox) replaces Classic for that whole load of the SIM. It
-// never ships in the game: the browser has no EE_MAP_DATA, so the game always plays Classic (no map select yet).
+// v2.63: a map the test kit supplies (EE_MAP_DATA in its sandbox) is added for that load of the SIM and starts as the
+// current map. It never ships in the game: the browser has no EE_MAP_DATA.
 if (typeof EE_MAP_DATA !== 'undefined' && EE_MAP_DATA) MAPS[EE_MAP_DATA.id] = EE_MAP_DATA;
-const MAP = typeof EE_MAP_DATA !== 'undefined' && EE_MAP_DATA ? MAPS[EE_MAP_DATA.id] : MAPS.classic; // the map every match plays
+let MAP = typeof EE_MAP_DATA !== 'undefined' && EE_MAP_DATA ? MAPS[EE_MAP_DATA.id] : MAPS.classic; // the map the current match plays
+// v2.65: the map is chosen per match (useMap; the map-select screen, a save's map). Every value derived from it is a
+// `let` that a hook in MAP_HOOKS recomputes, in load order, whenever the map changes; each hook also runs once at load.
+const MAP_HOOKS = [];
+function useMap(id) {
+  const m = MAPS[id]; if (!m) return false;
+  if (m === MAP) return true;
+  MAP = m; for (const f of MAP_HOOKS) f();
+  return true;
+}
 // v2.63 (multi-lane engine): what the map asks of the engine. Classic asks for none of it, so it plays exactly as before.
 //   MAP_2D: fog is a grid of cells (MAP.fogCell) over the whole field instead of one row along the lane; sight, capture
 //     and targeting use true distance (depth counts in full, MAP.depthW 1) instead of full-depth strips.
 //   MAP_LANED: lanes that aren't one straight line at depth 0: ground units follow their own lane (u.lane).
-const MAP_2D = MAP.fog === 'grid';
-const MAP_LANED = MAP.lanes.length > 1 || MAP.lanes.some(l => l.path.some(p => p[1] !== 0));
+let MAP_2D, MAP_LANED;
+const mapFlags = () => { MAP_2D = MAP.fog === 'grid'; MAP_LANED = MAP.lanes.length > 1 || MAP.lanes.some(l => l.path.some(p => p[1] !== 0)); };
+mapFlags(); MAP_HOOKS.push(mapFlags);
 // A lane's centre depth at x: its path is a polyline whose x only grows (a lane runs from the west edge to the east one)
 function laneY(ln, x) {
   const P = ln.path;
@@ -45,7 +55,11 @@ function laneY(ln, x) {
 }
 const laneIx = k => typeof k === 'number' ? (k >= 0 && k < MAP.lanes.length ? k : -1) : MAP.lanes.findIndex(l => l.id === k); // a lane by index or id
 // Node types: how each behaves is code (NODE_TYPES); a map only places them. live: false = in the format, not built yet
-const NODE_TYPES = { income: { live: true }, watchtower: { live: false }, forwardPad: { live: false }, repair: { live: false }, relic: { live: false } };
+const NODE_TYPES = { income: { live: true }, watchtower: { live: true }, forwardPad: { live: true }, repair: { live: false }, relic: { live: false } };
+// v2.65: what each live type does. income: NODE_INC a second to its holder (× yieldMul). watchtower: no income; its holder
+// sees sight around it. forwardPad: no income; its holder may build the roles in allow (each faction's own building for
+// that role) on its pads. All three are captured the same way, by ground troops inside r.
+const FWD_SLOT = 100; // forward pads are build slots FWD_SLOT + k (k: the k-th forward pad on the map, FWD_PADS)
 // Map validation (a test runs it on every map): returns a list of problems, empty when the map is sound
 const MAP_RULES = { capMin: 20, capMax: 200, gap: 60, cell: 10, eps: 1e-6, symmetry: ['mirror-x', 'rot180', 'rot90', 'none'] };
 function validateMap(m) {
@@ -93,7 +107,7 @@ function validateMap(m) {
   // reachability on the ground: a grid of walkable cells (inside a lane, or anywhere on an open map, never in a blocker)
   const segD = (p, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy, t = l2 ? clamp(((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2, 0, 1) : 0; return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy); };
   const lanes = m.lanes || [];
-  const walk = p => inBounds(p) && !blocked(p) && (!lanes.length || lanes.some(l => l.path.some((a, i) => i && segD(p, l.path[i - 1], a) <= l.width / 2)));
+  const walk = p => inBounds(p) && !blocked(p) && (!lanes.length || (m.blockers || []).length > 0 || lanes.some(l => l.path.some((a, i) => i && segD(p, l.path[i - 1], a) <= l.width / 2))); // v2.65: with blockers, all open ground is walkable (the blockers are the walls)
   const C = R.cell, nx = Math.floor(m.size.w / C) + 1, ny = Math.floor(m.size.h / C) + 1, cellAt = p => [Math.round(p[0] / C), Math.round((p[1] + H) / C)];
   const ok = new Uint8Array(nx * ny); for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) ok[j * nx + i] = walk([i * C, j * C - H]) ? 1 : 0;
   const reach = from => { const seen = new Uint8Array(nx * ny), q = []; const [i0, j0] = cellAt(from); if (!ok[j0 * nx + i0]) return seen; seen[j0 * nx + i0] = 1; q.push(j0 * nx + i0);
@@ -116,8 +130,13 @@ function validateMap(m) {
       if (!img) { bad(`symmetry: base ${b.id} has no image`); continue; }
       if (!same(T(b.sigPad), img.sigPad) || !same(T(b.rally), img.rally) || b.pads.some((p, k) => !same(T(p), img.pads[k]))) bad(`symmetry: base ${b.id}'s pads, signature pad or rally don't mirror base ${img.id}'s`);
     }
-    for (const n of N) if (isPt(n.at) && !N.some(o => o.type === n.type && isPt(o.at) && same(T(n.at), o.at))) bad(`symmetry: node ${n.id} has no image`);
     const setEq = (A, Bs) => A.length === Bs.length && A.every(p => Bs.some(q => same(T(p), q)));
+    for (const n of N) { // v2.65: and its image matches it: radius, yield, sight, forward pads and what they allow
+      if (!isPt(n.at)) continue;
+      const img = N.find(o => o.type === n.type && isPt(o.at) && same(T(n.at), o.at));
+      if (!img) { bad(`symmetry: node ${n.id} has no image`); continue; }
+      if ((n.r || 70) !== (img.r || 70) || (n.yieldMul || 1) !== (img.yieldMul || 1) || (n.sight || 0) !== (img.sight || 0) || String(n.allow || '') !== String(img.allow || '') || !setEq(n.pads || [], img.pads || [])) bad(`symmetry: node ${n.id} doesn't match its image ${img.id}`);
+    }
     for (const l of lanes) if (!lanes.some(o => setEq(l.path, o.path))) bad(`symmetry: lane ${l.id} has no image`);
     for (const [k, bl] of (m.blockers || []).entries()) if (!(m.blockers || []).some(o => setEq(bl.poly, o.poly))) bad(`symmetry: blocker ${k} has no image`);
   }

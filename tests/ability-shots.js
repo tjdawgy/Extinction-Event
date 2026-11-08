@@ -37,7 +37,7 @@ async function main() {
   const shots = [];
   try {
     const { page, errors } = await openPage(browser, device, { init: 'Math.random = (() => { let a = 7; return () => (a = (a * 16807) % 2147483647) / 2147483647; })();' });
-    await page.click('#bPlay'); await page.waitForTimeout(300);
+    await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
     await page.evaluate(SETUP);
     const snap = async label => { await page.waitForTimeout(60); shots.push({ label, img: (await page.screenshot()).toString('base64') }); };
     // Emergency Shield: targeting, then the shielded units

@@ -247,6 +247,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .box .ver{position:absolute;top:10px;right:14px;margin:0;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;cursor:pointer;padding:6px 0 6px 10px} /* tap: the dev menu (v2.38) */
 .spectate #panel{visibility:hidden} .spectate #abil{display:none} .setup.dev{grid-template-columns:auto 1fr} .dvsub{font-size:12px;font-weight:500;color:var(--muted);margin-left:8px} .setup.dev .dvrow .big,.setup.dev .dvrow .ghost{height:34px;padding:0 16px;font-size:14px} .setup.dev .dvrow{display:flex;flex-wrap:wrap;gap:4px 6px} .setup.dev .seg button{height:28px;font-size:12px;padding:0 9px} /* spectating (v2.38): no build tray, no abilities */
 .box p{margin:6px 0 0;color:var(--muted);font-size:13.5px;max-width:64ch}
+.maps{display:flex;gap:10px;margin-top:8px;overflow-x:auto} .mapc{flex:1 0 200px;max-width:280px;display:flex;flex-direction:column;gap:3px;text-align:left;background:rgba(30,46,76,.6);border:1px solid var(--line);border-radius:12px;padding:8px;color:var(--text);font:inherit;cursor:pointer} .mapc.on{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue)} .mapc b{font-size:14px} .mapc b small{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-left:4px} .mapc span{font-size:11.5px;color:var(--muted);line-height:1.25} .mapt{width:100%;height:62px;display:block;border-radius:8px} .box.mapsel h1{font-size:22px} .box.mapsel .row{margin-top:8px}
 .how{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
 .how div{background:rgba(30,46,76,.6);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:12.5px;color:var(--muted)}
 .how b{display:block;color:var(--text);font-size:13px;margin-bottom:2px}
@@ -472,16 +473,26 @@ MAPS.classic = {
   conditions: [],
   fog: 'strip', depthW: 0.4, // v2.63: one row of fog cells along the lane; depth counts 0.4 in range (DV_W)
 };
-// v2.63: a map the test kit supplies (EE_MAP_DATA in its sandbox) replaces Classic for that whole load of the SIM. It
-// never ships in the game: the browser has no EE_MAP_DATA, so the game always plays Classic (no map select yet).
+// v2.63: a map the test kit supplies (EE_MAP_DATA in its sandbox) is added for that load of the SIM and starts as the
+// current map. It never ships in the game: the browser has no EE_MAP_DATA.
 if (typeof EE_MAP_DATA !== 'undefined' && EE_MAP_DATA) MAPS[EE_MAP_DATA.id] = EE_MAP_DATA;
-const MAP = typeof EE_MAP_DATA !== 'undefined' && EE_MAP_DATA ? MAPS[EE_MAP_DATA.id] : MAPS.classic; // the map every match plays
+let MAP = typeof EE_MAP_DATA !== 'undefined' && EE_MAP_DATA ? MAPS[EE_MAP_DATA.id] : MAPS.classic; // the map the current match plays
+// v2.65: the map is chosen per match (useMap; the map-select screen, a save's map). Every value derived from it is a
+// `let` that a hook in MAP_HOOKS recomputes, in load order, whenever the map changes; each hook also runs once at load.
+const MAP_HOOKS = [];
+function useMap(id) {
+  const m = MAPS[id]; if (!m) return false;
+  if (m === MAP) return true;
+  MAP = m; for (const f of MAP_HOOKS) f();
+  return true;
+}
 // v2.63 (multi-lane engine): what the map asks of the engine. Classic asks for none of it, so it plays exactly as before.
 //   MAP_2D: fog is a grid of cells (MAP.fogCell) over the whole field instead of one row along the lane; sight, capture
 //     and targeting use true distance (depth counts in full, MAP.depthW 1) instead of full-depth strips.
 //   MAP_LANED: lanes that aren't one straight line at depth 0: ground units follow their own lane (u.lane).
-const MAP_2D = MAP.fog === 'grid';
-const MAP_LANED = MAP.lanes.length > 1 || MAP.lanes.some(l => l.path.some(p => p[1] !== 0));
+let MAP_2D, MAP_LANED;
+const mapFlags = () => { MAP_2D = MAP.fog === 'grid'; MAP_LANED = MAP.lanes.length > 1 || MAP.lanes.some(l => l.path.some(p => p[1] !== 0)); };
+mapFlags(); MAP_HOOKS.push(mapFlags);
 // A lane's centre depth at x: its path is a polyline whose x only grows (a lane runs from the west edge to the east one)
 function laneY(ln, x) {
   const P = ln.path;
@@ -491,7 +502,11 @@ function laneY(ln, x) {
 }
 const laneIx = k => typeof k === 'number' ? (k >= 0 && k < MAP.lanes.length ? k : -1) : MAP.lanes.findIndex(l => l.id === k); // a lane by index or id
 // Node types: how each behaves is code (NODE_TYPES); a map only places them. live: false = in the format, not built yet
-const NODE_TYPES = { income: { live: true }, watchtower: { live: false }, forwardPad: { live: false }, repair: { live: false }, relic: { live: false } };
+const NODE_TYPES = { income: { live: true }, watchtower: { live: true }, forwardPad: { live: true }, repair: { live: false }, relic: { live: false } };
+// v2.65: what each live type does. income: NODE_INC a second to its holder (× yieldMul). watchtower: no income; its holder
+// sees sight around it. forwardPad: no income; its holder may build the roles in allow (each faction's own building for
+// that role) on its pads. All three are captured the same way, by ground troops inside r.
+const FWD_SLOT = 100; // forward pads are build slots FWD_SLOT + k (k: the k-th forward pad on the map, FWD_PADS)
 // Map validation (a test runs it on every map): returns a list of problems, empty when the map is sound
 const MAP_RULES = { capMin: 20, capMax: 200, gap: 60, cell: 10, eps: 1e-6, symmetry: ['mirror-x', 'rot180', 'rot90', 'none'] };
 function validateMap(m) {
@@ -539,7 +554,7 @@ function validateMap(m) {
   // reachability on the ground: a grid of walkable cells (inside a lane, or anywhere on an open map, never in a blocker)
   const segD = (p, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy, t = l2 ? clamp(((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2, 0, 1) : 0; return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy); };
   const lanes = m.lanes || [];
-  const walk = p => inBounds(p) && !blocked(p) && (!lanes.length || lanes.some(l => l.path.some((a, i) => i && segD(p, l.path[i - 1], a) <= l.width / 2)));
+  const walk = p => inBounds(p) && !blocked(p) && (!lanes.length || (m.blockers || []).length > 0 || lanes.some(l => l.path.some((a, i) => i && segD(p, l.path[i - 1], a) <= l.width / 2))); // v2.65: with blockers, all open ground is walkable (the blockers are the walls)
   const C = R.cell, nx = Math.floor(m.size.w / C) + 1, ny = Math.floor(m.size.h / C) + 1, cellAt = p => [Math.round(p[0] / C), Math.round((p[1] + H) / C)];
   const ok = new Uint8Array(nx * ny); for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) ok[j * nx + i] = walk([i * C, j * C - H]) ? 1 : 0;
   const reach = from => { const seen = new Uint8Array(nx * ny), q = []; const [i0, j0] = cellAt(from); if (!ok[j0 * nx + i0]) return seen; seen[j0 * nx + i0] = 1; q.push(j0 * nx + i0);
@@ -562,22 +577,72 @@ function validateMap(m) {
       if (!img) { bad(`symmetry: base ${b.id} has no image`); continue; }
       if (!same(T(b.sigPad), img.sigPad) || !same(T(b.rally), img.rally) || b.pads.some((p, k) => !same(T(p), img.pads[k]))) bad(`symmetry: base ${b.id}'s pads, signature pad or rally don't mirror base ${img.id}'s`);
     }
-    for (const n of N) if (isPt(n.at) && !N.some(o => o.type === n.type && isPt(o.at) && same(T(n.at), o.at))) bad(`symmetry: node ${n.id} has no image`);
     const setEq = (A, Bs) => A.length === Bs.length && A.every(p => Bs.some(q => same(T(p), q)));
+    for (const n of N) { // v2.65: and its image matches it: radius, yield, sight, forward pads and what they allow
+      if (!isPt(n.at)) continue;
+      const img = N.find(o => o.type === n.type && isPt(o.at) && same(T(n.at), o.at));
+      if (!img) { bad(`symmetry: node ${n.id} has no image`); continue; }
+      if ((n.r || 70) !== (img.r || 70) || (n.yieldMul || 1) !== (img.yieldMul || 1) || (n.sight || 0) !== (img.sight || 0) || String(n.allow || '') !== String(img.allow || '') || !setEq(n.pads || [], img.pads || [])) bad(`symmetry: node ${n.id} doesn't match its image ${img.id}`);
+    }
     for (const l of lanes) if (!lanes.some(o => setEq(l.path, o.path))) bad(`symmetry: lane ${l.id} has no image`);
     for (const [k, bl] of (m.blockers || []).entries()) if (!(m.blockers || []).some(o => setEq(bl.poly, o.poly))) bad(`symmetry: blocker ${k} has no image`);
   }
   return P;
 }
+/* ---------- Two-Lane (v2.65): docs/TWO_LANE.md ----------
+   Two lanes split by a ridge, with one crossing in the middle where the rich centre node sits. Bases are Classic's
+   layout (the west base is Classic's, number for number; the east base its mirror across x = 1100), so building works
+   as on Classic. Node order: 0 west-north, 1 centre, 2 east-north (the three spots the AI knows from Classic: its own,
+   the centre, the enemy's), then the south income nodes, the watchtowers and the forward pads. */
+MAPS.twolane = (() => {
+  const W = 2200, mx = p => [W - p[0], p[1]], wb = MAPS.classic.bases[0];
+  const north = [[0, 0], [400, 0], [580, -280], [1620, -280], [1800, 0], [2200, 0]];
+  const ridgeW = [[600, 0], [700, -150], [1030, -150], [1030, 150], [700, 150]];
+  return {
+    id: 'twolane', v: 1,
+    display: { name: 'Two-Lane', desc: 'Two lanes split by a ridge, with a rich centre node at the only crossing. Split your army or win one lane hard.', thumb: { style: 'lanes', tint: '#2a3b52' } },
+    size: { w: W, h: 900 },
+    armyCap: 100,
+    symmetry: 'mirror-x',
+    bases: [
+      { id: 'west', hq: wb.hq, face: [1, 0], sigPad: wb.sigPad, rally: wb.rally, pads: wb.pads },
+      { id: 'east', hq: mx(wb.hq), face: [-1, 0], sigPad: mx(wb.sigPad), rally: mx(wb.rally), pads: wb.pads.map(mx) },
+    ],
+    modes: { '1v1': [['west'], ['east']] },
+    lanes: [
+      { id: 'north', path: north, width: 230 },
+      { id: 'south', path: north.map(([x, y]) => [x, -y]), width: 230 },
+    ],
+    blockers: [{ id: 'ridgeW', poly: ridgeW }, { id: 'ridgeE', poly: ridgeW.map(mx).reverse() }],
+    nodes: [
+      { id: 'wn', name: 'north-west', type: 'income', at: [700, -280], r: 70 },
+      { id: 'c', name: 'centre', type: 'income', at: [1100, 0], r: 70, yieldMul: 1.5 }, // the rich centre node, in the crossing
+      { id: 'en', name: 'north-east', type: 'income', at: [1500, -280], r: 70 },
+      { id: 'ws', name: 'south-west', type: 'income', at: [700, 280], r: 70 },
+      { id: 'es', name: 'south-east', type: 'income', at: [1500, 280], r: 70 },
+      { id: 'tn', name: 'north watchtower', type: 'watchtower', at: [1100, -150], r: 45, sight: 600 },
+      { id: 'ts', name: 'south watchtower', type: 'watchtower', at: [1100, 150], r: 45, sight: 600 },
+      { id: 'fwn', name: 'north-west forward pad', type: 'forwardPad', at: [880, -280], r: 40, pads: [[820, -280], [940, -280]], allow: ['turret', 'barracks'] },
+      { id: 'fws', name: 'south-west forward pad', type: 'forwardPad', at: [880, 280], r: 40, pads: [[820, 280], [940, 280]], allow: ['turret', 'barracks'] },
+      { id: 'fen', name: 'north-east forward pad', type: 'forwardPad', at: [1320, -280], r: 40, pads: [[1380, -280], [1260, -280]], allow: ['turret', 'barracks'] },
+      { id: 'fes', name: 'south-east forward pad', type: 'forwardPad', at: [1320, 280], r: 40, pads: [[1380, 280], [1260, 280]], allow: ['turret', 'barracks'] },
+    ],
+    conditions: [],
+    fog: 'grid', fogCell: 20, depthW: 1,
+    ai: { lanes: true },
+  };
+})();
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.64'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.65'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
    Bases are a Colony-style diamond of pads; the HQ sits on the back pad.
    ===================================================================== */
-const L = MAP.size.w, HQ_U = MAP.bases[0].hq[0], TILE = 70; // v2.59: from the map (sim/maps.js)
-const SLOT_COUNT = 8, POP_MAX = MAP.armyCap, LANE_V = MAP.lanes[0].width / 2, DV_W = MAP.depthW ?? 0.4, US = 1.3, BS = 0.75;
+let L, HQ_U, POP_MAX, LANE_V, DV_W; // v2.59: from the map (sim/maps.js); v2.65: recomputed when the map changes
+const mapCore = () => { L = MAP.size.w; HQ_U = MAP.bases[0].hq[0]; POP_MAX = MAP.armyCap; LANE_V = MAP.lanes[0].width / 2; DV_W = MAP.depthW ?? 0.4; };
+mapCore(); MAP_HOOKS.push(mapCore);
+const TILE = 70, SLOT_COUNT = 8, US = 1.3, BS = 0.75;
 const IX = 0.866, IY = 0.5, DY = 0.5;
 const lerp = (a, b, k) => a + (b - a) * k;
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
@@ -1489,7 +1554,10 @@ function aiMassWarpTarget(g, s, ctx) {
 const AI_UPG = [['barracks', 2], ['reactor', 2], ['refinery', 2], ['factory', 2], ['habitat', 2], ['sigA', 2], ['sigB', 2], ['reactor', 3], ['hq', 2], ['techlab', 2],
   ['factory', 3], ['barracks', 3], ['turret', 2], ['habitat', 3], ['refinery', 3], ['techlab', 3], ['sigA', 3], ['sigB', 3], ['hq', 3], ['turret', 3]]; // sig: v2.32
 // Field nodes: neutral income points along the lane. Ground troops inside the zone capture them.
-const NODE_U = MAP.id === 'classic' ? [600, L / 2, L - 600] : MAP.nodes.map(n => n.at[0]), NODE_R = MAP.nodes[0].r, // v2.59: NODE_U starts at the v2.42 spots (setMech7c(false)); setMech7c(true) puts the map's nodes there
+let NODE_U, NODE_R; // v2.65: per map (MAP_HOOKS; game.js puts the MECH7C spots back after it)
+const mapNodes = () => { NODE_U = MAP.id === 'classic' ? [600, L / 2, L - 600] : MAP.nodes.map(n => n.at[0]); NODE_R = MAP.nodes[0].r; };
+mapNodes(); MAP_HOOKS.push(mapNodes);
+const // v2.59: NODE_U starts at the v2.42 spots (setMech7c(false)); setMech7c(true) puts the map's nodes there
    NODE_INC = { c: 3, e: 1 }, REGEN_DELAY = 8;
 setBalance7b(true); // v2.42 (audit phase 7b): the strategy balance layer, once NODE_INC exists
 setBalance7c(true); // v2.43 (audit phase 7c): the retune layer on top
@@ -1515,6 +1583,7 @@ function setMech7c(on) {
   if (MAP.id === 'classic') NODE_U[0] = on ? MAP.nodes[0].at[0] : MECH7C.old.node[0]; NODE_U[2] = on ? MAP.nodes[2].at[0] : MECH7C.old.node[1]; // v2.63: other maps place their nodes once (NODE_U); v2.59: the map's nodes (MECH7C.node out from each HQ)
 }
 setMech7c(true);
+MAP_HOOKS.push(() => setMech7c(MECH7C.on)); // v2.65: a new map's nodes, at the spots MECH7C asks for (Classic)
 /* ---------- Live description texts (v2.45) ----------
    Every number a building tier, upgrade step or ability description quotes is read from the data when the text is read
    (getters), so the text can never disagree with the numbers (balance layers, tests or later edits change both at once).
@@ -1572,7 +1641,21 @@ const dirOf = s => MAP.bases[s].face[0]; // v2.59: the map's bases (sim/maps.js)
 const hqU = s => MAP.bases[s].hq[0];
 const tilePos = (s, i, j) => ({ u: hqU(s) + dirOf(s) * (i + j) * TILE * IX, v: (j - i) * TILE * IY / DY });
 const mapPt = p => ({ u: p[0], v: p[1] });
-const slotPos = (s, k) => mapPt(k === SIG_SLOT ? MAP.bases[s].sigPad : MAP.bases[s].pads[k]); // v2.59: the map's pads (the same numbers tilePos gave)
+const slotPos = (s, k) => k >= FWD_SLOT ? mapPt(FWD_PADS[k - FWD_SLOT].at) : mapPt(k === SIG_SLOT ? MAP.bases[s].sigPad : MAP.bases[s].pads[k]); // v2.59: the map's pads (the same numbers tilePos gave); v2.65: forward pads
+// v2.65: the map's forward pads, in order: { node (its index in g.nodes), at, allow }; build slot FWD_SLOT + k
+let FWD_PADS = [];
+const mapFwd = () => { FWD_PADS = []; MAP.nodes.forEach((n, i) => { if (n.type === 'forwardPad') for (const p of n.pads) FWD_PADS.push({ node: i, at: p, allow: n.allow }); }); };
+mapFwd(); MAP_HOOKS.push(mapFwd);
+const fwdAt = (g, k) => g.ents.find(e => e.kind === 'b' && e.hp > 0 && e.slot === k); // what stands on forward pad slot k (either side)
+// whether side s may build role type on forward pad slot k now: it holds the pad's node, the pad is free, the role is allowed
+function fwdOk(g, s, type, k) {
+  const F = FWD_PADS[k - FWD_SLOT];
+  if (!F) return { ok: false, msg: 'No such pad' };
+  if (g.nodes[F.node].owner !== s) return { ok: false, msg: 'Capture the forward pad first' };
+  if (fwdAt(g, k)) return { ok: false, msg: 'That pad is in use' };
+  if (!F.allow.includes(type)) return { ok: false, msg: `Only a ${F.allow.map(t => bdS(g, s, t).name).join(' or ')} fits a forward pad` };
+  return { ok: true };
+}
 const hqPos = s => mapPt(MAP.bases[s].hq);
 const rallyU0 = s => MECH7C.on ? MAP.bases[s].rally[0] : hqU(s) + dirOf(s) * 300; // v2.43: inside the HQ gun's cover (v2.59: the map's rally point)
 // v2.62: with a game, the player's active rally flag (side.rally) once the player has used the army controls
@@ -1618,10 +1701,22 @@ function sendDamagedHome(g, s) {
 // every Hard mirror (KNOWN_ISSUES.md "Phase 0, item 2"). A human player still starts on Hold. retreat false = v2.54.
 const AUTO_STANCE = { retreat: true };
 const START_RES = { c: 300, e: 60 }; // what each side starts with (v2.36: named, so the match report can count it as gathered)
+// A field node in the match. v2.65: a type other than income, a yield multiplier, its own radius and its sight are kept
+// only when the map sets them (Classic's nodes keep exactly their old keys)
+function nodeOf(i, u) {
+  const d = MAP.nodes[i], n = { id: i, u, v: d.at[1], prog: 0, owner: null, c: [0, 0] };
+  if (d.type !== 'income') n.type = d.type;
+  if (d.yieldMul && d.yieldMul !== 1) n.mul = d.yieldMul;
+  if (d.r && d.r !== NODE_R) n.r = d.r;
+  if (d.sight) n.sight = d.sight;
+  return n;
+}
+const nodeInc = n => n.type ? 0 : n.mul || 1; // how many income nodes' worth a node pays (0: a watchtower or forward pad)
 function newGame(diffKey, opts = {}) {
+  if (opts.map && !useMap(opts.map)) throw new Error(`no map ${opts.map}`); // v2.65: the match's map (the current one if none)
   const g = { t: 0, ents: [], projs: [], fx: [], parts: [], sides: [], abil: [], over: false, winner: -1, nid: 1,
     diff: DIFF[diffKey] || DIFF.normal, diffKey, events: [], auto: !!opts.autoPlayer, autoDiff: opts.autoDiff || 'normal', shake: 0, front: [null, null], countdown: opts.countdown || 0,
-    nodes: NODE_U.map((u, i) => ({ id: i, u, v: MAP.nodes[i].at[1], prog: 0, owner: null, c: [0, 0] })), map: MAP, log: null, forcePath: opts.forcePath || null,
+    nodes: NODE_U.map((u, i) => nodeOf(i, u)), map: MAP, log: null, forcePath: opts.forcePath || null,
     creep: [[], []], acid: [], field: [[], []], warps: [] }; // creep patches per side (v2.18; Bloomhost only); acid: Ruinmaw pools (v2.19); field: Axiarch power field patches, warps: units mid-warp (v2.26)
   seedGame(g, opts.seed); // v2.50: the match's random streams (opts.seed, else a fresh one)
   for (let s = 0; s < 2; s++) {
@@ -1681,7 +1776,7 @@ function income(g, s) {
     if (b.kind !== 'b' || b.side !== s || !b.built || b.hp <= 0 || !bdOf(b).inc) continue;
     const inc = bdOf(b).inc[b.tier]; c += inc.c; e += inc.e;
   }
-  for (const n of g.nodes) if (n.owner === s) { c += NODE_INC.c; e += NODE_INC.e; }
+  for (const n of g.nodes) if (n.owner === s && !n.type) { const k = n.mul || 1; c += NODE_INC.c * k; e += NODE_INC.e * k; } // v2.65: income nodes only, × yieldMul
   return { c, e };
 }
 // Army strength for AI decisions; Interceptors count for a quarter, since they can't fight ground units or buildings
@@ -1701,6 +1796,7 @@ function tryBuild(g, s, type, want = -1) {
     if (on) return { ok: false, msg: `The signature pad holds your ${bdOf(on).name}: sell it to build this` };
     slot = SIG_SLOT;
   } else if (sigPadOn() && want === SIG_SLOT) return { ok: false, msg: 'Only a signature building fits the signature pad' };
+  else if (want >= FWD_SLOT) { const f = fwdOk(g, s, type, want); if (!f.ok) return f; slot = want; } // v2.65: a forward pad
   else slot = want >= 0 && want < SLOT_COUNT && !side.slots[want] ? want : side.slots.findIndex(x => !x);
   if (slot < 0) return { ok: false, msg: 'All 8 building pads are in use' };
   if (side.res.c < d.cost.c) return { ok: false, msg: `Need ${Math.ceil(d.cost.c - side.res.c)} more credits` };
@@ -1832,13 +1928,17 @@ function hqStatus(g, s, viewer = s) {
 /* ---------- Fog of war ----------
    Each side sees full-depth strips of the lane around its own units, buildings and held field nodes.
    Depth counts for little in range (DV_W), so strips match how far things can actually shoot. */
-const FOG_CELL = MAP_2D ? MAP.fogCell || 20 : 10, FOG_NX = Math.ceil(L / FOG_CELL) + 1; // v2.63: a grid map has rows too (MAP_2D)
-const FOG_Y0 = -MAP.size.h / 2, FOG_NY = MAP_2D ? Math.ceil(MAP.size.h / FOG_CELL) + 1 : 1, FOG_N = FOG_NX * FOG_NY;
+let FOG_CELL, FOG_NX, FOG_Y0, FOG_NY, FOG_N, cellOf; // v2.63: a grid map has rows too (MAP_2D); v2.65: per map (MAP_HOOKS)
+const mapFog = () => {
+  FOG_CELL = MAP_2D ? MAP.fogCell || 20 : 10; FOG_NX = Math.ceil(L / FOG_CELL) + 1;
+  FOG_Y0 = -MAP.size.h / 2; FOG_NY = MAP_2D ? Math.ceil(MAP.size.h / FOG_CELL) + 1 : 1; FOG_N = FOG_NX * FOG_NY;
+  cellOf = MAP_2D ? (u, v = 0) => fogRow(v) * FOG_NX + clamp(Math.floor(u / FOG_CELL), 0, FOG_NX - 1) : u => clamp(Math.floor(u / FOG_CELL), 0, FOG_N - 1); // v: depth (grid maps only)
+};
+mapFog(); MAP_HOOKS.push(mapFog);
 const SIGHT = { rifle: 170, heavy: 180, sniper: 220, tank: 210, artillery: 200, titan: 240, flame: 190, hydra: 260, aircraft: 260, interceptor: 280, leviathan: 220, medic: 220, drone: 420, skitterling: 170, mite: 150, bulwark: 190, razorwing: 250, leaper: 180, ravager: 190, spitter: 190, bilecaster: 230, bilelobber: 200, ruinmaw: 240, thornback: 190, dreadthorn: 220, needlewing: 220, cloudwing: 230, broodtyrant: 230, worldrender: 220, shardling: 170, bastion: 200, wraithwing: 250, riftstalker: 180, parallax: 190, lancer: 200, marksman: 230, riftmortar: 200, worldbreaker: 240, gravemantle: 200, eventide: 220, prismwing: 220, shardstorm: 240, voidcarrier: 230, sovereign: 220 };
 const B_SIGHT = { hq: 520, turret: 340 }, B_SIGHT_DEF = 200, NODE_SIGHT = 220; // HQ 520 ≥ its T3 range (470)
 const INTEL_TTL = 45, THREAT_MEMORY = 5, SPOT_GAP = 10;
 const fogRow = v => clamp(Math.floor((v - FOG_Y0) / FOG_CELL), 0, FOG_NY - 1);
-const cellOf = MAP_2D ? (u, v = 0) => fogRow(v) * FOG_NX + clamp(Math.floor(u / FOG_CELL), 0, FOG_NX - 1) : u => clamp(Math.floor(u / FOG_CELL), 0, FOG_N - 1); // v: depth (grid maps only)
 const sightOf = e => e.kind === 'u' ? SIGHT[e.type] : (B_SIGHT[e.type] || B_SIGHT_DEF);
 const ghostOf = b => ({ id: b.id, type: b.type, fac: b.fac, side: b.side, slot: b.slot, tier: b.tier, path: b.path, u: b.u, v: b.v, half: b.half }); // path: the last-seen upgrade-tree path; fac: its faction (v2.17)
 function newFog(g, s) {
@@ -1869,7 +1969,7 @@ function updateVision(g) {
       for (let row = fogRow(v - r), r1 = fogRow(v + r); row <= r1; row++) { const y = FOG_Y0 + row * FOG_CELL + FOG_CELL / 2, dy = y - v; if (dy > r || dy < -r) continue; const dx = Math.sqrt(r * r - dy * dy); vis.fill(1, cellOf(u - dx, y), cellOf(u + dx, y) + 1); }
     } : (u, r) => { for (let i = cellOf(u - r), b = cellOf(u + r); i <= b; i++) vis[i] = 1; };
     for (const e of g.ents) if (e.side === s && e.hp > 0) reveal(e.u, sightOf(e), e.v);
-    for (const n of g.nodes) if (n.owner === s) reveal(n.u, NODE_SIGHT, n.v);
+    for (const n of g.nodes) if (n.owner === s) reveal(n.u, n.sight || NODE_SIGHT, n.v); // v2.65: a watchtower sees further
     for (let i = 0; i < FOG_N; i++) if (vis[i]) exp[i] = f.seen[i] = 1;
     // Remember what is in view; forget remembered things whose spot is in view but empty
     const seenB = new Set(), seenU = new Set();
@@ -1929,11 +2029,11 @@ function update(g, dt) {
     }
   }
   indexFoes(foes[0], dt); indexFoes(foes[1], dt); // v2.37: lane-sorted, so target searches look only near the searcher
-  const n = g.ents.length;
+  const n = g.ents.length; NAV.now = g.t; // v2.65: the clock the navigation paths age by
   for (let i = 0; i < n; i++) {
     const e = g.ents[i];
     if (e.hp <= 0) continue;
-    if (e.kind === 'b') updateBuilding(g, e, foes[e.side], dt); else updateUnit(g, e, foes[e.side], dt);
+    if (e.kind === 'b') updateBuilding(g, e, foes[e.side], dt); else { updateUnit(g, e, foes[e.side], dt); if (NAV.on && e.hp > 0 && !UDEF[e.type].air && !e.leaping && navShut(e.u, e.v)) navEject(e); } // v2.65: never inside a wall
   }
   updateProjs(g, dt);
   updateMedics(g, dt);
@@ -1961,7 +2061,7 @@ function updateNodes(g, dt) {
   for (const n of g.nodes) {
     let c0 = 0, c1 = 0;
     let w0 = 0, w1 = 0; // capture weight: a Drilled Rifleman counts 1.5
-    for (const e of g.ents) if (e.kind === 'u' && e.hp > 0 && !UDEF[e.type].air && !UDEF[e.type].noCap && (MAP_2D ? Math.hypot(e.u - n.u, e.v - n.v) : Math.abs(e.u - n.u)) <= NODE_R) { const w = e.vet ? DRILL.capture : 1; if (e.side === 0) { c0++; w0 += w; } else { c1++; w1 += w; } }
+    for (const e of g.ents) if (e.kind === 'u' && e.hp > 0 && !UDEF[e.type].air && !UDEF[e.type].noCap && (MAP_2D ? Math.hypot(e.u - n.u, e.v - n.v) : Math.abs(e.u - n.u)) <= (n.r || NODE_R)) { const w = e.vet ? DRILL.capture : 1; if (e.side === 0) { c0++; w0 += w; } else { c1++; w1 += w; } }
     n.c = [c0, c1];
     if (c0 && !c1) n.prog = Math.min(100, n.prog + 8 * Math.sqrt(w0) * dt);
     else if (c1 && !c0) n.prog = Math.max(-100, n.prog - 8 * Math.sqrt(w1) * dt);
@@ -1995,6 +2095,7 @@ function updateBunkers(g) {
     if (!dep) { for (const b of mine) razeBunker(g, b); continue; }
     const bk = dep.bk || (dep.bk = {});
     for (const n of g.nodes) {
+      if (n.type) continue; // v2.65: bunkers stand on income nodes only (not watchtowers or forward pads)
       const b = mine.find(x => x.node === n.id);
       if (n.owner !== s) { if (b) razeBunker(g, b); delete bk[n.id]; continue; }
       if (b) { b.tier = dep.tier; continue; } // upgrades apply at once
@@ -2312,6 +2413,7 @@ function setStance(g, s, v) {
 
 function moveToward(u, d, tu, tv, dt, mul = 1) { // mul: speed multiplier (creep, v2.18)
   if (MAP_LANED && u.lane != null && !d.air && moveLane(u, d, tu, tv, dt, mul)) return true;
+  if (NAV.on && !d.air) return moveNav(u, d, tu, tv, dt, mul); // v2.65: around the map's blockers
   const du = tu - u.u, dv = tv - u.v;
   if (Math.abs(du) < 2 && Math.abs(dv) < 2) { u.moving = false; return false; }
   if (Math.abs(du) >= 2) { u.u = clamp(u.u + Math.sign(du) * Math.min(Math.abs(du), d.speed * mul * dt), 0, L); u.face = Math.sign(du); }
@@ -2329,6 +2431,7 @@ function moveLane(u, d, tu, tv, dt, mul) {
   const du = tu - u.u;
   if (Math.abs(du) < LANE_GO.near) return false;
   const ln = MAP.lanes[u.lane], hw = ln.width / 2, sg = Math.sign(du), step = d.speed * mul * dt, x0 = u.u, off = u.v - laneY(ln, x0);
+  if (NAV.on && Math.abs(tv - laneY(ln, tu)) > hw + 40) return false; // v2.65: a target off this lane (a flag, a chase elsewhere): navigate there instead
   if (Math.abs(off) > hw + 20) { const ax = clamp(x0 + sg * Math.min(Math.abs(du), LANE_GO.ahead), 0, L); return moveStraight(u, d, ax, laneY(ln, ax), dt, mul); }
   const k = (laneY(ln, x0 + sg * LANE_GO.probe) - laneY(ln, x0)) / LANE_GO.probe, ax = step / Math.sqrt(1 + k * k);
   const nx = clamp(x0 + sg * Math.min(Math.abs(du), ax), 0, L), want = clamp(tv - laneY(ln, tu), -hw, hw);
@@ -2339,6 +2442,83 @@ function moveLane(u, d, tu, tv, dt, mul) {
 function moveStraight(u, d, tu, tv, dt, mul) { const k = u.lane; u.lane = null; const r = moveToward(u, d, tu, tv, dt, mul); u.lane = k; return r; }
 // The depth a unit holds on its lane at x: its own offset (laneV) around the lane's centre there; Classic: laneV itself
 const laneTv = (u, x) => MAP_LANED && u.lane != null && !UDEF[u.type].air ? laneY(MAP.lanes[u.lane], x) + u.laneV : u.laneV;
+// v2.65 (Two-Lane): ground navigation around blockers (the ridge). A grid of NAV.cell cells marks the ground within
+// NAV.pad of a blocker (or off the map) as closed; a ground unit whose straight line to its target crosses closed ground
+// follows an A* path (8 directions), skipping ahead to the farthest point it can walk to in a straight line, and keeps
+// the path (u.nav) until its target moves NAV.re or NAV.age seconds pass. On a grid map it moves at full speed in any
+// direction (the straight move below keeps the old depth speed). A unit that ends a step on closed ground (a leap, a
+// shove) is put back on the nearest open cell. Maps without blockers (Classic) never use any of this.
+const NAV = { on: false, cell: 20, pad: 14, re: 40, age: 2, now: 0, nx: 0, ny: 0, y0: 0, b: null };
+function mapNav() {
+  const bl = MAP.blockers || []; NAV.on = bl.length > 0; NAV.b = null; if (!NAV.on) return;
+  const C = NAV.cell; NAV.nx = Math.ceil(MAP.size.w / C); NAV.y0 = -MAP.size.h / 2; NAV.ny = Math.ceil(MAP.size.h / C);
+  NAV.b = new Uint8Array(NAV.nx * NAV.ny);
+  const inPoly = (x, y, P) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, yi] = P[i], [xj, yj] = P[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
+  const segD = (x, y, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy, t = l2 ? clamp(((x - a[0]) * dx + (y - a[1]) * dy) / l2, 0, 1) : 0; return Math.hypot(x - a[0] - t * dx, y - a[1] - t * dy); };
+  for (let j = 0; j < NAV.ny; j++) for (let i = 0; i < NAV.nx; i++) {
+    const x = (i + 0.5) * C, y = NAV.y0 + (j + 0.5) * C;
+    NAV.b[j * NAV.nx + i] = bl.some(o => inPoly(x, y, o.poly) || o.poly.some((p, k) => segD(x, y, o.poly[(k || o.poly.length) - 1], p) < NAV.pad)) ? 1 : 0;
+  }
+}
+mapNav(); MAP_HOOKS.push(mapNav);
+const navCell = (u, v) => [clamp(Math.floor(u / NAV.cell), 0, NAV.nx - 1), clamp(Math.floor((v - NAV.y0) / NAV.cell), 0, NAV.ny - 1)];
+const navShut = (u, v) => { const [i, j] = navCell(u, v); return NAV.b[j * NAV.nx + i] === 1; };
+function navClear(u0, v0, u1, v1) { // the straight line between two points crosses no closed cell
+  const n = Math.ceil(Math.hypot(u1 - u0, v1 - v0) / (NAV.cell / 2));
+  for (let k = 1; k <= n; k++) if (navShut(u0 + (u1 - u0) * k / n, v0 + (v1 - v0) * k / n)) return false;
+  return true;
+}
+const NAVQ = { g: null, f: null, from: null, open: null };
+function navPath(u0, v0, u1, v1) { // A* over open cells; the cell centres from start to goal (the goal's own point last), or null
+  const nx = NAV.nx, N = nx * NAV.ny, C = NAV.cell;
+  if (!NAVQ.g || NAVQ.g.length !== N) { NAVQ.g = new Float64Array(N); NAVQ.from = new Int32Array(N); NAVQ.done = new Uint8Array(N); }
+  const G = NAVQ.g, FR = NAVQ.from, D = NAVQ.done; G.fill(Infinity); D.fill(0);
+  let [si, sj] = navCell(u0, v0), [ti, tj] = navCell(u1, v1);
+  const s = sj * nx + si, t = tj * nx + ti, h = k => { const i = k % nx, j = (k - i) / nx, di = Math.abs(i - ti), dj = Math.abs(j - tj); return Math.max(di, dj) + 0.4142 * Math.min(di, dj); };
+  const heap = [], push = (k, f) => { heap.push([f, k]); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
+  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top[1]; };
+  G[s] = 0; FR[s] = -1; push(s, h(s));
+  while (heap.length) {
+    const k = pop(); if (D[k]) continue; D[k] = 1;
+    if (k === t) break;
+    const i = k % nx, j = (k - i) / nx;
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+      if (!di && !dj) continue;
+      const a = i + di, b = j + dj; if (a < 0 || b < 0 || a >= nx || b >= NAV.ny) continue;
+      const q = b * nx + a; if (NAV.b[q] && q !== t) continue;
+      if (di && dj && (NAV.b[j * nx + a] || NAV.b[b * nx + i])) continue; // no cutting a closed corner
+      const ng = G[k] + (di && dj ? 1.4142 : 1); if (ng < G[q]) { G[q] = ng; FR[q] = k; push(q, ng + h(q)); }
+    }
+  }
+  if (!D[t]) return null;
+  const out = [[u1, v1]]; for (let k = FR[t]; k >= 0 && k !== s; k = FR[k]) { const i = k % nx, j = (k - i) / nx; out.push([(i + 0.5) * C, NAV.y0 + (j + 0.5) * C]); }
+  return out.reverse();
+}
+function moveNav(u, d, tu, tv, dt, mul) {
+  if (Math.abs(tu - u.u) < 2 && Math.abs(tv - u.v) < 2) { u.moving = false; return false; }
+  let wu = tu, wv = tv;
+  if (!navClear(u.u, u.v, tu, tv)) {
+    let N = u.nav;
+    if (!N || Math.abs(N.tu - tu) + Math.abs(N.tv - tv) > NAV.re || NAV.now - N.t > NAV.age || !N.p || !N.p.length) N = u.nav = { tu, tv, t: NAV.now, p: navPath(u.u, u.v, tu, tv) };
+    if (N.p) { while (N.p.length > 1 && navClear(u.u, u.v, N.p[1][0], N.p[1][1])) N.p.shift(); [wu, wv] = N.p[0]; if (Math.hypot(wu - u.u, wv - u.v) < 4 && N.p.length > 1) { N.p.shift(); [wu, wv] = N.p[0]; } }
+  } else if (u.nav) u.nav = undefined;
+  if (!MAP_2D) { const k = u.lane; u.lane = null; NAV.on = false; const r = moveToward(u, d, wu, wv, dt, mul); NAV.on = true; u.lane = k; return r; }
+  const du = wu - u.u, dv = wv - u.v, dd = Math.hypot(du, dv), st = d.speed * mul * dt;
+  if (dd < 2) { u.moving = false; return false; }
+  const k = Math.min(1, st / dd), nu = clamp(u.u + du * k, 0, L), nv = u.v + dv * k;
+  if (!navShut(nu, nv)) { u.u = nu; u.v = nv; } else if (!navShut(nu, u.v)) u.u = nu; else if (!navShut(u.u, nv)) u.v = nv; // slide along a wall
+  if (Math.abs(du) > 0.5) u.face = Math.sign(du);
+  u.moving = true;
+  return true;
+}
+function navEject(u) { // put a ground unit standing on closed ground back on the nearest open cell
+  const [i0, j0] = navCell(u.u, u.v), C = NAV.cell;
+  for (let r = 1; r < 12; r++) for (let dj = -r; dj <= r; dj++) for (let di = -r; di <= r; di++) {
+    if (Math.max(Math.abs(di), Math.abs(dj)) !== r) continue;
+    const i = i0 + di, j = j0 + dj; if (i < 0 || j < 0 || i >= NAV.nx || j >= NAV.ny || NAV.b[j * NAV.nx + i]) continue;
+    u.u = (i + 0.5) * C; u.v = NAV.y0 + (j + 0.5) * C; return;
+  }
+}
 const RETREAT = { fire: false }; // v2.35 (audit): retreating units hold their fire; fire true restores the v2.34 rule (firing on the move)
 function updateUnit(g, u, foes, dt) {
   const d = UDEF[u.type];
@@ -3769,8 +3949,8 @@ function aiUpdate(g, s, dt) {
   // A failed base attack raises the bar for the next one, unless the army is maxed out with money banked to refill it
   const late = g.t > dl.late; // after 18 minutes (the late dial, v2.38), stop waiting for a perfect edge
   const bold = myV >= attackBar(g, s) || (full && (rich || side.res.c > 1000)) || late;
-  const siegeLine = hqU(opp) - dir * (hqGun.range + 25), fieldLine = L / 2 + dir * 20, farLine = g.nodes[s === 0 ? g.nodes.length - 1 : 0].u; // farLine: the enemy's own node (the nodes dial at 3, v2.38)
-  const myNode = g.nodes[s === 0 ? 0 : g.nodes.length - 1];
+  const siegeLine = hqU(opp) - dir * (hqGun.range + 25), fieldLine = L / 2 + dir * 20, farLine = g.nodes[s === 0 ? 2 : 0].u; // farLine: the enemy's own node (the nodes dial at 3, v2.38)
+  const myNode = g.nodes[s === 0 ? 0 : 2];
   // enemies camping on or near our node, as far as we know
   const atNode = theirs.filter(u => u.fresh && Math.abs(u.u - myNode.u) < NODE_R + 160);
   const nodeLost = myNode.owner === opp || atNode.length > 0;
@@ -3960,8 +4140,8 @@ function aiEstimate(g, s) {
   }
   let inc = BDEF.hq.inc[1].c, refs = 0;
   for (const gh of Object.values(f.ghosts)) if (gh.side !== s && gh.type === 'refinery') { refs++; inc += BD(gh.fac, 'refinery').inc[gh.tier || 1].c; }
-  if (!refs) inc = income(g, s).c - NODE_INC.c * g.nodes.filter(n => n.owner === s).length;
-  inc += NODE_INC.c * g.nodes.filter(n => n.owner === 1 - s).length;
+  if (!refs) inc = income(g, s).c - NODE_INC.c * g.nodes.reduce((a, n) => a + (n.owner === s ? nodeInc(n) : 0), 0);
+  inc += NODE_INC.c * g.nodes.reduce((a, n) => a + (n.owner === 1 - s ? nodeInc(n) : 0), 0);
   side.estE = (side.estE || 0) + inc * dt;
   let killed = 0;
   if (g.log) { const K = g.log.tot[s].killed; for (const t in K) { const d = UDEF[t]; if (d) killed += (d.cost.c + d.cost.e * 1.5) * K[t]; } }
@@ -3978,7 +4158,7 @@ function aiRaid(g, s, mine, myV, dr) {
     return;
   }
   if (side.stance === 'attack' || g.t < R.at || g.t - (side.raidT ?? -1e9) < R.every) return;
-  const theirNode = g.nodes[s === 0 ? g.nodes.length - 1 : 0], tgt = theirNode.owner === s ? g.nodes[1] : theirNode;
+  const theirNode = g.nodes[s === 0 ? 2 : 0], tgt = theirNode.owner === s ? g.nodes[1] : theirNode;
   if (tgt.owner === s) return;
   const fast = mine.filter(u => { const d = UDEF[u.type]; return !d.air && !d.support && !d.siege && !d.noCap && !u.temp && u.id !== side.scoutId; }).sort((a, b) => UDEF[b.type].speed - UDEF[a.type].speed);
   const ids = []; let v = 0, hp0 = 0;
@@ -3992,7 +4172,7 @@ function aiRaid(g, s, mine, myV, dr) {
 function aiEnemyIncome(g, s) {
   let inc = BDEF.hq.inc[1].c;
   for (const gh of Object.values(g.fog[s].ghosts)) if (gh.side !== s && gh.type === 'refinery') inc += BD(gh.fac, 'refinery').inc[gh.tier || 1].c;
-  return inc + NODE_INC.c * g.nodes.filter(n => n.owner === 1 - s).length;
+  return inc + NODE_INC.c * g.nodes.reduce((a, n) => a + (n.owner === 1 - s ? nodeInc(n) : 0), 0);
 }
 // sig: make room for the signature building by selling one of the duplicates the plan has (never the only one of a type)
 function aiSigRoom(g, s, dup, sig) {
@@ -4258,7 +4438,8 @@ function deserialize(str) {
   const o = JSON.parse(str);
   if (!o || !SAVE_OK.includes(o.v)) return null;
   const m = o.map || { id: 'classic', v: 1 }; // v2.63: a save before v31 was played on Classic v1
-  if (m.id !== MAP.id || m.v !== MAP.v) return null; // another map, or another version of it: it can't be resumed or replayed here
+  if (!MAPS[m.id] || MAPS[m.id].v !== m.v) return null; // a map this build doesn't have, or another version of it: it can't be resumed or replayed
+  useMap(m.id); // v2.65: the save's map becomes the current one
   const g = newGame(o.diffKey);
   if (o.rs !== undefined && !RNG.legacy) { g.seed = o.seed >>> 0; g.rs = o.rs | 0; g.fs = o.fs | 0; } // v2.50: an older save keeps the fresh seed newGame drew
   g.t = o.t; g.nid = o.nid; g.ents = o.ents; g.nodes = o.nodes;
@@ -4349,7 +4530,9 @@ function deserialize(str) {
 }
 /* ---------- Match report (v2.9): read-only views of the match log, used only once the match is over ---------- */
 const mmss = t => { t = Math.max(0, Math.floor(t)); return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`; };
-const NODE_NAME = ['west', 'centre', 'east'];
+let NODE_NAME; const mapNodeNames = () => { NODE_NAME = MAP.id === 'classic' ? ['west', 'centre', 'east'] : MAP.nodes.map(n => n.name || n.id); }; // v2.65: per map
+mapNodeNames(); MAP_HOOKS.push(mapNodeNames);
+const nodeLabel = i => { const n = NODE_NAME[i] || ''; return /watchtower|pad/.test(n) ? n : `${n} field node`; }; // v2.65
 const LINE_MAX = 80; // per side; unit groups are widened only past this
 // A building role's name as side s's faction calls it (the log is read only after the match, when factions are revealed)
 const logBName = (g, s, t) => { const d = BD(g && g.sides[s] ? g.sides[s].faction : DEFAULT_FACTION, t); return d ? d.name : t; };
@@ -4362,8 +4545,8 @@ function logEvText(e, me, g) { // one log event as a line of text (me: written f
     case 'V': return `${B(a)} upgraded to T${b}`;
     case 'S': return `${B(a)} sold`;
     case 'D': return `${B(a)} destroyed${x === -1 ? ' by the storm' : ''}`;
-    case 'N': return `Captured the ${NODE_NAME[a] || ''} field node`;
-    case 'L': return `Lost the ${NODE_NAME[a] || ''} field node`;
+    case 'N': return `Captured the ${nodeLabel(a)}`;
+    case 'L': return `Lost the ${nodeLabel(a)}`;
     case 'A': return a === 'strike' ? `Orbital Strike: ${Math.round(b || 0)} damage, ${x || 0} destroyed` : a === 'shield' ? `Emergency Shield: ${Math.round(b || 0)} damage blocked` : a === 'repair' ? `Repair Pulse: ${Math.round(b || 0)} HP restored`
       : a === 'frenzy' ? `Frenzy Bloom: ${Math.round(b || 0)} organisms frenzied` : a === 'brood' ? `Emergency Brood: ${Math.round(b || 0)} Skitterlings hatched`
       : a === 'mwarp' ? `Mass Warp: ${Math.round(b || 0)} units warped` : a === 'overcharge' ? `Shield Overcharge: ${Math.round(b || 0)} damage blocked, ${Math.round(x || 0)} shields restored` // v2.28
@@ -4479,11 +4662,18 @@ const TEAM = [
 const M = { d: '#161e2c', m: '#2a3648', l: '#435269', h: '#7c8ba2' };
 const MAT = { metal: ['#66779a', '#3e4b65', '#2a3448'], dark: ['#3a465c', '#262f42', '#1a2131'], light: ['#97a7c1', '#66758f', '#4c5a72'] };
 const V = { cw: 0, ch: 0, dpr: 1, S: 1, S0: 1, zoom: 1, A: 0, ft: 0, fb: 0 };
-const cam = { x: 0, vx: 0 };
+const cam = { x: 0, vx: 0, y: 0, vy: 0 }; // y (v2.65): vertical pan on a deep map, in screen-world units (0 on Classic)
 const Y_TOP = -174, Y_BOT = 92;          // world rows that must fit between the top bar and the card tray
-const GU0 = -500, GU1 = L + 500, GV0 = -260, GV1 = 480, HORIZON = GV0 * DY;
-const UMIN = 0, UMAX = L;
-const GB = { x0: GU0 - 10, x1: GU1 + 10, y0: HORIZON - 4, y1: GV1 * DY + 4 };
+const YB = () => Y_BOT + cam.y;          // v2.65: the world row at the tray's top edge, with the vertical pan (Classic: Y_BOT)
+const GU0 = -500, UMIN = 0;
+let GU1, GV0, GV1, HORIZON, UMAX, GB, CAMY; // v2.65: per map (MAP_HOOKS). CAMY: how far the camera pans up and down (Classic: 0)
+const mapView = () => {
+  const H = MAP.size.h / 2, deep = MAP.id !== 'classic' && H > 200;
+  GU1 = L + 500; GV0 = deep ? -H - 60 : -260; GV1 = deep ? H + 280 : 480; HORIZON = GV0 * DY; UMAX = L;
+  GB = { x0: GU0 - 10, x1: GU1 + 10, y0: HORIZON - 4, y1: GV1 * DY + 4 };
+  CAMY = deep ? { min: HORIZON - 30 - Y_TOP, max: H * DY + 30 - Y_BOT } : { min: 0, max: 0 }; // how far the view may pan from Classic's framing (cam.y), from just above the horizon to just below the field
+};
+mapView(); MAP_HOOKS.push(mapView);
 const PAD_H = 30, HQ_PAD_H = 36;
 const gp = (u, v, z = 0) => [u, v * DY - z];                 // world plane → screen-world
 const pt = (u, v, z = 0) => [(u + v) * IX, (v - u) * IY - z];  // building-local isometric → screen-world
@@ -5421,7 +5611,7 @@ const DRAW_B_AX = {};
 for (const k in BART_AX) DRAW_B_AX[k] = (c, T, t, b, tier) => { BART_AX[k][0](c, T, tier); BART_AX[k][1](c, T, t, b, tier); };
 const drawBOf = fac => fac === 'bloomhost' ? DRAW_B_BH : fac === 'axiarchs' ? DRAW_B_AX : DRAW_B;
 function drawNodeZone(c, n, time, inView = true) { // ownership is public; progress and contest only when in view
-  const w = P(n.u, 0), col = n.owner === null ? '210,195,255' : TEAM[n.owner].glow, ry = (LANE_V + 18) * DY;
+  const NODE_R = n.r || NODE_R0(), w = P(n.u, MAP_2D ? n.v : 0), col = n.owner === null ? '210,195,255' : TEAM[n.owner].glow, ry = MAP_2D ? NODE_R * DY : (LANE_V + 18) * DY; // v2.65: a circle on a grid map
   c.fillStyle = `rgba(${col},0.05)`; c.beginPath(); c.ellipse(w.x, w.y, NODE_R, ry, 0, 0, 7); c.fill();
   c.setLineDash([6, 6]); c.strokeStyle = `rgba(${col},0.35)`; c.lineWidth = 1.3; c.stroke(); c.setLineDash([]);
   if (inView && (Math.abs(n.prog) > 0.5 && n.owner === null || (n.owner !== null && Math.abs(n.prog) < 100))) {
@@ -5437,7 +5627,41 @@ function drawHealRing(c, b, time) {
   c.fillStyle = 'rgba(93,255,138,0.035)'; c.beginPath(); c.ellipse(w.x, w.y, rx, ry, 0, 0, 7); c.fill();
   c.setLineDash([3, 7]); c.lineDashOffset = -time * 6; c.strokeStyle = 'rgba(93,255,138,0.24)'; c.lineWidth = 1.2; c.stroke(); c.setLineDash([]); c.lineDashOffset = 0;
 }
+const NODE_R0 = () => NODE_R;
+// v2.65: a watchtower: a lattice mast with a lamp that sweeps once held
+function drawTower(c, n, time) {
+  const w = P(n.u, n.v), rgb = n.owner === null ? '210,195,255' : TEAM[n.owner].glow, main = n.owner === null ? '#ddd2ff' : TEAM[n.owner].main;
+  c.save(); c.translate(w.x, w.y); c.scale(BS, BS);
+  box(c, 0, 0, 14, 14, 0, 5, MAT.dark);
+  c.strokeStyle = M.h; c.lineWidth = 1.6;
+  for (const [a, b] of [[-8, -8], [8, -8], [8, 8], [-8, 8]]) { const [x0, y0] = pt(a, b, 5), [x1, y1] = pt(a * 0.35, b * 0.35, 58); c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke(); }
+  for (const z of [22, 40]) { const k = 1 - (z - 5) / 53 * 0.65, q = [[-8, -8], [8, -8], [8, 8], [-8, 8]].map(([a, b]) => pt(a * k, b * k, z)); c.lineWidth = 1; poly(c, q); c.stroke(); }
+  box(c, 0, 0, 5, 5, 58, 6, MAT.metal);
+  const [lx, ly] = pt(0, 0, 66);
+  glow(c, lx, ly, 3, rgb, 0.6 + 0.3 * Math.sin(time * 3));
+  if (n.owner !== null) { const a = time * 1.2 + n.u; c.fillStyle = `rgba(${rgb},0.12)`; c.beginPath(); c.moveTo(lx, ly); c.arc(lx, ly, 46, a - 0.25, a + 0.25); c.closePath(); c.fill(); }
+  c.fillStyle = main; c.fillRect(lx - 1, ly - 9, 1.6, 6);
+  c.restore();
+}
+// v2.65: a forward pad's capture post: a short pylon between its two pads
+function drawFwdPost(c, n, time) {
+  const w = P(n.u, n.v), rgb = n.owner === null ? '210,195,255' : TEAM[n.owner].glow;
+  c.save(); c.translate(w.x, w.y); c.scale(BS, BS);
+  box(c, 0, 0, 8, 8, 0, 4, MAT.dark); cyl(c, 0, 0, 3, 4, 20, M.h, M.m, '#9aa7ba');
+  const [x, y] = pt(0, 0, 28); glow(c, x, y, 3, rgb, 0.5 + 0.4 * Math.sin(time * 4 + n.u));
+  c.restore();
+}
+// v2.65: a forward pad (FWD_PADS k): a plain plate in its holder's colour, faint while nobody holds it
+function drawFwdPad(c, k, owner, empty, time, selected) {
+  const F = FWD_PADS[k], w = P(F.at[0], F.at[1]), h = PAD_H, rgb = owner === null ? '210,195,255' : TEAM[owner].glow;
+  const P4 = [pt(-h, -h), pt(h, -h), pt(h, h), pt(-h, h)].map(([a, b]) => [w.x + a, w.y + b]);
+  poly(c, P4); c.fillStyle = owner === null ? 'rgba(26,30,44,0.7)' : 'rgba(26,33,50,0.95)'; c.fill();
+  c.setLineDash(owner === null ? [5, 5] : []); c.strokeStyle = selected ? 'rgba(255,211,77,0.9)' : `rgba(${rgb},${empty ? 0.45 + 0.25 * Math.sin(time * 2.5 + w.x * 0.02) : 0.3})`; c.lineWidth = selected ? 2 : 1.2; c.stroke(); c.setLineDash([]);
+  if (empty) { const [x, y] = [w.x, w.y]; c.strokeStyle = `rgba(${rgb},0.5)`; c.lineWidth = 1.4; c.beginPath(); c.moveTo(x - 5, y); c.lineTo(x + 5, y); c.moveTo(x, y - 3); c.lineTo(x, y + 3); c.stroke(); }
+}
 function drawNode(c, n, time) {
+  if (n.type === 'watchtower') return drawTower(c, n, time);
+  if (n.type === 'forwardPad') return drawFwdPost(c, n, time);
   const w = P(n.u, n.v), rgb = n.owner === null ? '210,195,255' : TEAM[n.owner].glow, main = n.owner === null ? '#ddd2ff' : TEAM[n.owner].main;
   c.save(); c.translate(w.x, w.y); c.scale(BS, BS);
   box(c, 0, 0, 20, 20, 0, 6, MAT.dark);
@@ -5447,6 +5671,7 @@ function drawNode(c, n, time) {
   const z = 44 + Math.sin(time * 2 + n.u) * 3, [x, y] = pt(0, 0, z), sp = Math.abs(Math.cos(time * 1.6 + n.u));
   glow(c, x, y, 7, rgb, 0.3);
   c.fillStyle = main; c.beginPath(); c.moveTo(x, y - 12); c.lineTo(x + 6 * sp + 1.5, y); c.lineTo(x, y + 12); c.lineTo(x - 6 * sp - 1.5, y); c.closePath(); c.fill();
+  if (n.mul > 1) { const [x2, y2] = pt(0, 0, z + 18); c.fillStyle = main; c.globalAlpha = 0.7; c.beginPath(); c.moveTo(x2, y2 - 6); c.lineTo(x2 + 3.5 * sp + 1, y2); c.lineTo(x2, y2 + 6); c.lineTo(x2 - 3.5 * sp - 1, y2); c.closePath(); c.fill(); c.globalAlpha = 1; } // v2.65: a rich node carries a second crystal
   c.restore();
 }
 // Unit sprites: side view facing +x, feet on y = 0. Gun tips sit on the SIM's muzzle points (MUZ) so shots leave the barrel.
@@ -6083,7 +6308,7 @@ function drawUnitArt(c, u, T) {
 
 /* ---------- Backdrop: sky, mountains and the ground plane ---------- */
 function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
-const BG = (() => {
+let BG; const mapBackdrop = () => { BG = (() => {
   const R = mulberry(11), stars = [], blobs = [], tufts = [], rocks = [], craters = [];
   for (let i = 0; i < 130; i++) stars.push({ x: R(), y: R(), r: R() * 1.1 + 0.3, a: R() * 0.6 + 0.3, tw: R() * 6 });
   const cols = ['rgba(70,120,80,0.22)', 'rgba(60,105,72,0.18)', 'rgba(8,12,18,0.28)', 'rgba(120,104,84,0.12)', 'rgba(84,140,96,0.14)'];
@@ -6097,7 +6322,8 @@ const BG = (() => {
     return pts;
   };
   return { stars, blobs, tufts, rocks, craters, far: ridge(3, 85, 18), near: ridge(9, 34, 4) };
-})();
+})(); };
+mapBackdrop(); MAP_HOOKS.push(mapBackdrop); // v2.65: per map (the ground's size)
 
 function drawGround(c) {
   const A = gp(GU0, GV0), B = gp(GU1, GV0), C = gp(GU1, GV1), D = gp(GU0, GV1);
@@ -6113,10 +6339,12 @@ function drawGround(c) {
     rg.addColorStop(0, p.col); rg.addColorStop(1, 'rgba(0,0,0,0)');
     c.fillStyle = rg; c.beginPath(); c.arc(0, 0, p.r, 0, 7); c.fill(); c.restore();
   }
-  // worn track between the bases
-  const r0 = -138 * DY, r1 = 138 * DY, lg = c.createLinearGradient(0, r0, 0, r1);
-  lg.addColorStop(0, 'rgba(150,135,110,0)'); lg.addColorStop(0.18, 'rgba(150,135,110,0.07)'); lg.addColorStop(0.82, 'rgba(150,135,110,0.07)'); lg.addColorStop(1, 'rgba(150,135,110,0)');
-  c.fillStyle = lg; c.fillRect(GB.x0, r0, GB.x1 - GB.x0, r1 - r0);
+  if (MAP_LANED) drawLaneTracks(c); // v2.65: each lane's worn track
+  else { // worn track between the bases
+    const r0 = -138 * DY, r1 = 138 * DY, lg = c.createLinearGradient(0, r0, 0, r1);
+    lg.addColorStop(0, 'rgba(150,135,110,0)'); lg.addColorStop(0.18, 'rgba(150,135,110,0.07)'); lg.addColorStop(0.82, 'rgba(150,135,110,0.07)'); lg.addColorStop(1, 'rgba(150,135,110,0)');
+    c.fillStyle = lg; c.fillRect(GB.x0, r0, GB.x1 - GB.x0, r1 - r0);
+  }
   for (const k of BG.craters) {
     const [x, y] = gp(k.u, k.v);
     c.fillStyle = 'rgba(6,8,14,0.4)'; c.beginPath(); c.ellipse(x, y, k.r, k.r * DY, 0, 0, 7); c.fill();
@@ -6140,12 +6368,46 @@ function drawGround(c) {
     rg.addColorStop(0, `rgba(${TEAM[s].glow},0.14)`); rg.addColorStop(1, `rgba(${TEAM[s].glow},0)`);
     c.fillStyle = rg; c.beginPath(); c.arc(0, 0, 260, 0, 7); c.fill(); c.restore();
   }
+  for (const b of MAP.blockers || []) drawBlocker(c, b.poly); // v2.65: the ridge
   const hz = c.createLinearGradient(0, HORIZON, 0, HORIZON + 80);
   hz.addColorStop(0, 'rgba(120,96,200,0.34)'); hz.addColorStop(0.35, 'rgba(80,70,150,0.12)'); hz.addColorStop(1, 'rgba(60,60,120,0)');
   c.fillStyle = hz; c.fillRect(GB.x0, HORIZON, GB.x1 - GB.x0, 80);
   c.restore();
   c.strokeStyle = 'rgba(200,180,255,0.35)'; c.lineWidth = 1.2;
   c.beginPath(); c.moveTo(A[0], A[1]); c.lineTo(B[0], B[1]); c.stroke();
+}
+// v2.65 (Two-Lane): a lane's worn track, wider soft band under a narrower one, along its path
+function drawLaneTracks(c) {
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  for (const [w, a] of [[1, 0.05], [0.75, 0.06], [0.45, 0.05]]) for (const ln of MAP.lanes) {
+    c.strokeStyle = `rgba(150,135,110,${a})`; c.lineWidth = ln.width * w * DY * 1.6;
+    c.beginPath(); ln.path.forEach(([x, y], i) => { const [px, py] = gp(x, y); i ? c.lineTo(px, py) : c.moveTo(px, py); }); c.stroke();
+  }
+  c.lineCap = 'butt'; c.lineJoin = 'miter';
+}
+// A blocker as a low rocky plateau: dark walls facing the viewer, a lighter cracked top, a rim of loose stones
+function drawBlocker(c, poly) {
+  const H = 16, top = poly.map(([x, y]) => gp(x, y, H)), base = poly.map(([x, y]) => gp(x, y));
+  c.fillStyle = 'rgba(0,0,0,0.35)'; c.beginPath(); base.forEach(([x, y], i) => i ? c.lineTo(x + 6, y + 5) : c.moveTo(x + 6, y + 5)); c.closePath(); c.fill(); // shadow
+  for (let i = 0; i < poly.length; i++) { // the walls that face the viewer (the edge's outward side points down the screen)
+    const j = (i + 1) % poly.length, [ax, ay] = base[i], [bx, by] = base[j];
+    const cx = poly.reduce((s, p) => s + p[0], 0) / poly.length, cy = poly.reduce((s, p) => s + p[1], 0) / poly.length;
+    const mxp = (poly[i][0] + poly[j][0]) / 2, myp = (poly[i][1] + poly[j][1]) / 2, nx = -(poly[j][1] - poly[i][1]), ny = poly[j][0] - poly[i][0];
+    const out = (nx * (mxp - cx) + ny * (myp - cy)) > 0 ? ny : -ny; if (out <= 0) continue;
+    c.fillStyle = '#20232f'; c.beginPath(); c.moveTo(ax, ay); c.lineTo(bx, by); c.lineTo(top[j][0], top[j][1]); c.lineTo(top[i][0], top[i][1]); c.closePath(); c.fill();
+  }
+  const g = c.createLinearGradient(0, Math.min(...top.map(p => p[1])), 0, Math.max(...top.map(p => p[1])));
+  g.addColorStop(0, '#3c4256'); g.addColorStop(1, '#2c3142');
+  c.fillStyle = g; c.beginPath(); top.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fill();
+  c.strokeStyle = 'rgba(190,200,230,0.18)'; c.lineWidth = 1; c.stroke();
+  const R = mulberry(poly.length * 97 + Math.round(poly[0][0])), xs = poly.map(p => p[0]), ys = poly.map(p => p[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys), inP = (x, y) => { let k = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [xi, yi] = poly[i], [xj, yj] = poly[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) k = !k; } return k; };
+  for (let n = 0; n < 60; n++) { // cracks and boulders on top
+    const x = x0 + R() * (x1 - x0), y = y0 + R() * (y1 - y0); if (!inP(x, y)) continue;
+    const [px, py] = gp(x, y, H), r = 2 + R() * 6;
+    if (R() < 0.5) { c.strokeStyle = 'rgba(10,12,20,0.45)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(px - r, py); c.lineTo(px, py + r * 0.3); c.lineTo(px + r, py - r * 0.2); c.stroke(); }
+    else { c.fillStyle = '#4a5068'; c.beginPath(); c.ellipse(px, py - r * 0.3, r, r * 0.5, 0, 0, 7); c.fill(); c.fillStyle = 'rgba(0,0,0,0.3)'; c.beginPath(); c.ellipse(px + r * 0.2, py, r, r * 0.35, 0, 0, Math.PI); c.fill(); }
+  }
 }
 let groundCache = null, GS = 1.4;
 function buildGroundCache() {
@@ -6285,7 +6547,9 @@ function drawPadAX(c, x, y, h, s, empty, time, selected) {
    glow; each patch's veins come from a seed made from its key, so they never jitter between redraws. Enemy creep is
    drawn from what the player last saw of it (fog.creep), and only on ground the player has seen, like enemy pads. */
 const creepSeed = k => [...k].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) | 0, 7);
-const CRV = { x0: -60, y0: HORIZON + 4, w: L + 120, h: 180 - HORIZON - 4, k: 1, cv: [null, null], sig: ['', ''], keys: ['', ''], at: [0, 0], gap: 1000 }; // gap: ms between repaints while it only grows or shrinks
+const CRV = { x0: -60, y0: 0, w: 0, h: 0, k: 1, cv: [null, null], sig: ['', ''], keys: ['', ''], at: [0, 0], gap: 1000 }; // gap: ms between repaints while it only grows or shrinks
+const mapCreepView = () => { CRV.y0 = HORIZON + 4; CRV.w = L + 120; CRV.h = Math.max(180, (MAP.size.h / 2) * DY + 60) - HORIZON - 4; CRV.cv = [null, null]; CRV.sig = ['', '']; CRV.keys = ['', '']; }; // v2.65: per map
+mapCreepView(); MAP_HOOKS.push(mapCreepView);
 function creepCanvas(side, patches) {
   const sig = patches.map(p => p.k + ':' + Math.round(p.r / 8)).join('|'), keys = patches.map(p => p.k).join('|'), now = performance.now();
   if (CRV.cv[side] && (CRV.sig[side] === sig || (CRV.keys[side] === keys && now - CRV.at[side] < CRV.gap))) return CRV.cv[side]; // a new or lost patch repaints at once; growth at most once a second
@@ -6557,7 +6821,10 @@ function drawUnknownBase(c, gh) {
 // Fog: unexplored ground is dark, explored ground dimmed, visible ground clear; soft edges; the sky stays clear
 const FOG_EXP = 0.45, FOG_DARK = 0.74, FOG_RGB = '5,8,20';
 // Recomputed only when the player's vision changes (the field and the minimap share it); arrays allocated once
-const FOGA = { a: new Float32Array(FOG_N), b: new Float32Array(FOG_N), vis: new Uint8Array(FOG_N), exp: new Uint8Array(FOG_N), ver: 0, grad: null, gradVer: -1, F: null };
+const FOG2 = { off: null, oc: null, img: null, F: null, vis: null, exp: null };
+const FOGA = { a: null, b: null, vis: null, exp: null, ver: 0, grad: null, gradVer: -1, F: null };
+const mapFogView = () => { Object.assign(FOGA, { a: new Float32Array(FOG_N), b: new Float32Array(FOG_N), vis: new Uint8Array(FOG_N), exp: new Uint8Array(FOG_N), grad: null, gradVer: -1, F: null }); FOG2.off = null; }; // v2.65: per map
+mapFogView(); MAP_HOOKS.push(mapFogView);
 function fogAlpha(F) {
   let same = FOGA.F === F;
   for (let i = 0; i < FOG_N && same; i++) if (FOGA.vis[i] !== F.vis[i] || FOGA.exp[i] !== F.exp[i]) same = false;
@@ -6570,7 +6837,6 @@ function fogAlpha(F) {
 }
 // v2.63: a grid-fog map (MAP_2D) draws its fog as a small alpha image (one pixel per cell), redrawn only when vision
 // changes and stretched over the ground with smoothing: the variant the fog performance check measured (fog-bench.js)
-const FOG2 = { off: null, oc: null, img: null, F: null, vis: null, exp: null };
 function drawFog2(c, F) {
   const G = FOG2;
   if (!G.off) { G.off = document.createElement('canvas'); G.off.width = FOG_NX; G.off.height = FOG_NY; G.oc = G.off.getContext('2d'); G.img = G.oc.createImageData(FOG_NX, FOG_NY); G.vis = new Uint8Array(FOG_N); G.exp = new Uint8Array(FOG_N); }
@@ -6819,7 +7085,7 @@ function vfxStep(g) {
 }
 
 function vfxScan(g, dt) {
-  const F = viewFog(g), lit = u => F.vis[cellOf(u)] === 1, frame = ++VFX.frame, R = VFX.rec;
+  const F = viewFog(g), lit = (u, v) => F.vis[cellOf(u, v)] === 1, frame = ++VFX.frame, R = VFX.rec;
   VFX.nshots = 0;
   for (const e of g.ents) {
     let r = R.get(e);
@@ -6832,9 +7098,9 @@ function vfxScan(g, dt) {
     const cd = e.cd || 0;
     if (cd > r.cd + 0.05) onFire(g, e, lit);
     r.cd = cd;
-    if (e.maxShp && VFX.primed && (e.shp || 0) < (r.shp ?? 0) - 0.5 && lit(e.u)) { const w = P(e.u, e.v); if (onView(w.x)) sfx('shieldPing', w.x); } // v2.36: an Axiarch shield takes a hit
+    if (e.maxShp && VFX.primed && (e.shp || 0) < (r.shp ?? 0) - 0.5 && lit(e.u, e.v)) { const w = P(e.u, e.v); if (onView(w.x)) sfx('shieldPing', w.x); } // v2.36: an Axiarch shield takes a hit
     r.shp = e.shp || 0;
-    if (e.kind === 'u' && VFX.primed && lit(e.u)) { // v2.37: redesigned units' cues (siege lock, shield surge, phase)
+    if (e.kind === 'u' && VFX.primed && lit(e.u, e.v)) { // v2.37: redesigned units' cues (siege lock, shield surge, phase)
       const x = P(e.u, e.v).x;
       if ((e.siege || 0) !== (r.siege || 0) && (e.siege === 1 || e.siege === 3) && onView(x)) sfx('siegeLock', x);
       if ((e.surgeT || 0) > (r.surgeT || 0) && onView(x)) sfx('shieldUp', x);
@@ -6854,27 +7120,27 @@ function vfxScan(g, dt) {
     let r = R.get(p);
     if (!r) { r = VFX.freeRec.pop() || { f: 0, ou: 0, ov: 0, oz: 0, has: 0, wh: 0 }; r.has = 0; r.wh = 0; R.set(p, r); onShot(g, p, r, lit); }
     r.f = frame;
-    if (p.weapon === 'shell' && !r.wh && p.t > p.T * 0.45 && lit(p.u)) { r.wh = 1; sfx('whistle', p.u); } // incoming, once the shell is in view
+    if (p.weapon === 'shell' && !r.wh && p.t > p.T * 0.45 && lit(p.u, p.v)) { r.wh = 1; sfx('whistle', p.u); } // incoming, once the shell is in view
   }
   for (const p of VFX.prevP) { const r = R.get(p); if (r && r.f !== frame) { if (p.t <= 4) onImpact(g, p, lit); R.delete(p); VFX.freeRec.push(r); } }
   VFX.prevP.length = 0; for (const p of g.projs) VFX.prevP.push(p);
-  for (const f of g.fx) if (!VFX.seenFx.has(f)) { VFX.seenFx.add(f); if (f.k === 'beam' && f.hq && lit(f.x2) && onView(f.x2)) onHqBeam(f); else if ((f.k === 'blink' || f.k === 'devour') && lit(f.u) && onView(f.x)) sfx(f.k, f.x); else if (f.k === 'boom' && lit(f.x) && onView(f.x)) onBoom(f); else if (f.k === 'shatter' && lit(f.u)) sfx('shatter', f.x); } // v2.34: a collapse, heard where seen
+  for (const f of g.fx) if (!VFX.seenFx.has(f)) { VFX.seenFx.add(f); if (f.k === 'beam' && f.hq && lit(f.x2, (f.y2 ?? f.y) / DY) && onView(f.x2)) onHqBeam(f); else if ((f.k === 'blink' || f.k === 'devour') && lit(f.u) && onView(f.x)) sfx(f.k, f.x); else if (f.k === 'boom' && lit(f.x) && onView(f.x)) onBoom(f); else if (f.k === 'shatter' && lit(f.u)) sfx('shatter', f.x); } // v2.34: a collapse, heard where seen
   // commander abilities: casts, the strike's warning and its impact (also caught if the strike resolved and left between frames)
   for (const a of g.abil) {
     let r = R.get(a);
     if (!r) { r = { f: 0, boom: 0, warned: 0 }; R.set(a, r); if (VFX.primed) onAbilCast(g, a, lit); }
     r.f = frame;
-    if (a.k === 'strike' && !r.warned && a.side !== 0 && lit(a.u)) { r.warned = 1; if (VFX.primed) { sfx('siren'); toast('Enemy orbital strike incoming!', 'bad'); } }
+    if (a.k === 'strike' && !r.warned && a.side !== 0 && lit(a.u, a.v)) { r.warned = 1; if (VFX.primed) { sfx('siren'); toast('Enemy orbital strike incoming!', 'bad'); } }
     if (a.k === 'strike' && a.done && !r.boom) { r.boom = 1; onStrike(g, a, lit); }
     if (a.k === 'beam') { // v2.28: the enemy's warning only where the player can see the strip; the sweep's sound likewise
       const seen = beamSeen(a, lit);
       if (!r.warned && a.side !== 0 && seen) { r.warned = 1; if (VFX.primed) { sfx('siren'); toast('Enemy beam incoming!', 'bad'); } }
       if (!r.boom && g.t >= a.t0 + ABIL.beam.delay) { r.boom = 1; if (seen) { sfx('orbital', a.u); if (onView(a.u) && VFX.q > 0 && !VFX.reduced) VFX.shake = Math.max(VFX.shake, 4); } }
     }
-    if (a.k === 'mwarp' && a.done && !r.boom) { r.boom = 1; if (a.side === 0 || lit(a.wu)) sfx('warp', a.wu); } // the arrival
+    if (a.k === 'mwarp' && a.done && !r.boom) { r.boom = 1; if (a.side === 0 || lit(a.wu, a.wv)) sfx('warp', a.wu); } // the arrival
   }
   for (const a of VFX.prevA) { const r = R.get(a); if (r && r.f !== frame && a.k === 'strike' && !r.boom) { r.boom = 1; onStrike(g, a, lit); } }
-  for (const a of VFX.prevA) { const r = R.get(a); if (r && r.f !== frame && a.k === 'mwarp' && a.done && !r.boom) { r.boom = 1; if (a.side === 0 || lit(a.wu)) sfx('warp', a.wu); } } // a Mass Warp that ended and left between frames (v2.28)
+  for (const a of VFX.prevA) { const r = R.get(a); if (r && r.f !== frame && a.k === 'mwarp' && a.done && !r.boom) { r.boom = 1; if (a.side === 0 || lit(a.wu, a.wv)) sfx('warp', a.wu); } } // a Mass Warp that ended and left between frames (v2.28)
   VFX.prevA.length = 0; for (const a of g.abil) VFX.prevA.push(a);
 }
 const titanStep = u => Math.floor((u.anim * 3.2 - Math.PI / 2) / Math.PI);
@@ -6885,7 +7151,7 @@ function onFire(g, e, lit) {
   if (!gun) return;
   const m = muzzle(e), w = P(m.u, m.v, m.z), wpn = gun.weapon;
   if (VFX.nshots < VFX.shots.length) { const s = VFX.shots[VFX.nshots++]; s.e = e; s.u = m.u; s.v = m.v; s.z = m.z; s.w = wpn; }
-  if (!lit(m.u) || !onView(w.x)) return; // firing in the fog stays hidden
+  if (!lit(m.u, m.v) || !onView(w.x)) return; // firing in the fog stays hidden
   const face = e.face || (e.side ? -1 : 1), col = MUZ_COL[wpn] ? GLOW[MUZ_COL[wpn]] : GLOW['t' + e.side];
   sfx(wpn === 'hqgun' && facOf(e.fac) === 'bloomhost' ? 'hqspine' : wpn, w.x);
   switch (wpn) {
@@ -6944,14 +7210,14 @@ function onShot(g, p, r, lit) { // pair a new projectile with the shot that made
   for (let i = 0; i < VFX.nshots; i++) { const s = VFX.shots[i]; if (s.e.side !== p.side || s.w !== p.weapon) continue; const d = Math.abs(s.u - p.u) + Math.abs(s.v - p.v); if (d < bd) { bd = d; best = s; } }
   if (!best) return;
   r.ou = best.u; r.ov = best.v; r.oz = best.z; r.has = 1;
-  if (p.weapon === 'rail' && lit(best.u) && lit(p.tu)) { // the beam is drawn only when both ends are in view
+  if (p.weapon === 'rail' && lit(best.u, best.v) && lit(p.tu, p.tv)) { // the beam is drawn only when both ends are in view
     const a = P(best.u, best.v, best.z), b = P(p.tu, p.tv, p.tz);
     if (onView(a.x) || onView(b.x)) vFx('beam', a.x, a.y, 0, 0.2, null, 2, b.x, b.y, 2.4);
   }
 }
 function onImpact(g, p, lit) {
   const u = p.tu, v = p.tv, z = p.weapon === 'shell' ? 0 : p.tz; // where it hit (homing shots end on their target)
-  if (!lit(u)) return;
+  if (!lit(u, v)) return;
   const w = P(u, v, z);
   if (!onView(w.x)) return;
   const ground = P(u, v, 0).y;
@@ -7044,7 +7310,7 @@ function vfxFlames(g, dt) {
     if (!r || e.hp <= 0 || g.t - (r.fireT ?? -9) > 0.34) { VFX.flamers.delete(e); continue; }
     const m = muzzle(e), w = P(m.u, m.v, m.z);
     r.stream = null;
-    if (F.vis[cellOf(m.u)] !== 1 || !onView(w.x)) continue;
+    if (F.vis[cellOf(m.u, m.v)] !== 1 || !onView(w.x)) continue;
     const t = e.tgt ? g.ents.find(x => x.id === e.tgt && x.hp > 0) : null, face = e.face || dirOf(e.side);
     const tp = t ? P(t.u, t.v, Math.min(8, aimZ(t))) : { x: w.x + face * UDEF.flame.range, y: w.y + 4 };
     let dx = tp.x - w.x, dy = tp.y - w.y; const d = Math.max(1, Math.hypot(dx, dy)), len = Math.min(d + 6, UDEF.flame.range + 12); dx /= d; dy /= d;
@@ -7065,13 +7331,13 @@ function onBoom(f) { // every blast from the SIM gets a shockwave and a sound; b
 }
 function onStep(g, u, lit) { // a Titan's foot lands
   const w = P(u.u, u.v);
-  if (!lit(u.u) || !onView(w.x)) return;
+  if (!lit(u.u, u.v) || !onView(w.x)) return;
   sfx('step', w.x);
   for (let i = vCount(3); i > 0; i--) vPart(w.x + u.face * vr(-6, 16), w.y - 1, vr(-22, 22), vr(-10, -2), vr(0.6, 1), vr(3, 6), 3, '', -1, 0);
   if (VFX.q > 0 && !VFX.reduced) VFX.shake = Math.max(VFX.shake, 0.9);
 }
 function onDeath(g, e, lit) {
-  if (!lit(e.u)) return;
+  if (!lit(e.u, e.v)) return;
   const w = P(e.u, e.v);
   if (!onView(w.x)) return;
   if (e.kind === 'b') { // the building collapses over 1.2 s, with staggered blasts, a smoke column and a scorch mark
@@ -7094,7 +7360,7 @@ function onDeath(g, e, lit) {
   if (d.armor === 'vehicle') for (let i = vCount(6); i > 0; i--) vPart(w.x, w.y - 10, vr(-80, 80), vr(-120, -40), vr(0.7, 1.2), vr(1.8, 3), 2, '#2a3648', 320, 1, w.y + vr(-3, 4));
 }
 // Abilities. What the player may see: their own casts anywhere; enemy casts only on ground in view.
-const abilSeen = (a, lit) => a.side === 0 || lit(a.u);
+const abilSeen = (a, lit) => a.side === 0 || lit(a.u, a.v);
 function onAbilCast(g, a, lit) {
   if (!abilSeen(a, lit)) return;
   const w = P(a.u, a.v);
@@ -7110,7 +7376,7 @@ function onAbilCast(g, a, lit) {
 // The Purification Beam's strip (v2.28): its two ends along the lane, the start being the end away from the target side
 const beamEnds = a => { const h = ABIL.beam.len / 2 * dirOf(a.side); return [a.u - h, a.u + h]; };
 // What the player may see of an enemy ability that covers more than one spot (v2.28): any of its points in view
-const beamSeen = (a, lit) => a.side === 0 || beamEnds(a).some(u => lit(u)) || lit(a.u);
+const beamSeen = (a, lit) => a.side === 0 || beamEnds(a).some(u => lit(u, a.v)) || lit(a.u, a.v);
 function onStrike(g, a, lit) { // the blast is drawn where the player may see it; hidden units caught in it show nothing
   if (!abilSeen(a, lit)) return;
   const w = P(a.u, a.v), R0 = ABIL.strike.r;
@@ -7201,7 +7467,7 @@ function drawMassWarp(c, g, a, lit, time) {
   if (a.done) return;
   const k = clamp((g.t - a.t0) / ABIL.mwarp.ch, 0, 1), mine = a.side === 0;
   c.globalCompositeOperation = 'lighter';
-  if (mine || lit(a.u)) { const w = P(a.u, a.v), r = ABIL.mwarp.r * (1 - 0.3 * k); c.strokeStyle = `rgba(${TEAM[a.side].glow},${0.3 + 0.4 * k})`; c.lineWidth = 1.6; c.setLineDash([6, 6]); c.beginPath(); c.ellipse(w.x, w.y, r, r * DY, 0, 0, 7); c.stroke(); c.setLineDash([]); }
+  if (mine || lit(a.u, a.v)) { const w = P(a.u, a.v), r = ABIL.mwarp.r * (1 - 0.3 * k); c.strokeStyle = `rgba(${TEAM[a.side].glow},${0.3 + 0.4 * k})`; c.lineWidth = 1.6; c.setLineDash([6, 6]); c.beginPath(); c.ellipse(w.x, w.y, r, r * DY, 0, 0, 7); c.stroke(); c.setLineDash([]); }
   for (const id of a.ids) {
     const e = g.ents.find(x => x.id === id && x.hp > 0);
     if (!e || !(mine || visibleTo(g, 0, e))) continue;
@@ -7210,7 +7476,7 @@ function drawMassWarp(c, g, a, lit, time) {
     c.fillStyle = gr; c.fillRect(p.x - 7 - 3 * k, p.y - h, 14 + 6 * k, h);
     c.strokeStyle = `rgba(225,248,255,${0.4 + 0.5 * k})`; c.lineWidth = 1.2; c.beginPath(); c.ellipse(p.x, p.y, 12 - 4 * k, (12 - 4 * k) * 0.42, 0, 0, 7); c.stroke();
   }
-  if (mine || lit(a.wu)) { const p = P(a.wu, a.wv), r = 18 + 10 * k; stamp(c, GLOW.cyan, p.x, p.y - 10, r, 0.3 + 0.5 * k); c.strokeStyle = `rgba(225,248,255,${0.4 + 0.5 * k})`; c.lineWidth = 1.4; c.beginPath(); c.ellipse(p.x, p.y, r, r * 0.42, 0, 0, 7); c.stroke(); }
+  if (mine || lit(a.wu, a.wv)) { const p = P(a.wu, a.wv), r = 18 + 10 * k; stamp(c, GLOW.cyan, p.x, p.y - 10, r, 0.3 + 0.5 * k); c.strokeStyle = `rgba(225,248,255,${0.4 + 0.5 * k})`; c.lineWidth = 1.4; c.beginPath(); c.ellipse(p.x, p.y, r, r * 0.42, 0, 0, 7); c.stroke(); }
   c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
 }
 // Shield Overcharge on a unit (v2.28): its shield shell glows bright and steady, with sparks running over it
@@ -7279,10 +7545,10 @@ function drawRoots(c, f, lit) {
   const spikeAt = (x, y, h, wd) => { c.fillStyle = '#5a3d2b'; c.beginPath(); c.moveTo(x - wd, y); c.quadraticCurveTo(x - 1, y - h * 0.6, x + 1.5, y - h); c.quadraticCurveTo(x + 1, y - h * 0.5, x + wd, y); c.closePath(); c.fill(); c.fillStyle = 'rgba(140,200,90,0.8)'; c.fillRect(x, y - h * 0.7, 1.2, 1.2); };
   for (const p of f.rim) for (let a = 0; a < Math.PI * 2; a += 22 / Math.max(22, p.r)) {
     const u = p.u + Math.cos(a) * p.r, v = p.v + Math.sin(a) * p.r;
-    if (Math.abs(v) > LANE_V + 60 || !lit(u) || inAny(u, v)) continue;
+    if (Math.abs(v) > LANE_V + 60 || !lit(u, v) || inAny(u, v)) continue;
     const w = P(u, v); spikeAt(w.x, w.y, (8 + ((a * 7) % 3) * 3) * up, 2.4);
   }
-  for (const s of f.at) if (lit(s.u)) { const w = P(s.u, s.v); for (const dx of [-7, -2, 4, 8]) spikeAt(w.x + dx, w.y + 2, 16 * up, 3); }
+  for (const s of f.at) if (lit(s.u, s.v)) { const w = P(s.u, s.v); for (const dx of [-7, -2, 4, 8]) spikeAt(w.x + dx, w.y + 2, 16 * up, 3); }
   c.globalAlpha = 1;
 }
 function drawScrap(c, f) {
@@ -7376,7 +7642,7 @@ function vfxMeteors(g, dt) {
   VFX.metAcc = (VFX.metAcc || 0) + dt * (1.6 + (g.t - EXT.start) / 60) * QMUL[VFX.q]; // more as the storm grows
   if (VFX.metAcc < 1) return;
   VFX.metAcc -= 1;
-  const F = viewFog(g), bs = g.ents.filter(e => e.kind === 'b' && e.hp > 0 && F.vis[cellOf(e.u)] && onView(e.u));
+  const F = viewFog(g), bs = g.ents.filter(e => e.kind === 'b' && e.hp > 0 && F.vis[cellOf(e.u, e.v)] && onView(e.u));
   if (!bs.length) return;
   const b = bs[Math.floor(VFX.rnd() * bs.length)], w = P(b.u + vr(-b.half, b.half) * 0.6, b.v + vr(-b.half, b.half) * 0.6, vr(4, b.h * 0.5));
   vFx('meteor', w.x + vr(60, 120), w.y - 320, 0, 0.5, null, 3, w.x, w.y, 3.5);
@@ -7404,7 +7670,7 @@ function vfxQuality(gap, playing) {
 // Drawing
 // Artillery landing marker: only while the shell itself can be seen, and only on ground in view, so it can never
 // give away a gun firing from the fog
-const showLanding = (p, lit) => lit(p.u) && lit(p.tu);
+const showLanding = (p, lit) => lit(p.u, p.v) && lit(p.tu, p.tv);
 function drawBoom(c, x, y, r, k) {
   c.globalCompositeOperation = 'lighter';
   stamp(c, GLOW.fire, x, y, r * (0.9 + k * 0.8), (1 - k) * 0.7);
@@ -7603,47 +7869,52 @@ function render(c, g, time, sel, selPad) {
   const { cw, ch, dpr, S, A } = V;
   if (!cw) return;
   SPR.budget = 16; BCACHE.budget = 6;
-  const hy = (HORIZON - Y_BOT) * S + A;
+  const hy = (HORIZON - YB()) * S + A;
   c.setTransform(dpr, 0, 0, dpr, 0, 0);
   drawSky(c, time, hy, g && g.t >= EXT.warn ? Math.round(12 * clamp((g.t - EXT.warn) / (EXT.start + 60 - EXT.warn), 0, 1)) : 0); // the sky reddens for the Extinction Event
   let sx = 0, sy = 0;
   if (g) vfxStep(g);
   const shake = g && VFX.q > 0 ? g.shake + VFX.shake : 0; // no shake at the lowest quality level
   if (shake > 0) { sx = vr(-1, 1) * shake; sy = vr(-1, 1) * shake; }
-  c.setTransform(dpr * S, 0, 0, dpr * S, dpr * (cw / 2 - cam.x * S + sx), dpr * (A - Y_BOT * S + sy));
+  c.setTransform(dpr * S, 0, 0, dpr * S, dpr * (cw / 2 - cam.x * S + sx), dpr * (A - YB() * S + sy));
   drawRidge(c, BG.far, 0.25, '#1a1a3c', 'rgba(170,150,240,0.35)');
   drawRidge(c, BG.near, 0.5, '#13152c', 'rgba(120,110,200,0.2)');
   if (groundCache) c.drawImage(groundCache, GB.x0, GB.y0, GB.x1 - GB.x0, GB.y1 - GB.y0); else drawGround(c);
   if (!g) return;
   // Everything below is drawn from the player's point of view: enemies only inside friendly vision
-  const F = viewFog(g), seen = e => e.side === 0 || !!g.spectate || visibleTo(g, 0, e), lit = x => F.vis[cellOf(x)] === 1;
-  const ghosts = Object.values(F.ghosts).filter(gh => !cellsLit(F.vis, gh.u, gh.half));
+  const F = viewFog(g), seen = e => e.side === 0 || !!g.spectate || visibleTo(g, 0, e), lit = (x, y) => F.vis[cellOf(x, y)] === 1; // v2.65: depth too (a grid map)
+  const ghosts = Object.values(F.ghosts).filter(gh => !cellsLit(F.vis, gh.u, gh.half, gh.v));
   drawCreep(c, g, F); // under everything on the field (v2.18)
   drawField(c, g, F); // the Axiarch power field (v2.26), also under everything
 
   for (let s = 0; s < 2; s++) {
     const fac = g.sides[s].faction, hpos = hqPos(s), hp = P(hpos.u, hpos.v);
     // v2.17: enemy pads stay hidden until their ground has been in view (their look would give the faction away)
-    if (s === 0 || cellsLit(F.seen, hpos.u, HQ_PAD_H)) drawPad(c, hp.x, hp.y, HQ_PAD_H, s, false, time, sel && sel.type === 'hq' && sel.side === s, fac);
+    if (s === 0 || cellsLit(F.seen, hpos.u, HQ_PAD_H, hpos.v)) drawPad(c, hp.x, hp.y, HQ_PAD_H, s, false, time, sel && sel.type === 'hq' && sel.side === s, fac);
     for (let i = 0; i < SLOT_COUNT; i++) {
       const p = slotPos(s, i), w = P(p.u, p.v), b = g.sides[s].slots[i];
-      if (s === 1 && !cellsLit(F.seen, p.u, PAD_H)) continue;
+      if (s === 1 && !cellsLit(F.seen, p.u, PAD_H, p.v)) continue;
       // enemy pads look occupied only as far as the player knows (in view, or a remembered ghost)
       const known = s === 0 ? b : (b && seen(b)) || ghosts.some(gh => gh.slot === i);
       drawPad(c, w.x, w.y, PAD_H, s, !known, time, s === 0 && (selPad === i || (sel && sel === b)), fac);
     }
     if (sigPadOn() && SIG.on && BD(fac, 'sigA')) { // v2.43: the signature pad, marked in gold
       const p = slotPos(s, SIG_SLOT), w = P(p.u, p.v), b = sigOnPad(g, s);
-      if (s === 0 || cellsLit(F.seen, p.u, PAD_H)) {
+      if (s === 0 || cellsLit(F.seen, p.u, PAD_H, p.v)) {
         const known = s === 0 ? b : (b && seen(b)) || ghosts.some(gh => gh.slot === SIG_SLOT);
         drawPad(c, w.x, w.y, PAD_H, s, !known, time, s === 0 && (selPad === SIG_SLOT || (sel && sel === b)), fac);
         drawSigPadMark(c, w.x, w.y, PAD_H, !known, time, s === 0 && !g.spectate);
       }
     }
   }
-  for (const n of g.nodes) drawNodeZone(c, n, time, lit(n.u));
+  for (let k = 0; k < FWD_PADS.length; k++) { // v2.65: forward pads (both sides build there; the holder of its node may)
+    const Q = FWD_PADS[k], owner = g.nodes[Q.node].owner, b = fwdAt(g, FWD_SLOT + k);
+    if (!cellsLit(F.seen, Q.at[0], PAD_H, Q.at[1]) && !(b && b.side === 0)) continue;
+    drawFwdPad(c, k, owner, !(b && seen(b)), time, selPad === FWD_SLOT + k || (sel && sel === b));
+  }
+  for (const n of g.nodes) drawNodeZone(c, n, time, lit(n.u, n.v));
   for (const b of g.ents) if (b.type === 'bunker' && b.hp > 0 && b.tier >= 2 && seen(b)) drawHealRing(c, b, time); // v2.32: Depot T2
-  for (const a of g.acid) if (lit(a.u)) drawAcidPool(c, a, g.t);
+  for (const a of g.acid) if (lit(a.u, a.v)) drawAcidPool(c, a, g.t);
   drawDecals(c);
   if (g) { drawSelection(c, g, time); drawBuildingSel(c, g, time, false); }
   drawWrecks(c, time);
@@ -7675,7 +7946,7 @@ function render(c, g, time, sel, selPad) {
   drawBuildingSel(c, g, time, true);
   drawFog(c, F);
   for (const p of g.projs) {
-    if (p.side !== 0 && !lit(p.u)) continue;
+    if (p.side !== 0 && !lit(p.u, p.v)) continue;
     const a = P(p.pu, p.pv, p.pz), b = P(p.u, p.v, p.z), wp = p.weapon;
     if (drawFacProj(c, g, p, a, b, wp, time)) continue; // faction weapons (v2.36)
     if (wp === 'rifle' || wp === 'flak' || wp === 'gatling' || wp === 'rail' || wp === 'spine' || wp === 'bolt' || wp === 'astral') {
@@ -7737,7 +8008,7 @@ function render(c, g, time, sel, selPad) {
   const thin = VFX.q === 0; // lowest quality: half the SIM's smoke is drawn
   for (let i = 0; i < g.parts.length; i++) {
     const p = g.parts[i];
-    if (!lit(p.x) || (thin && p.smoke && i % 2)) continue; // smoke, sparks and debris give away activity
+    if (!lit(p.x, p.y / DY) || (thin && p.smoke && i % 2)) continue; // smoke, sparks and debris give away activity
     const k = p.life / p.max;
     if (p.smoke) {
       c.fillStyle = p.light ? '#aaaabe' : '#282834'; c.globalAlpha = (p.light ? 0.3 : 0.55) * k;
@@ -7746,16 +8017,16 @@ function render(c, g, time, sel, selPad) {
   }
   c.globalAlpha = 1;
   for (const f of g.fx) { // the SIM's blasts (its muzzle flashes are replaced by the per-weapon ones in drawVfx)
-    if (f.k === 'beam') { if (lit(f.x) || lit(f.x2)) drawBeam(c, f); continue; } // Null Lance beams (v2.25), only where the player can see
-    if (f.k === 'pull') { if (lit(f.x)) drawPull(c, f); continue; } // Eventide pulses (v2.27)
+    if (f.k === 'beam') { if (lit(f.x, f.y / DY) || lit(f.x2, (f.y2 ?? f.y) / DY)) drawBeam(c, f); continue; } // Null Lance beams (v2.25), only where the player can see
+    if (f.k === 'pull') { if (lit(f.x, f.y / DY)) drawPull(c, f); continue; } // Eventide pulses (v2.27)
     if (f.k === 'scrap') { if (scrapShown(g, f, 0)) drawScrap(c, f); continue; }
-    if (f.k === 'acidburst') { if (lit(f.u)) drawAcidBurst(c, f); continue; }
-    if (f.k === 'shatter') { if (lit(f.u)) drawShatter(c, f); continue; } // a Phase Beacon bubble collapsing (v2.34) // a killed Mite (v2.33)
-    if (f.k === 'pierce') { if (lit(f.u)) drawPierce(c, f); continue; } // P4 (v2.37)
-    if (f.k === 'blink') { if (lit(f.u)) drawBlink(c, f); continue; } // P5 (v2.37)
-    if (f.k === 'devour') { if (lit(f.u)) drawDevour(c, f); continue; } // P11 (v2.37)
+    if (f.k === 'acidburst') { if (lit(f.u, f.v)) drawAcidBurst(c, f); continue; }
+    if (f.k === 'shatter') { if (lit(f.u, f.v)) drawShatter(c, f); continue; } // a Phase Beacon bubble collapsing (v2.34) // a killed Mite (v2.33)
+    if (f.k === 'pierce') { if (lit(f.u, f.v)) drawPierce(c, f); continue; } // P4 (v2.37)
+    if (f.k === 'blink') { if (lit(f.u, f.v)) drawBlink(c, f); continue; } // P5 (v2.37)
+    if (f.k === 'devour') { if (lit(f.u, f.v)) drawDevour(c, f); continue; } // P11 (v2.37)
     if (f.k === 'roots') { drawRoots(c, f, lit); continue; } // a Rootheart's snare pulse (v2.33), only where the player can see // Salvage (v2.30): the player's own, where they can see
-    if (f.k !== 'boom' || !lit(f.x)) continue;
+    if (f.k !== 'boom' || !lit(f.x, f.y / DY)) continue;
     drawBoom(c, f.x, f.y, f.r, f.t / f.life);
   }
   c.globalAlpha = 1;
@@ -7765,7 +8036,7 @@ function render(c, g, time, sel, selPad) {
   drawFlags(c, g, time);
   drawAim(c, g);
   c.font = '600 11px -apple-system,system-ui,sans-serif'; c.textAlign = 'center';
-  const barMin = (V.ft - V.A) / V.S + Y_BOT + 12 / V.S; // highest world row that clears the top bar (with room for tier pips)
+  const barMin = (V.ft - V.A) / V.S + YB() + 12 / V.S; // highest world row that clears the top bar (with room for tier pips)
   for (const e of g.ents) {
     if (!seen(e)) continue;
     if (e.kind === 'b') {
@@ -7805,22 +8076,37 @@ function render(c, g, time, sel, selPad) {
 }
 
 /* ---------- Overview map inside the top bar ---------- */
+// v2.65: depth on the minimap. Classic squeezes ±260 into its height; a deep map shows its whole depth (both lanes)
+const mmDeep = () => MAP.size.h > 400, mmDepth = () => mmDeep() ? MAP.size.h / 2 : 260;
+const mmY = (v, h) => h / 2 + clamp(v / mmDepth(), -1, 1) * (h / 2 - 4);
+const mmV = (y, h) => clamp((y - h / 2) / (h / 2 - 4), -1, 1) * mmDepth();
 function drawMinimap(c, g, w, h) {
   c.clearRect(0, 0, w, h);
   c.fillStyle = 'rgba(0,0,0,0.3)'; rr(c, 0.5, 0.5, w - 1, h - 1, 7); c.fill();
   c.strokeStyle = 'rgba(120,150,200,0.3)'; c.lineWidth = 1; c.stroke();
-  const k = (w - 8) / (UMAX - UMIN), mx = u => 4 + (u - UMIN) * k, my = v => h / 2 + clamp(v / 260, -1, 1) * (h / 2 - 4);
+  const k = (w - 8) / (UMAX - UMIN), mx = u => 4 + (u - UMIN) * k, my = v => mmY(v, h);
   const F = g && viewFog(g);
-  if (g) { // fog columns
+  if (MAP_LANED || MAP.blockers.length) { // v2.65: the lanes and the blockers (the Two-Lane ridge)
+    c.lineCap = 'round'; c.lineJoin = 'round';
+    for (const ln of MAP.lanes) { c.strokeStyle = 'rgba(150,170,200,0.22)'; c.lineWidth = Math.max(2, ln.width / mmDepth() * (h / 2 - 4)); c.beginPath(); ln.path.forEach(([x, y], i) => i ? c.lineTo(mx(x), my(y)) : c.moveTo(mx(x), my(y))); c.stroke(); }
+    c.fillStyle = 'rgba(10,12,20,0.75)';
+    for (const b of MAP.blockers) { c.beginPath(); b.poly.forEach(([x, y], i) => i ? c.lineTo(mx(x), my(y)) : c.moveTo(mx(x), my(y))); c.closePath(); c.fill(); }
+    c.lineCap = 'butt';
+  }
+  if (g && MAP_2D) { // fog cells, a few rows at a time (the minimap is small)
+    const st = Math.max(1, Math.round(FOG_NY / 12)), cw = k * FOG_CELL + 0.6;
+    for (let r = 0; r < FOG_NY; r += st) { const y0 = my(FOG_Y0 + r * FOG_CELL), y1 = my(FOG_Y0 + (r + st) * FOG_CELL);
+      for (let i = 0; i < FOG_NX; i++) { const q = r * FOG_NX + i, a = F.vis[q] ? 0 : F.exp[q] ? FOG_EXP : FOG_DARK; if (a > 0.02) { c.fillStyle = `rgba(${FOG_RGB},${a * 0.9})`; c.fillRect(mx(i * FOG_CELL), y0, cw, y1 - y0 + 0.5); } } }
+  } else if (g) { // fog columns
     const a = fogAlpha(F);
     for (let i = 0; i < FOG_N; i++) if (a[i] > 0.02) { c.fillStyle = `rgba(${FOG_RGB},${a[i] * 0.9})`; c.fillRect(mx(i * FOG_CELL), 1, k * FOG_CELL + 0.6, h - 2); }
   }
   if (g) for (const n of g.nodes) {
     c.fillStyle = n.owner === null ? '#ddd2ff' : TEAM[n.owner].main;
-    const x = mx(n.u); c.beginPath(); c.moveTo(x, h / 2 - 4); c.lineTo(x + 3.5, h / 2); c.lineTo(x, h / 2 + 4); c.lineTo(x - 3.5, h / 2); c.closePath(); c.fill();
+    const x = mx(n.u), y = mmDeep() ? my(n.v) : h / 2, r = mmDeep() ? 3 : 4; c.beginPath(); c.moveTo(x, y - r); c.lineTo(x + r * 0.9, y); c.lineTo(x, y + r); c.lineTo(x - r * 0.9, y); c.closePath(); c.fill();
   }
   if (g) for (const gh of Object.values(F.ghosts)) { // remembered enemy buildings: hollow
-    if (cellsLit(F.vis, gh.u, gh.half)) continue;
+    if (cellsLit(F.vis, gh.u, gh.half, gh.v)) continue;
     c.strokeStyle = TEAM[gh.side].main; c.lineWidth = 1; c.globalAlpha = 0.8; c.strokeRect(mx(gh.u) - 1.5, my(gh.v) - 1, 3, 2); c.globalAlpha = 1;
   }
   if (g) for (const e of g.ents) {
@@ -7849,7 +8135,8 @@ function drawMinimap(c, g, w, h) {
   const hw = V.cw / 2 / V.S;
   const x0 = clamp(mx(cam.x - hw), 1, w - 1), x1 = clamp(mx(cam.x + hw), 1, w - 1);
   c.strokeStyle = 'rgba(255,255,255,0.85)'; c.lineWidth = 1.2;
-  rr(c, x0, 2, Math.max(4, x1 - x0), h - 4, 4); c.stroke();
+  if (mmDeep()) { const t = clamp(my((V.ft - V.A) / V.S / DY + YB() / DY), 1, h - 1), b = clamp(my((V.fb - V.A) / V.S / DY + YB() / DY), 1, h - 1); rr(c, x0, t, Math.max(4, x1 - x0), Math.max(4, b - t), 3); c.stroke(); } // v2.65: the view's depth too
+  else { rr(c, x0, 2, Math.max(4, x1 - x0), h - 4, 4); c.stroke(); }
   if (g && g.t >= EXT.show && !g.over) { // the Extinction Event countdown, inside the minimap frame (the top bar has no room)
     const left = EXT.start - g.t, time = left > 0 ? fmtTime(Math.ceil(left)) : '+' + fmtTime(-left);
     c.font = '800 9.5px -apple-system,system-ui,sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
@@ -7864,6 +8151,7 @@ function drawMinimap(c, g, w, h) {
 function clampCam() {
   const hw = V.cw / 2 / V.S, x0 = UMIN - 40, x1 = UMAX + 40;
   cam.x = (x1 - x0 < 2 * hw) ? (x0 + x1) / 2 : clamp(cam.x, x0 + hw, x1 - hw);
+  cam.y = clamp(cam.y, CAMY.min, CAMY.max); // v2.65: a deep map pans up and down (Classic: always 0)
 }
 /* ===================== RENDER END ===================== */
 
@@ -7880,6 +8168,7 @@ let facPick = { me: DEFAULT_FACTION, foe: DEFAULT_FACTION };
 try { const o = JSON.parse(localStorage.getItem(FACTION_KEY) || 'null'); if (o && FAC_PICKS.includes(o.me) && FAC_PICKS.includes(o.foe)) facPick = { me: o.me, foe: o.foe }; } catch (e) {}
 try { diffKey = localStorage.getItem('colonyMobile.diff') || 'normal'; if (!DIFF[diffKey]) diffKey = 'normal'; } catch (e) {}
 groundCache = buildGroundCache();
+MAP_HOOKS.push(() => { groundCache = buildGroundCache(); if (typeof clampCam === 'function') clampCam(); }); // v2.65: a new map's ground
 
 // Assigning a canvas's width or height clears it, even to the same value, so only touch it on a real change
 function fitCanvas(c, w, h) {
@@ -8514,7 +8803,14 @@ function refreshPanel() {
   $('bpPick').classList.add('hide'); $('bp').classList.remove('wide'); // shown again below for a building choosing its path
   $('bp').classList.toggle('shp', !!(selPad < 0 && sel && sel.maxShp)); // v2.36
   if (selPad >= 0) {
-    if (!game || (selPad === SIG_SLOT ? sigOnPad(game, 0) : game.sides[0].slots[selPad])) { closePanel(); return; }
+    if (!game || (selPad >= FWD_SLOT ? fwdAt(game, selPad) || game.nodes[FWD_PADS[selPad - FWD_SLOT].node].owner !== 0 : selPad === SIG_SLOT ? sigOnPad(game, 0) : game.sides[0].slots[selPad])) { closePanel(); return; }
+    if (selPad >= FWD_SLOT) { // v2.65: a forward pad you hold
+      const al = FWD_PADS[selPad - FWD_SLOT].allow.map(t => BD(pFac(), t).name).join(' or ');
+      $('bpName').textContent = 'Forward pad'; $('bpPad').textContent = al; setHTML($('bpPips'), '');
+      $('bpNow').textContent = `Build a ${al} here, out on the lane. You can build while you hold this pad's post.`; setHTML($('bpNext'), '');
+      $('bpUp').classList.add('hide'); $('bpSell').classList.add('hide'); $('bpRep').classList.add('hide'); $('bpHp').textContent = '';
+      return;
+    }
     const sp = selPad === SIG_SLOT; // v2.43: the signature pad
     $('bpName').textContent = sp ? 'Signature pad' : 'Empty pad'; $('bpPad').textContent = sp ? `${BD(pFac(), 'sigA').name} or ${BD(pFac(), 'sigB').name}` : padLabel(null, selPad); setHTML($('bpPips'), '');
     $('bpNow').textContent = sp ? 'Pick one of your two signature buildings (★ cards). One stands here at a time; sell it to build the other.' : 'Pick a building below to build it here.';
@@ -8586,6 +8882,7 @@ function padLabel(b, k) {
   if (!b) return k === SIG_SLOT ? 'Signature pad' : `Pad ${k + 1}`;
   if (b.type === 'hq') return 'HQ pad';
   if (b.slot === SIG_SLOT) return 'Signature pad'; // v2.43
+  if (b.slot >= FWD_SLOT) return 'Forward pad'; // v2.65
   if (bdOf(b).noPad) return `${NODE_NAME[b.node] ? NODE_NAME[b.node][0].toUpperCase() + NODE_NAME[b.node].slice(1) : 'Field'} node`;
   return b.slot >= 0 ? `Pad ${b.slot + 1}` : '';
 }
@@ -8644,7 +8941,7 @@ $('bpSell').addEventListener('click', () => {
    and a ping on the minimap for ALERT.ping s; tapping either moves the camera there. */
 const ALERT = { gap: 10, hit: 0.6, cell: 160, ping: 5, show: 3.5 };
 const alerts = { g: null, last: {}, pings: [] };
-function camJump(u) { camTouched = true; cam.x = u; cam.vx = 0; clampCam(); }
+function camJump(u, v) { camTouched = true; cam.x = u; cam.vx = 0; if (v !== undefined && CAMY.max > CAMY.min) cam.y = v * DY - (Y_TOP + Y_BOT) / 2; clampCam(); } // v2.65: and to its depth on a deep map
 function alertRaise(kind, key, u, v, msg) {
   const g = game, k = kind + ':' + key;
   if (alerts.last[k] !== undefined && g.t - alerts.last[k] < ALERT.gap) return false;
@@ -8654,7 +8951,7 @@ function alertRaise(kind, key, u, v, msg) {
   while (box.children.length > 2) box.firstChild.remove();
   const el = document.createElement('div');
   el.className = `t alrt ${kind === 'node' ? 'warn' : 'bad'}`; el.textContent = msg + ' ›'; el.dataset.u = Math.round(u); el.setAttribute('role', 'button');
-  el.addEventListener('pointerdown', ev => { ev.stopPropagation(); camJump(u); el.remove(); placeToasts(); });
+  el.addEventListener('pointerdown', ev => { ev.stopPropagation(); camJump(u, v); el.remove(); placeToasts(); });
   box.appendChild(el); placeToasts();
   setTimeout(() => el.classList.add('out'), ALERT.show * 1000);
   setTimeout(() => { el.remove(); placeToasts(); }, ALERT.show * 1000 + 350);
@@ -8673,7 +8970,7 @@ function alertTick() {
   for (const n of g.nodes) {
     if (n.owner !== 0 && !(n.c && n.c[0] > 0)) continue; // ours, or ours being taken
     if (g.ents.some(e => e.kind === 'u' && e.side === 1 && e.hp > 0 && !UDEF[e.type].air && !UDEF[e.type].noCap && Math.abs(e.u - n.u) <= NODE_R && visibleTo(g, 0, e)))
-      alertRaise('node', n.id, n.u, n.v, `The ${NODE_NAME[n.id]} field node is contested`);
+      alertRaise('node', n.id, n.u, n.v, `The ${nodeLabel(n.id)} is contested`);
   }
 }
 function handleEvents() {
@@ -8700,7 +8997,7 @@ function handleEvents() {
 
 /* ---------- Touch: drag left/right to scroll, tap a building or pad ---------- */
 let gest = null;
-const toWorld = (x, y) => ({ x: (x - V.cw / 2) / V.S + cam.x, y: (y - V.A) / V.S + Y_BOT });
+const toWorld = (x, y) => ({ x: (x - V.cw / 2) / V.S + cam.x, y: (y - V.A) / V.S + YB() });
 function localXY(e) { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
 function inDiamond(wx, wy, cx, cy, h) { return Math.abs(wx - cx) / (2 * h * IX) + Math.abs(wy - cy) / (2 * h * IY) <= 1; }
 function handleTap(x, y) {
@@ -8735,6 +9032,12 @@ function handleTap(x, y) {
     if (!game.sides[0].slots[k] && inDiamond(w.x, w.y, q.x, q.y, PAD_H + 4)) { openPad(k); return; }
   }
   if (sigPadOn() && SIG.on && BD(pFac(), 'sigA') && !sigOnPad(game, 0)) { const p = slotPos(0, SIG_SLOT), q = P(p.u, p.v); if (inDiamond(w.x, w.y, q.x, q.y, PAD_H + 4)) { openPad(SIG_SLOT); return; } } // v2.43
+  for (let k = 0; k < FWD_PADS.length; k++) { // v2.65: a free forward pad: yours to build on while you hold its post
+    const F = FWD_PADS[k], q = P(F.at[0], F.at[1]);
+    if (!inDiamond(w.x, w.y, q.x, q.y, PAD_H + 4) || fwdAt(game, FWD_SLOT + k)) continue;
+    if (game.nodes[F.node].owner === 0) { openPad(FWD_SLOT + k); return; }
+    toast('Capture this forward pad first: stand ground troops on its post', ''); closePanel(); return;
+  }
   closePanel();
 }
 cv.addEventListener('pointerdown', e => {
@@ -8742,13 +9045,14 @@ cv.addEventListener('pointerdown', e => {
   try { cv.setPointerCapture(e.pointerId); } catch (_) {}
   const p = localXY(e);
   cam.vx = 0;
-  gest = { id: e.pointerId, lx: p.x, sx: p.x, sy: p.y, t0: performance.now(), t: performance.now(), moved: 0 };
+  gest = { id: e.pointerId, lx: p.x, ly: p.y, sx: p.x, sy: p.y, t0: performance.now(), t: performance.now(), moved: 0 };
 });
 cv.addEventListener('pointermove', e => {
   if (!gest || e.pointerId !== gest.id) return;
   const p = localXY(e);
-  const dx = p.x - gest.lx, now = performance.now(), dtm = Math.max(8, now - gest.t);
-  gest.lx = p.x; gest.t = now;
+  const dx = p.x - gest.lx, dy = p.y - gest.ly, now = performance.now(), dtm = Math.max(8, now - gest.t);
+  gest.lx = p.x; gest.ly = p.y; gest.t = now;
+  if (CAMY.max > CAMY.min) cam.y -= dy / V.S; // v2.65: a deep map pans up and down too
   gest.moved = Math.max(gest.moved, Math.hypot(p.x - gest.sx, p.y - gest.sy));
   if (Math.abs(dx) > 0) camTouched = true;
   cam.x -= dx / V.S; clampCam();
@@ -8764,7 +9068,7 @@ cv.addEventListener('pointerup', endPtr);
 cv.addEventListener('pointercancel', endPtr);
 // Overview map in the top bar: tap or drag to jump
 let mmDrag = false;
-function mmJump(e) { camTouched = true; TUT.sig.mm = true; const r = mm.getBoundingClientRect(), k = (r.width - 8) / (UMAX - UMIN); cam.x = UMIN + (e.clientX - r.left - 4) / k; cam.vx = 0;
+function mmJump(e) { camTouched = true; TUT.sig.mm = true; const r = mm.getBoundingClientRect(), k = (r.width - 8) / (UMAX - UMIN); cam.x = UMIN + (e.clientX - r.left - 4) / k; cam.vx = 0; if (CAMY.max > CAMY.min) cam.y = mmV(e.clientY - r.top, r.height) * DY - (Y_TOP + Y_BOT) / 2; // v2.65: and its depth
   if (e.type === 'pointerdown' && game) { const p = alerts.pings.filter(p => game.t - p.t < ALERT.ping).sort((a, b) => Math.abs(a.u - cam.x) - Math.abs(b.u - cam.x))[0]; if (p && Math.abs(p.u - cam.x) * k <= 12) cam.x = p.u; } // v2.53: a tap on an alert's ping lands on it
   clampCam(); }
 mm.addEventListener('pointerdown', e => { mmDrag = true; try { mm.setPointerCapture(e.pointerId); } catch (_) {} mmJump(e); });
@@ -8828,7 +9132,7 @@ function saveGame() {
 }
 function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
 function peekSave() {
-  try { const s = localStorage.getItem(SAVE_KEY); if (!s) return null; const o = JSON.parse(s); return o && SAVE_OK.includes(o.v) ? { t: o.t, diffKey: o.diffKey } : null; } catch (e) { return null; }
+  try { const s = localStorage.getItem(SAVE_KEY); if (!s) return null; const o = JSON.parse(s); const m = (o && o.map) || { id: 'classic', v: 1 }; return o && SAVE_OK.includes(o.v) && MAPS[m.id] && MAPS[m.id].v === m.v ? { t: o.t, diffKey: o.diffKey, map: m.id } : null; } catch (e) { return null; } // v2.65: and its map
 }
 function showStart() {
   tutOff(); // v2.46
@@ -8844,13 +9148,51 @@ function showStart() {
       <div><b>Command your army</b>Attack pushes forward, Hold stops everyone where they stand, Retreat pulls back to your flag without firing. Drag sideways to look around.</div>
     </div>
     <div class="setup"><span class="lbl">Difficulty</span>${diffSeg()}<span class="lbl">You</span>${facSeg('meSeg', 'me')}<span class="lbl">Opponent</span>${facSeg('foeSeg', 'foe')}<p class="fdesc" id="facDesc">${factionDesc(facPick.me)}</p></div>
-    <div class="row">${sv ? `<button class="big" id="bResume">Resume match</button><button class="ghost" id="bPlay">New match</button><span class="lbl">${DIFF[sv.diffKey] ? DIFF[sv.diffKey].label : ''}, ${fmtTime(sv.t)} in</span>` : '<button class="big" id="bPlay">Start match</button>'}<button class="ghost" id="bCodex">Codex</button><button class="ghost" id="bSound">${sndLabel()}</button></div>`);
+    <div class="row">${sv ? `<button class="big" id="bResume">Resume match</button><button class="ghost" id="bPlay">New match</button><span class="lbl">${DIFF[sv.diffKey] ? DIFF[sv.diffKey].label : ''}${sv.map !== 'classic' ? ', ' + cxEsc(MAPS[sv.map].display.name) : ''}, ${fmtTime(sv.t)} in</span>` : '<button class="big" id="bPlay">Start match</button>'}<button class="ghost" id="bCodex">Codex</button><button class="ghost" id="bSound">${sndLabel()}</button></div>`);
   wireDiff(); wireFactions(); wireSound();
   $('bCodex').addEventListener('click', () => openCodex(CX.tab));
-  $('bPlay').addEventListener('click', startGame);
+  $('bPlay').addEventListener('click', showMapSelect);
   if (sv) $('bResume').addEventListener('click', resumeGame);
   $('box').querySelector('.ver').addEventListener('click', showDev); // the dev menu (v2.38): tap the version
   if (!TUT.prompted && !tutLoad().seen) tutFirstPrompt(); // v2.46: first launch only
+}
+/* ---------- Map select (v2.65, docs/TWO_LANE.md) ----------
+   Before each new match: one card per map, from its display fields, with a thumbnail the game draws from the map data
+   (lanes, blockers, bases, nodes), so it can't disagree with the map. Classic is the default; the choice is remembered. */
+const MAP_KEY = 'extinctionEvent.map', MAP_ORDER = ['classic', 'twolane'];
+let mapPick = 'classic';
+try { const k = localStorage.getItem(MAP_KEY); if (k && MAPS[k] && MAP_ORDER.includes(k)) mapPick = k; } catch (e) {}
+function drawMapThumb(cv, m) {
+  const r = cv.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1), w = Math.max(1, r.width), h = Math.max(1, r.height);
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const H = Math.max(m.size.h / 2, 220), pad = 8, k = Math.min((w - 2 * pad) / m.size.w, (h - 2 * pad) / (2 * H)), ox = (w - m.size.w * k) / 2, X = x => ox + x * k, Y = y => h / 2 + y * k;
+  const bg = c.createLinearGradient(0, 0, 0, h); bg.addColorStop(0, m.display.thumb && m.display.thumb.tint || '#24324a'); bg.addColorStop(1, '#0b1220');
+  c.fillStyle = bg; rr(c, 0, 0, w, h, 8); c.fill();
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  for (const ln of m.lanes) { c.strokeStyle = 'rgba(190,175,140,0.35)'; c.lineWidth = ln.width * k; c.beginPath(); ln.path.forEach(([x, y], i) => i ? c.lineTo(X(x), Y(y)) : c.moveTo(X(x), Y(y))); c.stroke(); }
+  for (const b of m.blockers || []) { c.fillStyle = '#3a4054'; c.strokeStyle = 'rgba(200,210,240,0.35)'; c.lineWidth = 1; c.beginPath(); b.poly.forEach(([x, y], i) => i ? c.lineTo(X(x), Y(y)) : c.moveTo(X(x), Y(y))); c.closePath(); c.fill(); c.stroke(); }
+  m.bases.forEach((b, s) => { c.fillStyle = TEAM[s].main; for (const p of b.pads) c.fillRect(X(p[0]) - 1.5, Y(p[1]) - 1.5, 3, 3); c.fillRect(X(b.hq[0]) - 4, Y(b.hq[1]) - 4, 8, 8); });
+  for (const n of m.nodes) {
+    const x = X(n.at[0]), y = Y(n.at[1]);
+    if (n.type === 'watchtower') { c.fillStyle = '#ffd34d'; c.beginPath(); c.moveTo(x, y - 5); c.lineTo(x + 4, y + 3); c.lineTo(x - 4, y + 3); c.closePath(); c.fill(); }
+    else if (n.type === 'forwardPad') { c.strokeStyle = '#9fb3d8'; c.lineWidth = 1.2; for (const p of n.pads) c.strokeRect(X(p[0]) - 2.5, Y(p[1]) - 2.5, 5, 5); }
+    else { const r = n.yieldMul > 1 ? 5 : 3.5; c.fillStyle = '#ddd2ff'; c.beginPath(); c.moveTo(x, y - r); c.lineTo(x + r * 0.8, y); c.lineTo(x, y + r); c.lineTo(x - r * 0.8, y); c.closePath(); c.fill(); }
+  }
+  c.lineCap = 'butt';
+}
+function showMapSelect() {
+  const card = id => { const m = MAPS[id]; return `<button class="mapc${id === mapPick ? ' on' : ''}" data-m="${id}"><canvas class="mapt"></canvas><b>${cxEsc(m.display.name)}${id === 'classic' ? ' <small>default</small>' : ''}</b><span>${cxEsc(m.display.desc)}</span></button>`; };
+  overlay(`<h1>Choose a <span>battlefield</span></h1><div class="maps">${MAP_ORDER.filter(k => MAPS[k]).map(card).join('')}</div>
+    <div class="row"><button class="big" id="bMapGo">Play ▸</button><button class="ghost" id="bMapBack">Back</button></div>`);
+  $('box').classList.add('mapsel');
+  const cards = [...document.querySelectorAll('.mapc')];
+  for (const b of cards) {
+    drawMapThumb(b.querySelector('canvas'), MAPS[b.dataset.m]);
+    b.addEventListener('click', () => { mapPick = b.dataset.m; try { localStorage.setItem(MAP_KEY, mapPick); } catch (e) {} for (const x of cards) x.classList.toggle('on', x === b); });
+  }
+  $('bMapGo').addEventListener('click', startGame);
+  $('bMapBack').addEventListener('click', showStart);
 }
 /* ---------- Dev menu: spectate an AI-vs-AI match (v2.38, audit phase 4) ----------
    Behind the version label on the start screen. Each side: faction, AI preset (Default or Legacy) and personality; a
@@ -8872,7 +9214,7 @@ function startSpectate() {
   tutOff();
   clearTimeout(endTimer); endTimer = null;
   const per = p => p === 'random' ? undefined : p;
-  game = newGame('hard', { countdown: 0, autoPlayer: true, autoDiff: 'hard', factions: [devPick.a.f, devPick.b.f], autoAi: devPick.a.ai, ai: devPick.b.ai, autoPersona: per(devPick.a.p), persona: per(devPick.b.p) });
+  game = newGame('hard', { map: MAPS[mapPick] ? mapPick : 'classic', countdown: 0, autoPlayer: true, autoDiff: 'hard', factions: [devPick.a.f, devPick.b.f], autoAi: devPick.a.ai, ai: devPick.b.ai, autoPersona: per(devPick.a.p), persona: per(devPick.b.p) });
   game.spectate = true;
   document.body.classList.add('spectate'); // first: the build tray goes, so the field is sized without it
   buildAbil(); hideCountdown(); camTouched = true; applyZoom(1); resize(); closePanel(); hideInfo(); endAim();
@@ -8906,7 +9248,7 @@ function startGame() {
   document.body.classList.remove('spectate'); // v2.38
   clearTimeout(endTimer); endTimer = null;
   const me = pickFaction(facPick.me), foe = pickFaction(facPick.foe); // the opponent's pick is never shown during the match
-  game = newGame(diffKey, { countdown: INTRO_T + COUNTDOWN, factions: [me, foe] });
+  game = newGame(diffKey, { countdown: INTRO_T + COUNTDOWN, factions: [me, foe], map: MAPS[mapPick] ? mapPick : 'classic' }); // v2.65: the chosen map
   buildAbil();
   hideCountdown(); camTouched = false;
   resize(); introCamera(0); closePanel();
@@ -9098,7 +9440,7 @@ function repEnemyEvents(g) {
     }
     for (const x of D.strat) out.push({ t: x[0], tag: 'Strategy', txt: x[2] ? 'Feinted an attack, then pulled back' : REP_STRAT[x[1]] || 'Launched an attack' });
     for (const x of D.abil) out.push({ t: x[0], tag: 'Ability', txt: `Used ${ABIL[x[1]] ? ABIL[x[1]].name : x[1]}` });
-    for (const x of D.nodes) out.push({ t: x[0], tag: 'Node', txt: `${x[2] ? 'Captured' : 'Lost'} the ${NODE_NAME[x[1]]} field node` });
+    for (const x of D.nodes) out.push({ t: x[0], tag: 'Node', txt: `${x[2] ? 'Captured' : 'Lost'} the ${nodeLabel(x[1])}` });
   }
   // shifts in production: the unit role it spent most on, per 2-minute window, when that changes
   if (L) {
@@ -9587,7 +9929,7 @@ function tSquad(type, n, side = 0) { const out = [], u0 = side ? L / 2 + 150 : r
 const tMoved = () => { const O = tMe().orders; return !!O && [O.all, ...Object.values(O.groups || {}), ...Object.values(O.types || {})].some(o => o && o.o === 'move'); };
 // Targets: a DOM element ({ el }) or a rectangle in world space ({ rect }), turned into screen space every frame
 const tEl = s => { const el = document.querySelector(s); return el && el.getClientRects().length ? { el } : null; };
-const tW2S = (x, y) => ({ x: (x - cam.x) * V.S + V.cw / 2, y: (y - Y_BOT) * V.S + V.A });
+const tW2S = (x, y) => ({ x: (x - cam.x) * V.S + V.cw / 2, y: (y - YB()) * V.S + V.A });
 const tWorld = (x0, y0, x1, y1) => ({ rect: () => { const a = tW2S(x0, y0), b = tW2S(x1, y1); return { left: a.x, top: a.y, right: b.x, bottom: b.y }; }, u: (x0 + x1) / 2 });
 const tB = b => { if (!b) return null; const d = bdOf(b), p = P(b.u, b.v), hw = 2 * d.half * IX * BS + 6; return tWorld(p.x - hw, p.y - (d.half + d.h) * BS - 12, p.x + hw, p.y + d.half * BS + 6); };
 const tPad = k => { const p = slotPos(0, k), q = P(p.u, p.v), w = 2 * PAD_H * IX, hh = 2 * PAD_H * IY; return tWorld(q.x - w, q.y - hh, q.x + w, q.y + hh); };
@@ -9694,7 +10036,7 @@ const tCur = () => TUT.on && TUT_CH[TUT.ch] ? TUT_CH[TUT.ch].steps[TUT.step] : n
 // A fresh practice match: Last Fist against Last Fist, no countdown, the enemy AI off, no storm, never saved
 function tutMatch() {
   clearTimeout(endTimer); endTimer = null; document.body.classList.remove('spectate');
-  game = newGame('normal', { countdown: 0, factions: ['lastfist', 'lastfist'] });
+  game = newGame('normal', { countdown: 0, factions: ['lastfist', 'lastfist'], map: 'classic' }); // v2.65: the tutorial is on Classic
   game.tut = true; game.noStorm = true; game.sides[1].aiT = 1e9;
   buildAbil(); hideCountdown(); camTouched = false; applyZoom(1); resize(); closePanel(); hideInfo(); endAim();
   running = true; paused = false; speed = 1; $('bSpeed').textContent = '1×';

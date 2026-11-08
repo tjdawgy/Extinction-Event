@@ -102,7 +102,7 @@ function vfxStep(g) {
 }
 
 function vfxScan(g, dt) {
-  const F = viewFog(g), lit = u => F.vis[cellOf(u)] === 1, frame = ++VFX.frame, R = VFX.rec;
+  const F = viewFog(g), lit = (u, v) => F.vis[cellOf(u, v)] === 1, frame = ++VFX.frame, R = VFX.rec;
   VFX.nshots = 0;
   for (const e of g.ents) {
     let r = R.get(e);
@@ -115,9 +115,9 @@ function vfxScan(g, dt) {
     const cd = e.cd || 0;
     if (cd > r.cd + 0.05) onFire(g, e, lit);
     r.cd = cd;
-    if (e.maxShp && VFX.primed && (e.shp || 0) < (r.shp ?? 0) - 0.5 && lit(e.u)) { const w = P(e.u, e.v); if (onView(w.x)) sfx('shieldPing', w.x); } // v2.36: an Axiarch shield takes a hit
+    if (e.maxShp && VFX.primed && (e.shp || 0) < (r.shp ?? 0) - 0.5 && lit(e.u, e.v)) { const w = P(e.u, e.v); if (onView(w.x)) sfx('shieldPing', w.x); } // v2.36: an Axiarch shield takes a hit
     r.shp = e.shp || 0;
-    if (e.kind === 'u' && VFX.primed && lit(e.u)) { // v2.37: redesigned units' cues (siege lock, shield surge, phase)
+    if (e.kind === 'u' && VFX.primed && lit(e.u, e.v)) { // v2.37: redesigned units' cues (siege lock, shield surge, phase)
       const x = P(e.u, e.v).x;
       if ((e.siege || 0) !== (r.siege || 0) && (e.siege === 1 || e.siege === 3) && onView(x)) sfx('siegeLock', x);
       if ((e.surgeT || 0) > (r.surgeT || 0) && onView(x)) sfx('shieldUp', x);
@@ -137,27 +137,27 @@ function vfxScan(g, dt) {
     let r = R.get(p);
     if (!r) { r = VFX.freeRec.pop() || { f: 0, ou: 0, ov: 0, oz: 0, has: 0, wh: 0 }; r.has = 0; r.wh = 0; R.set(p, r); onShot(g, p, r, lit); }
     r.f = frame;
-    if (p.weapon === 'shell' && !r.wh && p.t > p.T * 0.45 && lit(p.u)) { r.wh = 1; sfx('whistle', p.u); } // incoming, once the shell is in view
+    if (p.weapon === 'shell' && !r.wh && p.t > p.T * 0.45 && lit(p.u, p.v)) { r.wh = 1; sfx('whistle', p.u); } // incoming, once the shell is in view
   }
   for (const p of VFX.prevP) { const r = R.get(p); if (r && r.f !== frame) { if (p.t <= 4) onImpact(g, p, lit); R.delete(p); VFX.freeRec.push(r); } }
   VFX.prevP.length = 0; for (const p of g.projs) VFX.prevP.push(p);
-  for (const f of g.fx) if (!VFX.seenFx.has(f)) { VFX.seenFx.add(f); if (f.k === 'beam' && f.hq && lit(f.x2) && onView(f.x2)) onHqBeam(f); else if ((f.k === 'blink' || f.k === 'devour') && lit(f.u) && onView(f.x)) sfx(f.k, f.x); else if (f.k === 'boom' && lit(f.x) && onView(f.x)) onBoom(f); else if (f.k === 'shatter' && lit(f.u)) sfx('shatter', f.x); } // v2.34: a collapse, heard where seen
+  for (const f of g.fx) if (!VFX.seenFx.has(f)) { VFX.seenFx.add(f); if (f.k === 'beam' && f.hq && lit(f.x2, (f.y2 ?? f.y) / DY) && onView(f.x2)) onHqBeam(f); else if ((f.k === 'blink' || f.k === 'devour') && lit(f.u) && onView(f.x)) sfx(f.k, f.x); else if (f.k === 'boom' && lit(f.x) && onView(f.x)) onBoom(f); else if (f.k === 'shatter' && lit(f.u)) sfx('shatter', f.x); } // v2.34: a collapse, heard where seen
   // commander abilities: casts, the strike's warning and its impact (also caught if the strike resolved and left between frames)
   for (const a of g.abil) {
     let r = R.get(a);
     if (!r) { r = { f: 0, boom: 0, warned: 0 }; R.set(a, r); if (VFX.primed) onAbilCast(g, a, lit); }
     r.f = frame;
-    if (a.k === 'strike' && !r.warned && a.side !== 0 && lit(a.u)) { r.warned = 1; if (VFX.primed) { sfx('siren'); toast('Enemy orbital strike incoming!', 'bad'); } }
+    if (a.k === 'strike' && !r.warned && a.side !== 0 && lit(a.u, a.v)) { r.warned = 1; if (VFX.primed) { sfx('siren'); toast('Enemy orbital strike incoming!', 'bad'); } }
     if (a.k === 'strike' && a.done && !r.boom) { r.boom = 1; onStrike(g, a, lit); }
     if (a.k === 'beam') { // v2.28: the enemy's warning only where the player can see the strip; the sweep's sound likewise
       const seen = beamSeen(a, lit);
       if (!r.warned && a.side !== 0 && seen) { r.warned = 1; if (VFX.primed) { sfx('siren'); toast('Enemy beam incoming!', 'bad'); } }
       if (!r.boom && g.t >= a.t0 + ABIL.beam.delay) { r.boom = 1; if (seen) { sfx('orbital', a.u); if (onView(a.u) && VFX.q > 0 && !VFX.reduced) VFX.shake = Math.max(VFX.shake, 4); } }
     }
-    if (a.k === 'mwarp' && a.done && !r.boom) { r.boom = 1; if (a.side === 0 || lit(a.wu)) sfx('warp', a.wu); } // the arrival
+    if (a.k === 'mwarp' && a.done && !r.boom) { r.boom = 1; if (a.side === 0 || lit(a.wu, a.wv)) sfx('warp', a.wu); } // the arrival
   }
   for (const a of VFX.prevA) { const r = R.get(a); if (r && r.f !== frame && a.k === 'strike' && !r.boom) { r.boom = 1; onStrike(g, a, lit); } }
-  for (const a of VFX.prevA) { const r = R.get(a); if (r && r.f !== frame && a.k === 'mwarp' && a.done && !r.boom) { r.boom = 1; if (a.side === 0 || lit(a.wu)) sfx('warp', a.wu); } } // a Mass Warp that ended and left between frames (v2.28)
+  for (const a of VFX.prevA) { const r = R.get(a); if (r && r.f !== frame && a.k === 'mwarp' && a.done && !r.boom) { r.boom = 1; if (a.side === 0 || lit(a.wu, a.wv)) sfx('warp', a.wu); } } // a Mass Warp that ended and left between frames (v2.28)
   VFX.prevA.length = 0; for (const a of g.abil) VFX.prevA.push(a);
 }
 const titanStep = u => Math.floor((u.anim * 3.2 - Math.PI / 2) / Math.PI);
@@ -168,7 +168,7 @@ function onFire(g, e, lit) {
   if (!gun) return;
   const m = muzzle(e), w = P(m.u, m.v, m.z), wpn = gun.weapon;
   if (VFX.nshots < VFX.shots.length) { const s = VFX.shots[VFX.nshots++]; s.e = e; s.u = m.u; s.v = m.v; s.z = m.z; s.w = wpn; }
-  if (!lit(m.u) || !onView(w.x)) return; // firing in the fog stays hidden
+  if (!lit(m.u, m.v) || !onView(w.x)) return; // firing in the fog stays hidden
   const face = e.face || (e.side ? -1 : 1), col = MUZ_COL[wpn] ? GLOW[MUZ_COL[wpn]] : GLOW['t' + e.side];
   sfx(wpn === 'hqgun' && facOf(e.fac) === 'bloomhost' ? 'hqspine' : wpn, w.x);
   switch (wpn) {
@@ -227,14 +227,14 @@ function onShot(g, p, r, lit) { // pair a new projectile with the shot that made
   for (let i = 0; i < VFX.nshots; i++) { const s = VFX.shots[i]; if (s.e.side !== p.side || s.w !== p.weapon) continue; const d = Math.abs(s.u - p.u) + Math.abs(s.v - p.v); if (d < bd) { bd = d; best = s; } }
   if (!best) return;
   r.ou = best.u; r.ov = best.v; r.oz = best.z; r.has = 1;
-  if (p.weapon === 'rail' && lit(best.u) && lit(p.tu)) { // the beam is drawn only when both ends are in view
+  if (p.weapon === 'rail' && lit(best.u, best.v) && lit(p.tu, p.tv)) { // the beam is drawn only when both ends are in view
     const a = P(best.u, best.v, best.z), b = P(p.tu, p.tv, p.tz);
     if (onView(a.x) || onView(b.x)) vFx('beam', a.x, a.y, 0, 0.2, null, 2, b.x, b.y, 2.4);
   }
 }
 function onImpact(g, p, lit) {
   const u = p.tu, v = p.tv, z = p.weapon === 'shell' ? 0 : p.tz; // where it hit (homing shots end on their target)
-  if (!lit(u)) return;
+  if (!lit(u, v)) return;
   const w = P(u, v, z);
   if (!onView(w.x)) return;
   const ground = P(u, v, 0).y;
@@ -327,7 +327,7 @@ function vfxFlames(g, dt) {
     if (!r || e.hp <= 0 || g.t - (r.fireT ?? -9) > 0.34) { VFX.flamers.delete(e); continue; }
     const m = muzzle(e), w = P(m.u, m.v, m.z);
     r.stream = null;
-    if (F.vis[cellOf(m.u)] !== 1 || !onView(w.x)) continue;
+    if (F.vis[cellOf(m.u, m.v)] !== 1 || !onView(w.x)) continue;
     const t = e.tgt ? g.ents.find(x => x.id === e.tgt && x.hp > 0) : null, face = e.face || dirOf(e.side);
     const tp = t ? P(t.u, t.v, Math.min(8, aimZ(t))) : { x: w.x + face * UDEF.flame.range, y: w.y + 4 };
     let dx = tp.x - w.x, dy = tp.y - w.y; const d = Math.max(1, Math.hypot(dx, dy)), len = Math.min(d + 6, UDEF.flame.range + 12); dx /= d; dy /= d;
@@ -348,13 +348,13 @@ function onBoom(f) { // every blast from the SIM gets a shockwave and a sound; b
 }
 function onStep(g, u, lit) { // a Titan's foot lands
   const w = P(u.u, u.v);
-  if (!lit(u.u) || !onView(w.x)) return;
+  if (!lit(u.u, u.v) || !onView(w.x)) return;
   sfx('step', w.x);
   for (let i = vCount(3); i > 0; i--) vPart(w.x + u.face * vr(-6, 16), w.y - 1, vr(-22, 22), vr(-10, -2), vr(0.6, 1), vr(3, 6), 3, '', -1, 0);
   if (VFX.q > 0 && !VFX.reduced) VFX.shake = Math.max(VFX.shake, 0.9);
 }
 function onDeath(g, e, lit) {
-  if (!lit(e.u)) return;
+  if (!lit(e.u, e.v)) return;
   const w = P(e.u, e.v);
   if (!onView(w.x)) return;
   if (e.kind === 'b') { // the building collapses over 1.2 s, with staggered blasts, a smoke column and a scorch mark
@@ -377,7 +377,7 @@ function onDeath(g, e, lit) {
   if (d.armor === 'vehicle') for (let i = vCount(6); i > 0; i--) vPart(w.x, w.y - 10, vr(-80, 80), vr(-120, -40), vr(0.7, 1.2), vr(1.8, 3), 2, '#2a3648', 320, 1, w.y + vr(-3, 4));
 }
 // Abilities. What the player may see: their own casts anywhere; enemy casts only on ground in view.
-const abilSeen = (a, lit) => a.side === 0 || lit(a.u);
+const abilSeen = (a, lit) => a.side === 0 || lit(a.u, a.v);
 function onAbilCast(g, a, lit) {
   if (!abilSeen(a, lit)) return;
   const w = P(a.u, a.v);
@@ -393,7 +393,7 @@ function onAbilCast(g, a, lit) {
 // The Purification Beam's strip (v2.28): its two ends along the lane, the start being the end away from the target side
 const beamEnds = a => { const h = ABIL.beam.len / 2 * dirOf(a.side); return [a.u - h, a.u + h]; };
 // What the player may see of an enemy ability that covers more than one spot (v2.28): any of its points in view
-const beamSeen = (a, lit) => a.side === 0 || beamEnds(a).some(u => lit(u)) || lit(a.u);
+const beamSeen = (a, lit) => a.side === 0 || beamEnds(a).some(u => lit(u, a.v)) || lit(a.u, a.v);
 function onStrike(g, a, lit) { // the blast is drawn where the player may see it; hidden units caught in it show nothing
   if (!abilSeen(a, lit)) return;
   const w = P(a.u, a.v), R0 = ABIL.strike.r;
@@ -484,7 +484,7 @@ function drawMassWarp(c, g, a, lit, time) {
   if (a.done) return;
   const k = clamp((g.t - a.t0) / ABIL.mwarp.ch, 0, 1), mine = a.side === 0;
   c.globalCompositeOperation = 'lighter';
-  if (mine || lit(a.u)) { const w = P(a.u, a.v), r = ABIL.mwarp.r * (1 - 0.3 * k); c.strokeStyle = `rgba(${TEAM[a.side].glow},${0.3 + 0.4 * k})`; c.lineWidth = 1.6; c.setLineDash([6, 6]); c.beginPath(); c.ellipse(w.x, w.y, r, r * DY, 0, 0, 7); c.stroke(); c.setLineDash([]); }
+  if (mine || lit(a.u, a.v)) { const w = P(a.u, a.v), r = ABIL.mwarp.r * (1 - 0.3 * k); c.strokeStyle = `rgba(${TEAM[a.side].glow},${0.3 + 0.4 * k})`; c.lineWidth = 1.6; c.setLineDash([6, 6]); c.beginPath(); c.ellipse(w.x, w.y, r, r * DY, 0, 0, 7); c.stroke(); c.setLineDash([]); }
   for (const id of a.ids) {
     const e = g.ents.find(x => x.id === id && x.hp > 0);
     if (!e || !(mine || visibleTo(g, 0, e))) continue;
@@ -493,7 +493,7 @@ function drawMassWarp(c, g, a, lit, time) {
     c.fillStyle = gr; c.fillRect(p.x - 7 - 3 * k, p.y - h, 14 + 6 * k, h);
     c.strokeStyle = `rgba(225,248,255,${0.4 + 0.5 * k})`; c.lineWidth = 1.2; c.beginPath(); c.ellipse(p.x, p.y, 12 - 4 * k, (12 - 4 * k) * 0.42, 0, 0, 7); c.stroke();
   }
-  if (mine || lit(a.wu)) { const p = P(a.wu, a.wv), r = 18 + 10 * k; stamp(c, GLOW.cyan, p.x, p.y - 10, r, 0.3 + 0.5 * k); c.strokeStyle = `rgba(225,248,255,${0.4 + 0.5 * k})`; c.lineWidth = 1.4; c.beginPath(); c.ellipse(p.x, p.y, r, r * 0.42, 0, 0, 7); c.stroke(); }
+  if (mine || lit(a.wu, a.wv)) { const p = P(a.wu, a.wv), r = 18 + 10 * k; stamp(c, GLOW.cyan, p.x, p.y - 10, r, 0.3 + 0.5 * k); c.strokeStyle = `rgba(225,248,255,${0.4 + 0.5 * k})`; c.lineWidth = 1.4; c.beginPath(); c.ellipse(p.x, p.y, r, r * 0.42, 0, 0, 7); c.stroke(); }
   c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
 }
 // Shield Overcharge on a unit (v2.28): its shield shell glows bright and steady, with sparks running over it
@@ -562,10 +562,10 @@ function drawRoots(c, f, lit) {
   const spikeAt = (x, y, h, wd) => { c.fillStyle = '#5a3d2b'; c.beginPath(); c.moveTo(x - wd, y); c.quadraticCurveTo(x - 1, y - h * 0.6, x + 1.5, y - h); c.quadraticCurveTo(x + 1, y - h * 0.5, x + wd, y); c.closePath(); c.fill(); c.fillStyle = 'rgba(140,200,90,0.8)'; c.fillRect(x, y - h * 0.7, 1.2, 1.2); };
   for (const p of f.rim) for (let a = 0; a < Math.PI * 2; a += 22 / Math.max(22, p.r)) {
     const u = p.u + Math.cos(a) * p.r, v = p.v + Math.sin(a) * p.r;
-    if (Math.abs(v) > LANE_V + 60 || !lit(u) || inAny(u, v)) continue;
+    if (Math.abs(v) > LANE_V + 60 || !lit(u, v) || inAny(u, v)) continue;
     const w = P(u, v); spikeAt(w.x, w.y, (8 + ((a * 7) % 3) * 3) * up, 2.4);
   }
-  for (const s of f.at) if (lit(s.u)) { const w = P(s.u, s.v); for (const dx of [-7, -2, 4, 8]) spikeAt(w.x + dx, w.y + 2, 16 * up, 3); }
+  for (const s of f.at) if (lit(s.u, s.v)) { const w = P(s.u, s.v); for (const dx of [-7, -2, 4, 8]) spikeAt(w.x + dx, w.y + 2, 16 * up, 3); }
   c.globalAlpha = 1;
 }
 function drawScrap(c, f) {
@@ -659,7 +659,7 @@ function vfxMeteors(g, dt) {
   VFX.metAcc = (VFX.metAcc || 0) + dt * (1.6 + (g.t - EXT.start) / 60) * QMUL[VFX.q]; // more as the storm grows
   if (VFX.metAcc < 1) return;
   VFX.metAcc -= 1;
-  const F = viewFog(g), bs = g.ents.filter(e => e.kind === 'b' && e.hp > 0 && F.vis[cellOf(e.u)] && onView(e.u));
+  const F = viewFog(g), bs = g.ents.filter(e => e.kind === 'b' && e.hp > 0 && F.vis[cellOf(e.u, e.v)] && onView(e.u));
   if (!bs.length) return;
   const b = bs[Math.floor(VFX.rnd() * bs.length)], w = P(b.u + vr(-b.half, b.half) * 0.6, b.v + vr(-b.half, b.half) * 0.6, vr(4, b.h * 0.5));
   vFx('meteor', w.x + vr(60, 120), w.y - 320, 0, 0.5, null, 3, w.x, w.y, 3.5);
@@ -687,7 +687,7 @@ function vfxQuality(gap, playing) {
 // Drawing
 // Artillery landing marker: only while the shell itself can be seen, and only on ground in view, so it can never
 // give away a gun firing from the fog
-const showLanding = (p, lit) => lit(p.u) && lit(p.tu);
+const showLanding = (p, lit) => lit(p.u, p.v) && lit(p.tu, p.tv);
 function drawBoom(c, x, y, r, k) {
   c.globalCompositeOperation = 'lighter';
   stamp(c, GLOW.fire, x, y, r * (0.9 + k * 0.8), (1 - k) * 0.7);
@@ -886,47 +886,52 @@ function render(c, g, time, sel, selPad) {
   const { cw, ch, dpr, S, A } = V;
   if (!cw) return;
   SPR.budget = 16; BCACHE.budget = 6;
-  const hy = (HORIZON - Y_BOT) * S + A;
+  const hy = (HORIZON - YB()) * S + A;
   c.setTransform(dpr, 0, 0, dpr, 0, 0);
   drawSky(c, time, hy, g && g.t >= EXT.warn ? Math.round(12 * clamp((g.t - EXT.warn) / (EXT.start + 60 - EXT.warn), 0, 1)) : 0); // the sky reddens for the Extinction Event
   let sx = 0, sy = 0;
   if (g) vfxStep(g);
   const shake = g && VFX.q > 0 ? g.shake + VFX.shake : 0; // no shake at the lowest quality level
   if (shake > 0) { sx = vr(-1, 1) * shake; sy = vr(-1, 1) * shake; }
-  c.setTransform(dpr * S, 0, 0, dpr * S, dpr * (cw / 2 - cam.x * S + sx), dpr * (A - Y_BOT * S + sy));
+  c.setTransform(dpr * S, 0, 0, dpr * S, dpr * (cw / 2 - cam.x * S + sx), dpr * (A - YB() * S + sy));
   drawRidge(c, BG.far, 0.25, '#1a1a3c', 'rgba(170,150,240,0.35)');
   drawRidge(c, BG.near, 0.5, '#13152c', 'rgba(120,110,200,0.2)');
   if (groundCache) c.drawImage(groundCache, GB.x0, GB.y0, GB.x1 - GB.x0, GB.y1 - GB.y0); else drawGround(c);
   if (!g) return;
   // Everything below is drawn from the player's point of view: enemies only inside friendly vision
-  const F = viewFog(g), seen = e => e.side === 0 || !!g.spectate || visibleTo(g, 0, e), lit = x => F.vis[cellOf(x)] === 1;
-  const ghosts = Object.values(F.ghosts).filter(gh => !cellsLit(F.vis, gh.u, gh.half));
+  const F = viewFog(g), seen = e => e.side === 0 || !!g.spectate || visibleTo(g, 0, e), lit = (x, y) => F.vis[cellOf(x, y)] === 1; // v2.65: depth too (a grid map)
+  const ghosts = Object.values(F.ghosts).filter(gh => !cellsLit(F.vis, gh.u, gh.half, gh.v));
   drawCreep(c, g, F); // under everything on the field (v2.18)
   drawField(c, g, F); // the Axiarch power field (v2.26), also under everything
 
   for (let s = 0; s < 2; s++) {
     const fac = g.sides[s].faction, hpos = hqPos(s), hp = P(hpos.u, hpos.v);
     // v2.17: enemy pads stay hidden until their ground has been in view (their look would give the faction away)
-    if (s === 0 || cellsLit(F.seen, hpos.u, HQ_PAD_H)) drawPad(c, hp.x, hp.y, HQ_PAD_H, s, false, time, sel && sel.type === 'hq' && sel.side === s, fac);
+    if (s === 0 || cellsLit(F.seen, hpos.u, HQ_PAD_H, hpos.v)) drawPad(c, hp.x, hp.y, HQ_PAD_H, s, false, time, sel && sel.type === 'hq' && sel.side === s, fac);
     for (let i = 0; i < SLOT_COUNT; i++) {
       const p = slotPos(s, i), w = P(p.u, p.v), b = g.sides[s].slots[i];
-      if (s === 1 && !cellsLit(F.seen, p.u, PAD_H)) continue;
+      if (s === 1 && !cellsLit(F.seen, p.u, PAD_H, p.v)) continue;
       // enemy pads look occupied only as far as the player knows (in view, or a remembered ghost)
       const known = s === 0 ? b : (b && seen(b)) || ghosts.some(gh => gh.slot === i);
       drawPad(c, w.x, w.y, PAD_H, s, !known, time, s === 0 && (selPad === i || (sel && sel === b)), fac);
     }
     if (sigPadOn() && SIG.on && BD(fac, 'sigA')) { // v2.43: the signature pad, marked in gold
       const p = slotPos(s, SIG_SLOT), w = P(p.u, p.v), b = sigOnPad(g, s);
-      if (s === 0 || cellsLit(F.seen, p.u, PAD_H)) {
+      if (s === 0 || cellsLit(F.seen, p.u, PAD_H, p.v)) {
         const known = s === 0 ? b : (b && seen(b)) || ghosts.some(gh => gh.slot === SIG_SLOT);
         drawPad(c, w.x, w.y, PAD_H, s, !known, time, s === 0 && (selPad === SIG_SLOT || (sel && sel === b)), fac);
         drawSigPadMark(c, w.x, w.y, PAD_H, !known, time, s === 0 && !g.spectate);
       }
     }
   }
-  for (const n of g.nodes) drawNodeZone(c, n, time, lit(n.u));
+  for (let k = 0; k < FWD_PADS.length; k++) { // v2.65: forward pads (both sides build there; the holder of its node may)
+    const Q = FWD_PADS[k], owner = g.nodes[Q.node].owner, b = fwdAt(g, FWD_SLOT + k);
+    if (!cellsLit(F.seen, Q.at[0], PAD_H, Q.at[1]) && !(b && b.side === 0)) continue;
+    drawFwdPad(c, k, owner, !(b && seen(b)), time, selPad === FWD_SLOT + k || (sel && sel === b));
+  }
+  for (const n of g.nodes) drawNodeZone(c, n, time, lit(n.u, n.v));
   for (const b of g.ents) if (b.type === 'bunker' && b.hp > 0 && b.tier >= 2 && seen(b)) drawHealRing(c, b, time); // v2.32: Depot T2
-  for (const a of g.acid) if (lit(a.u)) drawAcidPool(c, a, g.t);
+  for (const a of g.acid) if (lit(a.u, a.v)) drawAcidPool(c, a, g.t);
   drawDecals(c);
   if (g) { drawSelection(c, g, time); drawBuildingSel(c, g, time, false); }
   drawWrecks(c, time);
@@ -958,7 +963,7 @@ function render(c, g, time, sel, selPad) {
   drawBuildingSel(c, g, time, true);
   drawFog(c, F);
   for (const p of g.projs) {
-    if (p.side !== 0 && !lit(p.u)) continue;
+    if (p.side !== 0 && !lit(p.u, p.v)) continue;
     const a = P(p.pu, p.pv, p.pz), b = P(p.u, p.v, p.z), wp = p.weapon;
     if (drawFacProj(c, g, p, a, b, wp, time)) continue; // faction weapons (v2.36)
     if (wp === 'rifle' || wp === 'flak' || wp === 'gatling' || wp === 'rail' || wp === 'spine' || wp === 'bolt' || wp === 'astral') {
@@ -1020,7 +1025,7 @@ function render(c, g, time, sel, selPad) {
   const thin = VFX.q === 0; // lowest quality: half the SIM's smoke is drawn
   for (let i = 0; i < g.parts.length; i++) {
     const p = g.parts[i];
-    if (!lit(p.x) || (thin && p.smoke && i % 2)) continue; // smoke, sparks and debris give away activity
+    if (!lit(p.x, p.y / DY) || (thin && p.smoke && i % 2)) continue; // smoke, sparks and debris give away activity
     const k = p.life / p.max;
     if (p.smoke) {
       c.fillStyle = p.light ? '#aaaabe' : '#282834'; c.globalAlpha = (p.light ? 0.3 : 0.55) * k;
@@ -1029,16 +1034,16 @@ function render(c, g, time, sel, selPad) {
   }
   c.globalAlpha = 1;
   for (const f of g.fx) { // the SIM's blasts (its muzzle flashes are replaced by the per-weapon ones in drawVfx)
-    if (f.k === 'beam') { if (lit(f.x) || lit(f.x2)) drawBeam(c, f); continue; } // Null Lance beams (v2.25), only where the player can see
-    if (f.k === 'pull') { if (lit(f.x)) drawPull(c, f); continue; } // Eventide pulses (v2.27)
+    if (f.k === 'beam') { if (lit(f.x, f.y / DY) || lit(f.x2, (f.y2 ?? f.y) / DY)) drawBeam(c, f); continue; } // Null Lance beams (v2.25), only where the player can see
+    if (f.k === 'pull') { if (lit(f.x, f.y / DY)) drawPull(c, f); continue; } // Eventide pulses (v2.27)
     if (f.k === 'scrap') { if (scrapShown(g, f, 0)) drawScrap(c, f); continue; }
-    if (f.k === 'acidburst') { if (lit(f.u)) drawAcidBurst(c, f); continue; }
-    if (f.k === 'shatter') { if (lit(f.u)) drawShatter(c, f); continue; } // a Phase Beacon bubble collapsing (v2.34) // a killed Mite (v2.33)
-    if (f.k === 'pierce') { if (lit(f.u)) drawPierce(c, f); continue; } // P4 (v2.37)
-    if (f.k === 'blink') { if (lit(f.u)) drawBlink(c, f); continue; } // P5 (v2.37)
-    if (f.k === 'devour') { if (lit(f.u)) drawDevour(c, f); continue; } // P11 (v2.37)
+    if (f.k === 'acidburst') { if (lit(f.u, f.v)) drawAcidBurst(c, f); continue; }
+    if (f.k === 'shatter') { if (lit(f.u, f.v)) drawShatter(c, f); continue; } // a Phase Beacon bubble collapsing (v2.34) // a killed Mite (v2.33)
+    if (f.k === 'pierce') { if (lit(f.u, f.v)) drawPierce(c, f); continue; } // P4 (v2.37)
+    if (f.k === 'blink') { if (lit(f.u, f.v)) drawBlink(c, f); continue; } // P5 (v2.37)
+    if (f.k === 'devour') { if (lit(f.u, f.v)) drawDevour(c, f); continue; } // P11 (v2.37)
     if (f.k === 'roots') { drawRoots(c, f, lit); continue; } // a Rootheart's snare pulse (v2.33), only where the player can see // Salvage (v2.30): the player's own, where they can see
-    if (f.k !== 'boom' || !lit(f.x)) continue;
+    if (f.k !== 'boom' || !lit(f.x, f.y / DY)) continue;
     drawBoom(c, f.x, f.y, f.r, f.t / f.life);
   }
   c.globalAlpha = 1;
@@ -1048,7 +1053,7 @@ function render(c, g, time, sel, selPad) {
   drawFlags(c, g, time);
   drawAim(c, g);
   c.font = '600 11px -apple-system,system-ui,sans-serif'; c.textAlign = 'center';
-  const barMin = (V.ft - V.A) / V.S + Y_BOT + 12 / V.S; // highest world row that clears the top bar (with room for tier pips)
+  const barMin = (V.ft - V.A) / V.S + YB() + 12 / V.S; // highest world row that clears the top bar (with room for tier pips)
   for (const e of g.ents) {
     if (!seen(e)) continue;
     if (e.kind === 'b') {

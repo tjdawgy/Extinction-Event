@@ -102,6 +102,7 @@ function setStance(g, s, v) {
 
 function moveToward(u, d, tu, tv, dt, mul = 1) { // mul: speed multiplier (creep, v2.18)
   if (MAP_LANED && u.lane != null && !d.air && moveLane(u, d, tu, tv, dt, mul)) return true;
+  if (NAV.on && !d.air) return moveNav(u, d, tu, tv, dt, mul); // v2.65: around the map's blockers
   const du = tu - u.u, dv = tv - u.v;
   if (Math.abs(du) < 2 && Math.abs(dv) < 2) { u.moving = false; return false; }
   if (Math.abs(du) >= 2) { u.u = clamp(u.u + Math.sign(du) * Math.min(Math.abs(du), d.speed * mul * dt), 0, L); u.face = Math.sign(du); }
@@ -119,6 +120,7 @@ function moveLane(u, d, tu, tv, dt, mul) {
   const du = tu - u.u;
   if (Math.abs(du) < LANE_GO.near) return false;
   const ln = MAP.lanes[u.lane], hw = ln.width / 2, sg = Math.sign(du), step = d.speed * mul * dt, x0 = u.u, off = u.v - laneY(ln, x0);
+  if (NAV.on && Math.abs(tv - laneY(ln, tu)) > hw + 40) return false; // v2.65: a target off this lane (a flag, a chase elsewhere): navigate there instead
   if (Math.abs(off) > hw + 20) { const ax = clamp(x0 + sg * Math.min(Math.abs(du), LANE_GO.ahead), 0, L); return moveStraight(u, d, ax, laneY(ln, ax), dt, mul); }
   const k = (laneY(ln, x0 + sg * LANE_GO.probe) - laneY(ln, x0)) / LANE_GO.probe, ax = step / Math.sqrt(1 + k * k);
   const nx = clamp(x0 + sg * Math.min(Math.abs(du), ax), 0, L), want = clamp(tv - laneY(ln, tu), -hw, hw);
@@ -129,6 +131,83 @@ function moveLane(u, d, tu, tv, dt, mul) {
 function moveStraight(u, d, tu, tv, dt, mul) { const k = u.lane; u.lane = null; const r = moveToward(u, d, tu, tv, dt, mul); u.lane = k; return r; }
 // The depth a unit holds on its lane at x: its own offset (laneV) around the lane's centre there; Classic: laneV itself
 const laneTv = (u, x) => MAP_LANED && u.lane != null && !UDEF[u.type].air ? laneY(MAP.lanes[u.lane], x) + u.laneV : u.laneV;
+// v2.65 (Two-Lane): ground navigation around blockers (the ridge). A grid of NAV.cell cells marks the ground within
+// NAV.pad of a blocker (or off the map) as closed; a ground unit whose straight line to its target crosses closed ground
+// follows an A* path (8 directions), skipping ahead to the farthest point it can walk to in a straight line, and keeps
+// the path (u.nav) until its target moves NAV.re or NAV.age seconds pass. On a grid map it moves at full speed in any
+// direction (the straight move below keeps the old depth speed). A unit that ends a step on closed ground (a leap, a
+// shove) is put back on the nearest open cell. Maps without blockers (Classic) never use any of this.
+const NAV = { on: false, cell: 20, pad: 14, re: 40, age: 2, now: 0, nx: 0, ny: 0, y0: 0, b: null };
+function mapNav() {
+  const bl = MAP.blockers || []; NAV.on = bl.length > 0; NAV.b = null; if (!NAV.on) return;
+  const C = NAV.cell; NAV.nx = Math.ceil(MAP.size.w / C); NAV.y0 = -MAP.size.h / 2; NAV.ny = Math.ceil(MAP.size.h / C);
+  NAV.b = new Uint8Array(NAV.nx * NAV.ny);
+  const inPoly = (x, y, P) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, yi] = P[i], [xj, yj] = P[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
+  const segD = (x, y, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy, t = l2 ? clamp(((x - a[0]) * dx + (y - a[1]) * dy) / l2, 0, 1) : 0; return Math.hypot(x - a[0] - t * dx, y - a[1] - t * dy); };
+  for (let j = 0; j < NAV.ny; j++) for (let i = 0; i < NAV.nx; i++) {
+    const x = (i + 0.5) * C, y = NAV.y0 + (j + 0.5) * C;
+    NAV.b[j * NAV.nx + i] = bl.some(o => inPoly(x, y, o.poly) || o.poly.some((p, k) => segD(x, y, o.poly[(k || o.poly.length) - 1], p) < NAV.pad)) ? 1 : 0;
+  }
+}
+mapNav(); MAP_HOOKS.push(mapNav);
+const navCell = (u, v) => [clamp(Math.floor(u / NAV.cell), 0, NAV.nx - 1), clamp(Math.floor((v - NAV.y0) / NAV.cell), 0, NAV.ny - 1)];
+const navShut = (u, v) => { const [i, j] = navCell(u, v); return NAV.b[j * NAV.nx + i] === 1; };
+function navClear(u0, v0, u1, v1) { // the straight line between two points crosses no closed cell
+  const n = Math.ceil(Math.hypot(u1 - u0, v1 - v0) / (NAV.cell / 2));
+  for (let k = 1; k <= n; k++) if (navShut(u0 + (u1 - u0) * k / n, v0 + (v1 - v0) * k / n)) return false;
+  return true;
+}
+const NAVQ = { g: null, f: null, from: null, open: null };
+function navPath(u0, v0, u1, v1) { // A* over open cells; the cell centres from start to goal (the goal's own point last), or null
+  const nx = NAV.nx, N = nx * NAV.ny, C = NAV.cell;
+  if (!NAVQ.g || NAVQ.g.length !== N) { NAVQ.g = new Float64Array(N); NAVQ.from = new Int32Array(N); NAVQ.done = new Uint8Array(N); }
+  const G = NAVQ.g, FR = NAVQ.from, D = NAVQ.done; G.fill(Infinity); D.fill(0);
+  let [si, sj] = navCell(u0, v0), [ti, tj] = navCell(u1, v1);
+  const s = sj * nx + si, t = tj * nx + ti, h = k => { const i = k % nx, j = (k - i) / nx, di = Math.abs(i - ti), dj = Math.abs(j - tj); return Math.max(di, dj) + 0.4142 * Math.min(di, dj); };
+  const heap = [], push = (k, f) => { heap.push([f, k]); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
+  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top[1]; };
+  G[s] = 0; FR[s] = -1; push(s, h(s));
+  while (heap.length) {
+    const k = pop(); if (D[k]) continue; D[k] = 1;
+    if (k === t) break;
+    const i = k % nx, j = (k - i) / nx;
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+      if (!di && !dj) continue;
+      const a = i + di, b = j + dj; if (a < 0 || b < 0 || a >= nx || b >= NAV.ny) continue;
+      const q = b * nx + a; if (NAV.b[q] && q !== t) continue;
+      if (di && dj && (NAV.b[j * nx + a] || NAV.b[b * nx + i])) continue; // no cutting a closed corner
+      const ng = G[k] + (di && dj ? 1.4142 : 1); if (ng < G[q]) { G[q] = ng; FR[q] = k; push(q, ng + h(q)); }
+    }
+  }
+  if (!D[t]) return null;
+  const out = [[u1, v1]]; for (let k = FR[t]; k >= 0 && k !== s; k = FR[k]) { const i = k % nx, j = (k - i) / nx; out.push([(i + 0.5) * C, NAV.y0 + (j + 0.5) * C]); }
+  return out.reverse();
+}
+function moveNav(u, d, tu, tv, dt, mul) {
+  if (Math.abs(tu - u.u) < 2 && Math.abs(tv - u.v) < 2) { u.moving = false; return false; }
+  let wu = tu, wv = tv;
+  if (!navClear(u.u, u.v, tu, tv)) {
+    let N = u.nav;
+    if (!N || Math.abs(N.tu - tu) + Math.abs(N.tv - tv) > NAV.re || NAV.now - N.t > NAV.age || !N.p || !N.p.length) N = u.nav = { tu, tv, t: NAV.now, p: navPath(u.u, u.v, tu, tv) };
+    if (N.p) { while (N.p.length > 1 && navClear(u.u, u.v, N.p[1][0], N.p[1][1])) N.p.shift(); [wu, wv] = N.p[0]; if (Math.hypot(wu - u.u, wv - u.v) < 4 && N.p.length > 1) { N.p.shift(); [wu, wv] = N.p[0]; } }
+  } else if (u.nav) u.nav = undefined;
+  if (!MAP_2D) { const k = u.lane; u.lane = null; NAV.on = false; const r = moveToward(u, d, wu, wv, dt, mul); NAV.on = true; u.lane = k; return r; }
+  const du = wu - u.u, dv = wv - u.v, dd = Math.hypot(du, dv), st = d.speed * mul * dt;
+  if (dd < 2) { u.moving = false; return false; }
+  const k = Math.min(1, st / dd), nu = clamp(u.u + du * k, 0, L), nv = u.v + dv * k;
+  if (!navShut(nu, nv)) { u.u = nu; u.v = nv; } else if (!navShut(nu, u.v)) u.u = nu; else if (!navShut(u.u, nv)) u.v = nv; // slide along a wall
+  if (Math.abs(du) > 0.5) u.face = Math.sign(du);
+  u.moving = true;
+  return true;
+}
+function navEject(u) { // put a ground unit standing on closed ground back on the nearest open cell
+  const [i0, j0] = navCell(u.u, u.v), C = NAV.cell;
+  for (let r = 1; r < 12; r++) for (let dj = -r; dj <= r; dj++) for (let di = -r; di <= r; di++) {
+    if (Math.max(Math.abs(di), Math.abs(dj)) !== r) continue;
+    const i = i0 + di, j = j0 + dj; if (i < 0 || j < 0 || i >= NAV.nx || j >= NAV.ny || NAV.b[j * NAV.nx + i]) continue;
+    u.u = (i + 0.5) * C; u.v = NAV.y0 + (j + 0.5) * C; return;
+  }
+}
 const RETREAT = { fire: false }; // v2.35 (audit): retreating units hold their fire; fire true restores the v2.34 rule (firing on the move)
 function updateUnit(g, u, foes, dt) {
   const d = UDEF[u.type];

@@ -20,7 +20,7 @@ async function main() {
   try {
     const { page, errors } = await openPage(browser, device);
     await shot(page, '1-title');
-    await page.click('#bPlay');
+    await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default)
     await page.waitForTimeout(500);
     await shot(page, '2-intro-both-bases');
     await page.waitForFunction(() => game.countdown > 0 && game.countdown <= 2);

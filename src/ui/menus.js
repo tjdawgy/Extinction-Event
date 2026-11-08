@@ -31,7 +31,7 @@ function saveGame() {
 }
 function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
 function peekSave() {
-  try { const s = localStorage.getItem(SAVE_KEY); if (!s) return null; const o = JSON.parse(s); return o && SAVE_OK.includes(o.v) ? { t: o.t, diffKey: o.diffKey } : null; } catch (e) { return null; }
+  try { const s = localStorage.getItem(SAVE_KEY); if (!s) return null; const o = JSON.parse(s); const m = (o && o.map) || { id: 'classic', v: 1 }; return o && SAVE_OK.includes(o.v) && MAPS[m.id] && MAPS[m.id].v === m.v ? { t: o.t, diffKey: o.diffKey, map: m.id } : null; } catch (e) { return null; } // v2.65: and its map
 }
 function showStart() {
   tutOff(); // v2.46
@@ -47,13 +47,51 @@ function showStart() {
       <div><b>Command your army</b>Attack pushes forward, Hold stops everyone where they stand, Retreat pulls back to your flag without firing. Drag sideways to look around.</div>
     </div>
     <div class="setup"><span class="lbl">Difficulty</span>${diffSeg()}<span class="lbl">You</span>${facSeg('meSeg', 'me')}<span class="lbl">Opponent</span>${facSeg('foeSeg', 'foe')}<p class="fdesc" id="facDesc">${factionDesc(facPick.me)}</p></div>
-    <div class="row">${sv ? `<button class="big" id="bResume">Resume match</button><button class="ghost" id="bPlay">New match</button><span class="lbl">${DIFF[sv.diffKey] ? DIFF[sv.diffKey].label : ''}, ${fmtTime(sv.t)} in</span>` : '<button class="big" id="bPlay">Start match</button>'}<button class="ghost" id="bCodex">Codex</button><button class="ghost" id="bSound">${sndLabel()}</button></div>`);
+    <div class="row">${sv ? `<button class="big" id="bResume">Resume match</button><button class="ghost" id="bPlay">New match</button><span class="lbl">${DIFF[sv.diffKey] ? DIFF[sv.diffKey].label : ''}${sv.map !== 'classic' ? ', ' + cxEsc(MAPS[sv.map].display.name) : ''}, ${fmtTime(sv.t)} in</span>` : '<button class="big" id="bPlay">Start match</button>'}<button class="ghost" id="bCodex">Codex</button><button class="ghost" id="bSound">${sndLabel()}</button></div>`);
   wireDiff(); wireFactions(); wireSound();
   $('bCodex').addEventListener('click', () => openCodex(CX.tab));
-  $('bPlay').addEventListener('click', startGame);
+  $('bPlay').addEventListener('click', showMapSelect);
   if (sv) $('bResume').addEventListener('click', resumeGame);
   $('box').querySelector('.ver').addEventListener('click', showDev); // the dev menu (v2.38): tap the version
   if (!TUT.prompted && !tutLoad().seen) tutFirstPrompt(); // v2.46: first launch only
+}
+/* ---------- Map select (v2.65, docs/TWO_LANE.md) ----------
+   Before each new match: one card per map, from its display fields, with a thumbnail the game draws from the map data
+   (lanes, blockers, bases, nodes), so it can't disagree with the map. Classic is the default; the choice is remembered. */
+const MAP_KEY = 'extinctionEvent.map', MAP_ORDER = ['classic', 'twolane'];
+let mapPick = 'classic';
+try { const k = localStorage.getItem(MAP_KEY); if (k && MAPS[k] && MAP_ORDER.includes(k)) mapPick = k; } catch (e) {}
+function drawMapThumb(cv, m) {
+  const r = cv.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1), w = Math.max(1, r.width), h = Math.max(1, r.height);
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const H = Math.max(m.size.h / 2, 220), pad = 8, k = Math.min((w - 2 * pad) / m.size.w, (h - 2 * pad) / (2 * H)), ox = (w - m.size.w * k) / 2, X = x => ox + x * k, Y = y => h / 2 + y * k;
+  const bg = c.createLinearGradient(0, 0, 0, h); bg.addColorStop(0, m.display.thumb && m.display.thumb.tint || '#24324a'); bg.addColorStop(1, '#0b1220');
+  c.fillStyle = bg; rr(c, 0, 0, w, h, 8); c.fill();
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  for (const ln of m.lanes) { c.strokeStyle = 'rgba(190,175,140,0.35)'; c.lineWidth = ln.width * k; c.beginPath(); ln.path.forEach(([x, y], i) => i ? c.lineTo(X(x), Y(y)) : c.moveTo(X(x), Y(y))); c.stroke(); }
+  for (const b of m.blockers || []) { c.fillStyle = '#3a4054'; c.strokeStyle = 'rgba(200,210,240,0.35)'; c.lineWidth = 1; c.beginPath(); b.poly.forEach(([x, y], i) => i ? c.lineTo(X(x), Y(y)) : c.moveTo(X(x), Y(y))); c.closePath(); c.fill(); c.stroke(); }
+  m.bases.forEach((b, s) => { c.fillStyle = TEAM[s].main; for (const p of b.pads) c.fillRect(X(p[0]) - 1.5, Y(p[1]) - 1.5, 3, 3); c.fillRect(X(b.hq[0]) - 4, Y(b.hq[1]) - 4, 8, 8); });
+  for (const n of m.nodes) {
+    const x = X(n.at[0]), y = Y(n.at[1]);
+    if (n.type === 'watchtower') { c.fillStyle = '#ffd34d'; c.beginPath(); c.moveTo(x, y - 5); c.lineTo(x + 4, y + 3); c.lineTo(x - 4, y + 3); c.closePath(); c.fill(); }
+    else if (n.type === 'forwardPad') { c.strokeStyle = '#9fb3d8'; c.lineWidth = 1.2; for (const p of n.pads) c.strokeRect(X(p[0]) - 2.5, Y(p[1]) - 2.5, 5, 5); }
+    else { const r = n.yieldMul > 1 ? 5 : 3.5; c.fillStyle = '#ddd2ff'; c.beginPath(); c.moveTo(x, y - r); c.lineTo(x + r * 0.8, y); c.lineTo(x, y + r); c.lineTo(x - r * 0.8, y); c.closePath(); c.fill(); }
+  }
+  c.lineCap = 'butt';
+}
+function showMapSelect() {
+  const card = id => { const m = MAPS[id]; return `<button class="mapc${id === mapPick ? ' on' : ''}" data-m="${id}"><canvas class="mapt"></canvas><b>${cxEsc(m.display.name)}${id === 'classic' ? ' <small>default</small>' : ''}</b><span>${cxEsc(m.display.desc)}</span></button>`; };
+  overlay(`<h1>Choose a <span>battlefield</span></h1><div class="maps">${MAP_ORDER.filter(k => MAPS[k]).map(card).join('')}</div>
+    <div class="row"><button class="big" id="bMapGo">Play ▸</button><button class="ghost" id="bMapBack">Back</button></div>`);
+  $('box').classList.add('mapsel');
+  const cards = [...document.querySelectorAll('.mapc')];
+  for (const b of cards) {
+    drawMapThumb(b.querySelector('canvas'), MAPS[b.dataset.m]);
+    b.addEventListener('click', () => { mapPick = b.dataset.m; try { localStorage.setItem(MAP_KEY, mapPick); } catch (e) {} for (const x of cards) x.classList.toggle('on', x === b); });
+  }
+  $('bMapGo').addEventListener('click', startGame);
+  $('bMapBack').addEventListener('click', showStart);
 }
 /* ---------- Dev menu: spectate an AI-vs-AI match (v2.38, audit phase 4) ----------
    Behind the version label on the start screen. Each side: faction, AI preset (Default or Legacy) and personality; a
@@ -75,7 +113,7 @@ function startSpectate() {
   tutOff();
   clearTimeout(endTimer); endTimer = null;
   const per = p => p === 'random' ? undefined : p;
-  game = newGame('hard', { countdown: 0, autoPlayer: true, autoDiff: 'hard', factions: [devPick.a.f, devPick.b.f], autoAi: devPick.a.ai, ai: devPick.b.ai, autoPersona: per(devPick.a.p), persona: per(devPick.b.p) });
+  game = newGame('hard', { map: MAPS[mapPick] ? mapPick : 'classic', countdown: 0, autoPlayer: true, autoDiff: 'hard', factions: [devPick.a.f, devPick.b.f], autoAi: devPick.a.ai, ai: devPick.b.ai, autoPersona: per(devPick.a.p), persona: per(devPick.b.p) });
   game.spectate = true;
   document.body.classList.add('spectate'); // first: the build tray goes, so the field is sized without it
   buildAbil(); hideCountdown(); camTouched = true; applyZoom(1); resize(); closePanel(); hideInfo(); endAim();
@@ -109,7 +147,7 @@ function startGame() {
   document.body.classList.remove('spectate'); // v2.38
   clearTimeout(endTimer); endTimer = null;
   const me = pickFaction(facPick.me), foe = pickFaction(facPick.foe); // the opponent's pick is never shown during the match
-  game = newGame(diffKey, { countdown: INTRO_T + COUNTDOWN, factions: [me, foe] });
+  game = newGame(diffKey, { countdown: INTRO_T + COUNTDOWN, factions: [me, foe], map: MAPS[mapPick] ? mapPick : 'classic' }); // v2.65: the chosen map
   buildAbil();
   hideCountdown(); camTouched = false;
   resize(); introCamera(0); closePanel();

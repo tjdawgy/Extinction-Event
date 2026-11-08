@@ -38,7 +38,7 @@ async function main() {
   const cells = [];
   try {
     const { page, errors } = await openPage(browser, device, { init: 'Math.random = (() => { let a = 7; return () => (a = (a * 16807) % 2147483647) / 2147483647; })();' });
-    await page.click('#bPlay'); await page.waitForTimeout(300);
+    await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
     await page.evaluate(HELPERS);
     const grab = async clip => (await page.screenshot({ clip: { x: Math.max(0, clip.x), y: Math.max(0, clip.y), width: Math.min(clip.w, device.width - clip.x), height: Math.min(clip.h, device.height - clip.y) } })).toString('base64');
 

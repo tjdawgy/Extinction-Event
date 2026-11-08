@@ -157,7 +157,8 @@ function deserialize(str) {
   const o = JSON.parse(str);
   if (!o || !SAVE_OK.includes(o.v)) return null;
   const m = o.map || { id: 'classic', v: 1 }; // v2.63: a save before v31 was played on Classic v1
-  if (m.id !== MAP.id || m.v !== MAP.v) return null; // another map, or another version of it: it can't be resumed or replayed here
+  if (!MAPS[m.id] || MAPS[m.id].v !== m.v) return null; // a map this build doesn't have, or another version of it: it can't be resumed or replayed
+  useMap(m.id); // v2.65: the save's map becomes the current one
   const g = newGame(o.diffKey);
   if (o.rs !== undefined && !RNG.legacy) { g.seed = o.seed >>> 0; g.rs = o.rs | 0; g.fs = o.fs | 0; } // v2.50: an older save keeps the fresh seed newGame drew
   g.t = o.t; g.nid = o.nid; g.ents = o.ents; g.nodes = o.nodes;

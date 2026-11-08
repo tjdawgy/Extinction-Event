@@ -88,7 +88,7 @@ function repEnemyEvents(g) {
     }
     for (const x of D.strat) out.push({ t: x[0], tag: 'Strategy', txt: x[2] ? 'Feinted an attack, then pulled back' : REP_STRAT[x[1]] || 'Launched an attack' });
     for (const x of D.abil) out.push({ t: x[0], tag: 'Ability', txt: `Used ${ABIL[x[1]] ? ABIL[x[1]].name : x[1]}` });
-    for (const x of D.nodes) out.push({ t: x[0], tag: 'Node', txt: `${x[2] ? 'Captured' : 'Lost'} the ${NODE_NAME[x[1]]} field node` });
+    for (const x of D.nodes) out.push({ t: x[0], tag: 'Node', txt: `${x[2] ? 'Captured' : 'Lost'} the ${nodeLabel(x[1])}` });
   }
   // shifts in production: the unit role it spent most on, per 2-minute window, when that changes
   if (L) {

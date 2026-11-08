@@ -89,7 +89,7 @@ async function battle(browser, rates, secs, quality, abil, storm, bases) {
   const out = {};
   for (const rate of rates) {
     const { page, errors } = await openPage(browser, PHONE, { init: SEED });
-    await page.click('#bPlay');
+    await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default)
     await page.waitForTimeout(300);
     await page.evaluate(PROBE);
     await page.evaluate(([a, st, bs]) => { window.__abil = a; window.__storm = st; window.__bases = bs; }, [abil, storm, bases]);
@@ -122,7 +122,7 @@ async function memory(browser, storm) {
   await cdp.send('HeapProfiler.enable');
   const heap = async () => { await cdp.send('HeapProfiler.collectGarbage'); const h = await cdp.send('Runtime.getHeapUsage'); return +(h.usedSize / 1048576).toFixed(2); };
   const nodes = async () => (await cdp.send('Memory.getDOMCounters')).nodes;
-  await page.click('#bPlay'); // a tap: starts audio (v2.4+)
+  await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) // a tap: starts audio (v2.4+)
   await page.evaluate(st => { window.__storm = st; }, storm);
   await page.waitForTimeout(300);
   await page.evaluate(() => {

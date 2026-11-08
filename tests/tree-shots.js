@@ -18,7 +18,7 @@ async function main() {
   const shots = [];
   try {
     const { page, errors } = await openPage(browser, device, { init: 'Math.random = (() => { let a = 9; return () => (a = (a * 16807) % 2147483647) / 2147483647; })();' });
-    await page.click('#bPlay'); await page.waitForTimeout(300);
+    await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
     const snap = async (label, file) => { await page.waitForTimeout(100); const img = await page.screenshot(); shots.push({ label, img: img.toString('base64') }); if (file) { const f = path.join(outDir, `${tag}-${file}-${res}.png`); fs.writeFileSync(f, img); console.log(f); } };
     await page.evaluate(() => {
       game.countdown = 0; hideCountdown(); updateIntro(); paused = false; speed = 1;

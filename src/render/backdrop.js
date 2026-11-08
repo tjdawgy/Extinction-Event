@@ -1,6 +1,6 @@
 /* ---------- Backdrop: sky, mountains and the ground plane ---------- */
 function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
-const BG = (() => {
+let BG; const mapBackdrop = () => { BG = (() => {
   const R = mulberry(11), stars = [], blobs = [], tufts = [], rocks = [], craters = [];
   for (let i = 0; i < 130; i++) stars.push({ x: R(), y: R(), r: R() * 1.1 + 0.3, a: R() * 0.6 + 0.3, tw: R() * 6 });
   const cols = ['rgba(70,120,80,0.22)', 'rgba(60,105,72,0.18)', 'rgba(8,12,18,0.28)', 'rgba(120,104,84,0.12)', 'rgba(84,140,96,0.14)'];
@@ -14,7 +14,8 @@ const BG = (() => {
     return pts;
   };
   return { stars, blobs, tufts, rocks, craters, far: ridge(3, 85, 18), near: ridge(9, 34, 4) };
-})();
+})(); };
+mapBackdrop(); MAP_HOOKS.push(mapBackdrop); // v2.65: per map (the ground's size)
 
 function drawGround(c) {
   const A = gp(GU0, GV0), B = gp(GU1, GV0), C = gp(GU1, GV1), D = gp(GU0, GV1);
@@ -30,10 +31,12 @@ function drawGround(c) {
     rg.addColorStop(0, p.col); rg.addColorStop(1, 'rgba(0,0,0,0)');
     c.fillStyle = rg; c.beginPath(); c.arc(0, 0, p.r, 0, 7); c.fill(); c.restore();
   }
-  // worn track between the bases
-  const r0 = -138 * DY, r1 = 138 * DY, lg = c.createLinearGradient(0, r0, 0, r1);
-  lg.addColorStop(0, 'rgba(150,135,110,0)'); lg.addColorStop(0.18, 'rgba(150,135,110,0.07)'); lg.addColorStop(0.82, 'rgba(150,135,110,0.07)'); lg.addColorStop(1, 'rgba(150,135,110,0)');
-  c.fillStyle = lg; c.fillRect(GB.x0, r0, GB.x1 - GB.x0, r1 - r0);
+  if (MAP_LANED) drawLaneTracks(c); // v2.65: each lane's worn track
+  else { // worn track between the bases
+    const r0 = -138 * DY, r1 = 138 * DY, lg = c.createLinearGradient(0, r0, 0, r1);
+    lg.addColorStop(0, 'rgba(150,135,110,0)'); lg.addColorStop(0.18, 'rgba(150,135,110,0.07)'); lg.addColorStop(0.82, 'rgba(150,135,110,0.07)'); lg.addColorStop(1, 'rgba(150,135,110,0)');
+    c.fillStyle = lg; c.fillRect(GB.x0, r0, GB.x1 - GB.x0, r1 - r0);
+  }
   for (const k of BG.craters) {
     const [x, y] = gp(k.u, k.v);
     c.fillStyle = 'rgba(6,8,14,0.4)'; c.beginPath(); c.ellipse(x, y, k.r, k.r * DY, 0, 0, 7); c.fill();
@@ -57,12 +60,46 @@ function drawGround(c) {
     rg.addColorStop(0, `rgba(${TEAM[s].glow},0.14)`); rg.addColorStop(1, `rgba(${TEAM[s].glow},0)`);
     c.fillStyle = rg; c.beginPath(); c.arc(0, 0, 260, 0, 7); c.fill(); c.restore();
   }
+  for (const b of MAP.blockers || []) drawBlocker(c, b.poly); // v2.65: the ridge
   const hz = c.createLinearGradient(0, HORIZON, 0, HORIZON + 80);
   hz.addColorStop(0, 'rgba(120,96,200,0.34)'); hz.addColorStop(0.35, 'rgba(80,70,150,0.12)'); hz.addColorStop(1, 'rgba(60,60,120,0)');
   c.fillStyle = hz; c.fillRect(GB.x0, HORIZON, GB.x1 - GB.x0, 80);
   c.restore();
   c.strokeStyle = 'rgba(200,180,255,0.35)'; c.lineWidth = 1.2;
   c.beginPath(); c.moveTo(A[0], A[1]); c.lineTo(B[0], B[1]); c.stroke();
+}
+// v2.65 (Two-Lane): a lane's worn track, wider soft band under a narrower one, along its path
+function drawLaneTracks(c) {
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  for (const [w, a] of [[1, 0.05], [0.75, 0.06], [0.45, 0.05]]) for (const ln of MAP.lanes) {
+    c.strokeStyle = `rgba(150,135,110,${a})`; c.lineWidth = ln.width * w * DY * 1.6;
+    c.beginPath(); ln.path.forEach(([x, y], i) => { const [px, py] = gp(x, y); i ? c.lineTo(px, py) : c.moveTo(px, py); }); c.stroke();
+  }
+  c.lineCap = 'butt'; c.lineJoin = 'miter';
+}
+// A blocker as a low rocky plateau: dark walls facing the viewer, a lighter cracked top, a rim of loose stones
+function drawBlocker(c, poly) {
+  const H = 16, top = poly.map(([x, y]) => gp(x, y, H)), base = poly.map(([x, y]) => gp(x, y));
+  c.fillStyle = 'rgba(0,0,0,0.35)'; c.beginPath(); base.forEach(([x, y], i) => i ? c.lineTo(x + 6, y + 5) : c.moveTo(x + 6, y + 5)); c.closePath(); c.fill(); // shadow
+  for (let i = 0; i < poly.length; i++) { // the walls that face the viewer (the edge's outward side points down the screen)
+    const j = (i + 1) % poly.length, [ax, ay] = base[i], [bx, by] = base[j];
+    const cx = poly.reduce((s, p) => s + p[0], 0) / poly.length, cy = poly.reduce((s, p) => s + p[1], 0) / poly.length;
+    const mxp = (poly[i][0] + poly[j][0]) / 2, myp = (poly[i][1] + poly[j][1]) / 2, nx = -(poly[j][1] - poly[i][1]), ny = poly[j][0] - poly[i][0];
+    const out = (nx * (mxp - cx) + ny * (myp - cy)) > 0 ? ny : -ny; if (out <= 0) continue;
+    c.fillStyle = '#20232f'; c.beginPath(); c.moveTo(ax, ay); c.lineTo(bx, by); c.lineTo(top[j][0], top[j][1]); c.lineTo(top[i][0], top[i][1]); c.closePath(); c.fill();
+  }
+  const g = c.createLinearGradient(0, Math.min(...top.map(p => p[1])), 0, Math.max(...top.map(p => p[1])));
+  g.addColorStop(0, '#3c4256'); g.addColorStop(1, '#2c3142');
+  c.fillStyle = g; c.beginPath(); top.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fill();
+  c.strokeStyle = 'rgba(190,200,230,0.18)'; c.lineWidth = 1; c.stroke();
+  const R = mulberry(poly.length * 97 + Math.round(poly[0][0])), xs = poly.map(p => p[0]), ys = poly.map(p => p[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys), inP = (x, y) => { let k = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [xi, yi] = poly[i], [xj, yj] = poly[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) k = !k; } return k; };
+  for (let n = 0; n < 60; n++) { // cracks and boulders on top
+    const x = x0 + R() * (x1 - x0), y = y0 + R() * (y1 - y0); if (!inP(x, y)) continue;
+    const [px, py] = gp(x, y, H), r = 2 + R() * 6;
+    if (R() < 0.5) { c.strokeStyle = 'rgba(10,12,20,0.45)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(px - r, py); c.lineTo(px, py + r * 0.3); c.lineTo(px + r, py - r * 0.2); c.stroke(); }
+    else { c.fillStyle = '#4a5068'; c.beginPath(); c.ellipse(px, py - r * 0.3, r, r * 0.5, 0, 0, 7); c.fill(); c.fillStyle = 'rgba(0,0,0,0.3)'; c.beginPath(); c.ellipse(px + r * 0.2, py, r, r * 0.35, 0, 0, Math.PI); c.fill(); }
+  }
 }
 let groundCache = null, GS = 1.4;
 function buildGroundCache() {
@@ -202,7 +239,9 @@ function drawPadAX(c, x, y, h, s, empty, time, selected) {
    glow; each patch's veins come from a seed made from its key, so they never jitter between redraws. Enemy creep is
    drawn from what the player last saw of it (fog.creep), and only on ground the player has seen, like enemy pads. */
 const creepSeed = k => [...k].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) | 0, 7);
-const CRV = { x0: -60, y0: HORIZON + 4, w: L + 120, h: 180 - HORIZON - 4, k: 1, cv: [null, null], sig: ['', ''], keys: ['', ''], at: [0, 0], gap: 1000 }; // gap: ms between repaints while it only grows or shrinks
+const CRV = { x0: -60, y0: 0, w: 0, h: 0, k: 1, cv: [null, null], sig: ['', ''], keys: ['', ''], at: [0, 0], gap: 1000 }; // gap: ms between repaints while it only grows or shrinks
+const mapCreepView = () => { CRV.y0 = HORIZON + 4; CRV.w = L + 120; CRV.h = Math.max(180, (MAP.size.h / 2) * DY + 60) - HORIZON - 4; CRV.cv = [null, null]; CRV.sig = ['', '']; CRV.keys = ['', '']; }; // v2.65: per map
+mapCreepView(); MAP_HOOKS.push(mapCreepView);
 function creepCanvas(side, patches) {
   const sig = patches.map(p => p.k + ':' + Math.round(p.r / 8)).join('|'), keys = patches.map(p => p.k).join('|'), now = performance.now();
   if (CRV.cv[side] && (CRV.sig[side] === sig || (CRV.keys[side] === keys && now - CRV.at[side] < CRV.gap))) return CRV.cv[side]; // a new or lost patch repaints at once; growth at most once a second
@@ -474,7 +513,10 @@ function drawUnknownBase(c, gh) {
 // Fog: unexplored ground is dark, explored ground dimmed, visible ground clear; soft edges; the sky stays clear
 const FOG_EXP = 0.45, FOG_DARK = 0.74, FOG_RGB = '5,8,20';
 // Recomputed only when the player's vision changes (the field and the minimap share it); arrays allocated once
-const FOGA = { a: new Float32Array(FOG_N), b: new Float32Array(FOG_N), vis: new Uint8Array(FOG_N), exp: new Uint8Array(FOG_N), ver: 0, grad: null, gradVer: -1, F: null };
+const FOG2 = { off: null, oc: null, img: null, F: null, vis: null, exp: null };
+const FOGA = { a: null, b: null, vis: null, exp: null, ver: 0, grad: null, gradVer: -1, F: null };
+const mapFogView = () => { Object.assign(FOGA, { a: new Float32Array(FOG_N), b: new Float32Array(FOG_N), vis: new Uint8Array(FOG_N), exp: new Uint8Array(FOG_N), grad: null, gradVer: -1, F: null }); FOG2.off = null; }; // v2.65: per map
+mapFogView(); MAP_HOOKS.push(mapFogView);
 function fogAlpha(F) {
   let same = FOGA.F === F;
   for (let i = 0; i < FOG_N && same; i++) if (FOGA.vis[i] !== F.vis[i] || FOGA.exp[i] !== F.exp[i]) same = false;
@@ -487,7 +529,6 @@ function fogAlpha(F) {
 }
 // v2.63: a grid-fog map (MAP_2D) draws its fog as a small alpha image (one pixel per cell), redrawn only when vision
 // changes and stretched over the ground with smoothing: the variant the fog performance check measured (fog-bench.js)
-const FOG2 = { off: null, oc: null, img: null, F: null, vis: null, exp: null };
 function drawFog2(c, F) {
   const G = FOG2;
   if (!G.off) { G.off = document.createElement('canvas'); G.off.width = FOG_NX; G.off.height = FOG_NY; G.oc = G.off.getContext('2d'); G.img = G.oc.createImageData(FOG_NX, FOG_NY); G.vis = new Uint8Array(FOG_N); G.exp = new Uint8Array(FOG_N); }

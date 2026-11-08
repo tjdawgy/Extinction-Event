@@ -11,6 +11,7 @@ let facPick = { me: DEFAULT_FACTION, foe: DEFAULT_FACTION };
 try { const o = JSON.parse(localStorage.getItem(FACTION_KEY) || 'null'); if (o && FAC_PICKS.includes(o.me) && FAC_PICKS.includes(o.foe)) facPick = { me: o.me, foe: o.foe }; } catch (e) {}
 try { diffKey = localStorage.getItem('colonyMobile.diff') || 'normal'; if (!DIFF[diffKey]) diffKey = 'normal'; } catch (e) {}
 groundCache = buildGroundCache();
+MAP_HOOKS.push(() => { groundCache = buildGroundCache(); if (typeof clampCam === 'function') clampCam(); }); // v2.65: a new map's ground
 
 // Assigning a canvas's width or height clears it, even to the same value, so only touch it on a real change
 function fitCanvas(c, w, h) {

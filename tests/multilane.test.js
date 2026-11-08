@@ -18,7 +18,7 @@ test('the test map is valid, and only the test kit can load it: the game ships C
   assert.strictEqual(sim.MAP.id, 'twolane-test');
   assert.ok(sim.MAP_2D && sim.MAP_LANED);
   assert.ok(!classic.MAP_2D && !classic.MAP_LANED && classic.MAP.id === 'classic');
-  assert.strictEqual(Object.keys(classic.MAPS).join(), 'classic', 'no other map in the game');
+  assert.strictEqual(Object.keys(classic.MAPS).join(), 'classic,twolane', 'the game has Classic and Two-Lane (v2.65), never the test map');
   const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   assert.ok(!html.includes('twolane-test'), 'the test map is not in index.html');
 });
@@ -94,7 +94,8 @@ test('the save records the map; a save from another map or map version is refuse
   const cg = quiet(classic), co = JSON.parse(classic.serialize(cg, {}));
   assert.deepStrictEqual(co.map, { id: 'classic', v: 1 });
   delete co.map; co.v = 30; assert.ok(classic.deserialize(JSON.stringify(co)), 'a v30 save (before the map key) resumes on Classic');
-  assert.strictEqual(sim.deserialize(JSON.stringify(co)), null, 'but not on another map');
+  assert.ok(sim.deserialize(JSON.stringify(co)) && sim.useMap('classic') !== false, 'v2.65: a save from another map the build has switches to that map');
+  assert.ok(sim.useMap('twolane-test')); // back to the test map for the tests below
 });
 
 test('Classic units carry no lane, and Classic orders and fog are unchanged in shape', () => {

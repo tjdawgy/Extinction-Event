@@ -20,6 +20,7 @@ function setMech7c(on) {
   if (MAP.id === 'classic') NODE_U[0] = on ? MAP.nodes[0].at[0] : MECH7C.old.node[0]; NODE_U[2] = on ? MAP.nodes[2].at[0] : MECH7C.old.node[1]; // v2.63: other maps place their nodes once (NODE_U); v2.59: the map's nodes (MECH7C.node out from each HQ)
 }
 setMech7c(true);
+MAP_HOOKS.push(() => setMech7c(MECH7C.on)); // v2.65: a new map's nodes, at the spots MECH7C asks for (Classic)
 /* ---------- Live description texts (v2.45) ----------
    Every number a building tier, upgrade step or ability description quotes is read from the data when the text is read
    (getters), so the text can never disagree with the numbers (balance layers, tests or later edits change both at once).
@@ -77,7 +78,21 @@ const dirOf = s => MAP.bases[s].face[0]; // v2.59: the map's bases (sim/maps.js)
 const hqU = s => MAP.bases[s].hq[0];
 const tilePos = (s, i, j) => ({ u: hqU(s) + dirOf(s) * (i + j) * TILE * IX, v: (j - i) * TILE * IY / DY });
 const mapPt = p => ({ u: p[0], v: p[1] });
-const slotPos = (s, k) => mapPt(k === SIG_SLOT ? MAP.bases[s].sigPad : MAP.bases[s].pads[k]); // v2.59: the map's pads (the same numbers tilePos gave)
+const slotPos = (s, k) => k >= FWD_SLOT ? mapPt(FWD_PADS[k - FWD_SLOT].at) : mapPt(k === SIG_SLOT ? MAP.bases[s].sigPad : MAP.bases[s].pads[k]); // v2.59: the map's pads (the same numbers tilePos gave); v2.65: forward pads
+// v2.65: the map's forward pads, in order: { node (its index in g.nodes), at, allow }; build slot FWD_SLOT + k
+let FWD_PADS = [];
+const mapFwd = () => { FWD_PADS = []; MAP.nodes.forEach((n, i) => { if (n.type === 'forwardPad') for (const p of n.pads) FWD_PADS.push({ node: i, at: p, allow: n.allow }); }); };
+mapFwd(); MAP_HOOKS.push(mapFwd);
+const fwdAt = (g, k) => g.ents.find(e => e.kind === 'b' && e.hp > 0 && e.slot === k); // what stands on forward pad slot k (either side)
+// whether side s may build role type on forward pad slot k now: it holds the pad's node, the pad is free, the role is allowed
+function fwdOk(g, s, type, k) {
+  const F = FWD_PADS[k - FWD_SLOT];
+  if (!F) return { ok: false, msg: 'No such pad' };
+  if (g.nodes[F.node].owner !== s) return { ok: false, msg: 'Capture the forward pad first' };
+  if (fwdAt(g, k)) return { ok: false, msg: 'That pad is in use' };
+  if (!F.allow.includes(type)) return { ok: false, msg: `Only a ${F.allow.map(t => bdS(g, s, t).name).join(' or ')} fits a forward pad` };
+  return { ok: true };
+}
 const hqPos = s => mapPt(MAP.bases[s].hq);
 const rallyU0 = s => MECH7C.on ? MAP.bases[s].rally[0] : hqU(s) + dirOf(s) * 300; // v2.43: inside the HQ gun's cover (v2.59: the map's rally point)
 // v2.62: with a game, the player's active rally flag (side.rally) once the player has used the army controls
@@ -123,10 +138,22 @@ function sendDamagedHome(g, s) {
 // every Hard mirror (KNOWN_ISSUES.md "Phase 0, item 2"). A human player still starts on Hold. retreat false = v2.54.
 const AUTO_STANCE = { retreat: true };
 const START_RES = { c: 300, e: 60 }; // what each side starts with (v2.36: named, so the match report can count it as gathered)
+// A field node in the match. v2.65: a type other than income, a yield multiplier, its own radius and its sight are kept
+// only when the map sets them (Classic's nodes keep exactly their old keys)
+function nodeOf(i, u) {
+  const d = MAP.nodes[i], n = { id: i, u, v: d.at[1], prog: 0, owner: null, c: [0, 0] };
+  if (d.type !== 'income') n.type = d.type;
+  if (d.yieldMul && d.yieldMul !== 1) n.mul = d.yieldMul;
+  if (d.r && d.r !== NODE_R) n.r = d.r;
+  if (d.sight) n.sight = d.sight;
+  return n;
+}
+const nodeInc = n => n.type ? 0 : n.mul || 1; // how many income nodes' worth a node pays (0: a watchtower or forward pad)
 function newGame(diffKey, opts = {}) {
+  if (opts.map && !useMap(opts.map)) throw new Error(`no map ${opts.map}`); // v2.65: the match's map (the current one if none)
   const g = { t: 0, ents: [], projs: [], fx: [], parts: [], sides: [], abil: [], over: false, winner: -1, nid: 1,
     diff: DIFF[diffKey] || DIFF.normal, diffKey, events: [], auto: !!opts.autoPlayer, autoDiff: opts.autoDiff || 'normal', shake: 0, front: [null, null], countdown: opts.countdown || 0,
-    nodes: NODE_U.map((u, i) => ({ id: i, u, v: MAP.nodes[i].at[1], prog: 0, owner: null, c: [0, 0] })), map: MAP, log: null, forcePath: opts.forcePath || null,
+    nodes: NODE_U.map((u, i) => nodeOf(i, u)), map: MAP, log: null, forcePath: opts.forcePath || null,
     creep: [[], []], acid: [], field: [[], []], warps: [] }; // creep patches per side (v2.18; Bloomhost only); acid: Ruinmaw pools (v2.19); field: Axiarch power field patches, warps: units mid-warp (v2.26)
   seedGame(g, opts.seed); // v2.50: the match's random streams (opts.seed, else a fresh one)
   for (let s = 0; s < 2; s++) {
@@ -186,7 +213,7 @@ function income(g, s) {
     if (b.kind !== 'b' || b.side !== s || !b.built || b.hp <= 0 || !bdOf(b).inc) continue;
     const inc = bdOf(b).inc[b.tier]; c += inc.c; e += inc.e;
   }
-  for (const n of g.nodes) if (n.owner === s) { c += NODE_INC.c; e += NODE_INC.e; }
+  for (const n of g.nodes) if (n.owner === s && !n.type) { const k = n.mul || 1; c += NODE_INC.c * k; e += NODE_INC.e * k; } // v2.65: income nodes only, × yieldMul
   return { c, e };
 }
 // Army strength for AI decisions; Interceptors count for a quarter, since they can't fight ground units or buildings
@@ -206,6 +233,7 @@ function tryBuild(g, s, type, want = -1) {
     if (on) return { ok: false, msg: `The signature pad holds your ${bdOf(on).name}: sell it to build this` };
     slot = SIG_SLOT;
   } else if (sigPadOn() && want === SIG_SLOT) return { ok: false, msg: 'Only a signature building fits the signature pad' };
+  else if (want >= FWD_SLOT) { const f = fwdOk(g, s, type, want); if (!f.ok) return f; slot = want; } // v2.65: a forward pad
   else slot = want >= 0 && want < SLOT_COUNT && !side.slots[want] ? want : side.slots.findIndex(x => !x);
   if (slot < 0) return { ok: false, msg: 'All 8 building pads are in use' };
   if (side.res.c < d.cost.c) return { ok: false, msg: `Need ${Math.ceil(d.cost.c - side.res.c)} more credits` };

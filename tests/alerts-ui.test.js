@@ -13,7 +13,7 @@ const START = () => { game.countdown = 0; hideCountdown(); updateIntro(); for (c
 
 for (const dev of [PHONE, NARROW]) test(`at ${dev.width}×${dev.height}: HQ alert, once per 10 s, tap jumps the camera; buildings by strip; contested node; minimap ping`, { skip }, async () => {
   const { page, errors } = await openPage(browser, dev);
-  await page.click('#bPlay'); await page.waitForTimeout(200);
+  await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(200);
   const r1 = await page.evaluate(START => {
     eval(`(${START})`)();
     const hq = game.sides[0].hq; cam.x = 1600; clampCam();

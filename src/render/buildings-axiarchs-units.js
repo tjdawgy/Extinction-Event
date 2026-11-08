@@ -179,7 +179,7 @@ const DRAW_B_AX = {};
 for (const k in BART_AX) DRAW_B_AX[k] = (c, T, t, b, tier) => { BART_AX[k][0](c, T, tier); BART_AX[k][1](c, T, t, b, tier); };
 const drawBOf = fac => fac === 'bloomhost' ? DRAW_B_BH : fac === 'axiarchs' ? DRAW_B_AX : DRAW_B;
 function drawNodeZone(c, n, time, inView = true) { // ownership is public; progress and contest only when in view
-  const w = P(n.u, 0), col = n.owner === null ? '210,195,255' : TEAM[n.owner].glow, ry = (LANE_V + 18) * DY;
+  const NODE_R = n.r || NODE_R0(), w = P(n.u, MAP_2D ? n.v : 0), col = n.owner === null ? '210,195,255' : TEAM[n.owner].glow, ry = MAP_2D ? NODE_R * DY : (LANE_V + 18) * DY; // v2.65: a circle on a grid map
   c.fillStyle = `rgba(${col},0.05)`; c.beginPath(); c.ellipse(w.x, w.y, NODE_R, ry, 0, 0, 7); c.fill();
   c.setLineDash([6, 6]); c.strokeStyle = `rgba(${col},0.35)`; c.lineWidth = 1.3; c.stroke(); c.setLineDash([]);
   if (inView && (Math.abs(n.prog) > 0.5 && n.owner === null || (n.owner !== null && Math.abs(n.prog) < 100))) {
@@ -195,7 +195,41 @@ function drawHealRing(c, b, time) {
   c.fillStyle = 'rgba(93,255,138,0.035)'; c.beginPath(); c.ellipse(w.x, w.y, rx, ry, 0, 0, 7); c.fill();
   c.setLineDash([3, 7]); c.lineDashOffset = -time * 6; c.strokeStyle = 'rgba(93,255,138,0.24)'; c.lineWidth = 1.2; c.stroke(); c.setLineDash([]); c.lineDashOffset = 0;
 }
+const NODE_R0 = () => NODE_R;
+// v2.65: a watchtower: a lattice mast with a lamp that sweeps once held
+function drawTower(c, n, time) {
+  const w = P(n.u, n.v), rgb = n.owner === null ? '210,195,255' : TEAM[n.owner].glow, main = n.owner === null ? '#ddd2ff' : TEAM[n.owner].main;
+  c.save(); c.translate(w.x, w.y); c.scale(BS, BS);
+  box(c, 0, 0, 14, 14, 0, 5, MAT.dark);
+  c.strokeStyle = M.h; c.lineWidth = 1.6;
+  for (const [a, b] of [[-8, -8], [8, -8], [8, 8], [-8, 8]]) { const [x0, y0] = pt(a, b, 5), [x1, y1] = pt(a * 0.35, b * 0.35, 58); c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke(); }
+  for (const z of [22, 40]) { const k = 1 - (z - 5) / 53 * 0.65, q = [[-8, -8], [8, -8], [8, 8], [-8, 8]].map(([a, b]) => pt(a * k, b * k, z)); c.lineWidth = 1; poly(c, q); c.stroke(); }
+  box(c, 0, 0, 5, 5, 58, 6, MAT.metal);
+  const [lx, ly] = pt(0, 0, 66);
+  glow(c, lx, ly, 3, rgb, 0.6 + 0.3 * Math.sin(time * 3));
+  if (n.owner !== null) { const a = time * 1.2 + n.u; c.fillStyle = `rgba(${rgb},0.12)`; c.beginPath(); c.moveTo(lx, ly); c.arc(lx, ly, 46, a - 0.25, a + 0.25); c.closePath(); c.fill(); }
+  c.fillStyle = main; c.fillRect(lx - 1, ly - 9, 1.6, 6);
+  c.restore();
+}
+// v2.65: a forward pad's capture post: a short pylon between its two pads
+function drawFwdPost(c, n, time) {
+  const w = P(n.u, n.v), rgb = n.owner === null ? '210,195,255' : TEAM[n.owner].glow;
+  c.save(); c.translate(w.x, w.y); c.scale(BS, BS);
+  box(c, 0, 0, 8, 8, 0, 4, MAT.dark); cyl(c, 0, 0, 3, 4, 20, M.h, M.m, '#9aa7ba');
+  const [x, y] = pt(0, 0, 28); glow(c, x, y, 3, rgb, 0.5 + 0.4 * Math.sin(time * 4 + n.u));
+  c.restore();
+}
+// v2.65: a forward pad (FWD_PADS k): a plain plate in its holder's colour, faint while nobody holds it
+function drawFwdPad(c, k, owner, empty, time, selected) {
+  const F = FWD_PADS[k], w = P(F.at[0], F.at[1]), h = PAD_H, rgb = owner === null ? '210,195,255' : TEAM[owner].glow;
+  const P4 = [pt(-h, -h), pt(h, -h), pt(h, h), pt(-h, h)].map(([a, b]) => [w.x + a, w.y + b]);
+  poly(c, P4); c.fillStyle = owner === null ? 'rgba(26,30,44,0.7)' : 'rgba(26,33,50,0.95)'; c.fill();
+  c.setLineDash(owner === null ? [5, 5] : []); c.strokeStyle = selected ? 'rgba(255,211,77,0.9)' : `rgba(${rgb},${empty ? 0.45 + 0.25 * Math.sin(time * 2.5 + w.x * 0.02) : 0.3})`; c.lineWidth = selected ? 2 : 1.2; c.stroke(); c.setLineDash([]);
+  if (empty) { const [x, y] = [w.x, w.y]; c.strokeStyle = `rgba(${rgb},0.5)`; c.lineWidth = 1.4; c.beginPath(); c.moveTo(x - 5, y); c.lineTo(x + 5, y); c.moveTo(x, y - 3); c.lineTo(x, y + 3); c.stroke(); }
+}
 function drawNode(c, n, time) {
+  if (n.type === 'watchtower') return drawTower(c, n, time);
+  if (n.type === 'forwardPad') return drawFwdPost(c, n, time);
   const w = P(n.u, n.v), rgb = n.owner === null ? '210,195,255' : TEAM[n.owner].glow, main = n.owner === null ? '#ddd2ff' : TEAM[n.owner].main;
   c.save(); c.translate(w.x, w.y); c.scale(BS, BS);
   box(c, 0, 0, 20, 20, 0, 6, MAT.dark);
@@ -205,6 +239,7 @@ function drawNode(c, n, time) {
   const z = 44 + Math.sin(time * 2 + n.u) * 3, [x, y] = pt(0, 0, z), sp = Math.abs(Math.cos(time * 1.6 + n.u));
   glow(c, x, y, 7, rgb, 0.3);
   c.fillStyle = main; c.beginPath(); c.moveTo(x, y - 12); c.lineTo(x + 6 * sp + 1.5, y); c.lineTo(x, y + 12); c.lineTo(x - 6 * sp - 1.5, y); c.closePath(); c.fill();
+  if (n.mul > 1) { const [x2, y2] = pt(0, 0, z + 18); c.fillStyle = main; c.globalAlpha = 0.7; c.beginPath(); c.moveTo(x2, y2 - 6); c.lineTo(x2 + 3.5 * sp + 1, y2); c.lineTo(x2, y2 + 6); c.lineTo(x2 - 3.5 * sp - 1, y2); c.closePath(); c.fill(); c.globalAlpha = 1; } // v2.65: a rich node carries a second crystal
   c.restore();
 }
 // Unit sprites: side view facing +x, feet on y = 0. Gun tips sit on the SIM's muzzle points (MUZ) so shots leave the barrel.

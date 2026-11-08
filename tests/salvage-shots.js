@@ -23,7 +23,7 @@ async function main() {
       const { page, errors } = await openPage(browser, dev);
       await page.click('#meSeg [data-f="lastfist"]'); await page.click('#foeSeg [data-f="bloomhost"]'); await page.click('#diffSeg [data-d="hard"]');
       const desc = await page.textContent('#facDesc');
-      await page.click('#bPlay'); await page.waitForTimeout(300);
+      await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
       const toast = await page.evaluate(() => [...$('toasts').children].map(t => t.textContent).join(' | '));
       await page.evaluate(() => {
         window.__scrap = { drawn: 0, first: null, n: [] };
@@ -43,7 +43,7 @@ async function main() {
     // 2. the screenshot
     {
       const { page, errors } = await openPage(browser, dev, { init: 'Math.random = (() => { let a = 7; return () => (a = (a * 16807) % 2147483647) / 2147483647; })();' });
-      await page.click('#meSeg [data-f="lastfist"]'); await page.click('#foeSeg [data-f="bloomhost"]'); await page.click('#bPlay'); await page.waitForTimeout(300);
+      await page.click('#meSeg [data-f="lastfist"]'); await page.click('#foeSeg [data-f="bloomhost"]'); await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
       await page.evaluate(() => {
         game.countdown = 0; hideCountdown(); updateIntro();
         for (const s of game.sides) { s.aiT = 1e9; s.res.c = s.res.e = 6000; }

@@ -9,11 +9,18 @@ const TEAM = [
 const M = { d: '#161e2c', m: '#2a3648', l: '#435269', h: '#7c8ba2' };
 const MAT = { metal: ['#66779a', '#3e4b65', '#2a3448'], dark: ['#3a465c', '#262f42', '#1a2131'], light: ['#97a7c1', '#66758f', '#4c5a72'] };
 const V = { cw: 0, ch: 0, dpr: 1, S: 1, S0: 1, zoom: 1, A: 0, ft: 0, fb: 0 };
-const cam = { x: 0, vx: 0 };
+const cam = { x: 0, vx: 0, y: 0, vy: 0 }; // y (v2.65): vertical pan on a deep map, in screen-world units (0 on Classic)
 const Y_TOP = -174, Y_BOT = 92;          // world rows that must fit between the top bar and the card tray
-const GU0 = -500, GU1 = L + 500, GV0 = -260, GV1 = 480, HORIZON = GV0 * DY;
-const UMIN = 0, UMAX = L;
-const GB = { x0: GU0 - 10, x1: GU1 + 10, y0: HORIZON - 4, y1: GV1 * DY + 4 };
+const YB = () => Y_BOT + cam.y;          // v2.65: the world row at the tray's top edge, with the vertical pan (Classic: Y_BOT)
+const GU0 = -500, UMIN = 0;
+let GU1, GV0, GV1, HORIZON, UMAX, GB, CAMY; // v2.65: per map (MAP_HOOKS). CAMY: how far the camera pans up and down (Classic: 0)
+const mapView = () => {
+  const H = MAP.size.h / 2, deep = MAP.id !== 'classic' && H > 200;
+  GU1 = L + 500; GV0 = deep ? -H - 60 : -260; GV1 = deep ? H + 280 : 480; HORIZON = GV0 * DY; UMAX = L;
+  GB = { x0: GU0 - 10, x1: GU1 + 10, y0: HORIZON - 4, y1: GV1 * DY + 4 };
+  CAMY = deep ? { min: HORIZON - 30 - Y_TOP, max: H * DY + 30 - Y_BOT } : { min: 0, max: 0 }; // how far the view may pan from Classic's framing (cam.y), from just above the horizon to just below the field
+};
+mapView(); MAP_HOOKS.push(mapView);
 const PAD_H = 30, HQ_PAD_H = 36;
 const gp = (u, v, z = 0) => [u, v * DY - z];                 // world plane → screen-world
 const pt = (u, v, z = 0) => [(u + v) * IX, (v - u) * IY - z];  // building-local isometric → screen-world

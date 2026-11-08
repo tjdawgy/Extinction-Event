@@ -62,16 +62,17 @@ Map data format: [docs/MAP_FORMAT.md](docs/MAP_FORMAT.md) (approved after Phase 
   - Each map defines its own paths, pads, nodes, army size limit and number of bases (format: docs/MAP_FORMAT.md).
   - Support up to four bases from day one, for future 2v2 and free-for-all.
   - [x] Multi-lane engine: 2D fog (after the performance check in docs/MAP_FORMAT.md), movement and targeting along any lane, army orders for one lane, and the save recording the map's id and version; proven on a test-only two-lane map that two AIs play to a finish. *(v2.63; KNOWN_ISSUES.md "Multi-lane engine")*
-  - [ ] Blockers and the navigation grid (open maps), new node types (watchtower, forward pad), drawing a multi-lane map, the lane-aware AI.
+  - [x] Blockers with ground navigation, the watchtower and forward-pad node types, drawing a deep map (camera panning up and down, a minimap with both lanes), maps chosen per match with a map-select screen. *(v2.65, with the Two-Lane map)*
+  - [ ] The lane-aware AI.
 - [ ] **Maps.** Build them in this order:
   1. Classic — the current single lane, for short matches.
-  2. Two-lane — two lanes with a contested center. Design: [docs/TWO_LANE.md](docs/TWO_LANE.md) (approved after v2.63, with a map-select screen).
+  2. [x] Two-lane — two lanes with a contested center. Design: [docs/TWO_LANE.md](docs/TWO_LANE.md) (approved after v2.63, with a map-select screen). *(v2.65)*
   3. Open field — no lanes, just obstacles you can flank around.
   4. Three-lane — a big map for long games, built last.
 - [ ] **Node types:**
   - Credit or energy — income, as now.
-  - Watchtower — clears fog in a wide radius.
-  - Forward pad — capture it to build there. This replaces adding more pads at the home base.
+  - [x] Watchtower — clears fog in a wide radius. *(v2.65)*
+  - [x] Forward pad — capture it to build there. This replaces adding more pads at the home base. *(v2.65: each faction's Turret and Barracks roles)*
   - Repair depot — heals units nearby.
   - Guarded relic — neutral defenders, big payoff.
 - [ ] **Battlefield conditions** (optional per match): heavy fog, rich center nodes, scarce resources, meteor strikes.

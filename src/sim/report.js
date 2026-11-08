@@ -1,6 +1,8 @@
 /* ---------- Match report (v2.9): read-only views of the match log, used only once the match is over ---------- */
 const mmss = t => { t = Math.max(0, Math.floor(t)); return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`; };
-const NODE_NAME = ['west', 'centre', 'east'];
+let NODE_NAME; const mapNodeNames = () => { NODE_NAME = MAP.id === 'classic' ? ['west', 'centre', 'east'] : MAP.nodes.map(n => n.name || n.id); }; // v2.65: per map
+mapNodeNames(); MAP_HOOKS.push(mapNodeNames);
+const nodeLabel = i => { const n = NODE_NAME[i] || ''; return /watchtower|pad/.test(n) ? n : `${n} field node`; }; // v2.65
 const LINE_MAX = 80; // per side; unit groups are widened only past this
 // A building role's name as side s's faction calls it (the log is read only after the match, when factions are revealed)
 const logBName = (g, s, t) => { const d = BD(g && g.sides[s] ? g.sides[s].faction : DEFAULT_FACTION, t); return d ? d.name : t; };
@@ -13,8 +15,8 @@ function logEvText(e, me, g) { // one log event as a line of text (me: written f
     case 'V': return `${B(a)} upgraded to T${b}`;
     case 'S': return `${B(a)} sold`;
     case 'D': return `${B(a)} destroyed${x === -1 ? ' by the storm' : ''}`;
-    case 'N': return `Captured the ${NODE_NAME[a] || ''} field node`;
-    case 'L': return `Lost the ${NODE_NAME[a] || ''} field node`;
+    case 'N': return `Captured the ${nodeLabel(a)}`;
+    case 'L': return `Lost the ${nodeLabel(a)}`;
     case 'A': return a === 'strike' ? `Orbital Strike: ${Math.round(b || 0)} damage, ${x || 0} destroyed` : a === 'shield' ? `Emergency Shield: ${Math.round(b || 0)} damage blocked` : a === 'repair' ? `Repair Pulse: ${Math.round(b || 0)} HP restored`
       : a === 'frenzy' ? `Frenzy Bloom: ${Math.round(b || 0)} organisms frenzied` : a === 'brood' ? `Emergency Brood: ${Math.round(b || 0)} Skitterlings hatched`
       : a === 'mwarp' ? `Mass Warp: ${Math.round(b || 0)} units warped` : a === 'overcharge' ? `Shield Overcharge: ${Math.round(b || 0)} damage blocked, ${Math.round(x || 0)} shields restored` // v2.28

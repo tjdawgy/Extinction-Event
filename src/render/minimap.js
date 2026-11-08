@@ -1,20 +1,35 @@
 /* ---------- Overview map inside the top bar ---------- */
+// v2.65: depth on the minimap. Classic squeezes ±260 into its height; a deep map shows its whole depth (both lanes)
+const mmDeep = () => MAP.size.h > 400, mmDepth = () => mmDeep() ? MAP.size.h / 2 : 260;
+const mmY = (v, h) => h / 2 + clamp(v / mmDepth(), -1, 1) * (h / 2 - 4);
+const mmV = (y, h) => clamp((y - h / 2) / (h / 2 - 4), -1, 1) * mmDepth();
 function drawMinimap(c, g, w, h) {
   c.clearRect(0, 0, w, h);
   c.fillStyle = 'rgba(0,0,0,0.3)'; rr(c, 0.5, 0.5, w - 1, h - 1, 7); c.fill();
   c.strokeStyle = 'rgba(120,150,200,0.3)'; c.lineWidth = 1; c.stroke();
-  const k = (w - 8) / (UMAX - UMIN), mx = u => 4 + (u - UMIN) * k, my = v => h / 2 + clamp(v / 260, -1, 1) * (h / 2 - 4);
+  const k = (w - 8) / (UMAX - UMIN), mx = u => 4 + (u - UMIN) * k, my = v => mmY(v, h);
   const F = g && viewFog(g);
-  if (g) { // fog columns
+  if (MAP_LANED || MAP.blockers.length) { // v2.65: the lanes and the blockers (the Two-Lane ridge)
+    c.lineCap = 'round'; c.lineJoin = 'round';
+    for (const ln of MAP.lanes) { c.strokeStyle = 'rgba(150,170,200,0.22)'; c.lineWidth = Math.max(2, ln.width / mmDepth() * (h / 2 - 4)); c.beginPath(); ln.path.forEach(([x, y], i) => i ? c.lineTo(mx(x), my(y)) : c.moveTo(mx(x), my(y))); c.stroke(); }
+    c.fillStyle = 'rgba(10,12,20,0.75)';
+    for (const b of MAP.blockers) { c.beginPath(); b.poly.forEach(([x, y], i) => i ? c.lineTo(mx(x), my(y)) : c.moveTo(mx(x), my(y))); c.closePath(); c.fill(); }
+    c.lineCap = 'butt';
+  }
+  if (g && MAP_2D) { // fog cells, a few rows at a time (the minimap is small)
+    const st = Math.max(1, Math.round(FOG_NY / 12)), cw = k * FOG_CELL + 0.6;
+    for (let r = 0; r < FOG_NY; r += st) { const y0 = my(FOG_Y0 + r * FOG_CELL), y1 = my(FOG_Y0 + (r + st) * FOG_CELL);
+      for (let i = 0; i < FOG_NX; i++) { const q = r * FOG_NX + i, a = F.vis[q] ? 0 : F.exp[q] ? FOG_EXP : FOG_DARK; if (a > 0.02) { c.fillStyle = `rgba(${FOG_RGB},${a * 0.9})`; c.fillRect(mx(i * FOG_CELL), y0, cw, y1 - y0 + 0.5); } } }
+  } else if (g) { // fog columns
     const a = fogAlpha(F);
     for (let i = 0; i < FOG_N; i++) if (a[i] > 0.02) { c.fillStyle = `rgba(${FOG_RGB},${a[i] * 0.9})`; c.fillRect(mx(i * FOG_CELL), 1, k * FOG_CELL + 0.6, h - 2); }
   }
   if (g) for (const n of g.nodes) {
     c.fillStyle = n.owner === null ? '#ddd2ff' : TEAM[n.owner].main;
-    const x = mx(n.u); c.beginPath(); c.moveTo(x, h / 2 - 4); c.lineTo(x + 3.5, h / 2); c.lineTo(x, h / 2 + 4); c.lineTo(x - 3.5, h / 2); c.closePath(); c.fill();
+    const x = mx(n.u), y = mmDeep() ? my(n.v) : h / 2, r = mmDeep() ? 3 : 4; c.beginPath(); c.moveTo(x, y - r); c.lineTo(x + r * 0.9, y); c.lineTo(x, y + r); c.lineTo(x - r * 0.9, y); c.closePath(); c.fill();
   }
   if (g) for (const gh of Object.values(F.ghosts)) { // remembered enemy buildings: hollow
-    if (cellsLit(F.vis, gh.u, gh.half)) continue;
+    if (cellsLit(F.vis, gh.u, gh.half, gh.v)) continue;
     c.strokeStyle = TEAM[gh.side].main; c.lineWidth = 1; c.globalAlpha = 0.8; c.strokeRect(mx(gh.u) - 1.5, my(gh.v) - 1, 3, 2); c.globalAlpha = 1;
   }
   if (g) for (const e of g.ents) {
@@ -43,7 +58,8 @@ function drawMinimap(c, g, w, h) {
   const hw = V.cw / 2 / V.S;
   const x0 = clamp(mx(cam.x - hw), 1, w - 1), x1 = clamp(mx(cam.x + hw), 1, w - 1);
   c.strokeStyle = 'rgba(255,255,255,0.85)'; c.lineWidth = 1.2;
-  rr(c, x0, 2, Math.max(4, x1 - x0), h - 4, 4); c.stroke();
+  if (mmDeep()) { const t = clamp(my((V.ft - V.A) / V.S / DY + YB() / DY), 1, h - 1), b = clamp(my((V.fb - V.A) / V.S / DY + YB() / DY), 1, h - 1); rr(c, x0, t, Math.max(4, x1 - x0), Math.max(4, b - t), 3); c.stroke(); } // v2.65: the view's depth too
+  else { rr(c, x0, 2, Math.max(4, x1 - x0), h - 4, 4); c.stroke(); }
   if (g && g.t >= EXT.show && !g.over) { // the Extinction Event countdown, inside the minimap frame (the top bar has no room)
     const left = EXT.start - g.t, time = left > 0 ? fmtTime(Math.ceil(left)) : '+' + fmtTime(-left);
     c.font = '800 9.5px -apple-system,system-ui,sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
@@ -58,6 +74,7 @@ function drawMinimap(c, g, w, h) {
 function clampCam() {
   const hw = V.cw / 2 / V.S, x0 = UMIN - 40, x1 = UMAX + 40;
   cam.x = (x1 - x0 < 2 * hw) ? (x0 + x1) / 2 : clamp(cam.x, x0 + hw, x1 - hw);
+  cam.y = clamp(cam.y, CAMY.min, CAMY.max); // v2.65: a deep map pans up and down (Classic: always 0)
 }
 /* ===================== RENDER END ===================== */
 

@@ -11,7 +11,14 @@ function refreshPanel() {
   $('bpPick').classList.add('hide'); $('bp').classList.remove('wide'); // shown again below for a building choosing its path
   $('bp').classList.toggle('shp', !!(selPad < 0 && sel && sel.maxShp)); // v2.36
   if (selPad >= 0) {
-    if (!game || (selPad === SIG_SLOT ? sigOnPad(game, 0) : game.sides[0].slots[selPad])) { closePanel(); return; }
+    if (!game || (selPad >= FWD_SLOT ? fwdAt(game, selPad) || game.nodes[FWD_PADS[selPad - FWD_SLOT].node].owner !== 0 : selPad === SIG_SLOT ? sigOnPad(game, 0) : game.sides[0].slots[selPad])) { closePanel(); return; }
+    if (selPad >= FWD_SLOT) { // v2.65: a forward pad you hold
+      const al = FWD_PADS[selPad - FWD_SLOT].allow.map(t => BD(pFac(), t).name).join(' or ');
+      $('bpName').textContent = 'Forward pad'; $('bpPad').textContent = al; setHTML($('bpPips'), '');
+      $('bpNow').textContent = `Build a ${al} here, out on the lane. You can build while you hold this pad's post.`; setHTML($('bpNext'), '');
+      $('bpUp').classList.add('hide'); $('bpSell').classList.add('hide'); $('bpRep').classList.add('hide'); $('bpHp').textContent = '';
+      return;
+    }
     const sp = selPad === SIG_SLOT; // v2.43: the signature pad
     $('bpName').textContent = sp ? 'Signature pad' : 'Empty pad'; $('bpPad').textContent = sp ? `${BD(pFac(), 'sigA').name} or ${BD(pFac(), 'sigB').name}` : padLabel(null, selPad); setHTML($('bpPips'), '');
     $('bpNow').textContent = sp ? 'Pick one of your two signature buildings (★ cards). One stands here at a time; sell it to build the other.' : 'Pick a building below to build it here.';
@@ -83,6 +90,7 @@ function padLabel(b, k) {
   if (!b) return k === SIG_SLOT ? 'Signature pad' : `Pad ${k + 1}`;
   if (b.type === 'hq') return 'HQ pad';
   if (b.slot === SIG_SLOT) return 'Signature pad'; // v2.43
+  if (b.slot >= FWD_SLOT) return 'Forward pad'; // v2.65
   if (bdOf(b).noPad) return `${NODE_NAME[b.node] ? NODE_NAME[b.node][0].toUpperCase() + NODE_NAME[b.node].slice(1) : 'Field'} node`;
   return b.slot >= 0 ? `Pad ${b.slot + 1}` : '';
 }
@@ -141,7 +149,7 @@ $('bpSell').addEventListener('click', () => {
    and a ping on the minimap for ALERT.ping s; tapping either moves the camera there. */
 const ALERT = { gap: 10, hit: 0.6, cell: 160, ping: 5, show: 3.5 };
 const alerts = { g: null, last: {}, pings: [] };
-function camJump(u) { camTouched = true; cam.x = u; cam.vx = 0; clampCam(); }
+function camJump(u, v) { camTouched = true; cam.x = u; cam.vx = 0; if (v !== undefined && CAMY.max > CAMY.min) cam.y = v * DY - (Y_TOP + Y_BOT) / 2; clampCam(); } // v2.65: and to its depth on a deep map
 function alertRaise(kind, key, u, v, msg) {
   const g = game, k = kind + ':' + key;
   if (alerts.last[k] !== undefined && g.t - alerts.last[k] < ALERT.gap) return false;
@@ -151,7 +159,7 @@ function alertRaise(kind, key, u, v, msg) {
   while (box.children.length > 2) box.firstChild.remove();
   const el = document.createElement('div');
   el.className = `t alrt ${kind === 'node' ? 'warn' : 'bad'}`; el.textContent = msg + ' ›'; el.dataset.u = Math.round(u); el.setAttribute('role', 'button');
-  el.addEventListener('pointerdown', ev => { ev.stopPropagation(); camJump(u); el.remove(); placeToasts(); });
+  el.addEventListener('pointerdown', ev => { ev.stopPropagation(); camJump(u, v); el.remove(); placeToasts(); });
   box.appendChild(el); placeToasts();
   setTimeout(() => el.classList.add('out'), ALERT.show * 1000);
   setTimeout(() => { el.remove(); placeToasts(); }, ALERT.show * 1000 + 350);
@@ -170,7 +178,7 @@ function alertTick() {
   for (const n of g.nodes) {
     if (n.owner !== 0 && !(n.c && n.c[0] > 0)) continue; // ours, or ours being taken
     if (g.ents.some(e => e.kind === 'u' && e.side === 1 && e.hp > 0 && !UDEF[e.type].air && !UDEF[e.type].noCap && Math.abs(e.u - n.u) <= NODE_R && visibleTo(g, 0, e)))
-      alertRaise('node', n.id, n.u, n.v, `The ${NODE_NAME[n.id]} field node is contested`);
+      alertRaise('node', n.id, n.u, n.v, `The ${nodeLabel(n.id)} is contested`);
   }
 }
 function handleEvents() {
@@ -197,7 +205,7 @@ function handleEvents() {
 
 /* ---------- Touch: drag left/right to scroll, tap a building or pad ---------- */
 let gest = null;
-const toWorld = (x, y) => ({ x: (x - V.cw / 2) / V.S + cam.x, y: (y - V.A) / V.S + Y_BOT });
+const toWorld = (x, y) => ({ x: (x - V.cw / 2) / V.S + cam.x, y: (y - V.A) / V.S + YB() });
 function localXY(e) { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
 function inDiamond(wx, wy, cx, cy, h) { return Math.abs(wx - cx) / (2 * h * IX) + Math.abs(wy - cy) / (2 * h * IY) <= 1; }
 function handleTap(x, y) {
@@ -232,6 +240,12 @@ function handleTap(x, y) {
     if (!game.sides[0].slots[k] && inDiamond(w.x, w.y, q.x, q.y, PAD_H + 4)) { openPad(k); return; }
   }
   if (sigPadOn() && SIG.on && BD(pFac(), 'sigA') && !sigOnPad(game, 0)) { const p = slotPos(0, SIG_SLOT), q = P(p.u, p.v); if (inDiamond(w.x, w.y, q.x, q.y, PAD_H + 4)) { openPad(SIG_SLOT); return; } } // v2.43
+  for (let k = 0; k < FWD_PADS.length; k++) { // v2.65: a free forward pad: yours to build on while you hold its post
+    const F = FWD_PADS[k], q = P(F.at[0], F.at[1]);
+    if (!inDiamond(w.x, w.y, q.x, q.y, PAD_H + 4) || fwdAt(game, FWD_SLOT + k)) continue;
+    if (game.nodes[F.node].owner === 0) { openPad(FWD_SLOT + k); return; }
+    toast('Capture this forward pad first: stand ground troops on its post', ''); closePanel(); return;
+  }
   closePanel();
 }
 cv.addEventListener('pointerdown', e => {
@@ -239,13 +253,14 @@ cv.addEventListener('pointerdown', e => {
   try { cv.setPointerCapture(e.pointerId); } catch (_) {}
   const p = localXY(e);
   cam.vx = 0;
-  gest = { id: e.pointerId, lx: p.x, sx: p.x, sy: p.y, t0: performance.now(), t: performance.now(), moved: 0 };
+  gest = { id: e.pointerId, lx: p.x, ly: p.y, sx: p.x, sy: p.y, t0: performance.now(), t: performance.now(), moved: 0 };
 });
 cv.addEventListener('pointermove', e => {
   if (!gest || e.pointerId !== gest.id) return;
   const p = localXY(e);
-  const dx = p.x - gest.lx, now = performance.now(), dtm = Math.max(8, now - gest.t);
-  gest.lx = p.x; gest.t = now;
+  const dx = p.x - gest.lx, dy = p.y - gest.ly, now = performance.now(), dtm = Math.max(8, now - gest.t);
+  gest.lx = p.x; gest.ly = p.y; gest.t = now;
+  if (CAMY.max > CAMY.min) cam.y -= dy / V.S; // v2.65: a deep map pans up and down too
   gest.moved = Math.max(gest.moved, Math.hypot(p.x - gest.sx, p.y - gest.sy));
   if (Math.abs(dx) > 0) camTouched = true;
   cam.x -= dx / V.S; clampCam();
@@ -261,7 +276,7 @@ cv.addEventListener('pointerup', endPtr);
 cv.addEventListener('pointercancel', endPtr);
 // Overview map in the top bar: tap or drag to jump
 let mmDrag = false;
-function mmJump(e) { camTouched = true; TUT.sig.mm = true; const r = mm.getBoundingClientRect(), k = (r.width - 8) / (UMAX - UMIN); cam.x = UMIN + (e.clientX - r.left - 4) / k; cam.vx = 0;
+function mmJump(e) { camTouched = true; TUT.sig.mm = true; const r = mm.getBoundingClientRect(), k = (r.width - 8) / (UMAX - UMIN); cam.x = UMIN + (e.clientX - r.left - 4) / k; cam.vx = 0; if (CAMY.max > CAMY.min) cam.y = mmV(e.clientY - r.top, r.height) * DY - (Y_TOP + Y_BOT) / 2; // v2.65: and its depth
   if (e.type === 'pointerdown' && game) { const p = alerts.pings.filter(p => game.t - p.t < ALERT.ping).sort((a, b) => Math.abs(a.u - cam.x) - Math.abs(b.u - cam.x))[0]; if (p && Math.abs(p.u - cam.x) * k <= 12) cam.x = p.u; } // v2.53: a tap on an alert's ping lands on it
   clampCam(); }
 mm.addEventListener('pointerdown', e => { mmDrag = true; try { mm.setPointerCapture(e.pointerId); } catch (_) {} mmJump(e); });

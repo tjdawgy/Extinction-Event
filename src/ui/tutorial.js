@@ -22,7 +22,7 @@ function tSquad(type, n, side = 0) { const out = [], u0 = side ? L / 2 + 150 : r
 const tMoved = () => { const O = tMe().orders; return !!O && [O.all, ...Object.values(O.groups || {}), ...Object.values(O.types || {})].some(o => o && o.o === 'move'); };
 // Targets: a DOM element ({ el }) or a rectangle in world space ({ rect }), turned into screen space every frame
 const tEl = s => { const el = document.querySelector(s); return el && el.getClientRects().length ? { el } : null; };
-const tW2S = (x, y) => ({ x: (x - cam.x) * V.S + V.cw / 2, y: (y - Y_BOT) * V.S + V.A });
+const tW2S = (x, y) => ({ x: (x - cam.x) * V.S + V.cw / 2, y: (y - YB()) * V.S + V.A });
 const tWorld = (x0, y0, x1, y1) => ({ rect: () => { const a = tW2S(x0, y0), b = tW2S(x1, y1); return { left: a.x, top: a.y, right: b.x, bottom: b.y }; }, u: (x0 + x1) / 2 });
 const tB = b => { if (!b) return null; const d = bdOf(b), p = P(b.u, b.v), hw = 2 * d.half * IX * BS + 6; return tWorld(p.x - hw, p.y - (d.half + d.h) * BS - 12, p.x + hw, p.y + d.half * BS + 6); };
 const tPad = k => { const p = slotPos(0, k), q = P(p.u, p.v), w = 2 * PAD_H * IX, hh = 2 * PAD_H * IY; return tWorld(q.x - w, q.y - hh, q.x + w, q.y + hh); };
@@ -129,7 +129,7 @@ const tCur = () => TUT.on && TUT_CH[TUT.ch] ? TUT_CH[TUT.ch].steps[TUT.step] : n
 // A fresh practice match: Last Fist against Last Fist, no countdown, the enemy AI off, no storm, never saved
 function tutMatch() {
   clearTimeout(endTimer); endTimer = null; document.body.classList.remove('spectate');
-  game = newGame('normal', { countdown: 0, factions: ['lastfist', 'lastfist'] });
+  game = newGame('normal', { countdown: 0, factions: ['lastfist', 'lastfist'], map: 'classic' }); // v2.65: the tutorial is on Classic
   game.tut = true; game.noStorm = true; game.sides[1].aiT = 1e9;
   buildAbil(); hideCountdown(); camTouched = false; applyZoom(1); resize(); closePanel(); hideInfo(); endAim();
   running = true; paused = false; speed = 1; $('bSpeed').textContent = '1×';

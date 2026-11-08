@@ -53,7 +53,7 @@ async function main() {
     const f1 = path.join(outDir, `${tag}-units.png`);
     fs.writeFileSync(f1, Buffer.from(await page.evaluate(SHEET), 'base64')); console.log(f1);
     // a large battle in view, paused mid-fight
-    await page.click('#bPlay');
+    await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default)
     await page.waitForTimeout(300);
     await page.evaluate(() => {
       game.countdown = 0; hideCountdown(); camTouched = true; cam.x = L / 2; clampCam();

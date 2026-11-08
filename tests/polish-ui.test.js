@@ -19,7 +19,7 @@ for (const dev of [PHONE, NARROW]) for (const fac of ['lastfist', 'bloomhost', '
     fs.mkdirSync(OUT, { recursive: true });
     const tag = `${dev.width}x${dev.height}-${fac}`, shot = n => page.screenshot({ path: path.join(OUT, `polish-${tag}-${n}.png`) });
     const { page, errors } = await openPage(browser, dev);
-    await page.click(`#meSeg [data-f="${fac}"]`); await page.click('#foeSeg [data-f="lastfist"]'); await page.click('#bPlay'); await page.waitForTimeout(300);
+    await page.click(`#meSeg [data-f="${fac}"]`); await page.click('#foeSeg [data-f="lastfist"]'); await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
     await page.evaluate(() => { game.countdown = 0; hideCountdown(); updateIntro(); for (const s of game.sides) { s.aiT = 1e9; s.res.c = s.res.e = 9000; } homeCamera(); refreshUI(true); });
     await page.waitForTimeout(200);
     await shot('1-empty-pad');

@@ -17,7 +17,7 @@ async function main() {
   const shots = [];
   try {
     const { page, errors } = await openPage(browser, device, { init: `Math.random = (() => { let a = ${seed}; return () => (a = (a * 16807) % 2147483647) / 2147483647; })();` });
-    await page.click('#bPlay'); await page.waitForTimeout(300);
+    await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
     await page.evaluate(({ persona, diff }) => {
       game = newGame(diff, { autoPlayer: true, autoDiff: diff, persona }); game.countdown = 0; hideCountdown(); updateIntro(); running = true; paused = true;
       for (let i = 0; i < 30 * 1800 && !game.over; i++) update(game, 1 / 30);

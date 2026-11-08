@@ -17,7 +17,7 @@ async function main() {
   const { page, errors } = await openPage(browser, dev, { init: 'Math.random = (() => { let a = 9; return () => (a = (a * 16807) % 2147483647) / 2147483647; })();' });
   const shot = async name => { await page.waitForTimeout(150); const f = path.join(outDir, `${tag}-${name}-${dev.width}x${dev.height}.png`); fs.writeFileSync(f, await page.screenshot()); console.log(f); };
   try {
-    await page.click('#meSeg [data-f="axiarchs"]'); await page.click('#foeSeg [data-f="lastfist"]'); await page.click('#bPlay'); await page.waitForTimeout(300);
+    await page.click('#meSeg [data-f="axiarchs"]'); await page.click('#foeSeg [data-f="lastfist"]'); await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
     await page.evaluate(() => {
       game.countdown = 0; hideCountdown(); updateIntro();
       for (const s of game.sides) { s.aiT = 1e9; s.res.c = s.res.e = 6000; }

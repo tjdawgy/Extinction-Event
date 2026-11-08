@@ -1,13 +1,17 @@
 /* ---------- Fog of war ----------
    Each side sees full-depth strips of the lane around its own units, buildings and held field nodes.
    Depth counts for little in range (DV_W), so strips match how far things can actually shoot. */
-const FOG_CELL = MAP_2D ? MAP.fogCell || 20 : 10, FOG_NX = Math.ceil(L / FOG_CELL) + 1; // v2.63: a grid map has rows too (MAP_2D)
-const FOG_Y0 = -MAP.size.h / 2, FOG_NY = MAP_2D ? Math.ceil(MAP.size.h / FOG_CELL) + 1 : 1, FOG_N = FOG_NX * FOG_NY;
+let FOG_CELL, FOG_NX, FOG_Y0, FOG_NY, FOG_N, cellOf; // v2.63: a grid map has rows too (MAP_2D); v2.65: per map (MAP_HOOKS)
+const mapFog = () => {
+  FOG_CELL = MAP_2D ? MAP.fogCell || 20 : 10; FOG_NX = Math.ceil(L / FOG_CELL) + 1;
+  FOG_Y0 = -MAP.size.h / 2; FOG_NY = MAP_2D ? Math.ceil(MAP.size.h / FOG_CELL) + 1 : 1; FOG_N = FOG_NX * FOG_NY;
+  cellOf = MAP_2D ? (u, v = 0) => fogRow(v) * FOG_NX + clamp(Math.floor(u / FOG_CELL), 0, FOG_NX - 1) : u => clamp(Math.floor(u / FOG_CELL), 0, FOG_N - 1); // v: depth (grid maps only)
+};
+mapFog(); MAP_HOOKS.push(mapFog);
 const SIGHT = { rifle: 170, heavy: 180, sniper: 220, tank: 210, artillery: 200, titan: 240, flame: 190, hydra: 260, aircraft: 260, interceptor: 280, leviathan: 220, medic: 220, drone: 420, skitterling: 170, mite: 150, bulwark: 190, razorwing: 250, leaper: 180, ravager: 190, spitter: 190, bilecaster: 230, bilelobber: 200, ruinmaw: 240, thornback: 190, dreadthorn: 220, needlewing: 220, cloudwing: 230, broodtyrant: 230, worldrender: 220, shardling: 170, bastion: 200, wraithwing: 250, riftstalker: 180, parallax: 190, lancer: 200, marksman: 230, riftmortar: 200, worldbreaker: 240, gravemantle: 200, eventide: 220, prismwing: 220, shardstorm: 240, voidcarrier: 230, sovereign: 220 };
 const B_SIGHT = { hq: 520, turret: 340 }, B_SIGHT_DEF = 200, NODE_SIGHT = 220; // HQ 520 ≥ its T3 range (470)
 const INTEL_TTL = 45, THREAT_MEMORY = 5, SPOT_GAP = 10;
 const fogRow = v => clamp(Math.floor((v - FOG_Y0) / FOG_CELL), 0, FOG_NY - 1);
-const cellOf = MAP_2D ? (u, v = 0) => fogRow(v) * FOG_NX + clamp(Math.floor(u / FOG_CELL), 0, FOG_NX - 1) : u => clamp(Math.floor(u / FOG_CELL), 0, FOG_N - 1); // v: depth (grid maps only)
 const sightOf = e => e.kind === 'u' ? SIGHT[e.type] : (B_SIGHT[e.type] || B_SIGHT_DEF);
 const ghostOf = b => ({ id: b.id, type: b.type, fac: b.fac, side: b.side, slot: b.slot, tier: b.tier, path: b.path, u: b.u, v: b.v, half: b.half }); // path: the last-seen upgrade-tree path; fac: its faction (v2.17)
 function newFog(g, s) {
@@ -38,7 +42,7 @@ function updateVision(g) {
       for (let row = fogRow(v - r), r1 = fogRow(v + r); row <= r1; row++) { const y = FOG_Y0 + row * FOG_CELL + FOG_CELL / 2, dy = y - v; if (dy > r || dy < -r) continue; const dx = Math.sqrt(r * r - dy * dy); vis.fill(1, cellOf(u - dx, y), cellOf(u + dx, y) + 1); }
     } : (u, r) => { for (let i = cellOf(u - r), b = cellOf(u + r); i <= b; i++) vis[i] = 1; };
     for (const e of g.ents) if (e.side === s && e.hp > 0) reveal(e.u, sightOf(e), e.v);
-    for (const n of g.nodes) if (n.owner === s) reveal(n.u, NODE_SIGHT, n.v);
+    for (const n of g.nodes) if (n.owner === s) reveal(n.u, n.sight || NODE_SIGHT, n.v); // v2.65: a watchtower sees further
     for (let i = 0; i < FOG_N; i++) if (vis[i]) exp[i] = f.seen[i] = 1;
     // Remember what is in view; forget remembered things whose spot is in view but empty
     const seenB = new Set(), seenU = new Set();
@@ -98,11 +102,11 @@ function update(g, dt) {
     }
   }
   indexFoes(foes[0], dt); indexFoes(foes[1], dt); // v2.37: lane-sorted, so target searches look only near the searcher
-  const n = g.ents.length;
+  const n = g.ents.length; NAV.now = g.t; // v2.65: the clock the navigation paths age by
   for (let i = 0; i < n; i++) {
     const e = g.ents[i];
     if (e.hp <= 0) continue;
-    if (e.kind === 'b') updateBuilding(g, e, foes[e.side], dt); else updateUnit(g, e, foes[e.side], dt);
+    if (e.kind === 'b') updateBuilding(g, e, foes[e.side], dt); else { updateUnit(g, e, foes[e.side], dt); if (NAV.on && e.hp > 0 && !UDEF[e.type].air && !e.leaping && navShut(e.u, e.v)) navEject(e); } // v2.65: never inside a wall
   }
   updateProjs(g, dt);
   updateMedics(g, dt);
@@ -130,7 +134,7 @@ function updateNodes(g, dt) {
   for (const n of g.nodes) {
     let c0 = 0, c1 = 0;
     let w0 = 0, w1 = 0; // capture weight: a Drilled Rifleman counts 1.5
-    for (const e of g.ents) if (e.kind === 'u' && e.hp > 0 && !UDEF[e.type].air && !UDEF[e.type].noCap && (MAP_2D ? Math.hypot(e.u - n.u, e.v - n.v) : Math.abs(e.u - n.u)) <= NODE_R) { const w = e.vet ? DRILL.capture : 1; if (e.side === 0) { c0++; w0 += w; } else { c1++; w1 += w; } }
+    for (const e of g.ents) if (e.kind === 'u' && e.hp > 0 && !UDEF[e.type].air && !UDEF[e.type].noCap && (MAP_2D ? Math.hypot(e.u - n.u, e.v - n.v) : Math.abs(e.u - n.u)) <= (n.r || NODE_R)) { const w = e.vet ? DRILL.capture : 1; if (e.side === 0) { c0++; w0 += w; } else { c1++; w1 += w; } }
     n.c = [c0, c1];
     if (c0 && !c1) n.prog = Math.min(100, n.prog + 8 * Math.sqrt(w0) * dt);
     else if (c1 && !c0) n.prog = Math.max(-100, n.prog - 8 * Math.sqrt(w1) * dt);
@@ -164,6 +168,7 @@ function updateBunkers(g) {
     if (!dep) { for (const b of mine) razeBunker(g, b); continue; }
     const bk = dep.bk || (dep.bk = {});
     for (const n of g.nodes) {
+      if (n.type) continue; // v2.65: bunkers stand on income nodes only (not watchtowers or forward pads)
       const b = mine.find(x => x.node === n.id);
       if (n.owner !== s) { if (b) razeBunker(g, b); delete bk[n.id]; continue; }
       if (b) { b.tier = dep.tier; continue; } // upgrades apply at once

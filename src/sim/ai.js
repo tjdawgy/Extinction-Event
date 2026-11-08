@@ -344,8 +344,8 @@ function aiUpdate(g, s, dt) {
   // A failed base attack raises the bar for the next one, unless the army is maxed out with money banked to refill it
   const late = g.t > dl.late; // after 18 minutes (the late dial, v2.38), stop waiting for a perfect edge
   const bold = myV >= attackBar(g, s) || (full && (rich || side.res.c > 1000)) || late;
-  const siegeLine = hqU(opp) - dir * (hqGun.range + 25), fieldLine = L / 2 + dir * 20, farLine = g.nodes[s === 0 ? g.nodes.length - 1 : 0].u; // farLine: the enemy's own node (the nodes dial at 3, v2.38)
-  const myNode = g.nodes[s === 0 ? 0 : g.nodes.length - 1];
+  const siegeLine = hqU(opp) - dir * (hqGun.range + 25), fieldLine = L / 2 + dir * 20, farLine = g.nodes[s === 0 ? 2 : 0].u; // farLine: the enemy's own node (the nodes dial at 3, v2.38)
+  const myNode = g.nodes[s === 0 ? 0 : 2];
   // enemies camping on or near our node, as far as we know
   const atNode = theirs.filter(u => u.fresh && Math.abs(u.u - myNode.u) < NODE_R + 160);
   const nodeLost = myNode.owner === opp || atNode.length > 0;
@@ -535,8 +535,8 @@ function aiEstimate(g, s) {
   }
   let inc = BDEF.hq.inc[1].c, refs = 0;
   for (const gh of Object.values(f.ghosts)) if (gh.side !== s && gh.type === 'refinery') { refs++; inc += BD(gh.fac, 'refinery').inc[gh.tier || 1].c; }
-  if (!refs) inc = income(g, s).c - NODE_INC.c * g.nodes.filter(n => n.owner === s).length;
-  inc += NODE_INC.c * g.nodes.filter(n => n.owner === 1 - s).length;
+  if (!refs) inc = income(g, s).c - NODE_INC.c * g.nodes.reduce((a, n) => a + (n.owner === s ? nodeInc(n) : 0), 0);
+  inc += NODE_INC.c * g.nodes.reduce((a, n) => a + (n.owner === 1 - s ? nodeInc(n) : 0), 0);
   side.estE = (side.estE || 0) + inc * dt;
   let killed = 0;
   if (g.log) { const K = g.log.tot[s].killed; for (const t in K) { const d = UDEF[t]; if (d) killed += (d.cost.c + d.cost.e * 1.5) * K[t]; } }
@@ -553,7 +553,7 @@ function aiRaid(g, s, mine, myV, dr) {
     return;
   }
   if (side.stance === 'attack' || g.t < R.at || g.t - (side.raidT ?? -1e9) < R.every) return;
-  const theirNode = g.nodes[s === 0 ? g.nodes.length - 1 : 0], tgt = theirNode.owner === s ? g.nodes[1] : theirNode;
+  const theirNode = g.nodes[s === 0 ? 2 : 0], tgt = theirNode.owner === s ? g.nodes[1] : theirNode;
   if (tgt.owner === s) return;
   const fast = mine.filter(u => { const d = UDEF[u.type]; return !d.air && !d.support && !d.siege && !d.noCap && !u.temp && u.id !== side.scoutId; }).sort((a, b) => UDEF[b.type].speed - UDEF[a.type].speed);
   const ids = []; let v = 0, hp0 = 0;
@@ -567,7 +567,7 @@ function aiRaid(g, s, mine, myV, dr) {
 function aiEnemyIncome(g, s) {
   let inc = BDEF.hq.inc[1].c;
   for (const gh of Object.values(g.fog[s].ghosts)) if (gh.side !== s && gh.type === 'refinery') inc += BD(gh.fac, 'refinery').inc[gh.tier || 1].c;
-  return inc + NODE_INC.c * g.nodes.filter(n => n.owner === 1 - s).length;
+  return inc + NODE_INC.c * g.nodes.reduce((a, n) => a + (n.owner === 1 - s ? nodeInc(n) : 0), 0);
 }
 // sig: make room for the signature building by selling one of the duplicates the plan has (never the only one of a type)
 function aiSigRoom(g, s, dup, sig) {
