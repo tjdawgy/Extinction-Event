@@ -17,7 +17,7 @@ const MECH7C = { on: false, rally: 240, holdR: 80, node: 460, batchV: 300, batch
 const SIG_SLOT = 8, SIG_TILE = [2, 0]; // the signature pad: just past the HQ, at the base's outer corner
 function setMech7c(on) {
   MECH7C.on = on;
-  NODE_U[0] = on ? MAP.nodes[0].at[0] : MECH7C.old.node[0]; NODE_U[2] = on ? MAP.nodes[2].at[0] : MECH7C.old.node[1]; // v2.59: the map's nodes (MECH7C.node out from each HQ)
+  if (MAP.id === 'classic') NODE_U[0] = on ? MAP.nodes[0].at[0] : MECH7C.old.node[0]; NODE_U[2] = on ? MAP.nodes[2].at[0] : MECH7C.old.node[1]; // v2.63: other maps place their nodes once (NODE_U); v2.59: the map's nodes (MECH7C.node out from each HQ)
 }
 setMech7c(true);
 /* ---------- Live description texts (v2.45) ----------
@@ -292,9 +292,27 @@ function spawnUnit(g, s, type, u, v) {
   const unit = { id: g.nid++, kind: 'u', type, side: s, u, v, z: d.air ? (type === 'interceptor' ? rand(100, 124) : type === 'leviathan' ? rand(88, 98) : type === 'drone' ? rand(104, 114) : type === 'razorwing' ? rand(56, 72) : type === 'needlewing' ? rand(50, 64) : type === 'cloudwing' ? rand(62, 76) : type === 'broodtyrant' ? rand(78, 88) : type === 'worldrender' ? rand(84, 94) : type === 'wraithwing' ? rand(64, 80) : type === 'prismwing' ? rand(56, 70) : type === 'shardstorm' ? rand(66, 80) : type === 'voidcarrier' ? rand(78, 88) : type === 'sovereign' ? rand(84, 94) : rand(70, 94)) : 0,
     laneV: rand(-LANE_V, LANE_V), hp: d.hp, maxHp: d.hp, cd: simRnd() * 0.5, face: dirOf(s), anim: fxRnd() * 10,
     moving: false, rallyOff: -simRnd() * 100, recoil: 0, hitT: 0, shT: 0, vet: 0, aimAir: 0, medAt: -1, tgt: 0, braceT: 0, braceCd: 0, lastHurt: -99, lastAct: -99, creepAt: -1, temp: 0, tLife: 0, tSrc: null, kid: 0, spawnT: 0, dis: 0, disT: 0, slow: 0, slowT: 0, chT: 0, chTgt: 0, pulseCd: 0, shp: d.shp || 0, maxShp: d.shp || 0, shpT: -99, shpHit: -99, ovT: 0, frzT: 0, leapCd: 0, leaping: 0, lu: 0, lv: 0, ld: 0, corr: 0, corrT: 0, burstCd: 0 }; // tgt: what it last attacked; braceT/braceCd: the Bulwark's brace (v2.17); lastHurt/lastAct: last damage taken/dealt, creepAt: last creep regen (v2.18); leap*: the Leaper's jump, corr/corrT: corrosion, burstCd: the Dreadthorn's spines (v2.19) // vet: a Drilled Rifleman (v2.13); aimAir: where a Hydra's guns point (v2.14); medAt: last healed by a Medicopter (v2.15) // shT (shield until) set from the start keeps every unit the same shape for the JS engine
+  if (MAP_LANED) unit.lane = laneNew(g.sides[s]); // v2.63: the lane it walks (Classic: no lane key at all)
   g.ents.push(unit);
   g.sides[s].stats.built++;
   return unit;
+}
+// v2.63 (multi-lane engine): which lane a new unit takes. side.laneNew: a lane index for every new unit, or null/undefined
+// to alternate between the lanes (the default, and what the AI does). setLane moves units already out there and/or sets
+// laneNew; scope 'all' (every unit, and new ones), 'lane' (every unit on lane key), 'type' (every unit of type key).
+function laneNew(side) {
+  if (side.laneNew != null) return side.laneNew;
+  const k = side.laneNext || 0; side.laneNext = (k + 1) % MAP.lanes.length; return k;
+}
+function setLane(g, s, scope, key, lane) {
+  if (!MAP_LANED) return { ok: false, msg: 'This map has one lane' };
+  const to = laneIx(lane); if (to < 0) return { ok: false, msg: 'Unknown lane' };
+  const from = scope === 'lane' ? laneIx(key) : -1;
+  if (scope === 'lane' ? from < 0 : scope === 'type' ? !UDEF[key] : scope !== 'all') return { ok: false, msg: 'Unknown order' };
+  const side = g.sides[s]; let n = 0;
+  if (scope === 'all') side.laneNew = to;
+  for (const e of g.ents) if (e.kind === 'u' && e.side === s && e.hp > 0 && (scope === 'all' || (scope === 'lane' ? e.lane === from : e.type === key)) && e.lane !== to) { e.lane = to; n++; }
+  return { ok: true, n, msg: `${n} unit${n === 1 ? '' : 's'} to lane ${MAP.lanes[to].id}` };
 }
 
 // The HQ is shielded while any other building on that side still stands

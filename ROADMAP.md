@@ -59,6 +59,8 @@ Map data format: [docs/MAP_FORMAT.md](docs/MAP_FORMAT.md) (approved after Phase 
 - [ ] **Map system.**
   - Each map defines its own paths, pads, nodes, army size limit and number of bases (format: docs/MAP_FORMAT.md).
   - Support up to four bases from day one, for future 2v2 and free-for-all.
+  - [x] Multi-lane engine: 2D fog (after the performance check in docs/MAP_FORMAT.md), movement and targeting along any lane, army orders for one lane, and the save recording the map's id and version; proven on a test-only two-lane map that two AIs play to a finish. *(v2.63; KNOWN_ISSUES.md "Multi-lane engine")*
+  - [ ] Blockers and the navigation grid (open maps), new node types (watchtower, forward pad), drawing a multi-lane map, the lane-aware AI.
 - [ ] **Maps.** Build them in this order:
   1. Classic — the current single lane, for short matches.
   2. Two-lane — two lanes with a contested center.

@@ -9,28 +9,30 @@ const GROUP_OF = {}; for (const k in UGROUPS) for (const t of UGROUPS[k]) GROUP_
 const ORDER_NAME = { hold: 'Hold', attack: 'Attack', retreat: 'Retreat', move: 'Regroup' };
 const PLURAL = { rifle: 'Riflemen', heavy: 'Heavies', sniper: 'Snipers', tank: 'Tanks', artillery: 'Artillery', titan: 'Titans', flame: 'Flame Tanks', hydra: 'Hydras', aircraft: 'Gunships', interceptor: 'Interceptors', leviathan: 'Leviathans', medic: 'Medicopters', drone: 'Recon Drones', skitterling: 'Skitterlings', mite: 'Mites', bulwark: 'Bulwarks', razorwing: 'Razorwings', leaper: 'Leapers', ravager: 'Ravagers', spitter: 'Spitters', bilecaster: 'Bilecasters', bilelobber: 'Bile Lobbers', ruinmaw: 'Ruinmaws', thornback: 'Thornbacks', dreadthorn: 'Dreadthorns', needlewing: 'Needlewings', cloudwing: 'Cloudwings', broodtyrant: 'Brood Tyrants', worldrender: 'Worldrenders', shardling: 'Shardlings', bastion: 'Bastions', wraithwing: 'Wraithwings', riftstalker: 'Riftstalkers', parallax: 'Parallaxes', lancer: 'Lancers', marksman: 'Astral Marksmen', riftmortar: 'Rift Mortars', worldbreaker: 'Worldbreakers', gravemantle: 'Gravemantles', eventide: 'Eventides', prismwing: 'Prismwings', shardstorm: 'Shardstorms', voidcarrier: 'Voidcarriers', sovereign: 'Astral Sovereigns' };
 const newOrders = () => ({ all: null, groups: {}, types: {}, n: 0 });
-function unitOrder(side, type) { // the order a unit of this type follows, or null for the global stance
+function unitOrder(side, type, lane) { // the order a unit of this type follows, or null for the global stance; lane: its lane (v2.63)
   const O = side.orders; if (!O) return null;
-  let best = O.all; const gr = O.groups[GROUP_OF[type]], ty = O.types[type];
+  let best = O.all; const gr = O.groups[GROUP_OF[type]], ty = O.types[type], ln = lane != null && O.lanes ? O.lanes[lane] : null;
+  if (ln && (!best || ln.n > best.n)) best = ln;
   if (gr && (!best || gr.n > best.n)) best = gr;
   if (ty && (!best || ty.n > best.n)) best = ty;
   return best;
 }
-const orderCovers = (scope, key, type) => scope === 'all' || (scope === 'group' ? GROUP_OF[type] === key : type === key);
+const orderCovers = (scope, key, type, lane) => scope === 'all' || (scope === 'lane' ? lane === key : scope === 'group' ? GROUP_OF[type] === key : type === key);
 const slotOf = (u, o) => [o.u + ((u.id * 37) % 9 - 4) * 9, o.v + ((u.id * 53) % 9 - 4) * 7]; // a spread spot around the flag, fixed per unit
 function giveOrder(g, s, scope, key, o, u, v, quiet) { // quiet: the AI's automatic micro is counted, not listed, in the match log
   if (g.over) return { ok: false, msg: 'The match is over' };
   if (g.countdown > 0) return WAIT_GO;
-  if (!ORDER_NAME[o] || !(scope === 'all' ? o === 'move' : scope === 'group' ? UGROUPS[key] : UDEF[key])) return { ok: false, msg: 'Unknown order' };
-  if (o === 'move' && !(u >= 0 && u <= L && Math.abs(v) <= 220)) return { ok: false, msg: 'Target the battlefield' };
+  if (scope === 'lane') key = laneIx(key); // v2.63: an order for every unit on one lane (any order; a lane map only)
+  if (!ORDER_NAME[o] || !(scope === 'all' ? o === 'move' : scope === 'lane' ? MAP_LANED && key >= 0 : scope === 'group' ? UGROUPS[key] : UDEF[key])) return { ok: false, msg: 'Unknown order' };
+  if (o === 'move' && !(u >= 0 && u <= L && Math.abs(v) <= (MAP_2D ? MAP.size.h / 2 : 220))) return { ok: false, msg: 'Target the battlefield' };
   const side = g.sides[s], O = side.orders || (side.orders = newOrders()), ord = { o, n: ++O.n, t: g.t };
   if (o === 'move') { ord.u = u; ord.v = v; ord.done = false; }
-  if (scope === 'all') O.all = ord; else if (scope === 'group') O.groups[key] = ord; else O.types[key] = ord;
-  for (const e of g.ents) if (e.kind === 'u' && e.side === s && e.hp > 0 && orderCovers(scope, key, e.type)) {
+  if (scope === 'all') O.all = ord; else if (scope === 'lane') (O.lanes || (O.lanes = {}))[key] = ord; else if (scope === 'group') O.groups[key] = ord; else O.types[key] = ord;
+  for (const e of g.ents) if (e.kind === 'u' && e.side === s && e.hp > 0 && orderCovers(scope, key, e.type, e.lane)) {
     if (o === 'hold') { e.holdU = e.u; e.holdV = e.v; } else { e.holdU = undefined; e.holdV = undefined; }
   }
   if (quiet) { if (g.log) g.log.tot[s].micro = (g.log.tot[s].micro || 0) + 1; } else lg(g, s, 'O', scope, key, o);
-  const who = scope === 'all' ? 'Army' : scope === 'group' ? GROUP_NAME[key] : PLURAL[key];
+  const who = scope === 'all' ? 'Army' : scope === 'lane' ? `Lane ${MAP.lanes[key].id}` : scope === 'group' ? GROUP_NAME[key] : PLURAL[key];
   return { ok: true, msg: o === 'move' ? `${who}: regrouping at the flag` : `${who}: ${o === 'hold' ? 'holding position' : o === 'attack' ? 'attacking' : 'retreating to the rally flag'}` };
 }
 // v2.43 (rally): on Attack, a player side's new units wait at the rally point (inside the HQ gun's cover) until the group
@@ -99,6 +101,7 @@ function setStance(g, s, v) {
 }
 
 function moveToward(u, d, tu, tv, dt, mul = 1) { // mul: speed multiplier (creep, v2.18)
+  if (MAP_LANED && u.lane != null && !d.air && moveLane(u, d, tu, tv, dt, mul)) return true;
   const du = tu - u.u, dv = tv - u.v;
   if (Math.abs(du) < 2 && Math.abs(dv) < 2) { u.moving = false; return false; }
   if (Math.abs(du) >= 2) { u.u = clamp(u.u + Math.sign(du) * Math.min(Math.abs(du), d.speed * mul * dt), 0, L); u.face = Math.sign(du); }
@@ -107,6 +110,25 @@ function moveToward(u, d, tu, tv, dt, mul = 1) { // mul: speed multiplier (creep
   return true;
 }
 
+// v2.63 (multi-lane engine): a ground unit with a lane walks along it. Far from its target (LANE_GO.near), it steps along
+// the lane's centre line at full speed, keeping its own offset across the lane (steering toward the offset its target
+// asks for at the usual 0.45 side speed); off its lane (a switch, a chase), it first heads for the lane LANE_GO.ahead in
+// front of it. Near the target, the plain move below takes over. Classic has no lanes (MAP_LANED false): never runs.
+const LANE_GO = { near: 40, ahead: 60, probe: 20 };
+function moveLane(u, d, tu, tv, dt, mul) {
+  const du = tu - u.u;
+  if (Math.abs(du) < LANE_GO.near) return false;
+  const ln = MAP.lanes[u.lane], hw = ln.width / 2, sg = Math.sign(du), step = d.speed * mul * dt, x0 = u.u, off = u.v - laneY(ln, x0);
+  if (Math.abs(off) > hw + 20) { const ax = clamp(x0 + sg * Math.min(Math.abs(du), LANE_GO.ahead), 0, L); return moveStraight(u, d, ax, laneY(ln, ax), dt, mul); }
+  const k = (laneY(ln, x0 + sg * LANE_GO.probe) - laneY(ln, x0)) / LANE_GO.probe, ax = step / Math.sqrt(1 + k * k);
+  const nx = clamp(x0 + sg * Math.min(Math.abs(du), ax), 0, L), want = clamp(tv - laneY(ln, tu), -hw, hw);
+  const noff = off + Math.sign(want - off) * Math.min(Math.abs(want - off), step * 0.45);
+  u.u = nx; u.v = laneY(ln, nx) + noff; u.face = sg; u.moving = true;
+  return true;
+}
+function moveStraight(u, d, tu, tv, dt, mul) { const k = u.lane; u.lane = null; const r = moveToward(u, d, tu, tv, dt, mul); u.lane = k; return r; }
+// The depth a unit holds on its lane at x: its own offset (laneV) around the lane's centre there; Classic: laneV itself
+const laneTv = (u, x) => MAP_LANED && u.lane != null && !UDEF[u.type].air ? laneY(MAP.lanes[u.lane], x) + u.laneV : u.laneV;
 const RETREAT = { fire: false }; // v2.35 (audit): retreating units hold their fire; fire true restores the v2.34 rule (firing on the move)
 function updateUnit(g, u, foes, dt) {
   const d = UDEF[u.type];
@@ -116,7 +138,7 @@ function updateUnit(g, u, foes, dt) {
   if (u.recoil > 0) u.recoil = Math.max(0, u.recoil - dt * 5);
   if (u.hitT > 0) u.hitT -= dt;
   const side = g.sides[u.side], dir = dirOf(u.side), home = u.medHome ? homeFlagU(g, u.side) + u.rallyOff * dir * 0.3 : (side.defU != null ? side.defU : rallyU(u.side, g)) + u.rallyOff * dir; // defU (v2.40): a Default AI under attack rallies inside its HQ's cover; v2.62: a damaged unit sent home goes to the base flag
-  const ord = unitOrder(side, u.type);
+  const ord = unitOrder(side, u.type, u.lane);
   const runs = side.persona && aiFix(side.persona, 'scoutGo') && ((u.id === side.scoutId && side.scoutU != null) || (side.raid && side.raid.ids.includes(u.id))); // v2.60: a Hard scout or raider
   const st = u.medHome ? 'retreat' : runs ? 'run' : ord ? ord.o : side.stance; // a group or type order overrides the global stance; v2.62: sent home = Retreat to the base flag
   const A = d.weapon ? acquire(g, u, d, foes, d.chase) : NO_TARGET, { best, close } = A; // Medicopters and Recon Drones carry no weapon; melee: the chase search in the same pass (v2.37)
@@ -127,7 +149,7 @@ function updateUnit(g, u, foes, dt) {
     else { u.u += du / dd * st; u.v += dv / dd * st; u.z = Math.sin(Math.PI * clamp(1 - dd / u.ld, 0, 1)) * Math.min(26, u.ld * 0.18); u.face = du >= 0 ? 1 : -1; }
     u.moving = true; return;
   }
-  if (u.aiBack > g.t && !u.siege) { u.tgt = 0; u.chT = 0; moveToward(u, d, side.backU != null ? side.backU : home, u.laneV, dt, sp); return; } // v2.38: a Default AI pulls it back for a moment (unit timing)
+  if (u.aiBack > g.t && !u.siege) { u.tgt = 0; u.chT = 0; { const bu = side.backU != null ? side.backU : home; moveToward(u, d, bu, laneTv(u, bu), dt, sp); } return; } // v2.38: a Default AI pulls it back for a moment (unit timing)
   if (d.siege && titanSiege(g, u, d, st, foes)) return; // P8 (v2.37): planting, planted or unplanting
   if (u.phT > g.t) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // P13 (v2.37): a phased Wraithwing holds still and can't fire
   // Retreat: keep running home until back at the rally flag. A retreating unit holds its fire (v2.35, audit): it
@@ -135,7 +157,7 @@ function updateUnit(g, u, foes, dt) {
   if (st === 'retreat' && Math.abs(home - u.u) > 12) {
     if (!RETREAT.fire) { u.tgt = 0; u.chT = 0; }
     else if (best && u.cd <= 0) { fire(g, u, best, d); u.cd = d.cd * rand(0.9, 1.1); } // the v2.34 rule, for the tests' fixed replays
-    moveToward(u, d, home, u.laneV, dt, sp);
+    moveToward(u, d, home, laneTv(u, home), dt, sp);
     return;
   }
   if (u.medHome) { // v2.62: home: heal once unhurt for a moment, rejoin when nearly whole
@@ -202,6 +224,7 @@ function updateUnit(g, u, foes, dt) {
     else tu = u.rwT > g.t ? home : end; // v2.43: waiting at the rally point for its group
     if (side.leash != null && !d.siege && !d.air) tu = dir > 0 ? Math.min(tu, side.leash) : Math.max(tu, side.leash); // v2.38: a Default AI's army stays within reach of its Titans while they plant
   }
+  if (MAP_LANED && tv === u.laneV) tv = laneTv(u, tu); // v2.63: the lane's depth there (Classic: unchanged)
   if (!moveToward(u, d, tu, tv, dt, sp)) u.face = dir;
 }
 

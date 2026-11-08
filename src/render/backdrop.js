@@ -485,7 +485,24 @@ function fogAlpha(F) {
   for (let i = 0; i < FOG_N; i++) { let sum = 0, n = 0; for (let k = -3; k <= 3; k++) { const j = i + k; if (j >= 0 && j < FOG_N) { sum += a[j]; n++; } } b[i] = sum / n; }
   return b;
 }
+// v2.63: a grid-fog map (MAP_2D) draws its fog as a small alpha image (one pixel per cell), redrawn only when vision
+// changes and stretched over the ground with smoothing: the variant the fog performance check measured (fog-bench.js)
+const FOG2 = { off: null, oc: null, img: null, F: null, vis: null, exp: null };
+function drawFog2(c, F) {
+  const G = FOG2;
+  if (!G.off) { G.off = document.createElement('canvas'); G.off.width = FOG_NX; G.off.height = FOG_NY; G.oc = G.off.getContext('2d'); G.img = G.oc.createImageData(FOG_NX, FOG_NY); G.vis = new Uint8Array(FOG_N); G.exp = new Uint8Array(FOG_N); }
+  let same = G.F === F;
+  for (let i = 0; i < FOG_N && same; i++) if (G.vis[i] !== F.vis[i] || G.exp[i] !== F.exp[i]) same = false;
+  if (!same) {
+    G.F = F; G.vis.set(F.vis); G.exp.set(F.exp);
+    const d = G.img.data, A = Math.round(FOG_EXP * 255), D = Math.round(FOG_DARK * 255);
+    for (let k = 0; k < FOG_N; k++) { d[k * 4] = 5; d[k * 4 + 1] = 8; d[k * 4 + 2] = 20; d[k * 4 + 3] = F.vis[k] ? 0 : F.exp[k] ? A : D; }
+    G.oc.putImageData(G.img, 0, 0);
+  }
+  c.save(); c.imageSmoothingEnabled = true; c.drawImage(G.off, 0, 0, FOG_NX, FOG_NY, -FOG_CELL / 2, (FOG_Y0 - FOG_CELL / 2) * DY, FOG_NX * FOG_CELL, FOG_NY * FOG_CELL * DY); c.restore();
+}
 function drawFog(c, F) {
+  if (MAP_2D) return drawFog2(c, F);
   const a = fogAlpha(F);
   if (FOGA.gradVer !== FOGA.ver) { // the gradient is in world units, so it stays valid while the camera moves
     const gr = c.createLinearGradient(GU0, 0, GU1, 0), span = GU1 - GU0;

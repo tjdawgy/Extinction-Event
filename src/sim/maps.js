@@ -24,8 +24,26 @@ MAPS.classic = {
     { id: 'east', type: 'income', at: [1020, 0], r: 70 },
   ],
   conditions: [],
+  fog: 'strip', depthW: 0.4, // v2.63: one row of fog cells along the lane; depth counts 0.4 in range (DV_W)
 };
-const MAP = MAPS.classic; // the map every match plays (the only one until Phase 1 adds more)
+// v2.63: a map the test kit supplies (EE_MAP_DATA in its sandbox) replaces Classic for that whole load of the SIM. It
+// never ships in the game: the browser has no EE_MAP_DATA, so the game always plays Classic (no map select yet).
+if (typeof EE_MAP_DATA !== 'undefined' && EE_MAP_DATA) MAPS[EE_MAP_DATA.id] = EE_MAP_DATA;
+const MAP = typeof EE_MAP_DATA !== 'undefined' && EE_MAP_DATA ? MAPS[EE_MAP_DATA.id] : MAPS.classic; // the map every match plays
+// v2.63 (multi-lane engine): what the map asks of the engine. Classic asks for none of it, so it plays exactly as before.
+//   MAP_2D: fog is a grid of cells (MAP.fogCell) over the whole field instead of one row along the lane; sight, capture
+//     and targeting use true distance (depth counts in full, MAP.depthW 1) instead of full-depth strips.
+//   MAP_LANED: lanes that aren't one straight line at depth 0: ground units follow their own lane (u.lane).
+const MAP_2D = MAP.fog === 'grid';
+const MAP_LANED = MAP.lanes.length > 1 || MAP.lanes.some(l => l.path.some(p => p[1] !== 0));
+// A lane's centre depth at x: its path is a polyline whose x only grows (a lane runs from the west edge to the east one)
+function laneY(ln, x) {
+  const P = ln.path;
+  if (x <= P[0][0]) return P[0][1];
+  for (let i = 1; i < P.length; i++) if (x <= P[i][0]) { const [x0, y0] = P[i - 1], [x1, y1] = P[i]; return x1 === x0 ? y1 : y0 + (y1 - y0) * (x - x0) / (x1 - x0); }
+  return P[P.length - 1][1];
+}
+const laneIx = k => typeof k === 'number' ? (k >= 0 && k < MAP.lanes.length ? k : -1) : MAP.lanes.findIndex(l => l.id === k); // a lane by index or id
 // Node types: how each behaves is code (NODE_TYPES); a map only places them. live: false = in the format, not built yet
 const NODE_TYPES = { income: { live: true }, watchtower: { live: false }, forwardPad: { live: false }, repair: { live: false }, relic: { live: false } };
 // Map validation (a test runs it on every map): returns a list of problems, empty when the map is sound

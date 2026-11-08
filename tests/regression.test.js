@@ -119,7 +119,7 @@ test('Nanoweave description matches what it does (units and defenses)', () => {
   assert.strictEqual(sim.BDEF.techlab.tiers[3], 'Nanoweave: your units and defenses deal 20% more damage and take 15% less');
 });
 
-test('save keys stay colonyMobile.save and colonyMobile.diff (plus the separate sound key); plus the faction picks key (v2.17); save format is v30 and still reads v5–v29', () => {
+test('save keys stay colonyMobile.save and colonyMobile.diff (plus the separate sound key); plus the faction picks key (v2.17); save format is v31 (the map, v2.63) and still reads v5–v30', () => {
   const html = readHtml();
   assert.match(html, /const SAVE_KEY = 'colonyMobile\.save';/);
   assert.match(html, /localStorage\.getItem\('colonyMobile\.diff'\)/);
@@ -130,11 +130,12 @@ test('save keys stay colonyMobile.save and colonyMobile.diff (plus the separate 
   assert.match(html, /const TUT_KEY = 'extinctionEvent\.tutorial'/);
   assert.match(html, /const FACTION_KEY = 'extinctionEvent\.factions'/);
   assert.match(html, /const SOUND_KEY = 'extinctionEvent\.sound';/);
-  assert.strictEqual(sim.SAVE_VER, 30); // v2.34: Axiarch signature buildings
-  assert.deepStrictEqual([...sim.SAVE_OK], [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]);
+  assert.strictEqual(sim.SAVE_VER, 31); // v2.34: Axiarch signature buildings; v2.63: the map's id and version
+  assert.deepStrictEqual([...sim.SAVE_OK], [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]);
   const o = JSON.parse(sim.serialize(sim.newGame('easy'), {}));
-  assert.strictEqual(o.v, 30);
-  assert.deepStrictEqual(Object.keys(o).sort(), ['abil', 'acid', 'creep', 'diffKey', 'endHold', 'ents', 'extra', 'field', 'fog', 'fs', 'log', 'nid', 'nodes', 'projs', 'rs', 'seed', 'sides', 'stats', 't', 'v', 'warps']); // v2.50: seed, rs, fs (the random streams); v2.51: stats
+  assert.strictEqual(o.v, 31);
+  assert.strictEqual(JSON.stringify(o.map), JSON.stringify({ id: 'classic', v: 1 }));
+  assert.deepStrictEqual(Object.keys(o).sort(), ['abil', 'acid', 'creep', 'diffKey', 'endHold', 'ents', 'extra', 'field', 'fog', 'fs', 'log', 'map', 'nid', 'nodes', 'projs', 'rs', 'seed', 'sides', 'stats', 't', 'v', 'warps']); // v2.50: seed, rs, fs (the random streams); v2.51: stats
 });
 
 test('old or broken saves never load into a bad state', () => {

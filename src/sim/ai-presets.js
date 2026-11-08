@@ -245,7 +245,7 @@ function aiStrikeTarget(g, s, kind, lvl, seen, ctx, k = 'strike') {
   const pts = ground.map(e => ({ u: e.u, v: e.v })).concat(known.map(gh => ({ u: gh.u, v: gh.v, b: gh })));
   let best = null, bs = [Infinity, 340, 300][lvl]; // Normal waits for a fatter target; Hard reacts at once to a good one
   for (const p of pts) {
-    if (!f.exp[cellOf(p.u)]) continue;
+    if (!f.exp[cellOf(p.u, p.v)]) continue;
     let sc = 0, def = false;
     for (const e of ground) {
       const d = beam ? inStrip(p, e.u, e.v, 0) : Math.hypot(e.u - p.u, e.v - p.v);
@@ -342,7 +342,7 @@ function aiMassWarpTarget(g, s, ctx) {
 const AI_UPG = [['barracks', 2], ['reactor', 2], ['refinery', 2], ['factory', 2], ['habitat', 2], ['sigA', 2], ['sigB', 2], ['reactor', 3], ['hq', 2], ['techlab', 2],
   ['factory', 3], ['barracks', 3], ['turret', 2], ['habitat', 3], ['refinery', 3], ['techlab', 3], ['sigA', 3], ['sigB', 3], ['hq', 3], ['turret', 3]]; // sig: v2.32
 // Field nodes: neutral income points along the lane. Ground troops inside the zone capture them.
-const NODE_U = [600, L / 2, L - 600], NODE_R = MAP.nodes[0].r, // v2.59: NODE_U starts at the v2.42 spots (setMech7c(false)); setMech7c(true) puts the map's nodes there
+const NODE_U = MAP.id === 'classic' ? [600, L / 2, L - 600] : MAP.nodes.map(n => n.at[0]), NODE_R = MAP.nodes[0].r, // v2.59: NODE_U starts at the v2.42 spots (setMech7c(false)); setMech7c(true) puts the map's nodes there
    NODE_INC = { c: 3, e: 1 }, REGEN_DELAY = 8;
 setBalance7b(true); // v2.42 (audit phase 7b): the strategy balance layer, once NODE_INC exists
 setBalance7c(true); // v2.43 (audit phase 7c): the retune layer on top

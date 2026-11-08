@@ -50,8 +50,8 @@ function abilityCheck(g, s, k, u, v) {
   if (side.res.c < A.cost.c) return { ok: false, msg: `Need ${Math.ceil(A.cost.c - side.res.c)} more credits` };
   if (side.res.e < A.cost.e) return { ok: false, msg: `Need ${Math.ceil(A.cost.e - side.res.e)} more energy` };
   if (u === undefined) return { ok: true };
-  if (u < 0 || u > L || Math.abs(v) > 220) return { ok: false, msg: 'Target the battlefield' };
-  const f = g.fog[s], c = cellOf(u);
+  if (u < 0 || u > L || Math.abs(v) > (MAP_2D ? MAP.size.h / 2 : 220)) return { ok: false, msg: 'Target the battlefield' };
+  const f = g.fog[s], c = cellOf(u, v);
   const explored = k === 'strike' || k === 'corrosive' || k === 'beam'; // the area attacks need explored ground; the rest, ground in view
   if (explored ? !f.exp[c] : !f.vis[c]) return { ok: false, msg: explored ? `${A.name} needs explored ground` : `${A.name} needs ground you can see` };
   if (k === 'brood') { // a pod lands only on open lane ground, clear of the enemies this side can see (v2.20)

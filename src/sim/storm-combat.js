@@ -301,7 +301,7 @@ function salvage(g, e, w) {
     g.fx.push({ k: 'scrap', side: s, n: add, e: en, x: w.x, y: w.y, t: 0, life: 1.3 });
   }
 }
-const scrapShown = (g, f, s) => f.k === 'scrap' && f.side === s && g.fog[s].vis[cellOf(f.x)] === 1; // the pop-up's only viewer
+const scrapShown = (g, f, s) => f.k === 'scrap' && f.side === s && g.fog[s].vis[cellOf(f.x, f.v)] === 1; // the pop-up's only viewer
 function addPart(g, p) { p.max = p.life; if (g.parts.length < 520) g.parts.push(p); }
 function fxBoom(g, x, y, size) {
   g.fx.push({ k: 'boom', x, y, r: size, t: 0, life: 0.3 + size / 110 });

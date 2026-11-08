@@ -1,0 +1,194 @@
+[
+ {
+  "size": "858x396",
+  "phase": "early",
+  "fog": "1d",
+  "units": 0,
+  "frame": {
+   "mean": 74.895,
+   "p95": 100
+  },
+  "fps": 13.7,
+  "vision1d": {
+   "mean": 0.047,
+   "p95": 0.4
+  },
+  "vision2d": {
+   "mean": 0.097,
+   "p95": 0.7
+  },
+  "fogDraw": {
+   "mean": 0.029,
+   "p95": 0.1
+  },
+  "errors": 0
+ },
+ {
+  "size": "858x396",
+  "phase": "early",
+  "fog": "2d",
+  "units": 0,
+  "frame": {
+   "mean": 53.867,
+   "p95": 66.7
+  },
+  "fps": 18.8,
+  "vision1d": {
+   "mean": 0.054,
+   "p95": 0.4
+  },
+  "vision2d": {
+   "mean": 0.057,
+   "p95": 0.4
+  },
+  "fogDraw": {
+   "mean": 0.205,
+   "p95": 0.9
+  },
+  "errors": 0
+ },
+ {
+  "size": "858x396",
+  "phase": "battle",
+  "fog": "1d",
+  "units": 35,
+  "frame": {
+   "mean": 115.717,
+   "p95": 150.1
+  },
+  "fps": 9,
+  "vision1d": {
+   "mean": 0.16,
+   "p95": 0.9
+  },
+  "vision2d": {
+   "mean": 0.319,
+   "p95": 1
+  },
+  "fogDraw": {
+   "mean": 0.038,
+   "p95": 0.3
+  },
+  "errors": 0
+ },
+ {
+  "size": "858x396",
+  "phase": "battle",
+  "fog": "2d",
+  "units": 36,
+  "frame": {
+   "mean": 94.527,
+   "p95": 116.7
+  },
+  "fps": 10.8,
+  "vision1d": {
+   "mean": 0.17,
+   "p95": 0.9
+  },
+  "vision2d": {
+   "mean": 0.298,
+   "p95": 1
+  },
+  "fogDraw": {
+   "mean": 0.226,
+   "p95": 0.9
+  },
+  "errors": 0
+ },
+ {
+  "size": "667x375",
+  "phase": "early",
+  "fog": "1d",
+  "units": 0,
+  "frame": {
+   "mean": 53.068,
+   "p95": 66.7
+  },
+  "fps": 19.2,
+  "vision1d": {
+   "mean": 0.049,
+   "p95": 0.2
+  },
+  "vision2d": {
+   "mean": 0.076,
+   "p95": 0.6
+  },
+  "fogDraw": {
+   "mean": 0.033,
+   "p95": 0.1
+  },
+  "errors": 0
+ },
+ {
+  "size": "667x375",
+  "phase": "early",
+  "fog": "2d",
+  "units": 0,
+  "frame": {
+   "mean": 41.723,
+   "p95": 66.6
+  },
+  "fps": 24.3,
+  "vision1d": {
+   "mean": 0.059,
+   "p95": 0.5
+  },
+  "vision2d": {
+   "mean": 0.095,
+   "p95": 0.7
+  },
+  "fogDraw": {
+   "mean": 0.174,
+   "p95": 0.9
+  },
+  "errors": 0
+ },
+ {
+  "size": "667x375",
+  "phase": "battle",
+  "fog": "1d",
+  "units": 35,
+  "frame": {
+   "mean": 95.498,
+   "p95": 116.7
+  },
+  "fps": 10.7,
+  "vision1d": {
+   "mean": 0.194,
+   "p95": 1
+  },
+  "vision2d": {
+   "mean": 0.349,
+   "p95": 1.2
+  },
+  "fogDraw": {
+   "mean": 0.051,
+   "p95": 0.2
+  },
+  "errors": 0
+ },
+ {
+  "size": "667x375",
+  "phase": "battle",
+  "fog": "2d",
+  "units": 34,
+  "frame": {
+   "mean": 72.688,
+   "p95": 100
+  },
+  "fps": 14,
+  "vision1d": {
+   "mean": 0.194,
+   "p95": 1
+  },
+  "vision2d": {
+   "mean": 0.317,
+   "p95": 1.1
+  },
+  "fogDraw": {
+   "mean": 0.194,
+   "p95": 0.8
+  },
+  "errors": 0
+ }
+]

@@ -95,7 +95,7 @@ function moveBeacon(g, s, dt) {
     bk.col = g.t + BEACON.down; bk.bl = []; bk.bp = {}; bk.au = undefined;
     const w = P(p.u, p.v); g.fx.push({ k: 'shatter', side: s, u: p.u, v: p.v, r: p.r, x: w.x, y: w.y, t: 0, life: 1.2 });
     g.field[s] = g.field[s].filter(q => q !== p); // collapsed: gone at once
-    ev(g, { type: 'beaconDown', side: s, seen: !!g.fog && cellsLit(g.fog[1 - s].vis, p.u, p.r) });
+    ev(g, { type: 'beaconDown', side: s, seen: !!g.fog && cellsLit(g.fog[1 - s].vis, p.u, p.r, p.v) });
     if (g.log) g.log.tot[s].bkDown = (g.log.tot[s].bkDown || 0) + 1;
   }
 }

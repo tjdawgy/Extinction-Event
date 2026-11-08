@@ -7,7 +7,7 @@ const INSTRUMENT = require('./instrument');
 
 function runMatch(spec) {
   const { seed, sides, diff = 'hard', maxT = 1200, sample = 30 } = spec;
-  const S = loadSim(seed, { file: spec.file, instrument: (spec.diag ? INSTRUMENT : '') + (spec.code ? `\n;${spec.code}` : '') || undefined }); // code: an experiment's changes to SIM values (audit only)
+  const S = loadSim(seed, { file: spec.file, map: spec.map, instrument: (spec.diag ? INSTRUMENT : '') + (spec.code ? `\n;${spec.code}` : '') || undefined }); // code: an experiment's changes to SIM values (audit only)
   const per = p => (p && p !== 'random' ? p : undefined);
   if (sides[1].bot && !sides[0].bot) throw new Error('a scripted bot on side 1 needs one on side 0 (bot against bot)');
   const { mulberry } = require('./load');

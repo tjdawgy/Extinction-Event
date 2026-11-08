@@ -2,6 +2,8 @@
 
 Approved after Phase 0 (v2.57), with two additions: display fields for a map-select screen, and a performance check
 of the 2D fog grid. Status: Classic is in this format since v2.59 (src/sim/maps.js, validated by tests/maps.test.js).
+The engine reads multi-lane maps since v2.63 (2D fog, lanes, lane orders, the map in the save), proven on a test-only
+map (tests/maps/twolane-test.js); no multi-lane map is in the game yet.
 
 ## Principles
 
@@ -52,6 +54,7 @@ MAPS.twolane = {
     { id: 'g1', type: 'relic',      at: [x, y], guards: [{ unit: 'titan', n: 1 }], reward: { c: 800 } },
   ],
   conditions: ['heavyFog', 'richCenter', 'scarce', 'meteors'],  // the battlefield conditions this map allows
+  fog: 'grid', fogCell: 20, depthW: 1,     // v2.63: 2D fog grid and true distance (Classic: 'strip', depthW 0.4)
   ai: { stage: { w: [[x, y]] }, chokes: [[x, y]] },              // optional hints for the AI
 };
 ```
@@ -63,7 +66,8 @@ MAPS.twolane = {
 | `armyCap` | The army size limit on this map (supply). |
 | `bases[]` | HQ position, facing, the 8 build pads, the signature pad, the rally point. 2 to 4 bases. |
 | `modes` | Which bases form each team, per mode. |
-| `lanes[]` | Movement corridors (a path and a width), used for movement and for the AI's lane choices. |
+| `lanes[]` | Movement corridors (a path and a width), used for movement and for the AI's lane choices. Since v2.63 a path is a polyline whose x only grows (west edge to east edge); ground units walk along their own lane (`u.lane`). |
+| `fog`, `fogCell`, `depthW` | v2.63. `'strip'`: one row of 10-wide fog cells along x, depth counted at `depthW` (Classic, 0.4). `'grid'`: a 2D grid of `fogCell`-sized cells over the whole field, sight as circles, capture and targeting on true distance (`depthW` 1). |
 | `blockers[]` | Ground that units can't cross. An open map has no lanes and builds a coarse navigation grid from these at load. |
 | `nodes[]` | Node placement; `type` must be in `NODE_TYPES`; a forward pad lists its own build pads. |
 

@@ -158,8 +158,8 @@ test('the minimal AI (Axiarchs): the Aggressor builds the Beacon, the Turtle the
   assert.ok(rel.ech.length < 2 && g.warps.some(w => w.side === 1 && w.echo), `spent an echo: ${rel.ech}`);
 });
 
-test('saves v30; an older save with a stray Axiarch signature building drops it and frees its pad', () => {
-  assert.strictEqual(sim.SAVE_VER, 30); assert.ok(sim.SAVE_OK.includes(29) && sim.SAVE_OK.includes(30));
+test('saves v30 or later; an older save with a stray Axiarch signature building drops it and frees its pad', () => {
+  assert.ok(sim.SAVE_VER >= 30); // v2.63: v31 assert.ok(sim.SAVE_OK.includes(29) && sim.SAVE_OK.includes(30));
   const g = quiet(); fin(g, 0, 'sigA'); fin(g, 0, 'sigB'); put(g, 0, 'bastion', 900); step(g, 5);
   const g2 = sim.deserialize(sim.serialize(g, {})); assert.ok(g2.field[0].some(p => p.k === 'beacon'), 'the bubble is saved like any field patch');
   const o = JSON.parse(sim.serialize(g, {})); o.v = 29;

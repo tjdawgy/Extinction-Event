@@ -31,7 +31,9 @@ const V229_OFF = '856b576e7c8dfa7ee14e35e1bf1c6629c1705e40513c942a3eed7070700779
 // v2.38 (audit phase 4): every replay here runs the Legacy AI preset (ai/autoAi 'legacy'), which must play exactly as
 // v2.37's AI did. The preset's own settings (persona.preset, smart, dial) are configuration, not match state, so they are
 // left out of the hash; everything the AI did is still in it.
-const stripPreset = o => { for (const sd of o.sides) if (sd.persona) { delete sd.persona.preset; delete sd.persona.smart; delete sd.persona.dial; } };
+const stripPreset = o => { for (const sd of o.sides) if (sd.persona) { delete sd.persona.preset; delete sd.persona.smart; delete sd.persona.dial; } saveV30(o); };
+// v2.63: save v31 adds the map's id and version (o.map), which is a label, not play: the pinned fingerprints were taken on v30
+const saveV30 = o => { delete o.map; if (o.v === 31) o.v = 30; };
 function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 
 function fingerprint(salvageOff, aimOff, redesign, balance) {

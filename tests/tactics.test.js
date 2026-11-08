@@ -18,7 +18,7 @@ test('the v239 preset plays exactly as v2.39\'s Default did (the baseline the ha
     const s = loadSim({ random: mulberry(2024) }); s.RNG.legacy = true; s.AUTO_STANCE.retreat = false; /* v2.50/v2.55: a pinned replay draws from Math.random and starts side 0 on Hold, as recorded */ s.setBalance7b(false); s.setMech7c(false); // v2.43: the v2.42 mechanics. v2.42: v2.39's Default on v2.41's numbers
     const g = s.newGame('hard', { autoPlayer: true, autoDiff: 'hard', ai: 'v239', autoAi: 'v239', persona: p1, autoPersona: p0, factions: [f0, f1] });
     for (let i = 0; i < 30 * 600 && !g.over; i++) s.update(g, 1 / 30); // to the end of the match or 10 minutes
-    const o = JSON.parse(s.serialize(g, {})); delete o.log; delete o.stats; for (const sd of o.sides) if (sd.persona) { delete sd.persona.preset; delete sd.persona.smart; delete sd.persona.dial; }
+    const o = JSON.parse(s.serialize(g, {})); delete o.log; delete o.stats; delete o.map; o.v = 30; /* v2.63: save v31's map label is not play */ for (const sd of o.sides) if (sd.persona) { delete sd.persona.preset; delete sd.persona.smart; delete sd.persona.dial; }
     got.push(crypto.createHash('sha256').update(JSON.stringify(o) + JSON.stringify({ parts: g.parts, fx: g.fx, over: g.over, winner: g.winner })).digest('hex'));
   }
   assert.deepStrictEqual(got, V239_DEFAULT);

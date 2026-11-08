@@ -1,11 +1,13 @@
 /* ---------- Fog of war ----------
    Each side sees full-depth strips of the lane around its own units, buildings and held field nodes.
    Depth counts for little in range (DV_W), so strips match how far things can actually shoot. */
-const FOG_CELL = 10, FOG_N = Math.ceil(L / FOG_CELL) + 1;
+const FOG_CELL = MAP_2D ? MAP.fogCell || 20 : 10, FOG_NX = Math.ceil(L / FOG_CELL) + 1; // v2.63: a grid map has rows too (MAP_2D)
+const FOG_Y0 = -MAP.size.h / 2, FOG_NY = MAP_2D ? Math.ceil(MAP.size.h / FOG_CELL) + 1 : 1, FOG_N = FOG_NX * FOG_NY;
 const SIGHT = { rifle: 170, heavy: 180, sniper: 220, tank: 210, artillery: 200, titan: 240, flame: 190, hydra: 260, aircraft: 260, interceptor: 280, leviathan: 220, medic: 220, drone: 420, skitterling: 170, mite: 150, bulwark: 190, razorwing: 250, leaper: 180, ravager: 190, spitter: 190, bilecaster: 230, bilelobber: 200, ruinmaw: 240, thornback: 190, dreadthorn: 220, needlewing: 220, cloudwing: 230, broodtyrant: 230, worldrender: 220, shardling: 170, bastion: 200, wraithwing: 250, riftstalker: 180, parallax: 190, lancer: 200, marksman: 230, riftmortar: 200, worldbreaker: 240, gravemantle: 200, eventide: 220, prismwing: 220, shardstorm: 240, voidcarrier: 230, sovereign: 220 };
 const B_SIGHT = { hq: 520, turret: 340 }, B_SIGHT_DEF = 200, NODE_SIGHT = 220; // HQ 520 ≥ its T3 range (470)
 const INTEL_TTL = 45, THREAT_MEMORY = 5, SPOT_GAP = 10;
-const cellOf = u => clamp(Math.floor(u / FOG_CELL), 0, FOG_N - 1);
+const fogRow = v => clamp(Math.floor((v - FOG_Y0) / FOG_CELL), 0, FOG_NY - 1);
+const cellOf = MAP_2D ? (u, v = 0) => fogRow(v) * FOG_NX + clamp(Math.floor(u / FOG_CELL), 0, FOG_NX - 1) : u => clamp(Math.floor(u / FOG_CELL), 0, FOG_N - 1); // v: depth (grid maps only)
 const sightOf = e => e.kind === 'u' ? SIGHT[e.type] : (B_SIGHT[e.type] || B_SIGHT_DEF);
 const ghostOf = b => ({ id: b.id, type: b.type, fac: b.fac, side: b.side, slot: b.slot, tier: b.tier, path: b.path, u: b.u, v: b.v, half: b.half }); // path: the last-seen upgrade-tree path; fac: its faction (v2.17)
 function newFog(g, s) {
@@ -14,22 +16,29 @@ function newFog(g, s) {
   // Start positions are known: the enemy HQ begins as a ghost on explored ground, but not what it looks like (v2.17: its
   // faction stays hidden until seen). seen: ground actually in view at some point; explored-only ground shows no pads.
   f.ghosts[ehq.id] = Object.assign(ghostOf(ehq), { fac: null });
-  for (let i = cellOf(ehq.u - ehq.half - 40); i <= cellOf(ehq.u + ehq.half + 40); i++) f.exp[i] = 1;
+  if (MAP_2D) { for (let r = fogRow(ehq.v - ehq.half - 40); r <= fogRow(ehq.v + ehq.half + 40); r++) for (let i = cellOf(ehq.u - ehq.half - 40, FOG_Y0 + r * FOG_CELL); i <= cellOf(ehq.u + ehq.half + 40, FOG_Y0 + r * FOG_CELL); i++) f.exp[i] = 1; }
+  else for (let i = cellOf(ehq.u - ehq.half - 40); i <= cellOf(ehq.u + ehq.half + 40); i++) f.exp[i] = 1;
   return f;
 }
-function cellsLit(vis, u, half) { for (let i = cellOf(u - half); i <= cellOf(u + half); i++) if (vis[i]) return true; return false; }
+function cellsLit(vis, u, half, v = 0, vh = half) { // v, vh: depth and its half-height, on a grid map (v2.63)
+  if (!MAP_2D) { for (let i = cellOf(u - half); i <= cellOf(u + half); i++) if (vis[i]) return true; return false; }
+  for (let r = fogRow(v - vh); r <= fogRow(v + vh); r++) { const y = FOG_Y0 + r * FOG_CELL; for (let i = cellOf(u - half, y); i <= cellOf(u + half, y); i++) if (vis[i]) return true; }
+  return false;
+}
 // The vision rule, kept apart from weapon range: can side s see entity e right now?
 function visibleTo(g, s, e) {
   if (e.side === s) return true;
-  return cellsLit(g.fog[s].vis, e.u, e.kind === 'b' ? e.half : 0);
+  return cellsLit(g.fog[s].vis, e.u, e.kind === 'b' ? e.half : 0, e.v);
 }
 function updateVision(g) {
   for (let s = 0; s < 2; s++) {
     const f = g.fog[s], vis = f.vis, exp = f.exp;
     vis.fill(0);
-    const reveal = (u, r) => { for (let i = cellOf(u - r), b = cellOf(u + r); i <= b; i++) vis[i] = 1; };
-    for (const e of g.ents) if (e.side === s && e.hp > 0) reveal(e.u, sightOf(e));
-    for (const n of g.nodes) if (n.owner === s) reveal(n.u, NODE_SIGHT);
+    const reveal = MAP_2D ? (u, r, v) => { // v2.63: a circle of sight, a span per row
+      for (let row = fogRow(v - r), r1 = fogRow(v + r); row <= r1; row++) { const y = FOG_Y0 + row * FOG_CELL + FOG_CELL / 2, dy = y - v; if (dy > r || dy < -r) continue; const dx = Math.sqrt(r * r - dy * dy); vis.fill(1, cellOf(u - dx, y), cellOf(u + dx, y) + 1); }
+    } : (u, r) => { for (let i = cellOf(u - r), b = cellOf(u + r); i <= b; i++) vis[i] = 1; };
+    for (const e of g.ents) if (e.side === s && e.hp > 0) reveal(e.u, sightOf(e), e.v);
+    for (const n of g.nodes) if (n.owner === s) reveal(n.u, NODE_SIGHT, n.v);
     for (let i = 0; i < FOG_N; i++) if (vis[i]) exp[i] = f.seen[i] = 1;
     // Remember what is in view; forget remembered things whose spot is in view but empty
     const seenB = new Set(), seenU = new Set();
@@ -38,17 +47,17 @@ function updateVision(g) {
       if (e.kind === 'b') {
         seenB.add(e.id); f.ghosts[e.id] = ghostOf(e);
         if (e.type === 'hq') f.lastHQ = { hp: e.hp, maxHp: e.maxHp, shielded: !!e.shielded, tier: e.tier };
-      } else { seenU.add(e.id); f.intel[e.id] = { type: e.type, u: e.u, t: g.t }; }
+      } else { seenU.add(e.id); f.intel[e.id] = MAP_2D ? { type: e.type, u: e.u, v: e.v, t: g.t } : { type: e.type, u: e.u, t: g.t }; } // v: grid maps (v2.63)
     }
-    for (const id in f.ghosts) { const gh = f.ghosts[id]; if (!seenB.has(gh.id) && cellsLit(vis, gh.u, gh.half)) delete f.ghosts[id]; }
+    for (const id in f.ghosts) { const gh = f.ghosts[id]; if (!seenB.has(gh.id) && cellsLit(vis, gh.u, gh.half, gh.v)) delete f.ghosts[id]; }
     // Enemy creep: remembered as last seen; any part of a patch in view updates it, a patch gone from a spot in view is forgotten
     const ec = g.creep[1 - s], live = new Set();
-    for (const p of ec) { live.add(p.k); if (p.r > 0 && cellsLit(vis, p.u, p.r)) f.creep[p.k] = { u: p.u, v: p.v, r: p.r }; }
-    for (const k in f.creep) { const m = f.creep[k]; if (!live.has(k) && cellsLit(vis, m.u, m.r)) delete f.creep[k]; }
+    for (const p of ec) { live.add(p.k); if (p.r > 0 && cellsLit(vis, p.u, p.r, p.v)) f.creep[p.k] = { u: p.u, v: p.v, r: p.r }; }
+    for (const k in f.creep) { const m = f.creep[k]; if (!live.has(k) && cellsLit(vis, m.u, m.r, m.v)) delete f.creep[k]; }
     const ef = g.field[1 - s], liveF = new Set(); // the enemy's power field (v2.26): remembered the same way
-    for (const p of ef) { liveF.add(p.k); if (p.r > 0 && cellsLit(vis, p.u, p.r)) f.field[p.k] = { u: p.u, v: p.v, r: p.r }; }
-    for (const k in f.field) { const m = f.field[k]; if (!liveF.has(k) && cellsLit(vis, m.u, m.r)) delete f.field[k]; }
-    for (const id in f.intel) { const m = f.intel[id]; if (g.t - m.t > INTEL_TTL || (!seenU.has(+id) && vis[cellOf(m.u)])) delete f.intel[id]; }
+    for (const p of ef) { liveF.add(p.k); if (p.r > 0 && cellsLit(vis, p.u, p.r, p.v)) f.field[p.k] = { u: p.u, v: p.v, r: p.r }; }
+    for (const k in f.field) { const m = f.field[k]; if (!liveF.has(k) && cellsLit(vis, m.u, m.r, m.v)) delete f.field[k]; }
+    for (const id in f.intel) { const m = f.intel[id]; if (g.t - m.t > INTEL_TTL || (!seenU.has(+id) && vis[cellOf(m.u, m.v)])) delete f.intel[id]; }
     if (!f.seenUnits && seenU.size && g.t - f.lastSpot >= SPOT_GAP) { f.lastSpot = g.t; ev(g, { type: 'spotted', side: s }); }
     f.seenUnits = seenU.size;
   }
@@ -121,7 +130,7 @@ function updateNodes(g, dt) {
   for (const n of g.nodes) {
     let c0 = 0, c1 = 0;
     let w0 = 0, w1 = 0; // capture weight: a Drilled Rifleman counts 1.5
-    for (const e of g.ents) if (e.kind === 'u' && e.hp > 0 && !UDEF[e.type].air && !UDEF[e.type].noCap && Math.abs(e.u - n.u) <= NODE_R) { const w = e.vet ? DRILL.capture : 1; if (e.side === 0) { c0++; w0 += w; } else { c1++; w1 += w; } }
+    for (const e of g.ents) if (e.kind === 'u' && e.hp > 0 && !UDEF[e.type].air && !UDEF[e.type].noCap && (MAP_2D ? Math.hypot(e.u - n.u, e.v - n.v) : Math.abs(e.u - n.u)) <= NODE_R) { const w = e.vet ? DRILL.capture : 1; if (e.side === 0) { c0++; w0 += w; } else { c1++; w1 += w; } }
     n.c = [c0, c1];
     if (c0 && !c1) n.prog = Math.min(100, n.prog + 8 * Math.sqrt(w0) * dt);
     else if (c1 && !c0) n.prog = Math.max(-100, n.prog - 8 * Math.sqrt(w1) * dt);
@@ -324,7 +333,7 @@ function ixScan(g, src, def, foes, R, AR, minR) {
     if (du - bh > maxR) return; // effDist ≥ |du| − half
     const dv = (e.v - sv) * DV_W, lim = maxR + bh + 1;
     if (du * du + dv * dv > lim * lim) return; // safely beyond reach (the exact distance is taken below)
-    if (e.side !== side) { let lit = false; for (let c = cellOf(e.u - bh), c1 = cellOf(e.u + bh); c <= c1; c++) if (vis[c]) { lit = true; break; } if (!lit) return; } // visibleTo
+    if (e.side !== side) { if (MAP_2D) { if (!cellsLit(vis, e.u, bh, e.v)) return; } else { let lit = false; for (let c = cellOf(e.u - bh), c1 = cellOf(e.u + bh); c <= c1; c++) if (vis[c]) { lit = true; break; } if (!lit) return; } } // visibleTo
     const ud = e.kind === 'u' ? UDEF[e.type] : null, air = !!(ud && ud.air);
     if (air ? !def.hitsAir : def.hitsGround === false) return;
     const dist = effDist(src, e);
