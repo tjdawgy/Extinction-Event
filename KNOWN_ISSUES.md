@@ -2,6 +2,21 @@
 
 Issues found during testing that are deliberately deferred. Each lists the step that should address it.
 
+## Gentler Easy (v2.64, Phase 1)
+- **Decision after v2.63:** Easy should be gentle again for new players; keep the bug fixes so it plays properly; accept Normal beating Easy 85–90%; Easy vs Easy must still reach a result (draws under 25%, no-fight under 5%). Hard beating Normal 82.8% is accepted (Hard is not weakened).
+- **Easy's settings** (`LADDER.easy` in src/sim/core.js; v2.61 → v2.64): decisions every **2.0 s** (1.3; DIFF's old Easy 2.5), **70%** of its army limit (90%; old 60%), attack edge **1.6× falling to 0.8×** from 13:00 to the storm warning (1.4× → 0.9×), the centre node at 1.3× (1.15×), from 6:00 and never into a known stronger army (as before), no raids, top tier T2. The v2.60/v2.61 fixes stay (the scout runs, the capped estimate, the supply rule with T2 Habitats).
+- **Ladder** (audit/sim/ladder.js, 200 matches each, mixed factions, seeds 8000–8199; audit/logs-p1/ladder-v264.md and .json; the Hard vs Normal and Normal vs Normal rows don't involve Easy, so they are v2.61's, unchanged):
+
+  | Matchup (A vs B) | A–B–draw | A share | median length | decided before 20:00 | draws | no fight |
+  |---|---|---|---|---|---|---|
+  | hard vs normal (v2.61) | 152–21–27 | 82.8% | 8:00 | 83.0% | 13.5% | 0.0% |
+  | normal vs easy | 172–12–16 | 90.0% | 12:28 | 89.0% | 8.0% | 0.0% |
+  | normal vs normal (v2.61) | 90–66–44 | 56.0% | 14:43 | 74.5% | 22.0% | 0.0% |
+  | easy vs easy | 87–78–35 | 52.3% | 19:46 | 54.5% | 17.5% | 0.0% |
+
+- **Against v2.60's Easy** (40 mixed-faction matches, v2.64 Easy vs v2.60 Easy, the `default260` preset): 29–4–7, a 81.3% share for the new Easy (v2.61 Easy: 36–0–4). Gentler than v2.61, but still stronger than v2.60's Easy, which never scouted, misread the enemy army and stood at 28 supply all match (the bugs the fixes removed).
+- **Screening** (100 matches each; the first 100 of the 200 above are the same matches): Easy deciding every 1.8 s with 75% of its army and a 1.6× → 0.9× edge gave Normal 84.5% and Easy-vs-Easy 14% draws (Normal's share just under the band); the chosen settings gave 89.5% and 21%.
+
 ## Multi-lane engine (v2.63, Phase 1; no new playable map)
 - **2D fog performance check first** (docs/MAP_FORMAT.md; audit/sim/fog-bench.js, headless Chromium, CPU throttled 4×, 6 s per run; today's fog = one row of 10-wide cells along the lane drawn as a gradient; 2D grid = 20×20 cells over the whole field, sight circles filled row by row, drawn as a one-pixel-per-cell alpha image redrawn only when vision changes; raw numbers in audit/logs-p1/fog-v263.json):
 

@@ -56,6 +56,8 @@ Map data format: [docs/MAP_FORMAT.md](docs/MAP_FORMAT.md) (approved after Phase 
   *Done in v2.60: the cause was no scouting, a runaway enemy-army estimate, and armies stuck at 34 supply with the bank rebuilding every loss. Hard vs Hard now: median 10:30–15:16, 68–85% decided before 20:00, 0% without a fight, 20.5% draws overall (the Axiarch mirror 27.5%). KNOWN_ISSUES.md "AI attack decisions".*
 - [x] **Difficulty ladder** (on Classic). The v2.60 fixes on every difficulty, and Easy and Normal made easier through deliberate settings (slower decisions, smaller armies, less aggression, fewer or no raids, a bigger edge before attacking). Targets (AI vs AI, 200 matches each, mixed factions): Hard beats Normal 70–80%, Normal beats Easy 70–80%, Normal vs Normal and Easy vs Easy draws under 25% and no-fight under 5%.
   *Done in v2.61: Normal beats Easy 74.5%, draws 22% (Normal mirror) and 6.5% (Easy mirror), no fight 0%; Hard beats Normal 82.8%, above the band (KNOWN_ISSUES.md "Difficulty ladder").*
+- [x] **Gentler Easy.** Easy gentle again for new players (slower decisions, a smaller army, a bigger edge before attacking), keeping the fixes; Normal beats Easy 85–90%; Easy vs Easy still reaches a result (draws under 25%, no-fight under 5%).
+  *Done in v2.64: Normal beats Easy 90.0%, Easy vs Easy 17.5% draws, 0% no fight (KNOWN_ISSUES.md "Gentler Easy").*
 - [ ] **Map system.**
   - Each map defines its own paths, pads, nodes, army size limit and number of bases (format: docs/MAP_FORMAT.md).
   - Support up to four bases from day one, for future 2v2 and free-for-all.

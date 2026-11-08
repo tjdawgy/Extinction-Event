@@ -570,7 +570,7 @@ function validateMap(m) {
   return P;
 }
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.63'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.64'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -626,7 +626,7 @@ const DIFF = {
    rule (ATTACK.press, none = off; power: never into a known stronger army); raid: ATTACK.raid's settings (true = as they are, false = no raids); fix and dials: added
    to the persona when it is rolled for that difficulty (rollPersona). */
 const LADDER = {
-  easy: { delay: 1.3, armyCap: 0.9, refineries: 2, smart: 0.35, press: { edge: 1.4, edgeLate: 0.9, field: 1.15, from: 360, power: true }, raid: false },
+  easy: { delay: 2.0, armyCap: 0.7, refineries: 2, smart: 0.35, press: { edge: 1.6, edgeLate: 0.8, late0: 780, field: 1.3, from: 360, power: true }, raid: false }, // v2.64: gentler (v2.61: delay 1.3, armyCap 0.9, edge 1.4 → 0.9, field 1.15)
   normal: { nodes: true, dials: { delay: 0.8 }, press: { edge: 1.2, edgeLate: 0.55, late0: 720, field: 0.9, from: 270 }, raid: { every: 110, n: 3 }, fix: { breakout: true, shield: true, power: true, fill: true, counter: true, nowave: true } },
   hard: { press: {}, raid: true },
 };
