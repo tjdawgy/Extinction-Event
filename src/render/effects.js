@@ -940,7 +940,8 @@ function render(c, g, time, sel, selPad) {
   for (const gh of ghosts) list.push({ kind: 'ghost', u: gh.u, v: gh.v, gh });
   for (const n of g.nodes) list.push({ kind: 'node', u: n.u, v: n.v - 1, n });
   { const RL = g.sides[0].rally; // v2.62: both of the player's rally flags (the active one solid); before the player uses them, the one rally flag
-    if (RL) for (const k of ['def', 'fwd']) list.push({ kind: 'flag', u: RL[k] + 30, v: -20, fk: k, on: RL.at === k });
+    if (RL && MAP_LANED) for (const f of flagSpots(g)) list.push({ kind: 'flag', u: f.u, v: f.v, fk: f.k, on: f.lane != null ? sqFlag(RL, f.lane) === 'fwd' : RL.at === 'def' || Object.values(RL.sq || {}).includes('def') }); // v2.66: a Forward flag per lane
+    else if (RL) for (const k of ['def', 'fwd']) list.push({ kind: 'flag', u: RL[k] + 30, v: -20, fk: k, on: RL.at === k });
     else if (g.sides[0].stance !== 'attack') list.push({ kind: 'flag', u: rallyU(0, g) + 30, v: -20, fk: 'def', on: true }); }
   list.sort((a, b) => (a.v - b.v) || (a.u - b.u));
   for (const e of list) {

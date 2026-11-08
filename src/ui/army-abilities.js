@@ -18,8 +18,21 @@ function buildArmy() {
     el.innerHTML = '<canvas class="ic"></canvas><span class="nm"></span><span class="od"></span><span class="cnt"></span>';
     el.querySelector('.nm').textContent = it.name;
     drawIcon(el.querySelector('.ic'), 'u', it.icon);
-    el.addEventListener('click', () => onChip(it.key));
+    el.addEventListener('click', () => { if (sqLP.fired === el) { sqLP.fired = null; return; } onChip(it.key); });
+    if (MAP_LANED && !it.grp) holdFor(el, () => sqMenu(el, MAP.lanes.map((l, k) => [`Send all ${PLURAL[it.icon]} to ${laneName(k)}`, () => sqDo(setLane(game, 0, 'type', it.icon, k))]))); // v2.66
     box.appendChild(el);
+  }
+  // v2.66 (Split Army, docs/SPLIT_ARMY.md): on a lane map, the squad column: All, then one chip per lane (its squad)
+  let sq = null;
+  if (MAP_LANED) {
+    sq = document.createElement('div'); sq.className = 'asq'; sq.id = 'asq';
+    sq.innerHTML = `<button data-q="all" class="all"><b>All</b><i></i></button>` + MAP.lanes.map((l, k) => `<button data-q="${k}"><b>${laneName(k)[0]}</b><i></i></button>`).join('');
+    for (const b of sq.children) {
+      const q = b.dataset.q === 'all' ? null : +b.dataset.q;
+      b.addEventListener('click', () => { if (sqLP.fired === b) { sqLP.fired = null; return; } onSquad(q); });
+      if (q !== null) holdFor(b, () => sqMenu(b, [[`Move ${laneName(q)} squad to ${laneName(1 - q)}`, () => sqDo(setLane(game, 0, 'lane', q, 1 - q))],
+        ...[[q, laneName(q)], [null, 'Alternate'], [1 - q, laneName(1 - q)]].map(([k, n]) => [`New units: ${n}`, () => sqDo(setLaneNew(game, 0, k))])]));
+    }
   }
   for (const o of ['hold', 'attack', 'retreat', 'move']) {
     const b = document.createElement('button'); b.dataset.o = o; b.textContent = ORDER_NAME[o];
@@ -32,7 +45,7 @@ function buildArmy() {
   rly.querySelector('#bRally').addEventListener('click', e => onRally(e.currentTarget));
   rly.querySelector('#bDamaged').addEventListener('click', e => onDamaged(e.currentTarget));
   for (const b of rly.children) b.addEventListener('animationend', () => b.classList.remove('shake'));
-  wrap.append(box, cmd, rly);
+  if (sq) wrap.append(box, sq, cmd, rly); else wrap.append(box, cmd, rly);
   armySig = Object.keys(c).sort().join(',');
   if (game) refreshArmy();
 }
@@ -50,22 +63,55 @@ function refreshArmy() {
     od.classList.toggle('set', !!o);
   }
   refreshRally();
-  const cur = s.sel ? (s.sel[0] === 'g' ? O.groups[s.sel.slice(2)] : unitOrder(s, s.sel.slice(2))) : null;
-  for (const b of $('acmd').children) b.classList.toggle('on', b.dataset.o === 'move' ? !!rg : s.sel ? !!cur && cur.o === b.dataset.o : !hasOrders(s) && b.dataset.o === s.stance);
+  const q = MAP_LANED ? sqOf(s) : null;
+  if ($('asq')) { const n = sqCounts(); for (const b of $('asq').children) { const k = b.dataset.q === 'all' ? null : +b.dataset.q; b.classList.toggle('on', k === q && !s.sel); setHTML(b.querySelector('i'), String(k === null ? n.all : n[k])); } } // v2.66
+  const cur = s.sel ? (s.sel[0] === 'g' ? O.groups[s.sel.slice(2)] : unitOrder(s, s.sel.slice(2))) : q !== null ? (O.lanes && O.lanes[q]) || null : null;
+  for (const b of $('acmd').children) b.classList.toggle('on', b.dataset.o === 'move' ? !!rg : s.sel || q !== null ? !!cur && cur.o === b.dataset.o : !hasOrders(s) && b.dataset.o === s.stance);
 }
 // v2.62: the army controls. The Rally button shows the active flag; a tap makes the other flag active and sends the whole
 // army there. Send damaged home counts the units it would send. Move a flag: tap it on the battlefield, then tap the ground.
 let fmv = null; // a flag being moved: 'def' or 'fwd'
+// v2.66: the squad (lane) the Army tab acts on, null for All; squads are lanes, so it only exists on a lane map
+const sqOf = s => MAP_LANED && s.squad != null && s.squad < MAP.lanes.length ? s.squad : null;
+const laneName = k => MAP.lanes[k].id[0].toUpperCase() + MAP.lanes[k].id.slice(1);
+function sqCounts() { const n = { all: 0 }; for (const e of game.ents) if (e.kind === 'u' && e.side === 0 && e.hp > 0 && !e.temp) { n.all++; if (e.lane != null) n[e.lane] = (n[e.lane] || 0) + 1; } for (let k = 0; k < MAP.lanes.length; k++) n[k] = n[k] || 0; return n; }
+function onSquad(q) {
+  if (!game || paused || !running || game.over) return;
+  const s = game.sides[0]; s.squad = q; s.sel = null; // a squad and a unit chip are never both selected
+  if (rg) endAim();
+  refreshArmy();
+}
+// Long-press (v2.66): a small menu above a squad chip or a unit chip on a lane map
+const sqLP = { timer: 0, fired: null };
+function holdFor(el, fn) {
+  el.addEventListener('pointerdown', () => { clearTimeout(sqLP.timer); sqLP.timer = setTimeout(() => { sqLP.fired = el; fn(); }, 450); });
+  for (const n of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(n, () => clearTimeout(sqLP.timer));
+  el.addEventListener('contextmenu', e => e.preventDefault());
+}
+function sqMenu(el, items) {
+  if (!game || game.over) return;
+  sqMenuClose();
+  const m = document.createElement('div'); m.id = 'sqm'; m.className = 'sqm';
+  for (const [txt, fn] of items) { const b = document.createElement('button'); b.textContent = txt; b.addEventListener('click', ev => { ev.stopPropagation(); sqMenuClose(); fn(); }); m.appendChild(b); }
+  document.body.appendChild(m);
+  const r = el.getBoundingClientRect(), mr = m.getBoundingClientRect();
+  m.style.left = Math.round(clamp(r.left + r.width / 2 - mr.width / 2, 6, innerWidth - mr.width - 6)) + 'px';
+  m.style.top = Math.round(Math.max(6, r.top - mr.height - 6)) + 'px';
+  setTimeout(() => document.addEventListener('pointerdown', sqMenuAway, true), 0);
+}
+function sqMenuAway(e) { const m = $('sqm'); if (m && !m.contains(e.target)) sqMenuClose(); }
+function sqMenuClose() { const m = document.getElementById('sqm'); if (m) m.remove(); document.removeEventListener('pointerdown', sqMenuAway, true); }
+function sqDo(r) { toast(r.msg, r.ok ? 'ok' : 'bad'); refreshUI(true); }
 function refreshRally() {
   const b = $('bRally'), d = $('bDamaged'); if (!b || !game) return;
-  const R = game.sides[0].rally, at = R ? R.at : 'def', txt = at === 'def' ? 'Base' : 'Forward';
+  const R = game.sides[0].rally, q = sqOf(game.sides[0]), at = R ? (q !== null ? sqFlag(R, q) : R.at) : 'def', txt = at === 'def' ? 'Base' : 'Forward';
   setHTML(b.querySelector('b'), txt); b.classList.toggle('fwd', at === 'fwd');
   const n = game.ents.filter(e => e.kind === 'u' && e.side === 0 && e.hp > 0 && !e.temp && !e.medHome && e.hp < e.maxHp * DAMAGED.thr).length;
   setHTML(d.querySelector('b'), n ? `Damaged ${n}` : 'Damaged'); d.classList.toggle('has', n > 0);
 }
 function onRally(b) {
   if (!game || paused || !running || game.over) return;
-  const R = game.sides[0].rally, r = useRally(game, 0, R && R.at === 'fwd' ? 'def' : 'fwd');
+  const R = game.sides[0].rally, q = sqOf(game.sides[0]), at = R ? (q !== null ? sqFlag(R, q) : R.at) : 'def', r = useRally(game, 0, at === 'fwd' ? 'def' : 'fwd', q); // v2.66: the selected squad's flag
   toast(r.msg, r.ok ? 'ok' : 'bad'); if (!r.ok) shake(b);
   refreshUI(true);
 }
@@ -76,9 +122,17 @@ function onDamaged(b) {
   refreshUI(true);
 }
 function flagAt(x, y) { // which of the player's flags a tap is on, if any (the pole and cloth, generously)
-  const R = rallyOf(game, 0), w = toWorld(x, y);
-  for (const k of ['fwd', 'def']) { const q = P(R[k] + 30, -20); if (Math.abs(w.x - (q.x + 8)) <= 22 && w.y >= q.y - 44 && w.y <= q.y + 10) return k; }
+  const w = toWorld(x, y);
+  for (const f of flagSpots(game)) { const q = P(f.u, f.v); if (Math.abs(w.x - (q.x + 8)) <= 22 && w.y >= q.y - 44 && w.y <= q.y + 10) return f.k; }
   return null;
+}
+// Where the player's flags are drawn (and tapped): Classic one of each at depth −20; v2.66: on a lane map the Base flag
+// in the middle and a Forward flag on each lane
+function flagSpots(g) {
+  const R = rallyOf(g, 0), out = [{ k: 'def', u: R.def + 30, v: -20 }];
+  if (MAP_LANED) MAP.lanes.forEach((_, k) => { const [u, v] = flagPt(g, 0, 'fwd', k); out.push({ k: 'fwd', u: u + 30, v: v - 20, lane: k }); });
+  else out.unshift({ k: 'fwd', u: R.fwd + 30, v: -20 });
+  return out;
 }
 function startFlagMove(k) {
   endAim(); closePanel(); hideInfo();
@@ -94,13 +148,19 @@ function flagTap(x, y) {
 }
 function onChip(k) {
   if (!game || paused || !running || game.over) return;
-  const s = game.sides[0]; s.sel = s.sel === k ? null : k;
+  const s = game.sides[0]; s.sel = s.sel === k ? null : k; if (s.sel) s.squad = null; // v2.66: a unit chip clears the squad
   if (rg) endAim();
   refreshArmy();
 }
 function onCmd(o, b) {
   if (!game || paused || !running || game.over) return;
   const s = game.sides[0];
+  const q = sqOf(s);
+  if (!s.sel && q !== null) { // v2.66: an order for the selected squad; its Regroup gathers it at its lane's Forward flag
+    const r = o === 'move' ? giveOrder(game, 0, 'lane', q, 'move', ...flagPt(game, 0, 'fwd', q)) : giveOrder(game, 0, 'lane', q, o);
+    toast(r.ok ? `${laneName(q)} squad: ${o === 'move' ? 'regrouping at its forward flag' : o === 'hold' ? 'holding position' : o === 'attack' ? 'attacking along its lane' : 'retreating to the base flag'}` : r.msg, r.ok ? (o === 'attack' ? 'warn' : 'ok') : 'bad'); if (!r.ok) shake(b);
+    refreshUI(true); return;
+  }
   if (o === 'move') { if (rg) endAim(); else startRegroup(s.sel, b); return; }
   if (!s.sel) { if (game.countdown > 0) { toast(WAIT_GO.msg, 'bad'); shake(b); return; } applyStance(o); return; }
   const r = giveOrder(game, 0, s.sel[0] === 'g' ? 'group' : 'type', s.sel.slice(2), o);

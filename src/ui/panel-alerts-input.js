@@ -208,6 +208,16 @@ let gest = null;
 const toWorld = (x, y) => ({ x: (x - V.cw / 2) / V.S + cam.x, y: (y - V.A) / V.S + YB() });
 function localXY(e) { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
 function inDiamond(wx, wy, cx, cy, h) { return Math.abs(wx - cx) / (2 * h * IX) + Math.abs(wy - cy) / (2 * h * IY) <= 1; }
+function fwdTap(x, y) { // v2.65: a free forward pad: yours to build on while you hold its post (true: the tap was on one)
+  const w = toWorld(x, y);
+  for (let k = 0; k < FWD_PADS.length; k++) {
+    const F = FWD_PADS[k], q = P(F.at[0], F.at[1]);
+    if (!inDiamond(w.x, w.y, q.x, q.y, PAD_H + 4) || fwdAt(game, FWD_SLOT + k)) continue;
+    if (game.nodes[F.node].owner === 0) { openPad(FWD_SLOT + k); return true; }
+    toast('Capture this forward pad first: stand ground troops on its post', ''); closePanel(); return true;
+  }
+  return false;
+}
 function handleTap(x, y) {
   if (!game) return;
   hideInfo();
@@ -216,6 +226,7 @@ function handleTap(x, y) {
   if (wpt) { wptTap(x, y); return; }
   if (aim) { aimTap(x, y); return; }
   if (fmv) { flagTap(x, y); return; } // v2.62: placing a rally flag
+  if (FWD_PADS.length && fwdTap(x, y)) return; // v2.66: a forward pad under the tap comes before a flag standing on it
   if (game.countdown <= 0 && !game.over) { const fk = flagAt(x, y); if (fk) { startFlagMove(fk); return; } } // v2.62: tap a flag to move it
   const w = toWorld(x, y), hits = [];
   for (const b of game.ents) {
@@ -240,12 +251,7 @@ function handleTap(x, y) {
     if (!game.sides[0].slots[k] && inDiamond(w.x, w.y, q.x, q.y, PAD_H + 4)) { openPad(k); return; }
   }
   if (sigPadOn() && SIG.on && BD(pFac(), 'sigA') && !sigOnPad(game, 0)) { const p = slotPos(0, SIG_SLOT), q = P(p.u, p.v); if (inDiamond(w.x, w.y, q.x, q.y, PAD_H + 4)) { openPad(SIG_SLOT); return; } } // v2.43
-  for (let k = 0; k < FWD_PADS.length; k++) { // v2.65: a free forward pad: yours to build on while you hold its post
-    const F = FWD_PADS[k], q = P(F.at[0], F.at[1]);
-    if (!inDiamond(w.x, w.y, q.x, q.y, PAD_H + 4) || fwdAt(game, FWD_SLOT + k)) continue;
-    if (game.nodes[F.node].owner === 0) { openPad(FWD_SLOT + k); return; }
-    toast('Capture this forward pad first: stand ground troops on its post', ''); closePanel(); return;
-  }
+  if (fwdTap(x, y)) return;
   closePanel();
 }
 cv.addEventListener('pointerdown', e => {
@@ -279,7 +285,10 @@ let mmDrag = false;
 function mmJump(e) { camTouched = true; TUT.sig.mm = true; const r = mm.getBoundingClientRect(), k = (r.width - 8) / (UMAX - UMIN); cam.x = UMIN + (e.clientX - r.left - 4) / k; cam.vx = 0; if (CAMY.max > CAMY.min) cam.y = mmV(e.clientY - r.top, r.height) * DY - (Y_TOP + Y_BOT) / 2; // v2.65: and its depth
   if (e.type === 'pointerdown' && game) { const p = alerts.pings.filter(p => game.t - p.t < ALERT.ping).sort((a, b) => Math.abs(a.u - cam.x) - Math.abs(b.u - cam.x))[0]; if (p && Math.abs(p.u - cam.x) * k <= 12) cam.x = p.u; } // v2.53: a tap on an alert's ping lands on it
   clampCam(); }
-mm.addEventListener('pointerdown', e => { mmDrag = true; try { mm.setPointerCapture(e.pointerId); } catch (_) {} mmJump(e); });
+mm.addEventListener('pointerdown', e => {
+  const r = mm.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, b = MMB.find(q => x >= q.x0 && x <= q.x1 && y >= q.y0 && y <= q.y1);
+  if (b && game && !game.over) { if (tab !== 'army') document.querySelector('.tabs [data-tab="army"]').click(); onSquad(b.k); drawMinimapNow(); return; } // v2.66: a squad badge selects that squad
+  mmDrag = true; try { mm.setPointerCapture(e.pointerId); } catch (_) {} mmJump(e); });
 mm.addEventListener('pointermove', e => { if (mmDrag) mmJump(e); });
 mm.addEventListener('pointerup', () => { mmDrag = false; });
 mm.addEventListener('pointercancel', () => { mmDrag = false; });

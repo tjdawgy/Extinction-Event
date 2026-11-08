@@ -26,7 +26,7 @@ function giveOrder(g, s, scope, key, o, u, v, quiet) { // quiet: the AI's automa
   if (!ORDER_NAME[o] || !(scope === 'all' ? o === 'move' : scope === 'lane' ? MAP_LANED && key >= 0 : scope === 'group' ? UGROUPS[key] : UDEF[key])) return { ok: false, msg: 'Unknown order' };
   if (o === 'move' && !(u >= 0 && u <= L && Math.abs(v) <= (MAP_2D ? MAP.size.h / 2 : 220))) return { ok: false, msg: 'Target the battlefield' };
   const side = g.sides[s], O = side.orders || (side.orders = newOrders()), ord = { o, n: ++O.n, t: g.t };
-  if (o === 'move') { ord.u = u; ord.v = v; ord.done = false; }
+  if (o === 'move') { if (NAV.on && navShut(u, v)) [u, v] = navOpen(u, v); ord.u = u; ord.v = v; ord.done = false; } // v2.66: never a flag inside the ridge
   if (scope === 'all') O.all = ord; else if (scope === 'lane') (O.lanes || (O.lanes = {}))[key] = ord; else if (scope === 'group') O.groups[key] = ord; else O.types[key] = ord;
   for (const e of g.ents) if (e.kind === 'u' && e.side === s && e.hp > 0 && orderCovers(scope, key, e.type, e.lane)) {
     if (o === 'hold') { e.holdU = e.u; e.holdV = e.v; } else { e.holdU = undefined; e.holdV = undefined; }
@@ -103,6 +103,12 @@ function setStance(g, s, v) {
 function moveToward(u, d, tu, tv, dt, mul = 1) { // mul: speed multiplier (creep, v2.18)
   if (MAP_LANED && u.lane != null && !d.air && moveLane(u, d, tu, tv, dt, mul)) return true;
   if (NAV.on && !d.air) return moveNav(u, d, tu, tv, dt, mul); // v2.65: around the map's blockers
+  if (MAP_2D && d.air) { // v2.66: on a grid map aircraft fly at full speed in any direction (straight over the ridge)
+    const fu = Math.abs(tu - u.u) > 150 ? u.u + Math.sign(tu - u.u) * 150 : tu; // steer for a point at most 150 ahead, so it settles onto its depth on the way
+    const du = fu - u.u, dv = tv - u.v, dd = Math.hypot(du, dv), k = dd ? Math.min(1, d.speed * mul * dt / dd) : 0;
+    if (dd < 2) { u.moving = false; return false; }
+    u.u = clamp(u.u + du * k, 0, L); u.v += dv * k; if (Math.abs(du) > 0.5) u.face = Math.sign(du); u.moving = true; return true;
+  }
   const du = tu - u.u, dv = tv - u.v;
   if (Math.abs(du) < 2 && Math.abs(dv) < 2) { u.moving = false; return false; }
   if (Math.abs(du) >= 2) { u.u = clamp(u.u + Math.sign(du) * Math.min(Math.abs(du), d.speed * mul * dt), 0, L); u.face = Math.sign(du); }
@@ -130,7 +136,7 @@ function moveLane(u, d, tu, tv, dt, mul) {
 }
 function moveStraight(u, d, tu, tv, dt, mul) { const k = u.lane; u.lane = null; const r = moveToward(u, d, tu, tv, dt, mul); u.lane = k; return r; }
 // The depth a unit holds on its lane at x: its own offset (laneV) around the lane's centre there; Classic: laneV itself
-const laneTv = (u, x) => MAP_LANED && u.lane != null && !UDEF[u.type].air ? laneY(MAP.lanes[u.lane], x) + u.laneV : u.laneV;
+const laneTv = (u, x) => !MAP_LANED || u.lane == null ? u.laneV : laneY(MAP.lanes[u.lane], UDEF[u.type].air ? u.u + clamp(x - u.u, -150, 150) : x) + u.laneV; // v2.66: aircraft keep over their squad's lane too (the lane just ahead of them; they fly straight over the ridge)
 // v2.65 (Two-Lane): ground navigation around blockers (the ridge). A grid of NAV.cell cells marks the ground within
 // NAV.pad of a blocker (or off the map) as closed; a ground unit whose straight line to its target crosses closed ground
 // follows an A* path (8 directions), skipping ahead to the farthest point it can walk to in a straight line, and keeps
@@ -200,6 +206,7 @@ function moveNav(u, d, tu, tv, dt, mul) {
   u.moving = true;
   return true;
 }
+function navOpen(u, v) { const p = { u, v }; navEject(p); return [p.u, p.v]; } // the nearest open point
 function navEject(u) { // put a ground unit standing on closed ground back on the nearest open cell
   const [i0, j0] = navCell(u.u, u.v), C = NAV.cell;
   for (let r = 1; r < 12; r++) for (let dj = -r; dj <= r; dj++) for (let di = -r; di <= r; di++) {

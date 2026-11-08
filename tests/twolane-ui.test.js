@@ -35,8 +35,8 @@ for (const dev of [PHONE, NARROW]) test(`Two-Lane at ${dev.width}×${dev.height}
   const y1 = await page.evaluate(() => cam.y); assert.ok(y1 > y0 + 30, `dragging pans down the map (${y0} → ${y1})`);
   // the minimap: tapping its bottom edge shows the south lane, its top the north lane
   const mm = await page.locator('#mm').boundingBox();
-  await page.mouse.click(mm.x + mm.width / 2, mm.y + mm.height - 3); const yS = await page.evaluate(() => cam.y);
-  await page.mouse.click(mm.x + mm.width / 2, mm.y + 3); const yN = await page.evaluate(() => cam.y);
+  await page.mouse.click(mm.x + mm.width * 0.7, mm.y + mm.height - 3); const yS = await page.evaluate(() => cam.y); // (v2.66: clear of the squad badges, at 28% of the way along)
+  await page.mouse.click(mm.x + mm.width * 0.7, mm.y + 3); const yN = await page.evaluate(() => cam.y);
   assert.ok(yS > yN + 100, `minimap depth (${yN} … ${yS})`);
   // a held forward pad: tap it, pick the Turret card
   const P = await page.evaluate(() => { const k = FWD_PADS.findIndex(F => F.at[0] === 820 && F.at[1] === -280), F = FWD_PADS[k]; game.nodes[F.node].owner = 0; game.nodes[F.node].prog = 100; game.sides[0].res.c = 3000; game.sides[0].res.e = 3000;

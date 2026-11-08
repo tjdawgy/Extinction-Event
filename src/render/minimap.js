@@ -3,6 +3,7 @@
 const mmDeep = () => MAP.size.h > 400, mmDepth = () => mmDeep() ? MAP.size.h / 2 : 260;
 const mmY = (v, h) => h / 2 + clamp(v / mmDepth(), -1, 1) * (h / 2 - 4);
 const mmV = (y, h) => clamp((y - h / 2) / (h / 2 - 4), -1, 1) * mmDepth();
+const MMB = []; // v2.66: the squad badges drawn on the minimap (their tap areas, in minimap pixels)
 function drawMinimap(c, g, w, h) {
   c.clearRect(0, 0, w, h);
   c.fillStyle = 'rgba(0,0,0,0.3)'; rr(c, 0.5, 0.5, w - 1, h - 1, 7); c.fill();
@@ -54,6 +55,19 @@ function drawMinimap(c, g, w, h) {
     c.strokeStyle = p.kind === 'node' ? '#ffd34d' : '#ff5a6e'; c.lineWidth = 1.5;
     c.globalAlpha = (1 - ph) * (1 - a * 0.5); c.beginPath(); c.arc(x, y, 3 + ph * 9, 0, 7); c.stroke();
     c.globalAlpha = 1 - a * 0.6; c.beginPath(); c.arc(x, y, 2.5, 0, 7); c.stroke(); c.globalAlpha = 1;
+  }
+  MMB.length = 0;
+  if (g && MAP_LANED && !g.spectate) { // v2.66 (Split Army): a badge per squad on its lane, "N 13"; tapping one selects that squad
+    c.font = '800 8.5px -apple-system,system-ui,sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    const n = MAP.lanes.map(() => 0); for (const e of g.ents) if (e.kind === 'u' && e.side === 0 && e.hp > 0 && !e.temp && e.lane != null) n[e.lane]++;
+    MAP.lanes.forEach((ln, k) => {
+      const txt = `${ln.id[0].toUpperCase()} ${n[k]}`, tw = c.measureText(txt).width + 6, x = mx(L * 0.28), y = clamp(my(laneY(ln, L * 0.28)), 6, h - 6), on = g.sides[0].squad === k;
+      c.fillStyle = on ? 'rgba(57,200,255,0.95)' : 'rgba(10,18,34,0.85)'; rr(c, x - tw / 2, y - 5.5, tw, 11, 4); c.fill();
+      c.strokeStyle = 'rgba(57,200,255,0.8)'; c.lineWidth = 1; c.stroke();
+      c.fillStyle = on ? '#001522' : '#cfe9ff'; c.fillText(txt, x, y + 0.5);
+      MMB.push({ k, x0: x - tw / 2 - 3, x1: x + tw / 2 + 3, y0: y - 8, y1: y + 8 });
+    });
+    c.textBaseline = 'alphabetic';
   }
   const hw = V.cw / 2 / V.S;
   const x0 = clamp(mx(cam.x - hw), 1, w - 1), x1 = clamp(mx(cam.x + hw), 1, w - 1);

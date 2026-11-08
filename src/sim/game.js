@@ -117,14 +117,35 @@ function setRally(g, s, which, u) { // move a flag (the player taps it, then the
   if (which !== 'def' && which !== 'fwd') return { ok: false, msg: 'No such flag' };
   const R = rallyOf(g, s), a = hqU(s) + dirOf(s) * RALLY.min, b = L / 2 + dirOf(s) * RALLY.past;
   R[which] = clamp(u, Math.min(a, b), Math.max(a, b));
-  if (R.at === which && g.sides[s].orders && g.sides[s].orders.all && g.sides[s].orders.all.o === 'move') giveOrder(g, s, 'all', null, 'move', R[which], 0, true); // the army follows its flag
+  const O = g.sides[s].orders;
+  if (MAP_LANED) { for (let k = 0; k < MAP.lanes.length; k++) { const o = O && O.lanes && O.lanes[k]; if (o && o.o === 'move' && sqFlag(R, k) === which) giveOrder(g, s, 'lane', k, 'move', ...flagPt(g, s, which, k), true); } } // v2.66: each squad follows its flag
+  else if (R.at === which && O && O.all && O.all.o === 'move') giveOrder(g, s, 'all', null, 'move', R[which], 0, true); // the army follows its flag
   return { ok: true, msg: which === 'def' ? 'Base flag moved' : 'Forward flag moved' };
 }
-function useRally(g, s, which) { // one tap: make a flag the rally point and send the whole army to it
+// v2.66 (Split Army, docs/SPLIT_ARMY.md): on a lane map each lane has its own flags, at the flag's x on that lane's
+// centre line (the Base flag in the middle, where the lanes leave the base); a squad (lane) remembers which of its flags
+// it last rallied to (R.sq). flagPt: where a flag stands for a lane (Classic: depth 0, as before).
+const sqFlag = (R, k) => (R.sq && R.sq[k]) || R.at;
+function flagPt(g, s, which, lane) {
+  const u = rallyOf(g, s)[which];
+  return [u, MAP_LANED && lane != null && which === 'fwd' ? laneY(MAP.lanes[lane], u) : 0];
+}
+function useRally(g, s, which, lane) { // one tap: make a flag the rally point and send the whole army (v2.66: or one squad) to it
   if (g.countdown > 0) return WAIT_GO;
-  const R = rallyOf(g, s); R.at = which;
-  const r = giveOrder(g, s, 'all', null, 'move', R[which], 0);
-  return { ok: true, msg: `Army to the ${which === 'def' ? 'base' : 'forward'} flag${r.ok ? '' : ' (no units yet)'}` };
+  const R = rallyOf(g, s);
+  if (!MAP_LANED) { R.at = which; const r = giveOrder(g, s, 'all', null, 'move', R[which], 0); return { ok: true, msg: `Army to the ${which === 'def' ? 'base' : 'forward'} flag${r.ok ? '' : ' (no units yet)'}` }; }
+  const lanes = lane == null ? MAP.lanes.map((_, k) => k) : [lane];
+  if (lane == null) { R.at = which; R.sq = {}; } else (R.sq || (R.sq = {}))[lane] = which;
+  let any = false; for (const k of lanes) any = giveOrder(g, s, 'lane', k, 'move', ...flagPt(g, s, which, k)).ok || any;
+  const who = lane == null ? 'Army' : `${MAP.lanes[lane].id[0].toUpperCase() + MAP.lanes[lane].id.slice(1)} squad`;
+  return { ok: true, msg: `${who} to the ${which === 'def' ? 'base' : 'forward'} flag${any ? '' : ' (no units yet)'}` };
+}
+// v2.66: where new units go on a lane map: a lane, or null to alternate (the default)
+function setLaneNew(g, s, k) {
+  if (!MAP_LANED) return { ok: false, msg: 'This map has one lane' };
+  if (k != null && laneIx(k) < 0) return { ok: false, msg: 'Unknown lane' };
+  g.sides[s].laneNew = k == null ? null : laneIx(k);
+  return { ok: true, msg: k == null ? 'New units: alternating between the lanes' : `New units: ${MAP.lanes[laneIx(k)].id} lane` };
 }
 function sendDamagedHome(g, s) {
   if (g.countdown > 0) return WAIT_GO;
@@ -321,6 +342,7 @@ function spawnUnit(g, s, type, u, v) {
     laneV: rand(-LANE_V, LANE_V), hp: d.hp, maxHp: d.hp, cd: simRnd() * 0.5, face: dirOf(s), anim: fxRnd() * 10,
     moving: false, rallyOff: -simRnd() * 100, recoil: 0, hitT: 0, shT: 0, vet: 0, aimAir: 0, medAt: -1, tgt: 0, braceT: 0, braceCd: 0, lastHurt: -99, lastAct: -99, creepAt: -1, temp: 0, tLife: 0, tSrc: null, kid: 0, spawnT: 0, dis: 0, disT: 0, slow: 0, slowT: 0, chT: 0, chTgt: 0, pulseCd: 0, shp: d.shp || 0, maxShp: d.shp || 0, shpT: -99, shpHit: -99, ovT: 0, frzT: 0, leapCd: 0, leaping: 0, lu: 0, lv: 0, ld: 0, corr: 0, corrT: 0, burstCd: 0 }; // tgt: what it last attacked; braceT/braceCd: the Bulwark's brace (v2.17); lastHurt/lastAct: last damage taken/dealt, creepAt: last creep regen (v2.18); leap*: the Leaper's jump, corr/corrT: corrosion, burstCd: the Dreadthorn's spines (v2.19) // vet: a Drilled Rifleman (v2.13); aimAir: where a Hydra's guns point (v2.14); medAt: last healed by a Medicopter (v2.15) // shT (shield until) set from the start keeps every unit the same shape for the JS engine
   if (MAP_LANED) unit.lane = laneNew(g.sides[s]); // v2.63: the lane it walks (Classic: no lane key at all)
+  if (NAV.on && !d.air && navShut(unit.u, unit.v)) [unit.u, unit.v] = navOpen(unit.u, unit.v); // v2.66: a ground unit never appears on closed ground (a warp-in or brood on the ridge)
   g.ents.push(unit);
   g.sides[s].stats.built++;
   return unit;

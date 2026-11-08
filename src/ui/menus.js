@@ -157,7 +157,18 @@ function startGame() {
   hideOverlay(); buildCards(); hideInfo(); endAim();
   saveGame();
   updateIntro(); refreshUI(true);
+  if (MAP_LANED) splitTip(); // v2.66: the first Two-Lane match explains squads
   toast(`You command ${factionName(me)}: start with a ${BD(me, 'barracks').name} and a ${BD(me, 'refinery').name}${facOf(me) === 'lastfist' && SALVAGE.pct > 0 ? '. Salvage: kills near your forces return credits' : ''}`, 'ok');
+}
+// v2.66 (Split Army): shown once, the first time a player starts a match on a lane map (localStorage extinctionEvent.tips)
+const TIPS_KEY = 'extinctionEvent.tips';
+function splitTip() {
+  let T = {}; try { T = JSON.parse(localStorage.getItem(TIPS_KEY) || '{}') || {}; } catch (e) {}
+  if (T.split) return;
+  const el = document.createElement('div'); el.id = 'tipSplit'; el.className = 'tipcard';
+  el.innerHTML = `<b>Two lanes, two squads</b><p>Every unit belongs to the squad of its lane: <b>N</b> or <b>S</b> in the Army tab (or tap a badge on the minimap). With a squad selected, Hold, Attack, Retreat, Regroup and Rally act on that squad only; <b>All</b> commands everyone.</p><p><b>Long-press</b> a squad to move it to the other lane or choose where new units go (alternating by default). Long-press a unit to send every unit of that type to one lane.</p><button id="bTipOk">Got it</button>`;
+  document.body.appendChild(el);
+  $('bTipOk').addEventListener('click', () => { T.split = 1; try { localStorage.setItem(TIPS_KEY, JSON.stringify(T)); } catch (e) {} el.remove(); });
 }
 function pauseGame(restored) {
   paused = true; endAim(); saveGame();

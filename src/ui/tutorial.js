@@ -73,7 +73,7 @@ const TUT_CH = [
       { txt: () => `Signature buildings stand only on that pad, one at a time: the ${tN('sigA')} or the ${tN('sigB')}. The Codex explains both.`, hi: () => tEl('#cards .card[data-type="sigA"]'), skipIf: () => !sigPadOn() || !SIG.on },
       { txt: () => 'To build: tap a pad, then a card. Or just tap a card and it takes the first free pad.' },
     ] },
-  { key: 'army', name: 'Army', blurb: 'Training troops, Hold and Attack, rally flags, sending the damaged home',
+  { key: 'army', name: 'Army', blurb: 'Training troops, Hold and Attack, rally flags, sending the damaged home, squads on Two-Lane',
     setup: () => { tPlace('barracks', 4); tMe().res.c += UDEF.rifle.cost.c * 2; },
     steps: [
       { act: true, txt: () => `Troops come from production buildings like your ${tN('barracks')}. Open the Train tab.`, hi: () => tEl('.tabs [data-tab="train"]'), done: () => tab === 'train' },
@@ -88,6 +88,7 @@ const TUT_CH = [
       { act: true, txt: () => 'More army controls live in the Army tab. Open it.', hi: () => tEl('.tabs [data-tab="army"]'), done: () => tab === 'army' },
       { txt: () => 'You have two rally flags: Base, by your HQ, and Forward, at your field node. The Rally button switches the army between them in one tap. To move a flag, tap it on the battlefield, then tap where it goes.', hi: () => tEl('#bRally') },
       { txt: () => `Send damaged home sends every unit under ${Math.round(DAMAGED.thr * 100)}% health back to the Base flag. They heal there and rejoin the army when nearly whole.`, hi: () => tEl('#bDamaged') },
+      { txt: () => 'On a map with two lanes (Two-Lane), your army splits into two squads, one per lane: N and S beside these buttons. Select a squad and the orders, Regroup and Rally act on it alone; All commands everyone. Long-press a squad to move it to the other lane or choose where new units go.' }, // v2.66: Split Army
     ] },
   { key: 'upgrades', name: 'Upgrades', blurb: 'Upgrade tiers, paths and what they unlock',
     setup: () => { tPlace('barracks', 4); const u = BDEF.barracks.up; tMe().res.c += u[2].c + u[3].c; tMe().res.e += u[2].e + u[3].e; },
@@ -252,7 +253,8 @@ $('tutSkip').addEventListener('click', tutNext);
 $('tutSkipC').addEventListener('click', tutSkipChapter);
 // The How to Play tab: the chapter list
 CODEX_HOWTO.html = () => { const D = tutDone(); return `<h2>How to Play</h2><p>Hands-on lessons in a practice match as ${factionName('lastfist')}. You can't lose, every step can be skipped, and any chapter can be played or replayed at any time.</p>` +
-  TUT_CH.map((C, i) => `<div class="cxch${D[C.key] ? ' done' : ''}" id="cx-tut-${C.key}"><span class="ck" aria-label="${D[C.key] ? 'Completed' : 'Not played'}">${D[C.key] ? '✓' : ''}</span><div class="cxct"><b>${i + 1}. ${cxEsc(C.name)}</b><small>${cxEsc(C.blurb)}</small></div><button class="cxplay" data-tut="${i}">Play</button></div>`).join(''); };
+  TUT_CH.map((C, i) => `<div class="cxch${D[C.key] ? ' done' : ''}" id="cx-tut-${C.key}"><span class="ck" aria-label="${D[C.key] ? 'Completed' : 'Not played'}">${D[C.key] ? '✓' : ''}</span><div class="cxct"><b>${i + 1}. ${cxEsc(C.name)}</b><small>${cxEsc(C.blurb)}</small></div><button class="cxplay" data-tut="${i}">Play</button></div>`).join('') +
+  `<h3 id="cx-split">Split Army (Two-Lane)</h3><p>On a map with two lanes every unit belongs to the squad of its lane, North or South. In the Army tab, pick <b>All</b>, <b>N</b> or <b>S</b> (or tap a squad's badge on the minimap): with a squad selected, Hold, Attack, Retreat, Regroup and Rally act on that squad only. Aircraft belong to a squad too and fly straight over the ridge.</p><p><b>Long-press a squad</b> to move it to the other lane (through the centre crossing or past your base) or to choose where new units go: North, South or alternating (the default). <b>Long-press a unit</b> to send every unit of that type to one lane. On Classic there is one lane, so there are no squads.</p>`; }; // v2.66
 // First launch: offer the tutorial once (the answer is remembered; without storage, once per page load)
 function tutFirstPrompt() {
   TUT.prompted = true;
