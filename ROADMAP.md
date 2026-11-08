@@ -67,8 +67,7 @@ Map data format: [docs/MAP_FORMAT.md](docs/MAP_FORMAT.md) (approved after Phase 
 - [ ] **Maps.** Build them in this order:
   1. Classic — the current single lane, for short matches.
   2. [x] Two-lane — two lanes with a contested center. Design: [docs/TWO_LANE.md](docs/TWO_LANE.md) (approved after v2.63, with a map-select screen). *(v2.65)*
-  3. Open field — no lanes, just obstacles you can flank around.
-  4. Three-lane — a big map for long games, built last.
+  3. Three-Lane with crossings. (Replaces the Open field and Three-lane items; Open Field is shelved: [docs/OPEN_FIELD.md](docs/OPEN_FIELD.md), kept for reference.)
 - [ ] **Node types:**
   - Credit or energy — income, as now.
   - [x] Watchtower — clears fog in a wide radius. *(v2.65)*
@@ -82,7 +81,7 @@ Map data format: [docs/MAP_FORMAT.md](docs/MAP_FORMAT.md) (approved after Phase 
   - [x] "Send damaged home" button. *(v2.62: under 40% health)*
 - [ ] **AI learns the new maps.** Expect real tuning time for each layout.
   - [x] Two-Lane: all three difficulties. *(v2.67)*
-  - [ ] Open field, three-lane.
+  - [ ] Three-Lane with crossings.
 - [ ] **Balance pass.**
   - [x] Extend the sim harness to run on every map. *(v2.67: `--map` in audit/sim/ladder.js, `mapId` in match.js; audit/sim/shares.js)*
   - Fix the Tech vs Contain spread.
