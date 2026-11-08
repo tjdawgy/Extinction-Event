@@ -17,7 +17,7 @@ async function main() {
   const shot = async (page, name) => { await page.waitForTimeout(150); const f = path.join(outDir, `${tag}-${name}-${dev.width}x${dev.height}.png`); fs.writeFileSync(f, await page.screenshot()); console.log(f); };
   const start = async (me, foe) => {
     const { page, errors } = await openPage(browser, dev, { init: 'Math.random = (() => { let a = 11; return () => (a = (a * 16807) % 2147483647) / 2147483647; })();' });
-    await page.click(`#meSeg [data-f="${me}"]`); await page.click(`#foeSeg [data-f="${foe}"]`); await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+    await page.click(`#meSeg [data-f="${me}"]`); await page.click(`#foeSeg [data-f="${foe}"]`); await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
     await page.evaluate(() => {
       game.countdown = 0; hideCountdown(); updateIntro(); paused = true; $('toasts').textContent = '';
       window.__fin = (s, k) => { tryBuild(game, s, k); for (const b of game.ents) if (b.side === s && b.kind === 'b') { b.built = true; b.progress = 1; b.hp = b.maxHp; } };

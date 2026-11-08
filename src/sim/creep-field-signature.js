@@ -191,8 +191,9 @@ function updateWarps(g) {
   if (!done.length) return;
   g.warps = g.warps.filter(w => g.t < w.end);
   for (const w of done) {
-    const p = warpOk(g, w.side, w.u, w.v) ? w : warpSpot(g, w.side, w.u, w.v); // something moved onto the spot: the nearest valid one, else the Axis
+    const p = w.fwd ? w : warpOk(g, w.side, w.u, w.v) ? w : warpSpot(g, w.side, w.u, w.v); // something moved onto the spot: the nearest valid one, else the Axis (v2.68: a forward Gate's unit arrives at its flag)
     const nu = spawnUnit(g, w.side, w.type, p.u, p.v); nu.laneV = clamp(p.v, -LANE_V, LANE_V); arriveOrders(g, nu);
+    if (w.fwd) { nu.lane = w.fwd.lane; nu.fwdHome = { u: w.fwd.u, n: w.fwd.n }; nu.laneV = clamp(nu.v - w.fwd.v, -LANE_V, LANE_V); }
     if (w.echo) { nu.echo = 1; nu.paid = w.paid; const rel = relOf(g, w.side); if (rel && rel.tier >= 3) { nu.osh = nu.maxShp * ECHO.osh; nu.oshT = g.t + ECHO.oshDur; } } // recovered (v2.34)
     const bk = beaconOf(g, w.side); if (bk && bk.tier >= 3 && inBeacon(g, w.side, nu.u, nu.v)) { nu.shp = nu.maxShp; nu.bkT = g.t + BEACON.dmgDur; } // arrived in a T3 Beacon bubble (v2.34)
     if (g.log) { logAdd(g.log.tot[w.side].trained, w.type); lgUnit(g, w.side, 'T', w.type); }

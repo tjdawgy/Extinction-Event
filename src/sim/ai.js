@@ -558,7 +558,7 @@ function aiEstimate(g, s) {
      sides then race each other's bases and nobody wins), and arrives together instead of half in each lane.
    - Forward pads (Normal, Hard): with money banked and no threat at home, a Turret (then a Barracks) on a forward pad it
      holds on its own half; at most fwd.max of them. */
-const LANE_AI = { brk: { Easy: null, Normal: { from: 420, edge: 1.5, edgeLate: 1.1, min: 1500, hold: 0, stay: 1.0 }, Hard: { from: 360, edge: 1.3, edgeLate: 1.0, min: 1200, hold: 0, stay: 0.9 } }, every: 4, even: 150, need: 0.75, surplus: 1.5, shift: 20, cap: { n: 3, from: 150, gap: 15, minArmy: 300, dur: 60, minHp: 0.5, odds: 0.3 }, fwd: { bank: 1000, every: 90, max: { Easy: 0, Normal: 1, Hard: 2 } } }; // fwd.bank above ATTACK.supply.bank: the army's supply comes first // hold: seconds a breakthrough stays committed (0: off; 45 measured no better)
+const LANE_AI = { late: { on: true, from: 900, ratio: 0.8 }, brk: { Easy: null, Normal: { from: 420, edge: 1.5, edgeLate: 1.1, min: 1500, hold: 0, stay: 1.0 }, Hard: { from: 360, edge: 1.3, edgeLate: 1.0, min: 1200, hold: 0, stay: 0.9 } }, every: 4, even: 150, need: 0.75, surplus: 1.5, shift: 20, cap: { n: 3, from: 150, gap: 15, minArmy: 300, dur: 60, minHp: 0.5, odds: 0.3 }, fwd: { bank: 1000, every: 90, max: { Easy: 0, Normal: 1, Hard: 2 } } }; // fwd.bank above ATTACK.supply.bank: the army's supply comes first // hold: seconds a breakthrough stays committed (0: off; 45 measured no better)
 function aiLanes(g, s, D, mine, theirs, threat, myV = 0, thV = 0) {
   if (MAP.lanes.length !== 2) return;
   const side = g.sides[s], LA = side.la || (side.la = { t: -99, sh: -99, fw: -99 }), easy = D.label === 'Easy';
@@ -566,6 +566,13 @@ function aiLanes(g, s, D, mine, theirs, threat, myV = 0, thV = 0) {
   // Breakthrough: clearly stronger than all it knows of (BREAK.edge, falling to edgeLate by the storm warning), not under
   // attack at home: go all in. The usual checks (gathered, a winnable fight at one spot) are written for one lane and
   // hold a split army back on a long two-lane field; the attack itself goes down one lane (below).
+  // v2.68 (Two-Lane draw fix, b): the late-game commit, every difficulty: from LANE_AI.late.from, not clearly behind (its
+  // army at least ratio × all it knows of) and not under attack at home, it goes all in; the attack goes down one lane (below)
+  const LT = LANE_AI.late;
+  if (LT.on && side.stance !== 'attack' && !threat && g.t >= LT.from && myV >= 300 && myV >= thV * LT.ratio) {
+    side.stance = 'attack'; side.pushTo = null; side.pushMode = 'all'; side.stanceAt = g.t; side.launchV = myV; LA.late = (LA.late || 0) + 1;
+    ev(g, { type: 'aiAttack', side: s, mode: 'all' }); lg(g, s, 'G', 'all', 0);
+  }
   const B = LANE_AI.brk[D.label];
   const held = B && g.t - (LA.brkT ?? -999) < B.hold && myV >= thV * B.stay; // committed: a breakthrough holds for B.hold seconds unless it is clearly losing
   if (B && side.stance !== 'attack' && !threat && g.t >= B.from && myV >= B.min && (held || myV >= thV * lerp(B.edge, B.edgeLate, clamp((g.t - B.from) / (EXT.warn - B.from), 0, 1)))) {

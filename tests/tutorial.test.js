@@ -109,7 +109,7 @@ for (const dev of [PHONE, NARROW]) test(`Skip ▸, Skip Chapter and End Tutorial
 
 test('starting a chapter mid-match asks first; Cancel returns to the paused match untouched; Yes starts the tutorial', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
-  await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(200);
+  await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(200); // v2.65: through map select (Classic, the default)
   await page.evaluate(() => { game.countdown = 0; hideCountdown(); for (const s of game.sides) s.aiT = 1e9; });
   await page.waitForTimeout(500);
   await page.click('#bPause');
@@ -202,7 +202,7 @@ test('a normal match after the tutorial plays as before: no tutorial state, enem
   await page.evaluate(() => tutStart(5, true));
   await page.click('#tutNext'); await page.waitForTimeout(300);
   await page.click('#bPause'); await page.click('#bEndTut'); await page.click('#cxX');
-  await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(200);
+  await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(200); // v2.65: through map select (Classic, the default)
   const r = await page.evaluate(() => { game.countdown = 0; const ai = game.sides[1].aiT; for (let i = 0; i < 300; i++) update(game, 1 / 30); saveGame();
     return { tut: game.tut, noStorm: game.noStorm, on: TUT.on, hold: TUT.hold, bubble: $('tutB').classList.contains('hide'), ring: $('tutHi').classList.contains('hide'), aiOn: ai < 1e6, saved: !!localStorage.getItem('colonyMobile.save'),
       enemyBuilt: game.ents.filter(e => e.kind === 'b' && e.side === 1).length, factions: game.sides.map(s => s.faction) }; });

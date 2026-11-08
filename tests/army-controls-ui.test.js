@@ -13,7 +13,7 @@ test.after(async () => { if (browser) await browser.close(); });
 
 for (const dev of [PHONE, NARROW]) test(`army controls at ${dev.width}×${dev.height}: layout, Rally, moving a flag, Send damaged home`, { skip }, async () => {
   const { page, errors } = await openPage(browser, dev);
-  await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(200);
+  await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(200); // v2.65: through map select (Classic, the default)
   await page.evaluate(() => { game.countdown = 0; hideCountdown(); updateIntro(); for (const s of game.sides) s.aiT = 1e9;
     for (let i = 0; i < 6; i++) spawnUnit(game, 0, i < 4 ? 'rifle' : 'tank', 470 + i * 12, 0);
     game.ents.filter(e => e.side === 0 && e.kind === 'u').slice(0, 2).forEach(u => { u.hp = u.maxHp * 0.25; }); });

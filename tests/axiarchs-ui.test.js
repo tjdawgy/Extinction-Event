@@ -12,7 +12,7 @@ test.after(async () => { if (browser) await browser.close(); });
 
 test('Set warp point: the first Train card arms it; a tap outside the field is refused; a tap inside places it; the card cancels', { skip }, async () => {
   const { page, errors } = await openPage(browser, NARROW);
-  await page.click('#meSeg [data-f="axiarchs"]'); await page.click('#foeSeg [data-f="lastfist"]'); await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+  await page.click('#meSeg [data-f="axiarchs"]'); await page.click('#foeSeg [data-f="lastfist"]'); await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
   await page.evaluate(() => {
     game.countdown = 0; hideCountdown(); updateIntro(); for (const s of game.sides) { s.aiT = 1e9; s.res.c = s.res.e = 5000; }
     for (let i = 0; i < 30 * 40; i++) update(game, 1 / 30);
@@ -42,7 +42,7 @@ test('Set warp point: the first Train card arms it; a tap outside the field is r
 
 test('an enemy Axiarch field and its warps in the fog show nothing and make no sound; in view they show', { skip }, async () => {
   const { page, errors } = await openPage(browser, NARROW);
-  await page.click('#meSeg [data-f="lastfist"]'); await page.click('#foeSeg [data-f="axiarchs"]'); await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+  await page.click('#meSeg [data-f="lastfist"]'); await page.click('#foeSeg [data-f="axiarchs"]'); await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
   const r = await page.evaluate(() => {
     game.countdown = 0; hideCountdown(); updateIntro(); game.sides[0].aiT = 1e9; game.sides[1].aiT = 1e9; paused = true;
     for (let i = 0; i < 30 * 60; i++) update(game, 1 / 30);
@@ -67,7 +67,7 @@ test('an enemy Axiarch field and its warps in the fog show nothing and make no s
 
 test('v2.28: Mass Warp, Shield Overcharge and Purification Beam cast through the buttons (tap, place, confirm); the long-press card', { skip }, async () => {
   const { page, errors } = await openPage(browser, NARROW);
-  await page.click('#meSeg [data-f="axiarchs"]'); await page.click('#foeSeg [data-f="lastfist"]'); await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+  await page.click('#meSeg [data-f="axiarchs"]'); await page.click('#foeSeg [data-f="lastfist"]'); await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
   const at = await page.evaluate(() => {
     game.countdown = 0; hideCountdown(); updateIntro();
     for (const s of game.sides) { s.aiT = 1e9; s.res.c = s.res.e = 5000; }
@@ -103,7 +103,7 @@ test('v2.28: Mass Warp, Shield Overcharge and Purification Beam cast through the
 
 test('v2.28: enemy Axiarch casts in the fog show nothing, make no sound and give no warning; in view the Beam warns and shows', { skip }, async () => {
   const { page, errors } = await openPage(browser, NARROW);
-  await page.click('#meSeg [data-f="lastfist"]'); await page.click('#foeSeg [data-f="axiarchs"]'); await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+  await page.click('#meSeg [data-f="lastfist"]'); await page.click('#foeSeg [data-f="axiarchs"]'); await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
   const r = await page.evaluate(() => {
     game.countdown = 0; hideCountdown(); updateIntro(); paused = true;
     for (const s of game.sides) { s.aiT = 1e9; s.res.c = s.res.e = 5000; }
@@ -137,7 +137,7 @@ test('v2.28: enemy Axiarch casts in the fog show nothing, make no sound and give
 
 test('v2.29: pick a Celestial Array path through the panel (Ascendant Calculus), train a Voidcarrier from its card, then 2 game minutes of play', { skip }, async () => {
   const { page, errors } = await openPage(browser, NARROW);
-  await page.click('#meSeg [data-f="axiarchs"]'); await page.click('#foeSeg [data-f="lastfist"]'); await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+  await page.click('#meSeg [data-f="axiarchs"]'); await page.click('#foeSeg [data-f="lastfist"]'); await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
   await page.evaluate(() => {
     game.countdown = 0; hideCountdown(); updateIntro(); // not paused: the panel's buttons work only in play
     game.sides[0].aiT = 1e9; game.sides[0].res.c = game.sides[0].res.e = 6000; // the enemy AI plays normally

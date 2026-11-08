@@ -94,3 +94,38 @@ test('Classic: the lane layer never runs', () => {
   for (let i = 0; i < 60 * 400; i++) sim.update(g, sim.TICK);
   for (const s of g.sides) { assert.strictEqual(s.la, undefined); assert.strictEqual(s.capT, undefined); }
 });
+
+// v2.68 (Two-Lane draw fix)
+test('a: units trained at a forward Barracks (each faction\'s) start at that lane\'s Forward flag and gather there while the post is held', () => {
+  for (const fac of ['lastfist', 'bloomhost', 'axiarchs']) {
+    const g = setup('hard'); g.sides[0].faction = fac; g.ents = g.ents.filter(e => e.kind !== 'b' || e.type === 'hq');
+    const side = g.sides[0]; side.res.c = side.res.e = 9000;
+    const F = sim.cur().FWD_PADS, k = F.findIndex(f => f.at[0] === 820 && f.at[1] === 280), post = g.nodes[F[k].node]; post.owner = 0; post.prog = 100;
+    for (const n of g.nodes) if (n !== post) { n.owner = null; n.prog = 0; }
+    assert.ok(sim.tryBuild(g, 0, 'barracks', sim.FWD_SLOT + k).ok, fac);
+    const bar = sim.fwdAt(g, sim.FWD_SLOT + k); bar.built = true; bar.hp = bar.maxHp; bar.progress = 1;
+    const fr = sim.fwdRally(g, 0, bar); assert.ok(fr && fr.lane === 1 && Math.abs(fr.v - 280) < 1, JSON.stringify(fr));
+    const ut = { lastfist: 'rifle', bloomhost: 'skitterling', axiarchs: 'shardling' }[fac];
+    bar.queue.push(ut); bar.prodT = 1e9;
+    for (let i = 0; i < 4 * 60 && !g.ents.some(e => e.kind === 'u' && e.side === 0); i++) sim.update(g, sim.TICK);
+    const u = g.ents.find(e => e.kind === 'u' && e.side === 0);
+    assert.ok(u && u.lane === 1 && u.fwdHome && Math.abs(u.u - fr.u) < 40 && Math.abs(u.v - fr.v) < 40, `${fac}: ${u && [u.u, u.v, u.lane]}`);
+    post.owner = 1; post.prog = -100; sim.update(g, sim.TICK); assert.strictEqual(u.fwdHome, undefined, 'post lost: home is the base again');
+  }
+});
+
+test('a off (FWD_RALLY.on false): v2.67\'s behaviour, the unit appears beside the building', () => {
+  const g = setup('hard'); sim.FWD_RALLY.on = false;
+  try { const F = sim.cur().FWD_PADS; g.nodes[F[0].node].owner = 0; const b = { slot: sim.FWD_SLOT }; assert.strictEqual(sim.fwdRally(g, 0, b), null); } finally { sim.FWD_RALLY.on = true; }
+});
+
+test('b: from 15:00 every difficulty commits when not clearly behind; not before, not when behind, not under attack', () => {
+  for (const diff of ['easy', 'normal', 'hard']) {
+    const g = setup(diff), side = g.sides[1]; g.t = 905;
+    sim.aiLanes(g, 1, D(g, 1), [], [], false, 900, 1000);
+    assert.ok(side.stance === 'attack' && side.pushMode === 'all', `${diff}: commits at 0.9x`);
+  }
+  const e = setup('easy'); e.t = 800; sim.aiLanes(e, 1, D(e, 1), [], [], false, 900, 1000); assert.notStrictEqual(e.sides[1].stance, 'attack', 'not before 15:00');
+  const f = setup('easy'); f.t = 905; sim.aiLanes(f, 1, D(f, 1), [], [], false, 700, 1000); assert.notStrictEqual(f.sides[1].stance, 'attack', 'clearly behind');
+  const h = setup('easy'); h.t = 905; sim.aiLanes(h, 1, D(h, 1), [], [], true, 900, 1000); assert.notStrictEqual(h.sides[1].stance, 'attack', 'under attack at home');
+});

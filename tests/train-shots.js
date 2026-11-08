@@ -18,7 +18,7 @@ async function main() {
   let bad = 0;
   try {
     const { page, errors } = await openPage(browser, device);
-    await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+    await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
     await page.evaluate(() => {
       game.countdown = 0; hideCountdown(); updateIntro(); paused = true;
       for (const s of game.sides) s.aiT = 1e9;

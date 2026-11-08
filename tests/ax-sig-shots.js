@@ -37,7 +37,7 @@ async function main() {
   const shot = async (page, name) => { await page.waitForTimeout(150); const f = path.join(outDir, `${tag}-${name}-${dev.width}x${dev.height}.png`); fs.writeFileSync(f, await page.screenshot()); console.log(f); };
   try {
     const { page, errors } = await openPage(browser, dev, { init: 'Math.random = (() => { let a = 7; return () => (a = (a * 16807) % 2147483647) / 2147483647; })();' });
-    await page.click('#meSeg [data-f="axiarchs"]'); await page.click('#foeSeg [data-f="bloomhost"]'); await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+    await page.click('#meSeg [data-f="axiarchs"]'); await page.click('#foeSeg [data-f="bloomhost"]'); await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
     await page.evaluate(() => {
       game.countdown = 0; hideCountdown(); updateIntro(); camTouched = true; window.updateIntro = () => {}; // keep the close-up zoom
       for (const s of game.sides) { s.aiT = 1e9; s.res.c = s.res.e = 9000; }

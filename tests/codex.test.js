@@ -86,7 +86,7 @@ test('Codex: deep links, one per faction', { skip }, async () => {
 
 test('Codex: from the pause menu mid-match; closing leaves the same paused match', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
-  await page.click('#meSeg [data-f="bloomhost"]'); await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(200);
+  await page.click('#meSeg [data-f="bloomhost"]'); await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(200); // v2.65: through map select (Classic, the default)
   await page.evaluate(() => { game.countdown = 0; hideCountdown(); for (const s of game.sides) s.aiT = 1e9; });
   await page.waitForTimeout(400);
   await page.click('#bPause'); await page.waitForTimeout(100);

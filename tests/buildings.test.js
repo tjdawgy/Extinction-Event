@@ -59,7 +59,7 @@ test('building art stays on its pad and below its health bar, every tier, team a
 
 test('cached bodies look the same as live drawing (no flicker while the cache fills)', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
-  await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(200);
+  await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(200); // v2.65: through map select (Classic, the default)
   const out = await page.evaluate(() => {
     const out = [];
     for (const type of Object.keys(BART)) for (const tier of [1, 2, 3]) for (const side of [0, 1]) {
@@ -85,7 +85,7 @@ test('cached bodies look the same as live drawing (no flicker while the cache fi
 
 test('the drawn tier is always the gameplay tier: built, upgrading, under construction, ghosts, wrecks, sold, rebuilt, loaded', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
-  await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(200);
+  await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(200); // v2.65: through map select (Classic, the default)
   const r = await page.evaluate(SETUP).then(() => page.evaluate(() => {
     const r = {}, mine = game.ents.filter(e => e.kind === 'b' && e.side === 0), at = hqPos(0).u + 260;
     mine.forEach((b, i) => { if (b.type !== 'hq') b.tier = 1 + i % 3; });
@@ -135,7 +135,7 @@ test('the drawn tier is always the gameplay tier: built, upgrading, under constr
 
 test('the building cache is bounded: at most one body per type, tier and team, rebuilt only on a zoom step', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
-  await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(200);
+  await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(200); // v2.65: through map select (Classic, the default)
   await page.evaluate(SETUP);
   const r = await page.evaluate(() => {
     const at = hqPos(0).u + 260;

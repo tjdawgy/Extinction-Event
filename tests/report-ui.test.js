@@ -23,7 +23,7 @@ test('no leaks during play: the UI reads the match log only on the end screen, a
   const uses = [...ui.matchAll(/\b(game|g)\.log\b|logLines|logText|logMoments|repStats/g)].map(m => m.index);
   assert.ok(uses.length > 0 && uses.every(i => i > from && i < to), 'every read of the log in the UI is inside the report code');
   const { page, errors } = await openPage(browser, PHONE);
-  await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+  await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
   const r = await page.evaluate(() => {
     game.countdown = 0; hideCountdown(); updateIntro(); paused = false;
     for (let i = 0; i < 30 * 240; i++) update(game, 1 / 30); // four minutes: the log is full of enemy moves by now
@@ -41,7 +41,7 @@ test('no leaks during play: the UI reads the match log only on the end screen, a
 for (const dev of [PHONE, NARROW]) {
   test(`report at ${dev.width}×${dev.height}: four tabs, opens at the top, Play again and Main menu always reachable`, { skip }, async () => {
     const { page, errors } = await openPage(browser, dev, { init: SEEDED });
-    await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+    await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
     await page.evaluate(PLAY);
     const check = () => page.evaluate(() => {
       const vis = id => { const el = document.getElementById(id), r = el.getBoundingClientRect(), hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
@@ -67,7 +67,7 @@ for (const dev of [PHONE, NARROW]) {
 
 test('the numbers and lines on screen are the recorded ones; Copy match log copies the same, with a fallback when the clipboard is blocked', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE, { init: SEEDED });
-  await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+  await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
   await page.evaluate(PLAY);
   const sum = await page.evaluate(() => {
     const T = game.log.tot, n = o => Object.values(o).reduce((a, b) => a + b, 0), cells = [...document.querySelectorAll('#repPane tr')].find(tr => tr.querySelector('th').textContent === 'Units built (lost)').querySelectorAll('td');
@@ -114,7 +114,7 @@ test('the numbers and lines on screen are the recorded ones; Copy match log copi
 
 test('the match log survives pause, saving and reloading the page', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
-  await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+  await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
   const before = await page.evaluate(() => { game.countdown = 0; hideCountdown(); updateIntro(); for (let i = 0; i < 30 * 200; i++) update(game, 1 / 30); pauseGame(); saveGame(); return JSON.stringify(game.log); });
   await page.reload(); await page.waitForTimeout(300);
   await page.click('#bResume'); await page.waitForTimeout(200);

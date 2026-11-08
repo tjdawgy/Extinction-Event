@@ -18,7 +18,7 @@ const SETUP = () => {
 
 test('the path picker: Upgrade asks for a path, tap a path, then confirm; the panel then shows the path', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
-  await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+  await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
   await page.evaluate(SETUP);
   await page.evaluate(() => openPanel(game.ents.find(e => e.type === 'barracks')));
   assert.ok(await page.evaluate(() => !$('bpPick').classList.contains('hide')));
@@ -42,7 +42,7 @@ test('the path picker: Upgrade asks for a path, tap a path, then confirm; the pa
 for (const dev of [PHONE, NARROW]) {
   test(`building panel at ${dev.width}×${dev.height}: picker and chosen path clear of the top bar and the ability buttons`, { skip }, async () => {
     const { page, errors } = await openPage(browser, dev);
-    await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+    await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
     await page.evaluate(SETUP);
     const r = await page.evaluate(() => {
       const hud = $('hud').getBoundingClientRect(), abs = [...$('abil').children].map(e => e.getBoundingClientRect()), out = [];
@@ -61,7 +61,7 @@ for (const dev of [PHONE, NARROW]) {
 
 test('Train tab (v2.16): only units you can train now; unaffordable ones stay, greyed out; a hint when nothing is trainable', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
-  await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+  await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
   await page.evaluate(() => { game.countdown = 0; hideCountdown(); updateIntro(); for (const s of game.sides) { s.aiT = 1e9; s.res.c = s.res.e = 5000; } refreshUI(true); });
   await page.click('.tabs [data-tab="train"]');
   const types = () => page.$$eval('#cards .card', c => c.map(x => x.dataset.type));
@@ -90,7 +90,7 @@ test('Train tab (v2.16): only units you can train now; unaffordable ones stay, g
 
 test('War Factory (v2.14): Siege or Assault in the picker; Assault puts Flame Tank on the Train tab, Artillery and Titans stay hidden', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
-  await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+  await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
   await page.evaluate(SETUP);
   await page.evaluate(() => { for (const k of ['refinery', 'factory']) { tryBuild(game, 0, k); for (const b of game.ents) if (b.kind === 'b') { b.built = true; b.progress = 1; } } openPanel(game.ents.find(e => e.type === 'factory')); });
   assert.match(await page.textContent('#bpPick [data-p="A"]'), /Siege.*Artillery.*Titans/);
@@ -106,7 +106,7 @@ test('War Factory (v2.14): Siege or Assault in the picker; Assault puts Flame Ta
 
 test('Tech Lab (v2.15): needs only a Barracks (v2.16); Air Power or Support in the picker; Support units on the Train tab; Army tab gets a Support group', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
-  await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+  await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
   await page.evaluate(SETUP);
   await page.evaluate(() => { for (const k of ['refinery', 'techlab']) { tryBuild(game, 0, k); for (const b of game.ents) if (b.kind === 'b') { b.built = true; b.progress = 1; } } openPanel(game.ents.find(e => e.type === 'techlab')); });
   assert.match(await page.textContent('#bpPick [data-p="A"]'), /Air Power.*Interceptors.*Leviathans/);

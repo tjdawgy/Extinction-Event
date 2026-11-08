@@ -22,7 +22,7 @@ const tapWorld = (page, u, v) => page.evaluate(([u, v]) => { const w = P(u, v), 
 
 test('tabs: Build, Train (the old Army tab) and Army; the Army tab lists only owned groups and types, with counts', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
-  await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+  await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
   assert.deepStrictEqual(await page.$$eval('.tabs button', b => b.map(x => x.textContent)), ['Build', 'Train', 'Army']);
   await page.click('.tabs [data-tab="train"]');
   assert.match(await page.textContent('#cards .trainHint'), /Build a Barracks to train units/, 'Train: nothing to train yet (v2.16), one-line hint');
@@ -39,7 +39,7 @@ test('tabs: Build, Train (the old Army tab) and Army; the Army tab lists only ow
 
 test('tap a group or type, then an order; Regroup by tapping the battlefield; blocked while paused and during GET READY', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
-  await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+  await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
   // GET READY: orders are refused
   await page.click('.tabs [data-tab="army"]');
   await page.click('#acmd [data-o="move"]');
@@ -77,7 +77,7 @@ test('tap a group or type, then an order; Regroup by tapping the battlefield; bl
 for (const dev of [PHONE, NARROW]) {
   test(`Army tab at ${dev.width}×${dev.height}: big buttons inside the tray, no overlap with abilities, building panel, info panel or top bar`, { skip }, async () => {
     const { page, errors } = await openPage(browser, dev);
-    await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+    await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
     await page.evaluate(SETUP);
     await page.click('.tabs [data-tab="army"]');
     await page.evaluate(() => { game.sides[0].ab = { shield: 0, strike: 0, repair: 0 }; refreshUI(true); });
@@ -101,7 +101,7 @@ for (const dev of [PHONE, NARROW]) {
 
 test('group orders, the selection and a Regroup flag survive saving and reloading the page', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
-  await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+  await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
   await page.evaluate(SETUP);
   const before = await page.evaluate(() => { game.sides[0].sel = 'g:arm'; giveOrder(game, 0, 'group', 'arm', 'move', 900, 0); update(game, 1 / 30); pauseGame(); saveGame(); return JSON.stringify([game.sides[0].orders, game.sides[0].sel]); });
   await page.reload(); await page.waitForTimeout(300);
@@ -113,7 +113,7 @@ test('group orders, the selection and a Regroup flag survive saving and reloadin
 
 test('v2.47: the top bar Regroup sends the whole army (the Army tab Regroup with nothing selected), and cancels on a second tap', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
-  await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+  await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
   await page.evaluate(SETUP);
   await page.click('.tabs [data-tab="army"]');
   await page.click('#asel [data-k="g:inf"]'); // a group selected in the Army tab does not narrow the top-bar Regroup

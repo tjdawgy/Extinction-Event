@@ -65,7 +65,7 @@ test('served under /Extinction-Event/: the service worker installs, then the gam
     const icon = await page.evaluate(async () => (await fetch('icons/icon-192.png')).ok);
     assert.ok(icon, 'icons from the cache offline');
     await page.evaluate(() => { const t = document.getElementById('title'); if (t) t.remove(); });
-    await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+    await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
     const played = await page.evaluate(() => { game.countdown = 0; for (let i = 0; i < 600; i++) update(game, TICK); return game.t > 9; });
     assert.ok(played, 'a match runs offline');
     assert.deepStrictEqual(errors, []);

@@ -636,7 +636,7 @@ MAPS.twolane = (() => {
   };
 })();
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.67'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.68'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -1649,6 +1649,17 @@ const slotPos = (s, k) => k >= FWD_SLOT ? mapPt(FWD_PADS[k - FWD_SLOT].at) : map
 let FWD_PADS = [];
 const mapFwd = () => { FWD_PADS = []; MAP.nodes.forEach((n, i) => { if (n.type === 'forwardPad') for (const p of n.pads) FWD_PADS.push({ node: i, at: p, allow: n.allow }); }); };
 mapFwd(); MAP_HOOKS.push(mapFwd);
+// v2.68 (Two-Lane draw fix, a): units trained at a Barracks role on a forward pad start at that lane's Forward flag, join
+// that lane's squad and gather there (u.fwdHome) while their side holds the pad's post; the player and the AI alike.
+// FWD_RALLY.on false = v2.67 (they appear beside the building and gather at the base's rally point).
+const FWD_RALLY = { on: true };
+function fwdRally(g, s, b) { // where a unit trained by building b starts and gathers: { u, v, lane, n } or null
+  if (!FWD_RALLY.on || !(b.slot >= FWD_SLOT) || !MAP_LANED) return null;
+  const F = FWD_PADS[b.slot - FWD_SLOT]; if (!F) return null;
+  let lane = 0, bd = 1e9; MAP.lanes.forEach((ln, k) => { const d = Math.abs(laneY(ln, F.at[0]) - F.at[1]); if (d < bd) { bd = d; lane = k; } });
+  const R = g.sides[s].rally, u = clamp(R ? R.fwd : hqU(s) + dirOf(s) * RALLY.fwdOut, 0, L), v = laneY(MAP.lanes[lane], u);
+  return { u, v, lane, n: F.node };
+}
 const fwdAt = (g, k) => g.ents.find(e => e.kind === 'b' && e.hp > 0 && e.slot === k); // what stands on forward pad slot k (either side)
 // whether side s may build role type on forward pad slot k now: it holds the pad's node, the pad is free, the role is allowed
 function fwdOk(g, s, type, k) {
@@ -2200,8 +2211,10 @@ function updateBuilding(g, b, foes, dt) {
       const n = pair ? 2 : 1; // Mass Deployment: two Riflemen at a time
       if (n === 2) b.queue.shift();
       for (let i = 0; i < n; i++) {
-        if (facOf(b.fac) === 'axiarchs') { startWarp(g, b.side, ut); continue; } // Axiarchs (v2.26): the unit warps in at the warp point instead
-        const nu = spawnUnit(g, b.side, ut, b.u + dirOf(b.side) * (b.half + 10), b.v + rand(-12, 12) + i * 16);
+        const fr = fwdRally(g, b.side, b); // v2.68: a forward Barracks sends its units to its lane's Forward flag
+        if (facOf(b.fac) === 'axiarchs') { if (fr) g.warps.push({ side: b.side, type: ut, u: fr.u + rand(-12, 12), v: fr.v + rand(-20, 20), t0: g.t, end: g.t + WARP.ch, fwd: fr }); else startWarp(g, b.side, ut); continue; } // Axiarchs (v2.26): the unit warps in at the warp point instead
+        const nu = fr ? spawnUnit(g, b.side, ut, fr.u + rand(-12, 12), fr.v + rand(-20, 20)) : spawnUnit(g, b.side, ut, b.u + dirOf(b.side) * (b.half + 10), b.v + rand(-12, 12) + i * 16);
+        if (fr) { nu.lane = fr.lane; nu.fwdHome = { u: fr.u, n: fr.n }; nu.laneV = clamp(nu.v - fr.v, -LANE_V, LANE_V); }
         if (ut === 'rifle' && pathMod(b, 'drill')) { nu.vet = 1; nu.maxHp = nu.hp = UDEF.rifle.hp * DRILL.hp; } // Drilled Riflemen
         if (g.log) { logAdd(g.log.tot[b.side].trained, ut); lgUnit(g, b.side, 'T', ut); }
       }
@@ -2567,7 +2580,8 @@ function updateUnit(g, u, foes, dt) {
   if (u.cd > 0) u.cd -= dt * (frz ? ABIL.frenzy.rate : 1);
   if (u.recoil > 0) u.recoil = Math.max(0, u.recoil - dt * 5);
   if (u.hitT > 0) u.hitT -= dt;
-  const side = g.sides[u.side], dir = dirOf(u.side), home = u.medHome ? homeFlagU(g, u.side) + u.rallyOff * dir * 0.3 : (side.defU != null ? side.defU : rallyU(u.side, g)) + u.rallyOff * dir; // defU (v2.40): a Default AI under attack rallies inside its HQ's cover; v2.62: a damaged unit sent home goes to the base flag
+  if (u.fwdHome && g.nodes[u.fwdHome.n].owner !== u.side) u.fwdHome = undefined; // v2.68: its forward post lost: home is the base again
+  const side = g.sides[u.side], dir = dirOf(u.side), home = u.medHome ? homeFlagU(g, u.side) + u.rallyOff * dir * 0.3 : (side.defU != null ? side.defU : u.fwdHome ? u.fwdHome.u : rallyU(u.side, g)) + u.rallyOff * dir * (u.fwdHome ? 0.3 : 1); // defU (v2.40): a Default AI under attack rallies inside its HQ's cover; v2.62: a damaged unit sent home goes to the base flag
   const ord = unitOrder(side, u.type, u.lane);
   const runs = side.persona && aiFix(side.persona, 'scoutGo') && ((u.id === side.scoutId && side.scoutU != null) || (side.raid && side.raid.ids.includes(u.id)) || (side.capT && side.capT.ids.includes(u.id))); // v2.60: a Hard scout or raider; v2.67: a capture group (lane maps)
   const st = u.medHome ? 'retreat' : runs ? 'run' : ord ? ord.o : side.stance; // a group or type order overrides the global stance; v2.62: sent home = Retreat to the base flag
@@ -2917,8 +2931,9 @@ function updateWarps(g) {
   if (!done.length) return;
   g.warps = g.warps.filter(w => g.t < w.end);
   for (const w of done) {
-    const p = warpOk(g, w.side, w.u, w.v) ? w : warpSpot(g, w.side, w.u, w.v); // something moved onto the spot: the nearest valid one, else the Axis
+    const p = w.fwd ? w : warpOk(g, w.side, w.u, w.v) ? w : warpSpot(g, w.side, w.u, w.v); // something moved onto the spot: the nearest valid one, else the Axis (v2.68: a forward Gate's unit arrives at its flag)
     const nu = spawnUnit(g, w.side, w.type, p.u, p.v); nu.laneV = clamp(p.v, -LANE_V, LANE_V); arriveOrders(g, nu);
+    if (w.fwd) { nu.lane = w.fwd.lane; nu.fwdHome = { u: w.fwd.u, n: w.fwd.n }; nu.laneV = clamp(nu.v - w.fwd.v, -LANE_V, LANE_V); }
     if (w.echo) { nu.echo = 1; nu.paid = w.paid; const rel = relOf(g, w.side); if (rel && rel.tier >= 3) { nu.osh = nu.maxShp * ECHO.osh; nu.oshT = g.t + ECHO.oshDur; } } // recovered (v2.34)
     const bk = beaconOf(g, w.side); if (bk && bk.tier >= 3 && inBeacon(g, w.side, nu.u, nu.v)) { nu.shp = nu.maxShp; nu.bkT = g.t + BEACON.dmgDur; } // arrived in a T3 Beacon bubble (v2.34)
     if (g.log) { logAdd(g.log.tot[w.side].trained, w.type); lgUnit(g, w.side, 'T', w.type); }
@@ -4204,7 +4219,7 @@ function aiEstimate(g, s) {
      sides then race each other's bases and nobody wins), and arrives together instead of half in each lane.
    - Forward pads (Normal, Hard): with money banked and no threat at home, a Turret (then a Barracks) on a forward pad it
      holds on its own half; at most fwd.max of them. */
-const LANE_AI = { brk: { Easy: null, Normal: { from: 420, edge: 1.5, edgeLate: 1.1, min: 1500, hold: 0, stay: 1.0 }, Hard: { from: 360, edge: 1.3, edgeLate: 1.0, min: 1200, hold: 0, stay: 0.9 } }, every: 4, even: 150, need: 0.75, surplus: 1.5, shift: 20, cap: { n: 3, from: 150, gap: 15, minArmy: 300, dur: 60, minHp: 0.5, odds: 0.3 }, fwd: { bank: 1000, every: 90, max: { Easy: 0, Normal: 1, Hard: 2 } } }; // fwd.bank above ATTACK.supply.bank: the army's supply comes first // hold: seconds a breakthrough stays committed (0: off; 45 measured no better)
+const LANE_AI = { late: { on: true, from: 900, ratio: 0.8 }, brk: { Easy: null, Normal: { from: 420, edge: 1.5, edgeLate: 1.1, min: 1500, hold: 0, stay: 1.0 }, Hard: { from: 360, edge: 1.3, edgeLate: 1.0, min: 1200, hold: 0, stay: 0.9 } }, every: 4, even: 150, need: 0.75, surplus: 1.5, shift: 20, cap: { n: 3, from: 150, gap: 15, minArmy: 300, dur: 60, minHp: 0.5, odds: 0.3 }, fwd: { bank: 1000, every: 90, max: { Easy: 0, Normal: 1, Hard: 2 } } }; // fwd.bank above ATTACK.supply.bank: the army's supply comes first // hold: seconds a breakthrough stays committed (0: off; 45 measured no better)
 function aiLanes(g, s, D, mine, theirs, threat, myV = 0, thV = 0) {
   if (MAP.lanes.length !== 2) return;
   const side = g.sides[s], LA = side.la || (side.la = { t: -99, sh: -99, fw: -99 }), easy = D.label === 'Easy';
@@ -4212,6 +4227,13 @@ function aiLanes(g, s, D, mine, theirs, threat, myV = 0, thV = 0) {
   // Breakthrough: clearly stronger than all it knows of (BREAK.edge, falling to edgeLate by the storm warning), not under
   // attack at home: go all in. The usual checks (gathered, a winnable fight at one spot) are written for one lane and
   // hold a split army back on a long two-lane field; the attack itself goes down one lane (below).
+  // v2.68 (Two-Lane draw fix, b): the late-game commit, every difficulty: from LANE_AI.late.from, not clearly behind (its
+  // army at least ratio × all it knows of) and not under attack at home, it goes all in; the attack goes down one lane (below)
+  const LT = LANE_AI.late;
+  if (LT.on && side.stance !== 'attack' && !threat && g.t >= LT.from && myV >= 300 && myV >= thV * LT.ratio) {
+    side.stance = 'attack'; side.pushTo = null; side.pushMode = 'all'; side.stanceAt = g.t; side.launchV = myV; LA.late = (LA.late || 0) + 1;
+    ev(g, { type: 'aiAttack', side: s, mode: 'all' }); lg(g, s, 'G', 'all', 0);
+  }
   const B = LANE_AI.brk[D.label];
   const held = B && g.t - (LA.brkT ?? -999) < B.hold && myV >= thV * B.stay; // committed: a breakthrough holds for B.hold seconds unless it is clearly losing
   if (B && side.stance !== 'attack' && !threat && g.t >= B.from && myV >= B.min && (held || myV >= thV * lerp(B.edge, B.edgeLate, clamp((g.t - B.from) / (EXT.warn - B.from), 0, 1)))) {

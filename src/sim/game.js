@@ -83,6 +83,17 @@ const slotPos = (s, k) => k >= FWD_SLOT ? mapPt(FWD_PADS[k - FWD_SLOT].at) : map
 let FWD_PADS = [];
 const mapFwd = () => { FWD_PADS = []; MAP.nodes.forEach((n, i) => { if (n.type === 'forwardPad') for (const p of n.pads) FWD_PADS.push({ node: i, at: p, allow: n.allow }); }); };
 mapFwd(); MAP_HOOKS.push(mapFwd);
+// v2.68 (Two-Lane draw fix, a): units trained at a Barracks role on a forward pad start at that lane's Forward flag, join
+// that lane's squad and gather there (u.fwdHome) while their side holds the pad's post; the player and the AI alike.
+// FWD_RALLY.on false = v2.67 (they appear beside the building and gather at the base's rally point).
+const FWD_RALLY = { on: true };
+function fwdRally(g, s, b) { // where a unit trained by building b starts and gathers: { u, v, lane, n } or null
+  if (!FWD_RALLY.on || !(b.slot >= FWD_SLOT) || !MAP_LANED) return null;
+  const F = FWD_PADS[b.slot - FWD_SLOT]; if (!F) return null;
+  let lane = 0, bd = 1e9; MAP.lanes.forEach((ln, k) => { const d = Math.abs(laneY(ln, F.at[0]) - F.at[1]); if (d < bd) { bd = d; lane = k; } });
+  const R = g.sides[s].rally, u = clamp(R ? R.fwd : hqU(s) + dirOf(s) * RALLY.fwdOut, 0, L), v = laneY(MAP.lanes[lane], u);
+  return { u, v, lane, n: F.node };
+}
 const fwdAt = (g, k) => g.ents.find(e => e.kind === 'b' && e.hp > 0 && e.slot === k); // what stands on forward pad slot k (either side)
 // whether side s may build role type on forward pad slot k now: it holds the pad's node, the pad is free, the role is allowed
 function fwdOk(g, s, type, k) {

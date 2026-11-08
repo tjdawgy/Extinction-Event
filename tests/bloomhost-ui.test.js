@@ -31,7 +31,7 @@ for (const dev of [NARROW, PHONE]) {
 test('a match as Bloomhost: names and cards, Train after a Larva Pit, Larva Pit and Bloomspire path pickers (v2.21), its own three abilities (v2.20)', { skip }, async () => {
   const { page, errors } = await openPage(browser, NARROW);
   await page.click('#meSeg [data-f="bloomhost"]'); await page.click('#foeSeg [data-f="lastfist"]');
-  await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+  await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
   const toasts = () => page.evaluate(() => [...$('toasts').children].map(t => t.textContent));
   assert.ok((await toasts()).some(t => /You command Bloomhost: start with a Larva Pit and a Goremound/.test(t)));
   const r = await page.evaluate(() => {
@@ -80,7 +80,7 @@ test('a match as Bloomhost: names and cards, Train after a Larva Pit, Larva Pit 
 test('the enemy faction stays out of the UI during the match (no name, toast or log); the end screen reveals both', { skip }, async () => {
   const { page, errors } = await openPage(browser, NARROW);
   await page.click('#meSeg [data-f="lastfist"]'); await page.click('#foeSeg [data-f="bloomhost"]');
-  await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+  await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
   const r = await page.evaluate(() => {
     game.countdown = 0; hideCountdown(); updateIntro(); game.sides[0].aiT = 1e9;
     const said = [], tt = toast; window.toast = (m, k) => { said.push(m); return tt(m, k); };
@@ -102,7 +102,7 @@ test('the enemy faction stays out of the UI during the match (no name, toast or 
 
 test('v2.20: Bloomhost abilities cast through the buttons (tap, place, confirm); enemy Bloomhost casts in the fog show nothing, in view they do', { skip }, async () => {
   const { page, errors } = await openPage(browser, NARROW);
-  await page.click('#meSeg [data-f="bloomhost"]'); await page.click('#foeSeg [data-f="bloomhost"]'); await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+  await page.click('#meSeg [data-f="bloomhost"]'); await page.click('#foeSeg [data-f="bloomhost"]'); await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
   const at = await page.evaluate(() => {
     game.countdown = 0; hideCountdown(); updateIntro(); game.t = 300;
     for (const s of game.sides) { s.aiT = 1e9; s.res.c = s.res.e = 5000; s.hq.tier = 2; }

@@ -55,7 +55,7 @@ async function main() {
   try {
     const { page, errors } = await openPage(browser, device, { init: 'Math.random = (() => { let a = 7; return () => (a = (a * 16807) % 2147483647) / 2147483647; })();' });
     if (!args.includes('--narrow')) { const f = path.join(outDir, `${tag}-tiers.png`); fs.writeFileSync(f, Buffer.from(await page.evaluate(SHEET), 'base64')); console.log(f); }
-    await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+    await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
     const snap = async (label, file) => { await page.waitForTimeout(80); const img = await page.screenshot(); shots.push({ label, img: img.toString('base64') }); if (file) { const f = path.join(outDir, `${tag}-${file}-${res}.png`); fs.writeFileSync(f, img); console.log(f); } };
     const scene = async (tier, js) => { await page.evaluate(SCENE, tier); if (js) await page.evaluate(js); };
     for (const tier of [1, 2, 3]) for (const s of [0, 1]) {

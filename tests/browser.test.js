@@ -100,15 +100,16 @@ test('two-tap Sell refunds 50%', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
   await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default)
   await page.evaluate(() => { game.countdown = 0; tryBuild(game, 0, 'barracks'); for (let i = 0; i < 450; i++) update(game, 1 / 30); openPanel(game.ents.find(e => e.type === 'barracks' && e.side === 0)); });
-  const c0 = await page.evaluate(() => game.sides[0].res.c);
+  const c0 = await page.evaluate(() => ({ c: game.sides[0].res.c, t: game.t }));
   await page.click('#bpSell');
   assert.strictEqual(await page.textContent('#bpSell'), 'Tap to confirm');
   assert.ok(await page.evaluate(() => game.ents.some(e => e.type === 'barracks' && e.side === 0 && e.hp > 0)), 'first tap only arms');
   await page.click('#bpSell');
-  const r = await page.evaluate(() => ({ c: game.sides[0].res.c, gone: !game.ents.some(e => e.type === 'barracks' && e.side === 0 && e.hp > 0), toasts: [...$('toasts').children].map(t => t.textContent) }));
+  const r = await page.evaluate(() => ({ c: game.sides[0].res.c, t: game.t, inc: income(game, 0).c, gone: !game.ents.some(e => e.type === 'barracks' && e.side === 0 && e.hp > 0), toasts: [...$('toasts').children].map(t => t.textContent) }));
   assert.ok(r.gone);
   assert.ok(r.toasts.includes('Barracks sold for 75 credits'), 'refund is half of 150');
-  assert.ok(r.c - c0 >= 75 && r.c - c0 < 80, `refund 75 plus income earned between the taps: ${r.c - c0}`);
+  const earned = r.inc * (r.t - c0.t) + 1; // v2.68: whatever income the game earned between the taps (a slow machine runs more game time)
+  assert.ok(r.c - c0.c >= 75 && r.c - c0.c <= 75 + earned, `refund 75 plus income earned between the taps: ${r.c - c0.c} (income allowance ${earned.toFixed(1)})`);
   assert.deepStrictEqual(errors, []);
   await page.close();
 });
@@ -194,7 +195,7 @@ test('a v5 save from before fog of war resumes cleanly', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
   await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default)
   const v5 = await page.evaluate(() => { game.countdown = 0; for (let i = 0; i < 900; i++) update(game, 1 / 30); const o = JSON.parse(serialize(game, { camX: 600, speed: 1 })); delete o.fog; o.v = 5; return JSON.stringify(o); });
-  await page.evaluate(s => { localStorage.setItem('colonyMobile.save', s); }, v5);
+  await page.evaluate(s => { running = false; game = null; localStorage.setItem('colonyMobile.save', s); }, v5); // v2.68: no live match left to autosave over it on reload (a slow machine could)
   await page.reload(); await page.waitForTimeout(300);
   await page.click('#bResume'); await page.waitForTimeout(300);
   const st = await page.evaluate(() => ({ h1: document.querySelector('#box h1').textContent, t: Math.round(game.t), exploredMid: game.fog[0].exp[cellOf(850)], fogOk: game.fog.length === 2 }));
@@ -357,7 +358,7 @@ test('sound: toggle on the title screen and pause menu, remembered under its own
   assert.strictEqual(await page.evaluate(() => localStorage.getItem('extinctionEvent.sound')), 'off');
   await page.reload(); await page.waitForTimeout(300);
   assert.strictEqual(await page.textContent('#bSound'), 'Sound: Off', 'remembered after a reload');
-  await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(200);
+  await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(200); // v2.65: through map select (Classic, the default)
   assert.strictEqual(await page.evaluate(() => sndPlay('built')), false, 'muted: nothing plays');
   await page.evaluate(() => pauseGame());
   assert.strictEqual(await page.textContent('#bSound'), 'Sound: Off');
@@ -373,7 +374,7 @@ test('sound: toggle on the title screen and pause menu, remembered under its own
 test('sound: starts on the first tap, caps voices, disconnects every node, silent off screen, survives backgrounding', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
   assert.strictEqual(await page.evaluate(() => SND.ctx), null, 'no audio before the first tap');
-  await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+  await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
   const st = await page.evaluate(() => SND.ctx && SND.ctx.state);
   assert.strictEqual(st, 'running');
   const r = await page.evaluate(() => new Promise(res => {
@@ -420,7 +421,7 @@ test('sound: every sound is baked into a buffer, so a playing sound costs at mos
 for (const dev of [PHONE, NARROW]) {
   test(`abilities at ${dev.width}×${dev.height}: buttons, building panel, info panel, banner, top bar and cards never overlap`, { skip }, async () => {
     const { page, errors } = await openPage(browser, dev);
-    await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+    await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
     const r = await page.evaluate(() => {
       game.countdown = 0; hideCountdown(); game.t = 200; game.sides[0].res.c = game.sides[0].res.e = 5000;
       for (const k of ['barracks', 'factory']) { tryBuild(game, 0, k); for (const b of game.ents) if (b.type === k) { b.built = true; b.progress = 1; } }
@@ -449,7 +450,7 @@ for (const dev of [PHONE, NARROW]) {
 
 test('abilities: tap, place, confirm; cancel; one shared cooldown ring; blocked during GET READY, while paused and when short of resources', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
-  await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+  await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
   const toasts = () => page.evaluate(() => [...$('toasts').children].map(t => t.textContent));
   // GET READY
   await page.click('#abil .ab[data-k="shield"]');
@@ -504,7 +505,7 @@ test('abilities: tap, place, confirm; cancel; one shared cooldown ring; blocked 
 
 test('abilities and the fog: an enemy strike on ground the player cannot see shows nothing; one in view warns, even off screen', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
-  await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+  await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
   const r = await page.evaluate(() => {
     paused = true; game.countdown = 0; hideCountdown(); updateIntro(); game.t = 300; // play zoom, not the intro's whole-map view
     for (const s of game.sides) { s.aiT = 1e9; s.ab = { shield: 0, strike: 0, repair: 0 }; s.res.c = s.res.e = 5000; }
@@ -535,7 +536,7 @@ test('abilities and the fog: an enemy strike on ground the player cannot see sho
 
 test('Extinction Event: warning banner (no taps), meteors only on ground the player can see, end-screen wording and flavor lines', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
-  await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+  await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
   const r = await page.evaluate(() => {
     game.countdown = 0; hideCountdown(); updateIntro(); for (const s of game.sides) s.aiT = 1e9;
     paused = true; game.t = 1180; refreshUI(true);

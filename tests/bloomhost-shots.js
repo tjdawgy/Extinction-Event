@@ -29,7 +29,7 @@ async function main() {
     { // a Bloomhost base, early and mid-game
       const { page, errors } = await openPage(browser, dev, { init: 'Math.random = (() => { let a = 7; return () => (a = (a * 16807) % 2147483647) / 2147483647; })();' });
       await page.click('#meSeg [data-f="bloomhost"]'); await page.click('#foeSeg [data-f="lastfist"]');
-      await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+      await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
       await page.evaluate(() => {
         game.countdown = 0; hideCountdown(); updateIntro(); paused = false;
         for (const s of game.sides) { s.aiT = 1e9; s.res.c = 6000; s.res.e = 3000; }
@@ -58,7 +58,7 @@ async function main() {
     { // an enemy Bloomhost base under fog: its AI has built for 4 minutes; the player sees nothing of it
       const { page, errors } = await openPage(browser, dev);
       await page.click('#meSeg [data-f="lastfist"]'); await page.click('#foeSeg [data-f="bloomhost"]');
-      await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default) await page.waitForTimeout(300);
+      await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(300); // v2.65: through map select (Classic, the default)
       const r = await page.evaluate(() => {
         game.countdown = 0; hideCountdown(); updateIntro(); paused = true; game.sides[0].aiT = 1e9;
         for (let i = 0; i < 30 * 240; i++) { update(game, 1 / 30); const h = game.sides[0].hq; h.hp = h.maxHp; } // the idle player's HQ is kept standing for the picture

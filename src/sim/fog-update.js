@@ -248,8 +248,10 @@ function updateBuilding(g, b, foes, dt) {
       const n = pair ? 2 : 1; // Mass Deployment: two Riflemen at a time
       if (n === 2) b.queue.shift();
       for (let i = 0; i < n; i++) {
-        if (facOf(b.fac) === 'axiarchs') { startWarp(g, b.side, ut); continue; } // Axiarchs (v2.26): the unit warps in at the warp point instead
-        const nu = spawnUnit(g, b.side, ut, b.u + dirOf(b.side) * (b.half + 10), b.v + rand(-12, 12) + i * 16);
+        const fr = fwdRally(g, b.side, b); // v2.68: a forward Barracks sends its units to its lane's Forward flag
+        if (facOf(b.fac) === 'axiarchs') { if (fr) g.warps.push({ side: b.side, type: ut, u: fr.u + rand(-12, 12), v: fr.v + rand(-20, 20), t0: g.t, end: g.t + WARP.ch, fwd: fr }); else startWarp(g, b.side, ut); continue; } // Axiarchs (v2.26): the unit warps in at the warp point instead
+        const nu = fr ? spawnUnit(g, b.side, ut, fr.u + rand(-12, 12), fr.v + rand(-20, 20)) : spawnUnit(g, b.side, ut, b.u + dirOf(b.side) * (b.half + 10), b.v + rand(-12, 12) + i * 16);
+        if (fr) { nu.lane = fr.lane; nu.fwdHome = { u: fr.u, n: fr.n }; nu.laneV = clamp(nu.v - fr.v, -LANE_V, LANE_V); }
         if (ut === 'rifle' && pathMod(b, 'drill')) { nu.vet = 1; nu.maxHp = nu.hp = UDEF.rifle.hp * DRILL.hp; } // Drilled Riflemen
         if (g.log) { logAdd(g.log.tot[b.side].trained, ut); lgUnit(g, b.side, 'T', ut); }
       }
