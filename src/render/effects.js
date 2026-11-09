@@ -914,6 +914,7 @@ function render(c, g, time, sel, selPad) {
       // enemy pads look occupied only as far as the player knows (in view, or a remembered ghost)
       const known = s === 0 ? b : (b && seen(b)) || ghosts.some(gh => gh.slot === i);
       drawPad(c, w.x, w.y, PAD_H, s, !known, time, s === 0 && (selPad === i || (sel && sel === b)), fac);
+      if (!b && rubbleAt(g, s, i) && (s === 0 || lit(p.u, p.v))) drawRubble(c, w.x, w.y, (g.sides[s].rubble[i] - g.t) / BREAK.rubble.t, i + s * 8); // v2.69 (c)
     }
     if (sigPadOn() && SIG.on && BD(fac, 'sigA')) { // v2.43: the signature pad, marked in gold
       const p = slotPos(s, SIG_SLOT), w = P(p.u, p.v), b = sigOnPad(g, s);

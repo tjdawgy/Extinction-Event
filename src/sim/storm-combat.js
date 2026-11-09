@@ -254,6 +254,7 @@ function kill(g, e, by, weapon) {
     return;
   }
   if (e.slot >= 0 && side.slots[e.slot] === e) side.slots[e.slot] = null;
+  if (BREAK.rubble.on && e.type !== 'hq' && e.type !== 'bunker' && e.slot >= 0) (side.rubble || (side.rubble = {}))[e.slot] = g.t + BREAK.rubble.t; // v2.69 (c): its pad is rubble for a while (sold buildings leave none)
   if (e.type === 'bunker') { const dep = depotOf(g, e.side), n = g.nodes[e.node]; if (dep && n && n.owner === e.side) (dep.bk || (dep.bk = {}))[e.node] = g.t + BUNKER.rebuild; } // v2.32: back in 45 s if the node is still held
   for (let i = 0; i < 3; i++) { const w = P(e.u + fxRand(-e.half, e.half) * 0.6, e.v + fxRand(-e.half, e.half) * 0.6, fxRand(10, e.h * 0.7)); fxBoom(g, w.x, w.y, fxRand(36, 56)); }
   ev(g, { type: 'destroyed', side: e.side, name: bdOf(e).name, hq: e.type === 'hq', seen: visibleTo(g, 1 - e.side, e) });

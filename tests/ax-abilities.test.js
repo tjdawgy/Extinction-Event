@@ -9,6 +9,7 @@ const assert = require('node:assert');
 const { loadSim } = require('./load-sim');
 
 const sim = loadSim(); sim.setMech7c(false); /* v2.43: the v2.42 mechanics (staged melee units stand on Hold next to enemies; tests/polish.test.js covers MECH7C) */ sim.setBalance7b(false); // v2.42: these tests pin the mechanics at v2.41's numbers (the phase 7b layer off; tests/strategy.test.js covers it)
+sim.BREAK.prod.on = false; // v2.69: these tests shield an HQ with any finished building (the rule before v2.69); tests/base-break.test.js covers the production rule
 const A = sim.ABIL;
 const step = (g, secs, dt = 1 / 30) => { for (let i = 0; i < Math.round(secs / dt); i++) sim.update(g, dt); };
 const quiet = (f0 = 'axiarchs', f1 = 'lastfist') => { const g = sim.newGame('normal', { factions: [f0, f1] }); g.countdown = 0; for (const s of g.sides) { s.aiT = 1e9; s.res.c = s.res.e = 9000; } sim.setStance(g, 0, 'hold'); sim.setStance(g, 1, 'hold'); return g; };

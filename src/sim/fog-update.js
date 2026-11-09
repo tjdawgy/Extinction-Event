@@ -322,6 +322,9 @@ function effDist(a, b) { return Math.max(0, Math.hypot(a.u - b.u, (a.v - b.v) * 
 // never less than |du| (a unit has no half), so nothing in range is skipped; every cheap check is exact and ties go to the
 // earlier entry in the list, as the plain scan did, so every match plays exactly as before. A list without an index (none
 // today) is scanned in full.
+// v2.69 (a): the target-score bonus an AI base attack gives a building: the HQ once its shield is down, then what holds the
+// shield up (the base's buildings; with BREAK.prod, production buildings most)
+const bbFocus = e => e.type === 'hq' ? BREAK.ai.hqFocus : e.type === 'bunker' || e.slot >= FWD_SLOT ? 0 : BREAK.ai.focus + (BREAK.prod.on && BREAK.prod.roles.includes(e.type) ? 40 : 0);
 const IX_SPEED = 600;
 function indexFoes(list, dt) {
   const ord = [], bs = [];
@@ -335,6 +338,7 @@ function indexFoes(list, dt) {
 function ixScan(g, src, def, foes, R, AR, minR) {
   const X = foes.ix, vis = g.fog[src.side].vis, side = src.side, su = src.u, sv = src.v, maxR = Math.max(R, AR);
   let best = null, bs = 1e9, bi = -1, close = false;
+  const bbf = src.kind === 'u' && g.sides[side].bbOn; // v2.69 (a): an AI base attack aims at what holds the shield up
   const check = idx => {
     const e = foes[idx];
     if (e.hp <= 0 || e.shielded || e.phT > g.t) return; // a phased Wraithwing can't be targeted (P13, v2.37)
@@ -350,7 +354,7 @@ function ixScan(g, src, def, foes, R, AR, minR) {
     if (dist < minR) { close = true; return; }
     const mult = DMG[def.weapon][ud ? ud.armor : 'building'];
     if (!mult) return;
-    const sc = dist + (e.kind === 'b' ? 80 : 0) - (mult - 1) * 45 - (1 - e.hp / e.maxHp) * 25 - (air && def.preferAir ? 400 : 0) - (e.kind === 'b' && def.preferB ? 280 : 0);
+    const sc = dist + (e.kind === 'b' ? 80 : 0) - (mult - 1) * 45 - (1 - e.hp / e.maxHp) * 25 - (air && def.preferAir ? 400 : 0) - (e.kind === 'b' && def.preferB ? 280 : 0) - (bbf && e.kind === 'b' ? bbFocus(e) : 0);
     if (sc < bs || (sc === bs && idx < bi)) { bs = sc; best = e; bi = idx; }
   };
   for (const idx of X.bs) check(idx);
@@ -380,7 +384,7 @@ function acquire(g, src, def, foes, chase) {
     // prefer units over buildings, targets this weapon counters, and wounded targets
     const mult = DMG[def.weapon][e.kind === 'b' ? 'building' : UDEF[e.type].armor];
     if (!mult) continue; // this weapon can't hurt it (e.g. Turret gatling vs buildings)
-    const sc = dist + (e.kind === 'b' ? 80 : 0) - (mult - 1) * 45 - (1 - e.hp / e.maxHp) * 25 - (air && def.preferAir ? 400 : 0) - (e.kind === 'b' && def.preferB ? 280 : 0); // the Hydra goes for aircraft first, the Leviathan for buildings
+    const sc = dist + (e.kind === 'b' ? 80 : 0) - (mult - 1) * 45 - (1 - e.hp / e.maxHp) * 25 - (air && def.preferAir ? 400 : 0) - (e.kind === 'b' && def.preferB ? 280 : 0) - (src.kind === 'u' && e.kind === 'b' && g.sides[src.side].bbOn ? bbFocus(e) : 0); // v2.69 (a) // the Hydra goes for aircraft first, the Leviathan for buildings
     if (sc < bs) { bs = sc; best = e; }
   }
   return { best, close };

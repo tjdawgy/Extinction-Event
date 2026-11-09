@@ -428,6 +428,7 @@ function drawBuilding(c, b, time) {
     scaffold(c, b, T, b.upProg, bottom, top);
   } else drawArt(c, b, T, b.anim, b.tier);
   if (b.path && treeOf(b.fac, b.type) && b.built) drawPathMark(c, b.path, T, d, b.fac); // which path this building took (v2.13; ghosts remember it)
+  if (d.gun && b.built && b.hp > 0 && typeof game !== 'undefined' && game && !game.over && powMul(game) < 1) drawPowerFail(c, d, time, b.id, 1 - powMul(game)); // v2.69 (b)
   if (b.shielded) {
     const a = 0.3 + 0.15 * Math.sin(time * 2.5 + b.side);
     c.beginPath(); c.ellipse(0, 12, 96, 158, 0, Math.PI, Math.PI * 2); c.ellipse(0, 12, 96, 40, 0, 0, Math.PI);
@@ -437,6 +438,37 @@ function drawBuilding(c, b, time) {
     c.strokeStyle = `rgba(${T.glow},${a * 0.5})`; c.lineWidth = 1;
     c.beginPath(); c.ellipse(0, 12, 96, 40, 0, 0, Math.PI); c.stroke();
   }
+  c.restore();
+}
+// v2.69 (b): a gun losing power as the storm nears: it flickers dark, sparks jump off its top and a warning bolt blinks over
+// it; the more power lost (k, 0 to 1), the darker and busier
+function drawPowerFail(c, d, time, id, k) {
+  const top = -d.h - d.half * 0.6, fl = 0.5 + 0.5 * Math.sin(time * 23 + id) * Math.sin(time * 7.3 + id * 2.1); // fl: 0 to 1, a flicker
+  c.fillStyle = `rgba(4,6,12,${0.12 + 0.28 * k * fl})`; c.beginPath(); c.ellipse(0, -d.h * 0.45, d.half * 1.5, d.h * 0.6 + d.half * 0.4, 0, 0, 7); c.fill();
+  c.strokeStyle = `rgba(150,215,255,${0.55 + 0.45 * fl})`; c.lineWidth = 1.6;
+  for (let i = 0; i < 2 + Math.round(3 * k); i++) {
+    const ph = time * 9 + id * 1.7 + i * 2.3; if (Math.sin(ph) < 0) continue;
+    const x0 = Math.sin(ph * 1.9) * d.half * 0.8, y0 = top + Math.cos(ph * 1.3) * 6;
+    c.beginPath(); c.moveTo(x0, y0); c.lineTo(x0 + Math.sin(ph * 5) * 7, y0 - 6); c.lineTo(x0 + Math.sin(ph * 7) * 10, y0 - 13); c.stroke();
+  }
+  const y = -d.h * 0.35, a = 0.7 + 0.3 * Math.sin(time * 6 + id); // the warning bolt in a dark disc beside it (clear of its bars), always shown while power fails
+  c.save(); c.translate(d.half * 1.35, 0);
+  c.fillStyle = 'rgba(20,10,0,0.75)'; c.beginPath(); c.arc(0, y, 13, 0, 7); c.fill();
+  c.strokeStyle = `rgba(255,170,50,${a})`; c.lineWidth = 1.5; c.stroke();
+  c.fillStyle = `rgba(255,190,70,${a})`;
+  c.beginPath(); c.moveTo(3, y - 10); c.lineTo(-6, y + 1.5); c.lineTo(-0.5, y + 1.5); c.lineTo(-3, y + 10); c.lineTo(6, y - 2.5); c.lineTo(0.5, y - 2.5); c.closePath(); c.fill();
+  c.restore();
+}
+// v2.69 (c): a destroyed building's pad, rubble until it clears (k: share of the time left)
+function drawRubble(c, x, y, k, seed) {
+  c.save(); c.translate(x, y); c.scale(BS, BS);
+  for (let i = 0; i < 9; i++) {
+    const a = seed * 1.7 + i * 2.39, r = 6 + (i * 13 % 22), px = Math.cos(a) * r * 1.4, py = Math.sin(a) * r * 0.6, sz = 4 + (i * 7 % 6);
+    c.fillStyle = i % 3 ? 'rgba(70,64,58,0.95)' : 'rgba(40,36,34,0.95)';
+    c.beginPath(); c.moveTo(px - sz, py); c.lineTo(px - sz * 0.3, py - sz * 0.9); c.lineTo(px + sz, py - sz * 0.3); c.lineTo(px + sz * 0.6, py + sz * 0.4); c.closePath(); c.fill();
+  }
+  c.strokeStyle = 'rgba(255,190,90,0.75)'; c.lineWidth = 2; // a ring that empties as the pad clears
+  c.beginPath(); c.arc(0, -2, 26, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k); c.stroke();
   c.restore();
 }
 // A small team-colored badge on the building's front: Barracks crosshair (Specialists) or chevrons (Mass Deployment);

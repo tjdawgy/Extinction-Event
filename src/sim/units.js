@@ -316,6 +316,8 @@ function updateUnit(g, u, foes, dt) {
       if (esc) { tu = esc.u - dir * 12; tv = esc.v + (u.id % 2 ? 14 : -14); } else { const f = g.front[u.side]; tu = f === null ? home : f - dir * 40; }
     }
     else tu = u.rwT > g.t ? home : end; // v2.43: waiting at the rally point for its group
+    if (side.bbStage != null && !d.air) tu = side.bbStage - dir * u.rallyOff * 0.5; // v2.69 (a): mass at the edge of the HQ gun's range
+    else if (side.bbLead != null && !d.air && !AI_SIEGE.includes(u.type) && dir * (u.u - side.bbLead) < 0) tu = side.bbLead - dir * u.rallyOff * 0.5; // the siege units go in first
     if (side.leash != null && !d.siege && !d.air) tu = dir > 0 ? Math.min(tu, side.leash) : Math.max(tu, side.leash); // v2.38: a Default AI's army stays within reach of its Titans while they plant
   }
   if (MAP_LANED && tv === u.laneV) tv = laneTv(u, tu); // v2.63: the lane's depth there (Classic: unchanged)

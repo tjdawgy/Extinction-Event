@@ -7,6 +7,7 @@ const assert = require('node:assert');
 const { loadSim } = require('./load-sim');
 
 const sim = loadSim();
+sim.BREAK.prod.on = false; // v2.69: these tests shield an HQ with any finished building (the rule before v2.69); tests/base-break.test.js covers the production rule
 const U = sim.UDEF;
 const step = (g, secs) => { for (let i = 0; i < Math.round(secs * 30); i++) sim.update(g, 1 / 30); };
 const quiet = (f0 = 'bloomhost', f1 = 'lastfist') => { const g = sim.newGame('normal', { factions: [f0, f1] }); g.countdown = 0; for (const s of g.sides) { s.aiT = 1e9; s.res.c = s.res.e = 9000; } sim.setStance(g, 0, 'hold'); sim.setStance(g, 1, 'hold'); return g; };

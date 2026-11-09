@@ -261,7 +261,7 @@ function aimZ(e) {
 
 // Melee (v2.17): the blow lands at once. A Skitterling hits harder for every other Skitterling on the same target.
 // Disrupted (v2.27, the Parallax): a unit deals less damage for a short time; the strongest wins, never past DISRUPT.cap
-const outMul = (g, src) => src.kind !== 'u' ? 1 : (src.disT > g.t ? 1 - src.dis : 1) * (src.bkT > g.t ? 1 + BEACON.dmg : 1); // disrupted (v2.27); a Beacon T3 warp-in (v2.34)
+const outMul = (g, src) => src.kind !== 'u' ? powMul(g) /* v2.69 (b): defences failing near the storm */ : (src.disT > g.t ? 1 - src.dis : 1) * (src.bkT > g.t ? 1 + BEACON.dmg : 1); // disrupted (v2.27); a Beacon T3 warp-in (v2.34)
 function disrupt(g, e, c) {
   if (e.kind !== 'u' || e.hp <= 0) return;
   const live = e.disT > g.t;

@@ -74,7 +74,7 @@ test('match start: wide view, GET READY 3-2-1, GO; taps wait for GO', { skip }, 
 test('HQ readouts: yours in the top bar, the enemy\'s last seen on the minimap', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
   await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default)
-  await page.evaluate(() => { game.countdown = 0; tryBuild(game, 0, 'refinery'); for (const b of game.ents) if (b.type === 'refinery') { b.built = true; b.progress = 1; } update(game, 1 / 30); refreshUI(true); }); // only a finished building shields the HQ (v2.11)
+  await page.evaluate(() => { game.countdown = 0; tryBuild(game, 0, 'barracks'); for (const b of game.ents) if (b.type === 'barracks') { b.built = true; b.progress = 1; } update(game, 1 / 30); refreshUI(true); }); // only a finished building shields the HQ (v2.11)
   const r0 = await page.evaluate(() => ({ cls: $('hq0').className, txt: $('hq0').querySelector('small').textContent, hq1: !!$('hq1') }));
   assert.strictEqual(r0.cls, 'hqr shielded'); assert.strictEqual(r0.txt, 'Shielded');
   assert.strictEqual(r0.hq1, false, 'v2.47: the enemy HQ block left the top bar');

@@ -3,7 +3,7 @@
 const HQ_VAL = 400, TURRET_VAL = 300;
 function knownDefense(g, s) {
   const f = g.fog[s];
-  return HQ_VAL * f.lastHQ.tier + Object.values(f.ghosts).reduce((a, b) => a + (b.type === 'turret' ? TURRET_VAL * b.tier : 0), 0);
+  return HQ_VAL * f.lastHQ.tier * powMul(g) + Object.values(f.ghosts).reduce((a, b) => a + (b.type === 'turret' ? TURRET_VAL * b.tier * powMul(g) : 0), 0); // v2.69 (b): failing guns count for less
 }
 // After a base attack fails, the next one needs a clearly bigger army; the bar fades out so nobody waits forever
 const FAIL_MARGIN = 1.3, FAIL_MEMORY = 150;
@@ -101,26 +101,26 @@ function aiUpdate(g, s, dt) {
 
   // 1) Economy and tech
   const constructing = g.ents.filter(e => e.kind === 'b' && e.side === s && !e.built && e.hp > 0);
-  const freePad = side.slots.some(x => !x);
+  const freePad = padsOpen(g, s) > 0; // v2.69 (c): a pad that is rubble is not free
   let want = null, wantPad = -1, planIdx = -1;
   const inc0 = income(g, s), starved = aiFix(P, 'power') && g.t > 120 && side.res.e < 100 && inc0.e < inc0.c * 0.2; // v2.41 (power): energy starved (under a fifth of its credit income)
-  if (cap < POP_MAX && used >= cap - 3 && !constructing.some(b => b.type === 'habitat') && freePad) want = 'habitat';
+  if (cap < POP_MAX && used >= cap * (BREAK.ai.on && MAP_LANED ? fill : 1) - 3 && !constructing.some(b => b.type === 'habitat') && freePad) want = 'habitat';
   else if (starved && hasBuilt(g, s, 'barracks') && countB(g, s, 'reactor') < 3 && freePad && !constructing.some(b => b.type === 'reactor')) want = 'reactor'; // v2.41 (power)
-  else if (holdEarly && hasBuilt(g, s, 'barracks') && countB(g, s, 'turret') < 1 && freePad) { want = 'turret'; wantPad = side.slots[4] ? -1 : 4; } // v2.40 (hold)
+  else if (holdEarly && hasBuilt(g, s, 'barracks') && countB(g, s, 'turret') < 1 && freePad) { want = 'turret'; wantPad = padOpen(g, s, 4) ? 4 : -1; } // v2.40 (hold)
   else if (holdEarly && hasBuilt(g, s, 'barracks') && countB(g, s, 'factory') < 1 && freePad) want = 'factory'; // v2.40 (hold): the vehicle counter
-  else if (ad && side.rushT !== undefined && g.t < 300 && hasBuilt(g, s, 'barracks') && countB(g, s, 'turret') < 1 && freePad) { want = 'turret'; wantPad = side.slots[4] ? -1 : 4; } // v2.42 (adapt): an early army seen, a Turret now
-  else if (bo && side.pressT !== undefined && g.t - side.pressT > 5 && hasBuilt(g, s, 'barracks') && countB(g, s, 'turret') < (campV > 900 ? 2 : 1) && freePad) { want = 'turret'; wantPad = side.slots[4] ? -1 : 4; } // v2.42 (breakout): pressure, a Turret at once
-  else if (side.spotsRush && infantryRush && countB(g, s, 'turret') < (armyValue(near) > 800 ? 2 : 1)) { want = 'turret'; wantPad = side.slots[4] ? -1 : 4; } // front pad
+  else if (ad && side.rushT !== undefined && g.t < 300 && hasBuilt(g, s, 'barracks') && countB(g, s, 'turret') < 1 && freePad) { want = 'turret'; wantPad = padOpen(g, s, 4) ? 4 : -1; } // v2.42 (adapt): an early army seen, a Turret now
+  else if (bo && side.pressT !== undefined && g.t - side.pressT > 5 && hasBuilt(g, s, 'barracks') && countB(g, s, 'turret') < (campV > 900 ? 2 : 1) && freePad) { want = 'turret'; wantPad = padOpen(g, s, 4) ? 4 : -1; } // v2.42 (breakout): pressure, a Turret at once
+  else if (side.spotsRush && infantryRush && countB(g, s, 'turret') < (armyValue(near) > 800 ? 2 : 1)) { want = 'turret'; wantPad = padOpen(g, s, 4) ? 4 : -1; } // front pad
   else if (calm && hasBuilt(g, s, 'barracks') && countB(g, s, 'factory') < 1) want = 'factory'; // the Tank counter to an infantry rush
   else if (P.kind === 'aggressor' && D.label !== 'Easy' && !threat && hasBuilt(g, s, 'barracks') && countB(g, s, 'factory') < 1 && aiFortified(g, s)) want = 'factory'; // a fortified enemy: Tanks to crack it (HQ T2 for the Orbital Strike, below)
   else if (D.eco && !defend && side.res.e > ENERGY_PLENTY * 2 && side.res.c < 300 && countB(g, s, 'refinery') < 4 &&
-    (countB(g, s, 'habitat') > 0 || side.slots.filter(x => !x).length >= 2)) want = 'refinery'; // turn spare energy into credits (leaving room for a Habitat)
+    (countB(g, s, 'habitat') > 0 || padsOpen(g, s) >= 2)) want = 'refinery'; // turn spare energy into credits (leaving room for a Habitat)
   else if (D.eco && side.res.e < 120 && side.res.c > 800 && countB(g, s, 'reactor') < 3 &&
-    (countB(g, s, 'habitat') > 0 || side.slots.filter(x => !x).length >= 2)) want = 'reactor'; // credits to spare but no energy: another Reactor
+    (countB(g, s, 'habitat') > 0 || padsOpen(g, s) >= 2)) want = 'reactor'; // credits to spare but no energy: another Reactor
   // its signature building (v2.32), once its economy (the difficulty's Refineries, or all its plan has if fewer) and first
   // production building are up, and not while under pressure (like tech); it takes the pad of a duplicate the plan gave up for it (aiPlanWith)
   else if (sigReady && (sigPad ? !sigOnPad(g, s) : freePad || !sigLate || aiSigRoom(g, s, sigDup, sig))) want = sig;
-  else if (dl.turrets && !threat && countB(g, s, 'turret') < dl.turrets && hasBuilt(g, s, 'barracks') && side.slots.filter(x => !x).length >= 2) want = 'turret'; // the defense dial (v2.38)
+  else if (dl.turrets && !threat && countB(g, s, 'turret') < dl.turrets && hasBuilt(g, s, 'barracks') && padsOpen(g, s) >= 2) want = 'turret'; // the defense dial (v2.38)
   else {
     const need = {};
     for (const t of plan) {
@@ -130,7 +130,7 @@ function aiUpdate(g, s, dt) {
       if ((calm || defend) && (t === 'techlab' || t === 'reactor')) continue;  // no tech while under pressure
       if (punishOn && (t === 'techlab' || (t === 'refinery' && (need.refinery || 0) >= 2))) continue; // v2.41 (read): army first while punishing
       need[t] = (need[t] || 0) + 1;
-      if (countB(g, s, t) < need[t]) { want = t; planIdx = plan.indexOf(t); if (t === 'turret' && !side.slots[4]) wantPad = 4; break; }
+      if (countB(g, s, t) < need[t]) { want = t; planIdx = plan.indexOf(t); if (t === 'turret' && padOpen(g, s, 4)) wantPad = 4; break; }
     }
   }
   // A fortified enemy: the Aggressor gets HQ T2 at once, which unlocks the Orbital Strike (until v2.16 it built a War Factory)
@@ -166,7 +166,7 @@ function aiUpdate(g, s, dt) {
     const bar = alive(g, s, 'barracks');
     if (bar.length && bar.length < 2 && bar.every(b => aiPathFrom(side.faction, 'barracks', b.path || b.upPath) === 'B')) want = 'barracks'; // then its T2 upgrade takes Specialists
   }
-  if (want && (side.slots.some(x => !x) || (sigPad && want === sig)) && (constructing.length < 2 || (bo && want === 'turret' && side.pressT !== undefined))) { // v2.42 (breakout): the pressure Turret doesn't wait for other construction
+  if (want && (padsOpen(g, s) > 0 || (sigPad && want === sig)) && (constructing.length < 2 || (bo && want === 'turret' && side.pressT !== undefined))) { // v2.42 (breakout): the pressure Turret doesn't wait for other construction
     const d = bdS(g, s, want);
     if (!d.req || hasBuilt(g, s, d.req)) {
       const r = tryBuild(g, s, want, wantPad);
@@ -446,6 +446,7 @@ function aiUpdate(g, s, dt) {
   }
   if (aiFix(P, 'raid') && D.raid) aiRaid(g, s, mine, myV, D.raid); // v2.60; v2.61: per difficulty (DIFF.raid)
   if (MAP_LANED) aiLanes(g, s, D, mine, theirs, threat, myV, thV); // v2.67: a lane map (never on Classic)
+  if (BREAK.ai.on) aiBreak(g, s, mine); // v2.69 (a)
   aiAbility(g, s, P, { mine, theirs, threat, myV, thV });
   aiMicro(g, s, D, mine);
   if (smart) aiSmartArmy(g, s, mine, dl, P); // v2.38: the Default AI's unit handling
@@ -642,6 +643,26 @@ function aiForward(g, s, D, threat) {
     if (tryBuild(g, s, type, FWD_SLOT + k).ok) return;
   }
 }
+// v2.69 (a, BREAK.ai): breaking a base. An all-in base attack gathers at the stage (just outside the enemy HQ gun's range as
+// last seen) until gather of its ground army is there (or wait seconds after the first arrive), goes in with its siege units
+// lead seconds ahead, and gathers again when what went in is down to regroup of it and the next wave is worth again
+function aiBreak(g, s, mine) {
+  const side = g.sides[s], B = BREAK.ai, opp = 1 - s, dir = dirOf(s);
+  if (!(side.stance === 'attack' && side.pushMode === 'all' && side.pushTo === null)) { side.bb = null; side.bbOn = false; side.bbStage = side.bbLead = null; return; }
+  side.bbOn = true;
+  const gun = BD(g.sides[opp].faction, 'hq').gun[g.fog[s].lastHQ.tier || 1], stage = clamp(hqU(opp) - dir * (gun.range + B.gap), 0, L);
+  const busy = u => u.id === side.scoutId || (side.raid && side.raid.ids.includes(u.id)) || (side.capT && side.capT.ids.includes(u.id));
+  const grp = mine.filter(u => !UDEF[u.type].air && !UDEF[u.type].support && !busy(u)), V = armyValue(grp);
+  const pastV = armyValue(grp.filter(u => dir * (u.u - stage) > 40));
+  const bb = side.bb || (side.bb = { ph: 'gather', t: g.t, goV: 0, goT: -99, n: 0 });
+  if (bb.ph === 'gather') {
+    const atV = armyValue(grp.filter(u => dir * (u.u - stage) > -220));
+    if (!atV) bb.t = g.t; // the wait counts from the first arrival
+    if (V > 0 && atV > 0 && (atV >= V * B.gather || g.t - bb.t > B.wait)) { bb.ph = 'go'; bb.goT = g.t; bb.goV = atV; bb.n++; }
+  } else if (pastV < bb.goV * B.regroup && V - pastV >= B.again) { bb.ph = 'gather'; bb.t = g.t; }
+  side.bbStage = bb.ph === 'gather' ? stage : null;
+  side.bbLead = bb.ph === 'go' && g.t - bb.goT < B.lead && grp.some(u => AI_SIEGE.includes(u.type)) ? stage : null;
+}
 // v2.60 (raid, ATTACK.raid): with no push on, a few of its fastest ground units (at most share of its army) take the enemy's
 // own node, or the centre if it already holds theirs; they come home when hurt, after dur seconds, or when the army attacks
 function aiRaid(g, s, mine, myV, dr) {
@@ -689,7 +710,7 @@ function aiGunsNear(g, s, u, r) { // known enemy buildings with a gun whose reac
     if (gh.side === s) continue;
     const bd = BD(gh.fac, gh.type), gun = bd && bd.gun && bd.gun[gh.tier || 1];
     if (!gun || Math.abs(gh.u - u) > gun.range + r) continue;
-    out.push({ dps: gun.dmg / gun.cd * (gun.split || 1), hp: bd.hp * hpMul(bd, gh.tier || 1) + (bd.shp || 0) });
+    out.push({ dps: gun.dmg / gun.cd * (gun.split || 1) * powMul(g), hp: bd.hp * hpMul(bd, gh.tier || 1) + (bd.shp || 0) });
   }
   return out;
 }

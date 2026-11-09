@@ -636,7 +636,7 @@ MAPS.twolane = (() => {
   };
 })();
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.68'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.69'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -736,7 +736,7 @@ const facOf = k => FACTIONS[k] ? k : DEFAULT_FACTION;
 
 const HPMUL = [1, 1, 1.25, 1.5];
 const BDEF = {
-  hq: { name: 'Command HQ', desc: 'Your command centre: a defence gun, army size and income. Shielded while any other building stands; lose it and you lose the match.', cost: { c: 0, e: 0 }, hp: 2800, half: 44, h: 104, time: 1,
+  hq: { name: 'Command HQ', desc: 'Your command centre: a defence gun, army size and income. Shielded while a production building stands in your base; lose it and you lose the match.', cost: { c: 0, e: 0 }, hp: 2800, half: 44, h: 104, time: 1,
     pop: [0, 12, 12, 12], inc: [null, { c: 3, e: 1 }, { c: 3, e: 1 }, { c: 3, e: 1 }], hpMul: [1, 1, 1.3, 1.6],
     gun: [null, { weapon: 'hqgun', dmg: 32, cd: 1.1, range: 390, hitsAir: true },
                 { weapon: 'hqgun', dmg: 42, cd: 1.0, range: 430, hitsAir: true },
@@ -783,7 +783,7 @@ BDEF.bunker = { name: 'Node Bunker', desc: 'A small gun bunker the Fortification
 // the HQ's stats and gun, so nothing about the enemy's faction leaks into the AI's estimate of a base it hasn't seen.
 const BDEF_BH = (() => {
   const o = {}, re = (k, x) => { o[k] = Object.assign({}, BDEF[k], x); };
-  re('hq', { name: 'Hive', desc: 'The swarm\'s heart: a spine launcher, army size, income and the source of creep. Shielded while any other building stands; lose it and you lose.' });
+  re('hq', { name: 'Hive', desc: 'The swarm\'s heart: a spine launcher, army size, income and the source of creep. Shielded while a production building stands in the base; lose it and you lose.' });
   re('refinery', { name: 'Goremound', desc: 'Produces credits, your main resource. Grow more early, and protect them.' });
   re('reactor', { name: 'Pulse Organ', desc: 'Produces energy for advanced organisms and upgrades.' });
   re('habitat', { name: 'Hatchery', desc: 'Raises your army size limit: upgrade it to grow a larger swarm.' });
@@ -808,7 +808,7 @@ BDEF_BH.sigB = sigDef(BDEF_BH.barracks, { name: 'Rootheart', desc: 'Signature bu
 // lower damage) at T2, Event Horizon (longer range, heavy hits, more building damage, slower) at T3.
 const BDEF_AX = (() => {
   const o = {}, re = (k, x) => { o[k] = Object.assign({}, BDEF[k], x); o[k].shp = Math.round(BDEF[k].hp * 0.3); o[k].hp = Math.round((x.hp || BDEF[k].hp) * 0.8); };
-  re('hq', { name: 'Axis', desc: 'The Axiarch core: a beam lance, army size, income and the base power field. Shielded while any other building stands; lose it and you lose.', gun: BDEF.hq.gun.map(x => x && Object.assign({}, x, { weapon: 'hqbeam', beam: true })) }); // v2.36: the Axis lance is a beam (same damage, rate and range; lands at once)
+  re('hq', { name: 'Axis', desc: 'The Axiarch core: a beam lance, army size, income and the base power field. Shielded while a production building stands in the base; lose it and you lose.', gun: BDEF.hq.gun.map(x => x && Object.assign({}, x, { weapon: 'hqbeam', beam: true })) }); // v2.36: the Axis lance is a beam (same damage, rate and range; lands at once)
   re('refinery', { name: 'Matter Loom', desc: 'Produces credits, your main resource. Like every Axiarch building, it has shields over its hull.' });
   re('reactor', { name: 'Singularity Well', desc: 'Produces energy. Axiarch units are energy-hungry, so plan for several.' });
   re('habitat', { name: 'Continuum Spire', desc: 'Raises your army size limit and enlarges the power field around the Axis.' });
@@ -1832,8 +1832,10 @@ function tryBuild(g, s, type, want = -1) {
     slot = SIG_SLOT;
   } else if (sigPadOn() && want === SIG_SLOT) return { ok: false, msg: 'Only a signature building fits the signature pad' };
   else if (want >= FWD_SLOT) { const f = fwdOk(g, s, type, want); if (!f.ok) return f; slot = want; } // v2.65: a forward pad
-  else slot = want >= 0 && want < SLOT_COUNT && !side.slots[want] ? want : side.slots.findIndex(x => !x);
-  if (slot < 0) return { ok: false, msg: 'All 8 building pads are in use' };
+  else if (want >= 0 && want < SLOT_COUNT && rubbleAt(g, s, want)) return { ok: false, msg: `Rubble: this pad clears in ${Math.ceil(side.rubble[want] - g.t)} s` }; // v2.69 (c)
+  else slot = want >= 0 && want < SLOT_COUNT && padOpen(g, s, want) ? want : side.slots.findIndex((x, k) => padOpen(g, s, k)); // v2.69 (c): not on rubble
+  if (slot < 0) return { ok: false, msg: side.slots.some(x => !x) ? 'The free pads are rubble: wait for them to clear' : 'All 8 building pads are in use' };
+  if (rubbleAt(g, s, slot)) return { ok: false, msg: `Rubble: this pad clears in ${Math.ceil(side.rubble[slot] - g.t)} s` }; // v2.69 (c): the signature or a forward pad
   if (side.res.c < d.cost.c) return { ok: false, msg: `Need ${Math.ceil(d.cost.c - side.res.c)} more credits` };
   if (side.res.e < d.cost.e) return { ok: false, msg: `Need ${Math.ceil(d.cost.e - side.res.e)} more energy` };
   side.res.c -= d.cost.c; side.res.e -= d.cost.e;
@@ -1945,11 +1947,38 @@ function setLane(g, s, scope, key, lane) {
 // The HQ is shielded while any other building on that side still stands
 function refreshShields(g) {
   for (let s = 0; s < 2; s++) {
-    const hq = g.sides[s].hq, sh = g.ents.some(b => b.kind === 'b' && b.side === s && b.type !== 'hq' && b.type !== 'bunker' && !(b.slot >= FWD_SLOT) && b.hp > 0 && b.built); // v2.32: node bunkers don't hold the shield up; v2.67: nor buildings out on forward pads (only the base's) // v2.11: finished buildings only (no shield from construction starts)
+    const hq = g.sides[s].hq, sh = g.ents.some(b => b.kind === 'b' && b.side === s && b.type !== 'hq' && b.type !== 'bunker' && !(b.slot >= FWD_SLOT) && b.hp > 0 && b.built) // v2.32: node bunkers don't hold the shield up; v2.67: nor buildings out on forward pads (only the base's) // v2.11: finished buildings only (no shield from construction starts)
+      && (!BREAK.prod.on || g.ents.some(b => b.kind === 'b' && b.side === s && BREAK.prod.roles.includes(b.type) && !(b.slot >= FWD_SLOT) && b.hp > 0 && b.built)); // v2.69 (d): and only while a production building of its base stands
     if (hq.shielded && !sh) { ev(g, { type: 'shieldDown', side: s, seen: !!g.fog && visibleTo(g, 1 - s, hq) }); lg(g, s, 'H'); }
     hq.shielded = sh;
   }
 }
+/* v2.69 (Phase 1, base-breaking): what lets a winning army finish a base. Each part switches off on its own (on: false
+   gives v2.68's rules); the AI rules are in aiBreak (src/sim/ai.js).
+   - ai: the AI's base attack masses at the edge of the HQ gun's range (stage) before going in, leads with its siege units
+     (lead seconds ahead of the rest), goes again with the next wave when the one inside is spent (regroup: under that share of
+     what went in), and aims at the buildings that keep the HQ shielded first (focus: a target-score bonus; the HQ itself once
+     its shield is down). On a lane map it also builds its next Habitat when the army it fields (a share of its limit on
+     Easy) is nearly full, not only the whole limit: an Easy AI sat at 28 supply for ten minutes with 10,000 banked.
+   - power: defences fail as the storm nears: from `from`, every building gun (HQ, Turrets, node bunkers) loses `step` of its
+     damage each minute, down to `floor`, the same for both sides (powMul). Not in the tutorial (no storm there).
+   - rubble: a destroyed building's pad can't be built on again for t seconds (base pads, the signature pad, forward pads).
+   - prod: the HQ shield drops once no production building (roles) stands in that side's base (refreshShields). */
+const BREAK = {
+  ai: { on: true, gap: 60, gather: 0.7, wait: 35, lead: 4, regroup: 0.3, again: 350, focus: 90, hqFocus: 150 },
+  power: { on: true, from: 900, step: 0.15, floor: 0.25 },
+  rubble: { on: true, t: 60 },
+  prod: { on: true, roles: ['barracks', 'factory', 'techlab'] },
+};
+function setBreak(on) { for (const k of ['ai', 'power', 'rubble', 'prod']) BREAK[k].on = !!on; } // false: v2.68's rules (the pinned replays)
+function powMul(g) { // the building-gun multiplier now (1 before BREAK.power.from)
+  const W = BREAK.power;
+  if (!W.on || g.noStorm || g.t < W.from) return 1;
+  return Math.max(W.floor, 1 - W.step * (1 + Math.floor((g.t - W.from) / 60)));
+}
+const rubbleAt = (g, s, slot) => BREAK.rubble.on && g.sides[s].rubble && g.sides[s].rubble[slot] > g.t; // a destroyed building's pad, still rubble
+const padOpen = (g, s, k) => !g.sides[s].slots[k] && !rubbleAt(g, s, k); // a base pad free to build on
+const padsOpen = (g, s) => { let n = 0; for (let k = 0; k < SLOT_COUNT; k++) if (padOpen(g, s, k)) n++; return n; };
 // Top-bar readout for one side's HQ. With a viewer, an enemy HQ out of sight shows what the viewer last saw.
 function hqStatus(g, s, viewer = s) {
   const hq = g.sides[s].hq;
@@ -2285,6 +2314,9 @@ function effDist(a, b) { return Math.max(0, Math.hypot(a.u - b.u, (a.v - b.v) * 
 // never less than |du| (a unit has no half), so nothing in range is skipped; every cheap check is exact and ties go to the
 // earlier entry in the list, as the plain scan did, so every match plays exactly as before. A list without an index (none
 // today) is scanned in full.
+// v2.69 (a): the target-score bonus an AI base attack gives a building: the HQ once its shield is down, then what holds the
+// shield up (the base's buildings; with BREAK.prod, production buildings most)
+const bbFocus = e => e.type === 'hq' ? BREAK.ai.hqFocus : e.type === 'bunker' || e.slot >= FWD_SLOT ? 0 : BREAK.ai.focus + (BREAK.prod.on && BREAK.prod.roles.includes(e.type) ? 40 : 0);
 const IX_SPEED = 600;
 function indexFoes(list, dt) {
   const ord = [], bs = [];
@@ -2298,6 +2330,7 @@ function indexFoes(list, dt) {
 function ixScan(g, src, def, foes, R, AR, minR) {
   const X = foes.ix, vis = g.fog[src.side].vis, side = src.side, su = src.u, sv = src.v, maxR = Math.max(R, AR);
   let best = null, bs = 1e9, bi = -1, close = false;
+  const bbf = src.kind === 'u' && g.sides[side].bbOn; // v2.69 (a): an AI base attack aims at what holds the shield up
   const check = idx => {
     const e = foes[idx];
     if (e.hp <= 0 || e.shielded || e.phT > g.t) return; // a phased Wraithwing can't be targeted (P13, v2.37)
@@ -2313,7 +2346,7 @@ function ixScan(g, src, def, foes, R, AR, minR) {
     if (dist < minR) { close = true; return; }
     const mult = DMG[def.weapon][ud ? ud.armor : 'building'];
     if (!mult) return;
-    const sc = dist + (e.kind === 'b' ? 80 : 0) - (mult - 1) * 45 - (1 - e.hp / e.maxHp) * 25 - (air && def.preferAir ? 400 : 0) - (e.kind === 'b' && def.preferB ? 280 : 0);
+    const sc = dist + (e.kind === 'b' ? 80 : 0) - (mult - 1) * 45 - (1 - e.hp / e.maxHp) * 25 - (air && def.preferAir ? 400 : 0) - (e.kind === 'b' && def.preferB ? 280 : 0) - (bbf && e.kind === 'b' ? bbFocus(e) : 0);
     if (sc < bs || (sc === bs && idx < bi)) { bs = sc; best = e; bi = idx; }
   };
   for (const idx of X.bs) check(idx);
@@ -2343,7 +2376,7 @@ function acquire(g, src, def, foes, chase) {
     // prefer units over buildings, targets this weapon counters, and wounded targets
     const mult = DMG[def.weapon][e.kind === 'b' ? 'building' : UDEF[e.type].armor];
     if (!mult) continue; // this weapon can't hurt it (e.g. Turret gatling vs buildings)
-    const sc = dist + (e.kind === 'b' ? 80 : 0) - (mult - 1) * 45 - (1 - e.hp / e.maxHp) * 25 - (air && def.preferAir ? 400 : 0) - (e.kind === 'b' && def.preferB ? 280 : 0); // the Hydra goes for aircraft first, the Leviathan for buildings
+    const sc = dist + (e.kind === 'b' ? 80 : 0) - (mult - 1) * 45 - (1 - e.hp / e.maxHp) * 25 - (air && def.preferAir ? 400 : 0) - (e.kind === 'b' && def.preferB ? 280 : 0) - (src.kind === 'u' && e.kind === 'b' && g.sides[src.side].bbOn ? bbFocus(e) : 0); // v2.69 (a) // the Hydra goes for aircraft first, the Leviathan for buildings
     if (sc < bs) { bs = sc; best = e; }
   }
   return { best, close };
@@ -2667,6 +2700,8 @@ function updateUnit(g, u, foes, dt) {
       if (esc) { tu = esc.u - dir * 12; tv = esc.v + (u.id % 2 ? 14 : -14); } else { const f = g.front[u.side]; tu = f === null ? home : f - dir * 40; }
     }
     else tu = u.rwT > g.t ? home : end; // v2.43: waiting at the rally point for its group
+    if (side.bbStage != null && !d.air) tu = side.bbStage - dir * u.rallyOff * 0.5; // v2.69 (a): mass at the edge of the HQ gun's range
+    else if (side.bbLead != null && !d.air && !AI_SIEGE.includes(u.type) && dir * (u.u - side.bbLead) < 0) tu = side.bbLead - dir * u.rallyOff * 0.5; // the siege units go in first
     if (side.leash != null && !d.siege && !d.air) tu = dir > 0 ? Math.min(tu, side.leash) : Math.max(tu, side.leash); // v2.38: a Default AI's army stays within reach of its Titans while they plant
   }
   if (MAP_LANED && tv === u.laneV) tv = laneTv(u, tu); // v2.63: the lane's depth there (Classic: unchanged)
@@ -3001,7 +3036,7 @@ function aimZ(e) {
 
 // Melee (v2.17): the blow lands at once. A Skitterling hits harder for every other Skitterling on the same target.
 // Disrupted (v2.27, the Parallax): a unit deals less damage for a short time; the strongest wins, never past DISRUPT.cap
-const outMul = (g, src) => src.kind !== 'u' ? 1 : (src.disT > g.t ? 1 - src.dis : 1) * (src.bkT > g.t ? 1 + BEACON.dmg : 1); // disrupted (v2.27); a Beacon T3 warp-in (v2.34)
+const outMul = (g, src) => src.kind !== 'u' ? powMul(g) /* v2.69 (b): defences failing near the storm */ : (src.disT > g.t ? 1 - src.dis : 1) * (src.bkT > g.t ? 1 + BEACON.dmg : 1); // disrupted (v2.27); a Beacon T3 warp-in (v2.34)
 function disrupt(g, e, c) {
   if (e.kind !== 'u' || e.hp <= 0) return;
   const live = e.disT > g.t;
@@ -3586,6 +3621,7 @@ function kill(g, e, by, weapon) {
     return;
   }
   if (e.slot >= 0 && side.slots[e.slot] === e) side.slots[e.slot] = null;
+  if (BREAK.rubble.on && e.type !== 'hq' && e.type !== 'bunker' && e.slot >= 0) (side.rubble || (side.rubble = {}))[e.slot] = g.t + BREAK.rubble.t; // v2.69 (c): its pad is rubble for a while (sold buildings leave none)
   if (e.type === 'bunker') { const dep = depotOf(g, e.side), n = g.nodes[e.node]; if (dep && n && n.owner === e.side) (dep.bk || (dep.bk = {}))[e.node] = g.t + BUNKER.rebuild; } // v2.32: back in 45 s if the node is still held
   for (let i = 0; i < 3; i++) { const w = P(e.u + fxRand(-e.half, e.half) * 0.6, e.v + fxRand(-e.half, e.half) * 0.6, fxRand(10, e.h * 0.7)); fxBoom(g, w.x, w.y, fxRand(36, 56)); }
   ev(g, { type: 'destroyed', side: e.side, name: bdOf(e).name, hq: e.type === 'hq', seen: visibleTo(g, 1 - e.side, e) });
@@ -3664,7 +3700,7 @@ function updateFx(g, dt) {
 const HQ_VAL = 400, TURRET_VAL = 300;
 function knownDefense(g, s) {
   const f = g.fog[s];
-  return HQ_VAL * f.lastHQ.tier + Object.values(f.ghosts).reduce((a, b) => a + (b.type === 'turret' ? TURRET_VAL * b.tier : 0), 0);
+  return HQ_VAL * f.lastHQ.tier * powMul(g) + Object.values(f.ghosts).reduce((a, b) => a + (b.type === 'turret' ? TURRET_VAL * b.tier * powMul(g) : 0), 0); // v2.69 (b): failing guns count for less
 }
 // After a base attack fails, the next one needs a clearly bigger army; the bar fades out so nobody waits forever
 const FAIL_MARGIN = 1.3, FAIL_MEMORY = 150;
@@ -3762,26 +3798,26 @@ function aiUpdate(g, s, dt) {
 
   // 1) Economy and tech
   const constructing = g.ents.filter(e => e.kind === 'b' && e.side === s && !e.built && e.hp > 0);
-  const freePad = side.slots.some(x => !x);
+  const freePad = padsOpen(g, s) > 0; // v2.69 (c): a pad that is rubble is not free
   let want = null, wantPad = -1, planIdx = -1;
   const inc0 = income(g, s), starved = aiFix(P, 'power') && g.t > 120 && side.res.e < 100 && inc0.e < inc0.c * 0.2; // v2.41 (power): energy starved (under a fifth of its credit income)
-  if (cap < POP_MAX && used >= cap - 3 && !constructing.some(b => b.type === 'habitat') && freePad) want = 'habitat';
+  if (cap < POP_MAX && used >= cap * (BREAK.ai.on && MAP_LANED ? fill : 1) - 3 && !constructing.some(b => b.type === 'habitat') && freePad) want = 'habitat';
   else if (starved && hasBuilt(g, s, 'barracks') && countB(g, s, 'reactor') < 3 && freePad && !constructing.some(b => b.type === 'reactor')) want = 'reactor'; // v2.41 (power)
-  else if (holdEarly && hasBuilt(g, s, 'barracks') && countB(g, s, 'turret') < 1 && freePad) { want = 'turret'; wantPad = side.slots[4] ? -1 : 4; } // v2.40 (hold)
+  else if (holdEarly && hasBuilt(g, s, 'barracks') && countB(g, s, 'turret') < 1 && freePad) { want = 'turret'; wantPad = padOpen(g, s, 4) ? 4 : -1; } // v2.40 (hold)
   else if (holdEarly && hasBuilt(g, s, 'barracks') && countB(g, s, 'factory') < 1 && freePad) want = 'factory'; // v2.40 (hold): the vehicle counter
-  else if (ad && side.rushT !== undefined && g.t < 300 && hasBuilt(g, s, 'barracks') && countB(g, s, 'turret') < 1 && freePad) { want = 'turret'; wantPad = side.slots[4] ? -1 : 4; } // v2.42 (adapt): an early army seen, a Turret now
-  else if (bo && side.pressT !== undefined && g.t - side.pressT > 5 && hasBuilt(g, s, 'barracks') && countB(g, s, 'turret') < (campV > 900 ? 2 : 1) && freePad) { want = 'turret'; wantPad = side.slots[4] ? -1 : 4; } // v2.42 (breakout): pressure, a Turret at once
-  else if (side.spotsRush && infantryRush && countB(g, s, 'turret') < (armyValue(near) > 800 ? 2 : 1)) { want = 'turret'; wantPad = side.slots[4] ? -1 : 4; } // front pad
+  else if (ad && side.rushT !== undefined && g.t < 300 && hasBuilt(g, s, 'barracks') && countB(g, s, 'turret') < 1 && freePad) { want = 'turret'; wantPad = padOpen(g, s, 4) ? 4 : -1; } // v2.42 (adapt): an early army seen, a Turret now
+  else if (bo && side.pressT !== undefined && g.t - side.pressT > 5 && hasBuilt(g, s, 'barracks') && countB(g, s, 'turret') < (campV > 900 ? 2 : 1) && freePad) { want = 'turret'; wantPad = padOpen(g, s, 4) ? 4 : -1; } // v2.42 (breakout): pressure, a Turret at once
+  else if (side.spotsRush && infantryRush && countB(g, s, 'turret') < (armyValue(near) > 800 ? 2 : 1)) { want = 'turret'; wantPad = padOpen(g, s, 4) ? 4 : -1; } // front pad
   else if (calm && hasBuilt(g, s, 'barracks') && countB(g, s, 'factory') < 1) want = 'factory'; // the Tank counter to an infantry rush
   else if (P.kind === 'aggressor' && D.label !== 'Easy' && !threat && hasBuilt(g, s, 'barracks') && countB(g, s, 'factory') < 1 && aiFortified(g, s)) want = 'factory'; // a fortified enemy: Tanks to crack it (HQ T2 for the Orbital Strike, below)
   else if (D.eco && !defend && side.res.e > ENERGY_PLENTY * 2 && side.res.c < 300 && countB(g, s, 'refinery') < 4 &&
-    (countB(g, s, 'habitat') > 0 || side.slots.filter(x => !x).length >= 2)) want = 'refinery'; // turn spare energy into credits (leaving room for a Habitat)
+    (countB(g, s, 'habitat') > 0 || padsOpen(g, s) >= 2)) want = 'refinery'; // turn spare energy into credits (leaving room for a Habitat)
   else if (D.eco && side.res.e < 120 && side.res.c > 800 && countB(g, s, 'reactor') < 3 &&
-    (countB(g, s, 'habitat') > 0 || side.slots.filter(x => !x).length >= 2)) want = 'reactor'; // credits to spare but no energy: another Reactor
+    (countB(g, s, 'habitat') > 0 || padsOpen(g, s) >= 2)) want = 'reactor'; // credits to spare but no energy: another Reactor
   // its signature building (v2.32), once its economy (the difficulty's Refineries, or all its plan has if fewer) and first
   // production building are up, and not while under pressure (like tech); it takes the pad of a duplicate the plan gave up for it (aiPlanWith)
   else if (sigReady && (sigPad ? !sigOnPad(g, s) : freePad || !sigLate || aiSigRoom(g, s, sigDup, sig))) want = sig;
-  else if (dl.turrets && !threat && countB(g, s, 'turret') < dl.turrets && hasBuilt(g, s, 'barracks') && side.slots.filter(x => !x).length >= 2) want = 'turret'; // the defense dial (v2.38)
+  else if (dl.turrets && !threat && countB(g, s, 'turret') < dl.turrets && hasBuilt(g, s, 'barracks') && padsOpen(g, s) >= 2) want = 'turret'; // the defense dial (v2.38)
   else {
     const need = {};
     for (const t of plan) {
@@ -3791,7 +3827,7 @@ function aiUpdate(g, s, dt) {
       if ((calm || defend) && (t === 'techlab' || t === 'reactor')) continue;  // no tech while under pressure
       if (punishOn && (t === 'techlab' || (t === 'refinery' && (need.refinery || 0) >= 2))) continue; // v2.41 (read): army first while punishing
       need[t] = (need[t] || 0) + 1;
-      if (countB(g, s, t) < need[t]) { want = t; planIdx = plan.indexOf(t); if (t === 'turret' && !side.slots[4]) wantPad = 4; break; }
+      if (countB(g, s, t) < need[t]) { want = t; planIdx = plan.indexOf(t); if (t === 'turret' && padOpen(g, s, 4)) wantPad = 4; break; }
     }
   }
   // A fortified enemy: the Aggressor gets HQ T2 at once, which unlocks the Orbital Strike (until v2.16 it built a War Factory)
@@ -3827,7 +3863,7 @@ function aiUpdate(g, s, dt) {
     const bar = alive(g, s, 'barracks');
     if (bar.length && bar.length < 2 && bar.every(b => aiPathFrom(side.faction, 'barracks', b.path || b.upPath) === 'B')) want = 'barracks'; // then its T2 upgrade takes Specialists
   }
-  if (want && (side.slots.some(x => !x) || (sigPad && want === sig)) && (constructing.length < 2 || (bo && want === 'turret' && side.pressT !== undefined))) { // v2.42 (breakout): the pressure Turret doesn't wait for other construction
+  if (want && (padsOpen(g, s) > 0 || (sigPad && want === sig)) && (constructing.length < 2 || (bo && want === 'turret' && side.pressT !== undefined))) { // v2.42 (breakout): the pressure Turret doesn't wait for other construction
     const d = bdS(g, s, want);
     if (!d.req || hasBuilt(g, s, d.req)) {
       const r = tryBuild(g, s, want, wantPad);
@@ -4107,6 +4143,7 @@ function aiUpdate(g, s, dt) {
   }
   if (aiFix(P, 'raid') && D.raid) aiRaid(g, s, mine, myV, D.raid); // v2.60; v2.61: per difficulty (DIFF.raid)
   if (MAP_LANED) aiLanes(g, s, D, mine, theirs, threat, myV, thV); // v2.67: a lane map (never on Classic)
+  if (BREAK.ai.on) aiBreak(g, s, mine); // v2.69 (a)
   aiAbility(g, s, P, { mine, theirs, threat, myV, thV });
   aiMicro(g, s, D, mine);
   if (smart) aiSmartArmy(g, s, mine, dl, P); // v2.38: the Default AI's unit handling
@@ -4303,6 +4340,26 @@ function aiForward(g, s, D, threat) {
     if (tryBuild(g, s, type, FWD_SLOT + k).ok) return;
   }
 }
+// v2.69 (a, BREAK.ai): breaking a base. An all-in base attack gathers at the stage (just outside the enemy HQ gun's range as
+// last seen) until gather of its ground army is there (or wait seconds after the first arrive), goes in with its siege units
+// lead seconds ahead, and gathers again when what went in is down to regroup of it and the next wave is worth again
+function aiBreak(g, s, mine) {
+  const side = g.sides[s], B = BREAK.ai, opp = 1 - s, dir = dirOf(s);
+  if (!(side.stance === 'attack' && side.pushMode === 'all' && side.pushTo === null)) { side.bb = null; side.bbOn = false; side.bbStage = side.bbLead = null; return; }
+  side.bbOn = true;
+  const gun = BD(g.sides[opp].faction, 'hq').gun[g.fog[s].lastHQ.tier || 1], stage = clamp(hqU(opp) - dir * (gun.range + B.gap), 0, L);
+  const busy = u => u.id === side.scoutId || (side.raid && side.raid.ids.includes(u.id)) || (side.capT && side.capT.ids.includes(u.id));
+  const grp = mine.filter(u => !UDEF[u.type].air && !UDEF[u.type].support && !busy(u)), V = armyValue(grp);
+  const pastV = armyValue(grp.filter(u => dir * (u.u - stage) > 40));
+  const bb = side.bb || (side.bb = { ph: 'gather', t: g.t, goV: 0, goT: -99, n: 0 });
+  if (bb.ph === 'gather') {
+    const atV = armyValue(grp.filter(u => dir * (u.u - stage) > -220));
+    if (!atV) bb.t = g.t; // the wait counts from the first arrival
+    if (V > 0 && atV > 0 && (atV >= V * B.gather || g.t - bb.t > B.wait)) { bb.ph = 'go'; bb.goT = g.t; bb.goV = atV; bb.n++; }
+  } else if (pastV < bb.goV * B.regroup && V - pastV >= B.again) { bb.ph = 'gather'; bb.t = g.t; }
+  side.bbStage = bb.ph === 'gather' ? stage : null;
+  side.bbLead = bb.ph === 'go' && g.t - bb.goT < B.lead && grp.some(u => AI_SIEGE.includes(u.type)) ? stage : null;
+}
 // v2.60 (raid, ATTACK.raid): with no push on, a few of its fastest ground units (at most share of its army) take the enemy's
 // own node, or the centre if it already holds theirs; they come home when hurt, after dur seconds, or when the army attacks
 function aiRaid(g, s, mine, myV, dr) {
@@ -4350,7 +4407,7 @@ function aiGunsNear(g, s, u, r) { // known enemy buildings with a gun whose reac
     if (gh.side === s) continue;
     const bd = BD(gh.fac, gh.type), gun = bd && bd.gun && bd.gun[gh.tier || 1];
     if (!gun || Math.abs(gh.u - u) > gun.range + r) continue;
-    out.push({ dps: gun.dmg / gun.cd * (gun.split || 1), hp: bd.hp * hpMul(bd, gh.tier || 1) + (bd.shp || 0) });
+    out.push({ dps: gun.dmg / gun.cd * (gun.split || 1) * powMul(g), hp: bd.hp * hpMul(bd, gh.tier || 1) + (bd.shp || 0) });
   }
   return out;
 }
@@ -6892,6 +6949,7 @@ function drawBuilding(c, b, time) {
     scaffold(c, b, T, b.upProg, bottom, top);
   } else drawArt(c, b, T, b.anim, b.tier);
   if (b.path && treeOf(b.fac, b.type) && b.built) drawPathMark(c, b.path, T, d, b.fac); // which path this building took (v2.13; ghosts remember it)
+  if (d.gun && b.built && b.hp > 0 && typeof game !== 'undefined' && game && !game.over && powMul(game) < 1) drawPowerFail(c, d, time, b.id, 1 - powMul(game)); // v2.69 (b)
   if (b.shielded) {
     const a = 0.3 + 0.15 * Math.sin(time * 2.5 + b.side);
     c.beginPath(); c.ellipse(0, 12, 96, 158, 0, Math.PI, Math.PI * 2); c.ellipse(0, 12, 96, 40, 0, 0, Math.PI);
@@ -6901,6 +6959,37 @@ function drawBuilding(c, b, time) {
     c.strokeStyle = `rgba(${T.glow},${a * 0.5})`; c.lineWidth = 1;
     c.beginPath(); c.ellipse(0, 12, 96, 40, 0, 0, Math.PI); c.stroke();
   }
+  c.restore();
+}
+// v2.69 (b): a gun losing power as the storm nears: it flickers dark, sparks jump off its top and a warning bolt blinks over
+// it; the more power lost (k, 0 to 1), the darker and busier
+function drawPowerFail(c, d, time, id, k) {
+  const top = -d.h - d.half * 0.6, fl = 0.5 + 0.5 * Math.sin(time * 23 + id) * Math.sin(time * 7.3 + id * 2.1); // fl: 0 to 1, a flicker
+  c.fillStyle = `rgba(4,6,12,${0.12 + 0.28 * k * fl})`; c.beginPath(); c.ellipse(0, -d.h * 0.45, d.half * 1.5, d.h * 0.6 + d.half * 0.4, 0, 0, 7); c.fill();
+  c.strokeStyle = `rgba(150,215,255,${0.55 + 0.45 * fl})`; c.lineWidth = 1.6;
+  for (let i = 0; i < 2 + Math.round(3 * k); i++) {
+    const ph = time * 9 + id * 1.7 + i * 2.3; if (Math.sin(ph) < 0) continue;
+    const x0 = Math.sin(ph * 1.9) * d.half * 0.8, y0 = top + Math.cos(ph * 1.3) * 6;
+    c.beginPath(); c.moveTo(x0, y0); c.lineTo(x0 + Math.sin(ph * 5) * 7, y0 - 6); c.lineTo(x0 + Math.sin(ph * 7) * 10, y0 - 13); c.stroke();
+  }
+  const y = -d.h * 0.35, a = 0.7 + 0.3 * Math.sin(time * 6 + id); // the warning bolt in a dark disc beside it (clear of its bars), always shown while power fails
+  c.save(); c.translate(d.half * 1.35, 0);
+  c.fillStyle = 'rgba(20,10,0,0.75)'; c.beginPath(); c.arc(0, y, 13, 0, 7); c.fill();
+  c.strokeStyle = `rgba(255,170,50,${a})`; c.lineWidth = 1.5; c.stroke();
+  c.fillStyle = `rgba(255,190,70,${a})`;
+  c.beginPath(); c.moveTo(3, y - 10); c.lineTo(-6, y + 1.5); c.lineTo(-0.5, y + 1.5); c.lineTo(-3, y + 10); c.lineTo(6, y - 2.5); c.lineTo(0.5, y - 2.5); c.closePath(); c.fill();
+  c.restore();
+}
+// v2.69 (c): a destroyed building's pad, rubble until it clears (k: share of the time left)
+function drawRubble(c, x, y, k, seed) {
+  c.save(); c.translate(x, y); c.scale(BS, BS);
+  for (let i = 0; i < 9; i++) {
+    const a = seed * 1.7 + i * 2.39, r = 6 + (i * 13 % 22), px = Math.cos(a) * r * 1.4, py = Math.sin(a) * r * 0.6, sz = 4 + (i * 7 % 6);
+    c.fillStyle = i % 3 ? 'rgba(70,64,58,0.95)' : 'rgba(40,36,34,0.95)';
+    c.beginPath(); c.moveTo(px - sz, py); c.lineTo(px - sz * 0.3, py - sz * 0.9); c.lineTo(px + sz, py - sz * 0.3); c.lineTo(px + sz * 0.6, py + sz * 0.4); c.closePath(); c.fill();
+  }
+  c.strokeStyle = 'rgba(255,190,90,0.75)'; c.lineWidth = 2; // a ring that empties as the pad clears
+  c.beginPath(); c.arc(0, -2, 26, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k); c.stroke();
   c.restore();
 }
 // A small team-colored badge on the building's front: Barracks crosshair (Specialists) or chevrons (Mass Deployment);
@@ -8053,6 +8142,7 @@ function render(c, g, time, sel, selPad) {
       // enemy pads look occupied only as far as the player knows (in view, or a remembered ghost)
       const known = s === 0 ? b : (b && seen(b)) || ghosts.some(gh => gh.slot === i);
       drawPad(c, w.x, w.y, PAD_H, s, !known, time, s === 0 && (selPad === i || (sel && sel === b)), fac);
+      if (!b && rubbleAt(g, s, i) && (s === 0 || lit(p.u, p.v))) drawRubble(c, w.x, w.y, (g.sides[s].rubble[i] - g.t) / BREAK.rubble.t, i + s * 8); // v2.69 (c)
     }
     if (sigPadOn() && SIG.on && BD(fac, 'sigA')) { // v2.43: the signature pad, marked in gold
       const p = slotPos(s, SIG_SLOT), w = P(p.u, p.v), b = sigOnPad(g, s);
@@ -9090,7 +9180,7 @@ function refreshPanel() {
   const tierTxt = (t, named) => P && t >= 2 ? (named ? `${P.name}: ` : '') + P.steps[t].short : d.tiers[t];
   $('bp').classList.toggle('wide', !!pick);
   $('bpPick').classList.toggle('hide', !pick);
-  $('bpNow').textContent = pick ? '' : `T${b.tier}: ${tierTxt(b.tier, true)}` + (b.type === 'hq' ? (b.shielded ? '. Shielded while your other buildings stand.' : '. Shield is down!') : '') 
+  $('bpNow').textContent = pick ? '' : `T${b.tier}: ${tierTxt(b.tier, true)}` + (b.type === 'hq' ? (b.shielded ? '. Shielded while a production building stands in your base.' : '. Shield is down!') : '') 
   if (b.tier >= 3) { setHTML($('bpNext'), '<span>Fully upgraded</span>'); up.disabled = true; up.textContent = 'Max tier'; up.classList.remove('poor'); return; }
   const nx = d.up[b.tier + 1];
   if (pick) { // the path picker: tap a path, then the Upgrade button confirms it
@@ -9198,6 +9288,7 @@ function alertTick() {
     if (b.type === 'hq') alertRaise('hq', 0, b.u, b.v, 'Your HQ is under attack');
     else alertRaise('bld', Math.round(b.u / ALERT.cell), b.u, b.v, `${logBName(g, 0, b.type)} under attack`);
   }
+  { const pm = powMul(g); if (pm < 1) { const hq = g.sides[0].hq; alertRaise('power', Math.round(pm * 100), hq.u, hq.v, `Power failing: base guns at ${Math.round(pm * 100)}%`); } } // v2.69 (b): once per step
   for (const n of g.nodes) {
     if (n.owner !== 0 && !(n.c && n.c[0] > 0)) continue; // ours, or ours being taken
     if (g.ents.some(e => e.kind === 'u' && e.side === 1 && e.hp > 0 && !UDEF[e.type].air && !UDEF[e.type].noCap && Math.abs(e.u - n.u) <= NODE_R && visibleTo(g, 0, e)))
@@ -9384,7 +9475,7 @@ function showStart() {
     <p>Pick a side, grow an outpost, field an army and destroy the enemy HQ before it destroys yours.</p>
     <div class="how">
       <div><b>Build and upgrade</b>Tap an empty pad then a building card, or just tap a card. Tap a building to upgrade, repair or sell it. Hold any card for details.</div>
-      <div><b>Control the field</b>Ground troops standing on a field node capture it for extra income. Your HQ is shielded while any other building stands.</div>
+      <div><b>Control the field</b>Ground troops standing on a field node capture it for extra income. Your HQ is shielded while a production building stands in your base.</div>
       <div><b>Command your army</b>Attack pushes forward, Hold stops everyone where they stand, Retreat pulls back to your flag without firing. Drag sideways to look around.</div>
     </div>
     <div class="setup"><span class="lbl">Difficulty</span>${diffSeg()}<span class="lbl">You</span>${facSeg('meSeg', 'me')}<span class="lbl">Opponent</span>${facSeg('foeSeg', 'foe')}<p class="fdesc" id="facDesc">${factionDesc(facPick.me)}</p></div>
@@ -10272,7 +10363,7 @@ const TUT_CH = [
       { act: true, txt: () => 'Now take the fight to them: tap Attack.', hi: () => tEl('#stance [data-s="attack"]'), done: () => tMe().stance === 'attack' },
       { act: true, pan: false, txt: () => `Destroy the enemy ${tN('hq')}. It has no other buildings left to shield it.`, hi: () => tB(game.sides[1].hq),
         enter: () => { if (tMe().stance !== 'attack') applyStance('attack'); }, done: () => game.sides[1].hq.hp <= 0 || (game.over && game.winner === 0) },
-      { txt: () => `Victory! Destroying the enemy ${tN('hq')} wins the match. In a real match it stays shielded while any other enemy building stands.` },
+      { txt: () => `Victory! Destroying the enemy ${tN('hq')} wins the match. In a real match it stays shielded while an enemy production building stands in its base.` },
     ] },
   { key: 'factions', name: 'Factions', blurb: 'Last Fist, Bloomhost and Axiarchs',
     setup: () => {},
@@ -10412,7 +10503,8 @@ $('tutSkipC').addEventListener('click', tutSkipChapter);
 // The How to Play tab: the chapter list
 CODEX_HOWTO.html = () => { const D = tutDone(); return `<h2>How to Play</h2><p>Hands-on lessons in a practice match as ${factionName('lastfist')}. You can't lose, every step can be skipped, and any chapter can be played or replayed at any time.</p>` +
   TUT_CH.map((C, i) => `<div class="cxch${D[C.key] ? ' done' : ''}" id="cx-tut-${C.key}"><span class="ck" aria-label="${D[C.key] ? 'Completed' : 'Not played'}">${D[C.key] ? '✓' : ''}</span><div class="cxct"><b>${i + 1}. ${cxEsc(C.name)}</b><small>${cxEsc(C.blurb)}</small></div><button class="cxplay" data-tut="${i}">Play</button></div>`).join('') +
-  `<h3 id="cx-split">Split Army (Two-Lane)</h3><p>On a map with two lanes every unit belongs to the squad of its lane, North or South. In the Army tab, pick <b>All</b>, <b>N</b> or <b>S</b> (or tap a squad's badge on the minimap): with a squad selected, Hold, Attack, Retreat, Regroup and Rally act on that squad only. Aircraft belong to a squad too and fly straight over the ridge.</p><p><b>Long-press a squad</b> to move it to the other lane (through the centre crossing or past your base) or to choose where new units go: North, South or alternating (the default). <b>Long-press a unit</b> to send every unit of that type to one lane. On Classic there is one lane, so there are no squads.</p>`; }; // v2.66
+  `<h3 id="cx-split">Split Army (Two-Lane)</h3><p>On a map with two lanes every unit belongs to the squad of its lane, North or South. In the Army tab, pick <b>All</b>, <b>N</b> or <b>S</b> (or tap a squad's badge on the minimap): with a squad selected, Hold, Attack, Retreat, Regroup and Rally act on that squad only. Aircraft belong to a squad too and fly straight over the ridge.</p><p><b>Long-press a squad</b> to move it to the other lane (through the centre crossing or past your base) or to choose where new units go: North, South or alternating (the default). <b>Long-press a unit</b> to send every unit of that type to one lane. On Classic there is one lane, so there are no squads.</p>` +
+  `<h3 id="cx-break">Breaking a base</h3><p>Your HQ is shielded while a production building (${tN('barracks')}, ${tN('factory')} or ${tN('techlab')}) stands in your base: destroy them and the HQ is open. A destroyed building leaves <b>rubble</b>: nothing can be built on its pad for ${BREAK.rubble.t} s. From ${mmss(BREAK.power.from)} the base guns (HQ, turrets, bunkers) lose ${Math.round(BREAK.power.step * 100)}% of their power every minute as the Extinction Event nears, the same for both sides: <b>Power failing</b>.</p>`; }; // v2.66; v2.69: base-breaking
 // First launch: offer the tutorial once (the answer is remembered; without storage, once per page load)
 function tutFirstPrompt() {
   TUT.prompted = true;

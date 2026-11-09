@@ -67,7 +67,7 @@ function refreshPanel() {
   const tierTxt = (t, named) => P && t >= 2 ? (named ? `${P.name}: ` : '') + P.steps[t].short : d.tiers[t];
   $('bp').classList.toggle('wide', !!pick);
   $('bpPick').classList.toggle('hide', !pick);
-  $('bpNow').textContent = pick ? '' : `T${b.tier}: ${tierTxt(b.tier, true)}` + (b.type === 'hq' ? (b.shielded ? '. Shielded while your other buildings stand.' : '. Shield is down!') : '') 
+  $('bpNow').textContent = pick ? '' : `T${b.tier}: ${tierTxt(b.tier, true)}` + (b.type === 'hq' ? (b.shielded ? '. Shielded while a production building stands in your base.' : '. Shield is down!') : '') 
   if (b.tier >= 3) { setHTML($('bpNext'), '<span>Fully upgraded</span>'); up.disabled = true; up.textContent = 'Max tier'; up.classList.remove('poor'); return; }
   const nx = d.up[b.tier + 1];
   if (pick) { // the path picker: tap a path, then the Upgrade button confirms it
@@ -175,6 +175,7 @@ function alertTick() {
     if (b.type === 'hq') alertRaise('hq', 0, b.u, b.v, 'Your HQ is under attack');
     else alertRaise('bld', Math.round(b.u / ALERT.cell), b.u, b.v, `${logBName(g, 0, b.type)} under attack`);
   }
+  { const pm = powMul(g); if (pm < 1) { const hq = g.sides[0].hq; alertRaise('power', Math.round(pm * 100), hq.u, hq.v, `Power failing: base guns at ${Math.round(pm * 100)}%`); } } // v2.69 (b): once per step
   for (const n of g.nodes) {
     if (n.owner !== 0 && !(n.c && n.c[0] > 0)) continue; // ours, or ours being taken
     if (g.ents.some(e => e.kind === 'u' && e.side === 1 && e.hp > 0 && !UDEF[e.type].air && !UDEF[e.type].noCap && Math.abs(e.u - n.u) <= NODE_R && visibleTo(g, 0, e)))

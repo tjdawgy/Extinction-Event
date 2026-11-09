@@ -1,5 +1,5 @@
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.68'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.69'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -99,7 +99,7 @@ const facOf = k => FACTIONS[k] ? k : DEFAULT_FACTION;
 
 const HPMUL = [1, 1, 1.25, 1.5];
 const BDEF = {
-  hq: { name: 'Command HQ', desc: 'Your command centre: a defence gun, army size and income. Shielded while any other building stands; lose it and you lose the match.', cost: { c: 0, e: 0 }, hp: 2800, half: 44, h: 104, time: 1,
+  hq: { name: 'Command HQ', desc: 'Your command centre: a defence gun, army size and income. Shielded while a production building stands in your base; lose it and you lose the match.', cost: { c: 0, e: 0 }, hp: 2800, half: 44, h: 104, time: 1,
     pop: [0, 12, 12, 12], inc: [null, { c: 3, e: 1 }, { c: 3, e: 1 }, { c: 3, e: 1 }], hpMul: [1, 1, 1.3, 1.6],
     gun: [null, { weapon: 'hqgun', dmg: 32, cd: 1.1, range: 390, hitsAir: true },
                 { weapon: 'hqgun', dmg: 42, cd: 1.0, range: 430, hitsAir: true },
@@ -146,7 +146,7 @@ BDEF.bunker = { name: 'Node Bunker', desc: 'A small gun bunker the Fortification
 // the HQ's stats and gun, so nothing about the enemy's faction leaks into the AI's estimate of a base it hasn't seen.
 const BDEF_BH = (() => {
   const o = {}, re = (k, x) => { o[k] = Object.assign({}, BDEF[k], x); };
-  re('hq', { name: 'Hive', desc: 'The swarm\'s heart: a spine launcher, army size, income and the source of creep. Shielded while any other building stands; lose it and you lose.' });
+  re('hq', { name: 'Hive', desc: 'The swarm\'s heart: a spine launcher, army size, income and the source of creep. Shielded while a production building stands in the base; lose it and you lose.' });
   re('refinery', { name: 'Goremound', desc: 'Produces credits, your main resource. Grow more early, and protect them.' });
   re('reactor', { name: 'Pulse Organ', desc: 'Produces energy for advanced organisms and upgrades.' });
   re('habitat', { name: 'Hatchery', desc: 'Raises your army size limit: upgrade it to grow a larger swarm.' });
@@ -171,7 +171,7 @@ BDEF_BH.sigB = sigDef(BDEF_BH.barracks, { name: 'Rootheart', desc: 'Signature bu
 // lower damage) at T2, Event Horizon (longer range, heavy hits, more building damage, slower) at T3.
 const BDEF_AX = (() => {
   const o = {}, re = (k, x) => { o[k] = Object.assign({}, BDEF[k], x); o[k].shp = Math.round(BDEF[k].hp * 0.3); o[k].hp = Math.round((x.hp || BDEF[k].hp) * 0.8); };
-  re('hq', { name: 'Axis', desc: 'The Axiarch core: a beam lance, army size, income and the base power field. Shielded while any other building stands; lose it and you lose.', gun: BDEF.hq.gun.map(x => x && Object.assign({}, x, { weapon: 'hqbeam', beam: true })) }); // v2.36: the Axis lance is a beam (same damage, rate and range; lands at once)
+  re('hq', { name: 'Axis', desc: 'The Axiarch core: a beam lance, army size, income and the base power field. Shielded while a production building stands in the base; lose it and you lose.', gun: BDEF.hq.gun.map(x => x && Object.assign({}, x, { weapon: 'hqbeam', beam: true })) }); // v2.36: the Axis lance is a beam (same damage, rate and range; lands at once)
   re('refinery', { name: 'Matter Loom', desc: 'Produces credits, your main resource. Like every Axiarch building, it has shields over its hull.' });
   re('reactor', { name: 'Singularity Well', desc: 'Produces energy. Axiarch units are energy-hungry, so plan for several.' });
   re('habitat', { name: 'Continuum Spire', desc: 'Raises your army size limit and enlarges the power field around the Axis.' });

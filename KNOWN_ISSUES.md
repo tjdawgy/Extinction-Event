@@ -2,7 +2,69 @@
 
 Issues found during testing that are deliberately deferred. Each lists the step that should address it.
 
-## Two-Lane draw fix (v2.68, Phase 1): targets not met
+## Base-breaking (v2.69, Phase 1): the Two-Lane draw fix, targets met
+- **Why matches drew** (traced, v2.68): the side that won the mid-field reached the enemy base with a strung-out army (in one drawn match the winner had 4,000 army value but only 7–15 units near the enemy base at a time), the HQ gun killed it piecemeal, and the loser, its HQ shielded by any building, rebuilt every loss until the storm decided the match.
+- **What shipped** (`BREAK` in src/sim/game.js; each part switches off on its own, `setBreak(false)` gives v2.68's rules; every map):
+  - **a. AI base-breaking** (`aiBreak` in src/sim/ai.js, `bbFocus` in src/sim/fog-update.js; AI only, no rule change): an all-in base attack gathers at the stage, just outside the enemy HQ gun's range as last seen (`side.bbStage`), until 70% of its ground army is there (or 35 s after the first arrive); goes in with its siege units 4 s ahead (`side.bbLead`); gathers again when the wave inside is under 30% of what went in and the next one is worth 350; and aims at the buildings that keep the HQ shielded (a target-score bonus, production buildings most), then the bare HQ. On a lane map it also builds its next Habitat when the army it fields is nearly full, not only the whole limit: Easy fields 70% of its limit, so it never reached the Habitat trigger and sat at 28 supply for ten minutes with 10,000 credits banked (Classic's Easy is unchanged).
+  - **b. Power failing** (`BREAK.power`, `powMul`): from 15:00 every building gun (HQ, Turrets and each faction's Turret role, node bunkers) loses 15% of its damage each minute, down to 25% (19:00 on), the same for both sides; not in the tutorial. The AI counts failing guns for less. The player sees a "Power failing: base guns at N%" alert once per step and, on each gun, a dark flicker, sparks and an amber bolt badge (`drawPowerFail`). Storm endings stay draws.
+  - **c. Rubble** (`BREAK.rubble`, `rubbleAt`, `padOpen`): a destroyed building's pad (base, signature or forward) can't be built on again for 60 s; selling leaves none. Drawn as debris with a ring that empties as it clears (`drawRubble`); building there says "Rubble: this pad clears in N s". The AI counts rubble as no free pad.
+  - **d. Production shield** (`BREAK.prod`, `refreshShields`): the HQ is shielded only while a finished production building (the Barracks, War Factory and Tech Lab roles) stands in its base. HQ descriptions, the menu's how-to, the panel line, the tutorial and a new Codex section (How to Play, "Breaking a base") say so.
+  - **e. A bigger army cap on lane maps** was not needed and not tried.
+- **Each option alone and together** (Two-Lane, 48 matches, seeds 8000–8047, v2.68's draws on these seeds: Hard 33.3%; audit/logs-p1/basebreak-v269/experiments.md):
+
+  | Set | Hard draws (median) | Normal draws (median) | Easy draws (median) |
+  |---|---|---|---|
+  | a | 27.1% (15:06) | | |
+  | b | 12.5% (16:02) | 29.2% (20:13) | 31.3% (21:06) |
+  | c | 27.1% (13:51) | | |
+  | d | 33.3% (15:34) | | |
+  | a + b | 10.4% (15:06) | 29.2% (19:32) | 22.9% (20:40) |
+  | a + b + c | 12.5% (11:55) | 16.7% (18:06) | 25.0% (21:18) |
+  | a + b + c + d | 6.3% (12:52) | 8.3% (15:53) | 25.0% (21:13) |
+  | the same + Easy's Habitat rule | | | 14.6% (19:13) |
+  | a + b + d (+ the Habitat rule) | 12.5% (14:28) | 18.8% (18:29) | 18.8% (19:08) |
+
+  No smaller set meets every target: b alone or a + b leave Normal and Easy at 23–31%; without c Normal's median is 18:29; without d (a + b + c) Normal's is 18:06 and Easy draws 25%. So all four ship.
+- **Results, Two-Lane** (audit/sim/ladder.js --map=twolane, 100 matches each, mixed factions, sides alternating; audit/logs-p1/basebreak-v269/twolane.md):
+
+  | Matchup | A–B–draw | median | decided before 20:00 | draws | no fight | sides (left–right) |
+  |---|---|---|---|---|---|---|
+  | hard vs hard | 37–55–8 | 13:33 | 77.0% | 8.0% (v2.68 39%) | 0.0% | 41–51 |
+  | normal vs normal | 44–50–6 | 16:41 | 72.0% | 6.0% (v2.68 58%) | 0.0% | 46–48 |
+  | easy vs easy | 39–44–17 | 19:03 | 60.0% | 17.0% (v2.68 46%) | 0.0% | 41–42 |
+
+  Against the targets: draws under 25% ✓ on all three; no fight under 5% ✓; sides even ✓ (Hard 41–51 is within chance, p ≈ 0.3); median 12–18 min ✓ for Hard and Normal, **✗ for Easy (19:03)**. Easy is slow by design since v2.64 (Classic's Easy vs Easy median was 19:46 then and is 19:24 now); a faster Easy would mean a less gentle one, which is the balance pass's call.
+- **Classic, before and after** (100 matches each, the same seeds; "before" is this build with `setBreak(false)`, i.e. v2.68; audit/logs-p1/basebreak-v269/classic*.md):
+
+  | Matchup | before: draws, median | after: draws, median | after: sides |
+  |---|---|---|---|
+  | hard vs hard | 24.0%, 13:32 | 3.0%, 12:32 | 39–58 |
+  | normal vs normal | 22.0%, 14:45 | 4.0%, 14:03 | 50–46 |
+  | easy vs easy | 21.0%, 20:06 | 7.0%, 19:24 | 45–48 |
+
+  Draws no worse ✓; median 12–18 ✓ for Hard and Normal, Easy 19:24 (was 20:06). Classic Hard's sides, 39–58, are about two standard deviations from even (p ≈ 0.05); before they were 37–39. Logged for the balance pass, not tuned.
+- **The difficulty ladder** (100 matches each; audit/logs-p1/basebreak-v269/*-ladder.md):
+
+  | Matchup | Classic | Two-Lane |
+  |---|---|---|
+  | Hard vs Normal | 79–21–0, 79.0% (v2.61: 82.8%) | 60–25–15, 67.5% (v2.67, 30 matches: 76.7%) |
+  | Normal vs Easy | 83–17–0, 83.0% (v2.64: 90.0%) | 65–29–6, 68.0% (v2.67, 30 matches: 88.3%) |
+
+  The ladder is still ordered on both maps, but flatter: on Classic a defending Easy/Normal no longer holds out to the storm (no draws at all now), and on Two-Lane Easy builds Habitats and fields a real army. Normal beats Easy below the 85–90% band v2.64 set for Classic; for the balance pass.
+- **Faction win shares** (cross-faction matches, (wins + draws/2) / games; not tuned):
+
+  | Faction | Two-Lane Hard | Normal | Easy | Classic Hard (before → after) | Normal | Easy |
+  |---|---|---|---|---|---|---|
+  | lastfist | 51.1% | 53.4% | 38.6% | 62.5% → 69.3% | 71.6% → 78.4% | 42.0% → 44.3% |
+  | bloomhost | 51.1% | 37.5% | 48.9% | 33.0% → 33.0% | 35.2% → 39.8% | 46.6% → 42.0% |
+  | axiarchs | 47.7% | 59.1% | 62.5% | 54.5% → 47.7% | 43.2% → 31.8% | 61.4% → 63.6% |
+
+  Two-Lane Hard is the most even it has been (v2.68: 53/39/58). On Classic, base-breaking helps Last Fist most (Hard 69%, Normal 78%): its Artillery, Titans and Orbital Strike break bases best. For the balance pass.
+- **Spawn sides on Classic, checked further:** the slow spawn test (50 seeded Hard mirrors per faction) failed once for Bloomhost, right side ahead 34 of 50. Switching each part off on those seeds still gave 31–34 for the right, so no one part causes it, and no rule here depends on the side. More seeds: Bloomhost seeds 51–150 48–52; seeds 1–100 Last Fist 54–46, Bloomhost 42–58, Axiarchs 47–53 (pooled 143–157); v2.68 on Bloomhost seeds 1–150 73–77. Seeds 1–50 were an outlier: with almost every match now decided, 50 matches let a fair coin pass 60% about one time in eight per faction. The test now plays 100 per faction (seeds 1–100).
+- **Slow test raised back:** tests/slow/twolane-ai.test.js asks for 4 of its 6 seeded Hard mirrors to end at an HQ again (v2.68: half).
+- **Tests:** tests/base-break.test.js (power steps, floor, both sides, the tutorial and off; a Turret's shot and the AI's estimate; rubble blocks only its pad, clears, none from selling; the shield with and without a production building of each role; the stage, the lead, the next wave; the target preference), tests/base-break-ui.test.js (the alert once per step, the rubble message, screenshots at both iPhone sizes in docs/screenshots/basebreak-*.png). Tests that build a Refinery to shield an HQ keep the old shield rule (`BREAK.prod.on = false` at the top of the file); the pinned replays use `setBreak(false)`.
+
+## Two-Lane draw fix (v2.68, Phase 1): targets not met (met in v2.69, above)
 - **a. Forward-Barracks rally** (`fwdRally`, `FWD_RALLY` in src/sim/game.js; player and AI, every faction): a unit trained at a Barracks-role building on a forward pad (Barracks, Larva Pit, Genesis Gate; an Axiarch warp-in included) starts at that lane's Forward flag, on that lane, and uses the flag as home (`u.fwdHome`) while its side holds the post; when the post is lost, home is the base's flag again. `FWD_RALLY.on = false` gives v2.67's behaviour.
 - **b. Late-game commit** (`LANE_AI.late` in src/sim/ai.js; every difficulty, lane maps only): from 15:00, if not under attack at home and its army is at least 0.8× all it knows of the enemy's, the AI sends its whole army down one lane (the lane where the enemy army is). `LANE_AI.late.on = false` gives v2.67.
 - **c. A shorter map** was tried (1,900 long instead of 2,200: nodes, towers, forward posts and the ridge moved in; it validated cleanly) and is **not** shipped: it shortened matches without reducing draws.

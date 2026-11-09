@@ -266,8 +266,10 @@ function tryBuild(g, s, type, want = -1) {
     slot = SIG_SLOT;
   } else if (sigPadOn() && want === SIG_SLOT) return { ok: false, msg: 'Only a signature building fits the signature pad' };
   else if (want >= FWD_SLOT) { const f = fwdOk(g, s, type, want); if (!f.ok) return f; slot = want; } // v2.65: a forward pad
-  else slot = want >= 0 && want < SLOT_COUNT && !side.slots[want] ? want : side.slots.findIndex(x => !x);
-  if (slot < 0) return { ok: false, msg: 'All 8 building pads are in use' };
+  else if (want >= 0 && want < SLOT_COUNT && rubbleAt(g, s, want)) return { ok: false, msg: `Rubble: this pad clears in ${Math.ceil(side.rubble[want] - g.t)} s` }; // v2.69 (c)
+  else slot = want >= 0 && want < SLOT_COUNT && padOpen(g, s, want) ? want : side.slots.findIndex((x, k) => padOpen(g, s, k)); // v2.69 (c): not on rubble
+  if (slot < 0) return { ok: false, msg: side.slots.some(x => !x) ? 'The free pads are rubble: wait for them to clear' : 'All 8 building pads are in use' };
+  if (rubbleAt(g, s, slot)) return { ok: false, msg: `Rubble: this pad clears in ${Math.ceil(side.rubble[slot] - g.t)} s` }; // v2.69 (c): the signature or a forward pad
   if (side.res.c < d.cost.c) return { ok: false, msg: `Need ${Math.ceil(d.cost.c - side.res.c)} more credits` };
   if (side.res.e < d.cost.e) return { ok: false, msg: `Need ${Math.ceil(d.cost.e - side.res.e)} more energy` };
   side.res.c -= d.cost.c; side.res.e -= d.cost.e;
@@ -379,11 +381,38 @@ function setLane(g, s, scope, key, lane) {
 // The HQ is shielded while any other building on that side still stands
 function refreshShields(g) {
   for (let s = 0; s < 2; s++) {
-    const hq = g.sides[s].hq, sh = g.ents.some(b => b.kind === 'b' && b.side === s && b.type !== 'hq' && b.type !== 'bunker' && !(b.slot >= FWD_SLOT) && b.hp > 0 && b.built); // v2.32: node bunkers don't hold the shield up; v2.67: nor buildings out on forward pads (only the base's) // v2.11: finished buildings only (no shield from construction starts)
+    const hq = g.sides[s].hq, sh = g.ents.some(b => b.kind === 'b' && b.side === s && b.type !== 'hq' && b.type !== 'bunker' && !(b.slot >= FWD_SLOT) && b.hp > 0 && b.built) // v2.32: node bunkers don't hold the shield up; v2.67: nor buildings out on forward pads (only the base's) // v2.11: finished buildings only (no shield from construction starts)
+      && (!BREAK.prod.on || g.ents.some(b => b.kind === 'b' && b.side === s && BREAK.prod.roles.includes(b.type) && !(b.slot >= FWD_SLOT) && b.hp > 0 && b.built)); // v2.69 (d): and only while a production building of its base stands
     if (hq.shielded && !sh) { ev(g, { type: 'shieldDown', side: s, seen: !!g.fog && visibleTo(g, 1 - s, hq) }); lg(g, s, 'H'); }
     hq.shielded = sh;
   }
 }
+/* v2.69 (Phase 1, base-breaking): what lets a winning army finish a base. Each part switches off on its own (on: false
+   gives v2.68's rules); the AI rules are in aiBreak (src/sim/ai.js).
+   - ai: the AI's base attack masses at the edge of the HQ gun's range (stage) before going in, leads with its siege units
+     (lead seconds ahead of the rest), goes again with the next wave when the one inside is spent (regroup: under that share of
+     what went in), and aims at the buildings that keep the HQ shielded first (focus: a target-score bonus; the HQ itself once
+     its shield is down). On a lane map it also builds its next Habitat when the army it fields (a share of its limit on
+     Easy) is nearly full, not only the whole limit: an Easy AI sat at 28 supply for ten minutes with 10,000 banked.
+   - power: defences fail as the storm nears: from `from`, every building gun (HQ, Turrets, node bunkers) loses `step` of its
+     damage each minute, down to `floor`, the same for both sides (powMul). Not in the tutorial (no storm there).
+   - rubble: a destroyed building's pad can't be built on again for t seconds (base pads, the signature pad, forward pads).
+   - prod: the HQ shield drops once no production building (roles) stands in that side's base (refreshShields). */
+const BREAK = {
+  ai: { on: true, gap: 60, gather: 0.7, wait: 35, lead: 4, regroup: 0.3, again: 350, focus: 90, hqFocus: 150 },
+  power: { on: true, from: 900, step: 0.15, floor: 0.25 },
+  rubble: { on: true, t: 60 },
+  prod: { on: true, roles: ['barracks', 'factory', 'techlab'] },
+};
+function setBreak(on) { for (const k of ['ai', 'power', 'rubble', 'prod']) BREAK[k].on = !!on; } // false: v2.68's rules (the pinned replays)
+function powMul(g) { // the building-gun multiplier now (1 before BREAK.power.from)
+  const W = BREAK.power;
+  if (!W.on || g.noStorm || g.t < W.from) return 1;
+  return Math.max(W.floor, 1 - W.step * (1 + Math.floor((g.t - W.from) / 60)));
+}
+const rubbleAt = (g, s, slot) => BREAK.rubble.on && g.sides[s].rubble && g.sides[s].rubble[slot] > g.t; // a destroyed building's pad, still rubble
+const padOpen = (g, s, k) => !g.sides[s].slots[k] && !rubbleAt(g, s, k); // a base pad free to build on
+const padsOpen = (g, s) => { let n = 0; for (let k = 0; k < SLOT_COUNT; k++) if (padOpen(g, s, k)) n++; return n; };
 // Top-bar readout for one side's HQ. With a viewer, an enemy HQ out of sight shows what the viewer last saw.
 function hqStatus(g, s, viewer = s) {
   const hq = g.sides[s].hq;

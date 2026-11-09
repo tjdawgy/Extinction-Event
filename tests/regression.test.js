@@ -4,6 +4,7 @@ const assert = require('node:assert');
 const { loadSim, readHtml } = require('./load-sim');
 
 const sim = loadSim(); sim.setBalance7b(false); // v2.42: these tests pin the mechanics at v2.41's numbers (the phase 7b layer off; tests/strategy.test.js covers it)
+sim.BREAK.prod.on = false; // v2.69: these tests shield an HQ with any finished building (the rule before v2.69); tests/base-break.test.js covers the production rule
 const STEP = 1 / 30;
 const run = (g, sec) => { for (let i = Math.round(sec / STEP); i > 0; i--) sim.update(g, STEP); };
 function base(types = ['barracks']) { // a quiet game with finished buildings for side 0

@@ -4,6 +4,7 @@ const assert = require('node:assert');
 const { loadSim } = require('./load-sim');
 
 const sim = loadSim();
+sim.BREAK.prod.on = false; // v2.69: these tests shield an HQ with any finished building (the rule before v2.69); tests/base-break.test.js covers the production rule
 const E = sim.EXT;
 const step = (g, secs) => { for (let i = 0; i < Math.round(secs * 30); i++) sim.update(g, 1 / 30); };
 function quiet(t) { // AI off, the given game time already played

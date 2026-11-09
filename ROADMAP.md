@@ -81,7 +81,7 @@ Map data format: [docs/MAP_FORMAT.md](docs/MAP_FORMAT.md) (approved after Phase 
   - [x] "Send damaged home" button. *(v2.62: under 40% health)*
 - [ ] **AI learns the new maps.** Expect real tuning time for each layout.
   - [x] Two-Lane: all three difficulties. *(v2.67)*
-  - [ ] Two-Lane draw fix: draws under 25% on every difficulty, median 12–18 min. *(v2.68 added the forward-Barracks rally and a late-game commit; a shorter map was tried; draws still 39% / 58% / 46% (Hard / Normal / Easy): not met. KNOWN_ISSUES.md "Two-Lane draw fix")*
+  - [x] Two-Lane draw fix: draws under 25% on every difficulty, median 12–18 min. *(v2.68 added the forward-Barracks rally and a late-game commit; v2.69 base-breaking (the AI masses at the HQ gun's edge, power failing from 15:00, rubble, the HQ shield tied to production): draws 8% / 6% / 17% (Hard / Normal / Easy), medians 13:33 / 16:41 / 19:03 (Easy over 18, slow by design); KNOWN_ISSUES.md "Base-breaking")*
   - [ ] Three-Lane with crossings.
 - [ ] **Balance pass.**
   - [x] Extend the sim harness to run on every map. *(v2.67: `--map` in audit/sim/ladder.js, `mapId` in match.js; audit/sim/shares.js)*

@@ -43,7 +43,7 @@ function showStart() {
     <p>Pick a side, grow an outpost, field an army and destroy the enemy HQ before it destroys yours.</p>
     <div class="how">
       <div><b>Build and upgrade</b>Tap an empty pad then a building card, or just tap a card. Tap a building to upgrade, repair or sell it. Hold any card for details.</div>
-      <div><b>Control the field</b>Ground troops standing on a field node capture it for extra income. Your HQ is shielded while any other building stands.</div>
+      <div><b>Control the field</b>Ground troops standing on a field node capture it for extra income. Your HQ is shielded while a production building stands in your base.</div>
       <div><b>Command your army</b>Attack pushes forward, Hold stops everyone where they stand, Retreat pulls back to your flag without firing. Drag sideways to look around.</div>
     </div>
     <div class="setup"><span class="lbl">Difficulty</span>${diffSeg()}<span class="lbl">You</span>${facSeg('meSeg', 'me')}<span class="lbl">Opponent</span>${facSeg('foeSeg', 'foe')}<p class="fdesc" id="facDesc">${factionDesc(facPick.me)}</p></div>
