@@ -193,7 +193,7 @@ function damage1(g, e, amt, weapon, fromSide, src) {
   const armor = e.kind === 'b' ? 'building' : UDEF[e.type].armor;
   const mult = DMG[weapon][armor];
   if (!mult) return;
-  let dmg = amt * mult * (g.sides[e.side].buff ? NANO.cut : 1) * (1 + corrNow(e, g.t)); // corroded: takes more (v2.19; v2.37 the second slot)
+  let dmg = amt * mult * (sideBuff(g, e.side) ? NANO.cut : 1) * (1 + corrNow(e, g.t)); // corroded: takes more (v2.19; v2.37 the second slot)
   const br = e.kind === 'u' && UDEF[e.type].brace, pre = dmg;
   if (br) { // the Bulwark braces on the first hit after its cooldown (v2.17)
     if (!(e.braceT > g.t) && g.t >= e.braceCd) { e.braceT = g.t + br.dur; e.braceCd = g.t + br.cd; }
@@ -240,6 +240,13 @@ function damage1(g, e, amt, weapon, fromSide, src) {
 
 function kill(g, e, by, weapon) {
   if (e.dead) return;
+  if (by === NEUTRAL) by = -1; // v2.71: killed by a relic guard (no side)
+  if (e.side === NEUTRAL) { // v2.71: a relic guard
+    e.dead = true; e.hp = 0;
+    const w = P(e.u, e.v, aimZ(e)); fxBoom(g, w.x, w.y, e.type === 'titan' ? 46 : 30);
+    if (by >= 0) { g.sides[by].stats.kills++; lg(g, by, 'Q', e.type, e.node); }
+    return;
+  }
   e.dead = true; e.hp = 0;
   const side = g.sides[e.side];
   if (e.kind === 'u') {

@@ -4,7 +4,7 @@ Approved after Phase 0 (v2.57), with two additions: display fields for a map-sel
 of the 2D fog grid. Status: Classic is in this format since v2.59 (src/sim/maps.js, validated by tests/maps.test.js).
 The engine reads multi-lane maps since v2.63 (2D fog, lanes, lane orders, the map in the save). Two-Lane is the first
 multi-lane map in the game (v2.65, src/sim/maps-twolane.js): blockers with ground navigation, the watchtower and
-forward-pad node types (`sight`; `pads`, `allow`), `yieldMul` on a node, and maps chosen per match (map select).
+forward-pad node types (`sight`; `pads`, `allow`), `yieldMul` on a node, and maps chosen per match (map select). Three-Lane (v2.70) is the second; v2.71 made the repair depot (`heal`) and the guarded relic (`guards`, `reward`) live.
 
 ## Principles
 

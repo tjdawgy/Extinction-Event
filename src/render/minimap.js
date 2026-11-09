@@ -33,6 +33,7 @@ function drawMinimap(c, g, w, h) {
     if (cellsLit(F.vis, gh.u, gh.half, gh.v)) continue;
     c.strokeStyle = TEAM[gh.side].main; c.lineWidth = 1; c.globalAlpha = 0.8; c.strokeRect(mx(gh.u) - 1.5, my(gh.v) - 1, 3, 2); c.globalAlpha = 1;
   }
+  if (g) for (const x of g.guards || []) if (x.hp > 0 && visibleTo(g, 0, x)) { c.fillStyle = TEAM[2].main; c.fillRect(mx(x.u) - 1, my(x.v) - 1, 2, 2); } // v2.71: relic guards
   if (g) for (const e of g.ents) {
     if (e.side !== 0 && !visibleTo(g, 0, e)) continue;
     c.fillStyle = TEAM[e.side].main;

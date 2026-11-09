@@ -940,6 +940,7 @@ function render(c, g, time, sel, selPad) {
   const list = g.ents.filter(seen);
   for (const gh of ghosts) list.push({ kind: 'ghost', u: gh.u, v: gh.v, gh });
   for (const n of g.nodes) list.push({ kind: 'node', u: n.u, v: n.v - 1, n });
+  for (const x of g.guards || []) if (x.hp > 0 && (g.spectate || visibleTo(g, 0, x))) list.push(x); // v2.71: relic guards (neutral gold)
   { const RL = g.sides[0].rally; // v2.62: both of the player's rally flags (the active one solid); before the player uses them, the one rally flag
     if (RL && MAP_LANED) for (const f of flagSpots(g)) list.push({ kind: 'flag', u: f.u, v: f.v, fk: f.k, on: f.lane != null ? sqFlag(RL, f.lane) === 'fwd' : RL.at === 'def' || Object.values(RL.sq || {}).includes('def') }); // v2.66: a Forward flag per lane
     else if (RL) for (const k of ['def', 'fwd']) list.push({ kind: 'flag', u: RL[k] + 30, v: -20, fk: k, on: RL.at === k });
@@ -1056,7 +1057,7 @@ function render(c, g, time, sel, selPad) {
   drawAim(c, g);
   c.font = '600 11px -apple-system,system-ui,sans-serif'; c.textAlign = 'center';
   const barMin = (V.ft - V.A) / V.S + YB() + 12 / V.S; // highest world row that clears the top bar (with room for tier pips)
-  for (const e of g.ents) {
+  for (const e of (g.guards && g.guards.length ? g.ents.concat(g.guards.filter(x => x.hp > 0)) : g.ents)) { // v2.71: and the relic guards
     if (!seen(e)) continue;
     if (e.kind === 'b') {
       const x = P(e.u, e.v).x, top = Math.max(bTop(e) - 8, barMin), hq = e.type === 'hq';

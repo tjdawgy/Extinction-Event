@@ -505,7 +505,7 @@ function laneY(ln, x) {
 }
 const laneIx = k => typeof k === 'number' ? (k >= 0 && k < MAP.lanes.length ? k : -1) : MAP.lanes.findIndex(l => l.id === k); // a lane by index or id
 // Node types: how each behaves is code (NODE_TYPES); a map only places them. live: false = in the format, not built yet
-const NODE_TYPES = { income: { live: true }, watchtower: { live: true }, forwardPad: { live: true }, repair: { live: false }, relic: { live: false } };
+const NODE_TYPES = { income: { live: true }, watchtower: { live: true }, forwardPad: { live: true }, repair: { live: true }, relic: { live: true } }; // v2.71: the repair depot and the guarded relic (src/sim/nodes-special.js)
 // v2.65: what each live type does. income: NODE_INC a second to its holder (× yieldMul). watchtower: no income; its holder
 // sees sight around it. forwardPad: no income; its holder may build the roles in allow (each faction's own building for
 // that role) on its pads. All three are captured the same way, by ground troops inside r.
@@ -585,7 +585,7 @@ function validateMap(m) {
       if (!isPt(n.at)) continue;
       const img = N.find(o => o.type === n.type && isPt(o.at) && same(T(n.at), o.at));
       if (!img) { bad(`symmetry: node ${n.id} has no image`); continue; }
-      if ((n.r || 70) !== (img.r || 70) || (n.yieldMul || 1) !== (img.yieldMul || 1) || (n.sight || 0) !== (img.sight || 0) || String(n.allow || '') !== String(img.allow || '') || !setEq(n.pads || [], img.pads || [])) bad(`symmetry: node ${n.id} doesn't match its image ${img.id}`);
+      if ((n.r || 70) !== (img.r || 70) || (n.yieldMul || 1) !== (img.yieldMul || 1) || (n.sight || 0) !== (img.sight || 0) || (n.heal || 0) !== (img.heal || 0) || JSON.stringify(n.guards || null) !== JSON.stringify(img.guards || null) || JSON.stringify(n.reward || null) !== JSON.stringify(img.reward || null) || String(n.allow || '') !== String(img.allow || '') || !setEq(n.pads || [], img.pads || [])) bad(`symmetry: node ${n.id} doesn't match its image ${img.id}`);
     }
     for (const l of lanes) if (!lanes.some(o => setEq(l.path, o.path))) bad(`symmetry: lane ${l.id} has no image`);
     for (const [k, bl] of (m.blockers || []).entries()) if (!(m.blockers || []).some(o => setEq(bl.poly, o.poly))) bad(`symmetry: blocker ${k} has no image`);
@@ -644,10 +644,10 @@ MAPS.twolane = (() => {
 MAPS.threelane = (() => {
   const W = 2300, mx = p => [W - p[0], p[1]], fy = p => [p[0], -p[1]], wb = MAPS.classic.bases[0];
   const north = [[0, 0], [400, 0], [600, -400], [1700, -400], [1900, 0], [2300, 0]];
-  const wallNW = [[700, -200], [760, -280], [1080, -280], [1080, -120], [760, -120]];
+  const wallNW = [[820, -200], [880, -280], [1080, -280], [1080, -120], [880, -120]]; // v2 (v2.71): starts at x 820 (was 700), leaving the pocket for the relic
   const fwd = (id, name, x, y) => ({ id, name, type: 'forwardPad', at: [x, y], r: 40, pads: x < W / 2 ? [[x - 60, y], [x + 60, y]] : [[x + 60, y], [x - 60, y]], allow: ['turret', 'barracks'] });
   return {
-    id: 'threelane', v: 1,
+    id: 'threelane', v: 2, // v2 (v2.71): repair depots and relics; the walls start 120 further from the bases
     display: { name: 'Three-Lane', desc: 'North, centre and south lanes; the walls between them open at a rich centre node. Flank through the gaps.', thumb: { style: 'lanes', tint: '#2e3a4a' } },
     size: { w: W, h: 1120 },
     armyCap: 120,
@@ -677,6 +677,10 @@ MAPS.threelane = (() => {
       { id: 'tn', name: 'north watchtower', type: 'watchtower', at: [1150, -340], r: 45, sight: 600 },
       { id: 'ts', name: 'south watchtower', type: 'watchtower', at: [1150, 340], r: 45, sight: 600 },
       fwd('fwn', 'north-west forward pad', 820, -400), fwd('fwc', 'centre-west forward pad', 960, 0), fwd('fws', 'south-west forward pad', 820, 400),
+      { id: 'rn', name: 'north repair depot', type: 'repair', at: [1150, -470], r: 55, heal: 3 }, // v2.71 (Proposal E): one in each outer lane, beside the watchtower
+      { id: 'rs', name: 'south repair depot', type: 'repair', at: [1150, 470], r: 55, heal: 3 },
+      { id: 'gw', name: 'west relic', type: 'relic', at: [740, -200], r: 45, guards: [{ unit: 'titan', n: 1 }, { unit: 'tank', n: 2 }], reward: { c: 800 } }, // v2.71: off the lanes, in the pocket at the base end of the north wall, about 200 from every lane's centre
+      { id: 'ge', name: 'east relic', type: 'relic', at: [1560, -200], r: 45, guards: [{ unit: 'titan', n: 1 }, { unit: 'tank', n: 2 }], reward: { c: 800 } },
       fwd('fen', 'north-east forward pad', 1480, -400), fwd('fec', 'centre-east forward pad', 1340, 0), fwd('fes', 'south-east forward pad', 1480, 400),
     ],
     conditions: [],
@@ -685,7 +689,7 @@ MAPS.threelane = (() => {
   };
 })();
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.70'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.71'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -1793,6 +1797,8 @@ function nodeOf(i, u) {
   if (d.yieldMul && d.yieldMul !== 1) n.mul = d.yieldMul;
   if (d.r && d.r !== NODE_R) n.r = d.r;
   if (d.sight) n.sight = d.sight;
+  if (d.heal) n.heal = d.heal; // v2.71: a repair depot's own rate
+  if (d.type === 'relic') { n.spent = false; if (d.guards) n.guards = d.guards; if (d.reward) n.reward = d.reward; } // v2.71
   return n;
 }
 const nodeInc = n => n.type ? 0 : n.mul || 1; // how many income nodes' worth a node pays (0: a watchtower or forward pad)
@@ -1816,6 +1822,7 @@ function newGame(diffKey, opts = {}) {
   if (g.auto) g.sides[0].persona = rollPersona(opts.autoPersona, presetFor(opts.autoAi, g.autoDiff), g.sides[0].faction, g.autoDiff);
   g.log = newLog(0); // the match log (never read by the SIM)
   g.stats = newStats(0); // v2.51: the stats tracker (never read by the SIM)
+  spawnGuards(g); // v2.71: the relics' neutral guards (none on a map without relics)
   g.fog = [newFog(g, 0), newFog(g, 1)];
   updateVision(g);
   return g;
@@ -2144,6 +2151,7 @@ function update(g, dt) {
       if (f === null || (e.side === 0 ? e.u > f : e.u < f)) g.front[e.side] = e.u;
     }
   }
+  updateGuards(g, foes, dt); // v2.71: the relic guards fire, and both sides may target them
   indexFoes(foes[0], dt); indexFoes(foes[1], dt); // v2.37: lane-sorted, so target searches look only near the searcher
   const n = g.ents.length; NAV.now = g.t; // v2.65: the clock the navigation paths age by
   for (let i = 0; i < n; i++) {
@@ -2154,6 +2162,7 @@ function update(g, dt) {
   updateProjs(g, dt);
   updateMedics(g, dt);
   bunkerHeal(g, dt);
+  updateRepair(g, dt); // v2.71: repair depots
   updateCreep(g, dt);
   updateField(g, dt);
   updateWarps(g);
@@ -2175,6 +2184,7 @@ function update(g, dt) {
 
 function updateNodes(g, dt) {
   for (const n of g.nodes) {
+    if (n.type === 'relic' && (!SPECIAL.on || !SPECIAL.relic || n.spent || relicGuarded(g, n))) { n.c = [0, 0]; n.prog = 0; continue; } // v2.71: guarded or spent: nothing to capture
     let c0 = 0, c1 = 0;
     let w0 = 0, w1 = 0; // capture weight: a Drilled Rifleman counts 1.5
     for (const e of g.ents) if (e.kind === 'u' && e.hp > 0 && !UDEF[e.type].air && !UDEF[e.type].noCap && (MAP_2D ? Math.hypot(e.u - n.u, e.v - n.v) : Math.abs(e.u - n.u)) <= (n.r || NODE_R)) { const w = e.vet ? DRILL.capture : 1; if (e.side === 0) { c0++; w0 += w; } else { c1++; w1 += w; } }
@@ -2188,6 +2198,7 @@ function updateNodes(g, dt) {
       ev(g, { type: 'node', side: o === null ? n.owner : o, lost: o === null });
       if (g.log) { const sd = o === null ? n.owner : o; g.log.tot[sd][o === null ? 'nodeLost' : 'nodeCap']++; lg(g, sd, o === null ? 'L' : 'N', n.id); }
       n.owner = o;
+      if (n.type === 'relic' && o !== null) relicTaken(g, n, o); // v2.71
     }
   }
 }
@@ -2338,7 +2349,7 @@ function chainBeam(g, src, first, def) {
     if (!next) break;
     mul *= C.fall; hit.push(next);
     const a = P(cur.u, cur.v, aimZ(cur)), b = P(next.u, next.v, aimZ(next));
-    damage(g, next, def.dmg * mul * (g.sides[src.side].buff ? NANO.dmg : 1) * outMul(g, src), def.weapon, src.side, src);
+    damage(g, next, def.dmg * mul * (sideBuff(g, src.side) ? NANO.dmg : 1) * outMul(g, src), def.weapon, src.side, src);
     g.fx.push({ k: 'beam', x: a.x, y: a.y, x2: b.x, y2: b.y, t: 0, life: 0.2, w: 1.6 * mul });
     cur = next;
   }
@@ -2379,7 +2390,7 @@ function indexFoes(list, dt) {
 function ixScan(g, src, def, foes, R, AR, minR) {
   const X = foes.ix, vis = g.fog[src.side].vis, side = src.side, su = src.u, sv = src.v, maxR = Math.max(R, AR);
   let best = null, bs = 1e9, bi = -1, close = false;
-  const bbf = src.kind === 'u' && g.sides[side].bbOn; // v2.69 (a): an AI base attack aims at what holds the shield up
+  const bbf = src.kind === 'u' && !!g.sides[side] && g.sides[side].bbOn; // v2.69 (a): an AI base attack aims at what holds the shield up
   const check = idx => {
     const e = foes[idx];
     if (e.hp <= 0 || e.shielded || e.phT > g.t) return; // a phased Wraithwing can't be targeted (P13, v2.37)
@@ -2425,7 +2436,7 @@ function acquire(g, src, def, foes, chase) {
     // prefer units over buildings, targets this weapon counters, and wounded targets
     const mult = DMG[def.weapon][e.kind === 'b' ? 'building' : UDEF[e.type].armor];
     if (!mult) continue; // this weapon can't hurt it (e.g. Turret gatling vs buildings)
-    const sc = dist + (e.kind === 'b' ? 80 : 0) - (mult - 1) * 45 - (1 - e.hp / e.maxHp) * 25 - (air && def.preferAir ? 400 : 0) - (e.kind === 'b' && def.preferB ? 280 : 0) - (src.kind === 'u' && e.kind === 'b' && g.sides[src.side].bbOn ? bbFocus(e) : 0); // v2.69 (a) // the Hydra goes for aircraft first, the Leviathan for buildings
+    const sc = dist + (e.kind === 'b' ? 80 : 0) - (mult - 1) * 45 - (1 - e.hp / e.maxHp) * 25 - (air && def.preferAir ? 400 : 0) - (e.kind === 'b' && def.preferB ? 280 : 0) - (src.kind === 'u' && e.kind === 'b' && g.sides[src.side] && g.sides[src.side].bbOn ? bbFocus(e) : 0); // v2.69 (a) // the Hydra goes for aircraft first, the Leviathan for buildings
     if (sc < bs) { bs = sc; best = e; }
   }
   return { best, close };
@@ -2680,6 +2691,15 @@ function updateUnit(g, u, foes, dt) {
   if (u.phT > g.t) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // P13 (v2.37): a phased Wraithwing holds still and can't fire
   // Retreat: keep running home until back at the rally flag. A retreating unit holds its fire (v2.35, audit): it
   // attacks again only once the retreat ends, back at the flag or under a new order
+  if (u.medHome) { // v2.71: sent home, with a repair depot its side holds nearer than the base flag: heal there instead
+    const dp = medDepot(g, u);
+    if (dp) {
+      u.tgt = 0; u.chT = 0;
+      if (Math.hypot(dp.u - u.u, dp.v - u.v) > (dp.r || NODE_R) * 0.5) moveToward(u, d, dp.u, dp.v, dt, sp);
+      else { u.moving = false; if (g.t - u.lastHurt > DAMAGED.calm) u.hp = Math.min(u.maxHp, u.hp + u.maxHp * DAMAGED.heal * dt); if (u.hp >= u.maxHp * DAMAGED.done) u.medHome = 0; }
+      return;
+    }
+  }
   if (st === 'retreat' && Math.abs(home - u.u) > 12) {
     if (!RETREAT.fire) { u.tgt = 0; u.chT = 0; }
     else if (best && u.cd <= 0) { fire(g, u, best, d); u.cd = d.cd * rand(0.9, 1.1); } // the v2.34 rule, for the tests' fixed replays
@@ -2732,7 +2752,7 @@ function updateUnit(g, u, foes, dt) {
   }
   let tu = home, tv = u.laneV;
   if (u.id === side.scoutId && side.scoutU != null && st !== 'retreat') tu = side.scoutU; // v2.38: a Default AI's scout
-  else if (st === 'run' && capBusy(side, u.id)) { const T = side.capT && side.capT.ids.includes(u.id) ? side.capT : side.capT2; tu = T.u + ((u.id * 37) % 5 - 2) * 10; tv = T.v + ((u.id * 53) % 5 - 2) * 8; } // v2.67: a capture group stands on its node (v2.70: either group)
+  else if (st === 'run' && capBusy(side, u.id)) { const T = side.capT && side.capT.ids.includes(u.id) ? side.capT : side.capT2 && side.capT2.ids.includes(u.id) ? side.capT2 : side.relicG; tu = T.u + ((u.id * 37) % 5 - 2) * 10; tv = T.v + ((u.id * 53) % 5 - 2) * 8; } // v2.67: a capture group stands on its node (v2.70: either group)
   else if (st === 'run') tu = side.raid.u; // v2.60: a raider heads for its target (fighting what it meets on the way)
   else if (st === 'move') [tu, tv] = slotOf(u, ord); // Regroup: walk to the flag, then hold there
   else if (st === 'hold' && u.holdU !== undefined) { tu = u.holdU; tv = u.holdV; }
@@ -3063,7 +3083,7 @@ function updateCreep(g, dt) {
 // burned too (before, it took nothing and the tank fired at it forever). FLAME.aim false: the strip stays on the tank's line.
 const FLAME = { aim: true };
 function flameBurst(g, src, def, t) {
-  const dir = src.face || dirOf(src.side), dmg = def.dmg * (g.sides[src.side].buff ? NANO.dmg : 1) * outMul(g, src), cv = FLAME.aim && t ? t.v : src.v;
+  const dir = src.face || dirOf(src.side), dmg = def.dmg * (sideBuff(g, src.side) ? NANO.dmg : 1) * outMul(g, src), cv = FLAME.aim && t ? t.v : src.v;
   for (const e of g.ents) {
     if (e.side === src.side || e.hp <= 0 || (e.kind === 'u' && UDEF[e.type].air) || e.shielded) continue;
     const ahead = (e.u - src.u) * dir, reach = def.range + (e.kind === 'b' ? e.half : 0);
@@ -3118,7 +3138,7 @@ function fire(g, src, t, def) {
   if (def.melee) { meleeHit(g, src, t, def); return; }
   if (def.beam) { // the Null Lance (v2.25): the beam lands at once; the SIM leaves a short beam mark for the renderer
     const m = muzzle(src), a = P(m.u, m.v, m.z), b = P(t.u, t.v, aimZ(t));
-    damage(g, t, def.dmg * (g.sides[src.side].buff ? NANO.dmg : 1) * outMul(g, src), def.weapon, src.side, src);
+    damage(g, t, def.dmg * (sideBuff(g, src.side) ? NANO.dmg : 1) * outMul(g, src), def.weapon, src.side, src);
     const hq = def.weapon === 'hqbeam' || def.weapon === 'sovereign'; // the Axis lance (v2.36), the Sovereign's judgement (v2.37): heavier, violet and cyan
     g.fx.push({ k: 'beam', x: a.x, y: a.y, x2: b.x, y2: b.y, t: 0, life: hq ? 0.34 : def.weapon === 'horizon' ? 0.32 : 0.2, w: def.weapon === 'sovereign' ? 5 : hq ? 3.6 : def.weapon === 'horizon' ? 3.2 : def.split ? 1.5 : 2.2, hq });
     if (def.chain) chainBeam(g, src, t, def); // the Shardstorm (v2.29)
@@ -3130,7 +3150,7 @@ function fire(g, src, t, def) {
   if (def.siege && src.siege === 2 && t.kind === 'b') mul = def.siege.bmul;
   if (def.salvo || def.carpet) { volley(g, src, t, def, m); if (src.kind === 'u') src.recoil = 1; return; } // P1, P10
   const p = { u: m.u, v: m.v, z: m.z, pu: m.u, pv: m.v, pz: m.z, tu: t.u, tv: t.v, tz: aimZ(t), target: t, side: src.side,
-    weapon: def.weapon, dmg: def.dmg * mul * (g.sides[src.side].buff ? NANO.dmg : 1) * (src.vet ? DRILL.dmg : 1) * outMul(g, src), splash: def.splash || 0, t: 0 }; // disrupted: less damage (v2.27)
+    weapon: def.weapon, dmg: def.dmg * mul * (sideBuff(g, src.side) ? NANO.dmg : 1) * (src.vet ? DRILL.dmg : 1) * outMul(g, src), splash: def.splash || 0, t: 0 }; // disrupted: less damage (v2.27)
   if (def.focus) p.fc = src.fcN; // drawn brighter as it builds (v2.37)
   if (def.pierce) { p.ou = m.u; p.ov = m.v; p.pierce = 1; } // P4: where the line starts
   if (def.devour) p.dev = src.id; // P11: who feeds on the damage
@@ -3153,7 +3173,7 @@ function fire(g, src, t, def) {
 // shells around the target and they land one after another (gap); a carpet lays its bombs in a line along the lane,
 // centred on the target, in the direction the bomber faces.
 function volley(g, src, t, def, m) {
-  const V = def.salvo || def.carpet, dmg = def.dmg * (g.sides[src.side].buff ? NANO.dmg : 1) * outMul(g, src) / (def.salvo ? V.n : 1), dir = src.face || dirOf(src.side);
+  const V = def.salvo || def.carpet, dmg = def.dmg * (sideBuff(g, src.side) ? NANO.dmg : 1) * outMul(g, src) / (def.salvo ? V.n : 1), dir = src.face || dirOf(src.side);
   for (let i = 0; i < V.n; i++) {
     const p = { u: m.u, v: m.v, z: m.z, pu: m.u, pv: m.v, pz: m.z, target: null, side: src.side, weapon: def.weapon, dmg, splash: def.splash || 0, t: 0, tz: 0 };
     if (def.salvo) {
@@ -3609,7 +3629,7 @@ function damage1(g, e, amt, weapon, fromSide, src) {
   const armor = e.kind === 'b' ? 'building' : UDEF[e.type].armor;
   const mult = DMG[weapon][armor];
   if (!mult) return;
-  let dmg = amt * mult * (g.sides[e.side].buff ? NANO.cut : 1) * (1 + corrNow(e, g.t)); // corroded: takes more (v2.19; v2.37 the second slot)
+  let dmg = amt * mult * (sideBuff(g, e.side) ? NANO.cut : 1) * (1 + corrNow(e, g.t)); // corroded: takes more (v2.19; v2.37 the second slot)
   const br = e.kind === 'u' && UDEF[e.type].brace, pre = dmg;
   if (br) { // the Bulwark braces on the first hit after its cooldown (v2.17)
     if (!(e.braceT > g.t) && g.t >= e.braceCd) { e.braceT = g.t + br.dur; e.braceCd = g.t + br.cd; }
@@ -3656,6 +3676,13 @@ function damage1(g, e, amt, weapon, fromSide, src) {
 
 function kill(g, e, by, weapon) {
   if (e.dead) return;
+  if (by === NEUTRAL) by = -1; // v2.71: killed by a relic guard (no side)
+  if (e.side === NEUTRAL) { // v2.71: a relic guard
+    e.dead = true; e.hp = 0;
+    const w = P(e.u, e.v, aimZ(e)); fxBoom(g, w.x, w.y, e.type === 'titan' ? 46 : 30);
+    if (by >= 0) { g.sides[by].stats.kills++; lg(g, by, 'Q', e.type, e.node); }
+    return;
+  }
   e.dead = true; e.hp = 0;
   const side = g.sides[e.side];
   if (e.kind === 'u') {
@@ -3744,6 +3771,80 @@ function updateFx(g, dt) {
   g.fx = g.fx.filter(f => f.t < f.life);
 }
 
+/* ---------- The repair depot and the guarded relic (v2.71, Phase 1): docs/PHASE1_DESIGNS.md, Proposal E ----------
+   Repair depot (NODE_TYPES.repair): captured like any node; its holder's units within its radius heal REPAIR.heal% of their
+   health a second (or the node's own heal) once unhurt for REPAIR.calm s, the rule Send damaged home uses at the base flag.
+   A unit sent home goes to the nearest depot its side holds when that is nearer than the base flag (medDepot), and heals
+   there as at home. No income.
+   Guarded relic (NODE_TYPES.relic): a neutral camp. Its guards (RELIC.guards, or the node's own) stand on their spot, never
+   move and fire at any unit that comes within RELIC.aggro of the relic (both sides alike). They are not in g.ents (they
+   belong to no side: no vision, no intel, no army value, no score); they are in both sides' target lists (g.guards).
+   With every guard dead, standing on the relic captures it once: its holder gets the reward (RELIC.reward credits) and the
+   relic is spent. Guards slowly heal (RELIC.regen a second) once unhurt for RELIC.calm s, so chipping at them doesn't stick. */
+const NEUTRAL = 2; // a guard's side: neither player
+const REPAIR = { heal: 3, calm: 3 };
+const SPECIAL = { on: true, repair: true, relic: true }; // on false (or repair / relic false): depots heal nothing and take no one home; relics have no guards and can't be taken (the harness's comparison)
+const RELIC = { aggro: 100, guards: [{ unit: 'titan', n: 1 }, { unit: 'tank', n: 2 }], reward: { c: 800 }, regen: 0.02, calm: 8 };
+const sideBuff = (g, s) => !!(g.sides[s] && g.sides[s].buff); // NANO for side s (a guard has none)
+function updateRepair(g, dt) {
+  if (!SPECIAL.on || !SPECIAL.repair) return;
+  for (const n of g.nodes) {
+    if (n.type !== 'repair' || n.owner === null) continue;
+    const r = n.r || NODE_R, h = (n.heal || REPAIR.heal) / 100;
+    for (const e of g.ents) {
+      if (e.kind !== 'u' || e.side !== n.owner || e.hp <= 0 || e.hp >= e.maxHp || e.medHome || g.t - e.lastHurt <= REPAIR.calm || Math.hypot(e.u - n.u, e.v - n.v) > r) continue;
+      const h0 = e.hp; e.hp = Math.min(e.maxHp, e.hp + e.maxHp * h * dt);
+      if (g.log) g.log.tot[n.owner].depotHeal = (g.log.tot[n.owner].depotHeal || 0) + e.hp - h0;
+    }
+  }
+}
+function medDepot(g, u) { // where a unit sent home heals: the nearest depot its side holds, if nearer than the base flag
+  if (!SPECIAL.on || !SPECIAL.repair) return null;
+  let best = null, bd = Math.abs(u.u - homeFlagU(g, u.side));
+  for (const n of g.nodes) if (n.type === 'repair' && n.owner === u.side) { const d = Math.hypot(n.u - u.u, n.v - u.v); if (d < bd) { bd = d; best = n; } }
+  return best;
+}
+function mkGuard(g, n, type, k, of) {
+  const d = UDEF[type], a = (k / of) * Math.PI * 2 + 0.5, r = of > 1 ? 34 : 0;
+  return { id: g.nid++, kind: 'u', type, side: NEUTRAL, node: n.id, u: n.u + Math.cos(a) * r, v: n.v + Math.sin(a) * r * 0.8, z: 0, laneV: 0,
+    hp: d.hp, maxHp: d.hp, cd: 0, face: 1, anim: 0, moving: false, rallyOff: 0, recoil: 0, hitT: 0, shT: 0, vet: 0, aimAir: 0, medAt: -1, tgt: 0, braceT: 0, braceCd: 0, lastHurt: -99, lastAct: -99,
+    creepAt: -1, temp: 0, kid: 0, dis: 0, disT: 0, slow: 0, slowT: 0, chT: 0, chTgt: 0, shp: d.shp || 0, maxShp: d.shp || 0, shpT: -99, shpHit: -99, ovT: 0, frzT: 0, corr: 0, corrT: 0, burstCd: 0 };
+}
+function spawnGuards(g) { // at the start of a match: each relic's guards
+  g.guards = [];
+  if (!SPECIAL.on || !SPECIAL.relic) return;
+  for (const n of g.nodes) {
+    if (n.type !== 'relic') continue;
+    const list = []; for (const gd of n.guards || RELIC.guards) for (let i = 0; i < gd.n; i++) list.push(gd.unit);
+    list.forEach((t, k) => g.guards.push(mkGuard(g, n, t, k, list.length)));
+  }
+}
+const relicGuarded = (g, n) => (g.guards || []).some(x => x.node === n.id && x.hp > 0);
+const guardValue = (g, n) => armyValue((g.guards || []).filter(x => x.node === n.id && x.hp > 0));
+function relicTaken(g, n, s) { // captured once: the reward, and the relic is spent
+  const R = n.reward || RELIC.reward;
+  g.sides[s].res.c += R.c || 0; g.sides[s].res.e += R.e || 0; n.spent = true;
+  ev(g, { type: 'relic', side: s, c: R.c || 0 }); lg(g, s, 'R', n.id, R.c || 0);
+}
+function updateGuards(g, foes, dt) {
+  if (!g.guards || !g.guards.length) return;
+  for (const x of g.guards) if (x.hp > 0) { foes[0].push(x); foes[1].push(x); } // both sides may attack them
+  for (const x of g.guards) {
+    if (x.hp <= 0) continue;
+    x.anim += dt; if (x.cd > 0) x.cd -= dt; if (x.hitT > 0) x.hitT -= dt; if (x.recoil > 0) x.recoil = Math.max(0, x.recoil - dt * 5);
+    if (g.t - x.lastHurt > RELIC.calm) x.hp = Math.min(x.maxHp, x.hp + x.maxHp * RELIC.regen * dt);
+    const d = UDEF[x.type], n = g.nodes[x.node];
+    let best = null, bd = 1e9;
+    for (const e of g.ents) {
+      if (e.kind !== 'u' || e.hp <= 0 || e.phT > g.t) continue;
+      const air = !!UDEF[e.type].air; if (air ? !d.hitsAir : d.hitsGround === false) continue;
+      if (Math.hypot(e.u - n.u, e.v - n.v) > RELIC.aggro) continue;
+      const dist = effDist(x, e); if (dist <= d.range && dist < bd) { bd = dist; best = e; }
+    }
+    x.tgt = best ? best.id : 0;
+    if (best) { x.face = best.u >= x.u ? 1 : -1; x.aim = best; if (x.cd <= 0) { fire(g, x, best, d); x.cd = d.cd; } }
+  }
+}
 /* ---------- Enemy AI: same economy, same rules, same upgrades as the player ---------- */
 // Known base defenses: the enemy HQ gun plus remembered Turrets, each at its last-seen tier
 const HQ_VAL = 400, TURRET_VAL = 300;
@@ -4366,6 +4467,7 @@ const laneOfPt = (u, v) => { let best = 0, bd = 1e9; for (let k = 0; k < MAP.lan
 function aiLanes3(g, s, D, mine, theirs, threat, myV = 0, thV = 0) {
   const side = g.sides[s], LA = side.la || (side.la = { t: -99, sh: -99, fw: -99 }), easy = D.label === 'Easy', lanes = MAP.lanes.map((_, k) => k);
   aiCapture3(g, s, mine, theirs, easy);
+  aiRelic(g, s, mine, theirs, threat, easy); // v2.71
   const LT = LANE_AI.late;
   if (LT.on && side.stance !== 'attack' && !threat && g.t >= LT.from && myV >= 300 && myV >= thV * LT.ratio) {
     side.stance = 'attack'; side.pushTo = null; side.pushMode = 'all'; side.stanceAt = g.t; side.launchV = myV; LA.late = (LA.late || 0) + 1;
@@ -4431,7 +4533,7 @@ function aiCapture(g, s, mine, theirs, easy, key = 'capT', atKey = 'capAt', othe
   if (g.t < C.from || g.t - (side[atKey] ?? -99) < C.gap || (side.stance === 'attack' && side.pushMode === 'all')) return;
   const myV = armyValue(mine); if (myV < C.minArmy) return;
   const near = n => armyValue(theirs.filter(e => e.fresh && e.v !== undefined && Math.hypot(e.u - n.u, e.v - n.v) < 260));
-  const cand = g.nodes.map((n, i) => i).filter(i => g.nodes[i].owner !== s && (i === 1 || (!easy && g.nodes[i].type === 'watchtower')) && near(g.nodes[i]) < myV * C.odds && !(other && other.node === i));
+  const cand = g.nodes.map((n, i) => i).filter(i => g.nodes[i].owner !== s && (i === 1 || (!easy && (g.nodes[i].type === 'watchtower' || g.nodes[i].type === 'repair' || (g.nodes[i].type === 'relic' && SPECIAL.on && SPECIAL.relic && !g.nodes[i].spent && !relicGuarded(g, g.nodes[i]))))) && near(g.nodes[i]) < myV * C.odds && !(other && other.node === i));
   if (!cand.length) return;
   cand.sort((a, b) => near(g.nodes[a]) - near(g.nodes[b]) || a - b);
   const i = cand[0], n = g.nodes[i], need = near(n) * 1.3 + 150;
@@ -4449,7 +4551,35 @@ function aiCapture3(g, s, mine, theirs, easy) {
   aiCapture(g, s, mine, theirs, easy, 'capT', 'capAt', side.capT2);
   if (!easy) aiCapture(g, s, mine, theirs, easy, 'capT2', 'capAt2', side.capT);
 }
-const capBusy = (side, id) => (side.capT && side.capT.ids.includes(id)) || (side.capT2 && side.capT2.ids.includes(id)); // in a capture group (v2.70: either)
+const capBusy = (side, id) => (side.capT && side.capT.ids.includes(id)) || (side.capT2 && side.capT2.ids.includes(id)) || (side.relicG && side.relicG.ids.includes(id)); // v2.71: or the relic group
+// v2.71 (Proposal E): a guarded relic. With no push on, nothing threatening at home and nothing it knows of near the relic,
+// and its army at least RELIC_AI.edge × the guards, a group worth RELIC_AI.group × the guards (its nearest ground units)
+// goes to kill them and stand on the relic; it gives up when hurt to half, after RELIC_AI.dur seconds, or when the army attacks.
+// Not on Easy.
+const RELIC_AI = { edge: 3, group: 2, dur: 90, near: 400, every: 20 };
+function aiRelic(g, s, mine, theirs, threat, easy) {
+  const side = g.sides[s], R = RELIC_AI;
+  if (side.relicG) {
+    const T = side.relicG, n = g.nodes[T.node], live = mine.filter(u => T.ids.includes(u.id) && u.hp > 0);
+    const hurt = live.reduce((a, u) => a + u.hp, 0) < live.reduce((a, u) => a + u.maxHp, 0) * 0.5;
+    if (!live.length || hurt || n.spent || g.t > T.end || threat || (side.stance === 'attack' && side.pushMode === 'all')) { side.relicG = null; side.relicAt = g.t; }
+    else T.ids = live.map(u => u.id);
+    return;
+  }
+  if (easy || !SPECIAL.on || !SPECIAL.relic || threat || side.stance === 'attack' || g.t - (side.relicAt ?? -99) < R.every) return;
+  const myV = armyValue(mine);
+  for (const n of g.nodes) {
+    if (n.type !== 'relic' || n.spent || !relicGuarded(g, n)) continue;
+    const gv = guardValue(g, n);
+    if (myV < gv * R.edge || theirs.some(e => e.fresh && e.v !== undefined && Math.hypot(e.u - n.u, e.v - n.v) < R.near)) continue;
+    const pool = mine.filter(u => !UDEF[u.type].support && !UDEF[u.type].noCap && !UDEF[u.type].air && u.id !== side.scoutId && !capBusy(side, u.id) && !(side.raid && side.raid.ids.includes(u.id)) && u.hp >= u.maxHp * 0.7)
+      .sort((a, b) => Math.hypot(a.u - n.u, a.v - n.v) - Math.hypot(b.u - n.u, b.v - n.v) || a.id - b.id);
+    const ids = []; let v = 0; for (const u of pool) { if (v >= gv * R.group) break; ids.push(u.id); v += armyValue([u]); }
+    if (v < gv * R.group) continue;
+    side.relicG = { node: n.id, ids, end: g.t + R.dur, u: n.u, v: n.v }; side.relicAt = g.t; lg(g, s, 'G', 'relic', 0);
+    return;
+  }
+} // in a capture group (v2.70: either)
 function aiForward(g, s, D, threat) {
   const side = g.sides[s], LA = side.la, F = LANE_AI.fwd, max = (MAP.lanes.length > 2 ? F.max3 : F.max)[D.label] || 0, dir = dirOf(s);
   if (!max || threat || g.t - LA.fw < F.every || side.res.c < F.bank || !hasBuilt(g, s, 'barracks')) return;
@@ -4767,7 +4897,7 @@ function serialize(g, extra) {
   const projs = g.projs.map(p => Object.assign({}, p, { target: p.target ? p.target.id : null }));
   const sides = g.sides.map(sd => Object.assign({}, sd, { hq: sd.hq.id, slots: sd.slots.map(b => b ? b.id : null), res: Object.assign({}, sd.res), stats: Object.assign({}, sd.stats), salv: Object.assign({}, sd.salv) }));
   const fog = g.fog.map(f => ({ exp: Array.from(f.exp).join(''), seen: Array.from(f.seen).join(''), ghosts: f.ghosts, creep: f.creep, field: f.field, intel: f.intel, lastHQ: f.lastHQ, lastSpot: f.lastSpot, seenUnits: f.seenUnits }));
-  return JSON.stringify({ v: SAVE_VER, map: { id: MAP.id, v: MAP.v }, t: g.t, nid: g.nid, diffKey: g.diffKey, ents, projs, sides, nodes: g.nodes, fog, abil: g.abil, endHold: g.endHold || null, log: g.log, creep: g.creep, field: g.field, warps: g.warps, acid: g.acid, stats: g.stats, seed: g.seed, rs: g.rs, fs: g.fs, extra }); // seed/rs/fs (v2.50): the random streams, so a resumed match rolls on where it stopped
+  return JSON.stringify({ v: SAVE_VER, map: { id: MAP.id, v: MAP.v }, t: g.t, nid: g.nid, diffKey: g.diffKey, ents, projs, sides, nodes: g.nodes, fog, abil: g.abil, endHold: g.endHold || null, log: g.log, creep: g.creep, field: g.field, warps: g.warps, acid: g.acid, stats: g.stats, ...(g.guards && g.guards.length ? { guards: g.guards } : {}), seed: g.seed, rs: g.rs, fs: g.fs, extra }); // seed/rs/fs (v2.50): the random streams, so a resumed match rolls on where it stopped
 }
 function deserialize(str) {
   const o = JSON.parse(str);
@@ -4777,7 +4907,7 @@ function deserialize(str) {
   useMap(m.id); // v2.65: the save's map becomes the current one
   const g = newGame(o.diffKey);
   if (o.rs !== undefined && !RNG.legacy) { g.seed = o.seed >>> 0; g.rs = o.rs | 0; g.fs = o.fs | 0; } // v2.50: an older save keeps the fresh seed newGame drew
-  g.t = o.t; g.nid = o.nid; g.ents = o.ents; g.nodes = o.nodes;
+  g.t = o.t; g.nid = o.nid; g.ents = o.ents; g.nodes = o.nodes; g.guards = o.guards || []; // v2.71: relic guards (a save from before has none)
   g.stats = o.stats && o.stats.v === 1 ? o.stats : newStats(o.t); // v2.51: an older save starts its record now
   const byId = new Map(g.ents.map(e => [e.id, e]));
   g.projs = o.projs.map(p => Object.assign(p, { target: p.target != null ? byId.get(p.target) || null : null }));
@@ -4867,7 +4997,7 @@ function deserialize(str) {
 const mmss = t => { t = Math.max(0, Math.floor(t)); return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`; };
 let NODE_NAME; const mapNodeNames = () => { NODE_NAME = MAP.id === 'classic' ? ['west', 'centre', 'east'] : MAP.nodes.map(n => n.name || n.id); }; // v2.65: per map
 mapNodeNames(); MAP_HOOKS.push(mapNodeNames);
-const nodeLabel = i => { const n = NODE_NAME[i] || ''; return /watchtower|pad/.test(n) ? n : `${n} field node`; }; // v2.65
+const nodeLabel = i => { const n = NODE_NAME[i] || ''; return /watchtower|pad|depot|relic/.test(n) ? n : `${n} field node`; }; // v2.65
 const LINE_MAX = 80; // per side; unit groups are widened only past this
 // A building role's name as side s's faction calls it (the log is read only after the match, when factions are revealed)
 const logBName = (g, s, t) => { const d = BD(g && g.sides[s] ? g.sides[s].faction : DEFAULT_FACTION, t); return d ? d.name : t; };
@@ -4882,13 +5012,15 @@ function logEvText(e, me, g) { // one log event as a line of text (me: written f
     case 'D': return `${B(a)} destroyed${x === -1 ? ' by the storm' : ''}`;
     case 'N': return `Captured the ${nodeLabel(a)}`;
     case 'L': return `Lost the ${nodeLabel(a)}`;
+    case 'R': return `Took the ${nodeLabel(a)}: +${b} credits`; // v2.71
+    case 'Q': return `Killed a relic guard (${UDEF[a] ? UDEF[a].name : a})`; // v2.71
     case 'A': return a === 'strike' ? `Orbital Strike: ${Math.round(b || 0)} damage, ${x || 0} destroyed` : a === 'shield' ? `Emergency Shield: ${Math.round(b || 0)} damage blocked` : a === 'repair' ? `Repair Pulse: ${Math.round(b || 0)} HP restored`
       : a === 'frenzy' ? `Frenzy Bloom: ${Math.round(b || 0)} organisms frenzied` : a === 'brood' ? `Emergency Brood: ${Math.round(b || 0)} Skitterlings hatched`
       : a === 'mwarp' ? `Mass Warp: ${Math.round(b || 0)} units warped` : a === 'overcharge' ? `Shield Overcharge: ${Math.round(b || 0)} damage blocked, ${Math.round(x || 0)} shields restored` // v2.28
       : a === 'beam' ? `Purification Beam: ${Math.round(b || 0)} damage, ${x || 0} destroyed` : `Corrosive Bloom: ${Math.round(b || 0)} damage, ${x || 0} destroyed`;
     case 'H': return 'HQ shield down';
     case 'O': return `Order: ${a === 'all' ? 'whole army' : a === 'group' ? GROUP_NAME[b] : (PLURAL[b] || b)} ${ORDER_NAME[x] ? ORDER_NAME[x].toLowerCase() : x}`;
-    case 'G': return b ? 'Feint attack launched (pulled back)' : a === 'raid' ? 'Raid launched' : a === 'turtle' || a === 'rush' || a === 'greed' ? `Read the enemy's ${a === 'turtle' ? 'Turrets' : a === 'rush' ? 'rush' : 'greedy economy'}; changed plan` : `Attack launched${a === 'siege' ? ' (siege)' : ''}`; // v2.52: a read is not an attack
+    case 'G': return b ? 'Feint attack launched (pulled back)' : a === 'raid' ? 'Raid launched' : a === 'relic' ? 'Sent a group for a relic' : a === 'turtle' || a === 'rush' || a === 'greed' ? `Read the enemy's ${a === 'turtle' ? 'Turrets' : a === 'rush' ? 'rush' : 'greedy economy'}; changed plan` : `Attack launched${a === 'siege' ? ' (siege)' : ''}`; // v2.52: a read is not an attack
     case 'W': return 'Extinction Event warning (30 s)';
     case 'X': return 'Extinction Event began';
     case 'E': return a === 'draw' ? 'Match ended: draw (the Extinction Event)' : `Match ended: ${b === 0 ? 'you won' : 'you lost'}`; // the player's view, in both columns
@@ -4993,6 +5125,7 @@ function logText(g, meta) {
 const TEAM = [
   { main: '#39c8ff', light: '#c4f3ff', hull: '#24506b', glow: '57,200,255', face: ['#7adcff', '#2ea6d6', '#1f7aa2'] },
   { main: '#ff4d4d', light: '#ffd0d0', hull: '#6b2626', glow: '255,77,77', face: ['#ff8a8a', '#d63d3d', '#a52c2c'] },
+  { main: '#e8c25a', light: '#fff1c4', hull: '#5e5030', glow: '232,194,90', face: ['#f2d98a', '#c9a646', '#9a7d30'] }, // v2.71: neutral (relic guards)
 ];
 const M = { d: '#161e2c', m: '#2a3648', l: '#435269', h: '#7c8ba2' };
 const MAT = { metal: ['#66779a', '#3e4b65', '#2a3448'], dark: ['#3a465c', '#262f42', '#1a2131'], light: ['#97a7c1', '#66758f', '#4c5a72'] };
@@ -5994,8 +6127,30 @@ function drawFwdPad(c, k, owner, empty, time, selected) {
   c.setLineDash(owner === null ? [5, 5] : []); c.strokeStyle = selected ? 'rgba(255,211,77,0.9)' : `rgba(${rgb},${empty ? 0.45 + 0.25 * Math.sin(time * 2.5 + w.x * 0.02) : 0.3})`; c.lineWidth = selected ? 2 : 1.2; c.stroke(); c.setLineDash([]);
   if (empty) { const [x, y] = [w.x, w.y]; c.strokeStyle = `rgba(${rgb},0.5)`; c.lineWidth = 1.4; c.beginPath(); c.moveTo(x - 5, y); c.lineTo(x + 5, y); c.moveTo(x, y - 3); c.lineTo(x, y + 3); c.stroke(); }
 }
+// v2.71: a repair depot: a low pad with a cross that glows its holder's colour; a relic: a gold obelisk, dark once spent
+function drawDepot(c, n, time) {
+  const w = P(n.u, n.v), rgb = n.owner === null ? '93,255,138' : TEAM[n.owner].glow;
+  c.save(); c.translate(w.x, w.y); c.scale(BS, BS);
+  box(c, 0, 0, 18, 18, 0, 5, MAT.dark);
+  const [x, y] = pt(0, 0, 18), a = 0.55 + 0.3 * Math.sin(time * 3 + n.u);
+  glow(c, x, y, 6, rgb, 0.35);
+  c.fillStyle = `rgba(${rgb},${a})`; c.fillRect(x - 3, y - 10, 6, 20); c.fillRect(x - 10, y - 3, 20, 6);
+  c.restore();
+}
+function drawRelic(c, n, time) {
+  const w = P(n.u, n.v), spent = n.spent, gold = spent ? '#5b5446' : '#e8c25a';
+  c.save(); c.translate(w.x, w.y); c.scale(BS, BS);
+  box(c, 0, 0, 16, 16, 0, 6, MAT.dark);
+  const [bx, by] = pt(0, 0, 6), [tx, ty] = pt(0, 0, 54);
+  c.fillStyle = gold; c.strokeStyle = 'rgba(20,14,4,0.8)'; c.lineWidth = 1;
+  c.beginPath(); c.moveTo(bx - 9, by); c.lineTo(tx - 4, ty + 8); c.lineTo(tx, ty); c.lineTo(tx + 4, ty + 8); c.lineTo(bx + 9, by); c.closePath(); c.fill(); c.stroke();
+  if (!spent) glow(c, tx, ty + 4, 5, '255,214,110', 0.45 + 0.25 * Math.sin(time * 2.4 + n.u));
+  c.restore();
+}
 function drawNode(c, n, time) {
   if (n.type === 'watchtower') return drawTower(c, n, time);
+  if (n.type === 'repair') return drawDepot(c, n, time);
+  if (n.type === 'relic') return drawRelic(c, n, time);
   if (n.type === 'forwardPad') return drawFwdPost(c, n, time);
   const w = P(n.u, n.v), rgb = n.owner === null ? '210,195,255' : TEAM[n.owner].glow, main = n.owner === null ? '#ddd2ff' : TEAM[n.owner].main;
   c.save(); c.translate(w.x, w.y); c.scale(BS, BS);
@@ -8290,6 +8445,7 @@ function render(c, g, time, sel, selPad) {
   const list = g.ents.filter(seen);
   for (const gh of ghosts) list.push({ kind: 'ghost', u: gh.u, v: gh.v, gh });
   for (const n of g.nodes) list.push({ kind: 'node', u: n.u, v: n.v - 1, n });
+  for (const x of g.guards || []) if (x.hp > 0 && (g.spectate || visibleTo(g, 0, x))) list.push(x); // v2.71: relic guards (neutral gold)
   { const RL = g.sides[0].rally; // v2.62: both of the player's rally flags (the active one solid); before the player uses them, the one rally flag
     if (RL && MAP_LANED) for (const f of flagSpots(g)) list.push({ kind: 'flag', u: f.u, v: f.v, fk: f.k, on: f.lane != null ? sqFlag(RL, f.lane) === 'fwd' : RL.at === 'def' || Object.values(RL.sq || {}).includes('def') }); // v2.66: a Forward flag per lane
     else if (RL) for (const k of ['def', 'fwd']) list.push({ kind: 'flag', u: RL[k] + 30, v: -20, fk: k, on: RL.at === k });
@@ -8406,7 +8562,7 @@ function render(c, g, time, sel, selPad) {
   drawAim(c, g);
   c.font = '600 11px -apple-system,system-ui,sans-serif'; c.textAlign = 'center';
   const barMin = (V.ft - V.A) / V.S + YB() + 12 / V.S; // highest world row that clears the top bar (with room for tier pips)
-  for (const e of g.ents) {
+  for (const e of (g.guards && g.guards.length ? g.ents.concat(g.guards.filter(x => x.hp > 0)) : g.ents)) { // v2.71: and the relic guards
     if (!seen(e)) continue;
     if (e.kind === 'b') {
       const x = P(e.u, e.v).x, top = Math.max(bTop(e) - 8, barMin), hq = e.type === 'hq';
@@ -8479,6 +8635,7 @@ function drawMinimap(c, g, w, h) {
     if (cellsLit(F.vis, gh.u, gh.half, gh.v)) continue;
     c.strokeStyle = TEAM[gh.side].main; c.lineWidth = 1; c.globalAlpha = 0.8; c.strokeRect(mx(gh.u) - 1.5, my(gh.v) - 1, 3, 2); c.globalAlpha = 1;
   }
+  if (g) for (const x of g.guards || []) if (x.hp > 0 && visibleTo(g, 0, x)) { c.fillStyle = TEAM[2].main; c.fillRect(mx(x.u) - 1, my(x.v) - 1, 2, 2); } // v2.71: relic guards
   if (g) for (const e of g.ents) {
     if (e.side !== 0 && !visibleTo(g, 0, e)) continue;
     c.fillStyle = TEAM[e.side].main;
@@ -9431,6 +9588,7 @@ function handleEvents() {
     else if (e.type === 'beaconDown' && (e.side === 0 || e.seen)) toast(e.side === 0 ? `Phase Beacon bubble collapsed: back in ${BEACON.down} s` : 'Enemy field bubble collapsed', e.side === 0 ? 'warn' : 'ok'); // v2.34
     else if (e.type === 'overdrive' && e.side === 0) toast(`Overdrive: production +${Math.round(YARD.od * 100)}% for ${YARD.odDur} s`, 'ok'); // v2.32
     else if (e.type === 'warpSnap' && e.side === 0) { toast('Warp point lost with the field: back to the front edge', 'warn'); refreshWarpCard(); } // v2.26
+    else if (e.type === 'relic') { toast(e.side === 0 ? `Relic taken: +${e.c} credits` : 'The enemy took a relic', e.side === 0 ? 'ok' : 'warn'); if (e.side === 0) sndPlay('node'); } // v2.71
     else if (e.type === 'node') { if (e.side === 0 && !e.lost) sndPlay('node'); toast(e.lost ? (e.side === 0 ? 'You lost a field node' : 'Enemy lost a field node') : (e.side === 0 ? `Field node captured: +${NODE_INC.c} credits, +${NODE_INC.e} energy per second` : 'Enemy captured a field node'), (e.side === 0) === !e.lost ? 'ok' : 'warn'); }
     else if (e.type === 'go') showGo();
     else if (e.type === 'extWarn') { sndPlay('siren'); toast('The Extinction Event starts in 30 seconds: finish it or lose your base', 'bad'); }
@@ -10629,6 +10787,7 @@ $('tutSkipC').addEventListener('click', tutSkipChapter);
 CODEX_HOWTO.html = () => { const D = tutDone(); return `<h2>How to Play</h2><p>Hands-on lessons in a practice match as ${factionName('lastfist')}. You can't lose, every step can be skipped, and any chapter can be played or replayed at any time.</p>` +
   TUT_CH.map((C, i) => `<div class="cxch${D[C.key] ? ' done' : ''}" id="cx-tut-${C.key}"><span class="ck" aria-label="${D[C.key] ? 'Completed' : 'Not played'}">${D[C.key] ? '✓' : ''}</span><div class="cxct"><b>${i + 1}. ${cxEsc(C.name)}</b><small>${cxEsc(C.blurb)}</small></div><button class="cxplay" data-tut="${i}">Play</button></div>`).join('') +
   `<h3 id="cx-split">Split Army (Two-Lane)</h3><p>On a map with two lanes every unit belongs to the squad of its lane, North or South. In the Army tab, pick <b>All</b>, <b>N</b> or <b>S</b> (or tap a squad's badge on the minimap): with a squad selected, Hold, Attack, Retreat, Regroup and Rally act on that squad only. Aircraft belong to a squad too and fly straight over the ridge.</p><p><b>Long-press a squad</b> to move it to the other lane (through the centre crossing or past your base) or to choose where new units go: North, South or alternating (the default). <b>Long-press a unit</b> to send every unit of that type to one lane. On Classic there is one lane, so there are no squads.</p><p><b>Three-Lane</b> has three squads, <b>N</b>, <b>C</b> and <b>S</b>: the walls between the lanes each have one gap, at the rich centre node, where squads can switch lanes or hit a neighbouring lane from the side.</p>` +
+  `<h3 id="cx-special">Repair depots and relics (Three-Lane)</h3><p>A <b>repair depot</b> is captured like a node: your units near it heal ${REPAIR.heal}% of their health a second once unhurt for ${REPAIR.calm} s, and <b>Send damaged home</b> sends them to your nearest depot when it is closer than your base flag. A <b>relic</b> is a neutral camp off the lanes: its gold guards never move and fire at anyone who comes close. Destroy them and stand on the relic to take it, once, for ${RELIC.reward.c} credits.</p>` +
   `<h3 id="cx-break">Breaking a base</h3><p>Your HQ is shielded while a production building (${tN('barracks')}, ${tN('factory')} or ${tN('techlab')}) stands in your base: destroy them and the HQ is open. A destroyed building leaves <b>rubble</b>: nothing can be built on its pad for ${BREAK.rubble.t} s. From ${mmss(BREAK.power.from)} the base guns (HQ, turrets, bunkers) lose ${Math.round(BREAK.power.step * 100)}% of their power every minute as the Extinction Event nears, the same for both sides: <b>Power failing</b>.</p>`; }; // v2.66; v2.69: base-breaking
 // First launch: offer the tutorial once (the answer is remembered; without storage, once per page load)
 function tutFirstPrompt() {

@@ -103,6 +103,7 @@ function update(g, dt) {
       if (f === null || (e.side === 0 ? e.u > f : e.u < f)) g.front[e.side] = e.u;
     }
   }
+  updateGuards(g, foes, dt); // v2.71: the relic guards fire, and both sides may target them
   indexFoes(foes[0], dt); indexFoes(foes[1], dt); // v2.37: lane-sorted, so target searches look only near the searcher
   const n = g.ents.length; NAV.now = g.t; // v2.65: the clock the navigation paths age by
   for (let i = 0; i < n; i++) {
@@ -113,6 +114,7 @@ function update(g, dt) {
   updateProjs(g, dt);
   updateMedics(g, dt);
   bunkerHeal(g, dt);
+  updateRepair(g, dt); // v2.71: repair depots
   updateCreep(g, dt);
   updateField(g, dt);
   updateWarps(g);
@@ -134,6 +136,7 @@ function update(g, dt) {
 
 function updateNodes(g, dt) {
   for (const n of g.nodes) {
+    if (n.type === 'relic' && (!SPECIAL.on || !SPECIAL.relic || n.spent || relicGuarded(g, n))) { n.c = [0, 0]; n.prog = 0; continue; } // v2.71: guarded or spent: nothing to capture
     let c0 = 0, c1 = 0;
     let w0 = 0, w1 = 0; // capture weight: a Drilled Rifleman counts 1.5
     for (const e of g.ents) if (e.kind === 'u' && e.hp > 0 && !UDEF[e.type].air && !UDEF[e.type].noCap && (MAP_2D ? Math.hypot(e.u - n.u, e.v - n.v) : Math.abs(e.u - n.u)) <= (n.r || NODE_R)) { const w = e.vet ? DRILL.capture : 1; if (e.side === 0) { c0++; w0 += w; } else { c1++; w1 += w; } }
@@ -147,6 +150,7 @@ function updateNodes(g, dt) {
       ev(g, { type: 'node', side: o === null ? n.owner : o, lost: o === null });
       if (g.log) { const sd = o === null ? n.owner : o; g.log.tot[sd][o === null ? 'nodeLost' : 'nodeCap']++; lg(g, sd, o === null ? 'L' : 'N', n.id); }
       n.owner = o;
+      if (n.type === 'relic' && o !== null) relicTaken(g, n, o); // v2.71
     }
   }
 }
@@ -297,7 +301,7 @@ function chainBeam(g, src, first, def) {
     if (!next) break;
     mul *= C.fall; hit.push(next);
     const a = P(cur.u, cur.v, aimZ(cur)), b = P(next.u, next.v, aimZ(next));
-    damage(g, next, def.dmg * mul * (g.sides[src.side].buff ? NANO.dmg : 1) * outMul(g, src), def.weapon, src.side, src);
+    damage(g, next, def.dmg * mul * (sideBuff(g, src.side) ? NANO.dmg : 1) * outMul(g, src), def.weapon, src.side, src);
     g.fx.push({ k: 'beam', x: a.x, y: a.y, x2: b.x, y2: b.y, t: 0, life: 0.2, w: 1.6 * mul });
     cur = next;
   }
@@ -338,7 +342,7 @@ function indexFoes(list, dt) {
 function ixScan(g, src, def, foes, R, AR, minR) {
   const X = foes.ix, vis = g.fog[src.side].vis, side = src.side, su = src.u, sv = src.v, maxR = Math.max(R, AR);
   let best = null, bs = 1e9, bi = -1, close = false;
-  const bbf = src.kind === 'u' && g.sides[side].bbOn; // v2.69 (a): an AI base attack aims at what holds the shield up
+  const bbf = src.kind === 'u' && !!g.sides[side] && g.sides[side].bbOn; // v2.69 (a): an AI base attack aims at what holds the shield up
   const check = idx => {
     const e = foes[idx];
     if (e.hp <= 0 || e.shielded || e.phT > g.t) return; // a phased Wraithwing can't be targeted (P13, v2.37)
@@ -384,7 +388,7 @@ function acquire(g, src, def, foes, chase) {
     // prefer units over buildings, targets this weapon counters, and wounded targets
     const mult = DMG[def.weapon][e.kind === 'b' ? 'building' : UDEF[e.type].armor];
     if (!mult) continue; // this weapon can't hurt it (e.g. Turret gatling vs buildings)
-    const sc = dist + (e.kind === 'b' ? 80 : 0) - (mult - 1) * 45 - (1 - e.hp / e.maxHp) * 25 - (air && def.preferAir ? 400 : 0) - (e.kind === 'b' && def.preferB ? 280 : 0) - (src.kind === 'u' && e.kind === 'b' && g.sides[src.side].bbOn ? bbFocus(e) : 0); // v2.69 (a) // the Hydra goes for aircraft first, the Leviathan for buildings
+    const sc = dist + (e.kind === 'b' ? 80 : 0) - (mult - 1) * 45 - (1 - e.hp / e.maxHp) * 25 - (air && def.preferAir ? 400 : 0) - (e.kind === 'b' && def.preferB ? 280 : 0) - (src.kind === 'u' && e.kind === 'b' && g.sides[src.side] && g.sides[src.side].bbOn ? bbFocus(e) : 0); // v2.69 (a) // the Hydra goes for aircraft first, the Leviathan for buildings
     if (sc < bs) { bs = sc; best = e; }
   }
   return { best, close };

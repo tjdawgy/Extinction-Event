@@ -2,7 +2,7 @@
 const mmss = t => { t = Math.max(0, Math.floor(t)); return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`; };
 let NODE_NAME; const mapNodeNames = () => { NODE_NAME = MAP.id === 'classic' ? ['west', 'centre', 'east'] : MAP.nodes.map(n => n.name || n.id); }; // v2.65: per map
 mapNodeNames(); MAP_HOOKS.push(mapNodeNames);
-const nodeLabel = i => { const n = NODE_NAME[i] || ''; return /watchtower|pad/.test(n) ? n : `${n} field node`; }; // v2.65
+const nodeLabel = i => { const n = NODE_NAME[i] || ''; return /watchtower|pad|depot|relic/.test(n) ? n : `${n} field node`; }; // v2.65
 const LINE_MAX = 80; // per side; unit groups are widened only past this
 // A building role's name as side s's faction calls it (the log is read only after the match, when factions are revealed)
 const logBName = (g, s, t) => { const d = BD(g && g.sides[s] ? g.sides[s].faction : DEFAULT_FACTION, t); return d ? d.name : t; };
@@ -17,13 +17,15 @@ function logEvText(e, me, g) { // one log event as a line of text (me: written f
     case 'D': return `${B(a)} destroyed${x === -1 ? ' by the storm' : ''}`;
     case 'N': return `Captured the ${nodeLabel(a)}`;
     case 'L': return `Lost the ${nodeLabel(a)}`;
+    case 'R': return `Took the ${nodeLabel(a)}: +${b} credits`; // v2.71
+    case 'Q': return `Killed a relic guard (${UDEF[a] ? UDEF[a].name : a})`; // v2.71
     case 'A': return a === 'strike' ? `Orbital Strike: ${Math.round(b || 0)} damage, ${x || 0} destroyed` : a === 'shield' ? `Emergency Shield: ${Math.round(b || 0)} damage blocked` : a === 'repair' ? `Repair Pulse: ${Math.round(b || 0)} HP restored`
       : a === 'frenzy' ? `Frenzy Bloom: ${Math.round(b || 0)} organisms frenzied` : a === 'brood' ? `Emergency Brood: ${Math.round(b || 0)} Skitterlings hatched`
       : a === 'mwarp' ? `Mass Warp: ${Math.round(b || 0)} units warped` : a === 'overcharge' ? `Shield Overcharge: ${Math.round(b || 0)} damage blocked, ${Math.round(x || 0)} shields restored` // v2.28
       : a === 'beam' ? `Purification Beam: ${Math.round(b || 0)} damage, ${x || 0} destroyed` : `Corrosive Bloom: ${Math.round(b || 0)} damage, ${x || 0} destroyed`;
     case 'H': return 'HQ shield down';
     case 'O': return `Order: ${a === 'all' ? 'whole army' : a === 'group' ? GROUP_NAME[b] : (PLURAL[b] || b)} ${ORDER_NAME[x] ? ORDER_NAME[x].toLowerCase() : x}`;
-    case 'G': return b ? 'Feint attack launched (pulled back)' : a === 'raid' ? 'Raid launched' : a === 'turtle' || a === 'rush' || a === 'greed' ? `Read the enemy's ${a === 'turtle' ? 'Turrets' : a === 'rush' ? 'rush' : 'greedy economy'}; changed plan` : `Attack launched${a === 'siege' ? ' (siege)' : ''}`; // v2.52: a read is not an attack
+    case 'G': return b ? 'Feint attack launched (pulled back)' : a === 'raid' ? 'Raid launched' : a === 'relic' ? 'Sent a group for a relic' : a === 'turtle' || a === 'rush' || a === 'greed' ? `Read the enemy's ${a === 'turtle' ? 'Turrets' : a === 'rush' ? 'rush' : 'greedy economy'}; changed plan` : `Attack launched${a === 'siege' ? ' (siege)' : ''}`; // v2.52: a read is not an attack
     case 'W': return 'Extinction Event warning (30 s)';
     case 'X': return 'Extinction Event began';
     case 'E': return a === 'draw' ? 'Match ended: draw (the Extinction Event)' : `Match ended: ${b === 0 ? 'you won' : 'you lost'}`; // the player's view, in both columns

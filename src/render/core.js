@@ -5,6 +5,7 @@
 const TEAM = [
   { main: '#39c8ff', light: '#c4f3ff', hull: '#24506b', glow: '57,200,255', face: ['#7adcff', '#2ea6d6', '#1f7aa2'] },
   { main: '#ff4d4d', light: '#ffd0d0', hull: '#6b2626', glow: '255,77,77', face: ['#ff8a8a', '#d63d3d', '#a52c2c'] },
+  { main: '#e8c25a', light: '#fff1c4', hull: '#5e5030', glow: '232,194,90', face: ['#f2d98a', '#c9a646', '#9a7d30'] }, // v2.71: neutral (relic guards)
 ];
 const M = { d: '#161e2c', m: '#2a3648', l: '#435269', h: '#7c8ba2' };
 const MAT = { metal: ['#66779a', '#3e4b65', '#2a3448'], dark: ['#3a465c', '#262f42', '#1a2131'], light: ['#97a7c1', '#66758f', '#4c5a72'] };

@@ -239,7 +239,7 @@ function updateCreep(g, dt) {
 // burned too (before, it took nothing and the tank fired at it forever). FLAME.aim false: the strip stays on the tank's line.
 const FLAME = { aim: true };
 function flameBurst(g, src, def, t) {
-  const dir = src.face || dirOf(src.side), dmg = def.dmg * (g.sides[src.side].buff ? NANO.dmg : 1) * outMul(g, src), cv = FLAME.aim && t ? t.v : src.v;
+  const dir = src.face || dirOf(src.side), dmg = def.dmg * (sideBuff(g, src.side) ? NANO.dmg : 1) * outMul(g, src), cv = FLAME.aim && t ? t.v : src.v;
   for (const e of g.ents) {
     if (e.side === src.side || e.hp <= 0 || (e.kind === 'u' && UDEF[e.type].air) || e.shielded) continue;
     const ahead = (e.u - src.u) * dir, reach = def.range + (e.kind === 'b' ? e.half : 0);
@@ -294,7 +294,7 @@ function fire(g, src, t, def) {
   if (def.melee) { meleeHit(g, src, t, def); return; }
   if (def.beam) { // the Null Lance (v2.25): the beam lands at once; the SIM leaves a short beam mark for the renderer
     const m = muzzle(src), a = P(m.u, m.v, m.z), b = P(t.u, t.v, aimZ(t));
-    damage(g, t, def.dmg * (g.sides[src.side].buff ? NANO.dmg : 1) * outMul(g, src), def.weapon, src.side, src);
+    damage(g, t, def.dmg * (sideBuff(g, src.side) ? NANO.dmg : 1) * outMul(g, src), def.weapon, src.side, src);
     const hq = def.weapon === 'hqbeam' || def.weapon === 'sovereign'; // the Axis lance (v2.36), the Sovereign's judgement (v2.37): heavier, violet and cyan
     g.fx.push({ k: 'beam', x: a.x, y: a.y, x2: b.x, y2: b.y, t: 0, life: hq ? 0.34 : def.weapon === 'horizon' ? 0.32 : 0.2, w: def.weapon === 'sovereign' ? 5 : hq ? 3.6 : def.weapon === 'horizon' ? 3.2 : def.split ? 1.5 : 2.2, hq });
     if (def.chain) chainBeam(g, src, t, def); // the Shardstorm (v2.29)
@@ -306,7 +306,7 @@ function fire(g, src, t, def) {
   if (def.siege && src.siege === 2 && t.kind === 'b') mul = def.siege.bmul;
   if (def.salvo || def.carpet) { volley(g, src, t, def, m); if (src.kind === 'u') src.recoil = 1; return; } // P1, P10
   const p = { u: m.u, v: m.v, z: m.z, pu: m.u, pv: m.v, pz: m.z, tu: t.u, tv: t.v, tz: aimZ(t), target: t, side: src.side,
-    weapon: def.weapon, dmg: def.dmg * mul * (g.sides[src.side].buff ? NANO.dmg : 1) * (src.vet ? DRILL.dmg : 1) * outMul(g, src), splash: def.splash || 0, t: 0 }; // disrupted: less damage (v2.27)
+    weapon: def.weapon, dmg: def.dmg * mul * (sideBuff(g, src.side) ? NANO.dmg : 1) * (src.vet ? DRILL.dmg : 1) * outMul(g, src), splash: def.splash || 0, t: 0 }; // disrupted: less damage (v2.27)
   if (def.focus) p.fc = src.fcN; // drawn brighter as it builds (v2.37)
   if (def.pierce) { p.ou = m.u; p.ov = m.v; p.pierce = 1; } // P4: where the line starts
   if (def.devour) p.dev = src.id; // P11: who feeds on the damage
@@ -329,7 +329,7 @@ function fire(g, src, t, def) {
 // shells around the target and they land one after another (gap); a carpet lays its bombs in a line along the lane,
 // centred on the target, in the direction the bomber faces.
 function volley(g, src, t, def, m) {
-  const V = def.salvo || def.carpet, dmg = def.dmg * (g.sides[src.side].buff ? NANO.dmg : 1) * outMul(g, src) / (def.salvo ? V.n : 1), dir = src.face || dirOf(src.side);
+  const V = def.salvo || def.carpet, dmg = def.dmg * (sideBuff(g, src.side) ? NANO.dmg : 1) * outMul(g, src) / (def.salvo ? V.n : 1), dir = src.face || dirOf(src.side);
   for (let i = 0; i < V.n; i++) {
     const p = { u: m.u, v: m.v, z: m.z, pu: m.u, pv: m.v, pz: m.z, target: null, side: src.side, weapon: def.weapon, dmg, splash: def.splash || 0, t: 0, tz: 0 };
     if (def.salvo) {

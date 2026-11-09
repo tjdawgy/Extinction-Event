@@ -43,6 +43,8 @@ Design proposals sent after v2.68. Approved: Proposals D, E and F (each is built
 
 ## Proposal E — the repair depot and the guarded relic
 
+*Built in v2.71 (src/sim/nodes-special.js) on Three-Lane (map v2). Changes from the sketch: guards are a Titan and two Tanks; relics sit at both ends of the north wall, (740, −200) and (1560, −200), in a pocket made by starting the walls 120 nearer the centre, so passing armies don't fight the guards; depots at (1150, ±470). KNOWN_ISSUES.md "Repair depot and guarded relic".*
+
 - **Repair depot** (`NODE_TYPES.repair`, `heal`): a capturable node. Its holder's units within its radius heal `heal`% of their health a second while they haven't been hurt for 3 s (the same rule as Send damaged home at the base flag); no income.
   - It gives Send damaged home a second, nearer target: damaged units go to the nearest held depot instead of the base flag.
   - **Maps:** Three-Lane (one in each outer lane, at the middle, replacing nothing: it sits beside the watchtowers), and an optional swap for a lane income node on Two-Lane later. Not on Classic.

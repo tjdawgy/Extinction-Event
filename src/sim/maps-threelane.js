@@ -7,10 +7,10 @@
 MAPS.threelane = (() => {
   const W = 2300, mx = p => [W - p[0], p[1]], fy = p => [p[0], -p[1]], wb = MAPS.classic.bases[0];
   const north = [[0, 0], [400, 0], [600, -400], [1700, -400], [1900, 0], [2300, 0]];
-  const wallNW = [[700, -200], [760, -280], [1080, -280], [1080, -120], [760, -120]];
+  const wallNW = [[820, -200], [880, -280], [1080, -280], [1080, -120], [880, -120]]; // v2 (v2.71): starts at x 820 (was 700), leaving the pocket for the relic
   const fwd = (id, name, x, y) => ({ id, name, type: 'forwardPad', at: [x, y], r: 40, pads: x < W / 2 ? [[x - 60, y], [x + 60, y]] : [[x + 60, y], [x - 60, y]], allow: ['turret', 'barracks'] });
   return {
-    id: 'threelane', v: 1,
+    id: 'threelane', v: 2, // v2 (v2.71): repair depots and relics; the walls start 120 further from the bases
     display: { name: 'Three-Lane', desc: 'North, centre and south lanes; the walls between them open at a rich centre node. Flank through the gaps.', thumb: { style: 'lanes', tint: '#2e3a4a' } },
     size: { w: W, h: 1120 },
     armyCap: 120,
@@ -40,6 +40,10 @@ MAPS.threelane = (() => {
       { id: 'tn', name: 'north watchtower', type: 'watchtower', at: [1150, -340], r: 45, sight: 600 },
       { id: 'ts', name: 'south watchtower', type: 'watchtower', at: [1150, 340], r: 45, sight: 600 },
       fwd('fwn', 'north-west forward pad', 820, -400), fwd('fwc', 'centre-west forward pad', 960, 0), fwd('fws', 'south-west forward pad', 820, 400),
+      { id: 'rn', name: 'north repair depot', type: 'repair', at: [1150, -470], r: 55, heal: 3 }, // v2.71 (Proposal E): one in each outer lane, beside the watchtower
+      { id: 'rs', name: 'south repair depot', type: 'repair', at: [1150, 470], r: 55, heal: 3 },
+      { id: 'gw', name: 'west relic', type: 'relic', at: [740, -200], r: 45, guards: [{ unit: 'titan', n: 1 }, { unit: 'tank', n: 2 }], reward: { c: 800 } }, // v2.71: off the lanes, in the pocket at the base end of the north wall, about 200 from every lane's centre
+      { id: 'ge', name: 'east relic', type: 'relic', at: [1560, -200], r: 45, guards: [{ unit: 'titan', n: 1 }, { unit: 'tank', n: 2 }], reward: { c: 800 } },
       fwd('fen', 'north-east forward pad', 1480, -400), fwd('fec', 'centre-east forward pad', 1340, 0), fwd('fes', 'south-east forward pad', 1480, 400),
     ],
     conditions: [],

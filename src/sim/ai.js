@@ -620,6 +620,7 @@ const laneOfPt = (u, v) => { let best = 0, bd = 1e9; for (let k = 0; k < MAP.lan
 function aiLanes3(g, s, D, mine, theirs, threat, myV = 0, thV = 0) {
   const side = g.sides[s], LA = side.la || (side.la = { t: -99, sh: -99, fw: -99 }), easy = D.label === 'Easy', lanes = MAP.lanes.map((_, k) => k);
   aiCapture3(g, s, mine, theirs, easy);
+  aiRelic(g, s, mine, theirs, threat, easy); // v2.71
   const LT = LANE_AI.late;
   if (LT.on && side.stance !== 'attack' && !threat && g.t >= LT.from && myV >= 300 && myV >= thV * LT.ratio) {
     side.stance = 'attack'; side.pushTo = null; side.pushMode = 'all'; side.stanceAt = g.t; side.launchV = myV; LA.late = (LA.late || 0) + 1;
@@ -685,7 +686,7 @@ function aiCapture(g, s, mine, theirs, easy, key = 'capT', atKey = 'capAt', othe
   if (g.t < C.from || g.t - (side[atKey] ?? -99) < C.gap || (side.stance === 'attack' && side.pushMode === 'all')) return;
   const myV = armyValue(mine); if (myV < C.minArmy) return;
   const near = n => armyValue(theirs.filter(e => e.fresh && e.v !== undefined && Math.hypot(e.u - n.u, e.v - n.v) < 260));
-  const cand = g.nodes.map((n, i) => i).filter(i => g.nodes[i].owner !== s && (i === 1 || (!easy && g.nodes[i].type === 'watchtower')) && near(g.nodes[i]) < myV * C.odds && !(other && other.node === i));
+  const cand = g.nodes.map((n, i) => i).filter(i => g.nodes[i].owner !== s && (i === 1 || (!easy && (g.nodes[i].type === 'watchtower' || g.nodes[i].type === 'repair' || (g.nodes[i].type === 'relic' && SPECIAL.on && SPECIAL.relic && !g.nodes[i].spent && !relicGuarded(g, g.nodes[i]))))) && near(g.nodes[i]) < myV * C.odds && !(other && other.node === i));
   if (!cand.length) return;
   cand.sort((a, b) => near(g.nodes[a]) - near(g.nodes[b]) || a - b);
   const i = cand[0], n = g.nodes[i], need = near(n) * 1.3 + 150;
@@ -703,7 +704,35 @@ function aiCapture3(g, s, mine, theirs, easy) {
   aiCapture(g, s, mine, theirs, easy, 'capT', 'capAt', side.capT2);
   if (!easy) aiCapture(g, s, mine, theirs, easy, 'capT2', 'capAt2', side.capT);
 }
-const capBusy = (side, id) => (side.capT && side.capT.ids.includes(id)) || (side.capT2 && side.capT2.ids.includes(id)); // in a capture group (v2.70: either)
+const capBusy = (side, id) => (side.capT && side.capT.ids.includes(id)) || (side.capT2 && side.capT2.ids.includes(id)) || (side.relicG && side.relicG.ids.includes(id)); // v2.71: or the relic group
+// v2.71 (Proposal E): a guarded relic. With no push on, nothing threatening at home and nothing it knows of near the relic,
+// and its army at least RELIC_AI.edge × the guards, a group worth RELIC_AI.group × the guards (its nearest ground units)
+// goes to kill them and stand on the relic; it gives up when hurt to half, after RELIC_AI.dur seconds, or when the army attacks.
+// Not on Easy.
+const RELIC_AI = { edge: 3, group: 2, dur: 90, near: 400, every: 20 };
+function aiRelic(g, s, mine, theirs, threat, easy) {
+  const side = g.sides[s], R = RELIC_AI;
+  if (side.relicG) {
+    const T = side.relicG, n = g.nodes[T.node], live = mine.filter(u => T.ids.includes(u.id) && u.hp > 0);
+    const hurt = live.reduce((a, u) => a + u.hp, 0) < live.reduce((a, u) => a + u.maxHp, 0) * 0.5;
+    if (!live.length || hurt || n.spent || g.t > T.end || threat || (side.stance === 'attack' && side.pushMode === 'all')) { side.relicG = null; side.relicAt = g.t; }
+    else T.ids = live.map(u => u.id);
+    return;
+  }
+  if (easy || !SPECIAL.on || !SPECIAL.relic || threat || side.stance === 'attack' || g.t - (side.relicAt ?? -99) < R.every) return;
+  const myV = armyValue(mine);
+  for (const n of g.nodes) {
+    if (n.type !== 'relic' || n.spent || !relicGuarded(g, n)) continue;
+    const gv = guardValue(g, n);
+    if (myV < gv * R.edge || theirs.some(e => e.fresh && e.v !== undefined && Math.hypot(e.u - n.u, e.v - n.v) < R.near)) continue;
+    const pool = mine.filter(u => !UDEF[u.type].support && !UDEF[u.type].noCap && !UDEF[u.type].air && u.id !== side.scoutId && !capBusy(side, u.id) && !(side.raid && side.raid.ids.includes(u.id)) && u.hp >= u.maxHp * 0.7)
+      .sort((a, b) => Math.hypot(a.u - n.u, a.v - n.v) - Math.hypot(b.u - n.u, b.v - n.v) || a.id - b.id);
+    const ids = []; let v = 0; for (const u of pool) { if (v >= gv * R.group) break; ids.push(u.id); v += armyValue([u]); }
+    if (v < gv * R.group) continue;
+    side.relicG = { node: n.id, ids, end: g.t + R.dur, u: n.u, v: n.v }; side.relicAt = g.t; lg(g, s, 'G', 'relic', 0);
+    return;
+  }
+} // in a capture group (v2.70: either)
 function aiForward(g, s, D, threat) {
   const side = g.sides[s], LA = side.la, F = LANE_AI.fwd, max = (MAP.lanes.length > 2 ? F.max3 : F.max)[D.label] || 0, dir = dirOf(s);
   if (!max || threat || g.t - LA.fw < F.every || side.res.c < F.bank || !hasBuilt(g, s, 'barracks')) return;

@@ -227,8 +227,30 @@ function drawFwdPad(c, k, owner, empty, time, selected) {
   c.setLineDash(owner === null ? [5, 5] : []); c.strokeStyle = selected ? 'rgba(255,211,77,0.9)' : `rgba(${rgb},${empty ? 0.45 + 0.25 * Math.sin(time * 2.5 + w.x * 0.02) : 0.3})`; c.lineWidth = selected ? 2 : 1.2; c.stroke(); c.setLineDash([]);
   if (empty) { const [x, y] = [w.x, w.y]; c.strokeStyle = `rgba(${rgb},0.5)`; c.lineWidth = 1.4; c.beginPath(); c.moveTo(x - 5, y); c.lineTo(x + 5, y); c.moveTo(x, y - 3); c.lineTo(x, y + 3); c.stroke(); }
 }
+// v2.71: a repair depot: a low pad with a cross that glows its holder's colour; a relic: a gold obelisk, dark once spent
+function drawDepot(c, n, time) {
+  const w = P(n.u, n.v), rgb = n.owner === null ? '93,255,138' : TEAM[n.owner].glow;
+  c.save(); c.translate(w.x, w.y); c.scale(BS, BS);
+  box(c, 0, 0, 18, 18, 0, 5, MAT.dark);
+  const [x, y] = pt(0, 0, 18), a = 0.55 + 0.3 * Math.sin(time * 3 + n.u);
+  glow(c, x, y, 6, rgb, 0.35);
+  c.fillStyle = `rgba(${rgb},${a})`; c.fillRect(x - 3, y - 10, 6, 20); c.fillRect(x - 10, y - 3, 20, 6);
+  c.restore();
+}
+function drawRelic(c, n, time) {
+  const w = P(n.u, n.v), spent = n.spent, gold = spent ? '#5b5446' : '#e8c25a';
+  c.save(); c.translate(w.x, w.y); c.scale(BS, BS);
+  box(c, 0, 0, 16, 16, 0, 6, MAT.dark);
+  const [bx, by] = pt(0, 0, 6), [tx, ty] = pt(0, 0, 54);
+  c.fillStyle = gold; c.strokeStyle = 'rgba(20,14,4,0.8)'; c.lineWidth = 1;
+  c.beginPath(); c.moveTo(bx - 9, by); c.lineTo(tx - 4, ty + 8); c.lineTo(tx, ty); c.lineTo(tx + 4, ty + 8); c.lineTo(bx + 9, by); c.closePath(); c.fill(); c.stroke();
+  if (!spent) glow(c, tx, ty + 4, 5, '255,214,110', 0.45 + 0.25 * Math.sin(time * 2.4 + n.u));
+  c.restore();
+}
 function drawNode(c, n, time) {
   if (n.type === 'watchtower') return drawTower(c, n, time);
+  if (n.type === 'repair') return drawDepot(c, n, time);
+  if (n.type === 'relic') return drawRelic(c, n, time);
   if (n.type === 'forwardPad') return drawFwdPost(c, n, time);
   const w = P(n.u, n.v), rgb = n.owner === null ? '210,195,255' : TEAM[n.owner].glow, main = n.owner === null ? '#ddd2ff' : TEAM[n.owner].main;
   c.save(); c.translate(w.x, w.y); c.scale(BS, BS);

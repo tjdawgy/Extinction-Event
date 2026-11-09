@@ -2,6 +2,25 @@
 
 Issues found during testing that are deliberately deferred. Each lists the step that should address it.
 
+## Repair depot and guarded relic (v2.71, Phase 1)
+- **Rules** (src/sim/nodes-special.js, docs/PHASE1_DESIGNS.md Proposal E; `NODE_TYPES.repair` and `.relic` are live):
+  - **Repair depot:** captured like any node; its holder's units within its radius heal `REPAIR.heal` (3%, the base flag's rate) of their health a second once unhurt for 3 s; no income. **Send damaged home** goes to the nearest depot the side holds when that is nearer than the base flag (`medDepot`), and heals there.
+  - **Guarded relic:** a neutral camp: a Titan and two Tanks (`RELIC.guards`) that never move and fire at anything (either side) within `RELIC.aggro` (100) of the relic. They belong to no side (`NEUTRAL`, `g.guards`, outside `g.ents`: no vision, intel, army value or score), are in both sides' target lists, draw in neutral gold and heal slowly once left alone. With every guard dead, standing on the relic captures it once: 800 credits to its holder, then it is spent. A toast tells the player; the match log records it.
+  - `SPECIAL.on` / `.repair` / `.relic` switch them off (the comparison below). Saves keep the guards and spent relics.
+- **Maps:** Three-Lane only (map v2): a depot in each outer lane beside its watchtower, (1150, ±470); a relic at each end of the north wall, (740, −200) and (1560, −200), in a pocket made by starting the walls at x 820 instead of 700, about 200 from every lane's centre so passing armies aren't drawn in. (At (650, −230), the first spot tried, armies walking the lanes killed the guards in passing.) Not on Classic or Two-Lane, as designed. A v1 Three-Lane save no longer loads.
+- **The AI:** depots join the capture groups (Normal, Hard) beside the watchtowers; an unguarded relic too; a guarded relic only when it has no push on, no threat at home, nothing it knows of within 400 of the relic and an army 3× the guards': a group worth 2× the guards (its nearest healthy ground units) goes, and gives up when hurt to half, after 90 s or when the army attacks (`aiRelic`, `RELIC_AI`; not Easy). In test matches relics fell between 6:42 and 11:54.
+- **Effect on Three-Lane** (Hard vs Hard, 100 matches each on the same seeds and map v2; audit/logs-p1/special-v271/):
+
+  | Set | draws | median | Last Fist | Bloomhost | Axiarchs | sides |
+  |---|---|---|---|---|---|---|
+  | neither | 15.0% | 12:52 | 56.8% | 50.0% | 43.2% | 39–46 |
+  | depots only | 11.0% | 13:29 | 58.0% | 51.1% | 40.9% | 42–47 |
+  | relics only | 13.0% | 13:20 | 63.6% | 58.0% | 28.4% | 39–48 |
+  | both (shipped) | 11.0% | 13:34 | 61.4% | 60.2% | 28.4% | 38–51 |
+
+  Draws move within the noise of 100 matches (11–15%). **The relics hurt the Axiarchs**: 28.4% whenever relics are on, 41–43% without (about 1.4 standard deviations; consistent across the two pairs). Likely cause, not yet traced: the costly, shield-reliant Axiarch army loses more to the guards' splash, and the 800 credits buy the cheaper factions more. Depots change no share beyond noise. For the balance pass (not tuned).
+- **Tests:** tests/special-nodes.test.js (placement, depot healing and its limits, Send damaged home to a depot, guards neutral and fixed and in reach only, capture once after the guards, the AI's rules, saves), tests/special-nodes-ui.test.js (guards, relic and depot drawn, the relic toast; screenshots docs/screenshots/special-*.png at both sizes).
+
 ## Three-Lane with crossings (v2.70, Phase 1): targets met (Easy's median aside)
 - **The map** (src/sim/maps-threelane.js, docs/PHASE1_DESIGNS.md Proposal D): 2300 × 1120, mirrored, army cap 120; Classic's bases at x 220 and 2080; lanes north (−400), centre (0) and south (+400), 230 wide, the outer two splitting from the centre just past each base; two walls (four pieces) between the outer lanes and the centre, each with one gap, 140 wide, at x 1150 where the rich centre node (1.5×) sits; six income nodes ((650, ±400), (800, 0) and mirrors), two watchtowers at (1150, ±340) (moved in from ±400 so each sees its lane and its crossing), six forward posts (one per lane per side, Turret and Barracks roles). `validateMap` passes, symmetry included. On the map-select screen with a thumbnail drawn from the data (it scrolls sideways at 667 wide).
 - **Performance check first** (audit/sim/perf-lanes.js, audit/logs-p1/threelane-v270/perf.md, headless Chromium at both iPhone sizes, normal CPU and 4× throttling): at a realistic load (60 units a side) Three-Lane keeps true speed everywhere, its frames costing ~15% more than Two-Lane's at 50 a side (30–40% more at 4×). Only a worst case of 120 units a side (twice what the supply allows) at 4× falls below true speed (0.89–0.96×). **Cap 120 kept**; 110 is the fallback if a real older iPhone struggles.

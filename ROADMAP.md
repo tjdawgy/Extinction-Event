@@ -72,8 +72,8 @@ Map data format: [docs/MAP_FORMAT.md](docs/MAP_FORMAT.md) (approved after Phase 
   - Credit or energy — income, as now.
   - [x] Watchtower — clears fog in a wide radius. *(v2.65)*
   - [x] Forward pad — capture it to build there. This replaces adding more pads at the home base. *(v2.65: each faction's Turret and Barracks roles)*
-  - Repair depot — heals units nearby.
-  - Guarded relic — neutral defenders, big payoff. (Repair depot and guarded relic design: [docs/PHASE1_DESIGNS.md](docs/PHASE1_DESIGNS.md), Proposal E, approved after v2.68.)
+  - [x] Repair depot — heals units nearby. *(v2.71, Three-Lane)*
+  - [x] Guarded relic — neutral defenders, big payoff. *(v2.71, Three-Lane; relics cost the Axiarchs ~15 points of win share there, for the balance pass)* (Repair depot and guarded relic design: [docs/PHASE1_DESIGNS.md](docs/PHASE1_DESIGNS.md), Proposal E, approved after v2.68.)
 - [ ] **Battlefield conditions** (optional per match): heavy fog, rich center nodes, scarce resources, meteor strikes. Design: [docs/PHASE1_DESIGNS.md](docs/PHASE1_DESIGNS.md) (Proposal F, approved after v2.68).
 - [ ] **Army control:**
   - [x] Split Army — assign squads to lanes. This ships with multi-lane maps. Design: [docs/SPLIT_ARMY.md](docs/SPLIT_ARMY.md) (approved after v2.63). *(v2.66)*

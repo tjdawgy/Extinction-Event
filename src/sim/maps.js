@@ -55,7 +55,7 @@ function laneY(ln, x) {
 }
 const laneIx = k => typeof k === 'number' ? (k >= 0 && k < MAP.lanes.length ? k : -1) : MAP.lanes.findIndex(l => l.id === k); // a lane by index or id
 // Node types: how each behaves is code (NODE_TYPES); a map only places them. live: false = in the format, not built yet
-const NODE_TYPES = { income: { live: true }, watchtower: { live: true }, forwardPad: { live: true }, repair: { live: false }, relic: { live: false } };
+const NODE_TYPES = { income: { live: true }, watchtower: { live: true }, forwardPad: { live: true }, repair: { live: true }, relic: { live: true } }; // v2.71: the repair depot and the guarded relic (src/sim/nodes-special.js)
 // v2.65: what each live type does. income: NODE_INC a second to its holder (× yieldMul). watchtower: no income; its holder
 // sees sight around it. forwardPad: no income; its holder may build the roles in allow (each faction's own building for
 // that role) on its pads. All three are captured the same way, by ground troops inside r.
@@ -135,7 +135,7 @@ function validateMap(m) {
       if (!isPt(n.at)) continue;
       const img = N.find(o => o.type === n.type && isPt(o.at) && same(T(n.at), o.at));
       if (!img) { bad(`symmetry: node ${n.id} has no image`); continue; }
-      if ((n.r || 70) !== (img.r || 70) || (n.yieldMul || 1) !== (img.yieldMul || 1) || (n.sight || 0) !== (img.sight || 0) || String(n.allow || '') !== String(img.allow || '') || !setEq(n.pads || [], img.pads || [])) bad(`symmetry: node ${n.id} doesn't match its image ${img.id}`);
+      if ((n.r || 70) !== (img.r || 70) || (n.yieldMul || 1) !== (img.yieldMul || 1) || (n.sight || 0) !== (img.sight || 0) || (n.heal || 0) !== (img.heal || 0) || JSON.stringify(n.guards || null) !== JSON.stringify(img.guards || null) || JSON.stringify(n.reward || null) !== JSON.stringify(img.reward || null) || String(n.allow || '') !== String(img.allow || '') || !setEq(n.pads || [], img.pads || [])) bad(`symmetry: node ${n.id} doesn't match its image ${img.id}`);
     }
     for (const l of lanes) if (!lanes.some(o => setEq(l.path, o.path))) bad(`symmetry: lane ${l.id} has no image`);
     for (const [k, bl] of (m.blockers || []).entries()) if (!(m.blockers || []).some(o => setEq(bl.poly, o.poly))) bad(`symmetry: blocker ${k} has no image`);

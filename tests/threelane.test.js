@@ -9,18 +9,19 @@ const { loadSim } = require('./load-sim');
 const sim = loadSim();
 const M = sim.MAPS.threelane;
 test.afterEach(() => sim.useMap('classic'));
-const setup = (diff = 'hard') => { const g = sim.newGame(diff, { map: 'threelane', seed: 9, factions: ['lastfist', 'lastfist'] }); g.countdown = 0; g.t = 300; for (const s of g.sides) s.aiT = 1e9; g.ents = g.ents.filter(e => e.kind !== 'u'); return g; };
+const setup = (diff = 'hard') => { const g = sim.newGame(diff, { map: 'threelane', seed: 9, factions: ['lastfist', 'lastfist'] }); g.countdown = 0; g.t = 300; for (const s of g.sides) s.aiT = 1e9; g.ents = g.ents.filter(e => e.kind !== 'u'); g.guards = []; for (const n of g.nodes) if (n.type === 'relic') n.spent = true; return g; }; // v2.71: relics out of the way (tests/special-nodes.test.js covers them)
 const D = (g, s) => sim.aiDiff(g, s);
 const army = (g, s) => g.ents.filter(e => e.kind === 'u' && e.side === s && e.hp > 0);
 const intel = (g, s, list) => { for (const [i, e] of list.entries()) g.fog[s].intel[90000 + i] = { type: e[0], u: e[1], v: e[2], t: g.t }; };
 const theirs = (g, s) => Object.values(g.fog[s].intel).map(m => ({ type: m.type, u: m.u, v: m.v, w: 1, fresh: true }));
 
-test('the map: valid and mirrored, 2300 × 1120, army cap 120, three lanes, four wall pieces, the design\'s nodes and pads', () => {
+test('the map (v2): valid and mirrored, 2300 × 1120, army cap 120, three lanes, four wall pieces, the design\'s nodes and pads', () => {
   assert.deepStrictEqual([...sim.validateMap(M)], []);
   assert.strictEqual(M.symmetry, 'mirror-x');
   assert.deepStrictEqual([M.size.w, M.size.h, M.armyCap], [2300, 1120, 120]);
   assert.deepStrictEqual(JSON.parse(JSON.stringify(M.lanes.map(l => [l.id, l.width, sim.laneY(l, 1150)]))), [['north', 230, -400], ['centre', 230, 0], ['south', 230, 400]]);
   assert.strictEqual(M.blockers.length, 4);
+  assert.strictEqual(M.v, 2, 'v2 (v2.71): depots, relics and shorter walls');
   const by = t => M.nodes.filter(n => n.type === t);
   assert.deepStrictEqual([...by('income').map(n => n.at.join(','))].sort(), ['1150,0', '1500,0', '1650,-400', '1650,400', '650,-400', '650,400', '800,0'].sort());
   assert.strictEqual(M.nodes[1].yieldMul, 1.5, 'the rich centre node, where the lanes meet');
@@ -36,9 +37,10 @@ test('crossings: the walls have one gap each, at the centre; elsewhere the lanes
   const len = p => { let d = 0; for (let i = 1; i < p.length; i++) d += Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]); return d; };
   for (const y of [-1, 1]) {
     assert.ok(sim.navShut(900, y * 200) && sim.navShut(1400, y * 200), 'wall');
+    assert.ok(!sim.navShut(740, y * 200) && !sim.navShut(1560, y * 200), 'the pockets at the base ends (v2.71: the walls start at x 820)');
     assert.ok(!sim.navShut(1150, y * 200), 'the gap at the centre');
     const gap = sim.navPath(1150, y * 400, 1150, 0); assert.ok(gap && len(gap) < 500, `through the gap (${gap && len(gap)})`);
-    const far = sim.navPath(950, y * 400, 950, 0); assert.ok(far && len(far) > 550, `around the wall (${far && len(far)})`);
+    const far = sim.navPath(1000, y * 400, 1000, 0); assert.ok(!sim.navClear(1000, y * 400, 1000, 0) && far && len(far) > 430, `around the wall (${far && len(far)})`);
   }
   const g = setup(), u = sim.spawnUnit(g, 0, 'rifle', 1150, -400); u.lane = 1;
   for (let i = 0; i < 60 * 12; i++) { sim.updateUnit(g, u, [], sim.TICK); }

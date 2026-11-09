@@ -194,6 +194,7 @@ function handleEvents() {
     else if (e.type === 'beaconDown' && (e.side === 0 || e.seen)) toast(e.side === 0 ? `Phase Beacon bubble collapsed: back in ${BEACON.down} s` : 'Enemy field bubble collapsed', e.side === 0 ? 'warn' : 'ok'); // v2.34
     else if (e.type === 'overdrive' && e.side === 0) toast(`Overdrive: production +${Math.round(YARD.od * 100)}% for ${YARD.odDur} s`, 'ok'); // v2.32
     else if (e.type === 'warpSnap' && e.side === 0) { toast('Warp point lost with the field: back to the front edge', 'warn'); refreshWarpCard(); } // v2.26
+    else if (e.type === 'relic') { toast(e.side === 0 ? `Relic taken: +${e.c} credits` : 'The enemy took a relic', e.side === 0 ? 'ok' : 'warn'); if (e.side === 0) sndPlay('node'); } // v2.71
     else if (e.type === 'node') { if (e.side === 0 && !e.lost) sndPlay('node'); toast(e.lost ? (e.side === 0 ? 'You lost a field node' : 'Enemy lost a field node') : (e.side === 0 ? `Field node captured: +${NODE_INC.c} credits, +${NODE_INC.e} energy per second` : 'Enemy captured a field node'), (e.side === 0) === !e.lost ? 'ok' : 'warn'); }
     else if (e.type === 'go') showGo();
     else if (e.type === 'extWarn') { sndPlay('siren'); toast('The Extinction Event starts in 30 seconds: finish it or lose your base', 'bad'); }

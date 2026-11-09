@@ -247,6 +247,15 @@ function updateUnit(g, u, foes, dt) {
   if (u.phT > g.t) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // P13 (v2.37): a phased Wraithwing holds still and can't fire
   // Retreat: keep running home until back at the rally flag. A retreating unit holds its fire (v2.35, audit): it
   // attacks again only once the retreat ends, back at the flag or under a new order
+  if (u.medHome) { // v2.71: sent home, with a repair depot its side holds nearer than the base flag: heal there instead
+    const dp = medDepot(g, u);
+    if (dp) {
+      u.tgt = 0; u.chT = 0;
+      if (Math.hypot(dp.u - u.u, dp.v - u.v) > (dp.r || NODE_R) * 0.5) moveToward(u, d, dp.u, dp.v, dt, sp);
+      else { u.moving = false; if (g.t - u.lastHurt > DAMAGED.calm) u.hp = Math.min(u.maxHp, u.hp + u.maxHp * DAMAGED.heal * dt); if (u.hp >= u.maxHp * DAMAGED.done) u.medHome = 0; }
+      return;
+    }
+  }
   if (st === 'retreat' && Math.abs(home - u.u) > 12) {
     if (!RETREAT.fire) { u.tgt = 0; u.chT = 0; }
     else if (best && u.cd <= 0) { fire(g, u, best, d); u.cd = d.cd * rand(0.9, 1.1); } // the v2.34 rule, for the tests' fixed replays
@@ -299,7 +308,7 @@ function updateUnit(g, u, foes, dt) {
   }
   let tu = home, tv = u.laneV;
   if (u.id === side.scoutId && side.scoutU != null && st !== 'retreat') tu = side.scoutU; // v2.38: a Default AI's scout
-  else if (st === 'run' && capBusy(side, u.id)) { const T = side.capT && side.capT.ids.includes(u.id) ? side.capT : side.capT2; tu = T.u + ((u.id * 37) % 5 - 2) * 10; tv = T.v + ((u.id * 53) % 5 - 2) * 8; } // v2.67: a capture group stands on its node (v2.70: either group)
+  else if (st === 'run' && capBusy(side, u.id)) { const T = side.capT && side.capT.ids.includes(u.id) ? side.capT : side.capT2 && side.capT2.ids.includes(u.id) ? side.capT2 : side.relicG; tu = T.u + ((u.id * 37) % 5 - 2) * 10; tv = T.v + ((u.id * 53) % 5 - 2) * 8; } // v2.67: a capture group stands on its node (v2.70: either group)
   else if (st === 'run') tu = side.raid.u; // v2.60: a raider heads for its target (fighting what it meets on the way)
   else if (st === 'move') [tu, tv] = slotOf(u, ord); // Regroup: walk to the flag, then hold there
   else if (st === 'hold' && u.holdU !== undefined) { tu = u.holdU; tv = u.holdV; }

@@ -178,6 +178,8 @@ function nodeOf(i, u) {
   if (d.yieldMul && d.yieldMul !== 1) n.mul = d.yieldMul;
   if (d.r && d.r !== NODE_R) n.r = d.r;
   if (d.sight) n.sight = d.sight;
+  if (d.heal) n.heal = d.heal; // v2.71: a repair depot's own rate
+  if (d.type === 'relic') { n.spent = false; if (d.guards) n.guards = d.guards; if (d.reward) n.reward = d.reward; } // v2.71
   return n;
 }
 const nodeInc = n => n.type ? 0 : n.mul || 1; // how many income nodes' worth a node pays (0: a watchtower or forward pad)
@@ -201,6 +203,7 @@ function newGame(diffKey, opts = {}) {
   if (g.auto) g.sides[0].persona = rollPersona(opts.autoPersona, presetFor(opts.autoAi, g.autoDiff), g.sides[0].faction, g.autoDiff);
   g.log = newLog(0); // the match log (never read by the SIM)
   g.stats = newStats(0); // v2.51: the stats tracker (never read by the SIM)
+  spawnGuards(g); // v2.71: the relics' neutral guards (none on a map without relics)
   g.fog = [newFog(g, 0), newFog(g, 1)];
   updateVision(g);
   return g;
