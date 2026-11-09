@@ -934,6 +934,7 @@ function render(c, g, time, sel, selPad) {
   for (const b of g.ents) if (b.type === 'bunker' && b.hp > 0 && b.tier >= 2 && seen(b)) drawHealRing(c, b, time); // v2.32: Depot T2
   for (const a of g.acid) if (lit(a.u, a.v)) drawAcidPool(c, a, g.t);
   drawDecals(c);
+  drawMeteor(c, g, time); // v2.72: a meteor's warning circle, then its fall
   if (g) { drawSelection(c, g, time); drawBuildingSel(c, g, time, false); }
   drawWrecks(c, time);
   // everything on the field, back to front

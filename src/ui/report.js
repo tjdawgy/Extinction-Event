@@ -7,7 +7,7 @@
 const REP_COL = ['#39c8ff', '#ff4d4d'];
 function repOverview(g) {
   const L = g.log, M = logMoments(g);
-  return `<div class="tbar"><button class="ghost" id="bCopy">Copy match log</button><span class="note" id="copyMsg" style="margin:0">The full log of both sides, as text</span></div>${repSummary(g)}
+  return `<div class="tbar"><button class="ghost" id="bCopy">Copy match log</button><span class="note" id="copyMsg" style="margin:0">The full log of both sides, as text</span></div>${g.cond && Object.keys(g.cond).length ? `<p class="note">Battlefield conditions: ${Object.keys(g.cond).map(k => COND_UI[k] ? COND_UI[k].name : k).join(', ')}</p>` : ''}${repSummary(g)}
     <h4 class="sh">Key moments</h4><ul class="tl">${M.map(m => `<li><b>${mmss(m.t)}</b><span>${m.txt}</span>${m.tag ? `<span class="tag">${m.tag}</span>` : ''}</li>`).join('') || '<li>No major moments were recorded.</li>'}</ul>${repFrom(L)}`;
 }
 const repNoStats = '<p class="note">This match has no stats record (it was resumed from a save older than v2.51).</p>';

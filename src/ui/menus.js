@@ -80,16 +80,49 @@ function drawMapThumb(cv, m) {
   }
   c.lineCap = 'butt';
 }
+// v2.72 (battlefield conditions, docs/PHASE1_DESIGNS.md Proposal F): a row of toggles under the map cards (the ones the
+// picked map allows) plus Random condition (one of them, chosen at the start); none by default; remembered like the map
+// (localStorage extinctionEvent.cond: { on: [keys], random: bool }). The line under the row describes the last one tapped.
+const COND_KEY = 'extinctionEvent.cond';
+const COND_UI = {
+  heavyFog: { name: 'Heavy fog', ico: 'fog', line: () => `Sight ×${COND.heavyFog.sight}; explored ground fades after ${COND.heavyFog.fade} s out of view.` },
+  richCenter: { name: 'Rich centre', ico: 'rich', line: () => `The centre node pays ×${COND.richCenter.lanes} (×${COND.richCenter.classic} on Classic).` },
+  scarce: { name: 'Scarce', ico: 'scarce', line: () => `Refineries and nodes pay ×${COND.scarce.pay}; you start with ${COND.scarce.start} credits.` },
+  meteors: { name: 'Meteors', ico: 'meteor', line: () => `From ${mmss(COND.meteors.from)}, a meteor every ${COND.meteors.every} s: get out of the red circle.` },
+  random: { name: 'Random', line: () => 'One condition this map allows, chosen when the match starts.' },
+};
+let condPick = { on: [], random: false };
+try { const c = JSON.parse(localStorage.getItem(COND_KEY) || 'null'); if (c && Array.isArray(c.on)) condPick = { on: c.on.filter(k => COND_KEYS.includes(k)), random: !!c.random }; } catch (e) {}
+const condSave = () => { try { localStorage.setItem(COND_KEY, JSON.stringify(condPick)); } catch (e) {} };
+function condRow() { // the toggles for the picked map
+  const allow = (MAPS[mapPick] || MAPS.classic).conditions || [], box = $('conds'); if (!box) return;
+  box.innerHTML = [...allow, 'random'].map(k => `<button data-c="${k}" class="${(k === 'random' ? condPick.random : condPick.on.includes(k) && !condPick.random) ? 'on' : ''}">${COND_UI[k].name}</button>`).join('');
+  for (const b of box.children) b.addEventListener('click', () => {
+    const k = b.dataset.c;
+    if (k === 'random') { condPick.random = !condPick.random; if (condPick.random) condPick.on = []; }
+    else { condPick.random = false; condPick.on = condPick.on.includes(k) ? condPick.on.filter(x => x !== k) : [...condPick.on, k]; }
+    condSave(); condRow(); $('condLine').textContent = COND_UI[k].line();
+  });
+  const on = condPick.random ? ['random'] : condPick.on.filter(k => allow.includes(k));
+  $('condLine').textContent = on.length ? on.map(k => COND_UI[k].name).join(', ') + ': ' + COND_UI[on[on.length - 1]].line() : 'Conditions: none. Tap one to add it to the match.';
+}
+function condsForMatch() { // what the match plays with: the picked toggles the map allows, or one at random
+  const allow = (MAPS[mapPick] || MAPS.classic).conditions || [];
+  if (condPick.random) return allow.length ? [allow[Math.floor(Math.random() * allow.length)]] : [];
+  return condPick.on.filter(k => allow.includes(k));
+}
 function showMapSelect() {
   const card = id => { const m = MAPS[id]; return `<button class="mapc${id === mapPick ? ' on' : ''}" data-m="${id}"><canvas class="mapt"></canvas><b>${cxEsc(m.display.name)}${id === 'classic' ? ' <small>default</small>' : ''}</b><span>${cxEsc(m.display.desc)}</span></button>`; };
   overlay(`<h1>Choose a <span>battlefield</span></h1><div class="maps">${MAP_ORDER.filter(k => MAPS[k]).map(card).join('')}</div>
+    <div class="conds" id="conds"></div><p class="condl" id="condLine"></p>
     <div class="row"><button class="big" id="bMapGo">Play ▸</button><button class="ghost" id="bMapBack">Back</button></div>`);
   $('box').classList.add('mapsel');
   const cards = [...document.querySelectorAll('.mapc')];
   for (const b of cards) {
     drawMapThumb(b.querySelector('canvas'), MAPS[b.dataset.m]);
-    b.addEventListener('click', () => { mapPick = b.dataset.m; try { localStorage.setItem(MAP_KEY, mapPick); } catch (e) {} for (const x of cards) x.classList.toggle('on', x === b); });
+    b.addEventListener('click', () => { mapPick = b.dataset.m; try { localStorage.setItem(MAP_KEY, mapPick); } catch (e) {} for (const x of cards) x.classList.toggle('on', x === b); condRow(); });
   }
+  condRow(); // v2.72
   $('bMapGo').addEventListener('click', startGame);
   $('bMapBack').addEventListener('click', showStart);
 }
@@ -147,7 +180,7 @@ function startGame() {
   document.body.classList.remove('spectate'); // v2.38
   clearTimeout(endTimer); endTimer = null;
   const me = pickFaction(facPick.me), foe = pickFaction(facPick.foe); // the opponent's pick is never shown during the match
-  game = newGame(diffKey, { countdown: INTRO_T + COUNTDOWN, factions: [me, foe], map: MAPS[mapPick] ? mapPick : 'classic' }); // v2.65: the chosen map
+  game = newGame(diffKey, { countdown: INTRO_T + COUNTDOWN, factions: [me, foe], map: MAPS[mapPick] ? mapPick : 'classic', cond: condsForMatch() }); // v2.65: the chosen map; v2.72: its conditions
   buildAbil();
   hideCountdown(); camTouched = false;
   resize(); introCamera(0); closePanel();

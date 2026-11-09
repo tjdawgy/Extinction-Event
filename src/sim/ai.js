@@ -339,7 +339,7 @@ function aiUpdate(g, s, dt) {
   const rich = side.res.c > dl.bank;
   const nSiege = mine.filter(u => AI_SIEGE.includes(u.type)).length;
   const ae = P.attackEdge * (ecoMood ? 1.2 : 1); // how much of an edge this personality wants before a base attack
-  const wave = Math.min(3600, 400 + g.t * 4) * D.wave * P.wave * (ecoMood ? 1.3 : 1);
+  const wave = Math.min(3600, 400 + g.t * 4) * D.wave * P.wave * (ecoMood ? 1.3 : 1) * (hasCond(g, 'scarce') ? COND.scarce.army : 1); // v2.72: scarce: smaller armies
   const full = used >= cap * fill - 2, since = g.t - side.stanceAt; // full by its own army limit
   // A failed base attack raises the bar for the next one, unless the army is maxed out with money banked to refill it
   const late = g.t > dl.late; // after 18 minutes (the late dial, v2.38), stop waiting for a perfect edge
@@ -398,7 +398,7 @@ function aiUpdate(g, s, dt) {
   const prNeed = PR ? lerp(PR.edge, PR.edgeLate, clamp((g.t - PR.late0) / (EXT.warn - PR.late0), 0, 1)) : 1;
   const ecoAhead = pr && income(g, s).c >= (side.estInc || 1e9) * PR.eco;
   const prSafe = !PR || !PR.power || aiPower(mine) >= aiPower(theirs); // v2.61: a cautious difficulty never presses into a known army stronger than its own
-  const prPush = pr && prSafe && myV >= dl.minArmy && (myV >= thV * prNeed || (ecoAhead && myV >= thV * prNeed * 0.9));
+  const prPush = pr && prSafe && myV >= dl.minArmy * (hasCond(g, 'scarce') ? COND.scarce.army : 1) && (myV >= thV * prNeed || (ecoAhead && myV >= thV * prNeed * 0.9));
   const prField = pr && prSafe && g.nodes[1].owner !== s && myV >= 250 && myV >= thV * PR.field * prNeed / PR.edge;
   if (bo && side.boHold && side.stance === 'attack' && side.pushMode !== 'all' && side.pushMode !== 'siege') { side.stance = 'retreat'; side.pushTo = null; side.pushMode = null; side.stanceAt = g.t; } // v2.42 (breakout): back under the gun
   if (bo && side.boHold && side.stance !== 'attack') { /* v2.42 (breakout): hold and gather; no push while camped on */ }
@@ -421,7 +421,7 @@ function aiUpdate(g, s, dt) {
     else if (D.nodes && nodeLost && myV >= (contest ? 150 : 250) && myV >= armyValue(atNode) * 1.15) go(myNode.u, 'node'); // win back our node, all together
     else if (P.kind === 'aggressor' && lightThreat && myV < thV * 1.3) { /* an infantry rush at the door: hold the base until clearly stronger */ }
     else if (weakNode && dl.nodes >= 2) go(fieldLine, 'field');
-    else if (dl.nodes >= 2 && myV >= D.fieldMin && myV >= thV * D.fieldEdge * (threat ? Math.max(1, P.fieldEdge) : P.fieldEdge)) go(dl.nodes >= 3 && myV >= thV * 1.5 ? farLine : fieldLine, 'field'); // take and hold the field nodes (the nodes dial, v2.38)
+    else if (dl.nodes >= 2 && myV >= D.fieldMin && myV >= thV * D.fieldEdge * (threat ? Math.max(1, P.fieldEdge) : P.fieldEdge) * (hasCond(g, 'richCenter') ? COND.richCenter.field : 1)) go(dl.nodes >= 3 && myV >= thV * 1.5 ? farLine : fieldLine, 'field'); // take and hold the field nodes (the nodes dial, v2.38)
   } else if (side.feintUntil && g.t >= side.feintUntil) {
     side.feintUntil = 0; side.stance = 'retreat'; side.pushTo = null; side.pushMode = null; side.launchV = 0; side.stanceAt = g.t; // the feint pulls back
   } else if (engage && since > 4 && g.front[s] !== null && fightAt(g.front[s] + dir * 150, false, mine.filter(u => Math.abs(g.front[s] - u.u) < 400)) < 0.6) {
@@ -683,7 +683,7 @@ function aiCapture(g, s, mine, theirs, easy, key = 'capT', atKey = 'capAt', othe
     else T.ids = live.map(u => u.id);
     return;
   }
-  if (g.t < C.from || g.t - (side[atKey] ?? -99) < C.gap || (side.stance === 'attack' && side.pushMode === 'all')) return;
+  if (g.t < (hasCond(g, 'richCenter') ? COND.richCenter.capFrom : C.from) || g.t - (side[atKey] ?? -99) < C.gap || (side.stance === 'attack' && side.pushMode === 'all')) return;
   const myV = armyValue(mine); if (myV < C.minArmy) return;
   const near = n => armyValue(theirs.filter(e => e.fresh && e.v !== undefined && Math.hypot(e.u - n.u, e.v - n.v) < 260));
   const cand = g.nodes.map((n, i) => i).filter(i => g.nodes[i].owner !== s && (i === 1 || (!easy && (g.nodes[i].type === 'watchtower' || g.nodes[i].type === 'repair' || (g.nodes[i].type === 'relic' && SPECIAL.on && SPECIAL.relic && !g.nodes[i].spent && !relicGuarded(g, g.nodes[i]))))) && near(g.nodes[i]) < myV * C.odds && !(other && other.node === i));
@@ -857,7 +857,7 @@ function aiSmartArmy(g, s, mine, dl, P) {
     else if (!sc) { side.scoutId = null; side.scoutU = null; }
     const fresh = Object.values(g.fog[s].intel).some(m => g.t - m.t <= 20);
     const read = aiFix(P, 'read') && side.greedT === undefined && g.t < 240; // v2.41 (read): early scouting, to the edge of the enemy HQ's gun, where it sees the buildings
-    if (!side.scoutId && (!fresh || read) && side.stance !== 'attack' && (read ? g.t >= 35 && g.t - (side.scoutT || -99) > 30 : g.t - (side.scoutT || 0) > dl.scout)) {
+    if (!side.scoutId && (!fresh || read) && side.stance !== 'attack' && (read ? g.t >= 35 && g.t - (side.scoutT || -99) > 30 : g.t - (side.scoutT || 0) > dl.scout * (hasCond(g, 'heavyFog') ? 0.5 : 1))) {
       const c = mine.filter(u => !UDEF[u.type].siege && UDEF[u.type].cost.c <= 150 && u.id !== side.spotter).sort((a, b) => UDEF[b.type].speed - UDEF[a.type].speed || a.id - b.id)[0];
       if (c) { side.scoutId = c.id; side.scoutU = clamp(hqU(opp) - dir * (read ? 420 : 560), 0, L); side.scoutT = g.t; }
     }

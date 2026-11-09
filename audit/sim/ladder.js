@@ -11,13 +11,13 @@ const F = ['lastfist', 'bloomhost', 'axiarchs'];
 const med = a => { const b = a.slice().sort((x, y) => x - y); return b.length ? b[b.length >> 1] : 0; };
 const mm = t => `${Math.floor(t / 60)}:${String(Math.round(t % 60)).padStart(2, '0')}`;
 (async () => {
-  const sets = arg('sets', 'hard-normal,normal-easy,normal-normal,easy-easy').split(','), n = +arg('n', 200), seed = +arg('seed', 8000), jobs = +arg('jobs', 4), mapId = arg('map'), code = arg('code'), out = {}; // --code: an experiment's switches (v2.68), e.g. --code='LANE_AI.late.on = false' // --map=twolane (v2.67)
+  const sets = arg('sets', 'hard-normal,normal-easy,normal-normal,easy-easy').split(','), n = +arg('n', 200), seed = +arg('seed', 8000), jobs = +arg('jobs', 4), mapId = arg('map'), code = arg('code'), cond = arg('cond') ? arg('cond').split('+') : undefined, out = {}; // --cond=meteors (v2.72; several: heavyFog+scarce) // --code: an experiment's switches (v2.68), e.g. --code='LANE_AI.late.on = false' // --map=twolane (v2.67)
   console.log('| Matchup (A vs B) | A–B–draw | A share | median length | decided before 20:00 | draws | no fight |\n|---|---|---|---|---|---|---|');
   for (const set of sets) {
     const [da, db] = set.split('-'), specs = [];
     for (let i = 0; i < n; i++) {
       const A = { faction: F[i % 3], diff: da, persona: 'random' }, B = { faction: F[Math.floor(i / 3) % 3], diff: db, persona: 'random' }, sw = i % 2;
-      specs.push({ seed: seed + i, diff: 'normal', maxT: 1620, mapId, code, sides: sw ? [B, A] : [A, B], aSide: sw });
+      specs.push({ seed: seed + i, diff: 'normal', maxT: 1620, mapId, code, cond, sides: sw ? [B, A] : [A, B], aSide: sw });
     }
     const t0 = Date.now(), res = await runSpecs(specs, jobs, (d, N) => process.stderr.write(`\r${set}: ${d}/${N}`));
     process.stderr.write(` (${Math.round((Date.now() - t0) / 1000)} s)\n`);

@@ -242,6 +242,7 @@ function updateUnit(g, u, foes, dt) {
     else { u.u += du / dd * st; u.v += dv / dd * st; u.z = Math.sin(Math.PI * clamp(1 - dd / u.ld, 0, 1)) * Math.min(26, u.ld * 0.18); u.face = du >= 0 ? 1 : -1; }
     u.moving = true; return;
   }
+  if (g.meteor && g.meteor.at && side.persona && !g.sides[u.side].bot && !d.air && !u.siege) { const p = meteorDodge(g, u); if (p) { u.tgt = 0; u.chT = 0; moveToward(u, d, p[0], p[1], dt, sp); return; } } // v2.72: an AI's unit steps out of a meteor's circle
   if (u.aiBack > g.t && !u.siege) { u.tgt = 0; u.chT = 0; { const bu = side.backU != null ? side.backU : home; moveToward(u, d, bu, laneTv(u, bu), dt, sp); } return; } // v2.38: a Default AI pulls it back for a moment (unit timing)
   if (d.siege && titanSiege(g, u, d, st, foes)) return; // P8 (v2.37): planting, planted or unplanting
   if (u.phT > g.t) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // P13 (v2.37): a phased Wraithwing holds still and can't fire

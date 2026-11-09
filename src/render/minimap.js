@@ -57,6 +57,10 @@ function drawMinimap(c, g, w, h) {
     c.globalAlpha = (1 - ph) * (1 - a * 0.5); c.beginPath(); c.arc(x, y, 3 + ph * 9, 0, 7); c.stroke();
     c.globalAlpha = 1 - a * 0.6; c.beginPath(); c.arc(x, y, 2.5, 0, 7); c.stroke(); c.globalAlpha = 1;
   }
+  if (g && g.meteor && g.meteor.at) { const A = g.meteor.at, x = mx(A.u), y = mmDeep() ? my(A.v) : h / 2; c.strokeStyle = `rgba(255,80,60,${0.6 + 0.4 * Math.sin(performance.now() / 90)})`; c.lineWidth = 1.5; c.beginPath(); c.arc(x, y, 4, 0, 7); c.stroke(); } // v2.72: a meteor about to land
+  if (g && g.cond) { // v2.72: the match's battlefield conditions, small icons down the minimap's right edge
+    let y = 4; for (const k of COND_KEYS) { if (!g.cond[k]) continue; condIcon(c, k, w - 7, y + 3); y += 9; }
+  }
   MMB.length = 0;
   if (g && MAP_LANED && !g.spectate) { // v2.66 (Split Army): a badge per squad on its lane, "N 13"; tapping one selects that squad
     c.font = '800 8.5px -apple-system,system-ui,sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
@@ -86,6 +90,15 @@ function drawMinimap(c, g, w, h) {
     c.fillStyle = left > 0 && !warn ? '#ff8a7a' : '#fff'; c.fillText(txt, w / 2, 8);
     c.textBaseline = 'alphabetic';
   }
+}
+function condIcon(c, k, x, y) { // a 7 px glyph per battlefield condition (v2.72)
+  c.fillStyle = 'rgba(10,18,34,0.85)'; c.beginPath(); c.arc(x, y, 4.2, 0, 7); c.fill();
+  c.strokeStyle = c.fillStyle = k === 'meteors' ? '#ff8a5a' : k === 'scarce' ? '#ffd34d' : k === 'richCenter' ? '#ddd2ff' : '#cfe0ff'; c.lineWidth = 1;
+  c.beginPath();
+  if (k === 'heavyFog') { c.moveTo(x - 3, y - 1); c.lineTo(x + 3, y - 1); c.moveTo(x - 3, y + 1.5); c.lineTo(x + 3, y + 1.5); c.stroke(); }
+  else if (k === 'richCenter') { c.moveTo(x, y - 3); c.lineTo(x + 2.4, y); c.lineTo(x, y + 3); c.lineTo(x - 2.4, y); c.closePath(); c.fill(); }
+  else if (k === 'scarce') { c.moveTo(x, y + 3); c.lineTo(x - 2.6, y - 1); c.lineTo(x + 2.6, y - 1); c.closePath(); c.fill(); }
+  else { c.arc(x + 1, y + 1, 1.8, 0, 7); c.fill(); c.beginPath(); c.moveTo(x - 0.5, y - 0.5); c.lineTo(x - 3, y - 3); c.stroke(); }
 }
 function clampCam() {
   const hw = V.cw / 2 / V.S, x0 = UMIN - 40, x1 = UMAX + 40;

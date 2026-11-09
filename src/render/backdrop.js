@@ -440,6 +440,21 @@ function drawBuilding(c, b, time) {
   }
   c.restore();
 }
+// v2.72 (battlefield conditions): a meteor about to land: a red circle on the ground that fills as the moment nears, and
+// the meteor itself streaking down for the last moments (everyone sees it, fog or not)
+function drawMeteor(c, g, time) {
+  const A = g.meteor && g.meteor.at; if (!A) return;
+  const C = COND.meteors, k = clamp((g.t - A.t0) / C.warn, 0, 1), w = P(A.u, A.v), ry = C.r * DY;
+  c.fillStyle = `rgba(255,60,40,${0.08 + 0.18 * k})`; c.beginPath(); c.ellipse(w.x, w.y, C.r * k, ry * k, 0, 0, 7); c.fill();
+  c.strokeStyle = `rgba(255,80,60,${0.55 + 0.4 * Math.abs(Math.sin(time * 9))})`; c.lineWidth = 2.2; c.setLineDash([8, 6]); c.lineDashOffset = -time * 30;
+  c.beginPath(); c.ellipse(w.x, w.y, C.r, ry, 0, 0, 7); c.stroke(); c.setLineDash([]); c.lineDashOffset = 0;
+  if (k > 0.7) { // the fall
+    const f = (k - 0.7) / 0.3, x = w.x - 160 * (1 - f), y = w.y - 420 * (1 - f);
+    const gr = c.createLinearGradient(x + 60, y - 150, x, y); gr.addColorStop(0, 'rgba(255,170,60,0)'); gr.addColorStop(1, 'rgba(255,220,140,0.9)');
+    c.strokeStyle = gr; c.lineWidth = 7; c.beginPath(); c.moveTo(x + 60, y - 150); c.lineTo(x, y); c.stroke();
+    c.fillStyle = '#ffe2a0'; c.beginPath(); c.arc(x, y, 7, 0, 7); c.fill();
+  }
+}
 // v2.69 (b): a gun losing power as the storm nears: it flickers dark, sparks jump off its top and a warning bolt blinks over
 // it; the more power lost (k, 0 to 1), the darker and busier
 function drawPowerFail(c, d, time, id, k) {

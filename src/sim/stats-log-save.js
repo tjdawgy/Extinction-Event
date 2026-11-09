@@ -151,7 +151,7 @@ function serialize(g, extra) {
   const projs = g.projs.map(p => Object.assign({}, p, { target: p.target ? p.target.id : null }));
   const sides = g.sides.map(sd => Object.assign({}, sd, { hq: sd.hq.id, slots: sd.slots.map(b => b ? b.id : null), res: Object.assign({}, sd.res), stats: Object.assign({}, sd.stats), salv: Object.assign({}, sd.salv) }));
   const fog = g.fog.map(f => ({ exp: Array.from(f.exp).join(''), seen: Array.from(f.seen).join(''), ghosts: f.ghosts, creep: f.creep, field: f.field, intel: f.intel, lastHQ: f.lastHQ, lastSpot: f.lastSpot, seenUnits: f.seenUnits }));
-  return JSON.stringify({ v: SAVE_VER, map: { id: MAP.id, v: MAP.v }, t: g.t, nid: g.nid, diffKey: g.diffKey, ents, projs, sides, nodes: g.nodes, fog, abil: g.abil, endHold: g.endHold || null, log: g.log, creep: g.creep, field: g.field, warps: g.warps, acid: g.acid, stats: g.stats, ...(g.guards && g.guards.length ? { guards: g.guards } : {}), seed: g.seed, rs: g.rs, fs: g.fs, extra }); // seed/rs/fs (v2.50): the random streams, so a resumed match rolls on where it stopped
+  return JSON.stringify({ v: SAVE_VER, map: { id: MAP.id, v: MAP.v }, t: g.t, nid: g.nid, diffKey: g.diffKey, ents, projs, sides, nodes: g.nodes, fog, abil: g.abil, endHold: g.endHold || null, log: g.log, creep: g.creep, field: g.field, warps: g.warps, acid: g.acid, stats: g.stats, ...(g.guards && g.guards.length ? { guards: g.guards } : {}), ...(g.cond && Object.keys(g.cond).length ? { cond: g.cond, meteor: g.meteor || null } : {}), seed: g.seed, rs: g.rs, fs: g.fs, extra }); // seed/rs/fs (v2.50): the random streams, so a resumed match rolls on where it stopped
 }
 function deserialize(str) {
   const o = JSON.parse(str);
@@ -161,7 +161,7 @@ function deserialize(str) {
   useMap(m.id); // v2.65: the save's map becomes the current one
   const g = newGame(o.diffKey);
   if (o.rs !== undefined && !RNG.legacy) { g.seed = o.seed >>> 0; g.rs = o.rs | 0; g.fs = o.fs | 0; } // v2.50: an older save keeps the fresh seed newGame drew
-  g.t = o.t; g.nid = o.nid; g.ents = o.ents; g.nodes = o.nodes; g.guards = o.guards || []; // v2.71: relic guards (a save from before has none)
+  g.t = o.t; g.nid = o.nid; g.ents = o.ents; g.nodes = o.nodes; g.guards = o.guards || []; g.cond = o.cond || {}; g.meteor = o.meteor || null; // v2.72: battlefield conditions // v2.71: relic guards (a save from before has none)
   g.stats = o.stats && o.stats.v === 1 ? o.stats : newStats(o.t); // v2.51: an older save starts its record now
   const byId = new Map(g.ents.map(e => [e.id, e]));
   g.projs = o.projs.map(p => Object.assign(p, { target: p.target != null ? byId.get(p.target) || null : null }));

@@ -43,9 +43,13 @@ function updateVision(g) {
     const reveal = MAP_2D ? (u, r, v) => { // v2.63: a circle of sight, a span per row
       for (let row = fogRow(v - r), r1 = fogRow(v + r); row <= r1; row++) { const y = FOG_Y0 + row * FOG_CELL + FOG_CELL / 2, dy = y - v; if (dy > r || dy < -r) continue; const dx = Math.sqrt(r * r - dy * dy), b = row * FOG_NX; vis.fill(1, b + fogCol(u - dx), b + fogCol(u + dx) + 1); }
     } : (u, r) => { for (let i = cellOf(u - r), b = cellOf(u + r); i <= b; i++) vis[i] = 1; };
-    for (const e of g.ents) if (e.side === s && e.hp > 0) reveal(e.u, sightOf(e), e.v);
-    for (const n of g.nodes) if (n.owner === s) reveal(n.u, n.sight || NODE_SIGHT, n.v); // v2.65: a watchtower sees further
-    for (let i = 0; i < FOG_N; i++) if (vis[i]) exp[i] = f.seen[i] = 1;
+    const sm = sightMul(g); // v2.72: heavy fog
+    for (const e of g.ents) if (e.side === s && e.hp > 0) reveal(e.u, sightOf(e) * sm, e.v);
+    for (const n of g.nodes) if (n.owner === s) reveal(n.u, n.sight ? n.sight * (sm < 1 ? COND.heavyFog.tower : 1) : NODE_SIGHT * sm, n.v); // v2.65: a watchtower sees further
+    if (sm < 1) { // v2.72 (heavy fog): explored ground fades back to unexplored after COND.heavyFog.fade s out of sight
+      const T = f.expT || (f.expT = new Float64Array(FOG_N).fill(g.t)), fade = COND.heavyFog.fade;
+      for (let i = 0; i < FOG_N; i++) { if (vis[i]) { exp[i] = f.seen[i] = 1; T[i] = g.t; } else if (exp[i] && g.t - T[i] > fade) exp[i] = 0; }
+    } else for (let i = 0; i < FOG_N; i++) if (vis[i]) exp[i] = f.seen[i] = 1;
     // Remember what is in view; forget remembered things whose spot is in view but empty
     const seenB = new Set(), seenU = new Set();
     for (const e of g.ents) {
@@ -115,6 +119,7 @@ function update(g, dt) {
   updateMedics(g, dt);
   bunkerHeal(g, dt);
   updateRepair(g, dt); // v2.71: repair depots
+  updateMeteors(g); // v2.72: a battlefield condition
   updateCreep(g, dt);
   updateField(g, dt);
   updateWarps(g);

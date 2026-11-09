@@ -74,7 +74,7 @@ Map data format: [docs/MAP_FORMAT.md](docs/MAP_FORMAT.md) (approved after Phase 
   - [x] Forward pad — capture it to build there. This replaces adding more pads at the home base. *(v2.65: each faction's Turret and Barracks roles)*
   - [x] Repair depot — heals units nearby. *(v2.71, Three-Lane)*
   - [x] Guarded relic — neutral defenders, big payoff. *(v2.71, Three-Lane; relics cost the Axiarchs ~15 points of win share there, for the balance pass)* (Repair depot and guarded relic design: [docs/PHASE1_DESIGNS.md](docs/PHASE1_DESIGNS.md), Proposal E, approved after v2.68.)
-- [ ] **Battlefield conditions** (optional per match): heavy fog, rich center nodes, scarce resources, meteor strikes. Design: [docs/PHASE1_DESIGNS.md](docs/PHASE1_DESIGNS.md) (Proposal F, approved after v2.68).
+- [x] **Battlefield conditions** (optional per match): heavy fog, rich center nodes, scarce resources, meteor strikes. *(v2.72: toggles and Random on map select, minimap icons, the AI adjusts; Hard vs Hard draws 0–17.5% on every map and condition; KNOWN_ISSUES.md "Battlefield conditions")* Design: [docs/PHASE1_DESIGNS.md](docs/PHASE1_DESIGNS.md) (Proposal F, approved after v2.68).
 - [ ] **Army control:**
   - [x] Split Army — assign squads to lanes. This ships with multi-lane maps. Design: [docs/SPLIT_ARMY.md](docs/SPLIT_ARMY.md) (approved after v2.63). *(v2.66)*
   - [x] Two rally points — one defensive, one forward. *(v2.62)*
@@ -85,6 +85,7 @@ Map data format: [docs/MAP_FORMAT.md](docs/MAP_FORMAT.md) (approved after Phase 
   - [x] Three-Lane with crossings. *(v2.70: three lanes, crossings, two capture groups, the watchtower alarm)*
 - [ ] **Balance pass.**
   - [x] Extend the sim harness to run on every map. *(v2.67: `--map` in audit/sim/ladder.js, `mapId` in match.js; audit/sim/shares.js)*
+  - Plan: [docs/PHASE1_BALANCE_PLAN.md](docs/PHASE1_BALANCE_PLAN.md) (design only, after v2.72).
   - Fix the Tech vs Contain spread.
   - Check faction win rates per map.
   - Target 10–15 minute matches.

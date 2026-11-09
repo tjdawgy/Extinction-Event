@@ -23,7 +23,7 @@ MAPS.classic = {
     { id: 'centre', type: 'income', at: [850, 0], r: 70 },
     { id: 'east', type: 'income', at: [1020, 0], r: 70 },
   ],
-  conditions: [],
+  conditions: ['heavyFog', 'richCenter', 'scarce'], // v2.72 (meteors: too narrow to dodge)
   fog: 'strip', depthW: 0.4, // v2.63: one row of fog cells along the lane; depth counts 0.4 in range (DV_W)
 };
 // v2.63: a map the test kit supplies (EE_MAP_DATA in its sandbox) is added for that load of the SIM and starts as the

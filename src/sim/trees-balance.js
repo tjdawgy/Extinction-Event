@@ -199,6 +199,7 @@ const DMG = {
   gore:    { light: 1.2, heavy: 1.0,  vehicle: 0.7,  air: 0,    building: 0.7 }, // Thornback, Dreadthorn
   acidpool: { light: 1.0, heavy: 1.0, vehicle: 1.0,  air: 0,    building: 0 },   // the Ruinmaw's acid pools
   thorns:  { light: 1.0, heavy: 1.0,  vehicle: 1.0,  air: 1.0,  building: 0 },   // Thornback retaliation
+  meteor:  { light: 1.0, heavy: 1.0,  vehicle: 1.0,  air: 0,    building: 1.0 }, // v2.72: a meteor strike (a battlefield condition)
   spores:  { light: 1.0, heavy: 1.0,  vehicle: 1.0,  air: 0,    building: 0 },   // Corrosive Bloom (v2.20)
   beam:    { light: 1.0, heavy: 1.0,  vehicle: 1.0,  air: 0,    building: 1.0 }, // Purification Beam (v2.28): ground units and buildings
   spines:  { light: 1.3, heavy: 1.0,  vehicle: 0.6,  air: 0,    building: 0 },   // Dreadthorn burst

@@ -46,7 +46,7 @@ MAPS.threelane = (() => {
       { id: 'ge', name: 'east relic', type: 'relic', at: [1560, -200], r: 45, guards: [{ unit: 'titan', n: 1 }, { unit: 'tank', n: 2 }], reward: { c: 800 } },
       fwd('fen', 'north-east forward pad', 1480, -400), fwd('fec', 'centre-east forward pad', 1340, 0), fwd('fes', 'south-east forward pad', 1480, 400),
     ],
-    conditions: [],
+    conditions: ['heavyFog', 'richCenter', 'scarce', 'meteors'], // v2.72
     fog: 'grid', fogCell: 20, depthW: 1,
     ai: { lanes: true },
   };

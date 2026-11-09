@@ -14,7 +14,7 @@ function runMatch(spec) {
   const mkBot = (x, k) => x.bot === 'strat' ? require('./strat').stratBot(S, Object.assign({ rnd: mulberry((seed | 0) * 2 + 1 + k) }, x.botOpts || {})) : require('./greedy').greedyBot(S, x.botOpts || {}); // Phase 7b: 'strat' (strat.js), else Greedy
   const bot = sides[0].bot ? mkBot(sides[0], 0) : null; // Phase 7a: a scripted bot (Greedy) in the player's slot
   const bot1 = sides[1].bot ? mkBot(sides[1], 1) : null; // bot against bot: side 1's AI is switched off
-  const g = S.newGame(sides[1].diff || diff, { seed, map: spec.mapId, autoPlayer: !bot, autoDiff: sides[0].diff || diff, // v2.61: a side may name its own difficulty (the ladder); v2.67: mapId, a map in the game (Two-Lane); map: a test-only map object
+  const g = S.newGame(sides[1].diff || diff, { seed, map: spec.mapId, cond: spec.cond /* v2.72: battlefield conditions (a list) */, autoPlayer: !bot, autoDiff: sides[0].diff || diff, // v2.61: a side may name its own difficulty (the ladder); v2.67: mapId, a map in the game (Two-Lane); map: a test-only map object
     factions: [sides[0].faction, sides[1].faction],
     autoAi: sides[0].ai, ai: sides[1].ai, autoPersona: per(sides[0].persona), persona: per(sides[1].persona) });
   g.countdown = 0;
@@ -48,7 +48,7 @@ function runMatch(spec) {
   }
   const draw = !g.over || g.winner < 0;
   const res = {
-    seed, t: Math.round(g.t), winner: draw ? -1 : g.winner, diffs: [g.autoDiff, g.diffKey], map: g.map.id, // v2.67: what each side played, and where (a guard: tests/ladder.test.js) how: g.over ? (g.result || {}).how : 'timeout', timeout: !g.over,
+    seed, t: Math.round(g.t), winner: draw ? -1 : g.winner, diffs: [g.autoDiff, g.diffKey], map: g.map.id, cond: Object.keys(g.cond || {}), // v2.72 // v2.67: what each side played, and where (a guard: tests/ladder.test.js) how: g.over ? (g.result || {}).how : 'timeout', timeout: !g.over,
     reason: g.over ? (g.result || {}).reason : undefined, score: g.over && g.result && g.result.score ? [...g.result.score] : undefined, loser: g.over && g.result ? g.result.loser : undefined, // v2.55: the side whose HQ the storm took in a storm draw // v2.48: a storm draw keeps the score for the record
     sides: [0, 1].map(s => {
       const T = g.log.tot[s], P = g.sides[s].persona || {}, alive = {};

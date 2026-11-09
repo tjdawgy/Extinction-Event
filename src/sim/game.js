@@ -203,6 +203,7 @@ function newGame(diffKey, opts = {}) {
   if (g.auto) g.sides[0].persona = rollPersona(opts.autoPersona, presetFor(opts.autoAi, g.autoDiff), g.sides[0].faction, g.autoDiff);
   g.log = newLog(0); // the match log (never read by the SIM)
   g.stats = newStats(0); // v2.51: the stats tracker (never read by the SIM)
+  setupConds(g, opts.cond); // v2.72: battlefield conditions (none unless asked for)
   spawnGuards(g); // v2.71: the relics' neutral guards (none on a map without relics)
   g.fog = [newFog(g, 0), newFog(g, 1)];
   updateVision(g);
@@ -246,9 +247,9 @@ function income(g, s) {
   let c = 0, e = 0;
   for (const b of g.ents) {
     if (b.kind !== 'b' || b.side !== s || !b.built || b.hp <= 0 || !bdOf(b).inc) continue;
-    const inc = bdOf(b).inc[b.tier]; c += inc.c; e += inc.e;
+    const inc = bdOf(b).inc[b.tier], m = b.type === 'refinery' ? payMul(g, 'refinery') : 1; c += inc.c * m; e += inc.e * m; // v2.72: scarce
   }
-  for (const n of g.nodes) if (n.owner === s && !n.type) { const k = n.mul || 1; c += NODE_INC.c * k; e += NODE_INC.e * k; } // v2.65: income nodes only, × yieldMul
+  for (const n of g.nodes) if (n.owner === s && !n.type) { const k = (n.mul || 1) * payMul(g, 'node'); c += NODE_INC.c * k; e += NODE_INC.e * k; } // v2.65: income nodes only, × yieldMul
   return { c, e };
 }
 // Army strength for AI decisions; Interceptors count for a quarter, since they can't fight ground units or buildings

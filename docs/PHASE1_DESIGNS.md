@@ -55,6 +55,8 @@ Design proposals sent after v2.68. Approved: Proposals D, E and F (each is built
 
 ## Proposal F — battlefield conditions
 
+*Built in v2.72 (src/sim/conditions.js). Changes from the sketch: the icons sit on the minimap's right edge (the top bar has no room beside it); a meteor deals 260 to ground units and 420 to buildings within 90, less toward the edge, and spares aircraft. KNOWN_ISSUES.md "Battlefield conditions".*
+
 Conditions are rules for one match, chosen on the map-select screen (a row of toggles under the map cards; none by default). A map lists the conditions it allows (`conditions` in MAP_FORMAT.md). The match shows its conditions as small icons by the minimap, and the post-match screen lists them.
 
 | Condition | What it does | Maps |

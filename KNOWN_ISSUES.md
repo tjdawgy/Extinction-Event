@@ -2,6 +2,34 @@
 
 Issues found during testing that are deliberately deferred. Each lists the step that should address it.
 
+## Battlefield conditions (v2.72, Phase 1)
+- **Rules** (src/sim/conditions.js, `COND`, docs/PHASE1_DESIGNS.md Proposal F; `g.cond`, chosen per match, the same for both sides; a map lists what it allows in `conditions`):
+  - **Heavy fog:** every sight radius ×0.6 (units, buildings, nodes), watchtowers ×0.8; explored ground fades back to unexplored after 60 s out of view. AI: scouts twice as often.
+  - **Rich centre:** the centre node pays 3× on Two-Lane and Three-Lane (Two-Lane's usual 1.5×), the middle node 2× on Classic. AI: capture groups from 1:00 (usually 2:30), and on Classic a 0.8× edge to take the field.
+  - **Scarce resources:** Refineries and income nodes pay 0.6×, each side starts with 200 credits (the HQ's own income as usual; the storm unchanged). AI: wants armies 0.6× the size before attacking.
+  - **Meteor strikes** (Two-Lane, Three-Lane): from 5:00, every 45 s a meteor falls on a random open spot on a lane (from the match's seeded stream: a replay repeats the spots): a red warning circle for 4 s that fills as it nears, the meteor streaking down, then 260 damage to every ground unit and 420 to every building within 90 (both sides; less toward the edge; not aircraft; a shielded HQ untouched). AI units step out of a circle; a player's units stay where they are told.
+- **Choosing them:** on the map-select screen, a row of toggles under the map cards (the picked map's conditions plus Random condition, which picks one of them when the match starts) and a line describing the last one tapped; none by default; remembered in localStorage `extinctionEvent.cond`. The screen was tightened to fit at 667×375 (shorter thumbnails, smaller title). In the match the conditions show as small icons down the minimap's right edge (and a meteor's spot as a red ring); the post-match Overview lists them; the Codex's How to Play has a section. Saves keep them (only when a match has any, so older saves and the pinned replays are unchanged).
+- **Every condition reaches a result** (Hard vs Hard, 40 matches each, mixed factions, sides alternating; audit/sim/ladder.js --cond=…; audit/logs-p1/conditions-v272/):
+
+  | Map | Condition | A–B–draw | median | decided before 20:00 | draws | no fight | sides |
+  |---|---|---|---|---|---|---|---|
+  | Classic | heavy fog | 16–22–2 | 10:44 | 87.5% | 5.0% | 0.0% | 17–21 |
+  | Classic | rich centre | 19–21–0 | 11:41 | 97.5% | 0.0% | 0.0% | 17–23 |
+  | Classic | scarce | 18–15–7 | 19:23 | 57.5% | 17.5% | 0.0% | 19–14 |
+  | Two-Lane | heavy fog | 22–12–6 | 17:01 | 65.0% | 15.0% | 0.0% | 14–20 |
+  | Two-Lane | rich centre | 22–14–4 | 15:05 | 80.0% | 10.0% | 0.0% | 15–21 |
+  | Two-Lane | scarce | 22–13–5 | 19:26 | 57.5% | 12.5% | 0.0% | 18–17 |
+  | Two-Lane | meteors | 18–18–4 | 12:30 | 82.5% | 10.0% | 0.0% | 18–18 |
+  | Three-Lane | heavy fog | 18–16–6 | 16:28 | 72.5% | 15.0% | 0.0% | 18–16 |
+  | Three-Lane | rich centre | 23–15–2 | 11:30 | 92.5% | 5.0% | 0.0% | 15–23 |
+  | Three-Lane | scarce | 15–18–7 | 18:53 | 65.0% | 17.5% | 0.0% | 13–20 |
+  | Three-Lane | meteors | 19–18–3 | 15:41 | 87.5% | 7.5% | 0.0% | 15–22 |
+
+  Draws under 25% on every map that allows each condition ✓ (highest: scarce, 17.5%). Scarce makes matches long (medians 18:53–19:26): smaller armies take longer to break a base. 40 matches each, so side splits like 13–20 are within chance.
+- **Faction shares under conditions** (cross-faction, ~18 games per faction, so ±12 points; not tuned): heavy fog on Classic is hard on Bloomhost (2–16, 11%; Last Fist 82%); scarce on Classic and Three-Lane favours Last Fist (68%, 82%); on Three-Lane Last Fist leads under every condition (66–82%). Two-Lane stays within 36–62% for every faction. For the balance pass.
+- **Harness fix before measuring:** the first condition runs were invalid. An edit to audit/sim/match.js put a comment in the middle of the `newGame` options and dropped side 0's AI, so the right side won every Classic match in ~4 minutes. Caught by the impossible numbers, fixed, all eleven re-run. Only the condition runs used the broken file.
+- **Tests:** tests/conditions.test.js (allowed per map, heavy fog's sight and fading, rich centre's yield, scarce's start and pay, meteors seeded and hitting both sides but not aircraft or what is outside, AI units step out and a player's don't, the AI's earlier centre, saves), tests/conditions-ui.test.js (the toggles on screen at both sizes and remembered, Random, the match's conditions, a meteor's circle, the post-match line; screenshots docs/screenshots/conditions-*.png).
+
 ## Repair depot and guarded relic (v2.71, Phase 1)
 - **Rules** (src/sim/nodes-special.js, docs/PHASE1_DESIGNS.md Proposal E; `NODE_TYPES.repair` and `.relic` are live):
   - **Repair depot:** captured like any node; its holder's units within its radius heal `REPAIR.heal` (3%, the base flag's rate) of their health a second once unhurt for 3 s; no income. **Send damaged home** goes to the nearest depot the side holds when that is nearer than the base flag (`medDepot`), and heals there.

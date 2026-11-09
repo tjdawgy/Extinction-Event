@@ -126,7 +126,7 @@ test('save keys stay colonyMobile.save and colonyMobile.diff (plus the separate 
   assert.match(html, /localStorage\.getItem\('colonyMobile\.diff'\)/);
   assert.match(html, /localStorage\.setItem\('colonyMobile\.diff', diffKey\)/);
   const keys = new Set([...html.matchAll(/localStorage\.\w+Item\(([^,)]+)/g)].map(m => m[1].trim()));
-  assert.deepStrictEqual([...keys].sort(), ["'colonyMobile.diff'", 'FACTION_KEY', 'HISTORY_KEY', 'MAP_KEY', 'SAVE_KEY', 'SOUND_KEY', 'TIPS_KEY', 'TUT_KEY']); // v2.51: the match history; v2.65: the map choice; v2.66: one-time tips
+  assert.deepStrictEqual([...keys].sort(), ["'colonyMobile.diff'", 'COND_KEY', 'FACTION_KEY', 'HISTORY_KEY', 'MAP_KEY', 'SAVE_KEY', 'SOUND_KEY', 'TIPS_KEY', 'TUT_KEY']); // v2.51: the match history; v2.65: the map choice; v2.66: one-time tips
   assert.match(html, /const MAP_KEY = 'extinctionEvent\.map'/); assert.match(html, /const TIPS_KEY = 'extinctionEvent\.tips'/);
   assert.match(html, /const HISTORY_KEY = 'extinctionEvent\.history'/); // v2.4 adds the sound setting, v2.17 the faction picks, v2.46 the tutorial's progress
   assert.match(html, /const TUT_KEY = 'extinctionEvent\.tutorial'/);

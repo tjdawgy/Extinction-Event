@@ -36,7 +36,7 @@ MAPS.twolane = (() => {
       { id: 'fen', name: 'north-east forward pad', type: 'forwardPad', at: [1320, -280], r: 40, pads: [[1380, -280], [1260, -280]], allow: ['turret', 'barracks'] },
       { id: 'fes', name: 'south-east forward pad', type: 'forwardPad', at: [1320, 280], r: 40, pads: [[1380, 280], [1260, 280]], allow: ['turret', 'barracks'] },
     ],
-    conditions: [],
+    conditions: ['heavyFog', 'richCenter', 'scarce', 'meteors'], // v2.72
     fog: 'grid', fogCell: 20, depthW: 1,
     ai: { lanes: true },
   };
