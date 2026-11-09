@@ -18,9 +18,9 @@ for (const dev of [PHONE, NARROW]) test(`Two-Lane at ${dev.width}×${dev.height}
     const inView = el => { const q = el.getBoundingClientRect(); return q.top >= 0 && q.bottom <= innerHeight + 0.5 && q.left >= 0 && q.right <= innerWidth + 0.5; };
     const cards = [...document.querySelectorAll('.mapc')], b = $('box');
     const drawn = cards.every(c => { const cv = c.querySelector('canvas'); const d = cv.getContext('2d').getImageData(cv.width / 2, cv.height / 2, 1, 1).data; return cv.width > 50 && d[3] > 0; });
-    return { ids: cards.map(c => c.dataset.m), on: cards.filter(c => c.classList.contains('on')).map(c => c.dataset.m), visible: cards.every(inView) && inView($('bMapGo')) && inView($('bMapBack')), fits: b.scrollHeight <= b.clientHeight + 1, drawn, names: cards.map(c => c.querySelector('b').textContent) };
+    return { ids: cards.map(c => c.dataset.m), on: cards.filter(c => c.classList.contains('on')).map(c => c.dataset.m), visible: inView(cards[0]) && inView($('bMapGo')) && inView($('bMapBack')) && cards.every(c => { c.scrollIntoView({ inline: 'nearest', block: 'nearest' }); const v = inView(c); cards[0].scrollIntoView({ inline: 'nearest', block: 'nearest' }); return v; }), fits: b.scrollHeight <= b.clientHeight + 1, /* v2.70: with three maps the cards scroll sideways at 667 wide */ drawn, names: cards.map(c => c.querySelector('b').textContent) };
   });
-  assert.deepStrictEqual(S.ids, ['classic', 'twolane']); assert.deepStrictEqual(S.on, ['classic'], 'Classic is the default');
+  assert.deepStrictEqual(S.ids, ['classic', 'twolane', 'threelane']); assert.deepStrictEqual(S.on, ['classic'], 'Classic is the default');
   assert.ok(S.visible && S.fits, `the screen fits ${JSON.stringify(S)}`); assert.ok(S.drawn, 'thumbnails drawn');
   assert.ok(S.names[1].startsWith('Two-Lane'));
   await page.click('.mapc[data-m="twolane"]'); await page.click('#bMapGo'); await page.waitForTimeout(250);

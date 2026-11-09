@@ -58,7 +58,7 @@ function showStart() {
 /* ---------- Map select (v2.65, docs/TWO_LANE.md) ----------
    Before each new match: one card per map, from its display fields, with a thumbnail the game draws from the map data
    (lanes, blockers, bases, nodes), so it can't disagree with the map. Classic is the default; the choice is remembered. */
-const MAP_KEY = 'extinctionEvent.map', MAP_ORDER = ['classic', 'twolane'];
+const MAP_KEY = 'extinctionEvent.map', MAP_ORDER = ['classic', 'twolane', 'threelane'];
 let mapPick = 'classic';
 try { const k = localStorage.getItem(MAP_KEY); if (k && MAPS[k] && MAP_ORDER.includes(k)) mapPick = k; } catch (e) {}
 function drawMapThumb(cv, m) {
@@ -164,11 +164,12 @@ function startGame() {
 const TIPS_KEY = 'extinctionEvent.tips';
 function splitTip() {
   let T = {}; try { T = JSON.parse(localStorage.getItem(TIPS_KEY) || '{}') || {}; } catch (e) {}
-  if (T.split) return;
+  const three = MAP.lanes.length > 2, key = three ? 'split3' : 'split'; // v2.70: Three-Lane has its own tip (three squads, crossings)
+  if (T[key]) return;
   const el = document.createElement('div'); el.id = 'tipSplit'; el.className = 'tipcard';
-  el.innerHTML = `<b>Two lanes, two squads</b><p>Every unit belongs to the squad of its lane: <b>N</b> or <b>S</b> in the Army tab (or tap a badge on the minimap). With a squad selected, Hold, Attack, Retreat, Regroup and Rally act on that squad only; <b>All</b> commands everyone.</p><p><b>Long-press</b> a squad to move it to the other lane or choose where new units go (alternating by default). Long-press a unit to send every unit of that type to one lane.</p><button id="bTipOk">Got it</button>`;
+  el.innerHTML = three ? `<b>Three lanes, three squads</b><p>Every unit belongs to the squad of its lane: <b>N</b>, <b>C</b> or <b>S</b> in the Army tab (or tap a badge on the minimap). With a squad selected, the orders, Regroup and Rally act on that squad only; <b>All</b> commands everyone. The walls between the lanes have one gap each, at the centre node: squads can cross there.</p><p><b>Long-press</b> a squad to move it to another lane or choose where new units go (alternating by default). Long-press a unit to send every unit of that type to one lane.</p><button id="bTipOk">Got it</button>` : `<b>Two lanes, two squads</b><p>Every unit belongs to the squad of its lane: <b>N</b> or <b>S</b> in the Army tab (or tap a badge on the minimap). With a squad selected, Hold, Attack, Retreat, Regroup and Rally act on that squad only; <b>All</b> commands everyone.</p><p><b>Long-press</b> a squad to move it to the other lane or choose where new units go (alternating by default). Long-press a unit to send every unit of that type to one lane.</p><button id="bTipOk">Got it</button>`;
   document.body.appendChild(el);
-  $('bTipOk').addEventListener('click', () => { T.split = 1; try { localStorage.setItem(TIPS_KEY, JSON.stringify(T)); } catch (e) {} el.remove(); });
+  $('bTipOk').addEventListener('click', () => { T[key] = 1; try { localStorage.setItem(TIPS_KEY, JSON.stringify(T)); } catch (e) {} el.remove(); });
 }
 function pauseGame(restored) {
   paused = true; endAim(); saveGame();

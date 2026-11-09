@@ -195,7 +195,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .acmd{flex:0 0 auto;display:grid;grid-template-columns:64px 64px;grid-template-rows:1fr 1fr;gap:4px}
 .acmd button{border-radius:9px;border:1px solid var(--line);background:rgba(0,0,0,.3);font-weight:800;font-size:12.5px;color:var(--text)}
 .acmd button.on{background:var(--panel3);border-color:rgba(57,200,255,.7)}
-.asq{flex:0 0 auto;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:4px;width:84px} .asq button{border-radius:9px;border:1px solid var(--line);background:rgba(0,0,0,.3);color:var(--text);display:flex;align-items:center;justify-content:center;gap:4px;padding:0 3px;font-size:12.5px;-webkit-touch-callout:none;user-select:none} .asq .all{grid-column:1/3} .asq button.on{background:var(--panel3);border-color:rgba(57,200,255,.7)} .asq i{font-style:normal;font-size:10.5px;font-weight:800;color:#001522;background:var(--blue);border-radius:8px;min-width:16px;padding:0 4px;line-height:15px} /* v2.66: Split Army squads */
+.asq{flex:0 0 auto;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:4px;width:84px} .asq button{border-radius:9px;border:1px solid var(--line);background:rgba(0,0,0,.3);color:var(--text);display:flex;align-items:center;justify-content:center;gap:4px;padding:0 3px;font-size:12.5px;-webkit-touch-callout:none;user-select:none} .asq .all{grid-column:1/3} .asq.l3{grid-template-columns:1fr 1fr 1fr;gap:3px} .asq.l3 .all{grid-column:1/4} .asq.l3 button{padding:0 1px;gap:1px;font-size:11.5px;flex-direction:column;line-height:1} .asq.l3 button.all{flex-direction:row;gap:4px} .asq.l3 i{font-size:9.5px;min-width:0;padding:0 3px;line-height:12px} .asq button.on{background:var(--panel3);border-color:rgba(57,200,255,.7)} .asq i{font-style:normal;font-size:10.5px;font-weight:800;color:#001522;background:var(--blue);border-radius:8px;min-width:16px;padding:0 4px;line-height:15px} /* v2.66: Split Army squads */
 .tipcard{position:fixed;z-index:55;left:50%;top:calc(env(safe-area-inset-top,0px) + 62px);transform:translateX(-50%);width:min(440px,calc(100% - 140px));padding:10px 12px;border-radius:12px;background:rgba(10,18,34,.96);border:1px solid rgba(57,200,255,.6);box-shadow:0 8px 24px rgba(0,0,0,.5);font-size:12px;color:var(--muted)} .tipcard>b{color:var(--text);font-size:13.5px} .tipcard p{margin:4px 0 0;line-height:1.3} .tipcard p b{color:var(--text)} .tipcard button{margin-top:6px;min-height:32px;padding:0 16px;border-radius:9px;border:0;background:var(--blue);color:#001522;font-weight:800} /* v2.66: the first Two-Lane tip */
 .sqm{position:fixed;z-index:60;display:flex;flex-direction:column;gap:4px;padding:6px;border-radius:12px;background:rgba(10,18,34,.97);border:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.5)} .sqm button{min-height:34px;padding:0 12px;border-radius:9px;border:1px solid var(--line);background:rgba(30,46,76,.7);color:var(--text);font-weight:700;font-size:12.5px;text-align:left;white-space:nowrap}
 .arly{flex:0 0 auto;display:grid;grid-template-rows:1fr 1fr;gap:4px;width:84px} /* v2.62: rally flag and Send damaged home */
@@ -250,7 +250,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .box .ver{position:absolute;top:10px;right:14px;margin:0;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;cursor:pointer;padding:6px 0 6px 10px} /* tap: the dev menu (v2.38) */
 .spectate #panel{visibility:hidden} .spectate #abil{display:none} .setup.dev{grid-template-columns:auto 1fr} .dvsub{font-size:12px;font-weight:500;color:var(--muted);margin-left:8px} .setup.dev .dvrow .big,.setup.dev .dvrow .ghost{height:34px;padding:0 16px;font-size:14px} .setup.dev .dvrow{display:flex;flex-wrap:wrap;gap:4px 6px} .setup.dev .seg button{height:28px;font-size:12px;padding:0 9px} /* spectating (v2.38): no build tray, no abilities */
 .box p{margin:6px 0 0;color:var(--muted);font-size:13.5px;max-width:64ch}
-.maps{display:flex;gap:10px;margin-top:8px;overflow-x:auto} .mapc{flex:1 0 200px;max-width:280px;display:flex;flex-direction:column;gap:3px;text-align:left;background:rgba(30,46,76,.6);border:1px solid var(--line);border-radius:12px;padding:8px;color:var(--text);font:inherit;cursor:pointer} .mapc.on{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue)} .mapc b{font-size:14px} .mapc b small{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-left:4px} .mapc span{font-size:11.5px;color:var(--muted);line-height:1.25} .mapt{width:100%;height:62px;display:block;border-radius:8px} .box.mapsel h1{font-size:22px} .box.mapsel .row{margin-top:8px}
+.maps{display:flex;gap:10px;margin-top:8px;overflow-x:auto;scrollbar-width:none} .maps::-webkit-scrollbar{display:none} .mapc{flex:1 0 220px;max-width:280px;display:flex;flex-direction:column;gap:3px;text-align:left;background:rgba(30,46,76,.6);border:1px solid var(--line);border-radius:12px;padding:8px;color:var(--text);font:inherit;cursor:pointer} .mapc.on{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue)} .mapc b{font-size:14px} .mapc b small{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-left:4px} .mapc span{font-size:11.5px;color:var(--muted);line-height:1.25} .mapt{width:100%;height:62px;display:block;border-radius:8px} .box.mapsel h1{font-size:22px} .box.mapsel .row{margin-top:8px}
 .how{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
 .how div{background:rgba(30,46,76,.6);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:12.5px;color:var(--muted)}
 .how b{display:block;color:var(--text);font-size:13px;margin-bottom:2px}
@@ -635,8 +635,57 @@ MAPS.twolane = (() => {
     ai: { lanes: true },
   };
 })();
+/* ---------- Three-Lane with crossings (v2.70): docs/PHASE1_DESIGNS.md, Proposal D ----------
+   Three lanes (north, centre, south) between Classic's bases at x 220 and 2080 (the west base is Classic's, number for
+   number; the east base its mirror across x = 1150). Two walls split the outer lanes from the centre, each with one gap at
+   the middle (x 1150, 140 wide), so all three lanes meet at the rich centre node. Node order: 0 the west centre-lane node,
+   1 the rich centre, 2 the east centre-lane node (the three spots the AI knows from Classic), then the outer income nodes,
+   the watchtowers and the forward pads. */
+MAPS.threelane = (() => {
+  const W = 2300, mx = p => [W - p[0], p[1]], fy = p => [p[0], -p[1]], wb = MAPS.classic.bases[0];
+  const north = [[0, 0], [400, 0], [600, -400], [1700, -400], [1900, 0], [2300, 0]];
+  const wallNW = [[700, -200], [760, -280], [1080, -280], [1080, -120], [760, -120]];
+  const fwd = (id, name, x, y) => ({ id, name, type: 'forwardPad', at: [x, y], r: 40, pads: x < W / 2 ? [[x - 60, y], [x + 60, y]] : [[x + 60, y], [x - 60, y]], allow: ['turret', 'barracks'] });
+  return {
+    id: 'threelane', v: 1,
+    display: { name: 'Three-Lane', desc: 'North, centre and south lanes; the walls between them open at a rich centre node. Flank through the gaps.', thumb: { style: 'lanes', tint: '#2e3a4a' } },
+    size: { w: W, h: 1120 },
+    armyCap: 120,
+    symmetry: 'mirror-x',
+    bases: [
+      { id: 'west', hq: wb.hq, face: [1, 0], sigPad: wb.sigPad, rally: wb.rally, pads: wb.pads },
+      { id: 'east', hq: mx(wb.hq), face: [-1, 0], sigPad: mx(wb.sigPad), rally: mx(wb.rally), pads: wb.pads.map(mx) },
+    ],
+    modes: { '1v1': [['west'], ['east']] },
+    lanes: [
+      { id: 'north', path: north, width: 230 },
+      { id: 'centre', path: [[0, 0], [W, 0]], width: 230 },
+      { id: 'south', path: north.map(fy), width: 230 },
+    ],
+    blockers: [
+      { id: 'wallNW', poly: wallNW }, { id: 'wallNE', poly: wallNW.map(mx).reverse() },
+      { id: 'wallSW', poly: wallNW.map(fy).reverse() }, { id: 'wallSE', poly: wallNW.map(p => fy(mx(p))) },
+    ],
+    nodes: [
+      { id: 'wc', name: 'centre-west', type: 'income', at: [800, 0], r: 70 },
+      { id: 'c', name: 'centre', type: 'income', at: [1150, 0], r: 70, yieldMul: 1.5 },
+      { id: 'ec', name: 'centre-east', type: 'income', at: [1500, 0], r: 70 },
+      { id: 'wn', name: 'north-west', type: 'income', at: [650, -400], r: 70 },
+      { id: 'ws', name: 'south-west', type: 'income', at: [650, 400], r: 70 },
+      { id: 'en', name: 'north-east', type: 'income', at: [1650, -400], r: 70 },
+      { id: 'es', name: 'south-east', type: 'income', at: [1650, 400], r: 70 },
+      { id: 'tn', name: 'north watchtower', type: 'watchtower', at: [1150, -340], r: 45, sight: 600 },
+      { id: 'ts', name: 'south watchtower', type: 'watchtower', at: [1150, 340], r: 45, sight: 600 },
+      fwd('fwn', 'north-west forward pad', 820, -400), fwd('fwc', 'centre-west forward pad', 960, 0), fwd('fws', 'south-west forward pad', 820, 400),
+      fwd('fen', 'north-east forward pad', 1480, -400), fwd('fec', 'centre-east forward pad', 1340, 0), fwd('fes', 'south-east forward pad', 1480, 400),
+    ],
+    conditions: [],
+    fog: 'grid', fogCell: 20, depthW: 1,
+    ai: { lanes: true },
+  };
+})();
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.69'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.70'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -2616,7 +2665,7 @@ function updateUnit(g, u, foes, dt) {
   if (u.fwdHome && g.nodes[u.fwdHome.n].owner !== u.side) u.fwdHome = undefined; // v2.68: its forward post lost: home is the base again
   const side = g.sides[u.side], dir = dirOf(u.side), home = u.medHome ? homeFlagU(g, u.side) + u.rallyOff * dir * 0.3 : (side.defU != null ? side.defU : u.fwdHome ? u.fwdHome.u : rallyU(u.side, g)) + u.rallyOff * dir * (u.fwdHome ? 0.3 : 1); // defU (v2.40): a Default AI under attack rallies inside its HQ's cover; v2.62: a damaged unit sent home goes to the base flag
   const ord = unitOrder(side, u.type, u.lane);
-  const runs = side.persona && aiFix(side.persona, 'scoutGo') && ((u.id === side.scoutId && side.scoutU != null) || (side.raid && side.raid.ids.includes(u.id)) || (side.capT && side.capT.ids.includes(u.id))); // v2.60: a Hard scout or raider; v2.67: a capture group (lane maps)
+  const runs = side.persona && aiFix(side.persona, 'scoutGo') && ((u.id === side.scoutId && side.scoutU != null) || (side.raid && side.raid.ids.includes(u.id)) || capBusy(side, u.id)); // v2.60: a Hard scout or raider; v2.67: a capture group (lane maps)
   const st = u.medHome ? 'retreat' : runs ? 'run' : ord ? ord.o : side.stance; // a group or type order overrides the global stance; v2.62: sent home = Retreat to the base flag
   const A = d.weapon ? acquire(g, u, d, foes, d.chase) : NO_TARGET, { best, close } = A; // Medicopters and Recon Drones carry no weapon; melee: the chase search in the same pass (v2.37)
   const sp = (d.fac === 'bloomhost' && !d.air && onCreep(g, u.side, u.u, u.v) ? CREEP.speed : 1) * (frz ? ABIL.frenzy.speed : 1) * (u.slowT > g.t ? 1 - u.slow : 1) * (u.snT > g.t ? 0 : 1); // creep (v2.18), Frenzy Bloom (v2.20), a Gravemantle's slow (v2.27), a Rootheart's snare (v2.33)
@@ -2683,7 +2732,7 @@ function updateUnit(g, u, foes, dt) {
   }
   let tu = home, tv = u.laneV;
   if (u.id === side.scoutId && side.scoutU != null && st !== 'retreat') tu = side.scoutU; // v2.38: a Default AI's scout
-  else if (st === 'run' && side.capT && side.capT.ids.includes(u.id)) { tu = side.capT.u + ((u.id * 37) % 5 - 2) * 10; tv = side.capT.v + ((u.id * 53) % 5 - 2) * 8; } // v2.67: a capture group stands on its node
+  else if (st === 'run' && capBusy(side, u.id)) { const T = side.capT && side.capT.ids.includes(u.id) ? side.capT : side.capT2; tu = T.u + ((u.id * 37) % 5 - 2) * 10; tv = T.v + ((u.id * 53) % 5 - 2) * 8; } // v2.67: a capture group stands on its node (v2.70: either group)
   else if (st === 'run') tu = side.raid.u; // v2.60: a raider heads for its target (fighting what it meets on the way)
   else if (st === 'move') [tu, tv] = slotOf(u, ord); // Regroup: walk to the flag, then hold there
   else if (st === 'hold' && u.holdU !== undefined) { tu = u.holdU; tv = u.holdV; }
@@ -4256,8 +4305,9 @@ function aiEstimate(g, s) {
      sides then race each other's bases and nobody wins), and arrives together instead of half in each lane.
    - Forward pads (Normal, Hard): with money banked and no threat at home, a Turret (then a Barracks) on a forward pad it
      holds on its own half; at most fwd.max of them. */
-const LANE_AI = { late: { on: true, from: 900, ratio: 0.8 }, brk: { Easy: null, Normal: { from: 420, edge: 1.5, edgeLate: 1.1, min: 1500, hold: 0, stay: 1.0 }, Hard: { from: 360, edge: 1.3, edgeLate: 1.0, min: 1200, hold: 0, stay: 0.9 } }, every: 4, even: 150, need: 0.75, surplus: 1.5, shift: 20, cap: { n: 3, from: 150, gap: 15, minArmy: 300, dur: 60, minHp: 0.5, odds: 0.3 }, fwd: { bank: 1000, every: 90, max: { Easy: 0, Normal: 1, Hard: 2 } } }; // fwd.bank above ATTACK.supply.bank: the army's supply comes first // hold: seconds a breakthrough stays committed (0: off; 45 measured no better)
+const LANE_AI = { late: { on: true, from: 900, ratio: 0.8 }, brk: { Easy: null, Normal: { from: 420, edge: 1.5, edgeLate: 1.1, min: 1500, hold: 0, stay: 1.0 }, Hard: { from: 360, edge: 1.3, edgeLate: 1.0, min: 1200, hold: 0, stay: 0.9 } }, every: 4, even: 150, need: 0.75, surplus: 1.5, shift: 20, cap: { n: 3, from: 150, gap: 15, minArmy: 300, dur: 60, minHp: 0.5, odds: 0.3 }, fwd: { bank: 1000, every: 90, max: { Easy: 0, Normal: 1, Hard: 2 }, max3: { Easy: 0, Normal: 2, Hard: 3 } } }; // max3 (v2.70): on a map with three lanes // fwd.bank above ATTACK.supply.bank: the army's supply comes first // hold: seconds a breakthrough stays committed (0: off; 45 measured no better)
 function aiLanes(g, s, D, mine, theirs, threat, myV = 0, thV = 0) {
+  if (MAP.lanes.length > 2) return aiLanes3(g, s, D, mine, theirs, threat, myV, thV); // v2.70: Three-Lane
   if (MAP.lanes.length !== 2) return;
   const side = g.sides[s], LA = side.la || (side.la = { t: -99, sh: -99, fw: -99 }), easy = D.label === 'Easy';
   aiCapture(g, s, mine, theirs, easy);
@@ -4305,31 +4355,103 @@ function aiLanes(g, s, D, mine, theirs, threat, myV = 0, thV = 0) {
   }
   if (!easy) aiForward(g, s, D, threat);
 }
-function aiCapture(g, s, mine, theirs, easy) {
+/* v2.70 (Three-Lane, docs/PHASE1_DESIGNS.md Proposal D): the lane layer on a map with three or more lanes. The Two-Lane
+   rules (aiLanes) carry over lane by lane; on top: an enemy unit belongs to the lane whose centre line is nearest it;
+   reinforcements go where the enemy is (round-robin when nothing is known); a losing lane is helped from a neighbour
+   first (through a crossing: the flank); a base attack goes down the lane where the enemy army is and, meeting a much
+   stronger army there near a crossing, switches to the neighbour lane with the least in it instead of retreating; a
+   watchtower lost raises an alarm for its lane (LANE3.alarm seconds: reinforcements and the shift go there first). */
+const LANE3 = { cross: 260, swap: 1.25, open: 0.5, alarm: 40 };
+const laneOfPt = (u, v) => { let best = 0, bd = 1e9; for (let k = 0; k < MAP.lanes.length; k++) { const d = Math.abs(v - laneY(MAP.lanes[k], u)); if (d < bd) { bd = d; best = k; } } return best; };
+function aiLanes3(g, s, D, mine, theirs, threat, myV = 0, thV = 0) {
+  const side = g.sides[s], LA = side.la || (side.la = { t: -99, sh: -99, fw: -99 }), easy = D.label === 'Easy', lanes = MAP.lanes.map((_, k) => k);
+  aiCapture3(g, s, mine, theirs, easy);
+  const LT = LANE_AI.late;
+  if (LT.on && side.stance !== 'attack' && !threat && g.t >= LT.from && myV >= 300 && myV >= thV * LT.ratio) {
+    side.stance = 'attack'; side.pushTo = null; side.pushMode = 'all'; side.stanceAt = g.t; side.launchV = myV; LA.late = (LA.late || 0) + 1;
+    ev(g, { type: 'aiAttack', side: s, mode: 'all' }); lg(g, s, 'G', 'all', 0);
+  }
+  const B = LANE_AI.brk[D.label];
+  if (B && side.stance !== 'attack' && !threat && g.t >= B.from && myV >= B.min && myV >= thV * lerp(B.edge, B.edgeLate, clamp((g.t - B.from) / (EXT.warn - B.from), 0, 1))) {
+    LA.brkT = g.t; side.stance = 'attack'; side.pushTo = null; side.pushMode = 'all'; side.stanceAt = g.t; side.launchV = myV; LA.brk = (LA.brk || 0) + 1;
+    ev(g, { type: 'aiAttack', side: s, mode: 'all' }); lg(g, s, 'G', 'all', 0);
+  }
+  // a watchtower it held, lost: an alarm for that tower's lane
+  LA.tw = LA.tw || {};
+  for (let i = 0; i < g.nodes.length; i++) { const n = g.nodes[i]; if (n.type !== 'watchtower') continue; if (LA.tw[i] === s && n.owner !== s) LA.alarm = { lane: laneOfPt(n.u, n.v), t: g.t }; LA.tw[i] = n.owner; }
+  if (g.t - LA.t < LANE_AI.every) return;
+  LA.t = g.t;
+  const busy = u => u.id === side.scoutId || capBusy(side, u.id) || (side.raid && side.raid.ids.includes(u.id));
+  const army = mine.filter(u => !UDEF[u.type].support && !busy(u));
+  const mv = lanes.map(k => armyValue(army.filter(u => u.lane === k)));
+  const inLane = e => e.v !== undefined && Math.abs(e.u - L / 2) < L / 2 - 320;
+  const en = lanes.map(() => 0); for (const e of theirs) if (inLane(e)) en[laneOfPt(e.u, e.v)] += armyValue([e]);
+  const alarm = LA.alarm && g.t - LA.alarm.t < LANE3.alarm ? LA.alarm.lane : -1;
+  const need = lanes.map(k => en[k] * 1.1 - mv[k] + (k === alarm ? 400 : 0));
+  const near = (a, b) => Math.abs(a - b) === 1; // neighbours share a crossing (the centre lane borders both outer ones)
+  if (side.stance === 'attack' && (side.pushMode === 'all' || side.pushMode === 'siege')) {
+    let k = side.atkLane != null && side.atkAt === side.stanceAt ? side.atkLane : (Math.max(...en) > 0 ? en.indexOf(Math.max(...en)) : mv.indexOf(Math.max(...mv)));
+    // at a crossing, a much stronger army ahead in this lane: switch to the neighbour lane with the least in it
+    const ground = army.filter(u => !UDEF[u.type].air); const xs = ground.map(u => u.u).sort((a, b) => a - b), med = xs.length ? xs[xs.length >> 1] : -1e9;
+    if (Math.abs(med - L / 2) < LANE3.cross && en[k] > armyValue(army) * LANE3.swap) {
+      const alt = lanes.filter(j => near(j, k)).sort((a, b) => en[a] - en[b])[0];
+      if (alt !== undefined && en[alt] < en[k] * LANE3.open) { k = alt; LA.swap = (LA.swap || 0) + 1; }
+    }
+    side.atkLane = k; side.atkAt = side.stanceAt; side.laneNew = k;
+    for (const u of army) if (u.lane !== k) u.lane = k;
+    if (!easy) aiForward(g, s, D, threat);
+    return;
+  }
+  side.atkLane = null;
+  const top = need.indexOf(Math.max(...need)), sorted = need.slice().sort((a, b) => b - a);
+  side.laneNew = sorted[0] - sorted[1] < LANE_AI.even && alarm < 0 ? null : top;
+  if (!easy && g.t - LA.sh >= LANE_AI.shift) for (const k of lanes) {
+    if (!((en[k] > 150 || k === alarm) && mv[k] < en[k] * LANE_AI.need + (k === alarm ? 300 : 0))) continue;
+    const donors = lanes.filter(o => o !== k && mv[o] > en[o] * LANE_AI.surplus + 200).sort((a, b) => (near(b, k) - near(a, k)) || (mv[b] - en[b]) - (mv[a] - en[a]));
+    if (!donors.length) continue;
+    const o = donors[0];
+    let want = Math.min(Math.max(en[k] * 1.1 - mv[k], k === alarm ? 300 : 0), mv[o] - en[o] * 1.2);
+    const pool = army.filter(u => u.lane === o).sort((a, b) => Math.min(Math.abs(a.u - hqU(s)), Math.abs(a.u - L / 2)) - Math.min(Math.abs(b.u - hqU(s)), Math.abs(b.u - L / 2)) || a.id - b.id);
+    for (const u of pool) { if (want <= 0) break; u.lane = k; want -= armyValue([u]); }
+    LA.sh = g.t; LA.n = (LA.n || 0) + 1; break;
+  }
+  if (!easy) aiForward(g, s, D, threat);
+}
+// v2.70: key/atKey name the group (side.capT, side.capAt); on Three-Lane a second group (capT2) runs at the same time, never
+// for the first group's node or with its units (aiCapture3)
+function aiCapture(g, s, mine, theirs, easy, key = 'capT', atKey = 'capAt', other = null) {
   const side = g.sides[s], C = LANE_AI.cap;
-  if (side.capT) {
-    const T = side.capT, n = g.nodes[T.node], live = mine.filter(u => T.ids.includes(u.id) && u.hp > 0);
+  if (side[key]) {
+    const T = side[key], n = g.nodes[T.node], live = mine.filter(u => T.ids.includes(u.id) && u.hp > 0);
     const hurt = live.reduce((a, u) => a + u.hp, 0) < live.reduce((a, u) => a + u.maxHp, 0) * C.minHp;
-    if (!live.length || hurt || g.t > T.end || (n.owner === s && Math.abs(n.prog) >= 100) || (side.stance === 'attack' && side.pushMode === 'all')) { side.capT = null; side.capAt = g.t; }
+    if (!live.length || hurt || g.t > T.end || (n.owner === s && Math.abs(n.prog) >= 100) || (side.stance === 'attack' && side.pushMode === 'all')) { side[key] = null; side[atKey] = g.t; }
     else T.ids = live.map(u => u.id);
     return;
   }
-  if (g.t < C.from || g.t - (side.capAt ?? -99) < C.gap || (side.stance === 'attack' && side.pushMode === 'all')) return;
+  if (g.t < C.from || g.t - (side[atKey] ?? -99) < C.gap || (side.stance === 'attack' && side.pushMode === 'all')) return;
   const myV = armyValue(mine); if (myV < C.minArmy) return;
   const near = n => armyValue(theirs.filter(e => e.fresh && e.v !== undefined && Math.hypot(e.u - n.u, e.v - n.v) < 260));
-  const cand = g.nodes.map((n, i) => i).filter(i => g.nodes[i].owner !== s && (i === 1 || (!easy && g.nodes[i].type === 'watchtower')) && near(g.nodes[i]) < myV * C.odds);
+  const cand = g.nodes.map((n, i) => i).filter(i => g.nodes[i].owner !== s && (i === 1 || (!easy && g.nodes[i].type === 'watchtower')) && near(g.nodes[i]) < myV * C.odds && !(other && other.node === i));
   if (!cand.length) return;
   cand.sort((a, b) => near(g.nodes[a]) - near(g.nodes[b]) || a - b);
   const i = cand[0], n = g.nodes[i], need = near(n) * 1.3 + 150;
-  const pool = mine.filter(u => !UDEF[u.type].air && !UDEF[u.type].support && !UDEF[u.type].noCap && !UDEF[u.type].siege && u.id !== side.scoutId && !(side.raid && side.raid.ids.includes(u.id)) && u.hp >= u.maxHp * 0.7)
+  const pool = mine.filter(u => !UDEF[u.type].air && !UDEF[u.type].support && !UDEF[u.type].noCap && !UDEF[u.type].siege && u.id !== side.scoutId && !(side.raid && side.raid.ids.includes(u.id)) && !(other && other.ids.includes(u.id)) && u.hp >= u.maxHp * 0.7)
     .sort((a, b) => UDEF[b.type].speed - UDEF[a.type].speed || Math.hypot(a.u - n.u, a.v - n.v) - Math.hypot(b.u - n.u, b.v - n.v) || a.id - b.id);
   const ids = []; let v = 0;
   for (const u of pool) { if (ids.length >= C.n || v >= need) break; ids.push(u.id); v += armyValue([u]); }
   if (!ids.length || v < need * 0.6) return;
-  side.capT = { node: i, ids, end: g.t + C.dur, u: n.u, v: n.v }; side.capAt = g.t;
+  side[key] = { node: i, ids, end: g.t + C.dur, u: n.u, v: n.v }; side[atKey] = g.t;
 }
+// v2.70 (Three-Lane): the centre and both watchtowers at once: a second capture group beside the first (not on Easy, which
+// takes the centre only)
+function aiCapture3(g, s, mine, theirs, easy) {
+  const side = g.sides[s];
+  aiCapture(g, s, mine, theirs, easy, 'capT', 'capAt', side.capT2);
+  if (!easy) aiCapture(g, s, mine, theirs, easy, 'capT2', 'capAt2', side.capT);
+}
+const capBusy = (side, id) => (side.capT && side.capT.ids.includes(id)) || (side.capT2 && side.capT2.ids.includes(id)); // in a capture group (v2.70: either)
 function aiForward(g, s, D, threat) {
-  const side = g.sides[s], LA = side.la, F = LANE_AI.fwd, max = F.max[D.label] || 0, dir = dirOf(s);
+  const side = g.sides[s], LA = side.la, F = LANE_AI.fwd, max = (MAP.lanes.length > 2 ? F.max3 : F.max)[D.label] || 0, dir = dirOf(s);
   if (!max || threat || g.t - LA.fw < F.every || side.res.c < F.bank || !hasBuilt(g, s, 'barracks')) return;
   const have = g.ents.filter(e => e.kind === 'b' && e.side === s && e.hp > 0 && e.slot >= FWD_SLOT);
   if (have.length >= max) return;
@@ -4348,7 +4470,7 @@ function aiBreak(g, s, mine) {
   if (!(side.stance === 'attack' && side.pushMode === 'all' && side.pushTo === null)) { side.bb = null; side.bbOn = false; side.bbStage = side.bbLead = null; return; }
   side.bbOn = true;
   const gun = BD(g.sides[opp].faction, 'hq').gun[g.fog[s].lastHQ.tier || 1], stage = clamp(hqU(opp) - dir * (gun.range + B.gap), 0, L);
-  const busy = u => u.id === side.scoutId || (side.raid && side.raid.ids.includes(u.id)) || (side.capT && side.capT.ids.includes(u.id));
+  const busy = u => u.id === side.scoutId || (side.raid && side.raid.ids.includes(u.id)) || capBusy(side, u.id);
   const grp = mine.filter(u => !UDEF[u.type].air && !UDEF[u.type].support && !busy(u)), V = armyValue(grp);
   const pastV = armyValue(grp.filter(u => dir * (u.u - stage) > 40));
   const bb = side.bb || (side.bb = { ph: 'gather', t: g.t, goV: 0, goT: -99, n: 0 });
@@ -8384,8 +8506,9 @@ function drawMinimap(c, g, w, h) {
   if (g && MAP_LANED && !g.spectate) { // v2.66 (Split Army): a badge per squad on its lane, "N 13"; tapping one selects that squad
     c.font = '800 8.5px -apple-system,system-ui,sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
     const n = MAP.lanes.map(() => 0); for (const e of g.ents) if (e.kind === 'u' && e.side === 0 && e.hp > 0 && !e.temp && e.lane != null) n[e.lane]++;
+    const full = MAP.lanes.length < 3 || MAP.lanes.reduce((a, ln, k) => a + c.measureText(`${ln.id[0].toUpperCase()} ${n[k]}`).width + 12, 0) <= w * 0.95; // v2.70: too narrow for three full badges: letters only
     MAP.lanes.forEach((ln, k) => {
-      const txt = `${ln.id[0].toUpperCase()} ${n[k]}`, tw = c.measureText(txt).width + 6, x = mx(L * 0.28), y = clamp(my(laneY(ln, L * 0.28)), 6, h - 6), on = g.sides[0].squad === k;
+      const bu = MAP.lanes.length > 2 ? L * (0.17 + 0.33 * k) : L * 0.28, txt = full ? `${ln.id[0].toUpperCase()} ${n[k]}` : ln.id[0].toUpperCase(), tw = c.measureText(txt).width + 6, x = mx(bu), y = clamp(my(laneY(ln, bu)), 6, h - 6), on = g.sides[0].squad === k;
       c.fillStyle = on ? 'rgba(57,200,255,0.95)' : 'rgba(10,18,34,0.85)'; rr(c, x - tw / 2, y - 5.5, tw, 11, 4); c.fill();
       c.strokeStyle = 'rgba(57,200,255,0.8)'; c.lineWidth = 1; c.stroke();
       c.fillStyle = on ? '#001522' : '#cfe9ff'; c.fillText(txt, x, y + 0.5);
@@ -8781,13 +8904,14 @@ function buildArmy() {
   // v2.66 (Split Army, docs/SPLIT_ARMY.md): on a lane map, the squad column: All, then one chip per lane (its squad)
   let sq = null;
   if (MAP_LANED) {
-    sq = document.createElement('div'); sq.className = 'asq'; sq.id = 'asq';
+    sq = document.createElement('div'); sq.className = `asq l${MAP.lanes.length}`; sq.id = 'asq'; // v2.70: l3, three chips under All (Three-Lane)
     sq.innerHTML = `<button data-q="all" class="all"><b>All</b><i></i></button>` + MAP.lanes.map((l, k) => `<button data-q="${k}"><b>${laneName(k)[0]}</b><i></i></button>`).join('');
     for (const b of sq.children) {
       const q = b.dataset.q === 'all' ? null : +b.dataset.q;
       b.addEventListener('click', () => { if (sqLP.fired === b) { sqLP.fired = null; return; } onSquad(q); });
-      if (q !== null) holdFor(b, () => sqMenu(b, [[`Move ${laneName(q)} squad to ${laneName(1 - q)}`, () => sqDo(setLane(game, 0, 'lane', q, 1 - q))],
-        ...[[q, laneName(q)], [null, 'Alternate'], [1 - q, laneName(1 - q)]].map(([k, n]) => [`New units: ${n}`, () => sqDo(setLaneNew(game, 0, k))])]));
+      const others = q === null ? [] : MAP.lanes.map((_, k) => k).filter(k => k !== q); // v2.70: every other lane (two on Three-Lane)
+      if (q !== null) holdFor(b, () => sqMenu(b, [...others.map(o => [`Move ${laneName(q)} squad to ${laneName(o)}`, () => sqDo(setLane(game, 0, 'lane', q, o))]),
+        ...(MAP.lanes.length === 2 ? [[q, laneName(q)], [null, 'Alternate'], [1 - q, laneName(1 - q)]] : [...MAP.lanes.map((_, k) => [k, laneName(k)]), [null, 'Alternate']]).map(([k, n]) => [`New units: ${n}`, () => sqDo(setLaneNew(game, 0, k))])]));
     }
   }
   for (const o of ['hold', 'attack', 'retreat', 'move']) {
@@ -9490,7 +9614,7 @@ function showStart() {
 /* ---------- Map select (v2.65, docs/TWO_LANE.md) ----------
    Before each new match: one card per map, from its display fields, with a thumbnail the game draws from the map data
    (lanes, blockers, bases, nodes), so it can't disagree with the map. Classic is the default; the choice is remembered. */
-const MAP_KEY = 'extinctionEvent.map', MAP_ORDER = ['classic', 'twolane'];
+const MAP_KEY = 'extinctionEvent.map', MAP_ORDER = ['classic', 'twolane', 'threelane'];
 let mapPick = 'classic';
 try { const k = localStorage.getItem(MAP_KEY); if (k && MAPS[k] && MAP_ORDER.includes(k)) mapPick = k; } catch (e) {}
 function drawMapThumb(cv, m) {
@@ -9596,11 +9720,12 @@ function startGame() {
 const TIPS_KEY = 'extinctionEvent.tips';
 function splitTip() {
   let T = {}; try { T = JSON.parse(localStorage.getItem(TIPS_KEY) || '{}') || {}; } catch (e) {}
-  if (T.split) return;
+  const three = MAP.lanes.length > 2, key = three ? 'split3' : 'split'; // v2.70: Three-Lane has its own tip (three squads, crossings)
+  if (T[key]) return;
   const el = document.createElement('div'); el.id = 'tipSplit'; el.className = 'tipcard';
-  el.innerHTML = `<b>Two lanes, two squads</b><p>Every unit belongs to the squad of its lane: <b>N</b> or <b>S</b> in the Army tab (or tap a badge on the minimap). With a squad selected, Hold, Attack, Retreat, Regroup and Rally act on that squad only; <b>All</b> commands everyone.</p><p><b>Long-press</b> a squad to move it to the other lane or choose where new units go (alternating by default). Long-press a unit to send every unit of that type to one lane.</p><button id="bTipOk">Got it</button>`;
+  el.innerHTML = three ? `<b>Three lanes, three squads</b><p>Every unit belongs to the squad of its lane: <b>N</b>, <b>C</b> or <b>S</b> in the Army tab (or tap a badge on the minimap). With a squad selected, the orders, Regroup and Rally act on that squad only; <b>All</b> commands everyone. The walls between the lanes have one gap each, at the centre node: squads can cross there.</p><p><b>Long-press</b> a squad to move it to another lane or choose where new units go (alternating by default). Long-press a unit to send every unit of that type to one lane.</p><button id="bTipOk">Got it</button>` : `<b>Two lanes, two squads</b><p>Every unit belongs to the squad of its lane: <b>N</b> or <b>S</b> in the Army tab (or tap a badge on the minimap). With a squad selected, Hold, Attack, Retreat, Regroup and Rally act on that squad only; <b>All</b> commands everyone.</p><p><b>Long-press</b> a squad to move it to the other lane or choose where new units go (alternating by default). Long-press a unit to send every unit of that type to one lane.</p><button id="bTipOk">Got it</button>`;
   document.body.appendChild(el);
-  $('bTipOk').addEventListener('click', () => { T.split = 1; try { localStorage.setItem(TIPS_KEY, JSON.stringify(T)); } catch (e) {} el.remove(); });
+  $('bTipOk').addEventListener('click', () => { T[key] = 1; try { localStorage.setItem(TIPS_KEY, JSON.stringify(T)); } catch (e) {} el.remove(); });
 }
 function pauseGame(restored) {
   paused = true; endAim(); saveGame();
@@ -10337,7 +10462,7 @@ const TUT_CH = [
       { act: true, txt: () => 'More army controls live in the Army tab. Open it.', hi: () => tEl('.tabs [data-tab="army"]'), done: () => tab === 'army' },
       { txt: () => 'You have two rally flags: Base, by your HQ, and Forward, at your field node. The Rally button switches the army between them in one tap. To move a flag, tap it on the battlefield, then tap where it goes.', hi: () => tEl('#bRally') },
       { txt: () => `Send damaged home sends every unit under ${Math.round(DAMAGED.thr * 100)}% health back to the Base flag. They heal there and rejoin the army when nearly whole.`, hi: () => tEl('#bDamaged') },
-      { txt: () => 'On a map with two lanes (Two-Lane), your army splits into two squads, one per lane: N and S beside these buttons. Select a squad and the orders, Regroup and Rally act on it alone; All commands everyone. Long-press a squad to move it to the other lane or choose where new units go.' }, // v2.66: Split Army
+      { txt: () => 'On a lane map, your army splits into a squad per lane: N and S (and C where there is a centre lane) beside these buttons. Select a squad and the orders, Regroup and Rally act on it alone; All commands everyone. Long-press a squad to move it to another lane or choose where new units go.' }, // v2.66: Split Army
     ] },
   { key: 'upgrades', name: 'Upgrades', blurb: 'Upgrade tiers, paths and what they unlock',
     setup: () => { tPlace('barracks', 4); const u = BDEF.barracks.up; tMe().res.c += u[2].c + u[3].c; tMe().res.e += u[2].e + u[3].e; },
@@ -10503,7 +10628,7 @@ $('tutSkipC').addEventListener('click', tutSkipChapter);
 // The How to Play tab: the chapter list
 CODEX_HOWTO.html = () => { const D = tutDone(); return `<h2>How to Play</h2><p>Hands-on lessons in a practice match as ${factionName('lastfist')}. You can't lose, every step can be skipped, and any chapter can be played or replayed at any time.</p>` +
   TUT_CH.map((C, i) => `<div class="cxch${D[C.key] ? ' done' : ''}" id="cx-tut-${C.key}"><span class="ck" aria-label="${D[C.key] ? 'Completed' : 'Not played'}">${D[C.key] ? '✓' : ''}</span><div class="cxct"><b>${i + 1}. ${cxEsc(C.name)}</b><small>${cxEsc(C.blurb)}</small></div><button class="cxplay" data-tut="${i}">Play</button></div>`).join('') +
-  `<h3 id="cx-split">Split Army (Two-Lane)</h3><p>On a map with two lanes every unit belongs to the squad of its lane, North or South. In the Army tab, pick <b>All</b>, <b>N</b> or <b>S</b> (or tap a squad's badge on the minimap): with a squad selected, Hold, Attack, Retreat, Regroup and Rally act on that squad only. Aircraft belong to a squad too and fly straight over the ridge.</p><p><b>Long-press a squad</b> to move it to the other lane (through the centre crossing or past your base) or to choose where new units go: North, South or alternating (the default). <b>Long-press a unit</b> to send every unit of that type to one lane. On Classic there is one lane, so there are no squads.</p>` +
+  `<h3 id="cx-split">Split Army (Two-Lane)</h3><p>On a map with two lanes every unit belongs to the squad of its lane, North or South. In the Army tab, pick <b>All</b>, <b>N</b> or <b>S</b> (or tap a squad's badge on the minimap): with a squad selected, Hold, Attack, Retreat, Regroup and Rally act on that squad only. Aircraft belong to a squad too and fly straight over the ridge.</p><p><b>Long-press a squad</b> to move it to the other lane (through the centre crossing or past your base) or to choose where new units go: North, South or alternating (the default). <b>Long-press a unit</b> to send every unit of that type to one lane. On Classic there is one lane, so there are no squads.</p><p><b>Three-Lane</b> has three squads, <b>N</b>, <b>C</b> and <b>S</b>: the walls between the lanes each have one gap, at the rich centre node, where squads can switch lanes or hit a neighbouring lane from the side.</p>` +
   `<h3 id="cx-break">Breaking a base</h3><p>Your HQ is shielded while a production building (${tN('barracks')}, ${tN('factory')} or ${tN('techlab')}) stands in your base: destroy them and the HQ is open. A destroyed building leaves <b>rubble</b>: nothing can be built on its pad for ${BREAK.rubble.t} s. From ${mmss(BREAK.power.from)} the base guns (HQ, turrets, bunkers) lose ${Math.round(BREAK.power.step * 100)}% of their power every minute as the Extinction Event nears, the same for both sides: <b>Power failing</b>.</p>`; }; // v2.66; v2.69: base-breaking
 // First launch: offer the tutorial once (the answer is remembered; without storage, once per page load)
 function tutFirstPrompt() {

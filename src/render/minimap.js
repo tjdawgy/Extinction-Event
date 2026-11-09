@@ -60,8 +60,9 @@ function drawMinimap(c, g, w, h) {
   if (g && MAP_LANED && !g.spectate) { // v2.66 (Split Army): a badge per squad on its lane, "N 13"; tapping one selects that squad
     c.font = '800 8.5px -apple-system,system-ui,sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
     const n = MAP.lanes.map(() => 0); for (const e of g.ents) if (e.kind === 'u' && e.side === 0 && e.hp > 0 && !e.temp && e.lane != null) n[e.lane]++;
+    const full = MAP.lanes.length < 3 || MAP.lanes.reduce((a, ln, k) => a + c.measureText(`${ln.id[0].toUpperCase()} ${n[k]}`).width + 12, 0) <= w * 0.95; // v2.70: too narrow for three full badges: letters only
     MAP.lanes.forEach((ln, k) => {
-      const txt = `${ln.id[0].toUpperCase()} ${n[k]}`, tw = c.measureText(txt).width + 6, x = mx(L * 0.28), y = clamp(my(laneY(ln, L * 0.28)), 6, h - 6), on = g.sides[0].squad === k;
+      const bu = MAP.lanes.length > 2 ? L * (0.17 + 0.33 * k) : L * 0.28, txt = full ? `${ln.id[0].toUpperCase()} ${n[k]}` : ln.id[0].toUpperCase(), tw = c.measureText(txt).width + 6, x = mx(bu), y = clamp(my(laneY(ln, bu)), 6, h - 6), on = g.sides[0].squad === k;
       c.fillStyle = on ? 'rgba(57,200,255,0.95)' : 'rgba(10,18,34,0.85)'; rr(c, x - tw / 2, y - 5.5, tw, 11, 4); c.fill();
       c.strokeStyle = 'rgba(57,200,255,0.8)'; c.lineWidth = 1; c.stroke();
       c.fillStyle = on ? '#001522' : '#cfe9ff'; c.fillText(txt, x, y + 0.5);

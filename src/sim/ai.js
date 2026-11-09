@@ -559,8 +559,9 @@ function aiEstimate(g, s) {
      sides then race each other's bases and nobody wins), and arrives together instead of half in each lane.
    - Forward pads (Normal, Hard): with money banked and no threat at home, a Turret (then a Barracks) on a forward pad it
      holds on its own half; at most fwd.max of them. */
-const LANE_AI = { late: { on: true, from: 900, ratio: 0.8 }, brk: { Easy: null, Normal: { from: 420, edge: 1.5, edgeLate: 1.1, min: 1500, hold: 0, stay: 1.0 }, Hard: { from: 360, edge: 1.3, edgeLate: 1.0, min: 1200, hold: 0, stay: 0.9 } }, every: 4, even: 150, need: 0.75, surplus: 1.5, shift: 20, cap: { n: 3, from: 150, gap: 15, minArmy: 300, dur: 60, minHp: 0.5, odds: 0.3 }, fwd: { bank: 1000, every: 90, max: { Easy: 0, Normal: 1, Hard: 2 } } }; // fwd.bank above ATTACK.supply.bank: the army's supply comes first // hold: seconds a breakthrough stays committed (0: off; 45 measured no better)
+const LANE_AI = { late: { on: true, from: 900, ratio: 0.8 }, brk: { Easy: null, Normal: { from: 420, edge: 1.5, edgeLate: 1.1, min: 1500, hold: 0, stay: 1.0 }, Hard: { from: 360, edge: 1.3, edgeLate: 1.0, min: 1200, hold: 0, stay: 0.9 } }, every: 4, even: 150, need: 0.75, surplus: 1.5, shift: 20, cap: { n: 3, from: 150, gap: 15, minArmy: 300, dur: 60, minHp: 0.5, odds: 0.3 }, fwd: { bank: 1000, every: 90, max: { Easy: 0, Normal: 1, Hard: 2 }, max3: { Easy: 0, Normal: 2, Hard: 3 } } }; // max3 (v2.70): on a map with three lanes // fwd.bank above ATTACK.supply.bank: the army's supply comes first // hold: seconds a breakthrough stays committed (0: off; 45 measured no better)
 function aiLanes(g, s, D, mine, theirs, threat, myV = 0, thV = 0) {
+  if (MAP.lanes.length > 2) return aiLanes3(g, s, D, mine, theirs, threat, myV, thV); // v2.70: Three-Lane
   if (MAP.lanes.length !== 2) return;
   const side = g.sides[s], LA = side.la || (side.la = { t: -99, sh: -99, fw: -99 }), easy = D.label === 'Easy';
   aiCapture(g, s, mine, theirs, easy);
@@ -608,31 +609,103 @@ function aiLanes(g, s, D, mine, theirs, threat, myV = 0, thV = 0) {
   }
   if (!easy) aiForward(g, s, D, threat);
 }
-function aiCapture(g, s, mine, theirs, easy) {
+/* v2.70 (Three-Lane, docs/PHASE1_DESIGNS.md Proposal D): the lane layer on a map with three or more lanes. The Two-Lane
+   rules (aiLanes) carry over lane by lane; on top: an enemy unit belongs to the lane whose centre line is nearest it;
+   reinforcements go where the enemy is (round-robin when nothing is known); a losing lane is helped from a neighbour
+   first (through a crossing: the flank); a base attack goes down the lane where the enemy army is and, meeting a much
+   stronger army there near a crossing, switches to the neighbour lane with the least in it instead of retreating; a
+   watchtower lost raises an alarm for its lane (LANE3.alarm seconds: reinforcements and the shift go there first). */
+const LANE3 = { cross: 260, swap: 1.25, open: 0.5, alarm: 40 };
+const laneOfPt = (u, v) => { let best = 0, bd = 1e9; for (let k = 0; k < MAP.lanes.length; k++) { const d = Math.abs(v - laneY(MAP.lanes[k], u)); if (d < bd) { bd = d; best = k; } } return best; };
+function aiLanes3(g, s, D, mine, theirs, threat, myV = 0, thV = 0) {
+  const side = g.sides[s], LA = side.la || (side.la = { t: -99, sh: -99, fw: -99 }), easy = D.label === 'Easy', lanes = MAP.lanes.map((_, k) => k);
+  aiCapture3(g, s, mine, theirs, easy);
+  const LT = LANE_AI.late;
+  if (LT.on && side.stance !== 'attack' && !threat && g.t >= LT.from && myV >= 300 && myV >= thV * LT.ratio) {
+    side.stance = 'attack'; side.pushTo = null; side.pushMode = 'all'; side.stanceAt = g.t; side.launchV = myV; LA.late = (LA.late || 0) + 1;
+    ev(g, { type: 'aiAttack', side: s, mode: 'all' }); lg(g, s, 'G', 'all', 0);
+  }
+  const B = LANE_AI.brk[D.label];
+  if (B && side.stance !== 'attack' && !threat && g.t >= B.from && myV >= B.min && myV >= thV * lerp(B.edge, B.edgeLate, clamp((g.t - B.from) / (EXT.warn - B.from), 0, 1))) {
+    LA.brkT = g.t; side.stance = 'attack'; side.pushTo = null; side.pushMode = 'all'; side.stanceAt = g.t; side.launchV = myV; LA.brk = (LA.brk || 0) + 1;
+    ev(g, { type: 'aiAttack', side: s, mode: 'all' }); lg(g, s, 'G', 'all', 0);
+  }
+  // a watchtower it held, lost: an alarm for that tower's lane
+  LA.tw = LA.tw || {};
+  for (let i = 0; i < g.nodes.length; i++) { const n = g.nodes[i]; if (n.type !== 'watchtower') continue; if (LA.tw[i] === s && n.owner !== s) LA.alarm = { lane: laneOfPt(n.u, n.v), t: g.t }; LA.tw[i] = n.owner; }
+  if (g.t - LA.t < LANE_AI.every) return;
+  LA.t = g.t;
+  const busy = u => u.id === side.scoutId || capBusy(side, u.id) || (side.raid && side.raid.ids.includes(u.id));
+  const army = mine.filter(u => !UDEF[u.type].support && !busy(u));
+  const mv = lanes.map(k => armyValue(army.filter(u => u.lane === k)));
+  const inLane = e => e.v !== undefined && Math.abs(e.u - L / 2) < L / 2 - 320;
+  const en = lanes.map(() => 0); for (const e of theirs) if (inLane(e)) en[laneOfPt(e.u, e.v)] += armyValue([e]);
+  const alarm = LA.alarm && g.t - LA.alarm.t < LANE3.alarm ? LA.alarm.lane : -1;
+  const need = lanes.map(k => en[k] * 1.1 - mv[k] + (k === alarm ? 400 : 0));
+  const near = (a, b) => Math.abs(a - b) === 1; // neighbours share a crossing (the centre lane borders both outer ones)
+  if (side.stance === 'attack' && (side.pushMode === 'all' || side.pushMode === 'siege')) {
+    let k = side.atkLane != null && side.atkAt === side.stanceAt ? side.atkLane : (Math.max(...en) > 0 ? en.indexOf(Math.max(...en)) : mv.indexOf(Math.max(...mv)));
+    // at a crossing, a much stronger army ahead in this lane: switch to the neighbour lane with the least in it
+    const ground = army.filter(u => !UDEF[u.type].air); const xs = ground.map(u => u.u).sort((a, b) => a - b), med = xs.length ? xs[xs.length >> 1] : -1e9;
+    if (Math.abs(med - L / 2) < LANE3.cross && en[k] > armyValue(army) * LANE3.swap) {
+      const alt = lanes.filter(j => near(j, k)).sort((a, b) => en[a] - en[b])[0];
+      if (alt !== undefined && en[alt] < en[k] * LANE3.open) { k = alt; LA.swap = (LA.swap || 0) + 1; }
+    }
+    side.atkLane = k; side.atkAt = side.stanceAt; side.laneNew = k;
+    for (const u of army) if (u.lane !== k) u.lane = k;
+    if (!easy) aiForward(g, s, D, threat);
+    return;
+  }
+  side.atkLane = null;
+  const top = need.indexOf(Math.max(...need)), sorted = need.slice().sort((a, b) => b - a);
+  side.laneNew = sorted[0] - sorted[1] < LANE_AI.even && alarm < 0 ? null : top;
+  if (!easy && g.t - LA.sh >= LANE_AI.shift) for (const k of lanes) {
+    if (!((en[k] > 150 || k === alarm) && mv[k] < en[k] * LANE_AI.need + (k === alarm ? 300 : 0))) continue;
+    const donors = lanes.filter(o => o !== k && mv[o] > en[o] * LANE_AI.surplus + 200).sort((a, b) => (near(b, k) - near(a, k)) || (mv[b] - en[b]) - (mv[a] - en[a]));
+    if (!donors.length) continue;
+    const o = donors[0];
+    let want = Math.min(Math.max(en[k] * 1.1 - mv[k], k === alarm ? 300 : 0), mv[o] - en[o] * 1.2);
+    const pool = army.filter(u => u.lane === o).sort((a, b) => Math.min(Math.abs(a.u - hqU(s)), Math.abs(a.u - L / 2)) - Math.min(Math.abs(b.u - hqU(s)), Math.abs(b.u - L / 2)) || a.id - b.id);
+    for (const u of pool) { if (want <= 0) break; u.lane = k; want -= armyValue([u]); }
+    LA.sh = g.t; LA.n = (LA.n || 0) + 1; break;
+  }
+  if (!easy) aiForward(g, s, D, threat);
+}
+// v2.70: key/atKey name the group (side.capT, side.capAt); on Three-Lane a second group (capT2) runs at the same time, never
+// for the first group's node or with its units (aiCapture3)
+function aiCapture(g, s, mine, theirs, easy, key = 'capT', atKey = 'capAt', other = null) {
   const side = g.sides[s], C = LANE_AI.cap;
-  if (side.capT) {
-    const T = side.capT, n = g.nodes[T.node], live = mine.filter(u => T.ids.includes(u.id) && u.hp > 0);
+  if (side[key]) {
+    const T = side[key], n = g.nodes[T.node], live = mine.filter(u => T.ids.includes(u.id) && u.hp > 0);
     const hurt = live.reduce((a, u) => a + u.hp, 0) < live.reduce((a, u) => a + u.maxHp, 0) * C.minHp;
-    if (!live.length || hurt || g.t > T.end || (n.owner === s && Math.abs(n.prog) >= 100) || (side.stance === 'attack' && side.pushMode === 'all')) { side.capT = null; side.capAt = g.t; }
+    if (!live.length || hurt || g.t > T.end || (n.owner === s && Math.abs(n.prog) >= 100) || (side.stance === 'attack' && side.pushMode === 'all')) { side[key] = null; side[atKey] = g.t; }
     else T.ids = live.map(u => u.id);
     return;
   }
-  if (g.t < C.from || g.t - (side.capAt ?? -99) < C.gap || (side.stance === 'attack' && side.pushMode === 'all')) return;
+  if (g.t < C.from || g.t - (side[atKey] ?? -99) < C.gap || (side.stance === 'attack' && side.pushMode === 'all')) return;
   const myV = armyValue(mine); if (myV < C.minArmy) return;
   const near = n => armyValue(theirs.filter(e => e.fresh && e.v !== undefined && Math.hypot(e.u - n.u, e.v - n.v) < 260));
-  const cand = g.nodes.map((n, i) => i).filter(i => g.nodes[i].owner !== s && (i === 1 || (!easy && g.nodes[i].type === 'watchtower')) && near(g.nodes[i]) < myV * C.odds);
+  const cand = g.nodes.map((n, i) => i).filter(i => g.nodes[i].owner !== s && (i === 1 || (!easy && g.nodes[i].type === 'watchtower')) && near(g.nodes[i]) < myV * C.odds && !(other && other.node === i));
   if (!cand.length) return;
   cand.sort((a, b) => near(g.nodes[a]) - near(g.nodes[b]) || a - b);
   const i = cand[0], n = g.nodes[i], need = near(n) * 1.3 + 150;
-  const pool = mine.filter(u => !UDEF[u.type].air && !UDEF[u.type].support && !UDEF[u.type].noCap && !UDEF[u.type].siege && u.id !== side.scoutId && !(side.raid && side.raid.ids.includes(u.id)) && u.hp >= u.maxHp * 0.7)
+  const pool = mine.filter(u => !UDEF[u.type].air && !UDEF[u.type].support && !UDEF[u.type].noCap && !UDEF[u.type].siege && u.id !== side.scoutId && !(side.raid && side.raid.ids.includes(u.id)) && !(other && other.ids.includes(u.id)) && u.hp >= u.maxHp * 0.7)
     .sort((a, b) => UDEF[b.type].speed - UDEF[a.type].speed || Math.hypot(a.u - n.u, a.v - n.v) - Math.hypot(b.u - n.u, b.v - n.v) || a.id - b.id);
   const ids = []; let v = 0;
   for (const u of pool) { if (ids.length >= C.n || v >= need) break; ids.push(u.id); v += armyValue([u]); }
   if (!ids.length || v < need * 0.6) return;
-  side.capT = { node: i, ids, end: g.t + C.dur, u: n.u, v: n.v }; side.capAt = g.t;
+  side[key] = { node: i, ids, end: g.t + C.dur, u: n.u, v: n.v }; side[atKey] = g.t;
 }
+// v2.70 (Three-Lane): the centre and both watchtowers at once: a second capture group beside the first (not on Easy, which
+// takes the centre only)
+function aiCapture3(g, s, mine, theirs, easy) {
+  const side = g.sides[s];
+  aiCapture(g, s, mine, theirs, easy, 'capT', 'capAt', side.capT2);
+  if (!easy) aiCapture(g, s, mine, theirs, easy, 'capT2', 'capAt2', side.capT);
+}
+const capBusy = (side, id) => (side.capT && side.capT.ids.includes(id)) || (side.capT2 && side.capT2.ids.includes(id)); // in a capture group (v2.70: either)
 function aiForward(g, s, D, threat) {
-  const side = g.sides[s], LA = side.la, F = LANE_AI.fwd, max = F.max[D.label] || 0, dir = dirOf(s);
+  const side = g.sides[s], LA = side.la, F = LANE_AI.fwd, max = (MAP.lanes.length > 2 ? F.max3 : F.max)[D.label] || 0, dir = dirOf(s);
   if (!max || threat || g.t - LA.fw < F.every || side.res.c < F.bank || !hasBuilt(g, s, 'barracks')) return;
   const have = g.ents.filter(e => e.kind === 'b' && e.side === s && e.hp > 0 && e.slot >= FWD_SLOT);
   if (have.length >= max) return;
@@ -651,7 +724,7 @@ function aiBreak(g, s, mine) {
   if (!(side.stance === 'attack' && side.pushMode === 'all' && side.pushTo === null)) { side.bb = null; side.bbOn = false; side.bbStage = side.bbLead = null; return; }
   side.bbOn = true;
   const gun = BD(g.sides[opp].faction, 'hq').gun[g.fog[s].lastHQ.tier || 1], stage = clamp(hqU(opp) - dir * (gun.range + B.gap), 0, L);
-  const busy = u => u.id === side.scoutId || (side.raid && side.raid.ids.includes(u.id)) || (side.capT && side.capT.ids.includes(u.id));
+  const busy = u => u.id === side.scoutId || (side.raid && side.raid.ids.includes(u.id)) || capBusy(side, u.id);
   const grp = mine.filter(u => !UDEF[u.type].air && !UDEF[u.type].support && !busy(u)), V = armyValue(grp);
   const pastV = armyValue(grp.filter(u => dir * (u.u - stage) > 40));
   const bb = side.bb || (side.bb = { ph: 'gather', t: g.t, goV: 0, goT: -99, n: 0 });

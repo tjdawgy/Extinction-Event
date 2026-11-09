@@ -67,7 +67,7 @@ Map data format: [docs/MAP_FORMAT.md](docs/MAP_FORMAT.md) (approved after Phase 
 - [ ] **Maps.** Build them in this order:
   1. Classic — the current single lane, for short matches.
   2. [x] Two-lane — two lanes with a contested center. Design: [docs/TWO_LANE.md](docs/TWO_LANE.md) (approved after v2.63, with a map-select screen). *(v2.65)*
-  3. Three-Lane with crossings. Design: [docs/PHASE1_DESIGNS.md](docs/PHASE1_DESIGNS.md) (Proposal D, approved after v2.68). (Replaces the Open field and Three-lane items; Open Field is shelved: [docs/OPEN_FIELD.md](docs/OPEN_FIELD.md), kept for reference.)
+  3. [x] Three-Lane with crossings. Design: [docs/PHASE1_DESIGNS.md](docs/PHASE1_DESIGNS.md) (Proposal D, approved after v2.68). *(v2.70: draws 9 / 13 / 14%, medians 14:08 / 16:50 / 18:56; KNOWN_ISSUES.md "Three-Lane")* (Replaces the Open field and Three-lane items; Open Field is shelved: [docs/OPEN_FIELD.md](docs/OPEN_FIELD.md), kept for reference.)
 - [ ] **Node types:**
   - Credit or energy — income, as now.
   - [x] Watchtower — clears fog in a wide radius. *(v2.65)*
@@ -82,7 +82,7 @@ Map data format: [docs/MAP_FORMAT.md](docs/MAP_FORMAT.md) (approved after Phase 
 - [ ] **AI learns the new maps.** Expect real tuning time for each layout.
   - [x] Two-Lane: all three difficulties. *(v2.67)*
   - [x] Two-Lane draw fix: draws under 25% on every difficulty, median 12–18 min. *(v2.68 added the forward-Barracks rally and a late-game commit; v2.69 base-breaking (the AI masses at the HQ gun's edge, power failing from 15:00, rubble, the HQ shield tied to production): draws 8% / 6% / 17% (Hard / Normal / Easy), medians 13:33 / 16:41 / 19:03 (Easy over 18, slow by design); KNOWN_ISSUES.md "Base-breaking")*
-  - [ ] Three-Lane with crossings.
+  - [x] Three-Lane with crossings. *(v2.70: three lanes, crossings, two capture groups, the watchtower alarm)*
 - [ ] **Balance pass.**
   - [x] Extend the sim harness to run on every map. *(v2.67: `--map` in audit/sim/ladder.js, `mapId` in match.js; audit/sim/shares.js)*
   - Fix the Tech vs Contain spread.

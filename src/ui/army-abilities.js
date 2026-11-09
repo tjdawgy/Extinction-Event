@@ -25,13 +25,14 @@ function buildArmy() {
   // v2.66 (Split Army, docs/SPLIT_ARMY.md): on a lane map, the squad column: All, then one chip per lane (its squad)
   let sq = null;
   if (MAP_LANED) {
-    sq = document.createElement('div'); sq.className = 'asq'; sq.id = 'asq';
+    sq = document.createElement('div'); sq.className = `asq l${MAP.lanes.length}`; sq.id = 'asq'; // v2.70: l3, three chips under All (Three-Lane)
     sq.innerHTML = `<button data-q="all" class="all"><b>All</b><i></i></button>` + MAP.lanes.map((l, k) => `<button data-q="${k}"><b>${laneName(k)[0]}</b><i></i></button>`).join('');
     for (const b of sq.children) {
       const q = b.dataset.q === 'all' ? null : +b.dataset.q;
       b.addEventListener('click', () => { if (sqLP.fired === b) { sqLP.fired = null; return; } onSquad(q); });
-      if (q !== null) holdFor(b, () => sqMenu(b, [[`Move ${laneName(q)} squad to ${laneName(1 - q)}`, () => sqDo(setLane(game, 0, 'lane', q, 1 - q))],
-        ...[[q, laneName(q)], [null, 'Alternate'], [1 - q, laneName(1 - q)]].map(([k, n]) => [`New units: ${n}`, () => sqDo(setLaneNew(game, 0, k))])]));
+      const others = q === null ? [] : MAP.lanes.map((_, k) => k).filter(k => k !== q); // v2.70: every other lane (two on Three-Lane)
+      if (q !== null) holdFor(b, () => sqMenu(b, [...others.map(o => [`Move ${laneName(q)} squad to ${laneName(o)}`, () => sqDo(setLane(game, 0, 'lane', q, o))]),
+        ...(MAP.lanes.length === 2 ? [[q, laneName(q)], [null, 'Alternate'], [1 - q, laneName(1 - q)]] : [...MAP.lanes.map((_, k) => [k, laneName(k)]), [null, 'Alternate']]).map(([k, n]) => [`New units: ${n}`, () => sqDo(setLaneNew(game, 0, k))])]));
     }
   }
   for (const o of ['hold', 'attack', 'retreat', 'move']) {

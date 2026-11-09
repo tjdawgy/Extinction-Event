@@ -4,6 +4,8 @@ Design proposals sent after v2.68. Approved: Proposals D, E and F (each is built
 
 ## Proposal D — Three-Lane with crossings
 
+*Built in v2.70 (src/sim/maps-threelane.js). Changes from the sketch: the watchtowers sit at (1150, ±340), on the lane's inner side, so each sees its crossing too; the forward posts at (820, ±400) and (960, 0) and mirrors (clear of the lane nodes). KNOWN_ISSUES.md "Three-Lane".*
+
 ```
  y
 -560 ┌──────────────────────────────────────────────────────────────────────────────┐

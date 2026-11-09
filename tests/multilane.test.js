@@ -18,7 +18,7 @@ test('the test map is valid, and only the test kit can load it: the game ships C
   assert.strictEqual(sim.MAP.id, 'twolane-test');
   assert.ok(sim.MAP_2D && sim.MAP_LANED);
   assert.ok(!classic.MAP_2D && !classic.MAP_LANED && classic.MAP.id === 'classic');
-  assert.strictEqual(Object.keys(classic.MAPS).join(), 'classic,twolane', 'the game has Classic and Two-Lane (v2.65), never the test map');
+  assert.strictEqual(Object.keys(classic.MAPS).join(), 'classic,twolane,threelane', 'the game has Classic, Two-Lane (v2.65) and Three-Lane (v2.70), never the test map');
   const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   assert.ok(!html.includes('twolane-test'), 'the test map is not in index.html');
 });
