@@ -1,4 +1,7 @@
-# Split Army (Phase 1)
+# Split Army (Phase 1) — replaced
+
+> **Replaced by [CONTROLS.md](CONTROLS.md)** (the army controls redesign: select units, then command them). Kept for
+> reference: squads, squad chips, minimap badges, the long-press menus and Forward flags are removed there.
 
 Approved after v2.63 (Proposal B), with two changes: aircraft belong to a squad and follow its orders, flying over
 the ridge; and a first-time tip on Two-Lane, with Split Army added where the controls are explained. Engine: lane

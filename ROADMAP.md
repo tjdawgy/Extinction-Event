@@ -76,13 +76,14 @@ Map data format: [docs/MAP_FORMAT.md](docs/MAP_FORMAT.md) (approved after Phase 
   - [x] Guarded relic — neutral defenders, big payoff. *(v2.71, Three-Lane; relics cost the Axiarchs ~15 points of win share there, for the balance pass)* (Repair depot and guarded relic design: [docs/PHASE1_DESIGNS.md](docs/PHASE1_DESIGNS.md), Proposal E, approved after v2.68.)
 - [x] **Battlefield conditions** (optional per match): heavy fog, rich center nodes, scarce resources, meteor strikes. *(v2.72: toggles and Random on map select, minimap icons, the AI adjusts; Hard vs Hard draws 0–17.5% on every map and condition; KNOWN_ISSUES.md "Battlefield conditions")* Design: [docs/PHASE1_DESIGNS.md](docs/PHASE1_DESIGNS.md) (Proposal F, approved after v2.68).
 - [ ] **Army control:**
-  - [x] Split Army — assign squads to lanes. This ships with multi-lane maps. Design: [docs/SPLIT_ARMY.md](docs/SPLIT_ARMY.md) (approved after v2.63). *(v2.66)*
+  - [x] Split Army — assign squads to lanes. This ships with multi-lane maps. Design: [docs/SPLIT_ARMY.md](docs/SPLIT_ARMY.md) (approved after v2.63). *(v2.66; replaced by the controls redesign, docs/CONTROLS.md)*
   - [x] Two rally points — one defensive, one forward. *(v2.62)*
   - [x] "Send damaged home" button. *(v2.62: under 40% health)*
 - [ ] **AI learns the new maps.** Expect real tuning time for each layout.
   - [x] Two-Lane: all three difficulties. *(v2.67)*
   - [x] Two-Lane draw fix: draws under 25% on every difficulty, median 12–18 min. *(v2.68 added the forward-Barracks rally and a late-game commit; v2.69 base-breaking (the AI masses at the HQ gun's edge, power failing from 15:00, rubble, the HQ shield tied to production): draws 8% / 6% / 17% (Hard / Normal / Easy), medians 13:33 / 16:41 / 19:03 (Easy over 18, slow by design); KNOWN_ISSUES.md "Base-breaking")*
   - [x] Three-Lane with crossings. *(v2.70: three lanes, crossings, two capture groups, the watchtower alarm)*
+- [ ] **Controls redesign.** The army controls are clunky on multi-lane maps (commands in a tab, overlapping orders, key actions in long-presses). New principle: select units, then tell them where to go or what to do; nothing moves on its own; the only automatic behaviours are Attack, Hold and Retreat. Design: [docs/CONTROLS.md](docs/CONTROLS.md) (replaces docs/SPLIT_ARMY.md and the v2.62 rally flags and Send damaged home). The AI doesn't use these controls and must play the same.
 - [ ] **Balance pass.**
   - [x] Extend the sim harness to run on every map. *(v2.67: `--map` in audit/sim/ladder.js, `mapId` in match.js; audit/sim/shares.js)*
   - Plan: [docs/PHASE1_BALANCE_PLAN.md](docs/PHASE1_BALANCE_PLAN.md) (design only, after v2.72).
