@@ -114,7 +114,7 @@ test('commands: move to a tapped spot (then Hold), Attack down the lane, Hold, R
   await page.evaluate(() => __run(12));
   assert.ok(await page.evaluate(([u, v]) => myUnits().every(e => e.po.o === 'hold' && Math.hypot(e.u - u, e.v - v) < 65), W), 'there, holding');
   // Attack: down the north lane
-  await page.click('#lanes [data-k="all"]'); await page.click('#cmdbar [data-c="attack"]');
+  await page.click('#lanes [data-k="all"]'); await page.click('#cmdbar [data-c="attack"]'); await page.click('#lpick button[data-k="0"]'); // v2.77: the lane picker
   assert.deepStrictEqual(await selIds(page), []);
   await page.evaluate(() => __run(6));
   assert.ok(await page.evaluate(() => myUnits().every(e => e.po.o === 'attack' && e.u > 860 && e.v < -150)), 'advancing down the north lane');

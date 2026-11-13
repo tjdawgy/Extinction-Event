@@ -39,7 +39,7 @@ for (const dev of [PHONE, NARROW]) test(`Three-Lane at ${dev.width}×${dev.heigh
   await page.click('#lanes [data-k="1"]');
   assert.deepStrictEqual(await page.evaluate(() => selLive().map(e => e.lane)), [1, 1, 1], 'tap Centre: its units');
   await page.click('#cmdbar [data-c="hold"]');
-  await page.click('#lanes [data-k="2"]'); await page.click('#cmdbar [data-c="attack"]');
+  await page.click('#lanes [data-k="2"]'); await page.click('#cmdbar [data-c="attack"]'); await page.click('#lpick button[data-k="2"]'); // v2.77: the lane picker
   assert.deepStrictEqual(await page.evaluate(() => [0, 1, 2].map(k => myUnits().filter(e => e.lane === k).map(e => e.po.o).join())), ['hold,hold,hold', 'hold,hold,hold', 'attack,attack,attack'], 'each lane its own order');
   await shot(page, 'lanes', dev);
   // a fight at the north crossing: blue comes through the gap from the centre lane into red in the north lane
