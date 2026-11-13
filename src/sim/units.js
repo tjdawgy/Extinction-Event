@@ -232,12 +232,12 @@ function updateUnit(g, u, foes, dt) {
   if (u.recoil > 0) u.recoil = Math.max(0, u.recoil - dt * 5);
   if (u.hitT > 0) u.hitT -= dt;
   if (u.fwdHome && g.nodes[u.fwdHome.n].owner !== u.side) u.fwdHome = undefined; // v2.68: its forward post lost: home is the base again
-  const side = g.sides[u.side], dir = dirOf(u.side); let home = u.medHome ? homeFlagU(g, u.side) + u.rallyOff * dir * 0.3 : (side.defU != null ? side.defU : u.fwdHome ? u.fwdHome.u : rallyU(u.side, g)) + u.rallyOff * dir * (u.fwdHome ? 0.3 : 1); // defU (v2.40): a Default AI under attack rallies inside its HQ's cover; v2.62: a damaged unit sent home goes to the base flag
+  const side = g.sides[u.side], dir = dirOf(u.side); let home = (side.defU != null ? side.defU : u.fwdHome ? u.fwdHome.u : rallyU(u.side, g)) + u.rallyOff * dir * (u.fwdHome ? 0.3 : 1); // defU (v2.40): a Default AI under attack rallies inside its HQ's cover; v2.62: a damaged unit sent home goes to the base flag
   const po = side.direct ? u.po || HOLD_PO : null; // v2.73: a direct side's unit follows its own order
   if (po) home = side.flags[flagIx(g, u)].u;
   const ord = po ? null : unitOrder(side, u.type, u.lane);
   const runs = side.persona && aiFix(side.persona, 'scoutGo') && ((u.id === side.scoutId && side.scoutU != null) || (side.raid && side.raid.ids.includes(u.id)) || capBusy(side, u.id)); // v2.60: a Hard scout or raider; v2.67: a capture group (lane maps)
-  let st = po ? po.o : u.medHome ? 'retreat' : runs ? 'run' : ord ? ord.o : side.stance; // a group or type order overrides the global stance; v2.62: sent home = Retreat to the base flag
+  let st = po ? po.o : runs ? 'run' : ord ? ord.o : side.stance; // a group or type order overrides the global stance (v2.75: Send damaged home is gone)
   const A = d.weapon ? acquire(g, u, d, foes, d.chase) : NO_TARGET, { best, close } = A; // Medicopters and Recon Drones carry no weapon; melee: the chase search in the same pass (v2.37)
   const sp = (d.fac === 'bloomhost' && !d.air && onCreep(g, u.side, u.u, u.v) ? CREEP.speed : 1) * (frz ? ABIL.frenzy.speed : 1) * (u.slowT > g.t ? 1 - u.slow : 1) * (u.snT > g.t ? 0 : 1); // creep (v2.18), Frenzy Bloom (v2.20), a Gravemantle's slow (v2.27), a Rootheart's snare (v2.33)
   if (u.leaping) { // mid-leap (v2.19): fly to the landing spot, nothing else
@@ -257,24 +257,11 @@ function updateUnit(g, u, foes, dt) {
     if (Math.hypot(tu - u.u, tv - u.v) > CTRL.arrive) { u.tgt = 0; u.chT = 0; moveToward(u, d, tu, tv, dt, sp); return; }
     ctlHold(u, tu, tv); st = 'hold';
   }
-  if (u.medHome) { // v2.71: sent home, with a repair depot its side holds nearer than the base flag: heal there instead
-    const dp = medDepot(g, u);
-    if (dp) {
-      u.tgt = 0; u.chT = 0;
-      if (Math.hypot(dp.u - u.u, dp.v - u.v) > (dp.r || NODE_R) * 0.5) moveToward(u, d, dp.u, dp.v, dt, sp);
-      else { u.moving = false; if (g.t - u.lastHurt > DAMAGED.calm) u.hp = Math.min(u.maxHp, u.hp + u.maxHp * DAMAGED.heal * dt); if (u.hp >= u.maxHp * DAMAGED.done) u.medHome = 0; }
-      return;
-    }
-  }
   if (st === 'retreat' && Math.abs(home - u.u) > 12) {
     if (!RETREAT.fire) { u.tgt = 0; u.chT = 0; }
     else if (best && u.cd <= 0) { fire(g, u, best, d); u.cd = d.cd * rand(0.9, 1.1); } // the v2.34 rule, for the tests' fixed replays
     moveToward(u, d, home, laneTv(u, home), dt, sp);
     return;
-  }
-  if (u.medHome) { // v2.62: home: heal once unhurt for a moment, rejoin when nearly whole
-    if (g.t - u.lastHurt > DAMAGED.calm) u.hp = Math.min(u.maxHp, u.hp + u.maxHp * DAMAGED.heal * dt);
-    if (u.hp >= u.maxHp * DAMAGED.done) u.medHome = 0;
   }
   if (u.aiWait > g.t && !best && !(MECH7C.on && d.chase && A.prey && Math.hypot(A.prey.u - u.u, A.prey.v - u.v) <= MECH7C.holdR + d.range)) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // v2.43: a holding melee unit still engages within holdR (falls through to the chase below) // v2.40: a Default AI holds a front-runner until its army catches up (fights only what is in reach, never chases)
   const act = !(u.phT > g.t) && !d.siege; // v2.37: a phased Wraithwing can't fire (P13); a Titan fires only when planted (P8)

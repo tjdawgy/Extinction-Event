@@ -1,8 +1,7 @@
 /* ---------- The repair depot and the guarded relic (v2.71, Phase 1): docs/PHASE1_DESIGNS.md, Proposal E ----------
    Repair depot (NODE_TYPES.repair): captured like any node; its holder's units within its radius heal REPAIR.heal% of their
-   health a second (or the node's own heal) once unhurt for REPAIR.calm s, the rule Send damaged home uses at the base flag.
-   A unit sent home goes to the nearest depot its side holds when that is nearer than the base flag (medDepot), and heals
-   there as at home. No income.
+   health a second (or the node's own heal) once unhurt for REPAIR.calm s (v2.75: the same rate as a base flag, CTRL). No
+   income. The player saves damaged units by moving them to one (docs/CONTROLS.md).
    Guarded relic (NODE_TYPES.relic): a neutral camp. Its guards (RELIC.guards, or the node's own) stand on their spot, never
    move and fire at any unit that comes within RELIC.aggro of the relic (both sides alike). They are not in g.ents (they
    belong to no side: no vision, no intel, no army value, no score); they are in both sides' target lists (g.guards).
@@ -10,7 +9,7 @@
    relic is spent. Guards slowly heal (RELIC.regen a second) once unhurt for RELIC.calm s, so chipping at them doesn't stick. */
 const NEUTRAL = 2; // a guard's side: neither player
 const REPAIR = { heal: 3, calm: 3 };
-const SPECIAL = { on: true, repair: true, relic: true }; // on false (or repair / relic false): depots heal nothing and take no one home; relics have no guards and can't be taken (the harness's comparison)
+const SPECIAL = { on: true, repair: true, relic: true }; // on false (or repair / relic false): depots heal nothing; relics have no guards and can't be taken (the harness's comparison)
 const RELIC = { aggro: 100, guards: [{ unit: 'titan', n: 1 }, { unit: 'tank', n: 2 }], reward: { c: 800 }, regen: 0.02, calm: 8 };
 const sideBuff = (g, s) => !!(g.sides[s] && g.sides[s].buff); // NANO for side s (a guard has none)
 function updateRepair(g, dt) {
@@ -19,17 +18,11 @@ function updateRepair(g, dt) {
     if (n.type !== 'repair' || n.owner === null) continue;
     const r = n.r || NODE_R, h = (n.heal || REPAIR.heal) / 100;
     for (const e of g.ents) {
-      if (e.kind !== 'u' || e.side !== n.owner || e.hp <= 0 || e.hp >= e.maxHp || e.medHome || g.t - e.lastHurt <= REPAIR.calm || Math.hypot(e.u - n.u, e.v - n.v) > r) continue;
+      if (e.kind !== 'u' || e.side !== n.owner || e.hp <= 0 || e.hp >= e.maxHp || g.t - e.lastHurt <= REPAIR.calm || Math.hypot(e.u - n.u, e.v - n.v) > r) continue;
       const h0 = e.hp; e.hp = Math.min(e.maxHp, e.hp + e.maxHp * h * dt);
       if (g.log) g.log.tot[n.owner].depotHeal = (g.log.tot[n.owner].depotHeal || 0) + e.hp - h0;
     }
   }
-}
-function medDepot(g, u) { // where a unit sent home heals: the nearest depot its side holds, if nearer than the base flag
-  if (!SPECIAL.on || !SPECIAL.repair) return null;
-  let best = null, bd = Math.abs(u.u - homeFlagU(g, u.side));
-  for (const n of g.nodes) if (n.type === 'repair' && n.owner === u.side) { const d = Math.hypot(n.u - u.u, n.v - u.v); if (d < bd) { bd = d; best = n; } }
-  return best;
 }
 function mkGuard(g, n, type, k, of) {
   const d = UDEF[type], a = (k / of) * Math.PI * 2 + 0.5, r = of > 1 ? 34 : 0;

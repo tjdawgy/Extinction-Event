@@ -83,8 +83,8 @@ const slotPos = (s, k) => k >= FWD_SLOT ? mapPt(FWD_PADS[k - FWD_SLOT].at) : map
 let FWD_PADS = [];
 const mapFwd = () => { FWD_PADS = []; MAP.nodes.forEach((n, i) => { if (n.type === 'forwardPad') for (const p of n.pads) FWD_PADS.push({ node: i, at: p, allow: n.allow }); }); };
 mapFwd(); MAP_HOOKS.push(mapFwd);
-// v2.68 (Two-Lane draw fix, a): units trained at a Barracks role on a forward pad start at that lane's Forward flag, join
-// that lane's squad and gather there (u.fwdHome) while their side holds the pad's post; the player and the AI alike.
+// v2.68 (Two-Lane draw fix, a): units trained at a Barracks role on a forward pad start at that lane's forward rally spot
+// (RALLY.fwdOut out on the lane), join that lane and gather there (u.fwdHome) while their side holds the pad's post; the player and the AI alike.
 // FWD_RALLY.on false = v2.67 (they appear beside the building and gather at the base's rally point).
 const FWD_RALLY = { on: true };
 function fwdRally(g, s, b) { // where a unit trained by building b starts and gathers: { u, v, lane, n } or null
@@ -92,7 +92,7 @@ function fwdRally(g, s, b) { // where a unit trained by building b starts and ga
   const F = FWD_PADS[b.slot - FWD_SLOT]; if (!F) return null;
   let lane = 0, bd = 1e9; MAP.lanes.forEach((ln, k) => { const d = Math.abs(laneY(ln, F.at[0]) - F.at[1]); if (d < bd) { bd = d; lane = k; } });
   if (g.sides[s].direct) return ctlFwdSpot(g, s, b, lane, F.node); // v2.73: under direct control they gather beside the building
-  const R = g.sides[s].rally, u = clamp(R ? R.fwd : hqU(s) + dirOf(s) * RALLY.fwdOut, 0, L), v = laneY(MAP.lanes[lane], u);
+  const u = clamp(hqU(s) + dirOf(s) * RALLY.fwdOut, 0, L), v = laneY(MAP.lanes[lane], u);
   return { u, v, lane, n: F.node };
 }
 const fwdAt = (g, k) => g.ents.find(e => e.kind === 'b' && e.hp > 0 && e.slot === k); // what stands on forward pad slot k (either side)
@@ -107,64 +107,12 @@ function fwdOk(g, s, type, k) {
 }
 const hqPos = s => mapPt(MAP.bases[s].hq);
 const rallyU0 = s => MECH7C.on ? MAP.bases[s].rally[0] : hqU(s) + dirOf(s) * 300; // v2.43: inside the HQ gun's cover (v2.59: the map's rally point)
-// v2.62: with a game, the player's active rally flag (side.rally) once the player has used the army controls
-const rallyU = (s, g) => g && g.sides[s].rally ? g.sides[s].rally[g.sides[s].rally.at] : rallyU0(s);
-/* ---------- Army controls (v2.62, Phase 1): two rally points and Send damaged home ----------
-   The player's side only; the AI doesn't use them yet, and a side that never touches them has no side.rally, so nothing
-   changes for it. side.rally = { at: 'def' | 'fwd', def: u, fwd: u }: the base flag (where the map's rally point was)
-   and the forward flag (RALLY.fwdOut from the HQ, just past its own field node). The active flag is where idle and new
-   units gather and where Retreat goes; switching flags sends the whole army there (a Regroup to the flag). Flags stay
-   between RALLY.min out from the HQ and RALLY.past beyond the centre.
-   Send damaged home: units under DAMAGED.thr of their HP go back to the base flag holding their fire (as on Retreat),
-   heal DAMAGED.heal of their HP a second there once DAMAGED.calm s unhurt, and rejoin at DAMAGED.done. */
+// The rally point (where a side without direct control gathers its idle and new units). v2.75: the player's two rally flags
+// (v2.62), squad flags (v2.66) and Send damaged home are gone (docs/CONTROLS.md): a side under direct control has a base flag
+// per lane instead (src/sim/control.js). g is kept in the signature for the callers.
+const rallyU = (s, g) => rallyU0(s);
+// RALLY: fwdOut, where the AI's forward Barracks units gather (v2.68); min and past, how far a base flag may move (setFlag)
 const RALLY = { fwdOut: 560, min: 120, past: 250 };
-const DAMAGED = { thr: 0.4, heal: 0.03, done: 0.95, calm: 3 };
-function rallyOf(g, s) {
-  const sd = g.sides[s];
-  if (!sd.rally) sd.rally = { at: 'def', def: rallyU0(s), fwd: hqU(s) + dirOf(s) * RALLY.fwdOut };
-  return sd.rally;
-}
-const homeFlagU = (g, s) => g.sides[s].rally ? g.sides[s].rally.def : rallyU0(s);
-function setRally(g, s, which, u) { // move a flag (the player taps it, then the ground)
-  if (which !== 'def' && which !== 'fwd') return { ok: false, msg: 'No such flag' };
-  const R = rallyOf(g, s), a = hqU(s) + dirOf(s) * RALLY.min, b = L / 2 + dirOf(s) * RALLY.past;
-  R[which] = clamp(u, Math.min(a, b), Math.max(a, b));
-  const O = g.sides[s].orders;
-  if (MAP_LANED) { for (let k = 0; k < MAP.lanes.length; k++) { const o = O && O.lanes && O.lanes[k]; if (o && o.o === 'move' && sqFlag(R, k) === which) giveOrder(g, s, 'lane', k, 'move', ...flagPt(g, s, which, k), true); } } // v2.66: each squad follows its flag
-  else if (R.at === which && O && O.all && O.all.o === 'move') giveOrder(g, s, 'all', null, 'move', R[which], 0, true); // the army follows its flag
-  return { ok: true, msg: which === 'def' ? 'Base flag moved' : 'Forward flag moved' };
-}
-// v2.66 (Split Army, docs/SPLIT_ARMY.md): on a lane map each lane has its own flags, at the flag's x on that lane's
-// centre line (the Base flag in the middle, where the lanes leave the base); a squad (lane) remembers which of its flags
-// it last rallied to (R.sq). flagPt: where a flag stands for a lane (Classic: depth 0, as before).
-const sqFlag = (R, k) => (R.sq && R.sq[k]) || R.at;
-function flagPt(g, s, which, lane) {
-  const u = rallyOf(g, s)[which];
-  return [u, MAP_LANED && lane != null && which === 'fwd' ? laneY(MAP.lanes[lane], u) : 0];
-}
-function useRally(g, s, which, lane) { // one tap: make a flag the rally point and send the whole army (v2.66: or one squad) to it
-  if (g.countdown > 0) return WAIT_GO;
-  const R = rallyOf(g, s);
-  if (!MAP_LANED) { R.at = which; const r = giveOrder(g, s, 'all', null, 'move', R[which], 0); return { ok: true, msg: `Army to the ${which === 'def' ? 'base' : 'forward'} flag${r.ok ? '' : ' (no units yet)'}` }; }
-  const lanes = lane == null ? MAP.lanes.map((_, k) => k) : [lane];
-  if (lane == null) { R.at = which; R.sq = {}; } else (R.sq || (R.sq = {}))[lane] = which;
-  let any = false; for (const k of lanes) any = giveOrder(g, s, 'lane', k, 'move', ...flagPt(g, s, which, k)).ok || any;
-  const who = lane == null ? 'Army' : `${MAP.lanes[lane].id[0].toUpperCase() + MAP.lanes[lane].id.slice(1)} squad`;
-  return { ok: true, msg: `${who} to the ${which === 'def' ? 'base' : 'forward'} flag${any ? '' : ' (no units yet)'}` };
-}
-// v2.66: where new units go on a lane map: a lane, or null to alternate (the default)
-function setLaneNew(g, s, k) {
-  if (!MAP_LANED) return { ok: false, msg: 'This map has one lane' };
-  if (k != null && laneIx(k) < 0) return { ok: false, msg: 'Unknown lane' };
-  g.sides[s].laneNew = k == null ? null : laneIx(k);
-  return { ok: true, msg: k == null ? 'New units: alternating between the lanes' : `New units: ${MAP.lanes[laneIx(k)].id} lane` };
-}
-function sendDamagedHome(g, s) {
-  if (g.countdown > 0) return WAIT_GO;
-  let n = 0;
-  for (const e of g.ents) if (e.kind === 'u' && e.side === s && e.hp > 0 && !e.temp && !e.medHome && e.hp < e.maxHp * DAMAGED.thr) { e.medHome = 1; n++; }
-  return n ? { ok: true, msg: `${n} damaged unit${n === 1 ? '' : 's'} heading home to heal`, n } : { ok: false, msg: `No unit is below ${Math.round(DAMAGED.thr * 100)}% health`, n: 0 };
-}
 
 // v2.55 (Phase 0 stance fix): an AI-played side 0 (the harness, spectate) starts on Retreat like the AI's side 1. It started
 // on the player's Hold, which left its new units standing where they were made until its first attack: the right side won

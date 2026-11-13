@@ -31,19 +31,6 @@ test('a depot heals its holder\'s units within reach once unhurt for a moment; n
   sim.SPECIAL.on = false; a.lastHurt = -99; sim.updateRepair(g, 1); assert.strictEqual(a.hp, h, 'switched off');
 });
 
-test('Send damaged home: a unit goes to the nearest depot its side holds when that is nearer than the base flag, heals there and rejoins', () => {
-  const g = setup(), n = nodeOf(g, 'repair'); n.owner = 0; n.prog = 100;
-  g.ents = g.ents.filter(e => e.kind !== 'u');
-  const u = sim.spawnUnit(g, 0, 'rifle', n.u + 120, n.v + 30); u.hp = u.maxHp * 0.3;
-  assert.ok(sim.sendDamagedHome(g, 0).ok);
-  assert.strictEqual(sim.medDepot(g, u), n);
-  for (let i = 0; i < 60 * 40 && u.medHome; i++) sim.update(g, sim.TICK);
-  assert.ok(!u.medHome && u.hp >= u.maxHp * 0.95, `healed (${(u.hp / u.maxHp).toFixed(2)})`);
-  assert.ok(Math.hypot(u.u - n.u, u.v - n.v) < 200, `it healed at the depot, not the base (${u.u.toFixed(0)}, ${u.v.toFixed(0)})`);
-  n.owner = 1; const v = sim.spawnUnit(g, 0, 'rifle', n.u + 120, n.v); v.hp = v.maxHp * 0.3; v.medHome = 1;
-  assert.strictEqual(sim.medDepot(g, v), null, 'the enemy\'s depot is no refuge');
-});
-
 test('relic guards: neutral, never move, hit either side within reach, ignore what passes further away; both sides can hit them', () => {
   const g = setup(), n = nodeOf(g, 'relic'), G = g.guards.filter(x => x.node === n.id);
   assert.deepStrictEqual([...G.map(x => x.type)].sort(), ['tank', 'tank', 'titan']);

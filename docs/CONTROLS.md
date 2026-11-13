@@ -2,6 +2,8 @@
 
 Replaces [SPLIT_ARMY.md](SPLIT_ARMY.md) (v2.66) and the v2.62 army controls (two rally flags, Send damaged home).
 
+*Built in v2.73 (the SIM: src/sim/control.js), v2.74 (the UI: src/ui/controls.js) and v2.75 (the old rally flags and Send damaged home removed from the SIM). Numbers: the lasso arms after a 260 ms hold; a unit's tap area is 26 px around its body or feet; a moved selection spreads 14 apart; base flags heal within 80; lane maps put each lane's base flag 40 beyond the map's rally point, on the lane. KNOWN_ISSUES.md "Army controls redesign".*
+
 The old controls were clunky on multi-lane maps: commands lived in the Army tab, too many orders overlapped (the global
 stance, group and type orders, squad orders, Regroup, Rally, Send damaged home), and key actions hid in long-presses.
 
