@@ -26,7 +26,7 @@ test('as Bloomhost: Brood Mound and Rootheart cards, "Already built", info cards
     for (let i = 0; i < 30 * (MOUND.every + 1); i++) update(game, 1 / 30);
     out.mites = game.ents.filter(e => e.type === 'mite' && e.side === 0).length;
     document.querySelector('.tabs [data-tab="train"]').click(); out.train = [...$('cards').querySelectorAll('.card')].map(x => x.dataset.type);
-    selType('mite'); out.army = selLive().length; selClear(); // v2.74: Mites can be selected like any unit
+    selSet(myUnits().filter(e => e.type === 'mite')); out.army = selLive().length; selClear(); // v2.74: Mites can be selected like any unit (v2.78: selType takes only those on screen)
     const bad = []; for (const t of BUILD_ORDER.filter(t => BD('bloomhost', t))) { try { drawIcon(document.createElement('canvas'), 'b', t, 'bloomhost'); showInfo('b', t); } catch (e) { bad.push(t + ': ' + e.message); } } hideInfo();
     try { drawIcon(document.createElement('canvas'), 'u', 'mite'); } catch (e) { bad.push('mite: ' + e.message); }
     out.bad = bad;

@@ -68,7 +68,7 @@ test('a match as Bloomhost: names and cards, Train after a Larva Pit, Larva Pit 
   const sel = await page.evaluate(() => [...new Set(selLive().map(e => e.type))].sort());
   for (const k of ['bulwark', 'razorwing', 'skitterling']) assert.ok(sel.includes(k), `${k} in ${sel}`);
   await page.click('#cmdbar [data-c="hold"]');
-  assert.ok(await page.evaluate(() => myUnits().every(e => e.po.o === 'hold') && !SELN.size));
+  assert.ok(await page.evaluate(() => myUnits().every(e => e.po.o === 'hold' || (e.po.o === 'go' && Math.hypot(e.po.u - e.u, e.po.v - e.v) < 60)) && !SELN.size)); // v2.76: units on one spot step apart into their own spaces
   // v2.19: every unit of both factions has a sprite, an info card, a group and a name (catches a unit missing anywhere)
   const missing = await page.evaluate(() => Object.keys(UDEF).filter(t => !DRAW_U[t] || !UNIT_TIPS[t] || !GROUP_OF[t] || !PLURAL[t] || !SIGHT[t] || (!UDEF[t].air && !SPR_BOX[t] && UDEF[t].fac) || (UDEF[t].shp && !UDEF[t].fac)));
   assert.deepStrictEqual(missing, []);
