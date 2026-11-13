@@ -391,9 +391,20 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 #lanes button[data-k="all"]{border-color:rgba(57,200,255,.45)}
 #cmdbar{position:absolute;inset:0;z-index:2;display:flex;align-items:stretch;gap:6px;padding:5px;background:rgba(12,22,40,.97);border-radius:13px}
 #cmdbar.hide{display:none}
+#grps{flex:0 0 auto;display:flex;gap:4px;padding:5px 5px 5px 0;position:relative;z-index:3} #grps.hide{display:none} /* v2.79: control groups, right end of the bottom panel */
+#panel.grp #cmdbar{right:151px} /* the command bar stops short of the group slots */
+#grps button{position:relative;overflow:hidden;width:46px;border-radius:10px;border:1px solid rgba(127,227,255,.4);background:rgba(16,30,50,.92);color:var(--text);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+#grps b{font-size:16px;font-weight:800;line-height:1}
+#grps i{font-style:normal;font-size:11.5px;font-weight:800;min-width:20px;padding:0 4px;border-radius:7px;background:var(--blue);color:#001522;line-height:16px;text-align:center;font-variant-numeric:tabular-nums}
+#grps button.empty{border-style:dashed;border-color:var(--line)} #grps button.empty i{background:transparent;color:var(--muted)}
+#grps button.holding::after{content:'';position:absolute;left:0;bottom:0;height:4px;background:#5dff9a;animation:grpHold .45s linear forwards}
+@keyframes grpHold{from{width:0}to{width:100%}}
+#grps button.saved{animation:grpSaved .8s ease-out}
+@keyframes grpSaved{0%{background:#1f6f3a;border-color:#5dff9a;box-shadow:0 0 0 3px rgba(93,255,154,.7)}100%{box-shadow:0 0 0 0 rgba(93,255,154,0)}}
+.spectate #grps{display:none}
 #lpick{position:fixed;inset:0;z-index:7;pointer-events:auto;background:rgba(3,6,14,.18)} #lpick.hide{display:none} /* v2.77: the Attack lane picker; a tap outside its box cancels */
 #lpick .lpbox{position:absolute;display:flex;flex-direction:column;gap:5px;padding:6px;background:rgba(12,22,40,.97);border:1px solid rgba(255,77,77,.6);border-radius:13px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
-#lpick small{color:#ffd6d6;font-size:11px;font-weight:700;text-align:center;line-height:1.2}
+#lpick small{color:#ffd6d6;font-size:11px;font-weight:700;text-align:center;line-height:1.2} #lpick .lpbox.tight{gap:3px;padding:4px} #lpick .lpbox.tight small{display:none} /* short screens: no title, so the lanes fit between the top bar and the command bar */
 #lpick button{min-height:44px;border-radius:10px;border:1px solid var(--line);background:rgba(30,46,76,.85);color:var(--text);font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 12px}
 #lpick button i{font-style:normal;font-size:10px;font-weight:700;color:var(--muted)}
 #lpick button.near{background:#3a1616;border-color:#ff6b6b;box-shadow:inset 0 0 0 1.5px #ff6b6b;color:#ffd6d6} #lpick button.near i{color:#ffb0b0}
@@ -403,11 +414,11 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 #cmdbar .seltag{flex:0 0 auto;display:flex;align-items:center;gap:2px;padding-left:10px;border-radius:10px;border:1px solid rgba(127,227,255,.6);background:rgba(16,48,58,.85);font-size:12.5px;color:#d6f6ff;white-space:nowrap}
 #cmdbar .seltag b{font-size:15px}
 #selX{width:44px;align-self:stretch;border:0;background:transparent;color:#d6f6ff;font-size:22px;font-weight:700;line-height:1}
-#cmdbar .cmdhint{flex:1 1 0;min-width:0;align-self:center;color:var(--muted);font-size:11px;line-height:1.2;padding-left:2px}
+#cmdbar .cmdhint{flex:1 1 0;min-width:0;align-self:center;color:var(--muted);font-size:11px;line-height:1.2;padding-left:2px;overflow:hidden;max-height:100%}
 .selecting #bp{display:none} .selecting #panel>.tabs,.selecting #cards{visibility:hidden}
 #alerts,#od{left:calc(env(safe-area-inset-left,0px) + 66px)} /* right of the left column */
 .spectate #lanes,.spectate #cmdbar{display:none}
-@media (max-width:700px){#cmdbar>button{font-size:13px;flex-basis:82px}#cmdbar .cmdhint{font-size:10px}}
+@media (max-width:700px){#cmdbar>button{font-size:13px;flex-basis:82px}#cmdbar .cmdhint{font-size:10px}#panel.grp #cmdbar .cmdhint{display:none}} /* v2.79: with the group slots there is no room for the hint on the narrow phone */
 </style>
 </head>
 <body>
@@ -445,6 +456,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
     <div class="tabs"><button data-tab="build" class="on">Build</button><button data-tab="train">Train</button></div>
     <div id="cards"></div>
     <div id="cmdbar" class="hide" role="toolbar" aria-label="Orders for the selected units"><div class="seltag"><span><b id="selN">0</b> selected</span><button id="selX" aria-label="Clear the selection">×</button></div><button data-c="attack">Attack</button><button data-c="hold">Hold</button><button data-c="retreat">Retreat</button><span class="cmdhint">Tap the ground to move them there</span></div>
+    <div id="grps" class="hide" role="group" aria-label="Control groups"><button data-g="0" aria-label="Group 1: tap to select, double-tap to jump there, hold to save the selection"><b>1</b><i>–</i></button><button data-g="1" aria-label="Group 2: tap to select, double-tap to jump there, hold to save the selection"><b>2</b><i>–</i></button><button data-g="2" aria-label="Group 3: tap to select, double-tap to jump there, hold to save the selection"><b>3</b><i>–</i></button></div>
   </footer>
 </div>
 <div id="ov"><div class="box" id="box"></div></div>
@@ -696,7 +708,7 @@ MAPS.threelane = (() => {
   };
 })();
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.78'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.79'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -9460,7 +9472,9 @@ function refreshExt() {
    Only your own units, never enemies or relic guards. Command: tap the ground (move there and hold), tap an enemy you can
    see (attack it, then hold; v2.77), or the command bar's Attack (on a lane map it first asks which lane, the one nearest
    the selection highlighted; v2.77), Hold, Retreat. The command bar takes the bottom panel's place while anything is selected; the selection clears
-   after an order or with the tag's ×. The SIM side is directControl / command (src/sim/control.js). */
+   after an order or with the tag's ×. Control groups (v2.79): three slots at the right end of the bottom panel; hold one to
+   save the selection into it, tap it to select the group, double-tap it to jump the camera there; each shows its count.
+   The SIM side is directControl / command / setGroup (src/sim/control.js). */
 const SELN = new Set(); // the selected units' ids
 const CT = { hitPx: 26, dbl: 350, lassoMs: 260, lassoMin: 14, lineSel: 22, still: 8, baseOut: 140, onBld: 12 }; // onBld: a tap on an enemy building targets it unless one of yours is this close under the tap
 let ctlMark = null, ctlLoop = null; // ctlLoop: the last box, fading out; ctlMark: where the last move order went (or its target)
@@ -9531,7 +9545,9 @@ function openPick() {
   $('lpick').classList.remove('hide');
   const a = $('cmdbar').querySelector('[data-c="attack"]').getBoundingClientRect(), w = Math.max(a.width, 128);
   box.style.width = w + 'px'; box.style.left = Math.max(4, Math.min(innerWidth - w - 4, a.left + a.width / 2 - w / 2)) + 'px';
-  box.style.bottom = (innerHeight - a.top + 8) + 'px';
+  const bt = $('cmdbar').getBoundingClientRect().top, top = $('hud').getBoundingClientRect().bottom;
+  box.classList.remove('tight'); box.style.bottom = (innerHeight - bt + 6) + 'px';
+  if (box.getBoundingClientRect().top < top + 4) { box.classList.add('tight'); box.style.bottom = (innerHeight - bt + 1) + 'px'; } // v2.79: a short screen: drop the title and close up
 }
 const pickOpen = () => !$('lpick').classList.contains('hide');
 function closePick() { $('lpick').classList.add('hide'); }
@@ -9597,6 +9613,7 @@ function buildLanes() {
 function refreshCtl() {
   const box = $('lanes'), bar = $('cmdbar'), on = ctlOn();
   box.classList.toggle('hide', !on); V.lpad = game && !game.spectate && game.sides[0].direct ? 58 : 0; // the column's width: the camera can scroll the field's left edge clear of it
+  refreshGroups(on);
   if (!on) { bar.classList.add('hide'); closePick(); document.body.classList.remove('selecting'); return; }
   const us = myUnits(), n = MAP_LANED ? MAP.lanes.length : 0, cnt = new Array(n).fill(0);
   for (const e of us) { const k = n ? unitLane(e) : null; if (k != null) cnt[k]++; }
@@ -9641,8 +9658,52 @@ function drawCtlOverlay(c) {
     c.globalAlpha = 1 - k; c.strokeStyle = '#7fe3ff'; c.lineWidth = 2.2; c.beginPath(); c.ellipse(x, y, r, r * 0.45, 0, 0, 7); c.stroke(); c.globalAlpha = 1;
   }
 }
+// v2.79: control groups. Hold a slot (GRP.holdMs) to save the selection into it (a bar fills, then the slot flashes and a
+// toast confirms); tap it to select its units (replacing the selection); a second tap within CT.dbl jumps the camera to them.
+// The dead drop out; nothing is added on its own (side.groups, saved with the match).
+const GRP = { holdMs: 450 };
+let grpTap = { t: 0, k: -1 }, grpHold = null;
+function grpSave(k, b) {
+  const ids = selLive().map(e => e.id);
+  if (!ids.length) { toast('Select units first, then hold a slot to save them as a group', ''); return; }
+  const r = setGroup(game, 0, k, ids); toast(r.msg, r.ok ? 'ok' : 'bad'); if (!r.ok) return;
+  b.classList.remove('saved'); void b.offsetWidth; b.classList.add('saved'); sndPlay('built');
+  TUT.sig.grpSave = true; refreshCtl();
+}
+function grpTapped(k) {
+  const us = groupUnits(game, 0, k);
+  if (!us.length) { toast(`Group ${k + 1} is empty: select units, then hold the slot to save them`, ''); grpTap.t = 0; refreshCtl(); return; }
+  const now = performance.now();
+  if (grpTap.k === k && now - grpTap.t < CT.dbl) { // the second tap: jump to them (the first already selected them)
+    grpTap.t = 0; camJump(us.reduce((a, e) => a + e.u, 0) / us.length, us.reduce((a, e) => a + e.v, 0) / us.length); TUT.sig.grpJump = true; return;
+  }
+  grpTap = { t: now, k };
+  selSet(us, false); TUT.sig.grpSel = true;
+}
+for (const b of document.querySelectorAll('#grps button')) {
+  const k = +b.dataset.g;
+  b.addEventListener('pointerdown', ev => {
+    if (!ctlOn() || paused) return;
+    try { b.setPointerCapture(ev.pointerId); } catch (_) {}
+    const G = grpHold = { k, done: false };
+    b.classList.add('holding');
+    G.tm = setTimeout(() => { if (grpHold !== G) return; G.done = true; b.classList.remove('holding'); grpSave(k, b); }, GRP.holdMs);
+  });
+  const end = ev => {
+    if (!grpHold || grpHold.k !== k) return;
+    const G = grpHold; grpHold = null; clearTimeout(G.tm); b.classList.remove('holding');
+    if (ev.type === 'pointerup' && !G.done && ctlOn() && !paused) grpTapped(k);
+  };
+  b.addEventListener('pointerup', end); b.addEventListener('pointercancel', end);
+  b.addEventListener('contextmenu', ev => ev.preventDefault());
+}
+function refreshGroups(on) {
+  const box = $('grps'), S = game && game.sides[0]; box.classList.toggle('hide', !on || !S.groups); $('panel').classList.toggle('grp', !!(on && S.groups));
+  if (!on || !S.groups) return;
+  for (const b of box.children) { const n = groupUnits(game, 0, +b.dataset.g).length; setHTML(b.querySelector('i'), n ? String(n) : '–'); b.classList.toggle('empty', !n); }
+}
 // A new or resumed match: under direct control, nothing selected, the column for its map
-function ctlStart() { SELN.clear(); closePick(); ctlMark = null; ctlLoop = null; if (game && !game.spectate) directControl(game, 0); buildLanes(); }
+function ctlStart() { SELN.clear(); closePick(); grpTap = { t: 0, k: -1 }; ctlMark = null; ctlLoop = null; if (game && !game.spectate) directControl(game, 0); buildLanes(); }
 /* ---------- Building panel: tap a building to upgrade or sell it ---------- */
 function openPanel(b) { sel = b; selPad = -1; sellArm = 0; upArm = 0; bpPath = null; $('bp').classList.remove('hide'); refreshPanel(); placeToasts(); }
 function openPad(k) {
@@ -10160,7 +10221,7 @@ function lanesTip() {
   let T = {}; try { T = JSON.parse(localStorage.getItem(TIPS_KEY) || '{}') || {}; } catch (e) {}
   if (T.lanes) return;
   const el = document.createElement('div'); el.id = 'tipLanes'; el.className = 'tipcard';
-  el.innerHTML = `<b>${MAP.lanes.length} lanes: select, then command</b><p>The column on the left is your army: <b>All</b>, then each lane with its unit count. <b>Tap a lane</b> to select its units. New units wait at the rally point in your base.</p><p>Select units (tap them, double-tap one for its whole type, or hold a moment and draw a loop), then <b>tap the ground</b> to move them there, or use <b>Attack</b>, <b>Hold</b> or <b>Retreat</b>. Attack goes down the lane they are in${MAP.lanes.length > 2 ? '; the walls open at the centre node' : ''}.</p><button id="bTipOk">Got it</button>`;
+  el.innerHTML = `<b>${MAP.lanes.length} lanes: select, then command</b><p>The column on the left is your army: <b>All</b>, then each lane with its unit count. <b>Tap a lane</b> to select its units. New units wait at the rally point in your base.</p><p>Select units (tap them, double-tap one for its type on screen, or hold a moment and drag a box), then <b>tap the ground</b> to move them there, <b>tap an enemy</b> to attack it, or use <b>Attack</b>, <b>Hold</b> or <b>Retreat</b>. <b>Attack</b> asks which lane, the nearest highlighted${MAP.lanes.length > 2 ? '; the walls open at the centre node' : ''}. Hold a slot at the bottom right to save a control group.</p><button id="bTipOk">Got it</button>`;
   document.body.appendChild(el);
   $('bTipOk').addEventListener('click', () => { T.lanes = 1; try { localStorage.setItem(TIPS_KEY, JSON.stringify(T)); } catch (e) {} el.remove(); });
 }
@@ -10841,6 +10902,7 @@ const tNode = n => { const q = P(n.u, n.v); return tWorld(q.x - NODE_R, q.y - NO
 const tFlag = () => { const f = ctlBase(0), q = P(f.u, f.v); return tWorld(q.x - 26, q.y - 52, q.x + 34, q.y + 12); }; // v2.76: the base rally point
 const tUnits = () => { const us = myUnits(); if (!us.length) return tFlag(); const q = us.map(e => P(e.u, e.v)); return tWorld(Math.min(...q.map(p => p.x)) - 16, Math.min(...q.map(p => p.y)) - 34, Math.max(...q.map(p => p.x)) + 16, Math.max(...q.map(p => p.y)) + 10); }; // v2.74: your troops on the field
 const tUnit = () => { const e = myUnits().sort((a, b) => a.id - b.id)[0]; if (!e) return tFlag(); const q = P(e.u, e.v); return tWorld(q.x - 14, q.y - 30, q.x + 14, q.y + 6); }; // v2.74: one of your troops
+const tGrp = () => SELN.size && SELN.size === myUnits().length ? tEl('#grps [data-g="0"]') : tEl('#lanes [data-k="all"]'); // v2.79: control group slot 1, once everyone is selected
 const tCmd = o => SELN.size && SELN.size === myUnits().length ? tEl(`#cmdbar [data-c="${o}"]`) : tEl('#lanes [data-k="all"]'); // v2.74: a command for the whole army: All first until everyone is selected
 const tField = () => ({ rect: () => ({ left: V.cw * 0.3, top: V.ft + 14, right: V.cw * 0.7, bottom: V.ft + 14 + (V.fb - V.ft) * 0.35 }), screen: true }); // a band of open battlefield, small enough to leave room for the bubble
 const tCard = t => tab === 'build' && BUILD_ORDER.includes(t) || tab === 'train' && UDEF[t] ? tEl(`#cards .card[data-type="${t}"]`) : tEl(`.tabs [data-tab="${BUILD_ORDER.includes(t) ? 'build' : 'train'}"]`);
@@ -10899,8 +10961,11 @@ const TUT_CH = [
       { act: true, txt: () => 'Tap All on the left to select your whole army.', hi: () => tEl('#lanes [data-k="all"]'), enter: () => selClear(), done: () => SELN.size > 0 && SELN.size === myUnits().length },
       { act: true, txt: () => 'Tap Attack: they advance down the lane and fight their way to the enemy base.', hi: () => tCmd('attack'), enter: () => { TUT.sig.attack = false; }, done: () => TUT.sig.attack },
       { act: true, txt: () => 'Select them again with All, then tap Hold: they stop and fight anything in range.', hi: () => tCmd('hold'), enter: () => { TUT.sig.hold = false; }, done: () => TUT.sig.hold },
+      { act: true, txt: () => 'Control groups: select them with All, then press and hold slot 1 at the bottom right until it flashes. They are saved as group 1.', gesture: 'hold', hi: tGrp, enter: () => { TUT.sig.grpSave = false; }, done: () => TUT.sig.grpSave },
+      { txt: () => 'Tap a group\'s slot to select that group; double-tap it to jump the camera there. The number shows how many are left: new units are never added on their own.', hi: () => tEl('#grps') },
+      { txt: () => 'With units selected, tap an enemy unit or building to attack it. They fight what they meet on the way, then hold where they are once it is destroyed. Moving units always stop to fight; only Retreat ignores enemies.' },
       { txt: () => 'Retreat brings them back to the rally point without firing. Units heal at the rally point, and at repair depots you hold, but only when you move them there: nothing goes home on its own.', hi: tFlag },
-      { txt: () => 'On a lane map the column on the left lists each lane with its unit count. Tap a lane to select the units in it.', hi: () => tEl('#lanes') },
+      { txt: () => 'On a lane map the column on the left lists each lane with its unit count: tap a lane to select the units in it. There, Attack asks which lane to attack down, with the lane nearest your units highlighted.', hi: () => tEl('#lanes') },
     ] },
   { key: 'upgrades', name: 'Upgrades', blurb: 'Upgrade tiers, paths and what they unlock',
     setup: () => { tPlace('barracks', 4); const u = BDEF.barracks.up; tMe().res.c += u[2].c + u[3].c; tMe().res.e += u[2].e + u[3].e; },
@@ -11066,7 +11131,7 @@ $('tutSkipC').addEventListener('click', tutSkipChapter);
 // The How to Play tab: the chapter list
 CODEX_HOWTO.html = () => { const D = tutDone(); return `<h2>How to Play</h2><p>Hands-on lessons in a practice match as ${factionName('lastfist')}. You can't lose, every step can be skipped, and any chapter can be played or replayed at any time.</p>` +
   TUT_CH.map((C, i) => `<div class="cxch${D[C.key] ? ' done' : ''}" id="cx-tut-${C.key}"><span class="ck" aria-label="${D[C.key] ? 'Completed' : 'Not played'}">${D[C.key] ? '✓' : ''}</span><div class="cxct"><b>${i + 1}. ${cxEsc(C.name)}</b><small>${cxEsc(C.blurb)}</small></div><button class="cxplay" data-tut="${i}">Play</button></div>`).join('') +
-  `<h3 id="cx-controls">Army controls</h3><p><b>Select, then command.</b> Tap one of your units to select it; tap more to add them. <b>Double-tap</b> a unit to select every unit of its type. <b>Press and hold</b> on the battlefield until the ring fills, then draw a loop: the units inside it are selected. <b>All</b>, at the top of the column on the left, selects your whole army. A tag shows how many are selected; its × clears them. Only your own units can be selected.</p><p>With units selected, the command bar takes the bottom panel's place. <b>Tap the ground</b> to send them there: they stop to fight enemies they meet on the way, then hold the spot, each in its own space. <b>Attack</b> sends them down the lane they are in, fighting their way to the enemy base. <b>Hold</b> stops them to fight anything in range. <b>Retreat</b> brings them back to the rally point in the middle of your base, without firing or stopping for enemies. The selection clears after an order. Nothing moves on its own.</p><p><b>New units</b> gather at the rally point and wait there on Hold; from a forward ${tN('barracks')}, beside it. Units never stack: wherever they gather, each takes its own space. <b>Healing:</b> your units heal ${Math.round(CTRL.heal * 100)}% of their health a second, once unhurt for ${CTRL.calm} s, at the rally point and at repair depots you hold, only where you move them.</p><p><b>Lanes</b> (Two-Lane, Three-Lane): the column on the left lists each lane, north on top, with its unit count. <b>Tap a lane</b> to select the units in it (units in your base count toward All only). Aircraft fly straight over the ridge and the walls. On Three-Lane the walls between the lanes each have one gap, at the rich centre node.</p>` +
+  `<h3 id="cx-controls">Army controls</h3><p><b>Select, then command.</b> Tap one of your units to select it; tap more to add them. <b>Double-tap</b> a unit to add every unit of its type that is on screen. <b>Press and hold</b> on the battlefield until the ring fills, then drag a box from corner to corner: the units inside it are selected. <b>All</b>, at the top of the column on the left, selects your whole army. A tag shows how many are selected; its × clears them. Only your own units can be selected.</p><p>With units selected, the command bar takes the bottom panel's place. <b>Tap the ground</b> to send them there: they stop to fight enemies they meet on the way, then hold the spot, each in its own space. <b>Tap an enemy</b> unit or building you can see to attack it; once it is destroyed they hold where they are. <b>Attack</b> sends them down a lane, fighting their way to the enemy base: on a lane map it first shows the lanes, the one nearest them highlighted; tap one, or anywhere else to cancel. On Classic they go at once. <b>Hold</b> stops them to fight anything in range. <b>Retreat</b> brings them back to the rally point in the middle of your base, without firing or stopping for enemies. The selection clears after an order. Nothing moves on its own.</p><p><b>New units</b> gather at the rally point and wait there on Hold; from a forward ${tN('barracks')}, beside it. Units never stack: wherever they gather, each takes its own space. <b>Healing:</b> your units heal ${Math.round(CTRL.heal * 100)}% of their health a second, once unhurt for ${CTRL.calm} s, at the rally point and at repair depots you hold, only where you move them.</p><p><b>Lanes</b> (Two-Lane, Three-Lane): the column on the left lists each lane, north on top, with its unit count. <b>Tap a lane</b> to select the units in it (units in your base count toward All only).</p><p><b>Control groups:</b> three slots at the bottom right. <b>Hold</b> a slot to save the selection into it; <b>tap</b> it to select that group; <b>double-tap</b> it to jump the camera there. Each shows how many are left; the dead drop out and new units are never added. Groups are saved with the match. Aircraft fly straight over the ridge and the walls. On Three-Lane the walls between the lanes each have one gap, at the rich centre node.</p>` +
   `<h3 id="cx-special">Repair depots and relics (Three-Lane)</h3><p>A <b>repair depot</b> is captured like a node: your units near it heal ${REPAIR.heal}% of their health a second once unhurt for ${REPAIR.calm} s: move damaged units there (or to the rally point) to save them. A <b>relic</b> is a neutral camp off the lanes: its gold guards never move and fire at anyone who comes close. Destroy them and stand on the relic to take it, once, for ${RELIC.reward.c} credits.</p>` +
   `<h3 id="cx-cond">Battlefield conditions</h3><p>On the map screen you can add conditions to a match (or let <b>Random</b> pick one): ${COND_KEYS.map(k => `<b>${COND_UI[k].name}</b>: ${COND_UI[k].line()}`).join(' ')} Each map lists the ones it allows; a match shows its conditions as small icons on the minimap's right edge.</p>` +
   `<h3 id="cx-break">Breaking a base</h3><p>Your HQ is shielded while a production building (${tN('barracks')}, ${tN('factory')} or ${tN('techlab')}) stands in your base: destroy them and the HQ is open. A destroyed building leaves <b>rubble</b>: nothing can be built on its pad for ${BREAK.rubble.t} s. From ${mmss(BREAK.power.from)} the base guns (HQ, turrets, bunkers) lose ${Math.round(BREAK.power.step * 100)}% of their power every minute as the Extinction Event nears, the same for both sides: <b>Power failing</b>.</p>`; }; // v2.66; v2.69: base-breaking; v2.74: the army controls (docs/CONTROLS.md)

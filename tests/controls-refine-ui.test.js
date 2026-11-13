@@ -110,13 +110,13 @@ for (const dev of [PHONE, NARROW]) test(`the Attack lane picker at ${dev.width}�
   const P_ = await page.evaluate(() => {
     const box = $('lpick').querySelector('.lpbox').getBoundingClientRect(), bar = $('cmdbar').getBoundingClientRect();
     const bs = [...document.querySelectorAll('#lpick button')].map(b => { const q = b.getBoundingClientRect(), h = document.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2); return { k: b.dataset.k, near: b.classList.contains('near'), txt: b.textContent, w: q.width, h: q.height, t: q.top, hit: h === b || b.contains(h) }; });
-    return { open: !$('lpick').classList.contains('hide'), bs, box: { l: box.left, r: box.right, t: box.top, b: box.bottom }, barTop: bar.top, W: innerWidth, H: innerHeight, orders: myUnits().map(e => e.po.o) };
+    return { open: !$('lpick').classList.contains('hide'), bs, box: { l: box.left, r: box.right, t: box.top, b: box.bottom }, barTop: bar.top, hudB: $('hud').getBoundingClientRect().bottom, W: innerWidth, H: innerHeight, orders: myUnits().map(e => e.po.o) };
   });
   assert.ok(P_.open, 'the picker is open'); assert.deepStrictEqual(P_.bs.map(b => b.k), ['0', '1', '2'], 'North, Centre, South');
   assert.deepStrictEqual(P_.bs.map(b => b.near), [false, false, true], 'South (where most of them are) is highlighted');
   for (const b of P_.bs) assert.ok(b.w >= 44 && b.h >= 44 && b.hit, `a 44 pt, uncovered button ${JSON.stringify(b)}`);
   for (let k = 1; k < 3; k++) assert.ok(P_.bs[k].t > P_.bs[k - 1].t, 'stacked as on the map');
-  assert.ok(P_.box.l >= 0 && P_.box.r <= P_.W && P_.box.t >= 46 && P_.box.b <= P_.barTop, `on screen, above the command bar, below the top bar ${JSON.stringify(P_.box)}`);
+  assert.ok(P_.box.l >= 0 && P_.box.r <= P_.W && P_.box.t >= P_.hudB && P_.box.b <= P_.barTop, `on screen, above the command bar, below the top bar ${JSON.stringify(P_.box)}`);
   assert.ok(P_.orders.every(o => o === 'hold'), 'nothing ordered yet');
   await page.evaluate(() => drawNow()); await page.waitForTimeout(50);
   // a tap elsewhere cancels: the picker closes, the selection stays, nobody moves
@@ -223,3 +223,75 @@ for (const dev of [PHONE, NARROW]) test(`the rectangle box at ${dev.width}×${de
   await page.close();
 });
 
+// v2.79
+const holdSlot = async (page, k, ms = 650) => { const q = await page.evaluate(i => { const r = document.querySelector(`#grps [data-g="${i}"]`).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }, k); await page.mouse.move(...q); await page.mouse.down(); await page.waitForTimeout(ms); await page.mouse.up(); await page.waitForTimeout(60); };
+const slotN = page => page.evaluate(() => [...document.querySelectorAll('#grps i')].map(i => i.textContent));
+
+test('control groups: hold to save (with a confirmation), tap to select, double-tap to jump; the dead drop out, new units are not added; save and load keep them', { skip }, async () => {
+  const { page, errors } = await openPage(browser, PHONE);
+  await start(page, 'threelane'); await page.evaluate(HELPERS);
+  const I = await page.evaluate(() => { __look(760, 0); const ids = [0, 1, 2, 3].map(i => spawnUnit(game, 0, i % 2 ? 'tank' : 'rifle', 700 + i * 30, (i % 2) * 40 - 20).id); const far = spawnUnit(game, 0, 'rifle', 1300, 400).id; refreshUI(true); return { ids, far }; });
+  assert.deepStrictEqual(await slotN(page), ['–', '–', '–'], 'empty slots show a dash');
+  // nothing selected: holding a slot only explains
+  await holdSlot(page, 0); assert.deepStrictEqual(await slotN(page), ['–', '–', '–']);
+  // save four into slot 2
+  await clearToasts(page);
+  for (const id of I.ids) await tapUnit(page, id);
+  await page.waitForTimeout(400);
+  await holdSlot(page, 1);
+  assert.deepStrictEqual(await slotN(page), ['–', '4', '–']);
+  assert.ok(await page.evaluate(() => document.querySelector('#grps [data-g="1"]').classList.contains('saved')), 'the slot flashes');
+  assert.match(await page.textContent('#toasts'), /Group 2: 4 units/, 'and a toast confirms');
+  assert.strictEqual((await selIds(page)).length, 4, 'saving keeps the selection');
+  // tap: select the group (replacing the selection)
+  await page.click('#selX'); await tapUnit(page, I.far); await page.waitForTimeout(400);
+  await page.click('#grps [data-g="1"]');
+  assert.deepStrictEqual(await selIds(page), [...I.ids].sort((a, b) => a - b), 'tap: the group, replacing the selection');
+  // double-tap: jump the camera to the group
+  await page.click('#selX'); await page.evaluate(() => __look(1600, 0)); await page.waitForTimeout(400);
+  await page.dblclick('#grps [data-g="1"]');
+  const cam = await page.evaluate(() => cam.x);
+  assert.ok(Math.abs(cam - 745) < 80, `double-tap: the camera jumps to the group (${cam})`);
+  assert.strictEqual((await selIds(page)).length, 4, 'and the group is selected');
+  // a unit dies: the count drops; a new unit is never added
+  await page.click('#selX');
+  await page.evaluate(id => { game.ents.find(e => e.id === id).hp = 0; spawnUnit(game, 0, 'rifle', 720, 0); __run(0.2); }, I.ids[0]);
+  assert.deepStrictEqual(await slotN(page), ['–', '3', '–']);
+  await page.waitForTimeout(400); await page.click('#grps [data-g="1"]');
+  assert.deepStrictEqual(await selIds(page), I.ids.slice(1).sort((a, b) => a - b), 'the dead dropped out, nothing added');
+  await page.click('#selX');
+  // save and load: the group survives
+  await page.evaluate(() => saveGame());
+  await page.reload(); await page.waitForTimeout(300);
+  await page.click('#bResume'); await page.click('#bRes'); await page.evaluate(HELPERS);
+  assert.deepStrictEqual(await slotN(page), ['–', '3', '–'], 'after save and load');
+  await page.click('#grps [data-g="1"]');
+  assert.deepStrictEqual(await selIds(page), I.ids.slice(1).sort((a, b) => a - b), 'and it selects the same units');
+  await page.waitForTimeout(400); await page.click('#selX'); await page.evaluate(() => __look(1600, 0)); await page.dblclick('#grps [data-g="1"]');
+  assert.ok(Math.abs(await page.evaluate(() => cam.x) - 760) < 90, 'and jumps to them');
+  assert.deepStrictEqual(errors, []);
+  await page.close();
+});
+
+for (const dev of [PHONE, NARROW]) test(`control group slots at ${dev.width}×${dev.height}: 44 pt, on screen, uncovered, in the bottom panel in both views, on every map`, { skip }, async () => {
+  const { page, errors } = await openPage(browser, dev);
+  for (const map of ['classic', 'twolane', 'threelane']) {
+    if (map !== 'classic') await page.evaluate(() => { game.over = true; running = false; showStart(); });
+    await start(page, map); await page.evaluate(HELPERS);
+    for (const selecting of [false, true]) {
+      if (selecting) await page.evaluate(() => { spawnUnit(game, 0, 'rifle', 520, 0); refreshUI(true); selAll(); });
+      const R = await page.evaluate(() => {
+        const pn = $('panel').getBoundingClientRect(), bar = $('cmdbar').getBoundingClientRect();
+        return { W: innerWidth, H: innerHeight, pn: { l: pn.left, r: pn.right, t: pn.top, b: pn.bottom }, bar: { r: bar.right, vis: !$('cmdbar').classList.contains('hide') }, s: [...document.querySelectorAll('#grps button')].map(b => { const q = b.getBoundingClientRect(), h = document.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2); return { w: q.width, h: q.height, l: q.left, r: q.right, t: q.top, b: q.bottom, hit: h === b || b.contains(h) }; }) };
+      });
+      assert.strictEqual(R.s.length, 3);
+      for (const s of R.s) {
+        assert.ok(s.w >= 44 && s.h >= 44, `${map}: a slot is ${s.w}×${s.h}`); assert.ok(s.hit, `${map}${selecting ? ' (selecting)' : ''}: a slot is uncovered`);
+        assert.ok(s.l >= R.pn.l && s.r <= R.pn.r && s.t >= R.pn.t && s.b <= R.pn.b && s.r <= R.W, `${map}: inside the bottom panel, on screen`);
+        if (selecting) assert.ok(R.bar.vis && R.bar.r <= s.l + 1, `${map}: the command bar stops short of the slots`);
+      }
+    }
+  }
+  assert.deepStrictEqual(errors, []);
+  await page.close();
+});

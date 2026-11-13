@@ -374,9 +374,20 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 #lanes button[data-k="all"]{border-color:rgba(57,200,255,.45)}
 #cmdbar{position:absolute;inset:0;z-index:2;display:flex;align-items:stretch;gap:6px;padding:5px;background:rgba(12,22,40,.97);border-radius:13px}
 #cmdbar.hide{display:none}
+#grps{flex:0 0 auto;display:flex;gap:4px;padding:5px 5px 5px 0;position:relative;z-index:3} #grps.hide{display:none} /* v2.79: control groups, right end of the bottom panel */
+#panel.grp #cmdbar{right:151px} /* the command bar stops short of the group slots */
+#grps button{position:relative;overflow:hidden;width:46px;border-radius:10px;border:1px solid rgba(127,227,255,.4);background:rgba(16,30,50,.92);color:var(--text);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+#grps b{font-size:16px;font-weight:800;line-height:1}
+#grps i{font-style:normal;font-size:11.5px;font-weight:800;min-width:20px;padding:0 4px;border-radius:7px;background:var(--blue);color:#001522;line-height:16px;text-align:center;font-variant-numeric:tabular-nums}
+#grps button.empty{border-style:dashed;border-color:var(--line)} #grps button.empty i{background:transparent;color:var(--muted)}
+#grps button.holding::after{content:'';position:absolute;left:0;bottom:0;height:4px;background:#5dff9a;animation:grpHold .45s linear forwards}
+@keyframes grpHold{from{width:0}to{width:100%}}
+#grps button.saved{animation:grpSaved .8s ease-out}
+@keyframes grpSaved{0%{background:#1f6f3a;border-color:#5dff9a;box-shadow:0 0 0 3px rgba(93,255,154,.7)}100%{box-shadow:0 0 0 0 rgba(93,255,154,0)}}
+.spectate #grps{display:none}
 #lpick{position:fixed;inset:0;z-index:7;pointer-events:auto;background:rgba(3,6,14,.18)} #lpick.hide{display:none} /* v2.77: the Attack lane picker; a tap outside its box cancels */
 #lpick .lpbox{position:absolute;display:flex;flex-direction:column;gap:5px;padding:6px;background:rgba(12,22,40,.97);border:1px solid rgba(255,77,77,.6);border-radius:13px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
-#lpick small{color:#ffd6d6;font-size:11px;font-weight:700;text-align:center;line-height:1.2}
+#lpick small{color:#ffd6d6;font-size:11px;font-weight:700;text-align:center;line-height:1.2} #lpick .lpbox.tight{gap:3px;padding:4px} #lpick .lpbox.tight small{display:none} /* short screens: no title, so the lanes fit between the top bar and the command bar */
 #lpick button{min-height:44px;border-radius:10px;border:1px solid var(--line);background:rgba(30,46,76,.85);color:var(--text);font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 12px}
 #lpick button i{font-style:normal;font-size:10px;font-weight:700;color:var(--muted)}
 #lpick button.near{background:#3a1616;border-color:#ff6b6b;box-shadow:inset 0 0 0 1.5px #ff6b6b;color:#ffd6d6} #lpick button.near i{color:#ffb0b0}
@@ -386,8 +397,8 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 #cmdbar .seltag{flex:0 0 auto;display:flex;align-items:center;gap:2px;padding-left:10px;border-radius:10px;border:1px solid rgba(127,227,255,.6);background:rgba(16,48,58,.85);font-size:12.5px;color:#d6f6ff;white-space:nowrap}
 #cmdbar .seltag b{font-size:15px}
 #selX{width:44px;align-self:stretch;border:0;background:transparent;color:#d6f6ff;font-size:22px;font-weight:700;line-height:1}
-#cmdbar .cmdhint{flex:1 1 0;min-width:0;align-self:center;color:var(--muted);font-size:11px;line-height:1.2;padding-left:2px}
+#cmdbar .cmdhint{flex:1 1 0;min-width:0;align-self:center;color:var(--muted);font-size:11px;line-height:1.2;padding-left:2px;overflow:hidden;max-height:100%}
 .selecting #bp{display:none} .selecting #panel>.tabs,.selecting #cards{visibility:hidden}
 #alerts,#od{left:calc(env(safe-area-inset-left,0px) + 66px)} /* right of the left column */
 .spectate #lanes,.spectate #cmdbar{display:none}
-@media (max-width:700px){#cmdbar>button{font-size:13px;flex-basis:82px}#cmdbar .cmdhint{font-size:10px}}
+@media (max-width:700px){#cmdbar>button{font-size:13px;flex-basis:82px}#cmdbar .cmdhint{font-size:10px}#panel.grp #cmdbar .cmdhint{display:none}} /* v2.79: with the group slots there is no room for the hint on the narrow phone */

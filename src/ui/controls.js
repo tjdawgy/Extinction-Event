@@ -4,7 +4,9 @@
    Only your own units, never enemies or relic guards. Command: tap the ground (move there and hold), tap an enemy you can
    see (attack it, then hold; v2.77), or the command bar's Attack (on a lane map it first asks which lane, the one nearest
    the selection highlighted; v2.77), Hold, Retreat. The command bar takes the bottom panel's place while anything is selected; the selection clears
-   after an order or with the tag's ×. The SIM side is directControl / command (src/sim/control.js). */
+   after an order or with the tag's ×. Control groups (v2.79): three slots at the right end of the bottom panel; hold one to
+   save the selection into it, tap it to select the group, double-tap it to jump the camera there; each shows its count.
+   The SIM side is directControl / command / setGroup (src/sim/control.js). */
 const SELN = new Set(); // the selected units' ids
 const CT = { hitPx: 26, dbl: 350, lassoMs: 260, lassoMin: 14, lineSel: 22, still: 8, baseOut: 140, onBld: 12 }; // onBld: a tap on an enemy building targets it unless one of yours is this close under the tap
 let ctlMark = null, ctlLoop = null; // ctlLoop: the last box, fading out; ctlMark: where the last move order went (or its target)
@@ -75,7 +77,9 @@ function openPick() {
   $('lpick').classList.remove('hide');
   const a = $('cmdbar').querySelector('[data-c="attack"]').getBoundingClientRect(), w = Math.max(a.width, 128);
   box.style.width = w + 'px'; box.style.left = Math.max(4, Math.min(innerWidth - w - 4, a.left + a.width / 2 - w / 2)) + 'px';
-  box.style.bottom = (innerHeight - a.top + 8) + 'px';
+  const bt = $('cmdbar').getBoundingClientRect().top, top = $('hud').getBoundingClientRect().bottom;
+  box.classList.remove('tight'); box.style.bottom = (innerHeight - bt + 6) + 'px';
+  if (box.getBoundingClientRect().top < top + 4) { box.classList.add('tight'); box.style.bottom = (innerHeight - bt + 1) + 'px'; } // v2.79: a short screen: drop the title and close up
 }
 const pickOpen = () => !$('lpick').classList.contains('hide');
 function closePick() { $('lpick').classList.add('hide'); }
@@ -141,6 +145,7 @@ function buildLanes() {
 function refreshCtl() {
   const box = $('lanes'), bar = $('cmdbar'), on = ctlOn();
   box.classList.toggle('hide', !on); V.lpad = game && !game.spectate && game.sides[0].direct ? 58 : 0; // the column's width: the camera can scroll the field's left edge clear of it
+  refreshGroups(on);
   if (!on) { bar.classList.add('hide'); closePick(); document.body.classList.remove('selecting'); return; }
   const us = myUnits(), n = MAP_LANED ? MAP.lanes.length : 0, cnt = new Array(n).fill(0);
   for (const e of us) { const k = n ? unitLane(e) : null; if (k != null) cnt[k]++; }
@@ -185,5 +190,49 @@ function drawCtlOverlay(c) {
     c.globalAlpha = 1 - k; c.strokeStyle = '#7fe3ff'; c.lineWidth = 2.2; c.beginPath(); c.ellipse(x, y, r, r * 0.45, 0, 0, 7); c.stroke(); c.globalAlpha = 1;
   }
 }
+// v2.79: control groups. Hold a slot (GRP.holdMs) to save the selection into it (a bar fills, then the slot flashes and a
+// toast confirms); tap it to select its units (replacing the selection); a second tap within CT.dbl jumps the camera to them.
+// The dead drop out; nothing is added on its own (side.groups, saved with the match).
+const GRP = { holdMs: 450 };
+let grpTap = { t: 0, k: -1 }, grpHold = null;
+function grpSave(k, b) {
+  const ids = selLive().map(e => e.id);
+  if (!ids.length) { toast('Select units first, then hold a slot to save them as a group', ''); return; }
+  const r = setGroup(game, 0, k, ids); toast(r.msg, r.ok ? 'ok' : 'bad'); if (!r.ok) return;
+  b.classList.remove('saved'); void b.offsetWidth; b.classList.add('saved'); sndPlay('built');
+  TUT.sig.grpSave = true; refreshCtl();
+}
+function grpTapped(k) {
+  const us = groupUnits(game, 0, k);
+  if (!us.length) { toast(`Group ${k + 1} is empty: select units, then hold the slot to save them`, ''); grpTap.t = 0; refreshCtl(); return; }
+  const now = performance.now();
+  if (grpTap.k === k && now - grpTap.t < CT.dbl) { // the second tap: jump to them (the first already selected them)
+    grpTap.t = 0; camJump(us.reduce((a, e) => a + e.u, 0) / us.length, us.reduce((a, e) => a + e.v, 0) / us.length); TUT.sig.grpJump = true; return;
+  }
+  grpTap = { t: now, k };
+  selSet(us, false); TUT.sig.grpSel = true;
+}
+for (const b of document.querySelectorAll('#grps button')) {
+  const k = +b.dataset.g;
+  b.addEventListener('pointerdown', ev => {
+    if (!ctlOn() || paused) return;
+    try { b.setPointerCapture(ev.pointerId); } catch (_) {}
+    const G = grpHold = { k, done: false };
+    b.classList.add('holding');
+    G.tm = setTimeout(() => { if (grpHold !== G) return; G.done = true; b.classList.remove('holding'); grpSave(k, b); }, GRP.holdMs);
+  });
+  const end = ev => {
+    if (!grpHold || grpHold.k !== k) return;
+    const G = grpHold; grpHold = null; clearTimeout(G.tm); b.classList.remove('holding');
+    if (ev.type === 'pointerup' && !G.done && ctlOn() && !paused) grpTapped(k);
+  };
+  b.addEventListener('pointerup', end); b.addEventListener('pointercancel', end);
+  b.addEventListener('contextmenu', ev => ev.preventDefault());
+}
+function refreshGroups(on) {
+  const box = $('grps'), S = game && game.sides[0]; box.classList.toggle('hide', !on || !S.groups); $('panel').classList.toggle('grp', !!(on && S.groups));
+  if (!on || !S.groups) return;
+  for (const b of box.children) { const n = groupUnits(game, 0, +b.dataset.g).length; setHTML(b.querySelector('i'), n ? String(n) : '–'); b.classList.toggle('empty', !n); }
+}
 // A new or resumed match: under direct control, nothing selected, the column for its map
-function ctlStart() { SELN.clear(); closePick(); ctlMark = null; ctlLoop = null; if (game && !game.spectate) directControl(game, 0); buildLanes(); }
+function ctlStart() { SELN.clear(); closePick(); grpTap = { t: 0, k: -1 }; ctlMark = null; ctlLoop = null; if (game && !game.spectate) directControl(game, 0); buildLanes(); }

@@ -45,6 +45,7 @@ async function playChapter(page, ch) {
       const ges = await page.evaluate(() => tCur().gesture || ''); // v2.74: the box (v2.78) and double-tap steps
       if (ges === 'box' && n.hi) { const { l, r, t, b } = n.hi; await page.mouse.move(l + 1, t + 1); await page.mouse.down(); await page.waitForTimeout(400); await page.mouse.move(r - 1, b - 1, { steps: 8 }); await page.mouse.up(); }
       else if (ges === 'dbl' && n.hi) await page.mouse.dblclick((n.hi.l + n.hi.r) / 2, (n.hi.t + n.hi.b) / 2);
+      else if (ges === 'hold' && n.hi) { await page.mouse.move((n.hi.l + n.hi.r) / 2, (n.hi.t + n.hi.b) / 2); await page.mouse.down(); await page.waitForTimeout(650); await page.mouse.up(); } // v2.79: hold a group slot
       else if (kind === 'drag') { const x = (n.hi.l + n.hi.r) / 2, y = (n.hi.t + n.hi.b) / 2; await page.mouse.move(x + 90, y); await page.mouse.down(); await page.mouse.move(x - 90, y + 2, { steps: 8 }); await page.mouse.up(); } // drag inside the highlighted field
       else if (await page.evaluate(() => !!document.querySelector('#bpPick:not(.hide)') && tCur().hi().el === $('bpPick'))) await page.click('#bpPick [data-p="A"]');
       else if (n.hi) await page.mouse.click((n.hi.l + n.hi.r) / 2, (n.hi.t + n.hi.b) / 2);

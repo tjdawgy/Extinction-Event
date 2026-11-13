@@ -199,7 +199,7 @@ for (const dev of [PHONE, NARROW]) test(`fit at ${dev.width}×${dev.height} on e
     const R = await page.evaluate(() => {
       const r = el => { const b = el.getBoundingClientRect(); return { l: b.left, t: b.top, r: b.right, b: b.bottom, w: b.width, h: b.height }; };
       const hit = el => { const b = el.getBoundingClientRect(), h = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2); return h === el || el.contains(h); };
-      const ctl = [...document.querySelectorAll('#lanes button, #cmdbar > button, #selX')].filter(e => e.getClientRects().length);
+      const ctl = [...document.querySelectorAll('#lanes button, #cmdbar > button, #selX, #grps button')].filter(e => e.getClientRects().length);
       const hb = [...document.querySelectorAll('.hbtn')].map(b => { const q = b.getBoundingClientRect(), x = q.left + q.width / 2, y = q.top + q.height / 2; return [document.elementFromPoint(x, y - 21) === b, document.elementFromPoint(x, y + 21) === b]; });
       return { W: innerWidth, H: innerHeight, ctl: ctl.map(e => ({ id: e.id || e.dataset.k || e.dataset.c || e.dataset.tab, ...r(e), hit: hit(e) })), hb, lanes: r($('lanes')), panel: r($('panel')), abil: r($('abil')), hud: r($('hud')), alerts: r($('alerts')) };
     });
