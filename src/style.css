@@ -23,7 +23,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 #hud{position:fixed;z-index:2;top:calc(env(safe-area-inset-top,0px) + 3px);
   left:calc(env(safe-area-inset-left,0px) + 6px);
   right:calc(env(safe-area-inset-right,0px) + 6px);
-  height:40px;display:flex;align-items:center;gap:10px;padding:0 5px 0 10px;background:var(--glass);border:1px solid var(--line);border-radius:13px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+  height:46px;display:flex;align-items:center;gap:10px;padding:0 5px 0 10px;background:var(--glass);border:1px solid var(--line);border-radius:13px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
 .res{display:flex;align-items:center;gap:5px;min-width:0;white-space:nowrap}
 .res>div{display:flex;flex-direction:column;line-height:1.05}
 .res b{font-weight:700;font-variant-numeric:tabular-nums;font-size:15px}
@@ -62,10 +62,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .seg{display:flex;background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:10px;padding:2px;gap:2px}
 .seg button{border:0;background:transparent;height:32px;padding:0 9px;border-radius:8px;font-weight:700;font-size:13px;color:var(--muted)}
 .seg button.on{background:var(--panel3);color:var(--text);box-shadow:inset 0 0 0 1px rgba(57,200,255,.55)}
-#stance button.on[data-s="attack"]{background:#3a1616;box-shadow:inset 0 0 0 1px rgba(255,77,77,.75);color:#ffd6d6}
-#stance button.on[data-s="retreat"]{background:#3a3014;box-shadow:inset 0 0 0 1px rgba(255,211,77,.7);color:#ffeab0}
-#rgTop button.on{background:#10303a;box-shadow:inset 0 0 0 1px rgba(159,230,255,.8);color:#d6f6ff}
-.hbtn{height:34px;min-width:40px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.25);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center}
+.hbtn{position:relative;height:44px;min-width:40px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.25);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center}
 #field{flex:1 1 auto;position:relative;min-height:0}
 #toasts{position:fixed;z-index:3;top:calc(env(safe-area-inset-top,0px) + 50px);left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:none;width:min(70%,calc(100vw - 2 * (env(safe-area-inset-right,0px) + 70px)))}
 .t{background:rgba(8,14,26,.9);border:1px solid var(--line);border-radius:999px;padding:5px 13px;font-size:12.5px;font-weight:600;animation:tin .18s ease-out;transition:opacity .3s;white-space:nowrap}
@@ -83,7 +80,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 /* While a building panel is open, toasts move to the column left of it so they never cover its title (placeToasts) */
 #toasts.side{transform:none;align-items:flex-start}
 #toasts.side .t{white-space:normal;border-radius:12px;line-height:1.25;padding:4px 11px}
-#bp{position:absolute;right:58px;bottom:6px;width:264px;background:var(--glass);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:12px;padding:8px 9px 9px 11px;font-size:12px;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+#bp{position:absolute;right:58px;bottom:3px;width:264px;background:var(--glass);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:12px;padding:8px 9px 9px 11px;font-size:12px;box-shadow:0 10px 30px rgba(0,0,0,.4)}
 #bp.hide{display:none}
 .bph{display:flex;align-items:center;gap:7px}
 .bph b{font-size:13.5px}
@@ -155,35 +152,13 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .istats b{font-size:13px;font-variant-numeric:tabular-nums}
 .irow{margin-top:5px;line-height:1.3}
 .irow em{font-style:normal;color:var(--muted)}
-#panel{flex:0 0 auto;height:78px;margin-bottom:3px;display:flex;background:var(--glass);border:1px solid var(--line);border-radius:14px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);overflow:hidden}
-.tabs{display:grid;grid-template-columns:62px 52px;grid-template-rows:1fr 1fr;gap:4px;padding:5px 0 5px 5px;flex:0 0 auto}
-.tabs [data-tab="army"]{grid-column:2;grid-row:1 / span 2} /* v2.12: Build and Train stacked, Army beside them: the tray keeps its height */
+#panel{flex:0 0 auto;height:78px;margin-bottom:3px;margin-left:58px;position:relative;display:flex;background:var(--glass);border:1px solid var(--line);border-radius:14px;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);overflow:hidden}
+.tabs{display:grid;grid-template-columns:52px 52px;gap:4px;padding:5px 0 5px 5px;flex:0 0 auto} /* v2.74: Build and Train side by side (the Army tab is gone), each a full-height target */
 .tabs button{flex:1;border:1px solid var(--line);background:rgba(0,0,0,.25);border-radius:9px;font-weight:700;font-size:13px;color:var(--muted)}
 .tabs button.on{background:var(--panel3);color:var(--text);border-color:rgba(57,200,255,.6)}
 #cards{flex:1;display:flex;gap:5px;padding:5px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;touch-action:pan-x}
 #cards::-webkit-scrollbar{display:none}
-/* Army tab (v2.12): owned groups and types to select (scrolls), the order buttons always in view */
-#cards.army{overflow:hidden}
-.asel{flex:1;min-width:0;display:flex;gap:5px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;touch-action:pan-x;-webkit-overflow-scrolling:touch}
-.asel::-webkit-scrollbar{display:none}
-.aempty{align-self:center;color:var(--muted);font-size:12.5px;padding:0 8px;white-space:nowrap}
-.chip{position:relative;flex:0 0 80px;height:100%;border-radius:10px;border:1px solid var(--line);background:linear-gradient(rgba(30,46,76,.9),rgba(15,24,43,.9));display:flex;flex-direction:column;align-items:center;padding:2px 3px 3px;overflow:hidden}
-.chip.grp{border-color:rgba(57,200,255,.4);background:linear-gradient(rgba(28,58,86,.9),rgba(14,28,48,.9))}
-.chip.on{border-color:#fff;box-shadow:inset 0 0 0 2px var(--blue)}
-.chip .ic{width:52px;height:30px;display:block;pointer-events:none}
-.chip .nm{font-size:11.5px;font-weight:800;white-space:nowrap;pointer-events:none}
-.chip .od{font-size:10px;color:var(--muted);white-space:nowrap;pointer-events:none}
-.chip .od.set{color:#ffd34d}
-.chip .cnt{position:absolute;top:3px;right:4px;min-width:17px;height:17px;border-radius:9px;background:var(--blue);color:#001522;font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 5px;pointer-events:none}
-.acmd{flex:0 0 auto;display:grid;grid-template-columns:64px 64px;grid-template-rows:1fr 1fr;gap:4px}
-.acmd button{border-radius:9px;border:1px solid var(--line);background:rgba(0,0,0,.3);font-weight:800;font-size:12.5px;color:var(--text)}
-.acmd button.on{background:var(--panel3);border-color:rgba(57,200,255,.7)}
-.asq{flex:0 0 auto;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:4px;width:84px} .asq button{border-radius:9px;border:1px solid var(--line);background:rgba(0,0,0,.3);color:var(--text);display:flex;align-items:center;justify-content:center;gap:4px;padding:0 3px;font-size:12.5px;-webkit-touch-callout:none;user-select:none} .asq .all{grid-column:1/3} .asq.l3{grid-template-columns:1fr 1fr 1fr;gap:3px} .asq.l3 .all{grid-column:1/4} .asq.l3 button{padding:0 1px;gap:1px;font-size:11.5px;flex-direction:column;line-height:1} .asq.l3 button.all{flex-direction:row;gap:4px} .asq.l3 i{font-size:9.5px;min-width:0;padding:0 3px;line-height:12px} .asq button.on{background:var(--panel3);border-color:rgba(57,200,255,.7)} .asq i{font-style:normal;font-size:10.5px;font-weight:800;color:#001522;background:var(--blue);border-radius:8px;min-width:16px;padding:0 4px;line-height:15px} /* v2.66: Split Army squads */
 .tipcard{position:fixed;z-index:55;left:50%;top:calc(env(safe-area-inset-top,0px) + 62px);transform:translateX(-50%);width:min(440px,calc(100% - 140px));padding:10px 12px;border-radius:12px;background:rgba(10,18,34,.96);border:1px solid rgba(57,200,255,.6);box-shadow:0 8px 24px rgba(0,0,0,.5);font-size:12px;color:var(--muted)} .tipcard>b{color:var(--text);font-size:13.5px} .tipcard p{margin:4px 0 0;line-height:1.3} .tipcard p b{color:var(--text)} .tipcard button{margin-top:6px;min-height:32px;padding:0 16px;border-radius:9px;border:0;background:var(--blue);color:#001522;font-weight:800} /* v2.66: the first Two-Lane tip */
-.sqm{position:fixed;z-index:60;display:flex;flex-direction:column;gap:4px;padding:6px;border-radius:12px;background:rgba(10,18,34,.97);border:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.5)} .sqm button{min-height:34px;padding:0 12px;border-radius:9px;border:1px solid var(--line);background:rgba(30,46,76,.7);color:var(--text);font-weight:700;font-size:12.5px;text-align:left;white-space:nowrap}
-.arly{flex:0 0 auto;display:grid;grid-template-rows:1fr 1fr;gap:4px;width:84px} /* v2.62: rally flag and Send damaged home */
-.arly button{border-radius:9px;border:1px solid var(--line);background:rgba(0,0,0,.3);color:var(--text);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05;padding:0 4px}
-.arly small{font-size:9.5px;font-weight:700;color:var(--muted);letter-spacing:.02em} .arly b{font-size:12.5px;font-weight:800}
 #bRally b{color:#8fdcff} #bRally.fwd{border-color:rgba(255,179,71,.6)} #bRally.fwd b{color:#ffcf8a}
 #bDamaged b{color:#9be7a0} #bDamaged.has{border-color:rgba(93,255,138,.55);background:rgba(20,60,30,.35)}
 .acmd [data-o="attack"]{color:#ffb0b0} .acmd [data-o="retreat"]{color:#ffe08a} .acmd [data-o="move"]{color:#9fe6ff}
@@ -386,3 +361,30 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 @media (max-width:700px){#hud{gap:5px}.hqr{margin:0 -2px}#mm{min-width:40px}.res{flex-shrink:0}.seg button{padding:0 5px}.hbtn{min-width:36px}}
 @media (prefers-reduced-motion:reduce){#rotate .ph{animation:none}.shake{animation:none}#cd b.pop{animation:none}}
 .box.mapsel .mapt{height:30px} .box.mapsel .mapc{padding:6px;gap:2px} .box.mapsel h1{font-size:18px;margin-bottom:0} .box.mapsel .maps{margin-top:4px} .box.mapsel .row{margin-top:5px} /* v2.72: map select holds the condition row too */
+
+/* v2.74 (docs/CONTROLS.md): the army controls. The left column (All, then a lane per entry, north on top) runs from below
+   the top bar to the bottom of the screen, so four 44 pt entries fit at 667×375; the bottom panel starts to its right. The
+   command bar takes the bottom panel's place while units are selected. Every target is at least 44 pt. */
+.hbtn::after{content:'';position:absolute;inset:0 -2px} /* v2.74: speed and pause are 44 pt tall (the top bar is 46) */
+#lanes{position:fixed;z-index:2;left:calc(env(safe-area-inset-left,0px) + 6px);top:calc(env(safe-area-inset-top,0px) + 50px);bottom:calc(env(safe-area-inset-bottom,0px) + 3px);width:52px;display:flex;flex-direction:column;gap:5px;pointer-events:auto}
+#lanes.hide{display:none}
+#lanes button{flex:0 1 58px;min-height:44px;border-radius:11px;border:1px solid var(--line);background:var(--glass);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:var(--text);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:0 2px;-webkit-touch-callout:none;user-select:none}
+#lanes button b{font-size:11.5px;font-weight:800;line-height:1}
+#lanes button i{font-style:normal;font-size:12px;font-weight:800;color:#001522;background:var(--blue);border-radius:8px;min-width:20px;padding:0 5px;line-height:16px;text-align:center;font-variant-numeric:tabular-nums}
+#lanes button[data-k="all"]{border-color:rgba(57,200,255,.45)}
+#lanes button.act{border-color:#ffd34d;box-shadow:inset 0 0 0 1.5px #ffd34d;background:rgba(58,48,20,.88)} /* the active lane: new units go to its base flag */
+#lanes button.act b::before{content:'⚑ ';color:#ffd34d}
+.trto{flex:0 0 58px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:10px;border:1px dashed rgba(255,211,77,.55);color:var(--muted);font-size:10px;font-weight:700;line-height:1.15;text-align:center} .trto b{color:#ffd34d;font-size:12.5px}
+#cmdbar{position:absolute;inset:0;z-index:2;display:flex;align-items:stretch;gap:6px;padding:5px;background:rgba(12,22,40,.97);border-radius:13px}
+#cmdbar.hide{display:none}
+#cmdbar>button{flex:0 1 96px;min-width:64px;border-radius:10px;border:1px solid var(--line);background:rgba(30,46,76,.85);color:var(--text);font-weight:800;font-size:14px}
+#cmdbar>button[data-c="attack"]{background:#3a1616;border-color:rgba(255,77,77,.7);color:#ffd6d6}
+#cmdbar>button[data-c="retreat"]{background:#3a3014;border-color:rgba(255,211,77,.6);color:#ffeab0}
+#cmdbar .seltag{flex:0 0 auto;display:flex;align-items:center;gap:2px;padding-left:10px;border-radius:10px;border:1px solid rgba(127,227,255,.6);background:rgba(16,48,58,.85);font-size:12.5px;color:#d6f6ff;white-space:nowrap}
+#cmdbar .seltag b{font-size:15px}
+#selX{width:44px;align-self:stretch;border:0;background:transparent;color:#d6f6ff;font-size:22px;font-weight:700;line-height:1}
+#cmdbar .cmdhint{flex:1 1 0;min-width:0;align-self:center;color:var(--muted);font-size:11px;line-height:1.2;padding-left:2px}
+.selecting #bp{display:none} .selecting #panel>.tabs,.selecting #cards{visibility:hidden}
+#alerts,#od{left:calc(env(safe-area-inset-left,0px) + 66px)} /* right of the left column */
+.spectate #lanes,.spectate #cmdbar{display:none}
+@media (max-width:700px){#cmdbar>button{font-size:13px;flex-basis:82px}#cmdbar .cmdhint{font-size:10px}}

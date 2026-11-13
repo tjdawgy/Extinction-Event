@@ -166,8 +166,6 @@ let lp = null;
 
 function buildCards() {
   const wrap = $('cards'); wrap.innerHTML = '';
-  wrap.classList.toggle('army', tab === 'army');
-  if (tab === 'army') { buildArmy(); return; }
   const list = tab === 'build' ? BUILD_ORDER.filter(t => BD(pFac(), t) && (!BD(pFac(), t).sig || SIG.on)) : UNIT_ORDER.filter(t => !game || unitVisible(game, t)); // v2.32: signature roles only where the faction has them
   trainSig = game ? trainSigOf(game) : '';
   for (const type of list) {
@@ -191,6 +189,10 @@ function buildCards() {
   }
   if (tab === 'train' && game && relOf(game, 0)) echoCards(wrap); // v2.34: the Echoes section, first
   if (tab === 'train' && game && facOf(game.sides[0].faction) === 'axiarchs') { wrap.insertBefore(warpCard(), wrap.firstChild); refreshWarpCard(); } // v2.26
+  if (tab === 'train' && game && MAP_LANED && game.sides[0].direct) { // v2.74: which lane's base flag new units go to (tap a lane on the left to change it)
+    const el = document.createElement('div'); el.className = 'trto'; el.id = 'trto'; el.dataset.type = 'other';
+    el.innerHTML = `<small>Training to</small><b>${laneName(game.sides[0].active)}</b>`; wrap.insertBefore(el, wrap.firstChild);
+  }
   if (tab === 'train' && game && !list.length) { // nothing to train yet: one line that says what unlocks it
     const el = document.createElement('div');
     el.className = 'trainHint'; el.dataset.type = 'other';

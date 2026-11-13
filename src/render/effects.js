@@ -695,15 +695,15 @@ function drawBoom(c, x, y, r, k) {
   c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
   c.fillStyle = `rgba(255,170,80,${(1 - k) * 0.55})`; c.beginPath(); c.arc(x, y, r * (0.35 + k * 0.75), 0, 7); c.fill();
 }
-// Army tab (v2.12): rings under the selected units, flags where your Regroup orders are still on their way
-function drawSelection(c, g, time) {
-  const s = g.sides[0], k = s.sel; if (!k) return;
-  const key = k.slice(2), grp = k[0] === 'g', a = 0.65 + 0.25 * Math.sin(time * 5);
-  c.strokeStyle = `rgba(127,227,255,${a})`; c.lineWidth = 1.8;
+// Rings under the selected units (v2.74), flags where an older match's Regroup orders are still on their way
+function drawSelection(c, g, time) { // v2.74: a ring under each selected unit (docs/CONTROLS.md)
+  if (typeof SELN === 'undefined' || !SELN.size) return;
+  const a = 0.7 + 0.25 * Math.sin(time * 6);
+  c.strokeStyle = `rgba(127,227,255,${a})`; c.lineWidth = 2;
   for (const e of g.ents) {
-    if (e.kind !== 'u' || e.side !== 0 || e.hp <= 0 || (grp ? GROUP_OF[e.type] !== key : e.type !== key)) continue;
-    const w = P(e.u, e.v), r = (UDEF[e.type].air ? 12 : UDEF[e.type].pop >= 3 ? 16 : 9) * US;
-    c.beginPath(); c.ellipse(w.x, w.y, r, r * 0.42, 0, 0, 7); c.stroke();
+    if (e.kind !== 'u' || e.side !== 0 || e.hp <= 0 || !SELN.has(e.id)) continue;
+    const w = P(e.u, e.v), r = (UDEF[e.type].air ? 13 : UDEF[e.type].pop >= 3 ? 17 : 10) * US;
+    c.beginPath(); c.ellipse(w.x, w.y, r, r * 0.45, 0, 0, 7); c.stroke();
   }
 }
 // The selected building or pad (v2.35, audit): a pulsing gold glow on its pad (under), brackets around the building (over),
@@ -942,10 +942,8 @@ function render(c, g, time, sel, selPad) {
   for (const gh of ghosts) list.push({ kind: 'ghost', u: gh.u, v: gh.v, gh });
   for (const n of g.nodes) list.push({ kind: 'node', u: n.u, v: n.v - 1, n });
   for (const x of g.guards || []) if (x.hp > 0 && (g.spectate || visibleTo(g, 0, x))) list.push(x); // v2.71: relic guards (neutral gold)
-  { const RL = g.sides[0].rally; // v2.62: both of the player's rally flags (the active one solid); before the player uses them, the one rally flag
-    if (RL && MAP_LANED) for (const f of flagSpots(g)) list.push({ kind: 'flag', u: f.u, v: f.v, fk: f.k, on: f.lane != null ? sqFlag(RL, f.lane) === 'fwd' : RL.at === 'def' || Object.values(RL.sq || {}).includes('def') }); // v2.66: a Forward flag per lane
-    else if (RL) for (const k of ['def', 'fwd']) list.push({ kind: 'flag', u: RL[k] + 30, v: -20, fk: k, on: RL.at === k });
-    else if (g.sides[0].stance !== 'attack') list.push({ kind: 'flag', u: rallyU(0, g) + 30, v: -20, fk: 'def', on: true }); }
+  if (g.sides[0].direct && !g.over) g.sides[0].flags.forEach((f, k) => list.push({ kind: 'flag', u: f.u, v: f.v, lane: k, on: k === g.sides[0].active })); // v2.74: a base flag per lane (the active lane's brighter)
+  else if (!g.sides[0].direct && g.sides[0].stance !== 'attack') list.push({ kind: 'flag', u: rallyU(0, g) + 30, v: -20, on: true }); // spectating: the rally point
   list.sort((a, b) => (a.v - b.v) || (a.u - b.u));
   for (const e of list) {
     if (e.kind === 'b') drawBuilding(c, e, time);
@@ -953,14 +951,15 @@ function render(c, g, time, sel, selPad) {
     else if (e.kind === 'u') drawUnit(c, e);
     else if (e.kind === 'node') drawNode(c, e.n, time);
     else {
-      const w = P(e.u, e.v), col = e.fk === 'fwd' ? '#ffb347' : g.sides[0].stance === 'retreat' ? '#ffd34d' : TEAM[0].main;
-      c.globalAlpha = e.on ? 1 : 0.45; // v2.62: the inactive flag is faded
+      const w = P(e.u, e.v), moving = typeof flagMv !== 'undefined' && flagMv === e.lane;
+      c.globalAlpha = moving ? 0.5 + 0.4 * Math.sin(time * 8) : e.on ? 1 : 0.7;
       c.strokeStyle = M.h; c.lineWidth = 1.5; c.beginPath(); c.moveTo(w.x, w.y); c.lineTo(w.x, w.y - 34); c.stroke();
-      c.fillStyle = col; c.beginPath(); c.moveTo(w.x, w.y - 34);
+      c.fillStyle = TEAM[0].main; c.beginPath(); c.moveTo(w.x, w.y - 34);
       for (let i = 0; i <= 5; i++) c.lineTo(w.x + i * 3.4, w.y - 34 + Math.sin(time * 5 + i) * 1.3);
       for (let i = 5; i >= 0; i--) c.lineTo(w.x + i * 3.4, w.y - 25 + Math.sin(time * 5 + i) * 1.3);
       c.closePath(); c.fill();
-      if (e.fk === 'fwd') { c.fillStyle = '#1a1206'; c.font = '800 7px -apple-system,system-ui,sans-serif'; c.textAlign = 'center'; c.fillText('F', w.x + 8.5, w.y - 27.5); }
+      if (e.on && MAP_LANED) { c.strokeStyle = '#ffd34d'; c.lineWidth = 1.4; c.stroke(); } // v2.74: the active lane's flag, edged in gold as in the left column
+      if (MAP_LANED && e.lane != null) { c.fillStyle = '#04121c'; c.font = '800 7px -apple-system,system-ui,sans-serif'; c.textAlign = 'center'; c.fillText(MAP.lanes[e.lane].id[0].toUpperCase(), w.x + 8.5, w.y - 27.5); }
       c.globalAlpha = 1;
     }
   }

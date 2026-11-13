@@ -9,11 +9,10 @@
     <div class="res" id="resP"><i class="ico p"></i><div><b id="vP">0/0</b><small>army</small></div></div>
     <div class="hqr" id="hq0" role="img" aria-label="Your HQ"><svg class="shd" viewBox="0 0 12 14" aria-hidden="true"><path d="M6 1l5 2v4c0 3-2.2 5-5 6C3.2 12 1 10 1 7V3z"/><path class="x" d="M3.6 4.6l4.8 4.8M8.4 4.6L3.6 9.4"/></svg><div><span class="hb"><i></i></span><small></small></div></div>
     <canvas id="mm" aria-label="Battlefield overview: tap to jump"></canvas>
-    <div class="seg" id="rgTop"><button id="bRegroup" aria-label="Regroup the whole army: tap, then tap the battlefield">Regroup</button></div>
-    <div class="seg" id="stance"><button data-s="hold" class="on">Hold</button><button data-s="attack">Attack</button><button data-s="retreat">Retreat</button></div>
     <button class="hbtn" id="bSpeed" aria-label="Game speed">1×</button>
     <button class="hbtn" id="bPause" aria-label="Pause"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="2" y="1" width="3.5" height="12" rx="1" fill="currentColor"/><rect x="8.5" y="1" width="3.5" height="12" rx="1" fill="currentColor"/></svg></button>
   </header>
+  <nav id="lanes" class="hide" aria-label="Your army: All and the lanes"></nav>
   <main id="field">
     <div id="toasts"></div>
     <div id="alerts" aria-live="polite"></div>
@@ -32,8 +31,9 @@
     <div id="info" class="hide"><div class="ih"><b id="infoName"></b><small id="infoSub"></small><button id="infoX" aria-label="Close">×</button></div><div id="infoBody"></div></div>
   </main>
   <footer id="panel">
-    <div class="tabs"><button data-tab="build" class="on">Build</button><button data-tab="train">Train</button><button data-tab="army">Army</button></div>
+    <div class="tabs"><button data-tab="build" class="on">Build</button><button data-tab="train">Train</button></div>
     <div id="cards"></div>
+    <div id="cmdbar" class="hide" role="toolbar" aria-label="Orders for the selected units"><div class="seltag"><span><b id="selN">0</b> selected</span><button id="selX" aria-label="Clear the selection">×</button></div><button data-c="attack">Attack</button><button data-c="hold">Hold</button><button data-c="retreat">Retreat</button><span class="cmdhint">Tap the ground to move them there</span></div>
   </footer>
 </div>
 <div id="ov"><div class="box" id="box"></div></div>

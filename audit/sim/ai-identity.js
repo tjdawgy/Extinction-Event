@@ -3,7 +3,7 @@
 // case plays one seeded Hard-vs-Hard (or --diff) match to the end (or --ticks) in this build and in a reference copy of the
 // game (--ref, e.g. v2.72's index.html) and compares a SHA-1 of the serialized state every 100 ticks (left out, as in
 // classic-identity.js: the match log, the save's v and map, each side's persona).
-//   node audit/sim/ai-identity.js --ref=path/to/v2.72/index.html [--ticks=97200] [--diff=hard] [--only=twolane]
+//   node audit/sim/ai-identity.js --ref=path/to/v2.72/index.html [--ticks=97200] [--diff=hard] [--only=twolane] [--seeds=314,315]
 const crypto = require('crypto');
 const { loadSim } = require('./load');
 const arg = (k, d) => { const a = process.argv.find(x => x.startsWith(`--${k}=`)); return a ? a.slice(k.length + 3) : d; };
@@ -29,9 +29,10 @@ function play(file, seed, map, cond, factions, ticks, diff) {
 }
 if (require.main === module) {
   const ref = arg('ref'); if (!ref) { console.error('--ref=<reference index.html> is required'); process.exit(2); }
-  const ticks = +arg('ticks', 97200), diff = arg('diff', 'hard'), only = arg('only');
+  const ticks = +arg('ticks', 97200), diff = arg('diff', 'hard'), only = arg('only'), seeds = arg('seeds') ? arg('seeds').split(',').map(Number) : null; // --seeds: only these cases
   let bad = 0, n = 0;
   CASES.filter(c => !only || c[0] === only).forEach(([map, cond, seed], i) => {
+    if (seeds && !seeds.includes(seed)) return;
     const fac = F[i % F.length], a = play(undefined, seed, map, cond, fac, ticks, diff), b = play(ref, seed, map, cond, fac, ticks, diff);
     const m = Math.max(a.out.length, b.out.length); let k = 0; n++;
     while (k < m && a.out[k] === b.out[k]) k++;

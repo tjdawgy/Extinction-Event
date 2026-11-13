@@ -26,7 +26,7 @@ test('as Bloomhost: Brood Mound and Rootheart cards, "Already built", info cards
     for (let i = 0; i < 30 * (MOUND.every + 1); i++) update(game, 1 / 30);
     out.mites = game.ents.filter(e => e.type === 'mite' && e.side === 0).length;
     document.querySelector('.tabs [data-tab="train"]').click(); out.train = [...$('cards').querySelectorAll('.card')].map(x => x.dataset.type);
-    document.querySelector('.tabs [data-tab="army"]').click(); out.army = [...$('asel').querySelectorAll('.chip')].map(x => x.dataset.k + ':' + x.querySelector('.cnt').textContent);
+    selType('mite'); out.army = selLive().length; selClear(); // v2.74: Mites can be selected like any unit
     const bad = []; for (const t of BUILD_ORDER.filter(t => BD('bloomhost', t))) { try { drawIcon(document.createElement('canvas'), 'b', t, 'bloomhost'); showInfo('b', t); } catch (e) { bad.push(t + ': ' + e.message); } } hideInfo();
     try { drawIcon(document.createElement('canvas'), 'u', 'mite'); } catch (e) { bad.push('mite: ' + e.message); }
     out.bad = bad;
@@ -38,7 +38,7 @@ test('as Bloomhost: Brood Mound and Rootheart cards, "Already built", info cards
   assert.strictEqual(r.info.mite.name, 'Mite'); assert.match(r.info.mite.sub, /Spawned by the Brood Mound/); assert.match(r.info.mite.body, /Lifespan30s/); assert.match(r.info.mite.body, /None: spawned free/);
   assert.strictEqual(r.mites, 2);
   assert.ok(!r.train.includes('mite'), `Train tab: ${r.train.join(', ')}`);
-  assert.ok(r.army.includes('g:inf:2') && r.army.includes('t:mite:2'), r.army.join(', '));
+  assert.strictEqual(r.army, 2, 'both Mites can be selected');
   assert.deepStrictEqual(r.bad, []);
   assert.deepStrictEqual(errors, []);
   await page.close();

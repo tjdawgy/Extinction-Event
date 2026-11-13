@@ -169,7 +169,7 @@ function alertRaise(kind, key, u, v, msg) {
 function alertTick() {
   const g = game; if (!g || g.over || g.countdown > 0 || g.spectate) return;
   if (alerts.g !== g) { alerts.g = g; alerts.last = {}; alerts.pings = []; $('alerts').textContent = ''; } // a new or resumed match starts clean
-  $('alerts').classList.toggle('thru', !!(aim || rg || wpt)); // aiming: taps go through to the field
+  $('alerts').classList.toggle('thru', !!(aim || wpt || flagMv >= 0)); // aiming: taps go through to the field
   for (const b of g.ents) {
     if (b.kind !== 'b' || b.side !== 0 || b.hp <= 0 || b.lastHit === undefined || g.t - b.lastHit > ALERT.hit) continue;
     if (b.type === 'hq') alertRaise('hq', 0, b.u, b.v, 'Your HQ is under attack');
@@ -224,12 +224,12 @@ function handleTap(x, y) {
   if (!game) return;
   hideInfo();
   if (game.spectate) return; // a spectator only watches (drag still moves the camera)
-  if (rg) { rgTap(x, y); return; }
   if (wpt) { wptTap(x, y); return; }
   if (aim) { aimTap(x, y); return; }
-  if (fmv) { flagTap(x, y); return; } // v2.62: placing a rally flag
+  if (flagMv >= 0) { flagTap(x, y); return; } // v2.74: placing a base flag
+  if (ctlFieldTap(x, y)) return; // v2.74: a unit selects it; with units selected, the ground is where they go
   if (FWD_PADS.length && fwdTap(x, y)) return; // v2.66: a forward pad under the tap comes before a flag standing on it
-  if (game.countdown <= 0 && !game.over) { const fk = flagAt(x, y); if (fk) { startFlagMove(fk); return; } } // v2.62: tap a flag to move it
+  if (game.countdown <= 0 && !game.over) { const fk = flagAt(x, y); if (fk >= 0) { startFlagMove(fk); return; } } // v2.74: tap a base flag to move it
   const w = toWorld(x, y), hits = [];
   for (const b of game.ents) {
     if (b.kind !== 'b' || b.side !== 0) continue;
@@ -262,11 +262,14 @@ cv.addEventListener('pointerdown', e => {
   const p = localXY(e);
   cam.vx = 0;
   gest = { id: e.pointerId, lx: p.x, ly: p.y, sx: p.x, sy: p.y, t0: performance.now(), t: performance.now(), moved: 0 };
+  // v2.74: hold still a moment, then draw: a lasso (a quick drag still scrolls)
+  if (ctlOn() && !paused && !aim && !wpt && flagMv < 0) { const G = gest; G.armT = setTimeout(() => { if (gest === G && G.moved < CT.still) { G.lasso = [[G.lx, G.ly]]; cam.vx = 0; } }, CT.lassoMs); }
 });
 cv.addEventListener('pointermove', e => {
   if (!gest || e.pointerId !== gest.id) return;
   const p = localXY(e);
   const dx = p.x - gest.lx, dy = p.y - gest.ly, now = performance.now(), dtm = Math.max(8, now - gest.t);
+  if (gest.lasso) { const q = gest.lasso[gest.lasso.length - 1]; if (Math.hypot(p.x - q[0], p.y - q[1]) >= 3) gest.lasso.push([p.x, p.y]); gest.lx = p.x; gest.ly = p.y; gest.moved = Math.max(gest.moved, Math.hypot(p.x - gest.sx, p.y - gest.sy)); return; } // v2.74: drawing a lasso, not scrolling
   gest.lx = p.x; gest.ly = p.y; gest.t = now;
   if (CAMY.max > CAMY.min) cam.y -= dy / V.S; // v2.65: a deep map pans up and down too
   gest.moved = Math.max(gest.moved, Math.hypot(p.x - gest.sx, p.y - gest.sy));
@@ -277,6 +280,13 @@ cv.addEventListener('pointermove', e => {
 function endPtr(e) {
   if (!gest || e.pointerId !== gest.id) return;
   const p = localXY(e);
+  clearTimeout(gest.armT);
+  if (gest.lasso && e.type === 'pointerup') { // v2.74: a lasso drawn (a hold without drawing is still a tap)
+    const L_ = gest.lasso, xs = L_.map(q => q[0]), ys = L_.map(q => q[1]);
+    if (Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) >= CT.lassoMin) lassoSelect(L_);
+    else if (gest.moved < 10 && performance.now() - gest.t0 < 800) handleTap(p.x, p.y);
+    gest = null; return;
+  }
   if (e.type === 'pointerup' && gest.moved < 10 && performance.now() - gest.t0 < 500) { cam.vx = 0; handleTap(p.x, p.y); }
   gest = null;
 }
@@ -288,8 +298,6 @@ function mmJump(e) { camTouched = true; TUT.sig.mm = true; const r = mm.getBound
   if (e.type === 'pointerdown' && game) { const p = alerts.pings.filter(p => game.t - p.t < ALERT.ping).sort((a, b) => Math.abs(a.u - cam.x) - Math.abs(b.u - cam.x))[0]; if (p && Math.abs(p.u - cam.x) * k <= 12) cam.x = p.u; } // v2.53: a tap on an alert's ping lands on it
   clampCam(); }
 mm.addEventListener('pointerdown', e => {
-  const r = mm.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, b = MMB.find(q => x >= q.x0 && x <= q.x1 && y >= q.y0 && y <= q.y1);
-  if (b && game && !game.over) { if (tab !== 'army') document.querySelector('.tabs [data-tab="army"]').click(); onSquad(b.k); drawMinimapNow(); return; } // v2.66: a squad badge selects that squad
   mmDrag = true; try { mm.setPointerCapture(e.pointerId); } catch (_) {} mmJump(e); });
 mm.addEventListener('pointermove', e => { if (mmDrag) mmJump(e); });
 mm.addEventListener('pointerup', () => { mmDrag = false; });
@@ -303,16 +311,6 @@ for (const b of document.querySelectorAll('.tabs button')) b.addEventListener('c
   for (const x of document.querySelectorAll('.tabs button')) x.classList.toggle('on', x === b);
   buildCards();
 });
-for (const b of $('stance').children) b.addEventListener('click', () => applyStance(b.dataset.s));
-const hasOrders = s => !!(s.orders && (s.orders.all || Object.keys(s.orders.groups).length || Object.keys(s.orders.types).length));
-function applyStance(v) { // the global stance: everyone, and it clears every group order (v2.12)
-  if (!game || game.over) return;
-  const s = game.sides[0];
-  if (s.stance === v && !hasOrders(s)) return;
-  setStance(game, 0, v);
-  toast(v === 'attack' ? 'Army advancing on the enemy base' : v === 'hold' ? 'Army holding position' : 'Army retreating to the rally flag', v === 'attack' ? 'warn' : 'ok');
-  refreshUI(true);
-}
 $('bSpeed').addEventListener('click', () => { speed = game && game.spectate ? (speed >= 4 ? 1 : speed * 2) : speed >= 3 ? 1 : speed + 1; $('bSpeed').textContent = speed + '×'; }); // spectating (v2.38): 1×, 2×, 4×
 $('bPause').addEventListener('click', () => { if (running && game && !game.over) pauseGame(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && running && !paused && game && !game.over) pauseGame(); else if (document.hidden) saveGame(); });

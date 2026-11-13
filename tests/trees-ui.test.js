@@ -117,11 +117,10 @@ test('Tech Lab (v2.15): needs only a Barracks (v2.16); Air Power or Support in t
   const t = await page.$$eval('#cards .card', c => c.map(x => x.dataset.type));
   assert.deepStrictEqual(t, ['rifle', 'aircraft', 'medic', 'drone'], 'no War Factory: no Tanks; Support: no Interceptor or Leviathan');
   await page.evaluate(() => { spawnUnit(game, 0, 'medic', hqPos(0).u + 200, 0); spawnUnit(game, 0, 'drone', hqPos(0).u + 220, 0); spawnUnit(game, 0, 'rifle', hqPos(0).u + 200, 0); });
-  await page.click('.tabs [data-tab="army"]'); await page.waitForTimeout(700);
-  const k = await page.$$eval('#asel .chip', c => c.map(x => x.dataset.k));
-  assert.ok(k.includes('g:sup') && k.includes('t:medic') && k.includes('t:drone'), JSON.stringify(k));
-  await page.click('#asel [data-k="g:sup"]'); await page.click('#acmd [data-o="hold"]');
-  assert.strictEqual(await page.evaluate(() => game.sides[0].orders.groups.sup.o), 'hold');
+  await page.evaluate(() => { selType('medic'); selSet(myUnits().filter(e => e.type === 'drone'), true); }); // v2.74: select the support units, then Hold
+  assert.deepStrictEqual(await page.evaluate(() => selLive().map(e => e.type).sort()), ['drone', 'medic']);
+  await page.click('#cmdbar [data-c="hold"]');
+  assert.deepStrictEqual(await page.evaluate(() => myUnits().map(e => e.type + ':' + e.po.o).sort()), ['drone:hold', 'medic:hold', 'rifle:hold']);
   await page.evaluate(() => showInfo('u', 'medic'));
   assert.match(await page.textContent('#info'), /Heals.*2\.5%\/s/);
   assert.deepStrictEqual(errors, []);

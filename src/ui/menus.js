@@ -44,7 +44,7 @@ function showStart() {
     <div class="how">
       <div><b>Build and upgrade</b>Tap an empty pad then a building card, or just tap a card. Tap a building to upgrade, repair or sell it. Hold any card for details.</div>
       <div><b>Control the field</b>Ground troops standing on a field node capture it for extra income. Your HQ is shielded while a production building stands in your base.</div>
-      <div><b>Command your army</b>Attack pushes forward, Hold stops everyone where they stand, Retreat pulls back to your flag without firing. Drag sideways to look around.</div>
+      <div><b>Command your army</b>Select units (tap them, double-tap one for its type, hold and draw a loop, or All on the left), then tap the ground to move them, or Attack, Hold or Retreat. Drag to look around.</div>
     </div>
     <div class="setup"><span class="lbl">Difficulty</span>${diffSeg()}<span class="lbl">You</span>${facSeg('meSeg', 'me')}<span class="lbl">Opponent</span>${facSeg('foeSeg', 'foe')}<p class="fdesc" id="facDesc">${factionDesc(facPick.me)}</p></div>
     <div class="row">${sv ? `<button class="big" id="bResume">Resume match</button><button class="ghost" id="bPlay">New match</button><span class="lbl">${DIFF[sv.diffKey] ? DIFF[sv.diffKey].label : ''}${sv.map !== 'classic' ? ', ' + cxEsc(MAPS[sv.map].display.name) : ''}, ${fmtTime(sv.t)} in</span>` : '<button class="big" id="bPlay">Start match</button>'}<button class="ghost" id="bCodex">Codex</button><button class="ghost" id="bSound">${sndLabel()}</button></div>`);
@@ -152,8 +152,8 @@ function startSpectate() {
   buildAbil(); hideCountdown(); camTouched = true; applyZoom(1); resize(); closePanel(); hideInfo(); endAim();
   cam.x = L / 2; cam.vx = 0; clampCam();
   running = true; paused = false; speed = devPick.speed; $('bSpeed').textContent = speed + '×';
-  tab = 'army';
-  for (const x of document.querySelectorAll('.tabs button')) x.classList.toggle('on', x.dataset.tab === 'army');
+  tab = 'build'; ctlStart(); // v2.74: a spectator commands nothing (no left column, no selection)
+  for (const x of document.querySelectorAll('.tabs button')) x.classList.toggle('on', x.dataset.tab === 'build');
   hideOverlay(); buildCards(); refreshUI(true); updateIntro();
   const nm = w => `${factionName(devPick[w].f)} (${AI_PRESETS[devPick[w].ai].name}, ${devPick[w].p === 'random' ? 'random' : PERSONA_NAME[devPick[w].p].replace('The ', '')})`;
   toast(`Spectating: ${nm('a')} vs ${nm('b')}`, 'ok');
@@ -164,7 +164,7 @@ function resumeGame() {
   try { g = deserialize(localStorage.getItem(SAVE_KEY)); } catch (e) { g = null; }
   if (!g) { clearSave(); toast('That save could not be loaded', 'bad'); showStart(); return; }
   clearTimeout(endTimer); endTimer = null;
-  game = g; diffKey = g.diffKey; buildAbil();
+  game = g; diffKey = g.diffKey; buildAbil(); ctlStart(); // v2.74: an older save's orders become Attack, Hold and Retreat (directControl)
   hideCountdown(); applyZoom(1);
   resize(); closePanel(); hideInfo();
   if (typeof g.extra.camX === 'number') { cam.x = g.extra.camX; cam.vx = 0; clampCam(); } else homeCamera();
@@ -181,7 +181,7 @@ function startGame() {
   clearTimeout(endTimer); endTimer = null;
   const me = pickFaction(facPick.me), foe = pickFaction(facPick.foe); // the opponent's pick is never shown during the match
   game = newGame(diffKey, { countdown: INTRO_T + COUNTDOWN, factions: [me, foe], map: MAPS[mapPick] ? mapPick : 'classic', cond: condsForMatch() }); // v2.65: the chosen map; v2.72: its conditions
-  buildAbil();
+  buildAbil(); ctlStart(); // v2.74: the player's side under direct control (docs/CONTROLS.md)
   hideCountdown(); camTouched = false;
   resize(); introCamera(0); closePanel();
   running = true; paused = false; speed = 1; $('bSpeed').textContent = '1×';
@@ -190,19 +190,19 @@ function startGame() {
   hideOverlay(); buildCards(); hideInfo(); endAim();
   saveGame();
   updateIntro(); refreshUI(true);
-  if (MAP_LANED) splitTip(); // v2.66: the first Two-Lane match explains squads
+  if (MAP_LANED) lanesTip(); // v2.74: the first lane-map match explains the left column and the orders
   toast(`You command ${factionName(me)}: start with a ${BD(me, 'barracks').name} and a ${BD(me, 'refinery').name}${facOf(me) === 'lastfist' && SALVAGE.pct > 0 ? '. Salvage: kills near your forces return credits' : ''}`, 'ok');
 }
-// v2.66 (Split Army): shown once, the first time a player starts a match on a lane map (localStorage extinctionEvent.tips)
+// v2.74 (docs/CONTROLS.md): shown once, the first time a player starts a match on a lane map (localStorage extinctionEvent.tips,
+// key 'lanes'; it replaces v2.66's Split Army tips, 'split' and 'split3')
 const TIPS_KEY = 'extinctionEvent.tips';
-function splitTip() {
+function lanesTip() {
   let T = {}; try { T = JSON.parse(localStorage.getItem(TIPS_KEY) || '{}') || {}; } catch (e) {}
-  const three = MAP.lanes.length > 2, key = three ? 'split3' : 'split'; // v2.70: Three-Lane has its own tip (three squads, crossings)
-  if (T[key]) return;
-  const el = document.createElement('div'); el.id = 'tipSplit'; el.className = 'tipcard';
-  el.innerHTML = three ? `<b>Three lanes, three squads</b><p>Every unit belongs to the squad of its lane: <b>N</b>, <b>C</b> or <b>S</b> in the Army tab (or tap a badge on the minimap). With a squad selected, the orders, Regroup and Rally act on that squad only; <b>All</b> commands everyone. The walls between the lanes have one gap each, at the centre node: squads can cross there.</p><p><b>Long-press</b> a squad to move it to another lane or choose where new units go (alternating by default). Long-press a unit to send every unit of that type to one lane.</p><button id="bTipOk">Got it</button>` : `<b>Two lanes, two squads</b><p>Every unit belongs to the squad of its lane: <b>N</b> or <b>S</b> in the Army tab (or tap a badge on the minimap). With a squad selected, Hold, Attack, Retreat, Regroup and Rally act on that squad only; <b>All</b> commands everyone.</p><p><b>Long-press</b> a squad to move it to the other lane or choose where new units go (alternating by default). Long-press a unit to send every unit of that type to one lane.</p><button id="bTipOk">Got it</button>`;
+  if (T.lanes) return;
+  const el = document.createElement('div'); el.id = 'tipLanes'; el.className = 'tipcard';
+  el.innerHTML = `<b>${MAP.lanes.length} lanes: select, then command</b><p>The column on the left is your army: <b>All</b>, then each lane with its unit count. <b>Tap a lane</b> to train to it: new units wait at its base flag. <b>Double-tap a lane</b> to select its units.</p><p>Select units (tap them, double-tap one for its whole type, or hold a moment and draw a loop), then <b>tap the ground</b> to move them there, or use <b>Attack</b>, <b>Hold</b> or <b>Retreat</b>. Attack goes down the lane they are in${MAP.lanes.length > 2 ? '; the walls open at the centre node' : ''}.</p><button id="bTipOk">Got it</button>`;
   document.body.appendChild(el);
-  $('bTipOk').addEventListener('click', () => { T[key] = 1; try { localStorage.setItem(TIPS_KEY, JSON.stringify(T)); } catch (e) {} el.remove(); });
+  $('bTipOk').addEventListener('click', () => { T.lanes = 1; try { localStorage.setItem(TIPS_KEY, JSON.stringify(T)); } catch (e) {} el.remove(); });
 }
 function pauseGame(restored) {
   paused = true; endAim(); saveGame();

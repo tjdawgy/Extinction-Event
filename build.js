@@ -21,7 +21,7 @@ const PARTS = [
   'render/core.js', 'render/buildings-lastfist.js', 'render/buildings-bloomhost.js', 'render/buildings-axiarchs-units.js',
   'render/backdrop.js', 'render/effects.js', 'render/minimap.js',
   // UI: HUD, input, menus, report, sound, main loop, Codex, tutorial
-  'ui/core.js', 'ui/hud.js', 'ui/army-abilities.js', 'ui/panel-alerts-input.js', 'ui/menus.js', 'ui/report.js', 'ui/sound.js',
+  'ui/core.js', 'ui/hud.js', 'ui/army-abilities.js', 'ui/controls.js', 'ui/panel-alerts-input.js', 'ui/menus.js', 'ui/report.js', 'ui/sound.js',
   'ui/main.js', 'ui/codex.js', 'ui/tutorial.js',
   'end.html', // </script></body></html>
 ];

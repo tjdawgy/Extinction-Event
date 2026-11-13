@@ -21,7 +21,7 @@ function fitCanvas(c, w, h) {
   return true;
 }
 function drawNow() { // redraw straight after a resize so a cleared canvas is never shown
-  render(ctx, game, last / 1000, sel, selPad);
+  render(ctx, game, last / 1000, sel, selPad); if (typeof drawCtlOverlay === 'function') drawCtlOverlay(ctx);
   drawMinimapNow();
 }
 function drawMinimapNow() { if (mm.width > 1) { mctx.setTransform(V.dpr, 0, 0, V.dpr, 0, 0); drawMinimap(mctx, game, mm.width / V.dpr, mm.height / V.dpr); } }
@@ -50,8 +50,8 @@ if (window.ResizeObserver) {
   new ResizeObserver(() => { if (resizeMinimap()) drawMinimapNow(); }).observe(mm);
 }
 function homeX() {
-  const hw = V.cw / 2 / V.S0, x0 = UMIN - 40, x1 = UMAX + 40;
-  return x1 - x0 < 2 * hw ? (x0 + x1) / 2 : clamp(HQ_U + hw * 0.55 - 60, x0 + hw, x1 - hw);
+  const lp = (V.lpad || 0) / V.S0, hw = V.cw / 2 / V.S0, x0 = UMIN - 40 - lp, x1 = UMAX + 40; // v2.74: the base sits right of the army column
+  return x1 - x0 < 2 * hw ? (x0 + x1) / 2 : clamp(HQ_U + hw * 0.55 - 60 - lp * 0.8, x0 + hw, x1 - hw);
 }
 function homeCamera() { cam.x = homeX(); cam.vx = 0; clampCam(); }
 function applyZoom(z) { V.zoom = z; V.S = V.S0 * z; clampCam(); }

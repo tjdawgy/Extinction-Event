@@ -19,7 +19,6 @@ const tMy = type => game.ents.find(e => e.kind === 'b' && e.side === 0 && e.type
 const tN = t => BD('lastfist', t).name;
 function tPlace(type, slot) { const b = mkBuilding(game, 0, type, slot); b.built = true; b.progress = 1; b.hp = b.maxHp; return b; }
 function tSquad(type, n, side = 0) { const out = [], u0 = side ? L / 2 + 150 : rallyU(0, game) - 30; /* an enemy wave starts mid-lane */ for (let i = 0; i < n; i++) out.push(spawnUnit(game, side, type, u0 + (side ? 1 : -1) * (i % 3) * 14, ((i % 5) - 2) * 14)); return out; }
-const tMoved = () => { const O = tMe().orders; return !!O && [O.all, ...Object.values(O.groups || {}), ...Object.values(O.types || {})].some(o => o && o.o === 'move'); };
 // Targets: a DOM element ({ el }) or a rectangle in world space ({ rect }), turned into screen space every frame
 const tEl = s => { const el = document.querySelector(s); return el && el.getClientRects().length ? { el } : null; };
 const tW2S = (x, y) => ({ x: (x - cam.x) * V.S + V.cw / 2, y: (y - YB()) * V.S + V.A });
@@ -28,11 +27,12 @@ const tB = b => { if (!b) return null; const d = bdOf(b), p = P(b.u, b.v), hw = 
 const tPad = k => { const p = slotPos(0, k), q = P(p.u, p.v), w = 2 * PAD_H * IX, hh = 2 * PAD_H * IY; return tWorld(q.x - w, q.y - hh, q.x + w, q.y + hh); };
 const tPads = () => { const ps = []; for (let k = 0; k < SLOT_COUNT; k++) ps.push(slotPos(0, k)); const q = ps.map(p => P(p.u, p.v)), w = 2 * PAD_H * IX, hh = 2 * PAD_H * IY; return tWorld(Math.min(...q.map(p => p.x)) - w, Math.min(...q.map(p => p.y)) - hh, Math.max(...q.map(p => p.x)) + w, Math.max(...q.map(p => p.y)) + hh); };
 const tNode = n => { const q = P(n.u, n.v); return tWorld(q.x - NODE_R, q.y - NODE_R * DY - 24, q.x + NODE_R, q.y + NODE_R * DY); };
-const tFlag = () => { const q = P(rallyU(0, game), 0); return tWorld(q.x - 26, q.y - 64, q.x + 26, q.y + 12); };
+const tFlag = () => { const f = tMe().flags ? tMe().flags[0] : { u: rallyU(0, game), v: 0 }, q = P(f.u, f.v); return tWorld(q.x - 26, q.y - 52, q.x + 34, q.y + 12); }; // v2.74: the base flag
+const tUnits = () => { const us = myUnits(); if (!us.length) return tFlag(); const q = us.map(e => P(e.u, e.v)); return tWorld(Math.min(...q.map(p => p.x)) - 16, Math.min(...q.map(p => p.y)) - 34, Math.max(...q.map(p => p.x)) + 16, Math.max(...q.map(p => p.y)) + 10); }; // v2.74: your troops on the field
+const tUnit = () => { const e = myUnits().sort((a, b) => a.id - b.id)[0]; if (!e) return tFlag(); const q = P(e.u, e.v); return tWorld(q.x - 14, q.y - 30, q.x + 14, q.y + 6); }; // v2.74: one of your troops
+const tCmd = o => SELN.size && SELN.size === myUnits().length ? tEl(`#cmdbar [data-c="${o}"]`) : tEl('#lanes [data-k="all"]'); // v2.74: a command for the whole army: All first until everyone is selected
 const tField = () => ({ rect: () => ({ left: V.cw * 0.3, top: V.ft + 14, right: V.cw * 0.7, bottom: V.ft + 14 + (V.fb - V.ft) * 0.35 }), screen: true }); // a band of open battlefield, small enough to leave room for the bubble
 const tCard = t => tab === 'build' && BUILD_ORDER.includes(t) || tab === 'train' && UDEF[t] ? tEl(`#cards .card[data-type="${t}"]`) : tEl(`.tabs [data-tab="${BUILD_ORDER.includes(t) ? 'build' : 'train'}"]`);
-// The Army-tab chain for "select Infantry, Regroup, tap the spot": highlights whichever part comes next
-const tRegroupTo = spot => () => tab !== 'army' ? tEl('.tabs [data-tab="army"]') : tMe().sel !== 'g:inf' && !rg ? tEl('#asel [data-k="g:inf"]') : rg ? spot() : tEl('#acmd [data-o="move"]');
 
 /* TUTORIAL TEXT START (no digits in any string here: numbers come from the data) */
 const TUT_CH = [
@@ -44,10 +44,13 @@ const TUT_CH = [
       { act: true, txt: () => 'The overview map in the top bar shows the whole lane. Tap it to jump anywhere.', hi: () => tEl('#mm'), enter: () => { TUT.sig.mm = false; }, done: () => TUT.sig.mm },
       { act: true, txt: () => `Tap your ${tN('hq')} to select it.`, hi: () => tB(tMe().hq), enter: () => homeCamera(), done: () => sel && sel.type === 'hq' },
       { txt: () => 'The panel shows what you selected: its tier, health, and what its next upgrade does. Tap × or empty ground to close it.', hi: () => tEl('#bp') },
-      { act: true, txt: () => 'Troops are commanded from the Army tab. Open it.', hi: () => tEl('.tabs [data-tab="army"]'), enter: () => closePanel(), done: () => tab === 'army' },
-      { act: true, txt: () => `Tap Infantry to select your ${PLURAL.rifle}.`, hi: () => tab === 'army' ? tEl('#asel [data-k="g:inf"]') : tEl('.tabs [data-tab="army"]'), done: () => tMe().sel === 'g:inf' },
-      { act: true, txt: () => 'Tap Regroup, then tap a spot on the battlefield. They walk there and hold it.', hi: tRegroupTo(tField), done: tMoved },
-      { txt: () => 'That\'s the basics: drag to look, tap to select, and give orders from the Army tab.' },
+      // v2.74 (docs/CONTROLS.md): select, then command
+      { act: true, txt: () => `These are your ${PLURAL.rifle}. Tap one to select it: a ring marks it, and the command bar takes the bottom panel's place.`, hi: tUnit, enter: () => { closePanel(); homeCamera(); selClear(); }, done: () => SELN.size > 0 },
+      { act: true, txt: () => 'Now tap a spot on open ground. Your selection walks there, holding its fire, and holds the spot.', hi: () => SELN.size ? tField() : tUnit(), enter: () => { TUT.sig.go = false; }, done: () => TUT.sig.go },
+      { act: true, txt: () => 'Select several at once: press and hold on the battlefield until the ring fills, then draw a loop around your troops.', gesture: 'lasso', hi: tUnits, enter: () => { selClear(); TUT.sig.lasso = false; }, done: () => TUT.sig.lasso },
+      { act: true, txt: () => 'Tap a unit, then tap it again right away: every unit of that type is selected.', gesture: 'dbl', hi: tUnit, enter: () => { selClear(); TUT.sig.selType = false; }, done: () => TUT.sig.selType },
+      { txt: () => 'The tag shows how many are selected; its × clears them. The selection also clears after every order. With nothing selected, tapping the ground does nothing.', hi: () => tEl('#cmdbar .seltag') },
+      { txt: () => 'That\'s the basics: drag to look, select your troops, then tap the ground to move them or give an order.', enter: () => selClear() },
     ] },
   { key: 'economy', name: 'Economy', blurb: 'Credits, energy, Refineries and field nodes',
     setup: () => { tSquad('rifle', 4); tMe().res.c += BDEF.refinery.cost.c; },
@@ -59,7 +62,7 @@ const TUT_CH = [
         enter: () => { if (!tMy('refinery')) tryBuild(game, 0, 'refinery'); } },
       { act: true, txt: () => 'Construction takes a few seconds. Wait for it to finish.', hi: () => tB(tMy('refinery')), done: () => hasBuilt(game, 0, 'refinery') },
       { txt: () => 'Field nodes sit along the lane. Ground troops standing on one capture it for extra income.', hi: () => tNode(game.nodes[0]) },
-      { act: true, txt: () => 'Capture this node: in the Army tab, select Infantry, tap Regroup, then tap the node.', hi: tRegroupTo(() => tNode(game.nodes[0])), done: () => game.nodes[0].owner === 0 },
+      { act: true, txt: () => 'Capture this node: tap All on the left to select your troops, then tap the node.', hi: () => SELN.size ? tNode(game.nodes[0]) : tEl('#lanes [data-k="all"]'), done: () => game.nodes[0].owner === 0 },
       { txt: () => `Captured! Every node you hold pays +${txN(NODE_INC.c)} credits and +${txN(NODE_INC.e)} energy per second. Hold more than the enemy and you out-earn them.`, hi: () => tNode(game.nodes[0]) },
     ] },
   { key: 'building', name: 'Building', blurb: 'The pads, the signature pad and the Build tab',
@@ -73,22 +76,21 @@ const TUT_CH = [
       { txt: () => `Signature buildings stand only on that pad, one at a time: the ${tN('sigA')} or the ${tN('sigB')}. The Codex explains both.`, hi: () => tEl('#cards .card[data-type="sigA"]'), skipIf: () => !sigPadOn() || !SIG.on },
       { txt: () => 'To build: tap a pad, then a card. Or just tap a card and it takes the first free pad.' },
     ] },
-  { key: 'army', name: 'Army', blurb: 'Training troops, Hold and Attack, rally flags, sending the damaged home, squads on Two-Lane',
+  { key: 'army', name: 'Army', blurb: 'Training troops, selecting, Attack, Hold and Retreat, base flags and healing, lanes',
     setup: () => { tPlace('barracks', 4); tMe().res.c += UDEF.rifle.cost.c * 2; },
     steps: [
       { act: true, txt: () => `Troops come from production buildings like your ${tN('barracks')}. Open the Train tab.`, hi: () => tEl('.tabs [data-tab="train"]'), done: () => tab === 'train' },
       { act: true, txt: () => `Tap the ${UDEF.rifle.name} card to train one.`, hi: () => tCard('rifle'), done: () => { const b = tMy('barracks'); if (b && b.queue.length && !TUT.firstUnit) TUT.firstUnit = b.queue[0]; return !!TUT.firstUnit || game.ents.some(e => e.kind === 'u' && e.side === 0); } },
-      { txt: () => 'New troops walk to the rally flag in front of your base and wait there.', hi: tFlag, codex: { label: 'See stats', item: () => 'unit:' + (TUT.firstUnit || 'rifle') },
+      { txt: () => 'New troops walk to your base flag in front of your base and wait there on Hold. Nothing moves until you order it.', hi: tFlag, codex: { label: 'See stats', item: () => 'unit:' + (TUT.firstUnit || 'rifle') },
         enter: () => { const b = tMy('barracks'); if (b && !b.queue.length && !game.ents.some(e => e.kind === 'u' && e.side === 0)) tryTrain(game, 0, 'rifle'); if (!TUT.firstUnit) TUT.firstUnit = 'rifle'; } },
-      { act: true, txt: () => `Here comes your ${UDEF[TUT.firstUnit || 'rifle'].name}.`, hi: tFlag, done: () => game.ents.some(e => e.kind === 'u' && e.side === 0 && e.hp > 0) },
-      { act: true, txt: () => 'Hold keeps your army at the flag. Tap Attack in the top bar to send everyone forward.', hi: () => tEl('#stance [data-s="attack"]'), done: () => tMe().stance === 'attack' },
-      { act: true, txt: () => 'Tap Hold to stop them where they stand.', hi: () => tEl('#stance [data-s="hold"]'), done: () => tMe().stance === 'hold' },
-      { txt: () => 'Retreat pulls everyone back to the flag without firing. Your army fights whatever comes in range, so pick your moment to attack.' },
-      // v2.62: the army controls
-      { act: true, txt: () => 'More army controls live in the Army tab. Open it.', hi: () => tEl('.tabs [data-tab="army"]'), done: () => tab === 'army' },
-      { txt: () => 'You have two rally flags: Base, by your HQ, and Forward, at your field node. The Rally button switches the army between them in one tap. To move a flag, tap it on the battlefield, then tap where it goes.', hi: () => tEl('#bRally') },
-      { txt: () => `Send damaged home sends every unit under ${Math.round(DAMAGED.thr * 100)}% health back to the Base flag. They heal there and rejoin the army when nearly whole.`, hi: () => tEl('#bDamaged') },
-      { txt: () => 'On a lane map, your army splits into a squad per lane: N and S (and C where there is a centre lane) beside these buttons. Select a squad and the orders, Regroup and Rally act on it alone; All commands everyone. Long-press a squad to move it to another lane or choose where new units go.' }, // v2.66: Split Army
+      { act: true, txt: () => `Here comes your ${UDEF[TUT.firstUnit || 'rifle'].name}.`, hi: tFlag, done: () => game.ents.some(e => e.kind === 'u' && e.side === 0 && e.hp > 0 && e.po && e.po.o === 'hold') },
+      // v2.74 (docs/CONTROLS.md): select, then command
+      { act: true, txt: () => 'Tap All on the left to select your whole army.', hi: () => tEl('#lanes [data-k="all"]'), enter: () => selClear(), done: () => SELN.size > 0 && SELN.size === myUnits().length },
+      { act: true, txt: () => 'Tap Attack: they advance down the lane and fight their way to the enemy base.', hi: () => tCmd('attack'), enter: () => { TUT.sig.attack = false; }, done: () => TUT.sig.attack },
+      { act: true, txt: () => 'Select them again with All, then tap Hold: they stop and fight anything in range.', hi: () => tCmd('hold'), enter: () => { TUT.sig.hold = false; }, done: () => TUT.sig.hold },
+      { txt: () => 'Retreat brings them back to their base flag without firing. Units heal at your base flags, and at repair depots you hold, but only when you move them there: nothing goes home on its own.' },
+      { txt: () => 'To move a base flag, tap it with nothing selected, then tap where it goes.', hi: tFlag },
+      { txt: () => 'On a lane map the column on the left lists each lane with its unit count. Tap a lane to train to it: new units wait at that lane\'s base flag. Tap a lane and tap it again right away to select its units. Attack sends units down the lane they are in.', hi: () => tEl('#lanes') },
     ] },
   { key: 'upgrades', name: 'Upgrades', blurb: 'Upgrade tiers, paths and what they unlock',
     setup: () => { tPlace('barracks', 4); const u = BDEF.barracks.up; tMe().res.c += u[2].c + u[3].c; tMe().res.e += u[2].e + u[3].e; },
@@ -111,9 +113,9 @@ const TUT_CH = [
       { act: true, txt: () => 'Hold your ground and defeat the attack.', hi: tFlag,
         enter: () => { TUT.wave = tSquad('rifle', 4, 1).map(u => u.id); setStance(game, 1, 'attack'); },
         done: () => { const left = game.ents.some(e => e.kind === 'u' && e.side === 1 && e.hp > 0 && TUT.wave.includes(e.id)); if (!left) setStance(game, 1, 'retreat'); return !left; } },
-      { act: true, txt: () => 'Now take the fight to them: tap Attack.', hi: () => tEl('#stance [data-s="attack"]'), done: () => tMe().stance === 'attack' },
+      { act: true, txt: () => 'Now take the fight to them: tap All, then Attack.', hi: () => tCmd('attack'), enter: () => { TUT.sig.attack = false; }, done: () => TUT.sig.attack },
       { act: true, pan: false, txt: () => `Destroy the enemy ${tN('hq')}. It has no other buildings left to shield it.`, hi: () => tB(game.sides[1].hq),
-        enter: () => { if (tMe().stance !== 'attack') applyStance('attack'); }, done: () => game.sides[1].hq.hp <= 0 || (game.over && game.winner === 0) },
+        enter: () => { const idle = myUnits().filter(e => e.po.o !== 'attack').map(e => e.id); if (idle.length) command(game, 0, idle, 'attack'); selClear(); }, done: () => game.sides[1].hq.hp <= 0 || (game.over && game.winner === 0) },
       { txt: () => `Victory! Destroying the enemy ${tN('hq')} wins the match. In a real match it stays shielded while an enemy production building stands in its base.` },
     ] },
   { key: 'factions', name: 'Factions', blurb: 'Last Fist, Bloomhost and Axiarchs',
@@ -132,7 +134,7 @@ function tutMatch() {
   clearTimeout(endTimer); endTimer = null; document.body.classList.remove('spectate');
   game = newGame('normal', { countdown: 0, factions: ['lastfist', 'lastfist'], map: 'classic' }); // v2.65: the tutorial is on Classic
   game.tut = true; game.noStorm = true; game.sides[1].aiT = 1e9;
-  buildAbil(); hideCountdown(); camTouched = false; applyZoom(1); resize(); closePanel(); hideInfo(); endAim();
+  buildAbil(); ctlStart(); hideCountdown(); camTouched = false; applyZoom(1); resize(); closePanel(); hideInfo(); endAim(); // v2.74: ctlStart, the new army controls
   running = true; paused = false; speed = 1; $('bSpeed').textContent = '1×';
   tab = 'build'; for (const x of document.querySelectorAll('.tabs button')) x.classList.toggle('on', x.dataset.tab === 'build');
   hideOverlay(); homeCamera(); buildCards(); refreshUI(true);
@@ -254,10 +256,10 @@ $('tutSkipC').addEventListener('click', tutSkipChapter);
 // The How to Play tab: the chapter list
 CODEX_HOWTO.html = () => { const D = tutDone(); return `<h2>How to Play</h2><p>Hands-on lessons in a practice match as ${factionName('lastfist')}. You can't lose, every step can be skipped, and any chapter can be played or replayed at any time.</p>` +
   TUT_CH.map((C, i) => `<div class="cxch${D[C.key] ? ' done' : ''}" id="cx-tut-${C.key}"><span class="ck" aria-label="${D[C.key] ? 'Completed' : 'Not played'}">${D[C.key] ? '✓' : ''}</span><div class="cxct"><b>${i + 1}. ${cxEsc(C.name)}</b><small>${cxEsc(C.blurb)}</small></div><button class="cxplay" data-tut="${i}">Play</button></div>`).join('') +
-  `<h3 id="cx-split">Split Army (Two-Lane)</h3><p>On a map with two lanes every unit belongs to the squad of its lane, North or South. In the Army tab, pick <b>All</b>, <b>N</b> or <b>S</b> (or tap a squad's badge on the minimap): with a squad selected, Hold, Attack, Retreat, Regroup and Rally act on that squad only. Aircraft belong to a squad too and fly straight over the ridge.</p><p><b>Long-press a squad</b> to move it to the other lane (through the centre crossing or past your base) or to choose where new units go: North, South or alternating (the default). <b>Long-press a unit</b> to send every unit of that type to one lane. On Classic there is one lane, so there are no squads.</p><p><b>Three-Lane</b> has three squads, <b>N</b>, <b>C</b> and <b>S</b>: the walls between the lanes each have one gap, at the rich centre node, where squads can switch lanes or hit a neighbouring lane from the side.</p>` +
-  `<h3 id="cx-special">Repair depots and relics (Three-Lane)</h3><p>A <b>repair depot</b> is captured like a node: your units near it heal ${REPAIR.heal}% of their health a second once unhurt for ${REPAIR.calm} s, and <b>Send damaged home</b> sends them to your nearest depot when it is closer than your base flag. A <b>relic</b> is a neutral camp off the lanes: its gold guards never move and fire at anyone who comes close. Destroy them and stand on the relic to take it, once, for ${RELIC.reward.c} credits.</p>` +
+  `<h3 id="cx-controls">Army controls</h3><p><b>Select, then command.</b> Tap one of your units to select it; tap more to add them. <b>Double-tap</b> a unit to select every unit of its type. <b>Press and hold</b> on the battlefield until the ring fills, then draw a loop: the units inside it are selected. <b>All</b>, at the top of the column on the left, selects your whole army. A tag shows how many are selected; its × clears them. Only your own units can be selected.</p><p>With units selected, the command bar takes the bottom panel's place. <b>Tap the ground</b> to send them there: they walk holding their fire, then hold the spot. <b>Attack</b> sends them down the lane they are in, fighting their way to the enemy base. <b>Hold</b> stops them to fight anything in range. <b>Retreat</b> brings them back to their lane's base flag without firing. The selection clears after an order. Nothing moves on its own.</p><p><b>New units</b> walk to the active lane's base flag and wait there on Hold; from a forward ${tN('barracks')}, beside it. <b>Healing:</b> your units heal ${Math.round(CTRL.heal * 100)}% of their health a second, once unhurt for ${CTRL.calm} s, at your base flags and at repair depots you hold, only where you move them. Tap a base flag with nothing selected, then the ground, to move it.</p><p><b>Lanes</b> (Two-Lane, Three-Lane): the column on the left lists each lane, north on top, with its unit count. <b>Tap a lane</b> to make it the active lane (new units go to its base flag; the Train tab shows it); <b>double-tap</b> it to select its units. Aircraft fly straight over the ridge and the walls. On Three-Lane the walls between the lanes each have one gap, at the rich centre node.</p>` +
+  `<h3 id="cx-special">Repair depots and relics (Three-Lane)</h3><p>A <b>repair depot</b> is captured like a node: your units near it heal ${REPAIR.heal}% of their health a second once unhurt for ${REPAIR.calm} s: move damaged units there (or to a base flag) to save them. A <b>relic</b> is a neutral camp off the lanes: its gold guards never move and fire at anyone who comes close. Destroy them and stand on the relic to take it, once, for ${RELIC.reward.c} credits.</p>` +
   `<h3 id="cx-cond">Battlefield conditions</h3><p>On the map screen you can add conditions to a match (or let <b>Random</b> pick one): ${COND_KEYS.map(k => `<b>${COND_UI[k].name}</b>: ${COND_UI[k].line()}`).join(' ')} Each map lists the ones it allows; a match shows its conditions as small icons on the minimap's right edge.</p>` +
-  `<h3 id="cx-break">Breaking a base</h3><p>Your HQ is shielded while a production building (${tN('barracks')}, ${tN('factory')} or ${tN('techlab')}) stands in your base: destroy them and the HQ is open. A destroyed building leaves <b>rubble</b>: nothing can be built on its pad for ${BREAK.rubble.t} s. From ${mmss(BREAK.power.from)} the base guns (HQ, turrets, bunkers) lose ${Math.round(BREAK.power.step * 100)}% of their power every minute as the Extinction Event nears, the same for both sides: <b>Power failing</b>.</p>`; }; // v2.66; v2.69: base-breaking
+  `<h3 id="cx-break">Breaking a base</h3><p>Your HQ is shielded while a production building (${tN('barracks')}, ${tN('factory')} or ${tN('techlab')}) stands in your base: destroy them and the HQ is open. A destroyed building leaves <b>rubble</b>: nothing can be built on its pad for ${BREAK.rubble.t} s. From ${mmss(BREAK.power.from)} the base guns (HQ, turrets, bunkers) lose ${Math.round(BREAK.power.step * 100)}% of their power every minute as the Extinction Event nears, the same for both sides: <b>Power failing</b>.</p>`; }; // v2.66; v2.69: base-breaking; v2.74: the army controls (docs/CONTROLS.md)
 // First launch: offer the tutorial once (the answer is remembered; without storage, once per page load)
 function tutFirstPrompt() {
   TUT.prompted = true;
@@ -284,7 +286,7 @@ function frame(ts) {
   } else if (game && game.over) update(game, dt);
   if (!gest && Math.abs(cam.vx) > 5) { cam.x += cam.vx * dt; cam.vx *= Math.pow(0.03, dt); clampCam(); }
   if (TUT.on) tutTick(real);
-  render(ctx, game, ts / 1000, sel, selPad);
+  render(ctx, game, ts / 1000, sel, selPad); drawCtlOverlay(ctx); // v2.74: the lasso and the move marker
   drawMinimapNow();
 }
 buildAbil();

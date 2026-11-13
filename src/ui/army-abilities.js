@@ -1,200 +1,5 @@
-/* ---------- Army tab (v2.12): select a group or a unit type, then Hold, Attack, Retreat or Regroup ----------
-   Shows only what you own. With nothing selected, Hold / Attack / Retreat are the global stance and Regroup sends
-   the whole army. Regroup: tap it, then tap the battlefield. */
-let armySig = '', rg = null; // rg: Regroup targeting in progress
-function armyCounts() { const c = {}; for (const e of game.ents) if (e.kind === 'u' && e.side === 0 && e.hp > 0) c[e.type] = (c[e.type] || 0) + 1; return c; }
-const selCount = (k, c) => !k ? 0 : k[0] === 'g' ? UGROUPS[k.slice(2)].reduce((a, t) => a + (c[t] || 0), 0) : c[k.slice(2)] || 0;
-const selName = k => !k ? 'the whole army' : k[0] === 'g' ? GROUP_NAME[k.slice(2)] : PLURAL[k.slice(2)];
-function buildArmy() {
-  const wrap = $('cards'), c = game ? armyCounts() : {}, box = document.createElement('div'), cmd = document.createElement('div');
-  wrap.innerHTML = ''; box.className = 'asel'; box.id = 'asel'; cmd.className = 'acmd'; cmd.id = 'acmd';
-  const items = [];
-  for (const k of ['inf', 'arm', 'air', 'sup']) { const n = UGROUPS[k].reduce((a, t) => a + (c[t] || 0), 0); if (n) items.push({ key: 'g:' + k, name: GROUP_NAME[k], icon: UGROUPS[k].find(t => c[t]), grp: true }); }
-  for (const t of UNIT_ORDER) if (c[t]) items.push({ key: 't:' + t, name: UDEF[t].name, icon: t });
-  if (!items.length) box.innerHTML = '<div class="aempty">No units yet: train some in the Train tab.</div>';
-  for (const it of items) {
-    const el = document.createElement('button');
-    el.className = 'chip' + (it.grp ? ' grp' : ''); el.dataset.k = it.key;
-    el.innerHTML = '<canvas class="ic"></canvas><span class="nm"></span><span class="od"></span><span class="cnt"></span>';
-    el.querySelector('.nm').textContent = it.name;
-    drawIcon(el.querySelector('.ic'), 'u', it.icon);
-    el.addEventListener('click', () => { if (sqLP.fired === el) { sqLP.fired = null; return; } onChip(it.key); });
-    if (MAP_LANED && !it.grp) holdFor(el, () => sqMenu(el, MAP.lanes.map((l, k) => [`Send all ${PLURAL[it.icon]} to ${laneName(k)}`, () => sqDo(setLane(game, 0, 'type', it.icon, k))]))); // v2.66
-    box.appendChild(el);
-  }
-  // v2.66 (Split Army, docs/SPLIT_ARMY.md): on a lane map, the squad column: All, then one chip per lane (its squad)
-  let sq = null;
-  if (MAP_LANED) {
-    sq = document.createElement('div'); sq.className = `asq l${MAP.lanes.length}`; sq.id = 'asq'; // v2.70: l3, three chips under All (Three-Lane)
-    sq.innerHTML = `<button data-q="all" class="all"><b>All</b><i></i></button>` + MAP.lanes.map((l, k) => `<button data-q="${k}"><b>${laneName(k)[0]}</b><i></i></button>`).join('');
-    for (const b of sq.children) {
-      const q = b.dataset.q === 'all' ? null : +b.dataset.q;
-      b.addEventListener('click', () => { if (sqLP.fired === b) { sqLP.fired = null; return; } onSquad(q); });
-      const others = q === null ? [] : MAP.lanes.map((_, k) => k).filter(k => k !== q); // v2.70: every other lane (two on Three-Lane)
-      if (q !== null) holdFor(b, () => sqMenu(b, [...others.map(o => [`Move ${laneName(q)} squad to ${laneName(o)}`, () => sqDo(setLane(game, 0, 'lane', q, o))]),
-        ...(MAP.lanes.length === 2 ? [[q, laneName(q)], [null, 'Alternate'], [1 - q, laneName(1 - q)]] : [...MAP.lanes.map((_, k) => [k, laneName(k)]), [null, 'Alternate']]).map(([k, n]) => [`New units: ${n}`, () => sqDo(setLaneNew(game, 0, k))])]));
-    }
-  }
-  for (const o of ['hold', 'attack', 'retreat', 'move']) {
-    const b = document.createElement('button'); b.dataset.o = o; b.textContent = ORDER_NAME[o];
-    b.addEventListener('click', () => onCmd(o, b)); b.addEventListener('animationend', () => b.classList.remove('shake'));
-    cmd.appendChild(b);
-  }
-  // v2.62: the army controls: the rally flag (one tap switches flags and sends the army) and Send damaged home
-  const rly = document.createElement('div'); rly.className = 'arly'; rly.id = 'arly';
-  rly.innerHTML = '<button id="bRally"><small>Rally</small><b></b></button><button id="bDamaged"><small>Send home</small><b>Damaged</b></button>';
-  rly.querySelector('#bRally').addEventListener('click', e => onRally(e.currentTarget));
-  rly.querySelector('#bDamaged').addEventListener('click', e => onDamaged(e.currentTarget));
-  for (const b of rly.children) b.addEventListener('animationend', () => b.classList.remove('shake'));
-  if (sq) wrap.append(box, sq, cmd, rly); else wrap.append(box, cmd, rly);
-  armySig = Object.keys(c).sort().join(',');
-  if (game) refreshArmy();
-}
-function refreshArmy() {
-  if (!game || !$('asel')) return;
-  const c = armyCounts(), s = game.sides[0], O = s.orders || newOrders();
-  if (Object.keys(c).sort().join(',') !== armySig) { buildArmy(); return; } // a type or group appeared or died out
-  if (s.sel && !selCount(s.sel, c)) s.sel = null;
-  for (const el of $('asel').querySelectorAll('.chip')) {
-    const k = el.dataset.k, key = k.slice(2), o = k[0] === 'g' ? O.groups[key] : unitOrder(s, key), od = el.querySelector('.od');
-    setHTML(el.querySelector('.cnt'), String(selCount(k, c)));
-    el.classList.toggle('on', s.sel === k);
-    const txt = o ? ORDER_NAME[o.o] + (o.o === 'move' && o.done ? ' (there)' : '') : k[0] === 'g' ? '' : ORDER_NAME[s.stance];
-    if (od.textContent !== txt) od.textContent = txt;
-    od.classList.toggle('set', !!o);
-  }
-  refreshRally();
-  const q = MAP_LANED ? sqOf(s) : null;
-  if ($('asq')) { const n = sqCounts(); for (const b of $('asq').children) { const k = b.dataset.q === 'all' ? null : +b.dataset.q; b.classList.toggle('on', k === q && !s.sel); setHTML(b.querySelector('i'), String(k === null ? n.all : n[k])); } } // v2.66
-  const cur = s.sel ? (s.sel[0] === 'g' ? O.groups[s.sel.slice(2)] : unitOrder(s, s.sel.slice(2))) : q !== null ? (O.lanes && O.lanes[q]) || null : null;
-  for (const b of $('acmd').children) b.classList.toggle('on', b.dataset.o === 'move' ? !!rg : s.sel || q !== null ? !!cur && cur.o === b.dataset.o : !hasOrders(s) && b.dataset.o === s.stance);
-}
-// v2.62: the army controls. The Rally button shows the active flag; a tap makes the other flag active and sends the whole
-// army there. Send damaged home counts the units it would send. Move a flag: tap it on the battlefield, then tap the ground.
-let fmv = null; // a flag being moved: 'def' or 'fwd'
-// v2.66: the squad (lane) the Army tab acts on, null for All; squads are lanes, so it only exists on a lane map
-const sqOf = s => MAP_LANED && s.squad != null && s.squad < MAP.lanes.length ? s.squad : null;
-const laneName = k => MAP.lanes[k].id[0].toUpperCase() + MAP.lanes[k].id.slice(1);
-function sqCounts() { const n = { all: 0 }; for (const e of game.ents) if (e.kind === 'u' && e.side === 0 && e.hp > 0 && !e.temp) { n.all++; if (e.lane != null) n[e.lane] = (n[e.lane] || 0) + 1; } for (let k = 0; k < MAP.lanes.length; k++) n[k] = n[k] || 0; return n; }
-function onSquad(q) {
-  if (!game || paused || !running || game.over) return;
-  const s = game.sides[0]; s.squad = q; s.sel = null; // a squad and a unit chip are never both selected
-  if (rg) endAim();
-  refreshArmy();
-}
-// Long-press (v2.66): a small menu above a squad chip or a unit chip on a lane map
-const sqLP = { timer: 0, fired: null };
-function holdFor(el, fn) {
-  el.addEventListener('pointerdown', () => { clearTimeout(sqLP.timer); sqLP.timer = setTimeout(() => { sqLP.fired = el; fn(); }, 450); });
-  for (const n of ['pointerup', 'pointercancel', 'pointerleave']) el.addEventListener(n, () => clearTimeout(sqLP.timer));
-  el.addEventListener('contextmenu', e => e.preventDefault());
-}
-function sqMenu(el, items) {
-  if (!game || game.over) return;
-  sqMenuClose();
-  const m = document.createElement('div'); m.id = 'sqm'; m.className = 'sqm';
-  for (const [txt, fn] of items) { const b = document.createElement('button'); b.textContent = txt; b.addEventListener('click', ev => { ev.stopPropagation(); sqMenuClose(); fn(); }); m.appendChild(b); }
-  document.body.appendChild(m);
-  const r = el.getBoundingClientRect(), mr = m.getBoundingClientRect();
-  m.style.left = Math.round(clamp(r.left + r.width / 2 - mr.width / 2, 6, innerWidth - mr.width - 6)) + 'px';
-  m.style.top = Math.round(Math.max(6, r.top - mr.height - 6)) + 'px';
-  setTimeout(() => document.addEventListener('pointerdown', sqMenuAway, true), 0);
-}
-function sqMenuAway(e) { const m = $('sqm'); if (m && !m.contains(e.target)) sqMenuClose(); }
-function sqMenuClose() { const m = document.getElementById('sqm'); if (m) m.remove(); document.removeEventListener('pointerdown', sqMenuAway, true); }
-function sqDo(r) { toast(r.msg, r.ok ? 'ok' : 'bad'); refreshUI(true); }
-function refreshRally() {
-  const b = $('bRally'), d = $('bDamaged'); if (!b || !game) return;
-  const R = game.sides[0].rally, q = sqOf(game.sides[0]), at = R ? (q !== null ? sqFlag(R, q) : R.at) : 'def', txt = at === 'def' ? 'Base' : 'Forward';
-  setHTML(b.querySelector('b'), txt); b.classList.toggle('fwd', at === 'fwd');
-  const n = game.ents.filter(e => e.kind === 'u' && e.side === 0 && e.hp > 0 && !e.temp && !e.medHome && e.hp < e.maxHp * DAMAGED.thr).length;
-  setHTML(d.querySelector('b'), n ? `Damaged ${n}` : 'Damaged'); d.classList.toggle('has', n > 0);
-}
-function onRally(b) {
-  if (!game || paused || !running || game.over) return;
-  const R = game.sides[0].rally, q = sqOf(game.sides[0]), at = R ? (q !== null ? sqFlag(R, q) : R.at) : 'def', r = useRally(game, 0, at === 'fwd' ? 'def' : 'fwd', q); // v2.66: the selected squad's flag
-  toast(r.msg, r.ok ? 'ok' : 'bad'); if (!r.ok) shake(b);
-  refreshUI(true);
-}
-function onDamaged(b) {
-  if (!game || paused || !running || game.over) return;
-  const r = sendDamagedHome(game, 0);
-  toast(r.msg, r.ok ? 'ok' : 'bad'); if (!r.ok) shake(b);
-  refreshUI(true);
-}
-function flagAt(x, y) { // which of the player's flags a tap is on, if any (the pole and cloth, generously)
-  const w = toWorld(x, y);
-  for (const f of flagSpots(game)) { const q = P(f.u, f.v); if (Math.abs(w.x - (q.x + 8)) <= 22 && w.y >= q.y - 44 && w.y <= q.y + 10) return f.k; }
-  return null;
-}
-// Where the player's flags are drawn (and tapped): Classic one of each at depth −20; v2.66: on a lane map the Base flag
-// in the middle and a Forward flag on each lane
-function flagSpots(g) {
-  const R = rallyOf(g, 0), out = [{ k: 'def', u: R.def + 30, v: -20 }];
-  if (MAP_LANED) MAP.lanes.forEach((_, k) => { const [u, v] = flagPt(g, 0, 'fwd', k); out.push({ k: 'fwd', u: u + 30, v: v - 20, lane: k }); });
-  else out.unshift({ k: 'fwd', u: R.fwd + 30, v: -20 });
-  return out;
-}
-function startFlagMove(k) {
-  endAim(); closePanel(); hideInfo();
-  fmv = k;
-  $('aim').style.setProperty('--ac', k === 'def' ? TEAM[0].main : '#ffb347');
-  $('aimName').textContent = k === 'def' ? 'Base flag' : 'Forward flag'; $('aimTxt').textContent = ': tap the battlefield where it goes';
-  $('aim').classList.remove('hide');
-}
-function flagTap(x, y) {
-  const w = toWorld(x, y), r = setRally(game, 0, fmv, w.x - 30);
-  toast(r.msg, r.ok ? 'ok' : 'bad');
-  if (r.ok) { endAim(); refreshUI(true); }
-}
-function onChip(k) {
-  if (!game || paused || !running || game.over) return;
-  const s = game.sides[0]; s.sel = s.sel === k ? null : k; if (s.sel) s.squad = null; // v2.66: a unit chip clears the squad
-  if (rg) endAim();
-  refreshArmy();
-}
-function onCmd(o, b) {
-  if (!game || paused || !running || game.over) return;
-  const s = game.sides[0];
-  const q = sqOf(s);
-  if (!s.sel && q !== null) { // v2.66: an order for the selected squad; its Regroup gathers it at its lane's Forward flag
-    const r = o === 'move' ? giveOrder(game, 0, 'lane', q, 'move', ...flagPt(game, 0, 'fwd', q)) : giveOrder(game, 0, 'lane', q, o);
-    toast(r.ok ? `${laneName(q)} squad: ${o === 'move' ? 'regrouping at its forward flag' : o === 'hold' ? 'holding position' : o === 'attack' ? 'attacking along its lane' : 'retreating to the base flag'}` : r.msg, r.ok ? (o === 'attack' ? 'warn' : 'ok') : 'bad'); if (!r.ok) shake(b);
-    refreshUI(true); return;
-  }
-  if (o === 'move') { if (rg) endAim(); else startRegroup(s.sel, b); return; }
-  if (!s.sel) { if (game.countdown > 0) { toast(WAIT_GO.msg, 'bad'); shake(b); return; } applyStance(o); return; }
-  const r = giveOrder(game, 0, s.sel[0] === 'g' ? 'group' : 'type', s.sel.slice(2), o);
-  toast(r.msg, r.ok ? (o === 'attack' ? 'warn' : 'ok') : 'bad'); if (!r.ok) shake(b);
-  refreshUI(true);
-}
-function startRegroup(k, b, top) { // Regroup targeting for a selection (k) or, with k null, the whole army
-  if (game.countdown > 0) { toast(WAIT_GO.msg, 'bad'); shake(b); return; }
-  if (!Object.keys(armyCounts()).length) { toast('No units to regroup', 'bad'); shake(b); return; }
-  endAim(); closePanel(); hideInfo();
-  rg = { k, top: !!top };
-  $('aim').style.setProperty('--ac', '#9fe6ff');
-  $('aimName').textContent = 'Regroup'; $('aimTxt').textContent = `: tap the battlefield to send ${selName(k)}`;
-  $('aim').classList.remove('hide');
-  refreshArmy(); refreshRgTop();
-}
-// The top bar's Regroup (v2.47): the Army tab's Regroup for the whole army, whatever the Army tab has selected.
-// Tap it, then tap the battlefield; tap it again before that to cancel.
-function onRgTop() {
-  if (!game || paused || !running || game.over || game.spectate) return;
-  if (rg) { endAim(); return; }
-  startRegroup(null, $('bRegroup'), true);
-}
-function refreshRgTop() { $('bRegroup').classList.toggle('on', !!rg); }
-$('bRegroup').addEventListener('click', onRgTop);
-$('bRegroup').addEventListener('animationend', () => $('bRegroup').classList.remove('shake'));
-function rgTap(x, y) {
-  const w = toWorld(x, y), k = rg.k;
-  const r = giveOrder(game, 0, k ? (k[0] === 'g' ? 'group' : 'type') : 'all', k ? k.slice(2) : null, 'move', w.x, w.y / DY);
-  toast(r.msg, r.ok ? 'ok' : 'bad');
-  if (r.ok) { endAim(); refreshUI(true); }
-}
-
+/* v2.74: the Army tab (group and type chips, Hold / Attack / Retreat / Regroup, squads, rally flags, Send damaged home) is
+   gone; the army controls are in src/ui/controls.js (docs/CONTROLS.md). */
 /* ---------- Commander abilities: buttons and one-finger targeting ----------
    Tap a button, tap the battlefield to place the circle, tap inside it to confirm. Cancel: the banner's button,
    the ability button again, or pausing. Long-press a button for details. */
@@ -236,7 +41,7 @@ function onAbil(k, el) {
   if (!game || paused || !running) return;
   hideInfo();
   if (aim && aim.k === k) { endAim(); return; }
-  if (rg) endAim();
+  if (flagMv >= 0) endAim();
   const r = abilityCheck(game, 0, k);
   if (!r.ok) { toast(r.msg, 'bad'); el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); return; }
   closePanel();
@@ -246,10 +51,9 @@ function onAbil(k, el) {
   $('aim').classList.remove('hide');
   refreshAbil();
 }
-function endAim() { // ends ability targeting, Regroup targeting and Set warp point
-  if (rg) { rg = null; $('aim').classList.add('hide'); if (tab === 'army') refreshArmy(); refreshRgTop(); }
+function endAim() { // ends ability targeting, Set warp point and moving a base flag
   if (wpt) { wpt = false; $('aim').classList.add('hide'); refreshWarpCard(); }
-  if (fmv) { fmv = null; $('aim').classList.add('hide'); } // v2.62
+  if (flagMv >= 0) { flagMv = -1; $('aim').classList.add('hide'); } // v2.74: a base flag
   if (!aim) return; aim = null; $('aim').classList.add('hide'); refreshAbil();
 }
 $('aimX').addEventListener('click', endAim);
@@ -300,10 +104,8 @@ function refreshUI(force) {
     el.setAttribute('aria-label', `${k ? 'Enemy' : 'Your'} HQ: ${st.stale ? 'last seen with ' : ''}${Math.ceil(st.hp)} of ${Math.round(st.maxHp)} HP, ${HQ_STATE[st.state].toLowerCase()}`);
   }
   $('resP').classList.toggle('full', used >= cap);
-  for (const b of $('stance').children) b.classList.toggle('on', b.dataset.s === s.stance);
-  refreshRgTop();
-  if (tab === 'army') refreshArmy();
-  else if (tab === 'train' && trainSigOf(game) !== trainSig) { buildCards(); return; } // what you can train changed
+  refreshCtl(); // v2.74: the left column and the command bar
+  if (tab === 'train' && trainSigOf(game) !== trainSig) { buildCards(); return; } // what you can train changed
   else for (const el of $('cards').children) {
     const type = el.dataset.type;
     if (type === 'other') continue;

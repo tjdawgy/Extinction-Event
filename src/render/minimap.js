@@ -3,7 +3,6 @@
 const mmDeep = () => MAP.size.h > 400, mmDepth = () => mmDeep() ? MAP.size.h / 2 : 260;
 const mmY = (v, h) => h / 2 + clamp(v / mmDepth(), -1, 1) * (h / 2 - 4);
 const mmV = (y, h) => clamp((y - h / 2) / (h / 2 - 4), -1, 1) * mmDepth();
-const MMB = []; // v2.66: the squad badges drawn on the minimap (their tap areas, in minimap pixels)
 function drawMinimap(c, g, w, h) {
   c.clearRect(0, 0, w, h);
   c.fillStyle = 'rgba(0,0,0,0.3)'; rr(c, 0.5, 0.5, w - 1, h - 1, 7); c.fill();
@@ -61,20 +60,6 @@ function drawMinimap(c, g, w, h) {
   if (g && g.cond) { // v2.72: the match's battlefield conditions, small icons down the minimap's right edge
     let y = 4; for (const k of COND_KEYS) { if (!g.cond[k]) continue; condIcon(c, k, w - 7, y + 3); y += 9; }
   }
-  MMB.length = 0;
-  if (g && MAP_LANED && !g.spectate) { // v2.66 (Split Army): a badge per squad on its lane, "N 13"; tapping one selects that squad
-    c.font = '800 8.5px -apple-system,system-ui,sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-    const n = MAP.lanes.map(() => 0); for (const e of g.ents) if (e.kind === 'u' && e.side === 0 && e.hp > 0 && !e.temp && e.lane != null) n[e.lane]++;
-    const full = MAP.lanes.length < 3 || MAP.lanes.reduce((a, ln, k) => a + c.measureText(`${ln.id[0].toUpperCase()} ${n[k]}`).width + 12, 0) <= w * 0.95; // v2.70: too narrow for three full badges: letters only
-    MAP.lanes.forEach((ln, k) => {
-      const bu = MAP.lanes.length > 2 ? L * (0.17 + 0.33 * k) : L * 0.28, txt = full ? `${ln.id[0].toUpperCase()} ${n[k]}` : ln.id[0].toUpperCase(), tw = c.measureText(txt).width + 6, x = mx(bu), y = clamp(my(laneY(ln, bu)), 6, h - 6), on = g.sides[0].squad === k;
-      c.fillStyle = on ? 'rgba(57,200,255,0.95)' : 'rgba(10,18,34,0.85)'; rr(c, x - tw / 2, y - 5.5, tw, 11, 4); c.fill();
-      c.strokeStyle = 'rgba(57,200,255,0.8)'; c.lineWidth = 1; c.stroke();
-      c.fillStyle = on ? '#001522' : '#cfe9ff'; c.fillText(txt, x, y + 0.5);
-      MMB.push({ k, x0: x - tw / 2 - 3, x1: x + tw / 2 + 3, y0: y - 8, y1: y + 8 });
-    });
-    c.textBaseline = 'alphabetic';
-  }
   const hw = V.cw / 2 / V.S;
   const x0 = clamp(mx(cam.x - hw), 1, w - 1), x1 = clamp(mx(cam.x + hw), 1, w - 1);
   c.strokeStyle = 'rgba(255,255,255,0.85)'; c.lineWidth = 1.2;
@@ -101,7 +86,7 @@ function condIcon(c, k, x, y) { // a 7 px glyph per battlefield condition (v2.72
   else { c.arc(x + 1, y + 1, 1.8, 0, 7); c.fill(); c.beginPath(); c.moveTo(x - 0.5, y - 0.5); c.lineTo(x - 3, y - 3); c.stroke(); }
 }
 function clampCam() {
-  const hw = V.cw / 2 / V.S, x0 = UMIN - 40, x1 = UMAX + 40;
+  const hw = V.cw / 2 / V.S, x0 = UMIN - 40 - (V.lpad || 0) / V.S, x1 = UMAX + 40; // v2.74: the left edge can scroll clear of the army column (V.lpad px)
   cam.x = (x1 - x0 < 2 * hw) ? (x0 + x1) / 2 : clamp(cam.x, x0 + hw, x1 - hw);
   cam.y = clamp(cam.y, CAMY.min, CAMY.max); // v2.65: a deep map pans up and down (Classic: always 0)
 }

@@ -58,9 +58,6 @@ async function main() {
       cam.x = mid - 60; clampCam(); __frames(30);
     });
     await snap('Medicopter heals the infantry below it; a Recon Drone sees 420 ahead', 'support');
-    await page.evaluate(() => { document.querySelector('.tabs [data-tab="army"]').click(); refreshUI(true); });
-    await page.waitForTimeout(700);
-    await snap('Army tab: the new Support group', 'army');
     await page.evaluate(() => { // the enemy Tech Lab on Support, its badge as seen through fog
       for (const e of game.ents) if (e.kind === 'u') e.hp = 0;
       for (const k of ['barracks', 'factory', 'techlab']) { tryBuild(game, 1, k); for (const x of game.ents) if (x.side === 1 && x.kind === 'b') { x.built = true; x.progress = 1; } }

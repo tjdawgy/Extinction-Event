@@ -62,12 +62,13 @@ test('a match as Bloomhost: names and cards, Train after a Larva Pit, Larva Pit 
   await page.evaluate(() => openPanel(game.ents.find(e => e.type === 'barracks')));
   await page.evaluate(() => { for (let i = 0; i < 30 * 20; i++) update(game, 1 / 30); render(ctx, game, game.t, sel, selPad); refreshUI(true); });
   assert.ok(await page.evaluate(() => game.ents.some(e => e.type === 'skitterling' && e.side === 0)), 'a Skitterling hatched');
-  // v2.18: Bloomhost units appear in the Army tab's groups and types
+  // v2.18: Bloomhost units can be commanded (v2.74: selected with All and ordered from the command bar)
   await page.evaluate(() => { for (const t of ['bulwark', 'razorwing']) spawnUnit(game, 0, t, hqPos(0).u + 220, 0); closePanel(); });
-  await page.click('.tabs [data-tab="army"]'); await page.waitForTimeout(700);
-  const chips = await page.$$eval('#asel .chip', c => c.map(x => x.dataset.k));
-  for (const k of ['g:inf', 'g:arm', 'g:air', 't:skitterling', 't:bulwark', 't:razorwing']) assert.ok(chips.includes(k), `${k} in ${chips}`);
-  assert.doesNotMatch(await page.textContent('#asel'), /undefined/);
+  await page.click('#lanes [data-k="all"]');
+  const sel = await page.evaluate(() => [...new Set(selLive().map(e => e.type))].sort());
+  for (const k of ['bulwark', 'razorwing', 'skitterling']) assert.ok(sel.includes(k), `${k} in ${sel}`);
+  await page.click('#cmdbar [data-c="hold"]');
+  assert.ok(await page.evaluate(() => myUnits().every(e => e.po.o === 'hold') && !SELN.size));
   // v2.19: every unit of both factions has a sprite, an info card, a group and a name (catches a unit missing anywhere)
   const missing = await page.evaluate(() => Object.keys(UDEF).filter(t => !DRAW_U[t] || !UNIT_TIPS[t] || !GROUP_OF[t] || !PLURAL[t] || !SIGHT[t] || (!UDEF[t].air && !SPR_BOX[t] && UDEF[t].fac) || (UDEF[t].shp && !UDEF[t].fac)));
   assert.deepStrictEqual(missing, []);
@@ -85,7 +86,7 @@ test('the enemy faction stays out of the UI during the match (no name, toast or 
     game.countdown = 0; hideCountdown(); updateIntro(); game.sides[0].aiT = 1e9;
     const said = [], tt = toast; window.toast = (m, k) => { said.push(m); return tt(m, k); };
     for (let i = 0; i < 30 * 150; i++) { update(game, 1 / 30); handleEvents(); if (i % 30 === 0) { render(ctx, game, game.t, sel, selPad); refreshUI(false); } const h = game.sides[0].hq; h.hp = h.maxHp; }
-    for (const tab of ['build', 'train', 'army']) document.querySelector(`.tabs [data-tab="${tab}"]`).click();
+    for (const tab of ['build', 'train']) document.querySelector(`.tabs [data-tab="${tab}"]`).click(); selAll(); // v2.74: the command bar instead of the Army tab
     return { said, body: document.body.innerText, aria: [...document.querySelectorAll('[aria-label]')].map(e => e.getAttribute('aria-label')).join(' '), enemyBuilt: game.ents.filter(e => e.side === 1 && e.kind === 'b').length };
   });
   assert.ok(r.enemyBuilt > 3, 'the enemy built its base');
