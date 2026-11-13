@@ -374,6 +374,12 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 #lanes button[data-k="all"]{border-color:rgba(57,200,255,.45)}
 #cmdbar{position:absolute;inset:0;z-index:2;display:flex;align-items:stretch;gap:6px;padding:5px;background:rgba(12,22,40,.97);border-radius:13px}
 #cmdbar.hide{display:none}
+#lpick{position:fixed;inset:0;z-index:7;pointer-events:auto;background:rgba(3,6,14,.18)} #lpick.hide{display:none} /* v2.77: the Attack lane picker; a tap outside its box cancels */
+#lpick .lpbox{position:absolute;display:flex;flex-direction:column;gap:5px;padding:6px;background:rgba(12,22,40,.97);border:1px solid rgba(255,77,77,.6);border-radius:13px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+#lpick small{color:#ffd6d6;font-size:11px;font-weight:700;text-align:center;line-height:1.2}
+#lpick button{min-height:44px;border-radius:10px;border:1px solid var(--line);background:rgba(30,46,76,.85);color:var(--text);font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 12px}
+#lpick button i{font-style:normal;font-size:10px;font-weight:700;color:var(--muted)}
+#lpick button.near{background:#3a1616;border-color:#ff6b6b;box-shadow:inset 0 0 0 1.5px #ff6b6b;color:#ffd6d6} #lpick button.near i{color:#ffb0b0}
 #cmdbar>button{flex:0 1 96px;min-width:64px;border-radius:10px;border:1px solid var(--line);background:rgba(30,46,76,.85);color:var(--text);font-weight:800;font-size:14px}
 #cmdbar>button[data-c="attack"]{background:#3a1616;border-color:rgba(255,77,77,.7);color:#ffd6d6}
 #cmdbar>button[data-c="retreat"]{background:#3a3014;border-color:rgba(255,211,77,.6);color:#ffeab0}

@@ -256,6 +256,7 @@ function updateUnit(g, u, foes, dt) {
   // attacks again only once the retreat ends, back at the flag or under a new order
   if (cs && cs.run) { u.tgt = 0; u.chT = 0; moveToward(u, d, cs.run[0], cs.run[1], dt, sp); return; } // v2.73: retreating to the base rally point, holding fire and ignoring enemies
   if (cs && cs.want) { best = cs.want; close = false; } // v2.76: a target order's target in reach comes first
+  else if (cs && cs.go && best && best.side === NEUTRAL) best = null; // v2.77: on the move, relic guards are passed by (unless targeted)
   if (st === 'retreat' && Math.abs(home - u.u) > 12) {
     if (!RETREAT.fire) { u.tgt = 0; u.chT = 0; }
     else if (best && u.cd <= 0) { fire(g, u, best, d); u.cd = d.cd * rand(0.9, 1.1); } // the v2.34 rule, for the tests' fixed replays
@@ -295,7 +296,7 @@ function updateUnit(g, u, foes, dt) {
         if (d.fade) { u.fu = u.u; u.fv = u.v; u.fadeArm = 1; } // P5: remember where it leapt from
         return; }
     }
-    if (prey) { moveToward(u, d, prey.u, prey.v, dt, sp); return; }
+    if (prey && !(cs && cs.go && prey.side === NEUTRAL)) { moveToward(u, d, prey.u, prey.v, dt, sp); return; }
   } else if (d.chase && MECH7C.on && (st === 'move' || (st === 'hold' && u.holdU !== undefined))) { // v2.43: on Hold or a Regroup flag a melee unit engages
     // enemies within holdR of the spot it holds, and never chases further; with none, it walks back to its spot (below)
     const [hu, hv] = st === 'move' ? slotOf(u, ord) : [u.holdU, u.holdV];

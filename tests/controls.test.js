@@ -248,3 +248,15 @@ test('a v2.73-v2.75 save: its lane flags and active lane are removed; retreating
   assert.deepStrictEqual([U(b.id).po.o, U(b.id).holdU], ['hold', 520], 'holding by a flag: stays'); assert.strictEqual(U(c.id).po.o, 'attack');
   step(h, 40); assert.strictEqual(U(a.id).po.o, 'hold'); assert.ok(near(U(a.id), R.u, R.v, 60));
 });
+
+test('v2.77: units on the move pass relic guards by (unless one is their target); Attack to another lane crosses over', () => {
+  const g = mk('threelane'); sim.directControl(g, 0);
+  const us = [[740, 400], [760, 380], [780, 410]].map(([u, v]) => tough(sim.spawnUnit(g, 0, 'rifle', u, v)));
+  sim.command(g, 0, ids(us), 'attack', 0);
+  let shotGuard = false; for (let i = 0; i < 60 * 40; i++) { sim.update(g, sim.TICK); if (us.some(u => g.guards.some(x => x.id === u.tgt))) shotGuard = true; }
+  assert.ok(!shotGuard, 'no stopping for the relic guards on the way');
+  for (const u of us) assert.ok(u.u > 1100 && u.v < -300 && u.po.o === 'attack' && u.po.ju == null, `crossed to the north lane and went down it (${u.u | 0},${u.v | 0})`);
+  const h = mk('threelane'); sim.directControl(h, 0); const gd = h.guards[0], t = tough(sim.spawnUnit(h, 0, 'tank', gd.u - 160, gd.v)); sim.updateVision(h);
+  sim.command(h, 0, [t.id], 'target', gd.id); let hit = false; for (let i = 0; i < 60 * 10; i++) { sim.update(h, sim.TICK); if (t.tgt === gd.id) hit = true; }
+  assert.ok(hit, 'a targeted guard is fought');
+});

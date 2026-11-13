@@ -95,3 +95,84 @@ test('All selects the whole army; tapping a lane selects the units in it (base u
   assert.deepStrictEqual(errors, []);
   await page.close();
 });
+
+// v2.77
+for (const dev of [PHONE, NARROW]) test(`the Attack lane picker at ${dev.width}×${dev.height}: the lanes as buttons, the nearest highlighted; a lane attacks down it; a tap elsewhere cancels`, { skip }, async () => {
+  const { page, errors } = await openPage(browser, dev);
+  await start(page, 'threelane'); await page.evaluate(HELPERS);
+  const I = await page.evaluate(() => {
+    const at = (u, v) => { const e = spawnUnit(game, 0, 'rifle', u, v); e.hp = e.maxHp = 1e6; return e.id; };
+    __look(760, 300); const out = { s: [at(740, 400), at(760, 380), at(780, 410)], n: at(760, -400) }; refreshUI(true); return out;
+  });
+  await page.click('#lanes [data-k="2"]'); await page.click('#lanes [data-k="0"]'); // three in the south, one in the north
+  assert.strictEqual((await selIds(page)).length, 4);
+  await page.click('#cmdbar [data-c="attack"]');
+  const P_ = await page.evaluate(() => {
+    const box = $('lpick').querySelector('.lpbox').getBoundingClientRect(), bar = $('cmdbar').getBoundingClientRect();
+    const bs = [...document.querySelectorAll('#lpick button')].map(b => { const q = b.getBoundingClientRect(), h = document.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2); return { k: b.dataset.k, near: b.classList.contains('near'), txt: b.textContent, w: q.width, h: q.height, t: q.top, hit: h === b || b.contains(h) }; });
+    return { open: !$('lpick').classList.contains('hide'), bs, box: { l: box.left, r: box.right, t: box.top, b: box.bottom }, barTop: bar.top, W: innerWidth, H: innerHeight, orders: myUnits().map(e => e.po.o) };
+  });
+  assert.ok(P_.open, 'the picker is open'); assert.deepStrictEqual(P_.bs.map(b => b.k), ['0', '1', '2'], 'North, Centre, South');
+  assert.deepStrictEqual(P_.bs.map(b => b.near), [false, false, true], 'South (where most of them are) is highlighted');
+  for (const b of P_.bs) assert.ok(b.w >= 44 && b.h >= 44 && b.hit, `a 44 pt, uncovered button ${JSON.stringify(b)}`);
+  for (let k = 1; k < 3; k++) assert.ok(P_.bs[k].t > P_.bs[k - 1].t, 'stacked as on the map');
+  assert.ok(P_.box.l >= 0 && P_.box.r <= P_.W && P_.box.t >= 46 && P_.box.b <= P_.barTop, `on screen, above the command bar, below the top bar ${JSON.stringify(P_.box)}`);
+  assert.ok(P_.orders.every(o => o === 'hold'), 'nothing ordered yet');
+  await page.evaluate(() => drawNow()); await page.waitForTimeout(50);
+  // a tap elsewhere cancels: the picker closes, the selection stays, nobody moves
+  await page.mouse.click(P_.box.r + 120 < P_.W ? P_.box.r + 120 : 120, 140);
+  assert.ok(await page.isHidden('#lpick'), 'cancelled'); assert.strictEqual((await selIds(page)).length, 4, 'the selection stays');
+  assert.ok(await page.evaluate(() => myUnits().every(e => e.po.o === 'hold')), 'nobody ordered by the cancelling tap');
+  // Attack again, then North: all four attack down the north lane
+  await page.click('#cmdbar [data-c="attack"]'); await page.click('#lpick button[data-k="0"]');
+  assert.ok(await page.isHidden('#lpick')); assert.deepStrictEqual(await selIds(page), [], 'the selection clears after the order');
+  assert.deepStrictEqual(await page.evaluate(() => myUnits().map(e => [e.po.o, e.lane])), [['attack', 0], ['attack', 0], ['attack', 0], ['attack', 0]]);
+  await page.evaluate(() => __run(40));
+  const W = await page.evaluate(S => myUnits().filter(e => S.includes(e.id)).map(e => [e.u | 0, e.v | 0]), I.s);
+  assert.ok(W.every(([u, v]) => u > 900 && v < -250), `the south three crossed over and went down the north lane ${JSON.stringify(W)}`);
+  assert.deepStrictEqual(errors, []);
+  await page.close();
+});
+
+test('Classic: Attack goes at once, no picker', { skip }, async () => {
+  const { page, errors } = await openPage(browser, PHONE);
+  await start(page, 'classic'); await page.evaluate(HELPERS);
+  await page.evaluate(() => { for (let i = 0; i < 3; i++) spawnUnit(game, 0, 'rifle', 520 + i * 20, 0); refreshUI(true); });
+  await page.click('#lanes [data-k="all"]'); await page.click('#cmdbar [data-c="attack"]');
+  assert.ok(await page.isHidden('#lpick'));
+  assert.ok(await page.evaluate(() => myUnits().every(e => e.po.o === 'attack')));
+  assert.deepStrictEqual(errors, []);
+  await page.close();
+});
+
+test('tapping an enemy targets it: unit, building; then Hold where they are; with nothing selected an enemy tap does nothing', { skip }, async () => {
+  const { page, errors } = await openPage(browser, PHONE);
+  await start(page, 'classic'); await page.evaluate(HELPERS);
+  const I = await page.evaluate(() => {
+    __look(760, 0); const mine = [0, 1, 2].map(i => spawnUnit(game, 0, 'tank', 640 + i * 20, -30 + i * 30).id);
+    const foe = spawnUnit(game, 1, 'rifle', 830, 30); foe.holdU = 830; foe.holdV = 30; game.sides[1].stance = 'hold';
+    const near = spawnUnit(game, 1, 'heavy', 860, -60); near.hp = near.maxHp = 1e6; near.holdU = 860; near.holdV = -60;
+    updateVision(game); refreshUI(true); drawNow(); return { mine, foe: foe.id, near: near.id };
+  });
+  // nothing selected: tapping the enemy does nothing
+  await tapUnit(page, I.foe);
+  assert.deepStrictEqual(await selIds(page), []); assert.ok(await page.evaluate(() => myUnits().every(e => e.po.o === 'hold')));
+  // select all, tap the enemy rifleman: they target it
+  await page.click('#lanes [data-k="all"]'); await tapUnit(page, I.foe);
+  assert.deepStrictEqual(await selIds(page), [], 'cleared after the order');
+  assert.deepStrictEqual(await page.evaluate(f => myUnits().map(e => [e.po.o, e.po.id === f]), I.foe), [['target', true], ['target', true], ['target', true]]);
+  const first = await page.evaluate(f => { let first = 0; for (let i = 0; i < 60 * 20 && game.ents.some(e => e.id === f && e.hp > 0); i++) { update(game, TICK); if (!first) { const s = myUnits().find(e => e.tgt); if (s) first = s.tgt; } } __run(1); return first; }, I.foe);
+  assert.strictEqual(first, I.foe, 'the target is fired at first, though another enemy is about as close');
+  assert.ok(await page.evaluate(f => !game.ents.some(e => e.id === f && e.hp > 0), I.foe), 'it is destroyed');
+  assert.ok(await page.evaluate(() => myUnits().every(e => e.po.o === 'hold' || (e.po.o === 'go' && Math.hypot(e.po.u - e.u, e.po.v - e.v) < 30))), 'then Hold where they are');
+  // an enemy building
+  const B = await page.evaluate(() => { const s = game.sides[1]; s.res.c = 1e5; tryBuild(game, 1, 'barracks', 4); const b = game.ents.find(e => e.kind === 'b' && e.side === 1 && e.type === 'barracks'); b.built = true; b.progress = 1; b.hp = 400; for (const e of game.ents) if (e.kind === 'u' && e.side === 1) e.hp = 0; for (const e of myUnits()) { e.hp = e.maxHp = 1e6; e.u = b.u - 200 - (e.id % 3) * 15; e.po = { o: 'hold' }; e.holdU = e.u; e.holdV = e.v; } updateVision(game); __look(b.u - 80, b.v); refreshUI(true); drawNow(); return { id: b.id, u: b.u, v: b.v }; });
+  await page.click('#lanes [data-k="all"]');
+  const [bx, by] = await page.evaluate(([u, v]) => __gscr(u, v - 30), [B.u, B.v]); await page.mouse.click(bx, by); await page.waitForTimeout(60);
+  assert.ok(await page.evaluate(id => myUnits().every(e => e.po.o === 'target' && e.po.id === id), B.id), 'a tap on the enemy building targets it');
+  await page.evaluate(() => drawNow()); await page.waitForTimeout(80);
+  await page.evaluate(id => { for (let i = 0; i < 60 * 40 && game.ents.some(e => e.id === id && e.hp > 0); i++) update(game, TICK); __run(1); }, B.id);
+  assert.ok(await page.evaluate(id => !game.ents.some(e => e.id === id && e.hp > 0), B.id), 'destroyed');
+  assert.deepStrictEqual(errors, []);
+  await page.close();
+});

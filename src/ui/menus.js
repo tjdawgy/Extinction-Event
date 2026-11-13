@@ -205,7 +205,7 @@ function lanesTip() {
   $('bTipOk').addEventListener('click', () => { T.lanes = 1; try { localStorage.setItem(TIPS_KEY, JSON.stringify(T)); } catch (e) {} el.remove(); });
 }
 function pauseGame(restored) {
-  paused = true; endAim(); saveGame();
+  paused = true; endAim(); closePick(); saveGame(); // v2.77: and the Attack lane picker
   if (game.tut) { // v2.46: the tutorial's pause menu
     overlay(`<h1>Paused</h1><p>Tutorial: ${cxEsc(TUT_CH[TUT.ch] ? TUT_CH[TUT.ch].name : '')}</p><div class="row"><button class="big" id="bRes">Resume</button><button class="ghost" id="bEndTut">End Tutorial</button><button class="ghost" id="bCodex">Codex</button><button class="ghost" id="bSound">${sndLabel()}</button></div>`);
     wireSound();
