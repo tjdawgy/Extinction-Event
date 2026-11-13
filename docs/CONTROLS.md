@@ -74,8 +74,13 @@ clears it.
   enemy in weapon range; melee units close on one nearby), then carry on. Once there they spread into a loose cluster
   around the spot (see Spacing) and fight anything in range.
 - **Tap an enemy** (a unit, a building or a relic guard you can see): they go and attack that target, fighting enemies
-  they meet on the way. Once it is dead they **Hold** where they are. If it slips out of sight they go to where it was last
-  seen and hold there if it is gone.
+  they meet on the way. Once it is dead they **Hold** where they are, unless an enemy static defence (an HQ's gun, a
+  Turret, a bunker or another faction's equivalent: any finished enemy building with a gun) can reach any unit of the
+  group. Then the whole group (the units given that target) **falls back** toward its own base, along the lane it is in,
+  to just outside the reach of every enemy defence (a small margin past each gun's range, which depends on the unit:
+  aircraft against anti-air range, units a gun can't hurt don't count), each to its own spot (spacing), holding its fire
+  on the way like Retreat (or it would stop to fight the defence), and holds there (v2.80). If the target slips out of
+  sight they go to where it was last seen and hold there if it is gone.
 - **Attack:**
   - On a multi-lane map, tapping Attack shows the lanes (N, C, S) as buttons, stacked as on the map, with the lane nearest
     the selected units highlighted (the lane most of them are nearest; ties go north first). Tapping a lane sends the

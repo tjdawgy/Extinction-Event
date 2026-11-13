@@ -177,6 +177,37 @@ test('tapping an enemy targets it: unit, building; then Hold where they are; wit
   await page.close();
 });
 
+// v2.80: target follow-up, with real taps on a lane map
+test('target follow-up: the target dies under an enemy Turret, the group falls back just outside its reach, spaced out, and holds', { skip }, async () => {
+  const { page, errors } = await openPage(browser, PHONE);
+  await start(page, 'twolane'); await page.evaluate(HELPERS);
+  const I = await page.evaluate(() => {
+    const s1 = game.sides[1]; s1.res.c = 1e5; let k = 0; while (k < 8 && !tryBuild(game, 1, 'turret', k).ok) k++;
+    const tur = game.ents.find(e => e.kind === 'b' && e.side === 1 && e.type === 'turret'); tur.built = true; tur.progress = 1; tur.hp = tur.maxHp = 1e6;
+    const R = BDEF.turret.gun[1].range, d = dirOf(0);
+    const mine = [0, 1, 2, 3].map(i => { const e = spawnUnit(game, 0, i % 2 ? 'rifle' : 'tank', tur.u - d * (R - 40) + i * 6, tur.v + (i - 1.5) * 20); e.hp = e.maxHp = 1e6; return e.id; });
+    const foe = spawnUnit(game, 1, 'rifle', tur.u - d * (R - 70), tur.v); foe.hp = foe.maxHp = 1e6; foe.holdU = foe.u; foe.holdV = foe.v; s1.stance = 'hold';
+    __look(foe.u, foe.v); updateVision(game); refreshUI(true); drawNow(); return { mine, foe: foe.id, tur: tur.id };
+  });
+  await page.click('#lanes [data-k="all"]'); await tapUnit(page, I.foe);
+  assert.ok(await page.evaluate(f => myUnits().every(e => e.po.o === 'target' && e.po.id === f), I.foe), 'the enemy tap targets it');
+  await page.evaluate(f => { const e = game.ents.find(x => x.id === f); e.hp = e.maxHp = 30; }, I.foe);
+  await page.evaluate(f => { for (let i = 0; i < 60 * 20 && game.ents.some(e => e.id === f && e.hp > 0); i++) update(game, TICK); __run(0.1); }, I.foe);
+  assert.ok(await page.evaluate(() => myUnits().every(e => e.po.o === 'go' && e.po.back)), 'falling back');
+  await page.evaluate(() => __run(25));
+  const R = await page.evaluate(ids => {
+    const guns = ctlGuns(game, 1), us = myUnits();
+    return { hold: us.every(e => e.po.o === 'hold'), reach: us.some(e => guns.some(b => ctlReach(b, e.type, e.u, e.v, 0))),
+      gap: Math.max(...us.map(e => Math.min(...guns.map(b => effDist(b, e) - bdOf(b).gun[b.tier].range)))), worst: __spaced(ids) };
+  }, I.mine);
+  assert.ok(R.hold, 'holding'); assert.ok(!R.reach, 'outside every enemy defence');
+  assert.ok(R.gap < 110, `just outside (the farthest ${R.gap.toFixed(0)} past the nearest reach)`);
+  assert.ok(R.worst >= -2, `spaced out (worst overlap ${R.worst.toFixed(1)})`);
+  await page.evaluate(() => drawNow());
+  assert.deepStrictEqual(errors, []);
+  await page.close();
+});
+
 // v2.78
 test('double-tap a unit: only your units of that type on screen are selected, at once (no wait for a third tap)', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);

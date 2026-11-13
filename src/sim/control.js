@@ -12,7 +12,7 @@
    rally point (CTRL.heal of their health a second once unhurt for CTRL.calm s, within CTRL.healR) and at held repair
    depots (updateRepair), only where the player has moved them. Control groups (side.groups, three lists of unit ids) are
    kept here so a save carries them; the SIM never reads them. */
-const CTRL = { healR: 150, heal: 0.03, calm: 3, arrive: 10, foot: 0.4, footMin: 7, footMax: 22, pad: 4, ring: 6, rings: 70, groups: 3 };
+const CTRL = { safe: 24, healR: 150, heal: 0.03, calm: 3, arrive: 10, foot: 0.4, footMin: 7, footMax: 22, pad: 4, ring: 6, rings: 70, groups: 3 };
 const laneAt = (u, v) => { // the lane nearest a point (its centre line at that x), or null on a map without lanes
   if (!MAP_LANED) return null;
   let k = 0, bd = 1e9; MAP.lanes.forEach((ln, i) => { const d = Math.abs(laneY(ln, clamp(u, 0, L)) - v); if (d < bd) { bd = d; k = i; } });
@@ -40,12 +40,12 @@ function ctlTaken(g, s, skip) {
   return { add, clash };
 }
 const ctlOpen = (u, v, air) => u >= 8 && u <= L - 8 && Math.abs(v) <= (MAP_2D ? MAP.size.h / 2 - 16 : LANE_V - 6) && (air || !NAV.on || !navShut(u, v));
-function ctlFree(T, air, r, pu, pv) { // the free spot nearest (pu, pv): rings CTRL.ring apart on screen, each walked evenly
+function ctlFree(T, air, r, pu, pv, ok) { // the free spot nearest (pu, pv): rings CTRL.ring apart on screen, each walked evenly (ok: a further test a spot must pass)
   for (let ring = 0; ring < CTRL.rings; ring++) {
     const rad = ring * CTRL.ring, n = ring ? Math.max(6, Math.round(2 * Math.PI * rad / CTRL.ring)) : 1, a0 = ring * 0.9;
     for (let i = 0; i < n; i++) {
       const a = a0 + i * 2 * Math.PI / n, u = pu + Math.cos(a) * rad, v = pv + Math.sin(a) * rad / DY;
-      if (ctlOpen(u, v, air) && !T.clash(u, v, air, r)) return [u, v];
+      if (ctlOpen(u, v, air) && !T.clash(u, v, air, r) && (!ok || ok(u, v))) return [u, v];
     }
   }
   return [pu, pv];
@@ -70,6 +70,44 @@ function ctlSettle(g, e, u, v) {
   else { e.po = { o: 'go', u: p[0], v: p[1] }; e.holdU = undefined; e.holdV = undefined; }
 }
 const ctlHere = (g, e) => ctlSettle(g, e, e.u, e.v); // hold where it is, stepping apart from units already there
+// Static defences (v2.80): side s's finished buildings with a gun (the HQ's gun, Turrets, bunkers and each faction's
+// equivalents), and whether one could hit a unit of type t standing at (u, v), pad further out than its range
+const ctlGuns = (g, s) => g.ents.filter(b => b.kind === 'b' && b.side === s && b.hp > 0 && b.built && bdOf(b).gun && bdOf(b).gun[b.tier]);
+function ctlReach(b, t, u, v, pad) {
+  const G = bdOf(b).gun[b.tier], air = !!UDEF[t].air;
+  if (air ? !G.hitsAir : G.hitsGround === false) return false;
+  if (!DMG[G.weapon][UDEF[t].armor]) return false;
+  return effDist(b, { u, v, kind: 'u' }) <= (air && G.airRange ? G.airRange : G.range) + pad;
+}
+// Target follow-up (v2.80): side s's units that were sent at target id, once it is dead. If an enemy static defence can
+// reach any of them, the whole group falls back toward its own base to just outside the reach of every enemy defence
+// (CTRL.safe beyond its range), each to its own spot (spacing), holding its fire on the way like Retreat (or it would stop
+// to fight the defence), and holds there; if none can, each holds where it is.
+function ctlFollow(g, s, id) {
+  const us = g.ents.filter(e => e.kind === 'u' && e.side === s && e.hp > 0 && e.po && e.po.o === 'target' && e.po.id === id).sort((a, b) => a.id - b.id);
+  const guns = ctlGuns(g, 1 - s);
+  if (!guns.some(b => us.some(e => ctlReach(b, e.type, e.u, e.v, 0)))) { for (const e of us) ctlHere(g, e); return; }
+  const T = ctlTaken(g, s, new Set(us.map(e => e.id))), back = -dirOf(s), B = ctlBase(s);
+  // the nearest the base go first, so the cluster forms from the back
+  us.sort((a, b) => (b.u - a.u) * back || a.id - b.id);
+  for (const e of us) {
+    const air = !!UDEF[e.type].air, r = ctlFoot(e.type), ok = (u, v) => !guns.some(b => ctlReach(b, e.type, u, v, CTRL.safe + r));
+    let p0 = null;
+    const ln = MAP_LANED && !air ? MAP.lanes[e.lane != null ? e.lane : laneAt(e.u, e.v)] : null, off = ln ? clamp(e.v - laneY(ln, e.u), -ln.width / 2, ln.width / 2) : 0;
+    for (let k = 0; k <= 400; k++) { // step back toward the base along the lane it is in, keeping its place across the lane
+      const u = clamp(e.u + back * k * 8, 0, L);
+      let v = ln ? laneY(ln, u) + off : e.v;
+      if (!air && NAV.on && navShut(u, v)) [, v] = navOpen(u, v);
+      if (ok(u, v)) { p0 = [u, v]; break; }
+      if ((u - B.u) * back >= 0) break; // reached the base without getting clear
+    }
+    if (!p0) p0 = [B.u, B.v];
+    const p = ctlFree(T, air, r, p0[0], p0[1], ok);
+    T.add(p[0], p[1], air, r);
+    if (Math.hypot(p[0] - e.u, p[1] - e.v) <= CTRL.arrive) ctlHold(e, p[0], p[1]);
+    else { e.po = { o: 'go', u: p[0], v: p[1], back: 1 }; e.holdU = undefined; e.holdV = undefined; } // back: holding fire on the way, like Retreat
+  }
+}
 // Switch side s to direct control. An older match (a save from before v2.73) has its orders mapped onto the new ones:
 // Hold holds where the unit stands, Attack attacks, Retreat and units sent home retreat to the base rally point, a Regroup
 // walks to its flag and holds. A side already under direct control from a save of v2.73-v2.75 loses its lane flags and
@@ -218,12 +256,12 @@ function ctlStep(g, u, d) {
     delete po.ju; delete po.jv; return null;
   }
   if (po.o === 'go') {
-    if (Math.hypot(po.u - u.u, po.v - u.v) > CTRL.arrive) return { go: [po.u, po.v] };
+    if (Math.hypot(po.u - u.u, po.v - u.v) > CTRL.arrive) return po.back ? { run: [po.u, po.v] } : { go: [po.u, po.v] };
     ctlHold(u, po.u, po.v); return null;
   }
   if (po.o === 'target') {
     const T = ctlEnt(g, po.id);
-    if (!T || T.hp <= 0) return settle(); // dead: hold where it is
+    if (!T || T.hp <= 0) { ctlFollow(g, u.side, po.id); return u.po.o === 'go' ? (u.po.back ? { run: [u.po.u, u.po.v] } : { go: [u.po.u, u.po.v] }) : null; } // dead: hold where it is, or just outside the enemy defences' reach (v2.80)
     if (ctlSees(g, u.side, T)) { po.u = T.u; po.v = T.v; return { go: [T.u, T.v], want: ctlCanHit(g, u, d, T) ? T : null, chase: T }; }
     if (Math.hypot(po.u - u.u, po.v - u.v) > CTRL.arrive + (d.range || 0) * 0.5) return { go: [po.u, po.v] }; // out of sight: where it was last seen
     return settle(); // gone from there

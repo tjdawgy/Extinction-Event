@@ -147,13 +147,52 @@ test('a target: they go and attack it (fighting what they meet), then hold where
   const fog = sim.command(h, 0, ids(ts), 'target', h.sides[1].hq.id); void fog;
   assert.ok(sim.command(h, 0, ids(ts), 'target', B.id).ok);
   for (let i = 0; i < 60 * 40 && B.hp > 0; i++) sim.update(h, sim.TICK);
-  assert.ok(B.hp <= 0, 'the building is destroyed'); step(h, 6); for (const u of ts) assert.ok(u.po.o === 'hold' || (u.po.o === 'go' && u.tgt), `hold, or fighting what is in reach a step from its spot (${u.u | 0},${u.v | 0} ${JSON.stringify(u.po)})`);
+  assert.ok(B.hp <= 0, 'the building is destroyed'); step(h, 6); for (const u of ts) assert.ok(u.po.o === 'hold' || (u.po.o === 'go' && (u.tgt || u.po.back)), `hold, or fighting what is in reach a step from its spot (${u.u | 0},${u.v | 0} ${JSON.stringify(u.po)})`);
   // out of sight: refused
   const k = mk(); sim.directControl(k, 0); const me = sim.spawnUnit(k, 0, 'rifle', 400, 0), far = sim.spawnUnit(k, 1, 'rifle', 1200, 0); sim.updateVision(k);
   assert.ok(!sim.command(k, 0, [me.id], 'target', far.id).ok, 'an enemy you can\'t see');
   // a relic guard
   const r = mk('threelane'); sim.directControl(r, 0); const gd = r.guards[0], at = sim.spawnUnit(r, 0, 'tank', gd.u - 200, gd.v); sim.updateVision(r);
   assert.ok(sim.command(r, 0, [at.id], 'target', gd.id).ok, 'a relic guard can be targeted');
+});
+
+// v2.80: target follow-up. Once the target is dead, a group an enemy static defence can reach falls back to just outside
+// the reach of every enemy defence, spaced out, holding fire on the way, and holds there.
+for (const map of ['classic', 'twolane', 'threelane']) test(`${map}: after the target dies under an enemy defence the group falls back just outside its reach, spaced out, and holds`, () => {
+  sim.useMap(map);
+  const g = mk(map); sim.directControl(g, 0); g.sides[1].res.c = 1e5;
+  let ok = false; for (let k = 0; k < 8 && !ok; k++) ok = sim.tryBuild(g, 1, 'turret', k).ok;
+  assert.ok(ok, 'an enemy Turret');
+  const tur = g.ents.find(e => e.kind === 'b' && e.side === 1 && e.type === 'turret'); tur.built = true; tur.progress = 1; tur.hp = tur.maxHp = 1e6;
+  const R = sim.BDEF.turret.gun[1].range, dir = sim.dirOf(0);
+  const us = [0, 1, 2, 3, 4].map(i => tough(sim.spawnUnit(g, 0, i % 2 ? 'rifle' : 'tank', tur.u - dir * (R - 40) + i * 6, tur.v + (i - 2) * 18)));
+  const t = sim.spawnUnit(g, 1, 'rifle', tur.u - dir * (R - 70), tur.v); t.hp = 30; g.sides[1].stance = 'hold'; t.holdU = t.u; t.holdV = t.v;
+  sim.updateVision(g);
+  assert.ok(sim.command(g, 0, ids(us), 'target', t.id).ok);
+  for (let i = 0; i < 60 * 20 && t.hp > 0; i++) sim.update(g, sim.TICK);
+  assert.ok(t.hp <= 0, 'the target is dead');
+  const reached = us.some(u => g.ents.some(b => b.kind === 'b' && b.side === 1 && b.built && sim.bdOf(b).gun && sim.bdOf(b).gun[b.tier] && sim.ctlReach(b, u.type, u.u, u.v, 0)));
+  sim.update(g, sim.TICK);
+  const guns = g.ents.filter(b => b.kind === 'b' && b.side === 1 && b.built && sim.bdOf(b).gun && sim.bdOf(b).gun[b.tier]);
+  assert.ok(reached, 'a defence reached the group when the target died');
+  assert.ok(us.every(u => u.po.o === 'go' && u.po.back), `falling back: ${us.map(u => JSON.stringify(u.po) + ' ' + u.u.toFixed(0) + ',' + u.v.toFixed(0) + ' hp ' + u.hp).join('; ')}`);
+  step(g, 25);
+  for (const u of us) {
+    assert.strictEqual(u.po.o, 'hold', `unit ${u.id} holds`);
+    const gap = Math.min(...guns.map(b => sim.effDist(b, u) - (sim.UDEF[u.type].air && sim.bdOf(b).gun[b.tier].airRange ? sim.bdOf(b).gun[b.tier].airRange : sim.bdOf(b).gun[b.tier].range)));
+    assert.ok(gap > 0, `unit ${u.id} outside every defence (${gap.toFixed(0)})`);
+    assert.ok(gap < sim.CTRL.safe + sim.ctlFoot(u.type) + 60, `unit ${u.id} just outside, not far back (${gap.toFixed(0)} past the nearest reach)`);
+  }
+  spacedOut(us, 'fallen back');
+  // no defence in reach: they hold where they are, as before
+  const h = mk(map); sim.directControl(h, 0);
+  const C = sim.cur(), mid = C.L / 2, vs = C.MAP_LANED ? sim.laneY(C.MAP.lanes[0], mid) : 0;
+  const hs = [0, 1, 2].map(i => tough(sim.spawnUnit(h, 0, 'tank', mid - 120 + i * 8, vs)));
+  const ht = sim.spawnUnit(h, 1, 'rifle', mid, vs); ht.hp = 30; h.sides[1].stance = 'hold'; ht.holdU = ht.u; ht.holdV = ht.v;
+  sim.updateVision(h); assert.ok(sim.command(h, 0, ids(hs), 'target', ht.id).ok);
+  const at = hs.map(u => u.u);
+  for (let i = 0; i < 60 * 20 && ht.hp > 0; i++) sim.update(h, sim.TICK); step(h, 3);
+  assert.ok(ht.hp <= 0); hs.forEach((u, i) => { assert.strictEqual(u.po.o, 'hold'); assert.ok(Math.abs(u.u - at[i]) < 120, 'held about where it was'); });
 });
 
 test('spots are never inside a wall or off the map, wherever the tap lands', () => {
