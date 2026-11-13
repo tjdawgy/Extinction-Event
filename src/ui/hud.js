@@ -189,10 +189,6 @@ function buildCards() {
   }
   if (tab === 'train' && game && relOf(game, 0)) echoCards(wrap); // v2.34: the Echoes section, first
   if (tab === 'train' && game && facOf(game.sides[0].faction) === 'axiarchs') { wrap.insertBefore(warpCard(), wrap.firstChild); refreshWarpCard(); } // v2.26
-  if (tab === 'train' && game && MAP_LANED && game.sides[0].direct) { // v2.74: which lane's base flag new units go to (tap a lane on the left to change it)
-    const el = document.createElement('div'); el.className = 'trto'; el.id = 'trto'; el.dataset.type = 'other';
-    el.innerHTML = `<small>Training to</small><b>${laneName(game.sides[0].active)}</b>`; wrap.insertBefore(el, wrap.firstChild);
-  }
   if (tab === 'train' && game && !list.length) { // nothing to train yet: one line that says what unlocks it
     const el = document.createElement('div');
     el.className = 'trainHint'; el.dataset.type = 'other';

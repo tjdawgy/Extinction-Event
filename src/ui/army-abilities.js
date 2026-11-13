@@ -41,7 +41,6 @@ function onAbil(k, el) {
   if (!game || paused || !running) return;
   hideInfo();
   if (aim && aim.k === k) { endAim(); return; }
-  if (flagMv >= 0) endAim();
   const r = abilityCheck(game, 0, k);
   if (!r.ok) { toast(r.msg, 'bad'); el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); return; }
   closePanel();
@@ -51,9 +50,8 @@ function onAbil(k, el) {
   $('aim').classList.remove('hide');
   refreshAbil();
 }
-function endAim() { // ends ability targeting, Set warp point and moving a base flag
+function endAim() { // ends ability targeting and Set warp point (v2.76: base flags no longer move)
   if (wpt) { wpt = false; $('aim').classList.add('hide'); refreshWarpCard(); }
-  if (flagMv >= 0) { flagMv = -1; $('aim').classList.add('hide'); } // v2.74: a base flag
   if (!aim) return; aim = null; $('aim').classList.add('hide'); refreshAbil();
 }
 $('aimX').addEventListener('click', endAim);

@@ -169,7 +169,7 @@ function alertRaise(kind, key, u, v, msg) {
 function alertTick() {
   const g = game; if (!g || g.over || g.countdown > 0 || g.spectate) return;
   if (alerts.g !== g) { alerts.g = g; alerts.last = {}; alerts.pings = []; $('alerts').textContent = ''; } // a new or resumed match starts clean
-  $('alerts').classList.toggle('thru', !!(aim || wpt || flagMv >= 0)); // aiming: taps go through to the field
+  $('alerts').classList.toggle('thru', !!(aim || wpt)); // aiming: taps go through to the field
   for (const b of g.ents) {
     if (b.kind !== 'b' || b.side !== 0 || b.hp <= 0 || b.lastHit === undefined || g.t - b.lastHit > ALERT.hit) continue;
     if (b.type === 'hq') alertRaise('hq', 0, b.u, b.v, 'Your HQ is under attack');
@@ -226,10 +226,8 @@ function handleTap(x, y) {
   if (game.spectate) return; // a spectator only watches (drag still moves the camera)
   if (wpt) { wptTap(x, y); return; }
   if (aim) { aimTap(x, y); return; }
-  if (flagMv >= 0) { flagTap(x, y); return; } // v2.74: placing a base flag
   if (ctlFieldTap(x, y)) return; // v2.74: a unit selects it; with units selected, the ground is where they go
-  if (FWD_PADS.length && fwdTap(x, y)) return; // v2.66: a forward pad under the tap comes before a flag standing on it
-  if (game.countdown <= 0 && !game.over) { const fk = flagAt(x, y); if (fk >= 0) { startFlagMove(fk); return; } } // v2.74: tap a base flag to move it
+  if (FWD_PADS.length && fwdTap(x, y)) return; // v2.66: a forward pad under the tap
   const w = toWorld(x, y), hits = [];
   for (const b of game.ents) {
     if (b.kind !== 'b' || b.side !== 0) continue;
@@ -263,7 +261,7 @@ cv.addEventListener('pointerdown', e => {
   cam.vx = 0;
   gest = { id: e.pointerId, lx: p.x, ly: p.y, sx: p.x, sy: p.y, t0: performance.now(), t: performance.now(), moved: 0 };
   // v2.74: hold still a moment, then draw: a lasso (a quick drag still scrolls)
-  if (ctlOn() && !paused && !aim && !wpt && flagMv < 0) { const G = gest; G.armT = setTimeout(() => { if (gest === G && G.moved < CT.still) { G.lasso = [[G.lx, G.ly]]; cam.vx = 0; } }, CT.lassoMs); }
+  if (ctlOn() && !paused && !aim && !wpt) { const G = gest; G.armT = setTimeout(() => { if (gest === G && G.moved < CT.still) { G.lasso = [[G.lx, G.ly]]; cam.vx = 0; } }, CT.lassoMs); }
 });
 cv.addEventListener('pointermove', e => {
   if (!gest || e.pointerId !== gest.id) return;

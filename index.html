@@ -389,9 +389,6 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 #lanes button b{font-size:11.5px;font-weight:800;line-height:1}
 #lanes button i{font-style:normal;font-size:12px;font-weight:800;color:#001522;background:var(--blue);border-radius:8px;min-width:20px;padding:0 5px;line-height:16px;text-align:center;font-variant-numeric:tabular-nums}
 #lanes button[data-k="all"]{border-color:rgba(57,200,255,.45)}
-#lanes button.act{border-color:#ffd34d;box-shadow:inset 0 0 0 1.5px #ffd34d;background:rgba(58,48,20,.88)} /* the active lane: new units go to its base flag */
-#lanes button.act b::before{content:'⚑ ';color:#ffd34d}
-.trto{flex:0 0 58px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:10px;border:1px dashed rgba(255,211,77,.55);color:var(--muted);font-size:10px;font-weight:700;line-height:1.15;text-align:center} .trto b{color:#ffd34d;font-size:12.5px}
 #cmdbar{position:absolute;inset:0;z-index:2;display:flex;align-items:stretch;gap:6px;padding:5px;background:rgba(12,22,40,.97);border-radius:13px}
 #cmdbar.hide{display:none}
 #cmdbar>button{flex:0 1 96px;min-width:64px;border-radius:10px;border:1px solid var(--line);background:rgba(30,46,76,.85);color:var(--text);font-weight:800;font-size:14px}
@@ -692,7 +689,7 @@ MAPS.threelane = (() => {
   };
 })();
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.75'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.76'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -1731,10 +1728,11 @@ function fwdOk(g, s, type, k) {
 const hqPos = s => mapPt(MAP.bases[s].hq);
 const rallyU0 = s => MECH7C.on ? MAP.bases[s].rally[0] : hqU(s) + dirOf(s) * 300; // v2.43: inside the HQ gun's cover (v2.59: the map's rally point)
 // The rally point (where a side without direct control gathers its idle and new units). v2.75: the player's two rally flags
-// (v2.62), squad flags (v2.66) and Send damaged home are gone (docs/CONTROLS.md): a side under direct control has a base flag
-// per lane instead (src/sim/control.js). g is kept in the signature for the callers.
+// (v2.62), squad flags (v2.66) and Send damaged home are gone (docs/CONTROLS.md): a side under direct control gathers at the
+// base rally point (ctlBase, the map's rally point; v2.73-v2.75 had a base flag per lane) (src/sim/control.js). g is kept
+// in the signature for the callers.
 const rallyU = (s, g) => rallyU0(s);
-// RALLY: fwdOut, where the AI's forward Barracks units gather (v2.68); min and past, how far a base flag may move (setFlag)
+// RALLY: fwdOut, where the AI's forward Barracks units gather (v2.68); min and past: how far v2.73-v2.75's base flags could move (unused since v2.76)
 const RALLY = { fwdOut: 560, min: 120, past: 250 };
 
 // v2.55 (Phase 0 stance fix): an AI-played side 0 (the harness, spectate) starts on Retreat like the AI's side 1. It started
@@ -2122,7 +2120,7 @@ function update(g, dt) {
   updateMedics(g, dt);
   bunkerHeal(g, dt);
   updateRepair(g, dt); // v2.71: repair depots
-  updateFlagHeal(g, dt); // v2.73: a direct side's units at its base flags
+  updateBaseHeal(g, dt); // v2.73: a direct side's units at its base rally point (v2.76: one point, not a flag per lane)
   updateMeteors(g); // v2.72: a battlefield condition
   updateCreep(g, dt);
   updateField(g, dt);
@@ -2265,7 +2263,7 @@ function updateBuilding(g, b, foes, dt) {
         if (facOf(b.fac) === 'axiarchs') { if (fr) g.warps.push({ side: b.side, type: ut, u: fr.u + rand(-12, 12), v: fr.v + rand(-20, 20), t0: g.t, end: g.t + WARP.ch, fwd: fr }); else startWarp(g, b.side, ut); continue; } // Axiarchs (v2.26): the unit warps in at the warp point instead
         const nu = fr ? spawnUnit(g, b.side, ut, fr.u + rand(-12, 12), fr.v + rand(-20, 20)) : spawnUnit(g, b.side, ut, b.u + dirOf(b.side) * (b.half + 10), b.v + rand(-12, 12) + i * 16);
         if (fr) { nu.lane = fr.lane; nu.fwdHome = { u: fr.u, n: fr.n }; nu.laneV = clamp(nu.v - fr.v, -LANE_V, LANE_V); }
-        if (g.sides[b.side].direct) ctlTrained(g, nu, fr); // v2.73: to the active lane's base flag (or beside a forward Barracks), then Hold
+        if (g.sides[b.side].direct) ctlTrained(g, nu, fr); // v2.73: to the base rally point (or beside a forward Barracks), each in its own space (v2.76), then Hold
         if (ut === 'rifle' && pathMod(b, 'drill')) { nu.vet = 1; nu.maxHp = nu.hp = UDEF.rifle.hp * DRILL.hp; } // Drilled Riflemen
         if (g.log) { logAdd(g.log.tot[b.side].trained, ut); lgUnit(g, b.side, 'T', ut); }
       }
@@ -2494,7 +2492,7 @@ function aiMicro(g, s, D, mine) {
 // offspring; v2.31) follows the army's current orders like a trained unit. On Hold (the stance or a group or type order) it
 // holds where it arrived; before v2.31 it had no hold spot and walked back to the rally flag.
 function arriveOrders(g, e) {
-  if (g.sides[e.side].direct) { ctlHold(e, e.u, e.v); return; } // v2.73: direct control: it holds where it arrived
+  if (g.sides[e.side].direct) { ctlArrive(g, e); return; } // v2.73: direct control: it holds where it arrived (v2.76: in its own space)
   const side = g.sides[e.side], ord = unitOrder(side, e.type);
   if ((ord ? ord.o : side.stance) === 'hold') { e.holdU = e.u; e.holdV = e.v; } else { e.holdU = undefined; e.holdV = undefined; }
 }
@@ -2640,11 +2638,13 @@ function updateUnit(g, u, foes, dt) {
   if (u.fwdHome && g.nodes[u.fwdHome.n].owner !== u.side) u.fwdHome = undefined; // v2.68: its forward post lost: home is the base again
   const side = g.sides[u.side], dir = dirOf(u.side); let home = (side.defU != null ? side.defU : u.fwdHome ? u.fwdHome.u : rallyU(u.side, g)) + u.rallyOff * dir * (u.fwdHome ? 0.3 : 1); // defU (v2.40): a Default AI under attack rallies inside its HQ's cover; v2.62: a damaged unit sent home goes to the base flag
   const po = side.direct ? u.po || HOLD_PO : null; // v2.73: a direct side's unit follows its own order
-  if (po) home = side.flags[flagIx(g, u)].u;
+  if (po) home = ctlBase(u.side).u; // v2.76: the base rally point
   const ord = po ? null : unitOrder(side, u.type, u.lane);
   const runs = side.persona && aiFix(side.persona, 'scoutGo') && ((u.id === side.scoutId && side.scoutU != null) || (side.raid && side.raid.ids.includes(u.id)) || capBusy(side, u.id)); // v2.60: a Hard scout or raider; v2.67: a capture group (lane maps)
   let st = po ? po.o : runs ? 'run' : ord ? ord.o : side.stance; // a group or type order overrides the global stance (v2.75: Send damaged home is gone)
-  const A = d.weapon ? acquire(g, u, d, foes, d.chase) : NO_TARGET, { best, close } = A; // Medicopters and Recon Drones carry no weapon; melee: the chase search in the same pass (v2.37)
+  const A = d.weapon ? acquire(g, u, d, foes, d.chase) : NO_TARGET; let { best, close } = A; // Medicopters and Recon Drones carry no weapon; melee: the chase search in the same pass (v2.37)
+  const cs = po && po.o !== 'hold' && (po.o !== 'attack' || po.ju != null) ? ctlStep(g, u, d) : null; // v2.76: heading somewhere (go, target), or retreating
+  if (po) st = cs && cs.go ? 'adv' : cs && cs.run ? 'retreat' : (u.po || HOLD_PO).o; // 'adv': on the way, stopping to fight what it meets (a Titan plants for it)
   const sp = (d.fac === 'bloomhost' && !d.air && onCreep(g, u.side, u.u, u.v) ? CREEP.speed : 1) * (frz ? ABIL.frenzy.speed : 1) * (u.slowT > g.t ? 1 - u.slow : 1) * (u.snT > g.t ? 0 : 1); // creep (v2.18), Frenzy Bloom (v2.20), a Gravemantle's slow (v2.27), a Rootheart's snare (v2.33)
   if (u.leaping) { // mid-leap (v2.19): fly to the landing spot, nothing else
     const du = u.lu - u.u, dv = u.lv - u.v, dd = Math.hypot(du, dv), st = d.leap.speed * dt;
@@ -2654,15 +2654,12 @@ function updateUnit(g, u, foes, dt) {
   }
   if (g.meteor && g.meteor.at && side.persona && !g.sides[u.side].bot && !d.air && !u.siege) { const p = meteorDodge(g, u); if (p) { u.tgt = 0; u.chT = 0; moveToward(u, d, p[0], p[1], dt, sp); return; } } // v2.72: an AI's unit steps out of a meteor's circle
   if (u.aiBack > g.t && !u.siege) { u.tgt = 0; u.chT = 0; { const bu = side.backU != null ? side.backU : home; moveToward(u, d, bu, laneTv(u, bu), dt, sp); } return; } // v2.38: a Default AI pulls it back for a moment (unit timing)
-  if (d.siege && titanSiege(g, u, d, st, foes)) return; // P8 (v2.37): planting, planted or unplanting
+  if (d.siege && titanSiege(g, u, d, st, foes, cs && cs.chase)) return; // P8 (v2.37): planting, planted or unplanting
   if (u.phT > g.t) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // P13 (v2.37): a phased Wraithwing holds still and can't fire
   // Retreat: keep running home until back at the rally flag. A retreating unit holds its fire (v2.35, audit): it
   // attacks again only once the retreat ends, back at the flag or under a new order
-  if (po && (st === 'go' || st === 'retreat')) { // v2.73: walking to a spot or back to its lane's base flag, holding fire; there, it holds
-    const [tu, tv] = st === 'go' ? [po.u, po.v] : flagSpot(side.flags[flagIx(g, u)], u);
-    if (Math.hypot(tu - u.u, tv - u.v) > CTRL.arrive) { u.tgt = 0; u.chT = 0; moveToward(u, d, tu, tv, dt, sp); return; }
-    ctlHold(u, tu, tv); st = 'hold';
-  }
+  if (cs && cs.run) { u.tgt = 0; u.chT = 0; moveToward(u, d, cs.run[0], cs.run[1], dt, sp); return; } // v2.73: retreating to the base rally point, holding fire and ignoring enemies
+  if (cs && cs.want) { best = cs.want; close = false; } // v2.76: a target order's target in reach comes first
   if (st === 'retreat' && Math.abs(home - u.u) > 12) {
     if (!RETREAT.fire) { u.tgt = 0; u.chT = 0; }
     else if (best && u.cd <= 0) { fire(g, u, best, d); u.cd = d.cd * rand(0.9, 1.1); } // the v2.34 rule, for the tests' fixed replays
@@ -2692,7 +2689,7 @@ function updateUnit(g, u, foes, dt) {
     return;
   }
   if (close) { u.moving = false; return; } // artillery: enemy is inside minimum range
-  if (d.chase && st !== 'move' && !(st === 'hold' && u.holdU !== undefined)) { // melee (v2.17): close on the nearest enemy it can see and hurt
+  if (d.chase && st !== 'move' && !(st === 'hold' && u.holdU !== undefined) && !(cs && cs.chase)) { // melee (v2.17): close on the nearest enemy it can see and hurt (v2.76: not when it has a target to close on)
     const prey = A.prey !== undefined ? A.prey : acquire(g, u, { ...d, range: d.chase }, foes).best;
     if (prey && d.leap && g.t >= u.leapCd && !(u.snT > g.t) && !(u.aiHold > g.t)) { // v2.38: a Default AI holds a Riftstalker's leap while its shields recharge // snared: no leap either (v2.33) // the Leaper jumps the last stretch (v2.19), never further than leap.range
       const dist = effDist(u, prey);
@@ -2709,6 +2706,7 @@ function updateUnit(g, u, foes, dt) {
     const prey = A.prey !== undefined ? A.prey : acquire(g, u, { ...d, range: d.chase }, foes).best;
     if (prey && Math.hypot(prey.u - hu, prey.v - hv) <= MECH7C.holdR + d.range) { moveToward(u, d, prey.u, prey.v, dt, sp); return; }
   }
+  if (cs && cs.go) { if (!moveToward(u, d, cs.go[0], cs.go[1], dt, sp)) u.face = dir; return; } // v2.76: on its way (nothing to fight right here)
   let tu = home, tv = u.laneV;
   if (u.id === side.scoutId && side.scoutU != null && st !== 'retreat') tu = side.scoutU; // v2.38: a Default AI's scout
   else if (st === 'run' && capBusy(side, u.id)) { const T = side.capT && side.capT.ids.includes(u.id) ? side.capT : side.capT2 && side.capT2.ids.includes(u.id) ? side.capT2 : side.relicG; tu = T.u + ((u.id * 37) % 5 - 2) * 10; tv = T.v + ((u.id * 53) % 5 - 2) * 8; } // v2.67: a capture group stands on its node (v2.70: either group)
@@ -2742,15 +2740,15 @@ const NO_TARGET = { best: null, close: false };
 // or regroup, or after idle seconds with nothing in reach. Mobile, it plants as soon as an enemy is within planted reach
 // (on any stance but Retreat and Regroup). The player and the AI both get this behaviour; neither has to order it.
 // u.siege: 0 mobile, 1 planting, 2 planted, 3 unplanting; u.sgT: when the change ends; u.sgIdle: last time it had a target.
-function titanSiege(g, u, d, st, foes) {
-  const S = d.siege, R2 = d.range + S.reach, go = st === 'retreat' || st === 'move' || st === 'go'; // v2.73: 'go', a direct side's move
+function titanSiege(g, u, d, st, foes, want) { // want (v2.76): a direct side's target, fired at first when in planted reach
+  const S = d.siege, R2 = d.range + S.reach, go = st === 'retreat' || st === 'move'; // v2.76: a direct side's move ('adv') plants to fight what it meets
   if (u.siege === 1 || u.siege === 3) {
     u.moving = false; u.tgt = 0;
     if (g.t >= u.sgT) { u.siege = u.siege === 1 ? 2 : 0; u.sgIdle = g.t; }
     return true;
   }
   if (u.siege === 2) {
-    const best = acquire(g, u, Object.assign({}, d, { range: R2 }), foes).best;
+    const best = want && ctlCanHit(g, u, Object.assign({}, d, { range: R2 }), want) ? want : acquire(g, u, Object.assign({}, d, { range: R2 }), foes).best;
     if (best) u.sgIdle = g.t;
     if (go || (!best && g.t - u.sgIdle >= S.idle)) { u.siege = 3; u.sgT = g.t + S.unplant; u.tgt = 0; return true; }
     u.moving = false; u.tgt = best ? best.id : 0;
@@ -2804,125 +2802,234 @@ function updateMedics(g, dt) {
 /* ---------- Direct control (v2.73, docs/CONTROLS.md): the player selects units, then commands them ----------
    A mode of one side (side.direct), switched on by directControl: the game's UI does it for the player; the AI's sides and
    the audit bots never have it, so they keep their stance, group, type and lane orders and play exactly as before.
-   On a direct side every unit has its own order (u.po), given by command(): 'go' (walk to a spot holding fire, then hold
-   there), 'attack' (down the lane it is in, to the enemy base), 'hold' (stop and fight what is in reach; the spot is
-   holdU/holdV) or 'retreat' (back to its lane's base flag holding fire, then hold there). Nothing else moves a unit: new
-   units walk to the active lane's base flag (side.active) and hold there; a forward Barracks' units hold beside it; units
-   that appear elsewhere (warp-ins, Brood, Mites) hold where they appear. Each lane has one base flag (side.flags[k],
-   Classic one), which the player can move (setFlag). Units heal at their side's base flags (CTRL.heal of their health a
-   second once unhurt for CTRL.calm s, within CTRL.healR) and at held repair depots (updateRepair), only where the player
-   has moved them. */
-const CTRL = { healR: 80, heal: 0.03, calm: 3, arrive: 10, gap: 14, flagOut: 40 };
+   On a direct side every unit has its own order (u.po), given by command(): 'go' (walk to a spot, stopping to fight what
+   it meets, then hold there), 'target' (go and attack one enemy, fighting what it meets; hold where it is once the target
+   is dead), 'attack' (down a lane to the enemy base: the lane the player picked, else the one it is in), 'hold' (stop and
+   fight what is in reach; the spot is holdU/holdV) or 'retreat' (back to the base rally point holding fire and ignoring
+   enemies, then hold there). Nothing else moves a unit: new units gather at the base rally point (the map's rally point,
+   v2.76: the lane flags and the active lane are gone) and hold there; a forward Barracks' units gather beside it; units
+   that appear elsewhere (warp-ins, Brood, Mites) hold where they appear. Wherever units gather they spread out (ctlPack):
+   each takes its own spot, CTRL.pad plus both footprints apart on screen, never on closed ground. Units heal at the base
+   rally point (CTRL.heal of their health a second once unhurt for CTRL.calm s, within CTRL.healR) and at held repair
+   depots (updateRepair), only where the player has moved them. Control groups (side.groups, three lists of unit ids) are
+   kept here so a save carries them; the SIM never reads them. */
+const CTRL = { healR: 150, heal: 0.03, calm: 3, arrive: 10, foot: 0.4, footMin: 7, footMax: 22, pad: 4, ring: 6, rings: 70, groups: 3 };
 const laneAt = (u, v) => { // the lane nearest a point (its centre line at that x), or null on a map without lanes
   if (!MAP_LANED) return null;
   let k = 0, bd = 1e9; MAP.lanes.forEach((ln, i) => { const d = Math.abs(laneY(ln, clamp(u, 0, L)) - v); if (d < bd) { bd = d; k = i; } });
   return k;
 };
-const flagIx = (g, e) => MAP_LANED && e.lane != null ? clamp(e.lane, 0, g.sides[e.side].flags.length - 1) : 0;
 const laneCount = () => MAP_LANED ? MAP.lanes.length : 1;
-function flagHome(g, s, k) { // a lane's base flag where the match starts: the map's rally point (lane maps: CTRL.flagOut further out, on the lane)
-  const u = rallyU0(s) + (MAP_LANED ? dirOf(s) * CTRL.flagOut : 0);
-  return { u, v: MAP_LANED ? laneY(MAP.lanes[k], u) : 0 };
-}
-const flagSpot = (f, e) => [f.u + ((e.id * 37) % 9 - 4) * 9, f.v + ((e.id * 53) % 9 - 4) * 7]; // a spread spot around a flag, fixed per unit
+const ctlBase = s => ({ u: rallyU0(s), v: MAP.bases[s].rally[1] }); // v2.76: the base rally point, in the middle of the base where the lanes meet
 const ctlHold = (e, u, v) => { e.po = { o: 'hold' }; e.holdU = u; e.holdV = v; };
+// Spacing (v2.76). A unit's footprint (its body's half width, from its type's height) and the spots a side's units hold or
+// are heading for, in cells of the screen's metric (x = u, y = v * DY), aircraft and ground apart.
+const ctlFoot = t => clamp(UDEF[t].h * CTRL.foot, CTRL.footMin, CTRL.footMax);
+const ctlSpot = e => !e.po ? null : e.po.o === 'hold' ? (e.holdU !== undefined ? [e.holdU, e.holdV] : null) : (e.po.o === 'go' || e.po.o === 'retreat') && e.po.u != null ? [e.po.u, e.po.v] : null;
+function ctlTaken(g, s, skip) {
+  const C = 48, M = [new Map(), new Map()], key = (x, y) => Math.floor(x / C) * 100003 + Math.floor(y / C);
+  const add = (u, v, air, r) => { const m = M[air ? 1 : 0], k = key(u, v * DY); let a = m.get(k); if (!a) m.set(k, a = []); a.push(u, v * DY, r); };
+  const clash = (u, v, air, r) => {
+    const m = M[air ? 1 : 0], x = u, y = v * DY, cx = Math.floor(x / C), cy = Math.floor(y / C);
+    for (let i = cx - 1; i <= cx + 1; i++) for (let j = cy - 1; j <= cy + 1; j++) {
+      const a = m.get(i * 100003 + j); if (!a) continue;
+      for (let k = 0; k < a.length; k += 3) { const lim = a[k + 2] + r + CTRL.pad; if ((a[k] - x) ** 2 + (a[k + 1] - y) ** 2 < lim * lim) return true; }
+    }
+    return false;
+  };
+  for (const e of g.ents) if (e.kind === 'u' && e.side === s && e.hp > 0 && !skip.has(e.id)) { const p = ctlSpot(e); if (p) add(p[0], p[1], !!UDEF[e.type].air, ctlFoot(e.type)); }
+  return { add, clash };
+}
+const ctlOpen = (u, v, air) => u >= 8 && u <= L - 8 && Math.abs(v) <= (MAP_2D ? MAP.size.h / 2 - 16 : LANE_V - 6) && (air || !NAV.on || !navShut(u, v));
+function ctlFree(T, air, r, pu, pv) { // the free spot nearest (pu, pv): rings CTRL.ring apart on screen, each walked evenly
+  for (let ring = 0; ring < CTRL.rings; ring++) {
+    const rad = ring * CTRL.ring, n = ring ? Math.max(6, Math.round(2 * Math.PI * rad / CTRL.ring)) : 1, a0 = ring * 0.9;
+    for (let i = 0; i < n; i++) {
+      const a = a0 + i * 2 * Math.PI / n, u = pu + Math.cos(a) * rad, v = pv + Math.sin(a) * rad / DY;
+      if (ctlOpen(u, v, air) && !T.clash(u, v, air, r)) return [u, v];
+    }
+  }
+  return [pu, pv];
+}
+// Spots for units us gathering at (cu, cv) (own: each at the free spot nearest where it stands, for Hold): the nearest units
+// take the middle. Returns a Map id -> [u, v].
+function ctlPack(g, s, us, cu, cv, own) {
+  const T = ctlTaken(g, s, new Set(us.map(e => e.id))), out = new Map();
+  const list = own ? us.slice().sort((a, b) => a.id - b.id) : us.slice().sort((a, b) => Math.hypot(a.u - cu, a.v - cv) - Math.hypot(b.u - cu, b.v - cv) || a.id - b.id);
+  if (!own && NAV.on && navShut(cu, cv)) [cu, cv] = navOpen(cu, cv);
+  for (const e of list) {
+    const air = !!UDEF[e.type].air, r = ctlFoot(e.type);
+    const p = ctlFree(T, air, r, own ? e.u : cu, own ? e.v : cv);
+    T.add(p[0], p[1], air, r); out.set(e.id, p);
+  }
+  return out;
+}
+// One unit to a free spot near (u, v): there already, it holds; else it walks there (fighting what it meets) and holds
+function ctlSettle(g, e, u, v) {
+  const p = ctlPack(g, e.side, [e], u, v, false).get(e.id);
+  if (Math.hypot(p[0] - e.u, p[1] - e.v) <= CTRL.arrive) ctlHold(e, p[0], p[1]);
+  else { e.po = { o: 'go', u: p[0], v: p[1] }; e.holdU = undefined; e.holdV = undefined; }
+}
+const ctlHere = (g, e) => ctlSettle(g, e, e.u, e.v); // hold where it is, stepping apart from units already there
 // Switch side s to direct control. An older match (a save from before v2.73) has its orders mapped onto the new ones:
-// Hold holds where the unit stands, Attack attacks, Retreat and units sent home retreat to their lane's base flag, a
-// Regroup walks to its flag and holds.
+// Hold holds where the unit stands, Attack attacks, Retreat and units sent home retreat to the base rally point, a Regroup
+// walks to its flag and holds. A side already under direct control from a save of v2.73-v2.75 loses its lane flags and
+// active lane (ctlTidy).
 function directControl(g, s) {
-  const side = g.sides[s]; if (side.direct) return false;
-  const R = side.rally, n = laneCount();
+  const side = g.sides[s]; if (side.direct) { ctlTidy(g, s); return false; }
   side.direct = true;
-  side.flags = []; for (let k = 0; k < n; k++) { const f = flagHome(g, s, k); if (R && R.def != null) { f.u = R.def + (MAP_LANED ? dirOf(s) * CTRL.flagOut : 0); if (MAP_LANED) f.v = laneY(MAP.lanes[k], f.u); } side.flags.push(f); }
-  side.active = MAP_LANED && side.laneNew != null ? clamp(side.laneNew, 0, n - 1) : 0;
-  if (MAP_LANED) side.laneNew = side.active;
+  const back = [];
   for (const e of g.ents) {
     if (e.kind !== 'u' || e.side !== s || e.hp <= 0) continue;
     const ord = unitOrder(side, e.type, e.lane), st = e.medHome ? 'retreat' : ord ? ord.o : side.stance;
-    if (st === 'attack' || st === 'retreat') { e.po = { o: st }; e.holdU = undefined; e.holdV = undefined; }
+    if (st === 'attack') { e.po = { o: st }; e.holdU = undefined; e.holdV = undefined; }
+    else if (st === 'retreat') back.push(e);
     else if (st === 'move') { const [su, sv] = slotOf(e, ord); if (ord.done) ctlHold(e, su, sv); else { e.po = { o: 'go', u: su, v: sv }; e.holdU = undefined; e.holdV = undefined; } }
     else ctlHold(e, e.holdU !== undefined ? e.holdU : e.u, e.holdV !== undefined ? e.holdV : e.v);
     e.medHome = 0; e.fwdHome = undefined; e.rwT = 0; e.rwGo = 0;
   }
   side.orders = newOrders(); side.stance = 'hold'; side.sel = null;
-  delete side.rally; delete side.squad;
+  delete side.rally; delete side.squad; delete side.laneNew;
+  ctlRetreat(g, s, back);
+  ctlTidy(g, s);
   return true;
 }
+// v2.76: a v2.73-v2.75 side's lane flags and active lane removed (units heading back to a flag head for the base rally
+// point instead; units holding by a flag stay where they are), and the control groups created
+function ctlTidy(g, s) {
+  const side = g.sides[s];
+  if (side.flags || side.active !== undefined) {
+    delete side.flags; delete side.active; delete side.laneNew;
+    ctlRetreat(g, s, g.ents.filter(e => e.kind === 'u' && e.side === s && e.hp > 0 && e.po && e.po.o === 'retreat'));
+  }
+  if (!Array.isArray(side.groups) || side.groups.length !== CTRL.groups) side.groups = Array.from({ length: CTRL.groups }, (_, k) => side.groups && Array.isArray(side.groups[k]) ? side.groups[k] : []);
+}
+function ctlRetreat(g, s, us) { // back to the base rally point, each to its own spot there
+  if (!us.length) return;
+  const B = ctlBase(s), P_ = ctlPack(g, s, us, B.u, B.v, false);
+  for (const e of us) { const p = P_.get(e.id); e.po = { o: 'retreat', u: p[0], v: p[1] }; e.holdU = undefined; e.holdV = undefined; }
+}
 // A new unit on a direct side (spawnUnit): it holds where it appears until something else says otherwise
-function ctlSpawn(g, e) { ctlHold(e, e.u, e.v); }
-// A unit just trained (fr: a forward Barracks' spot from fwdRally, else null): it walks to the active lane's base flag and
-// holds there; one from a forward Barracks holds where it appeared, beside the building
+function ctlSpawn(g, e) { ctlHold(e, e.u, e.v); if (MAP_LANED) e.lane = laneAt(e.u, e.v); } // v2.76: in the lane where it stands
+// A unit that appears elsewhere (arriveOrders: a warp-in, Brood, Mites, offspring): it holds where it appeared, stepping
+// apart from units already there
+function ctlArrive(g, e) { ctlHere(g, e); }
+// A unit just trained (fr: a forward Barracks' spot from fwdRally, else null): it gathers at the base rally point and holds
+// there; one from a forward Barracks gathers beside the building
 function ctlTrained(g, e, fr) {
-  const side = g.sides[e.side];
   e.fwdHome = undefined;
-  if (fr) { ctlHold(e, e.u, e.v); return; }
-  if (MAP_LANED) e.lane = side.active;
-  let [su, sv] = flagSpot(side.flags[flagIx(g, e)], e);
-  if (NAV.on && !UDEF[e.type].air && navShut(su, sv)) [su, sv] = navOpen(su, sv);
-  e.po = { o: 'go', u: su, v: sv }; e.holdU = undefined; e.holdV = undefined;
+  const at = fr || ctlBase(e.side);
+  ctlSettle(g, e, at.u, at.v);
+  if (MAP_LANED) e.lane = fr ? fr.lane : laneAt(e.po.o === 'go' ? e.po.u : e.holdU, e.po.o === 'go' ? e.po.v : e.holdV);
 }
 // Where a forward Barracks' units appear on a direct side: beside the building, toward the enemy
 const ctlFwdSpot = (g, s, b, lane, n) => ({ u: clamp(b.u + dirOf(s) * (b.half + 26), 0, L), v: b.v, lane, n });
-// The order for a set of units (ids: unit ids, only side s's living units count). o: 'go' (with u, v: the spot; the units
-// spread around it), 'attack', 'hold' or 'retreat'.
-function command(g, s, ids, o, u, v) {
+// What a target order aims at: a unit or building of the other side, or a relic guard (cached per tick)
+function ctlEnt(g, id) {
+  if (!g._ctlIx || g._ctlIx.t !== g.t || g._ctlIx.n !== g.ents.length) { const m = new Map(); for (const e of g.ents) m.set(e.id, e); for (const x of g.guards || []) m.set(x.id, x); g._ctlIx = { t: g.t, n: g.ents.length, m }; }
+  return g._ctlIx.m.get(id) || null;
+}
+const ctlSees = (g, s, T) => T.side === NEUTRAL || visibleTo(g, s, T);
+function ctlCanHit(g, u, d, T) { // u could fire at T now (in range, a weapon that hurts it)
+  if (!d.weapon || T.hp <= 0 || T.shielded || T.phT > g.t) return false;
+  const air = T.kind === 'u' && !!UDEF[T.type].air;
+  if (air ? !d.hitsAir : d.hitsGround === false) return false;
+  if (!DMG[d.weapon][T.kind === 'b' ? 'building' : UDEF[T.type].armor]) return false;
+  const dist = effDist(u, T);
+  return dist <= (air && d.airRange ? d.airRange : d.range) && dist >= (d.minRange || 0);
+}
+// The order for a set of units (ids: unit ids, only side s's living units count). o: 'go' (a, b: the spot; the units spread
+// around it), 'target' (a: the id of an enemy unit or building, or a relic guard, that side s can see), 'attack' (a: the
+// lane to attack down on a lane map; left out, each unit's own lane), 'hold' or 'retreat'.
+function command(g, s, ids, o, a, b) {
   if (g.over) return { ok: false, msg: 'The match is over' };
   if (g.countdown > 0) return WAIT_GO;
   const side = g.sides[s];
   if (!side.direct) return { ok: false, msg: 'Not under direct control' };
-  if (!['go', 'attack', 'hold', 'retreat'].includes(o)) return { ok: false, msg: 'Unknown order' };
+  if (!['go', 'target', 'attack', 'hold', 'retreat'].includes(o)) return { ok: false, msg: 'Unknown order' };
   const want = new Set(ids), us = g.ents.filter(e => e.kind === 'u' && e.side === s && e.hp > 0 && want.has(e.id));
   if (!us.length) return { ok: false, msg: 'No units selected' };
+  let T = null;
   if (o === 'go') {
+    let u = a, v = b;
     if (!(u >= 0 && u <= L && Math.abs(v) <= (MAP_2D ? MAP.size.h / 2 : 220))) return { ok: false, msg: 'Target the battlefield' };
     if (NAV.on && navShut(u, v)) [u, v] = navOpen(u, v);
-    const lane = laneAt(u, v);
-    us.sort((a, b) => Math.hypot(a.u - u, a.v - v) - Math.hypot(b.u - u, b.v - v) || a.id - b.id); // the nearest take the middle
-    us.forEach((e, i) => { // a sunflower around the spot, CTRL.gap apart
-      const r = CTRL.gap * Math.sqrt(i), a = i * 2.39996;
-      let su = clamp(u + Math.cos(a) * r, 0, L), sv = v + Math.sin(a) * r * 0.8;
-      if (NAV.on && !UDEF[e.type].air && navShut(su, sv)) [su, sv] = navOpen(su, sv);
-      e.po = { o: 'go', u: su, v: sv }; e.holdU = undefined; e.holdV = undefined;
-      if (lane != null) e.lane = lane;
-    });
-  } else for (const e of us) {
-    if (o === 'hold') ctlHold(e, e.u, e.v);
-    else { e.po = { o }; e.holdU = undefined; e.holdV = undefined; if (o === 'attack' && MAP_LANED) e.lane = laneAt(e.u, e.v); }
-  }
+    const lane = laneAt(u, v), P_ = ctlPack(g, s, us, u, v, false);
+    for (const e of us) { const p = P_.get(e.id); e.po = { o: 'go', u: p[0], v: p[1] }; e.holdU = undefined; e.holdV = undefined; if (lane != null) e.lane = lane; }
+  } else if (o === 'target') {
+    T = ctlEnt(g, a);
+    if (!T || T.hp <= 0 || T.side === s || !ctlSees(g, s, T)) return { ok: false, msg: 'Pick an enemy you can see' };
+    const lane = laneAt(T.u, T.v);
+    for (const e of us) { e.po = { o: 'target', id: T.id, u: T.u, v: T.v }; e.holdU = undefined; e.holdV = undefined; if (lane != null && !UDEF[e.type].air) e.lane = lane; }
+  } else if (o === 'attack') {
+    const k = MAP_LANED && a != null ? a : null;
+    if (MAP_LANED && a != null && !(a >= 0 && a < MAP.lanes.length)) return { ok: false, msg: 'Unknown lane' };
+    for (const e of us) {
+      e.po = { o }; e.holdU = undefined; e.holdV = undefined; if (!MAP_LANED) continue;
+      e.lane = k != null ? k : laneAt(e.u, e.v);
+      const ln = MAP.lanes[e.lane]; if (UDEF[e.type].air || Math.abs(e.v - laneY(ln, e.u)) <= ln.width / 2) continue;
+      let ju = e.u, jv = laneY(ln, e.u); if (NAV.on && navShut(ju, jv)) [ju, jv] = navOpen(ju, jv); // v2.76: off that lane: first over to it
+      e.po.ju = ju; e.po.jv = jv;
+    }
+  } else if (o === 'hold') { const P_ = ctlPack(g, s, us, 0, 0, true); for (const e of us) { const p = P_.get(e.id); if (Math.hypot(p[0] - e.u, p[1] - e.v) <= CTRL.arrive) ctlHold(e, p[0], p[1]); else { e.po = { o: 'go', u: p[0], v: p[1] }; e.holdU = undefined; e.holdV = undefined; } } }
+  else { if (MAP_LANED) for (const e of us) e.lane = laneAt(e.u, e.v); ctlRetreat(g, s, us); } // back along the lane it is in
   lg(g, s, 'O', 'sel', us.length, o === 'go' ? 'move' : o);
   const n = us.length, who = `${n} unit${n === 1 ? '' : 's'}`;
-  return { ok: true, n, msg: o === 'go' ? `${who}: moving` : o === 'hold' ? `${who}: holding position` : o === 'attack' ? `${who}: attacking down the lane` : `${who}: retreating to the base flag` };
+  return { ok: true, n, msg: o === 'go' ? `${who}: moving` : o === 'target' ? `${who}: attacking the target` : o === 'hold' ? `${who}: holding position` : o === 'attack' ? `${who}: attacking down the ${MAP_LANED && a != null ? MAP.lanes[a].id + ' lane' : 'lane'}` : `${who}: retreating to the base` };
 }
-// The lane whose base flag new units go to (and the lanes' flags exist only on a direct side)
-function setActiveLane(g, s, k) {
-  const side = g.sides[s];
-  if (!side.direct) return { ok: false, msg: 'Not under direct control' };
-  if (!(k >= 0 && k < side.flags.length)) return { ok: false, msg: 'Unknown lane' };
-  side.active = k; if (MAP_LANED) side.laneNew = k;
-  return { ok: true, msg: MAP_LANED ? `Training to ${MAP.lanes[k].id}` : 'Training to the base flag' };
+// Control groups (v2.76): slot k holds the ids of side s's units saved into it; dead units drop out, nothing is added
+function setGroup(g, s, k, ids) {
+  const side = g.sides[s]; if (!side.direct || !(k >= 0 && k < CTRL.groups)) return { ok: false, msg: 'No such group' };
+  const want = new Set(ids), list = g.ents.filter(e => e.kind === 'u' && e.side === s && e.hp > 0 && want.has(e.id)).map(e => e.id);
+  if (!list.length) return { ok: false, msg: 'Select units first' };
+  side.groups[k] = list;
+  return { ok: true, n: list.length, msg: `Group ${k + 1}: ${list.length} unit${list.length === 1 ? '' : 's'}` };
 }
-// Move a lane's base flag (the player taps it, then the ground). It stays between RALLY.min out from the HQ and RALLY.past
-// beyond the centre, on open ground. Units holding at it stay where they are; units retreating to it head for the new spot.
-function setFlag(g, s, k, u, v) {
-  const side = g.sides[s];
-  if (!side.direct || !(k >= 0 && k < side.flags.length)) return { ok: false, msg: 'No such flag' };
-  const a = hqU(s) + dirOf(s) * RALLY.min, b = L / 2 + dirOf(s) * RALLY.past, hv = MAP_2D ? MAP.size.h / 2 - 20 : 0;
-  u = clamp(u, Math.min(a, b), Math.max(a, b)); v = MAP_2D ? clamp(v, -hv, hv) : 0;
-  if (NAV.on && navShut(u, v)) [u, v] = navOpen(u, v);
-  side.flags[k] = { u, v };
-  return { ok: true, msg: MAP_LANED ? `${MAP.lanes[k].id[0].toUpperCase() + MAP.lanes[k].id.slice(1)} base flag moved` : 'Base flag moved' };
+function groupUnits(g, s, k) { // the group's living units (the dead are dropped from it)
+  const side = g.sides[s], ids = side.groups && side.groups[k]; if (!ids || !ids.length) return [];
+  const want = new Set(ids), out = g.ents.filter(e => e.kind === 'u' && e.side === s && e.hp > 0 && want.has(e.id));
+  if (out.length !== ids.length) side.groups[k] = ids.filter(id => out.some(e => e.id === id));
+  return out;
 }
-// Healing at the base flags: a direct side's units within CTRL.healR of any of its base flags, unhurt for CTRL.calm s
-function updateFlagHeal(g, dt) {
+// Healing at the base rally point: a direct side's units within CTRL.healR of it, unhurt for CTRL.calm s
+function updateBaseHeal(g, dt) {
   for (let s = 0; s < 2; s++) {
     const side = g.sides[s]; if (!side.direct) continue;
+    const B = ctlBase(s);
     for (const e of g.ents) {
       if (e.kind !== 'u' || e.side !== s || e.hp <= 0 || e.hp >= e.maxHp || g.t - e.lastHurt <= CTRL.calm) continue;
-      if (!side.flags.some(f => Math.hypot(e.u - f.u, e.v - f.v) <= CTRL.healR)) continue;
+      if (Math.hypot(e.u - B.u, (e.v - B.v) * DY) > CTRL.healR) continue;
       const h0 = e.hp; e.hp = Math.min(e.maxHp, e.hp + e.maxHp * CTRL.heal * dt);
-      if (g.log) g.log.tot[s].flagHeal = (g.log.tot[s].flagHeal || 0) + e.hp - h0;
+      if (g.log) g.log.tot[s].baseHeal = (g.log.tot[s].baseHeal || 0) + e.hp - h0;
     }
   }
+}
+// The direct-control part of a unit's tick (updateUnit). Returns what the unit does next: null (nothing special: hold,
+// attack), or { go: [u, v] } (heading there, fighting what it meets), or { run: [u, v] } (retreating: holding fire), with
+// want: a target in reach to fire at first.
+function ctlStep(g, u, d) {
+  const po = u.po, settle = () => { ctlHere(g, u); return u.po.o === 'go' ? { go: [u.po.u, u.po.v] } : null; };
+  if (po.o === 'retreat') {
+    if (po.u == null) { const B = ctlBase(u.side); po.u = B.u; po.v = B.v; }
+    if (Math.hypot(po.u - u.u, po.v - u.v) > CTRL.arrive) return { run: [po.u, po.v] };
+    ctlHold(u, po.u, po.v); return null;
+  }
+  if (po.o === 'attack') { // v2.76: crossing over to the lane picked, fighting what it meets; then down it
+    if (Math.hypot(po.ju - u.u, po.jv - u.v) > CTRL.arrive * 3) return { go: [po.ju, po.jv] };
+    delete po.ju; delete po.jv; return null;
+  }
+  if (po.o === 'go') {
+    if (Math.hypot(po.u - u.u, po.v - u.v) > CTRL.arrive) return { go: [po.u, po.v] };
+    ctlHold(u, po.u, po.v); return null;
+  }
+  if (po.o === 'target') {
+    const T = ctlEnt(g, po.id);
+    if (!T || T.hp <= 0) return settle(); // dead: hold where it is
+    if (ctlSees(g, u.side, T)) { po.u = T.u; po.v = T.v; return { go: [T.u, T.v], want: ctlCanHit(g, u, d, T) ? T : null, chase: T }; }
+    if (Math.hypot(po.u - u.u, po.v - u.v) > CTRL.arrive + (d.range || 0) * 0.5) return { go: [po.u, po.v] }; // out of sight: where it was last seen
+    return settle(); // gone from there
+  }
+  return null;
 }
 /* ---------- Creep (v2.18): Bloomhost's organic ground layer ----------
    Distance-based: each source owns one circular patch (world u, v) whose radius grows toward its target and recedes
@@ -8590,6 +8697,7 @@ function render(c, g, time, sel, selPad) {
   for (const a of g.acid) if (lit(a.u, a.v)) drawAcidPool(c, a, g.t);
   drawDecals(c);
   drawMeteor(c, g, time); // v2.72: a meteor's warning circle, then its fall
+  if (g.sides[0].direct && !g.over) { const B = ctlBase(0), w = P(B.u, B.v); c.save(); c.globalAlpha = 0.22; c.strokeStyle = TEAM[0].main; c.lineWidth = 1.5; c.setLineDash([6, 6]); c.beginPath(); c.ellipse(w.x, w.y, CTRL.healR, CTRL.healR, 0, 0, 7); c.stroke(); c.restore(); } // v2.76: where the base rally point heals
   if (g) { drawSelection(c, g, time); drawBuildingSel(c, g, time, false); }
   drawWrecks(c, time);
   // everything on the field, back to front
@@ -8597,7 +8705,7 @@ function render(c, g, time, sel, selPad) {
   for (const gh of ghosts) list.push({ kind: 'ghost', u: gh.u, v: gh.v, gh });
   for (const n of g.nodes) list.push({ kind: 'node', u: n.u, v: n.v - 1, n });
   for (const x of g.guards || []) if (x.hp > 0 && (g.spectate || visibleTo(g, 0, x))) list.push(x); // v2.71: relic guards (neutral gold)
-  if (g.sides[0].direct && !g.over) g.sides[0].flags.forEach((f, k) => list.push({ kind: 'flag', u: f.u, v: f.v, lane: k, on: k === g.sides[0].active })); // v2.74: a base flag per lane (the active lane's brighter)
+  if (g.sides[0].direct && !g.over) { const B = ctlBase(0); list.push({ kind: 'flag', u: B.u, v: B.v - 2, on: true }); } // v2.76: the base rally point (one flag; v2.74 had one per lane)
   else if (!g.sides[0].direct && g.sides[0].stance !== 'attack') list.push({ kind: 'flag', u: rallyU(0, g) + 30, v: -20, on: true }); // spectating: the rally point
   list.sort((a, b) => (a.v - b.v) || (a.u - b.u));
   for (const e of list) {
@@ -8606,8 +8714,8 @@ function render(c, g, time, sel, selPad) {
     else if (e.kind === 'u') drawUnit(c, e);
     else if (e.kind === 'node') drawNode(c, e.n, time);
     else {
-      const w = P(e.u, e.v), moving = typeof flagMv !== 'undefined' && flagMv === e.lane;
-      c.globalAlpha = moving ? 0.5 + 0.4 * Math.sin(time * 8) : e.on ? 1 : 0.7;
+      const w = P(e.u, e.v);
+      c.globalAlpha = e.on ? 1 : 0.7;
       c.strokeStyle = M.h; c.lineWidth = 1.5; c.beginPath(); c.moveTo(w.x, w.y); c.lineTo(w.x, w.y - 34); c.stroke();
       c.fillStyle = TEAM[0].main; c.beginPath(); c.moveTo(w.x, w.y - 34);
       for (let i = 0; i <= 5; i++) c.lineTo(w.x + i * 3.4, w.y - 34 + Math.sin(time * 5 + i) * 1.3);
@@ -9093,10 +9201,6 @@ function buildCards() {
   }
   if (tab === 'train' && game && relOf(game, 0)) echoCards(wrap); // v2.34: the Echoes section, first
   if (tab === 'train' && game && facOf(game.sides[0].faction) === 'axiarchs') { wrap.insertBefore(warpCard(), wrap.firstChild); refreshWarpCard(); } // v2.26
-  if (tab === 'train' && game && MAP_LANED && game.sides[0].direct) { // v2.74: which lane's base flag new units go to (tap a lane on the left to change it)
-    const el = document.createElement('div'); el.className = 'trto'; el.id = 'trto'; el.dataset.type = 'other';
-    el.innerHTML = `<small>Training to</small><b>${laneName(game.sides[0].active)}</b>`; wrap.insertBefore(el, wrap.firstChild);
-  }
   if (tab === 'train' && game && !list.length) { // nothing to train yet: one line that says what unlocks it
     const el = document.createElement('div');
     el.className = 'trainHint'; el.dataset.type = 'other';
@@ -9227,7 +9331,6 @@ function onAbil(k, el) {
   if (!game || paused || !running) return;
   hideInfo();
   if (aim && aim.k === k) { endAim(); return; }
-  if (flagMv >= 0) endAim();
   const r = abilityCheck(game, 0, k);
   if (!r.ok) { toast(r.msg, 'bad'); el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); return; }
   closePanel();
@@ -9237,9 +9340,8 @@ function onAbil(k, el) {
   $('aim').classList.remove('hide');
   refreshAbil();
 }
-function endAim() { // ends ability targeting, Set warp point and moving a base flag
+function endAim() { // ends ability targeting and Set warp point (v2.76: base flags no longer move)
   if (wpt) { wpt = false; $('aim').classList.add('hide'); refreshWarpCard(); }
-  if (flagMv >= 0) { flagMv = -1; $('aim').classList.add('hide'); } // v2.74: a base flag
   if (!aim) return; aim = null; $('aim').classList.add('hide'); refreshAbil();
 }
 $('aimX').addEventListener('click', endAim);
@@ -9346,14 +9448,13 @@ function refreshExt() {
 
 /* ---------- Army controls (v2.74, docs/CONTROLS.md): select units, then command them ----------
    Select: tap a unit (more taps add), double-tap a unit (every unit of its type), hold a moment then draw a loop (lasso),
-   All (the whole army), double-tap a lane's name (every unit in that lane). Only your own units, never enemies or relic
-   guards. Command: tap the ground (move there and hold), or the command bar's Attack, Hold, Retreat. The command bar takes
-   the bottom panel's place while anything is selected; the selection clears after an order or with the tag's ×. One tap
-   on a lane's name makes it the active lane (new units gather at its base flag). Each lane's base flag can be moved: tap
-   it (with nothing selected), then tap where it goes. The SIM side is directControl / command (src/sim/control.js). */
+   All (the whole army), a lane's name (every unit in that lane; v2.76: one tap, and no active lane or base flags any more).
+   Only your own units, never enemies or relic guards. Command: tap the ground (move there and hold), or the command bar's
+   Attack, Hold, Retreat. The command bar takes the bottom panel's place while anything is selected; the selection clears
+   after an order or with the tag's ×. The SIM side is directControl / command (src/sim/control.js). */
 const SELN = new Set(); // the selected units' ids
-const CT = { hitPx: 26, dbl: 350, lassoMs: 260, lassoMin: 14, lineSel: 22, still: 8 };
-let flagMv = -1, ctlMark = null, ctlLoop = null; // ctlLoop: the last lasso, fading out // flagMv: the lane whose base flag is being moved (-1: none); ctlMark: where the last move order went
+const CT = { hitPx: 26, dbl: 350, lassoMs: 260, lassoMin: 14, lineSel: 22, still: 8, baseOut: 140 };
+let ctlMark = null, ctlLoop = null; // ctlLoop: the last lasso, fading out; ctlMark: where the last move order went
 const ctlOn = () => !!(game && running && !game.over && !game.spectate && game.sides[0].direct);
 const laneName = k => MAP.lanes[k].id[0].toUpperCase() + MAP.lanes[k].id.slice(1);
 const myUnits = () => game.ents.filter(e => e.kind === 'u' && e.side === 0 && e.hp > 0);
@@ -9379,7 +9480,10 @@ function foeBldAt(x, y) { // an enemy building you can see under a tap (its body
 function selSet(list, add) { if (!add) SELN.clear(); for (const e of list) SELN.add(e.id); if (SELN.size) { closePanel(); hideInfo(); endAim(); } refreshCtl(); }
 const selAll = () => selSet(myUnits());
 const selType = t => selSet(myUnits().filter(e => e.type === t));
-const selLane = k => selSet(myUnits().filter(e => (MAP_LANED ? e.lane : 0) === k));
+// v2.76: the lane a unit is in, from where it stands (the lane's centre line nearest it); in the base (up to CT.baseOut
+// beyond the base rally point, where the lanes meet) it is in none, and counts toward All only
+const unitLane = e => { if (!MAP_LANED || dirOf(0) * (e.u - ctlBase(0).u) <= CT.baseOut) return null; return laneAt(e.u, e.v); };
+const selLane = k => selSet(myUnits().filter(e => unitLane(e) === k), true);
 function selClear() { SELN.clear(); refreshCtl(); }
 // An order for the selection; it clears afterwards
 function issue(o, u, v) {
@@ -9419,27 +9523,7 @@ function lassoSelect(pts) {
   if (!got.length) { toast('No units of yours inside the loop', ''); return; }
   selSet(got, true); TUT.sig.lasso = true;
 }
-// The base flags: where a tap finds one (the pole and cloth, generously), and moving one
-function flagAt(x, y) {
-  if (!ctlOn()) return -1;
-  const F = game.sides[0].flags, w = toWorld(x, y);
-  for (let k = 0; k < F.length; k++) { const q = P(F[k].u, F[k].v); if (Math.abs(w.x - (q.x + 8)) <= 26 / V.S * 0.8 + 6 && w.y >= q.y - 48 && w.y <= q.y + 12) return k; }
-  return -1;
-}
-function startFlagMove(k) {
-  endAim(); closePanel(); hideInfo();
-  flagMv = k;
-  $('aim').style.setProperty('--ac', TEAM[0].main);
-  $('aimName').textContent = MAP_LANED ? `${laneName(k)} base flag` : 'Base flag'; $('aimTxt').textContent = ': tap the battlefield where it goes';
-  $('aim').classList.remove('hide');
-}
-function flagTap(x, y) {
-  const w = toWorld(x, y), r = setFlag(game, 0, flagMv, w.x, w.y / DY);
-  toast(r.msg, r.ok ? 'ok' : 'bad');
-  if (r.ok) endAim();
-}
-// The left column: All, then one entry per lane (north on top). One tap on a lane: it becomes the active lane; two: its units
-let laneTap = { t: 0, k: -1 };
+// The left column: All, then one entry per lane (north on top). A tap on a lane selects its units (v2.76: one tap)
 function buildLanes() {
   const box = $('lanes'); box.innerHTML = '';
   const n = MAP_LANED ? MAP.lanes.length : 0;
@@ -9451,13 +9535,9 @@ function buildLanes() {
     box.appendChild(b); return b;
   };
   mk('all', 'All', 'Select your whole army').addEventListener('click', () => { if (!ctlOn() || paused) return; if (!myUnits().length) { toast('No units yet: train some in the Train tab', 'bad'); return; } selAll(); });
-  for (let k = 0; k < n; k++) mk(k, laneName(k), `${laneName(k)} lane: tap to train to it, double-tap to select its units`).addEventListener('click', () => {
+  for (let k = 0; k < n; k++) mk(k, laneName(k), `${laneName(k)} lane: select its units`).addEventListener('click', () => {
     if (!ctlOn() || paused) return;
-    const now = performance.now();
-    if (laneTap.k === k && now - laneTap.t < CT.dbl) { laneTap.t = 0; const any = myUnits().some(e => e.lane === k); if (any) selLane(k); else toast(`No units in the ${MAP.lanes[k].id} lane`, ''); return; }
-    laneTap = { t: now, k };
-    const prev = game.sides[0].active, r = setActiveLane(game, 0, k); if (r.ok && prev !== k) toast(`Training to ${laneName(k)}: new units wait at its base flag`, 'ok');
-    refreshCtl();
+    if (myUnits().some(e => unitLane(e) === k)) { selLane(k); TUT.sig.selLane = true; } else toast(`No units in the ${MAP.lanes[k].id} lane`, '');
   });
   refreshCtl();
 }
@@ -9465,17 +9545,15 @@ function refreshCtl() {
   const box = $('lanes'), bar = $('cmdbar'), on = ctlOn();
   box.classList.toggle('hide', !on); V.lpad = game && !game.spectate && game.sides[0].direct ? 58 : 0; // the column's width: the camera can scroll the field's left edge clear of it
   if (!on) { bar.classList.add('hide'); document.body.classList.remove('selecting'); return; }
-  const us = myUnits(), n = MAP_LANED ? MAP.lanes.length : 0, cnt = new Array(n).fill(0), act = game.sides[0].active;
-  for (const e of us) if (n && e.lane != null && e.lane < n) cnt[e.lane]++;
+  const us = myUnits(), n = MAP_LANED ? MAP.lanes.length : 0, cnt = new Array(n).fill(0);
+  for (const e of us) { const k = n ? unitLane(e) : null; if (k != null) cnt[k]++; }
   for (const b of box.children) {
     const k = b.dataset.k === 'all' ? -1 : +b.dataset.k;
     setHTML(b.querySelector('i'), String(k < 0 ? us.length : cnt[k]));
-    b.classList.toggle('act', k >= 0 && k === act);
   }
   const sl = selLive(), m = sl.length;
   bar.classList.toggle('hide', !m); document.body.classList.toggle('selecting', !!m);
   if (m) setHTML($('selN'), String(m));
-  const tt = $('trto'); if (tt) setHTML(tt.querySelector('b'), n ? laneName(act) : '');
 }
 for (const b of document.querySelectorAll('#cmdbar [data-c]')) b.addEventListener('click', () => { if (!paused) issue(b.dataset.c); });
 $('selX').addEventListener('click', selClear);
@@ -9502,7 +9580,7 @@ function drawCtlOverlay(c) {
   }
 }
 // A new or resumed match: under direct control, nothing selected, the column for its map
-function ctlStart() { SELN.clear(); flagMv = -1; ctlMark = null; ctlLoop = null; if (game && !game.spectate) directControl(game, 0); buildLanes(); }
+function ctlStart() { SELN.clear(); ctlMark = null; ctlLoop = null; if (game && !game.spectate) directControl(game, 0); buildLanes(); }
 /* ---------- Building panel: tap a building to upgrade or sell it ---------- */
 function openPanel(b) { sel = b; selPad = -1; sellArm = 0; upArm = 0; bpPath = null; $('bp').classList.remove('hide'); refreshPanel(); placeToasts(); }
 function openPad(k) {
@@ -9674,7 +9752,7 @@ function alertRaise(kind, key, u, v, msg) {
 function alertTick() {
   const g = game; if (!g || g.over || g.countdown > 0 || g.spectate) return;
   if (alerts.g !== g) { alerts.g = g; alerts.last = {}; alerts.pings = []; $('alerts').textContent = ''; } // a new or resumed match starts clean
-  $('alerts').classList.toggle('thru', !!(aim || wpt || flagMv >= 0)); // aiming: taps go through to the field
+  $('alerts').classList.toggle('thru', !!(aim || wpt)); // aiming: taps go through to the field
   for (const b of g.ents) {
     if (b.kind !== 'b' || b.side !== 0 || b.hp <= 0 || b.lastHit === undefined || g.t - b.lastHit > ALERT.hit) continue;
     if (b.type === 'hq') alertRaise('hq', 0, b.u, b.v, 'Your HQ is under attack');
@@ -9731,10 +9809,8 @@ function handleTap(x, y) {
   if (game.spectate) return; // a spectator only watches (drag still moves the camera)
   if (wpt) { wptTap(x, y); return; }
   if (aim) { aimTap(x, y); return; }
-  if (flagMv >= 0) { flagTap(x, y); return; } // v2.74: placing a base flag
   if (ctlFieldTap(x, y)) return; // v2.74: a unit selects it; with units selected, the ground is where they go
-  if (FWD_PADS.length && fwdTap(x, y)) return; // v2.66: a forward pad under the tap comes before a flag standing on it
-  if (game.countdown <= 0 && !game.over) { const fk = flagAt(x, y); if (fk >= 0) { startFlagMove(fk); return; } } // v2.74: tap a base flag to move it
+  if (FWD_PADS.length && fwdTap(x, y)) return; // v2.66: a forward pad under the tap
   const w = toWorld(x, y), hits = [];
   for (const b of game.ents) {
     if (b.kind !== 'b' || b.side !== 0) continue;
@@ -9768,7 +9844,7 @@ cv.addEventListener('pointerdown', e => {
   cam.vx = 0;
   gest = { id: e.pointerId, lx: p.x, ly: p.y, sx: p.x, sy: p.y, t0: performance.now(), t: performance.now(), moved: 0 };
   // v2.74: hold still a moment, then draw: a lasso (a quick drag still scrolls)
-  if (ctlOn() && !paused && !aim && !wpt && flagMv < 0) { const G = gest; G.armT = setTimeout(() => { if (gest === G && G.moved < CT.still) { G.lasso = [[G.lx, G.ly]]; cam.vx = 0; } }, CT.lassoMs); }
+  if (ctlOn() && !paused && !aim && !wpt) { const G = gest; G.armT = setTimeout(() => { if (gest === G && G.moved < CT.still) { G.lasso = [[G.lx, G.ly]]; cam.vx = 0; } }, CT.lassoMs); }
 });
 cv.addEventListener('pointermove', e => {
   if (!gest || e.pointerId !== gest.id) return;
@@ -10023,7 +10099,7 @@ function lanesTip() {
   let T = {}; try { T = JSON.parse(localStorage.getItem(TIPS_KEY) || '{}') || {}; } catch (e) {}
   if (T.lanes) return;
   const el = document.createElement('div'); el.id = 'tipLanes'; el.className = 'tipcard';
-  el.innerHTML = `<b>${MAP.lanes.length} lanes: select, then command</b><p>The column on the left is your army: <b>All</b>, then each lane with its unit count. <b>Tap a lane</b> to train to it: new units wait at its base flag. <b>Double-tap a lane</b> to select its units.</p><p>Select units (tap them, double-tap one for its whole type, or hold a moment and draw a loop), then <b>tap the ground</b> to move them there, or use <b>Attack</b>, <b>Hold</b> or <b>Retreat</b>. Attack goes down the lane they are in${MAP.lanes.length > 2 ? '; the walls open at the centre node' : ''}.</p><button id="bTipOk">Got it</button>`;
+  el.innerHTML = `<b>${MAP.lanes.length} lanes: select, then command</b><p>The column on the left is your army: <b>All</b>, then each lane with its unit count. <b>Tap a lane</b> to select its units. New units wait at the rally point in your base.</p><p>Select units (tap them, double-tap one for its whole type, or hold a moment and draw a loop), then <b>tap the ground</b> to move them there, or use <b>Attack</b>, <b>Hold</b> or <b>Retreat</b>. Attack goes down the lane they are in${MAP.lanes.length > 2 ? '; the walls open at the centre node' : ''}.</p><button id="bTipOk">Got it</button>`;
   document.body.appendChild(el);
   $('bTipOk').addEventListener('click', () => { T.lanes = 1; try { localStorage.setItem(TIPS_KEY, JSON.stringify(T)); } catch (e) {} el.remove(); });
 }
@@ -10701,7 +10777,7 @@ const tB = b => { if (!b) return null; const d = bdOf(b), p = P(b.u, b.v), hw = 
 const tPad = k => { const p = slotPos(0, k), q = P(p.u, p.v), w = 2 * PAD_H * IX, hh = 2 * PAD_H * IY; return tWorld(q.x - w, q.y - hh, q.x + w, q.y + hh); };
 const tPads = () => { const ps = []; for (let k = 0; k < SLOT_COUNT; k++) ps.push(slotPos(0, k)); const q = ps.map(p => P(p.u, p.v)), w = 2 * PAD_H * IX, hh = 2 * PAD_H * IY; return tWorld(Math.min(...q.map(p => p.x)) - w, Math.min(...q.map(p => p.y)) - hh, Math.max(...q.map(p => p.x)) + w, Math.max(...q.map(p => p.y)) + hh); };
 const tNode = n => { const q = P(n.u, n.v); return tWorld(q.x - NODE_R, q.y - NODE_R * DY - 24, q.x + NODE_R, q.y + NODE_R * DY); };
-const tFlag = () => { const f = tMe().flags ? tMe().flags[0] : { u: rallyU(0, game), v: 0 }, q = P(f.u, f.v); return tWorld(q.x - 26, q.y - 52, q.x + 34, q.y + 12); }; // v2.74: the base flag
+const tFlag = () => { const f = ctlBase(0), q = P(f.u, f.v); return tWorld(q.x - 26, q.y - 52, q.x + 34, q.y + 12); }; // v2.76: the base rally point
 const tUnits = () => { const us = myUnits(); if (!us.length) return tFlag(); const q = us.map(e => P(e.u, e.v)); return tWorld(Math.min(...q.map(p => p.x)) - 16, Math.min(...q.map(p => p.y)) - 34, Math.max(...q.map(p => p.x)) + 16, Math.max(...q.map(p => p.y)) + 10); }; // v2.74: your troops on the field
 const tUnit = () => { const e = myUnits().sort((a, b) => a.id - b.id)[0]; if (!e) return tFlag(); const q = P(e.u, e.v); return tWorld(q.x - 14, q.y - 30, q.x + 14, q.y + 6); }; // v2.74: one of your troops
 const tCmd = o => SELN.size && SELN.size === myUnits().length ? tEl(`#cmdbar [data-c="${o}"]`) : tEl('#lanes [data-k="all"]'); // v2.74: a command for the whole army: All first until everyone is selected
@@ -10750,21 +10826,20 @@ const TUT_CH = [
       { txt: () => `Signature buildings stand only on that pad, one at a time: the ${tN('sigA')} or the ${tN('sigB')}. The Codex explains both.`, hi: () => tEl('#cards .card[data-type="sigA"]'), skipIf: () => !sigPadOn() || !SIG.on },
       { txt: () => 'To build: tap a pad, then a card. Or just tap a card and it takes the first free pad.' },
     ] },
-  { key: 'army', name: 'Army', blurb: 'Training troops, selecting, Attack, Hold and Retreat, base flags and healing, lanes',
+  { key: 'army', name: 'Army', blurb: 'Training troops, selecting, Attack, Hold and Retreat, the rally point and healing, lanes',
     setup: () => { tPlace('barracks', 4); tMe().res.c += UDEF.rifle.cost.c * 2; },
     steps: [
       { act: true, txt: () => `Troops come from production buildings like your ${tN('barracks')}. Open the Train tab.`, hi: () => tEl('.tabs [data-tab="train"]'), done: () => tab === 'train' },
       { act: true, txt: () => `Tap the ${UDEF.rifle.name} card to train one.`, hi: () => tCard('rifle'), done: () => { const b = tMy('barracks'); if (b && b.queue.length && !TUT.firstUnit) TUT.firstUnit = b.queue[0]; return !!TUT.firstUnit || game.ents.some(e => e.kind === 'u' && e.side === 0); } },
-      { txt: () => 'New troops walk to your base flag in front of your base and wait there on Hold. Nothing moves until you order it.', hi: tFlag, codex: { label: 'See stats', item: () => 'unit:' + (TUT.firstUnit || 'rifle') },
+      { txt: () => 'New troops gather at the rally point in the middle of your base, each in its own space, and wait there on Hold. Nothing moves until you order it.', hi: tFlag, codex: { label: 'See stats', item: () => 'unit:' + (TUT.firstUnit || 'rifle') },
         enter: () => { const b = tMy('barracks'); if (b && !b.queue.length && !game.ents.some(e => e.kind === 'u' && e.side === 0)) tryTrain(game, 0, 'rifle'); if (!TUT.firstUnit) TUT.firstUnit = 'rifle'; } },
       { act: true, txt: () => `Here comes your ${UDEF[TUT.firstUnit || 'rifle'].name}.`, hi: tFlag, done: () => game.ents.some(e => e.kind === 'u' && e.side === 0 && e.hp > 0 && e.po && e.po.o === 'hold') },
       // v2.74 (docs/CONTROLS.md): select, then command
       { act: true, txt: () => 'Tap All on the left to select your whole army.', hi: () => tEl('#lanes [data-k="all"]'), enter: () => selClear(), done: () => SELN.size > 0 && SELN.size === myUnits().length },
       { act: true, txt: () => 'Tap Attack: they advance down the lane and fight their way to the enemy base.', hi: () => tCmd('attack'), enter: () => { TUT.sig.attack = false; }, done: () => TUT.sig.attack },
       { act: true, txt: () => 'Select them again with All, then tap Hold: they stop and fight anything in range.', hi: () => tCmd('hold'), enter: () => { TUT.sig.hold = false; }, done: () => TUT.sig.hold },
-      { txt: () => 'Retreat brings them back to their base flag without firing. Units heal at your base flags, and at repair depots you hold, but only when you move them there: nothing goes home on its own.' },
-      { txt: () => 'To move a base flag, tap it with nothing selected, then tap where it goes.', hi: tFlag },
-      { txt: () => 'On a lane map the column on the left lists each lane with its unit count. Tap a lane to train to it: new units wait at that lane\'s base flag. Tap a lane and tap it again right away to select its units. Attack sends units down the lane they are in.', hi: () => tEl('#lanes') },
+      { txt: () => 'Retreat brings them back to the rally point without firing. Units heal at the rally point, and at repair depots you hold, but only when you move them there: nothing goes home on its own.', hi: tFlag },
+      { txt: () => 'On a lane map the column on the left lists each lane with its unit count. Tap a lane to select the units in it.', hi: () => tEl('#lanes') },
     ] },
   { key: 'upgrades', name: 'Upgrades', blurb: 'Upgrade tiers, paths and what they unlock',
     setup: () => { tPlace('barracks', 4); const u = BDEF.barracks.up; tMe().res.c += u[2].c + u[3].c; tMe().res.e += u[2].e + u[3].e; },
@@ -10930,8 +11005,8 @@ $('tutSkipC').addEventListener('click', tutSkipChapter);
 // The How to Play tab: the chapter list
 CODEX_HOWTO.html = () => { const D = tutDone(); return `<h2>How to Play</h2><p>Hands-on lessons in a practice match as ${factionName('lastfist')}. You can't lose, every step can be skipped, and any chapter can be played or replayed at any time.</p>` +
   TUT_CH.map((C, i) => `<div class="cxch${D[C.key] ? ' done' : ''}" id="cx-tut-${C.key}"><span class="ck" aria-label="${D[C.key] ? 'Completed' : 'Not played'}">${D[C.key] ? '✓' : ''}</span><div class="cxct"><b>${i + 1}. ${cxEsc(C.name)}</b><small>${cxEsc(C.blurb)}</small></div><button class="cxplay" data-tut="${i}">Play</button></div>`).join('') +
-  `<h3 id="cx-controls">Army controls</h3><p><b>Select, then command.</b> Tap one of your units to select it; tap more to add them. <b>Double-tap</b> a unit to select every unit of its type. <b>Press and hold</b> on the battlefield until the ring fills, then draw a loop: the units inside it are selected. <b>All</b>, at the top of the column on the left, selects your whole army. A tag shows how many are selected; its × clears them. Only your own units can be selected.</p><p>With units selected, the command bar takes the bottom panel's place. <b>Tap the ground</b> to send them there: they walk holding their fire, then hold the spot. <b>Attack</b> sends them down the lane they are in, fighting their way to the enemy base. <b>Hold</b> stops them to fight anything in range. <b>Retreat</b> brings them back to their lane's base flag without firing. The selection clears after an order. Nothing moves on its own.</p><p><b>New units</b> walk to the active lane's base flag and wait there on Hold; from a forward ${tN('barracks')}, beside it. <b>Healing:</b> your units heal ${Math.round(CTRL.heal * 100)}% of their health a second, once unhurt for ${CTRL.calm} s, at your base flags and at repair depots you hold, only where you move them. Tap a base flag with nothing selected, then the ground, to move it.</p><p><b>Lanes</b> (Two-Lane, Three-Lane): the column on the left lists each lane, north on top, with its unit count. <b>Tap a lane</b> to make it the active lane (new units go to its base flag; the Train tab shows it); <b>double-tap</b> it to select its units. Aircraft fly straight over the ridge and the walls. On Three-Lane the walls between the lanes each have one gap, at the rich centre node.</p>` +
-  `<h3 id="cx-special">Repair depots and relics (Three-Lane)</h3><p>A <b>repair depot</b> is captured like a node: your units near it heal ${REPAIR.heal}% of their health a second once unhurt for ${REPAIR.calm} s: move damaged units there (or to a base flag) to save them. A <b>relic</b> is a neutral camp off the lanes: its gold guards never move and fire at anyone who comes close. Destroy them and stand on the relic to take it, once, for ${RELIC.reward.c} credits.</p>` +
+  `<h3 id="cx-controls">Army controls</h3><p><b>Select, then command.</b> Tap one of your units to select it; tap more to add them. <b>Double-tap</b> a unit to select every unit of its type. <b>Press and hold</b> on the battlefield until the ring fills, then draw a loop: the units inside it are selected. <b>All</b>, at the top of the column on the left, selects your whole army. A tag shows how many are selected; its × clears them. Only your own units can be selected.</p><p>With units selected, the command bar takes the bottom panel's place. <b>Tap the ground</b> to send them there: they stop to fight enemies they meet on the way, then hold the spot, each in its own space. <b>Attack</b> sends them down the lane they are in, fighting their way to the enemy base. <b>Hold</b> stops them to fight anything in range. <b>Retreat</b> brings them back to the rally point in the middle of your base, without firing or stopping for enemies. The selection clears after an order. Nothing moves on its own.</p><p><b>New units</b> gather at the rally point and wait there on Hold; from a forward ${tN('barracks')}, beside it. Units never stack: wherever they gather, each takes its own space. <b>Healing:</b> your units heal ${Math.round(CTRL.heal * 100)}% of their health a second, once unhurt for ${CTRL.calm} s, at the rally point and at repair depots you hold, only where you move them.</p><p><b>Lanes</b> (Two-Lane, Three-Lane): the column on the left lists each lane, north on top, with its unit count. <b>Tap a lane</b> to select the units in it (units in your base count toward All only). Aircraft fly straight over the ridge and the walls. On Three-Lane the walls between the lanes each have one gap, at the rich centre node.</p>` +
+  `<h3 id="cx-special">Repair depots and relics (Three-Lane)</h3><p>A <b>repair depot</b> is captured like a node: your units near it heal ${REPAIR.heal}% of their health a second once unhurt for ${REPAIR.calm} s: move damaged units there (or to the rally point) to save them. A <b>relic</b> is a neutral camp off the lanes: its gold guards never move and fire at anyone who comes close. Destroy them and stand on the relic to take it, once, for ${RELIC.reward.c} credits.</p>` +
   `<h3 id="cx-cond">Battlefield conditions</h3><p>On the map screen you can add conditions to a match (or let <b>Random</b> pick one): ${COND_KEYS.map(k => `<b>${COND_UI[k].name}</b>: ${COND_UI[k].line()}`).join(' ')} Each map lists the ones it allows; a match shows its conditions as small icons on the minimap's right edge.</p>` +
   `<h3 id="cx-break">Breaking a base</h3><p>Your HQ is shielded while a production building (${tN('barracks')}, ${tN('factory')} or ${tN('techlab')}) stands in your base: destroy them and the HQ is open. A destroyed building leaves <b>rubble</b>: nothing can be built on its pad for ${BREAK.rubble.t} s. From ${mmss(BREAK.power.from)} the base guns (HQ, turrets, bunkers) lose ${Math.round(BREAK.power.step * 100)}% of their power every minute as the Extinction Event nears, the same for both sides: <b>Power failing</b>.</p>`; }; // v2.66; v2.69: base-breaking; v2.74: the army controls (docs/CONTROLS.md)
 // First launch: offer the tutorial once (the answer is remembered; without storage, once per page load)

@@ -1,13 +1,12 @@
 /* ---------- Army controls (v2.74, docs/CONTROLS.md): select units, then command them ----------
    Select: tap a unit (more taps add), double-tap a unit (every unit of its type), hold a moment then draw a loop (lasso),
-   All (the whole army), double-tap a lane's name (every unit in that lane). Only your own units, never enemies or relic
-   guards. Command: tap the ground (move there and hold), or the command bar's Attack, Hold, Retreat. The command bar takes
-   the bottom panel's place while anything is selected; the selection clears after an order or with the tag's ×. One tap
-   on a lane's name makes it the active lane (new units gather at its base flag). Each lane's base flag can be moved: tap
-   it (with nothing selected), then tap where it goes. The SIM side is directControl / command (src/sim/control.js). */
+   All (the whole army), a lane's name (every unit in that lane; v2.76: one tap, and no active lane or base flags any more).
+   Only your own units, never enemies or relic guards. Command: tap the ground (move there and hold), or the command bar's
+   Attack, Hold, Retreat. The command bar takes the bottom panel's place while anything is selected; the selection clears
+   after an order or with the tag's ×. The SIM side is directControl / command (src/sim/control.js). */
 const SELN = new Set(); // the selected units' ids
-const CT = { hitPx: 26, dbl: 350, lassoMs: 260, lassoMin: 14, lineSel: 22, still: 8 };
-let flagMv = -1, ctlMark = null, ctlLoop = null; // ctlLoop: the last lasso, fading out // flagMv: the lane whose base flag is being moved (-1: none); ctlMark: where the last move order went
+const CT = { hitPx: 26, dbl: 350, lassoMs: 260, lassoMin: 14, lineSel: 22, still: 8, baseOut: 140 };
+let ctlMark = null, ctlLoop = null; // ctlLoop: the last lasso, fading out; ctlMark: where the last move order went
 const ctlOn = () => !!(game && running && !game.over && !game.spectate && game.sides[0].direct);
 const laneName = k => MAP.lanes[k].id[0].toUpperCase() + MAP.lanes[k].id.slice(1);
 const myUnits = () => game.ents.filter(e => e.kind === 'u' && e.side === 0 && e.hp > 0);
@@ -33,7 +32,10 @@ function foeBldAt(x, y) { // an enemy building you can see under a tap (its body
 function selSet(list, add) { if (!add) SELN.clear(); for (const e of list) SELN.add(e.id); if (SELN.size) { closePanel(); hideInfo(); endAim(); } refreshCtl(); }
 const selAll = () => selSet(myUnits());
 const selType = t => selSet(myUnits().filter(e => e.type === t));
-const selLane = k => selSet(myUnits().filter(e => (MAP_LANED ? e.lane : 0) === k));
+// v2.76: the lane a unit is in, from where it stands (the lane's centre line nearest it); in the base (up to CT.baseOut
+// beyond the base rally point, where the lanes meet) it is in none, and counts toward All only
+const unitLane = e => { if (!MAP_LANED || dirOf(0) * (e.u - ctlBase(0).u) <= CT.baseOut) return null; return laneAt(e.u, e.v); };
+const selLane = k => selSet(myUnits().filter(e => unitLane(e) === k), true);
 function selClear() { SELN.clear(); refreshCtl(); }
 // An order for the selection; it clears afterwards
 function issue(o, u, v) {
@@ -73,27 +75,7 @@ function lassoSelect(pts) {
   if (!got.length) { toast('No units of yours inside the loop', ''); return; }
   selSet(got, true); TUT.sig.lasso = true;
 }
-// The base flags: where a tap finds one (the pole and cloth, generously), and moving one
-function flagAt(x, y) {
-  if (!ctlOn()) return -1;
-  const F = game.sides[0].flags, w = toWorld(x, y);
-  for (let k = 0; k < F.length; k++) { const q = P(F[k].u, F[k].v); if (Math.abs(w.x - (q.x + 8)) <= 26 / V.S * 0.8 + 6 && w.y >= q.y - 48 && w.y <= q.y + 12) return k; }
-  return -1;
-}
-function startFlagMove(k) {
-  endAim(); closePanel(); hideInfo();
-  flagMv = k;
-  $('aim').style.setProperty('--ac', TEAM[0].main);
-  $('aimName').textContent = MAP_LANED ? `${laneName(k)} base flag` : 'Base flag'; $('aimTxt').textContent = ': tap the battlefield where it goes';
-  $('aim').classList.remove('hide');
-}
-function flagTap(x, y) {
-  const w = toWorld(x, y), r = setFlag(game, 0, flagMv, w.x, w.y / DY);
-  toast(r.msg, r.ok ? 'ok' : 'bad');
-  if (r.ok) endAim();
-}
-// The left column: All, then one entry per lane (north on top). One tap on a lane: it becomes the active lane; two: its units
-let laneTap = { t: 0, k: -1 };
+// The left column: All, then one entry per lane (north on top). A tap on a lane selects its units (v2.76: one tap)
 function buildLanes() {
   const box = $('lanes'); box.innerHTML = '';
   const n = MAP_LANED ? MAP.lanes.length : 0;
@@ -105,13 +87,9 @@ function buildLanes() {
     box.appendChild(b); return b;
   };
   mk('all', 'All', 'Select your whole army').addEventListener('click', () => { if (!ctlOn() || paused) return; if (!myUnits().length) { toast('No units yet: train some in the Train tab', 'bad'); return; } selAll(); });
-  for (let k = 0; k < n; k++) mk(k, laneName(k), `${laneName(k)} lane: tap to train to it, double-tap to select its units`).addEventListener('click', () => {
+  for (let k = 0; k < n; k++) mk(k, laneName(k), `${laneName(k)} lane: select its units`).addEventListener('click', () => {
     if (!ctlOn() || paused) return;
-    const now = performance.now();
-    if (laneTap.k === k && now - laneTap.t < CT.dbl) { laneTap.t = 0; const any = myUnits().some(e => e.lane === k); if (any) selLane(k); else toast(`No units in the ${MAP.lanes[k].id} lane`, ''); return; }
-    laneTap = { t: now, k };
-    const prev = game.sides[0].active, r = setActiveLane(game, 0, k); if (r.ok && prev !== k) toast(`Training to ${laneName(k)}: new units wait at its base flag`, 'ok');
-    refreshCtl();
+    if (myUnits().some(e => unitLane(e) === k)) { selLane(k); TUT.sig.selLane = true; } else toast(`No units in the ${MAP.lanes[k].id} lane`, '');
   });
   refreshCtl();
 }
@@ -119,17 +97,15 @@ function refreshCtl() {
   const box = $('lanes'), bar = $('cmdbar'), on = ctlOn();
   box.classList.toggle('hide', !on); V.lpad = game && !game.spectate && game.sides[0].direct ? 58 : 0; // the column's width: the camera can scroll the field's left edge clear of it
   if (!on) { bar.classList.add('hide'); document.body.classList.remove('selecting'); return; }
-  const us = myUnits(), n = MAP_LANED ? MAP.lanes.length : 0, cnt = new Array(n).fill(0), act = game.sides[0].active;
-  for (const e of us) if (n && e.lane != null && e.lane < n) cnt[e.lane]++;
+  const us = myUnits(), n = MAP_LANED ? MAP.lanes.length : 0, cnt = new Array(n).fill(0);
+  for (const e of us) { const k = n ? unitLane(e) : null; if (k != null) cnt[k]++; }
   for (const b of box.children) {
     const k = b.dataset.k === 'all' ? -1 : +b.dataset.k;
     setHTML(b.querySelector('i'), String(k < 0 ? us.length : cnt[k]));
-    b.classList.toggle('act', k >= 0 && k === act);
   }
   const sl = selLive(), m = sl.length;
   bar.classList.toggle('hide', !m); document.body.classList.toggle('selecting', !!m);
   if (m) setHTML($('selN'), String(m));
-  const tt = $('trto'); if (tt) setHTML(tt.querySelector('b'), n ? laneName(act) : '');
 }
 for (const b of document.querySelectorAll('#cmdbar [data-c]')) b.addEventListener('click', () => { if (!paused) issue(b.dataset.c); });
 $('selX').addEventListener('click', selClear);
@@ -156,4 +132,4 @@ function drawCtlOverlay(c) {
   }
 }
 // A new or resumed match: under direct control, nothing selected, the column for its map
-function ctlStart() { SELN.clear(); flagMv = -1; ctlMark = null; ctlLoop = null; if (game && !game.spectate) directControl(game, 0); buildLanes(); }
+function ctlStart() { SELN.clear(); ctlMark = null; ctlLoop = null; if (game && !game.spectate) directControl(game, 0); buildLanes(); }

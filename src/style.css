@@ -372,9 +372,6 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 #lanes button b{font-size:11.5px;font-weight:800;line-height:1}
 #lanes button i{font-style:normal;font-size:12px;font-weight:800;color:#001522;background:var(--blue);border-radius:8px;min-width:20px;padding:0 5px;line-height:16px;text-align:center;font-variant-numeric:tabular-nums}
 #lanes button[data-k="all"]{border-color:rgba(57,200,255,.45)}
-#lanes button.act{border-color:#ffd34d;box-shadow:inset 0 0 0 1.5px #ffd34d;background:rgba(58,48,20,.88)} /* the active lane: new units go to its base flag */
-#lanes button.act b::before{content:'⚑ ';color:#ffd34d}
-.trto{flex:0 0 58px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:10px;border:1px dashed rgba(255,211,77,.55);color:var(--muted);font-size:10px;font-weight:700;line-height:1.15;text-align:center} .trto b{color:#ffd34d;font-size:12.5px}
 #cmdbar{position:absolute;inset:0;z-index:2;display:flex;align-items:stretch;gap:6px;padding:5px;background:rgba(12,22,40,.97);border-radius:13px}
 #cmdbar.hide{display:none}
 #cmdbar>button{flex:0 1 96px;min-width:64px;border-radius:10px;border:1px solid var(--line);background:rgba(30,46,76,.85);color:var(--text);font-weight:800;font-size:14px}

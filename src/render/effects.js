@@ -935,6 +935,7 @@ function render(c, g, time, sel, selPad) {
   for (const a of g.acid) if (lit(a.u, a.v)) drawAcidPool(c, a, g.t);
   drawDecals(c);
   drawMeteor(c, g, time); // v2.72: a meteor's warning circle, then its fall
+  if (g.sides[0].direct && !g.over) { const B = ctlBase(0), w = P(B.u, B.v); c.save(); c.globalAlpha = 0.22; c.strokeStyle = TEAM[0].main; c.lineWidth = 1.5; c.setLineDash([6, 6]); c.beginPath(); c.ellipse(w.x, w.y, CTRL.healR, CTRL.healR, 0, 0, 7); c.stroke(); c.restore(); } // v2.76: where the base rally point heals
   if (g) { drawSelection(c, g, time); drawBuildingSel(c, g, time, false); }
   drawWrecks(c, time);
   // everything on the field, back to front
@@ -942,7 +943,7 @@ function render(c, g, time, sel, selPad) {
   for (const gh of ghosts) list.push({ kind: 'ghost', u: gh.u, v: gh.v, gh });
   for (const n of g.nodes) list.push({ kind: 'node', u: n.u, v: n.v - 1, n });
   for (const x of g.guards || []) if (x.hp > 0 && (g.spectate || visibleTo(g, 0, x))) list.push(x); // v2.71: relic guards (neutral gold)
-  if (g.sides[0].direct && !g.over) g.sides[0].flags.forEach((f, k) => list.push({ kind: 'flag', u: f.u, v: f.v, lane: k, on: k === g.sides[0].active })); // v2.74: a base flag per lane (the active lane's brighter)
+  if (g.sides[0].direct && !g.over) { const B = ctlBase(0); list.push({ kind: 'flag', u: B.u, v: B.v - 2, on: true }); } // v2.76: the base rally point (one flag; v2.74 had one per lane)
   else if (!g.sides[0].direct && g.sides[0].stance !== 'attack') list.push({ kind: 'flag', u: rallyU(0, g) + 30, v: -20, on: true }); // spectating: the rally point
   list.sort((a, b) => (a.v - b.v) || (a.u - b.u));
   for (const e of list) {
@@ -951,8 +952,8 @@ function render(c, g, time, sel, selPad) {
     else if (e.kind === 'u') drawUnit(c, e);
     else if (e.kind === 'node') drawNode(c, e.n, time);
     else {
-      const w = P(e.u, e.v), moving = typeof flagMv !== 'undefined' && flagMv === e.lane;
-      c.globalAlpha = moving ? 0.5 + 0.4 * Math.sin(time * 8) : e.on ? 1 : 0.7;
+      const w = P(e.u, e.v);
+      c.globalAlpha = e.on ? 1 : 0.7;
       c.strokeStyle = M.h; c.lineWidth = 1.5; c.beginPath(); c.moveTo(w.x, w.y); c.lineTo(w.x, w.y - 34); c.stroke();
       c.fillStyle = TEAM[0].main; c.beginPath(); c.moveTo(w.x, w.y - 34);
       for (let i = 0; i <= 5; i++) c.lineTo(w.x + i * 3.4, w.y - 34 + Math.sin(time * 5 + i) * 1.3);

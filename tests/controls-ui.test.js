@@ -1,8 +1,9 @@
 // v2.74 (docs/CONTROLS.md) in headless Chromium, with real taps and drags: every way of selecting (tap, tap more, double-tap a
-// unit, lasso, All, double-tap a lane), never enemies or relic guards; moving to a tapped spot; Attack, Hold and Retreat on a
-// selection; healing at a base flag and a held depot after being moved there, not elsewhere; the active lane and new units
-// waiting at its flag; a forward Barracks' units waiting beside it; clearing the selection; and the controls' size and fit
-// at both iPhone sizes on every map (44 pt targets, nothing covered, key places on the field reachable clear of them).
+// unit, lasso, All, a lane), never enemies or relic guards; moving to a tapped spot; Attack, Hold and Retreat on a selection;
+// healing at the base rally point and a held depot after being moved there, not elsewhere; new units gathering at the base
+// rally point, each in its own space (v2.76: no lane flags, no active lane); a forward Barracks' units waiting beside it;
+// clearing the selection; and the controls' size and fit at both iPhone sizes on every map (44 pt targets, nothing
+// covered, key places on the field reachable clear of them).
 const test = require('node:test');
 const assert = require('node:assert');
 const { findPlaywright, PHONE, NARROW, openPage } = require('./browser-kit');
@@ -33,7 +34,7 @@ async function lasso(page, x0, y0, x1, y1) { // hold, then draw a loop around th
 }
 const selIds = page => page.evaluate(() => [...SELN].sort((a, b) => a - b));
 
-test('selecting: tap, tap more, double-tap a type, lasso, All, double-tap a lane; never enemies or relic guards; clearing', { skip }, async () => {
+test('selecting: tap, tap more, double-tap a type, lasso, All, a lane; never enemies or relic guards; clearing', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
   await start(page, 'threelane'); await page.evaluate(HELPERS);
   const U = await page.evaluate(() => {
@@ -67,11 +68,12 @@ test('selecting: tap, tap more, double-tap a type, lasso, All, double-tap a lane
   await page.click('#selX'); const cx0 = await page.evaluate(() => cam.x);
   await page.mouse.move(500, 200); await page.mouse.down(); await page.mouse.move(400, 200, { steps: 4 }); await page.mouse.up();
   assert.ok(await page.evaluate(c => Math.abs(cam.x - c) > 50, cx0), 'a quick drag scrolls'); assert.deepStrictEqual(await selIds(page), []);
-  // All; double-tap a lane
-  await page.evaluate(() => { const e = spawnUnit(game, 0, 'sniper', 640, -200); e.lane = 0; e.hp = e.maxHp = 1e6; refreshUI(true); });
+  // All; a lane (one tap: the units standing in it; units in the base count toward All only)
+  await page.evaluate(() => { const e = spawnUnit(game, 0, 'sniper', 700, -380); e.hp = e.maxHp = 1e6; refreshUI(true); });
+  assert.deepStrictEqual(await page.evaluate(() => [...document.querySelectorAll('#lanes i')].map(i => i.textContent)), ['7', '1', '0', '0'], 'All 7; North 1 (the rest are in the base)');
   await page.click('#lanes [data-k="all"]'); assert.strictEqual((await selIds(page)).length, 7);
-  await page.click('#selX'); await page.dblclick('#lanes [data-k="0"]');
-  assert.deepStrictEqual(await page.evaluate(() => selLive().map(e => e.type)), ['sniper'], 'double-tap North: its units');
+  await page.click('#selX'); await page.click('#lanes [data-k="0"]');
+  assert.deepStrictEqual(await page.evaluate(() => selLive().map(e => e.type)), ['sniper'], 'North: its units');
   // relic guards: a lasso around the west relic's guards selects none of them
   await page.click('#selX');
   const gbox = await page.evaluate(() => { const G = game.guards.filter(x => x.hp > 0 && Math.abs(x.u - 740) < 80); for (const x of G) game.fog[0].vis && 0; __look(740, -200); refreshUI(true); const p = G.map(x => __scr(x.id)); return [Math.min(...p.map(q => q[0])) - 30, Math.min(...p.map(q => q[1])) - 30, Math.max(...p.map(q => q[0])) + 30, Math.max(...p.map(q => q[1])) + 30]; });
@@ -100,7 +102,7 @@ test('dense groups: a tap picks the unit under it, and a lasso takes the whole c
   await page.close();
 });
 
-test('commands: move to a tapped spot (then Hold), Attack down the lane, Hold, Retreat to the lane\'s base flag; the selection clears after each', { skip }, async () => {
+test('commands: move to a tapped spot (then Hold), Attack down the lane, Hold, Retreat to the base rally point; the selection clears after each', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
   await start(page, 'twolane'); await page.evaluate(HELPERS);
   const ids = await page.evaluate(() => { __look(650, -200); const out = []; for (let i = 0; i < 4; i++) { const e = spawnUnit(game, 0, 'rifle', 600 + i * 16, -260); e.lane = 0; out.push(e.id); } refreshUI(true); return out; });
@@ -108,9 +110,9 @@ test('commands: move to a tapped spot (then Hold), Attack down the lane, Hold, R
   const [sx, sy] = await tapGround(page, 760, -300);
   const W = await page.evaluate(([x, y]) => { const r = cv.getBoundingClientRect(), w = toWorld(x - r.left, y - r.top); return [w.x, w.y / DY]; }, [sx, sy]);
   assert.deepStrictEqual(await selIds(page), [], 'cleared after the order');
-  assert.ok(await page.evaluate(([u, v]) => myUnits().every(e => e.po.o === 'go' && Math.hypot(e.po.u - u, e.po.v - v) < 40), W), 'walking to the tapped spot');
+  assert.ok(await page.evaluate(([u, v]) => myUnits().every(e => e.po.o === 'go' && Math.hypot(e.po.u - u, e.po.v - v) < 60), W), 'walking to the tapped spot');
   await page.evaluate(() => __run(12));
-  assert.ok(await page.evaluate(([u, v]) => myUnits().every(e => e.po.o === 'hold' && Math.hypot(e.u - u, e.v - v) < 45), W), 'there, holding');
+  assert.ok(await page.evaluate(([u, v]) => myUnits().every(e => e.po.o === 'hold' && Math.hypot(e.u - u, e.v - v) < 65), W), 'there, holding');
   // Attack: down the north lane
   await page.click('#lanes [data-k="all"]'); await page.click('#cmdbar [data-c="attack"]');
   assert.deepStrictEqual(await selIds(page), []);
@@ -120,16 +122,16 @@ test('commands: move to a tapped spot (then Hold), Attack down the lane, Hold, R
   await page.click('#lanes [data-k="all"]'); await page.click('#cmdbar [data-c="hold"]');
   const at = await page.evaluate(() => myUnits().map(e => e.u)); await page.evaluate(() => __run(3));
   assert.ok(await page.evaluate(a => myUnits().every((e, i) => e.po.o === 'hold' && Math.abs(e.u - a[i]) < 12), at), 'holding where they stood');
-  // Retreat: to the north lane's base flag
+  // Retreat: to the base rally point
   await page.click('#lanes [data-k="all"]'); await page.click('#cmdbar [data-c="retreat"]');
-  await page.evaluate(() => __run(25));
-  assert.ok(await page.evaluate(() => { const F = game.sides[0].flags[0]; return myUnits().every(e => e.po.o === 'hold' && Math.hypot(e.u - F.u, e.v - F.v) < 60); }), 'back at the north base flag, holding');
+  await page.evaluate(() => __run(30));
+  assert.ok(await page.evaluate(() => { const F = ctlBase(0); return myUnits().every(e => e.po.o === 'hold' && Math.hypot(e.u - F.u, e.v - F.v) < 70); }), 'back at the base rally point, holding');
   void ids;
   assert.deepStrictEqual(errors, []);
   await page.close();
 });
 
-test('healing: at a base flag and a held depot after being moved there, not elsewhere', { skip }, async () => {
+test('healing: at the base rally point and a held depot after being moved there, not elsewhere', { skip }, async () => {
   const { page, errors } = await openPage(browser, NARROW);
   await start(page, 'threelane'); await page.evaluate(HELPERS);
   const I = await page.evaluate(() => {
@@ -139,34 +141,32 @@ test('healing: at a base flag and a held depot after being moved there, not else
     return { a: mk(1060, -420), b: mk(1000, -380), c: mk(950, -420), dep: [dep.u, dep.v] };
   });
   await tapUnit(page, I.a); await tapGround(page, ...I.dep); // to the depot
-  await page.evaluate(() => { const F = game.sides[0].flags[0]; __look(F.u, F.v); refreshUI(true); });
   await page.evaluate(() => __look(1000, -400)); await page.waitForTimeout(450); await tapUnit(page, I.b);
-  const F = await page.evaluate(() => { const f = game.sides[0].flags[0]; __look(f.u + 60, f.v); return [f.u, f.v]; });
-  await tapGround(page, F[0] + 20, F[1] + 10); // to the base flag
+  const F = await page.evaluate(() => { const f = ctlBase(0); __look(f.u + 60, f.v); return [f.u, f.v]; });
+  await tapGround(page, F[0] + 20, F[1] + 10); // to the base rally point
   await page.evaluate(() => __run(40));
   const hp = await page.evaluate(ids => ids.map(i => { const e = game.ents.find(x => x.id === i); return +(e.hp / e.maxHp).toFixed(2); }), [I.a, I.b, I.c]);
   assert.ok(hp[0] > 0.9, `healed at the held depot (${hp[0]})`);
-  assert.ok(hp[1] > 0.6, `healed at the base flag (${hp[1]})`);
+  assert.ok(hp[1] > 0.6, `healed at the base rally point (${hp[1]})`);
   assert.strictEqual(hp[2], 0.3, 'left in the field: no healing');
   assert.ok(await page.evaluate(i => game.ents.find(x => x.id === i).po.o === 'hold', I.c), 'and nothing sent it home');
   assert.deepStrictEqual(errors, []);
   await page.close();
 });
 
-test('new units: the active lane, "Training to", waiting at its base flag on Hold; a forward Barracks\' units wait beside it', { skip }, async () => {
+test('new units: gathering at the base rally point on Hold, each in its own space; a forward Barracks\' units wait beside it', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
   await start(page, 'twolane'); await page.evaluate(HELPERS);
   await page.evaluate(() => { const s = game.sides[0]; s.res.c = 1e5; s.res.e = 1e5; tryBuild(game, 0, 'barracks', 0); for (const b of game.ents) if (b.kind === 'b' && b.side === 0) { b.built = true; b.progress = 1; b.hp = b.maxHp; } refreshUI(true); });
-  assert.deepStrictEqual(await page.evaluate(() => [game.sides[0].active, $('lanes').querySelector('.act').dataset.k]), [0, '0'], 'North starts active, highlighted');
-  await page.click('#lanes [data-k="1"]');
-  assert.deepStrictEqual(await page.evaluate(() => [game.sides[0].active, $('lanes').querySelector('.act').dataset.k]), [1, '1']);
-  await page.click('.tabs [data-tab="train"]'); assert.match(await page.textContent('#trto'), /Training to\s*South/);
-  await page.click('#cards .card[data-type="rifle"]'); await page.click('#cards .card[data-type="rifle"]');
-  await page.evaluate(() => __run(40));
-  const R = await page.evaluate(() => { const F = game.sides[0].flags[1]; return myUnits().map(e => [e.lane, e.po.o, Math.round(Math.hypot(e.u - F.u, e.v - F.v))]); });
-  assert.strictEqual(R.length, 2); for (const [l, o, d] of R) { assert.strictEqual(l, 1); assert.strictEqual(o, 'hold'); assert.ok(d < 50, `at the south flag (${d})`); }
+  assert.strictEqual(await page.evaluate(() => document.querySelectorAll('#lanes .act').length), 0, 'no active lane');
+  await page.click('.tabs [data-tab="train"]'); assert.strictEqual(await page.$('#trto'), null, 'no "Training to"');
+  for (let i = 0; i < 4; i++) await page.click('#cards .card[data-type="rifle"]');
+  await page.evaluate(() => __run(50));
+  const R = await page.evaluate(() => { const F = ctlBase(0), us = myUnits(); let md = 1e9; for (const a of us) for (const b of us) if (a !== b) md = Math.min(md, Math.hypot(a.u - b.u, (a.v - b.v) * DY)); return { n: us.length, md, at: us.map(e => [e.po.o, Math.round(Math.hypot(e.u - F.u, e.v - F.v))]) }; });
+  assert.strictEqual(R.n, 4); for (const [o, d] of R.at) { assert.strictEqual(o, 'hold'); assert.ok(d < 70, `at the base rally point (${d})`); }
+  assert.ok(R.md >= 14, `never on the same spot (closest ${R.md.toFixed(1)})`);
   await page.evaluate(() => __run(15));
-  assert.ok(await page.evaluate(() => { const F = game.sides[0].flags[1]; return myUnits().every(e => Math.hypot(e.u - F.u, e.v - F.v) < 50); }), 'still waiting: nothing moves on its own');
+  assert.ok(await page.evaluate(() => { const F = ctlBase(0); return myUnits().every(e => Math.hypot(e.u - F.u, e.v - F.v) < 70); }), 'still waiting: nothing moves on its own');
   // a forward Barracks on the north-west forward pad
   const fb = await page.evaluate(() => { const k = FWD_PADS.findIndex(p => p.at[0] < 1100 && p.at[1] < 0); game.nodes[FWD_PADS[k].node].owner = 0; const r = tryBuild(game, 0, 'barracks', FWD_SLOT + k); const b = game.ents.find(e => e.kind === 'b' && e.slot === FWD_SLOT + k); b.built = true; b.progress = 1; b.hp = b.maxHp; for (const x of game.ents) if (x.kind === 'b' && x.side === 0 && x.slot === 0) x.queue.length = 0; b.queue.push('rifle'); __run(15); return { ok: r.ok, u: b.u, v: b.v, units: myUnits().filter(e => Math.abs(e.u - b.u) < 120 && Math.abs(e.v - b.v) < 80).map(e => [e.po.o, e.lane]) }; });
   assert.ok(fb.ok); assert.deepStrictEqual(fb.units, [['hold', 0]], 'beside the forward Barracks, holding, in the north lane');
@@ -176,15 +176,14 @@ test('new units: the active lane, "Training to", waiting at its base flag on Hol
   await page.close();
 });
 
-test('a base flag: tap it with nothing selected, then the ground; Classic has one flag and the All button only', { skip }, async () => {
+test('Classic: the All button only; the base rally point is a marker, not a control (no flags to move)', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
   await start(page, 'classic'); await page.evaluate(HELPERS);
   assert.deepStrictEqual(await page.evaluate(() => [...document.querySelectorAll('#lanes button')].map(b => b.dataset.k)), ['all']);
-  const F = await page.evaluate(() => { const f = game.sides[0].flags[0]; __look(f.u + 120, 0); return [f.u, f.v]; });
+  const F = await page.evaluate(() => { const f = ctlBase(0); __look(f.u + 120, 0); return [f.u, f.v]; });
   const [fx, fy] = await page.evaluate(([u, v]) => __gscr(u, v), F); await page.mouse.click(fx + 8, fy - 20);
-  assert.ok(await page.isVisible('#aim')); assert.match(await page.textContent('#aim'), /Base flag/);
-  await tapGround(page, F[0] + 140, 0);
-  assert.ok(await page.evaluate(u => Math.abs(game.sides[0].flags[0].u - u) < 10, F[0] + 140), 'moved'); assert.ok(await page.isHidden('#aim'));
+  assert.ok(await page.isHidden('#aim'), 'tapping the rally flag starts nothing'); assert.deepStrictEqual(await selIds(page), []);
+  assert.strictEqual(await page.evaluate(() => game.sides[0].flags), undefined);
   assert.deepStrictEqual(errors, []);
   await page.close();
 });

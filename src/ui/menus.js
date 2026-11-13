@@ -200,7 +200,7 @@ function lanesTip() {
   let T = {}; try { T = JSON.parse(localStorage.getItem(TIPS_KEY) || '{}') || {}; } catch (e) {}
   if (T.lanes) return;
   const el = document.createElement('div'); el.id = 'tipLanes'; el.className = 'tipcard';
-  el.innerHTML = `<b>${MAP.lanes.length} lanes: select, then command</b><p>The column on the left is your army: <b>All</b>, then each lane with its unit count. <b>Tap a lane</b> to train to it: new units wait at its base flag. <b>Double-tap a lane</b> to select its units.</p><p>Select units (tap them, double-tap one for its whole type, or hold a moment and draw a loop), then <b>tap the ground</b> to move them there, or use <b>Attack</b>, <b>Hold</b> or <b>Retreat</b>. Attack goes down the lane they are in${MAP.lanes.length > 2 ? '; the walls open at the centre node' : ''}.</p><button id="bTipOk">Got it</button>`;
+  el.innerHTML = `<b>${MAP.lanes.length} lanes: select, then command</b><p>The column on the left is your army: <b>All</b>, then each lane with its unit count. <b>Tap a lane</b> to select its units. New units wait at the rally point in your base.</p><p>Select units (tap them, double-tap one for its whole type, or hold a moment and draw a loop), then <b>tap the ground</b> to move them there, or use <b>Attack</b>, <b>Hold</b> or <b>Retreat</b>. Attack goes down the lane they are in${MAP.lanes.length > 2 ? '; the walls open at the centre node' : ''}.</p><button id="bTipOk">Got it</button>`;
   document.body.appendChild(el);
   $('bTipOk').addEventListener('click', () => { T.lanes = 1; try { localStorage.setItem(TIPS_KEY, JSON.stringify(T)); } catch (e) {} el.remove(); });
 }

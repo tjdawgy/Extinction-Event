@@ -119,7 +119,7 @@ function update(g, dt) {
   updateMedics(g, dt);
   bunkerHeal(g, dt);
   updateRepair(g, dt); // v2.71: repair depots
-  updateFlagHeal(g, dt); // v2.73: a direct side's units at its base flags
+  updateBaseHeal(g, dt); // v2.73: a direct side's units at its base rally point (v2.76: one point, not a flag per lane)
   updateMeteors(g); // v2.72: a battlefield condition
   updateCreep(g, dt);
   updateField(g, dt);
@@ -262,7 +262,7 @@ function updateBuilding(g, b, foes, dt) {
         if (facOf(b.fac) === 'axiarchs') { if (fr) g.warps.push({ side: b.side, type: ut, u: fr.u + rand(-12, 12), v: fr.v + rand(-20, 20), t0: g.t, end: g.t + WARP.ch, fwd: fr }); else startWarp(g, b.side, ut); continue; } // Axiarchs (v2.26): the unit warps in at the warp point instead
         const nu = fr ? spawnUnit(g, b.side, ut, fr.u + rand(-12, 12), fr.v + rand(-20, 20)) : spawnUnit(g, b.side, ut, b.u + dirOf(b.side) * (b.half + 10), b.v + rand(-12, 12) + i * 16);
         if (fr) { nu.lane = fr.lane; nu.fwdHome = { u: fr.u, n: fr.n }; nu.laneV = clamp(nu.v - fr.v, -LANE_V, LANE_V); }
-        if (g.sides[b.side].direct) ctlTrained(g, nu, fr); // v2.73: to the active lane's base flag (or beside a forward Barracks), then Hold
+        if (g.sides[b.side].direct) ctlTrained(g, nu, fr); // v2.73: to the base rally point (or beside a forward Barracks), each in its own space (v2.76), then Hold
         if (ut === 'rifle' && pathMod(b, 'drill')) { nu.vet = 1; nu.maxHp = nu.hp = UDEF.rifle.hp * DRILL.hp; } // Drilled Riflemen
         if (g.log) { logAdd(g.log.tot[b.side].trained, ut); lgUnit(g, b.side, 'T', ut); }
       }

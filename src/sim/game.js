@@ -108,10 +108,11 @@ function fwdOk(g, s, type, k) {
 const hqPos = s => mapPt(MAP.bases[s].hq);
 const rallyU0 = s => MECH7C.on ? MAP.bases[s].rally[0] : hqU(s) + dirOf(s) * 300; // v2.43: inside the HQ gun's cover (v2.59: the map's rally point)
 // The rally point (where a side without direct control gathers its idle and new units). v2.75: the player's two rally flags
-// (v2.62), squad flags (v2.66) and Send damaged home are gone (docs/CONTROLS.md): a side under direct control has a base flag
-// per lane instead (src/sim/control.js). g is kept in the signature for the callers.
+// (v2.62), squad flags (v2.66) and Send damaged home are gone (docs/CONTROLS.md): a side under direct control gathers at the
+// base rally point (ctlBase, the map's rally point; v2.73-v2.75 had a base flag per lane) (src/sim/control.js). g is kept
+// in the signature for the callers.
 const rallyU = (s, g) => rallyU0(s);
-// RALLY: fwdOut, where the AI's forward Barracks units gather (v2.68); min and past, how far a base flag may move (setFlag)
+// RALLY: fwdOut, where the AI's forward Barracks units gather (v2.68); min and past: how far v2.73-v2.75's base flags could move (unused since v2.76)
 const RALLY = { fwdOut: 560, min: 120, past: 250 };
 
 // v2.55 (Phase 0 stance fix): an AI-played side 0 (the harness, spectate) starts on Retreat like the AI's side 1. It started

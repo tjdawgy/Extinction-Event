@@ -88,7 +88,7 @@ function aiMicro(g, s, D, mine) {
 // offspring; v2.31) follows the army's current orders like a trained unit. On Hold (the stance or a group or type order) it
 // holds where it arrived; before v2.31 it had no hold spot and walked back to the rally flag.
 function arriveOrders(g, e) {
-  if (g.sides[e.side].direct) { ctlHold(e, e.u, e.v); return; } // v2.73: direct control: it holds where it arrived
+  if (g.sides[e.side].direct) { ctlArrive(g, e); return; } // v2.73: direct control: it holds where it arrived (v2.76: in its own space)
   const side = g.sides[e.side], ord = unitOrder(side, e.type);
   if ((ord ? ord.o : side.stance) === 'hold') { e.holdU = e.u; e.holdV = e.v; } else { e.holdU = undefined; e.holdV = undefined; }
 }
@@ -234,11 +234,13 @@ function updateUnit(g, u, foes, dt) {
   if (u.fwdHome && g.nodes[u.fwdHome.n].owner !== u.side) u.fwdHome = undefined; // v2.68: its forward post lost: home is the base again
   const side = g.sides[u.side], dir = dirOf(u.side); let home = (side.defU != null ? side.defU : u.fwdHome ? u.fwdHome.u : rallyU(u.side, g)) + u.rallyOff * dir * (u.fwdHome ? 0.3 : 1); // defU (v2.40): a Default AI under attack rallies inside its HQ's cover; v2.62: a damaged unit sent home goes to the base flag
   const po = side.direct ? u.po || HOLD_PO : null; // v2.73: a direct side's unit follows its own order
-  if (po) home = side.flags[flagIx(g, u)].u;
+  if (po) home = ctlBase(u.side).u; // v2.76: the base rally point
   const ord = po ? null : unitOrder(side, u.type, u.lane);
   const runs = side.persona && aiFix(side.persona, 'scoutGo') && ((u.id === side.scoutId && side.scoutU != null) || (side.raid && side.raid.ids.includes(u.id)) || capBusy(side, u.id)); // v2.60: a Hard scout or raider; v2.67: a capture group (lane maps)
   let st = po ? po.o : runs ? 'run' : ord ? ord.o : side.stance; // a group or type order overrides the global stance (v2.75: Send damaged home is gone)
-  const A = d.weapon ? acquire(g, u, d, foes, d.chase) : NO_TARGET, { best, close } = A; // Medicopters and Recon Drones carry no weapon; melee: the chase search in the same pass (v2.37)
+  const A = d.weapon ? acquire(g, u, d, foes, d.chase) : NO_TARGET; let { best, close } = A; // Medicopters and Recon Drones carry no weapon; melee: the chase search in the same pass (v2.37)
+  const cs = po && po.o !== 'hold' && (po.o !== 'attack' || po.ju != null) ? ctlStep(g, u, d) : null; // v2.76: heading somewhere (go, target), or retreating
+  if (po) st = cs && cs.go ? 'adv' : cs && cs.run ? 'retreat' : (u.po || HOLD_PO).o; // 'adv': on the way, stopping to fight what it meets (a Titan plants for it)
   const sp = (d.fac === 'bloomhost' && !d.air && onCreep(g, u.side, u.u, u.v) ? CREEP.speed : 1) * (frz ? ABIL.frenzy.speed : 1) * (u.slowT > g.t ? 1 - u.slow : 1) * (u.snT > g.t ? 0 : 1); // creep (v2.18), Frenzy Bloom (v2.20), a Gravemantle's slow (v2.27), a Rootheart's snare (v2.33)
   if (u.leaping) { // mid-leap (v2.19): fly to the landing spot, nothing else
     const du = u.lu - u.u, dv = u.lv - u.v, dd = Math.hypot(du, dv), st = d.leap.speed * dt;
@@ -248,15 +250,12 @@ function updateUnit(g, u, foes, dt) {
   }
   if (g.meteor && g.meteor.at && side.persona && !g.sides[u.side].bot && !d.air && !u.siege) { const p = meteorDodge(g, u); if (p) { u.tgt = 0; u.chT = 0; moveToward(u, d, p[0], p[1], dt, sp); return; } } // v2.72: an AI's unit steps out of a meteor's circle
   if (u.aiBack > g.t && !u.siege) { u.tgt = 0; u.chT = 0; { const bu = side.backU != null ? side.backU : home; moveToward(u, d, bu, laneTv(u, bu), dt, sp); } return; } // v2.38: a Default AI pulls it back for a moment (unit timing)
-  if (d.siege && titanSiege(g, u, d, st, foes)) return; // P8 (v2.37): planting, planted or unplanting
+  if (d.siege && titanSiege(g, u, d, st, foes, cs && cs.chase)) return; // P8 (v2.37): planting, planted or unplanting
   if (u.phT > g.t) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // P13 (v2.37): a phased Wraithwing holds still and can't fire
   // Retreat: keep running home until back at the rally flag. A retreating unit holds its fire (v2.35, audit): it
   // attacks again only once the retreat ends, back at the flag or under a new order
-  if (po && (st === 'go' || st === 'retreat')) { // v2.73: walking to a spot or back to its lane's base flag, holding fire; there, it holds
-    const [tu, tv] = st === 'go' ? [po.u, po.v] : flagSpot(side.flags[flagIx(g, u)], u);
-    if (Math.hypot(tu - u.u, tv - u.v) > CTRL.arrive) { u.tgt = 0; u.chT = 0; moveToward(u, d, tu, tv, dt, sp); return; }
-    ctlHold(u, tu, tv); st = 'hold';
-  }
+  if (cs && cs.run) { u.tgt = 0; u.chT = 0; moveToward(u, d, cs.run[0], cs.run[1], dt, sp); return; } // v2.73: retreating to the base rally point, holding fire and ignoring enemies
+  if (cs && cs.want) { best = cs.want; close = false; } // v2.76: a target order's target in reach comes first
   if (st === 'retreat' && Math.abs(home - u.u) > 12) {
     if (!RETREAT.fire) { u.tgt = 0; u.chT = 0; }
     else if (best && u.cd <= 0) { fire(g, u, best, d); u.cd = d.cd * rand(0.9, 1.1); } // the v2.34 rule, for the tests' fixed replays
@@ -286,7 +285,7 @@ function updateUnit(g, u, foes, dt) {
     return;
   }
   if (close) { u.moving = false; return; } // artillery: enemy is inside minimum range
-  if (d.chase && st !== 'move' && !(st === 'hold' && u.holdU !== undefined)) { // melee (v2.17): close on the nearest enemy it can see and hurt
+  if (d.chase && st !== 'move' && !(st === 'hold' && u.holdU !== undefined) && !(cs && cs.chase)) { // melee (v2.17): close on the nearest enemy it can see and hurt (v2.76: not when it has a target to close on)
     const prey = A.prey !== undefined ? A.prey : acquire(g, u, { ...d, range: d.chase }, foes).best;
     if (prey && d.leap && g.t >= u.leapCd && !(u.snT > g.t) && !(u.aiHold > g.t)) { // v2.38: a Default AI holds a Riftstalker's leap while its shields recharge // snared: no leap either (v2.33) // the Leaper jumps the last stretch (v2.19), never further than leap.range
       const dist = effDist(u, prey);
@@ -303,6 +302,7 @@ function updateUnit(g, u, foes, dt) {
     const prey = A.prey !== undefined ? A.prey : acquire(g, u, { ...d, range: d.chase }, foes).best;
     if (prey && Math.hypot(prey.u - hu, prey.v - hv) <= MECH7C.holdR + d.range) { moveToward(u, d, prey.u, prey.v, dt, sp); return; }
   }
+  if (cs && cs.go) { if (!moveToward(u, d, cs.go[0], cs.go[1], dt, sp)) u.face = dir; return; } // v2.76: on its way (nothing to fight right here)
   let tu = home, tv = u.laneV;
   if (u.id === side.scoutId && side.scoutU != null && st !== 'retreat') tu = side.scoutU; // v2.38: a Default AI's scout
   else if (st === 'run' && capBusy(side, u.id)) { const T = side.capT && side.capT.ids.includes(u.id) ? side.capT : side.capT2 && side.capT2.ids.includes(u.id) ? side.capT2 : side.relicG; tu = T.u + ((u.id * 37) % 5 - 2) * 10; tv = T.v + ((u.id * 53) % 5 - 2) * 8; } // v2.67: a capture group stands on its node (v2.70: either group)
@@ -336,15 +336,15 @@ const NO_TARGET = { best: null, close: false };
 // or regroup, or after idle seconds with nothing in reach. Mobile, it plants as soon as an enemy is within planted reach
 // (on any stance but Retreat and Regroup). The player and the AI both get this behaviour; neither has to order it.
 // u.siege: 0 mobile, 1 planting, 2 planted, 3 unplanting; u.sgT: when the change ends; u.sgIdle: last time it had a target.
-function titanSiege(g, u, d, st, foes) {
-  const S = d.siege, R2 = d.range + S.reach, go = st === 'retreat' || st === 'move' || st === 'go'; // v2.73: 'go', a direct side's move
+function titanSiege(g, u, d, st, foes, want) { // want (v2.76): a direct side's target, fired at first when in planted reach
+  const S = d.siege, R2 = d.range + S.reach, go = st === 'retreat' || st === 'move'; // v2.76: a direct side's move ('adv') plants to fight what it meets
   if (u.siege === 1 || u.siege === 3) {
     u.moving = false; u.tgt = 0;
     if (g.t >= u.sgT) { u.siege = u.siege === 1 ? 2 : 0; u.sgIdle = g.t; }
     return true;
   }
   if (u.siege === 2) {
-    const best = acquire(g, u, Object.assign({}, d, { range: R2 }), foes).best;
+    const best = want && ctlCanHit(g, u, Object.assign({}, d, { range: R2 }), want) ? want : acquire(g, u, Object.assign({}, d, { range: R2 }), foes).best;
     if (best) u.sgIdle = g.t;
     if (go || (!best && g.t - u.sgIdle >= S.idle)) { u.siege = 3; u.sgT = g.t + S.unplant; u.tgt = 0; return true; }
     u.moving = false; u.tgt = best ? best.id : 0;
