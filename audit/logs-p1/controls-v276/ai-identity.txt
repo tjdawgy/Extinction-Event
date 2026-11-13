@@ -1,0 +1,19 @@
+classic (seed 301, lastfist vs bloomhost): 683 checkpoints match v2.75 (18:58, ended, winner 1)
+classic + heavyFog (seed 302, bloomhost vs axiarchs): 675 checkpoints match v2.75 (18:44, ended, winner 0)
+classic + richCenter (seed 303, axiarchs vs lastfist): 455 checkpoints match v2.75 (12:38, ended, winner 1)
+classic + scarce (seed 304, lastfist vs bloomhost): 636 checkpoints match v2.75 (17:40, ended, winner 0)
+twolane (seed 311, bloomhost vs axiarchs): 359 checkpoints match v2.75 (9:57, ended, winner 1)
+twolane + heavyFog (seed 312, axiarchs vs lastfist): 754 checkpoints match v2.75 (20:56, ended, winner 1)
+twolane + richCenter (seed 313, lastfist vs bloomhost): 309 checkpoints match v2.75 (8:34, ended, winner 1)
+twolane + scarce (seed 314, bloomhost vs axiarchs): 749 checkpoints match v2.75 (20:47, ended, winner 1)
+twolane + meteors (seed 315, axiarchs vs lastfist): 684 checkpoints match v2.75 (18:59, ended, winner 0)
+threelane (seed 321, lastfist vs bloomhost): 643 checkpoints match v2.75 (17:50, ended, winner 1)
+threelane + heavyFog (seed 322, bloomhost vs axiarchs): 301 checkpoints match v2.75 (8:21, ended, winner 0)
+threelane + richCenter (seed 323, axiarchs vs lastfist): 454 checkpoints match v2.75 (12:37, ended, winner 1)
+threelane + scarce (seed 324, lastfist vs bloomhost): 789 checkpoints match v2.75 (21:54, ended, winner -1)
+threelane + meteors (seed 325, bloomhost vs axiarchs): 293 checkpoints match v2.75 (8:08, ended, winner 1)
+PASS: all 14 cases play exactly as the reference
+
+real	17m54.929s
+user	19m55.544s
+sys	0m11.230s
