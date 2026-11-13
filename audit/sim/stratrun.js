@@ -16,13 +16,13 @@ const arg = k => { const a = process.argv.find(x => x.startsWith(`--${k}=`)); re
 const F = ['lastfist', 'bloomhost', 'axiarchs'], OPENERS = ['rush', 'greedy', 'turtle', 'contain', 'standard'], BRANCHES = ['timing', 'contain', 'tech', 'air'];
 const share = x => x.n ? Math.round(1000 * (x.w + x.d / 2) / x.n) / 10 : 0;
 const add = (o, k, r) => { const x = o[k] = o[k] || { w: 0, l: 0, d: 0, n: 0 }; x.n++; if (r > 0) x.w++; else if (r < 0) x.l++; else x.d++; };
-function specsFor(set, n, seed, factions, code) {
+function specsFor(set, n, seed, factions, code, mapId, cond) { // mapId, cond (v2.80): a lane map (strat.js plays one lane there) and conditions
   const out = [];
   const pair = (fa, A, fb, B, meta) => { for (let k = 0; k < n; k++) for (const sw of [0, 1]) {
     const a = { faction: fa, bot: A.bot || 'strat', botOpts: A }, b = { faction: fb, bot: B.bot || 'strat', botOpts: B };
     // B.poor: B's side earns that share less (a controlled army lead for A; the heavy-Contain test)
     const poor = B.poor ? `;{ const inc0 = income; income = (g, s) => { const r = inc0(g, s); return s === ${sw ? 0 : 1} ? { c: r.c * ${1 - B.poor}, e: r.e * ${1 - B.poor} } : r; }; }` : '';
-    out.push(Object.assign({ seed: seed + k, diff: 'hard', maxT: 1800, code: (code || '') + poor || undefined, sides: sw ? [b, a] : [a, b], aSide: sw }, meta)); } };
+    out.push(Object.assign({ seed: seed + k, diff: 'hard', maxT: 1800, mapId, cond, code: (code || '') + poor || undefined, sides: sw ? [b, a] : [a, b], aSide: sw }, meta)); } };
   if (set === 'tri') for (const f of factions) {
     for (const [x, y] of [['rush', 'greedy'], ['greedy', 'turtle'], ['turtle', 'rush'], ['contain', 'greedy'], ['contain', 'turtle'], ['contain', 'rush']])
       pair(f, { opener: x }, f, { opener: y }, { cell: `${f} ${x}>${y}`, x, y, f });
@@ -55,7 +55,7 @@ function specsFor(set, n, seed, factions, code) {
 }
 async function main() {
   const set = arg('set') || 'tri', n = +(arg('n') || 8), seed = +(arg('seed') || 97000), factions = (arg('factions') || F.join(',')).split(','), code = arg('code');
-  const specs = specsFor(set, n, seed, factions, code);
+  const specs = specsFor(set, n, seed, factions, code, arg('map'));
   const t0 = Date.now();
   const res = await runSpecs(specs, +(arg('jobs') || 4), (d, N) => process.stderr.write(`\r${set}: ${d}/${N}`));
   process.stderr.write(` (${Math.round((Date.now() - t0) / 1000)} s)\n`);

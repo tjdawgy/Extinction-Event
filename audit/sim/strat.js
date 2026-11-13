@@ -20,7 +20,12 @@
 // together once its army near home is clearly stronger than what it sees ('break', a correctly defending player). The
 // 'naive' defence (the Greedy bot's: retreat to the rally flag and fight from there) is kept for the containment tests.
 //
-// stratBot(S, { opener, branch, defend, jitter }) returns a function (g, s, dt) to call after every update(g, dt).
+// Lane maps (v2.80, the Phase 1 balance pass): the bot plays one lane (o.lane; default the middle lane of three, else the
+// first): every unit and every new unit is put on it (setLane), army orders are points on that lane, the field nodes it
+// walks are the map's income nodes nearest its base, and it gathers short of the map's middle. The map's current values
+// (L, the army limit) come from S.cur(), since the exports are taken when the SIM loads (on Classic).
+//
+// stratBot(S, { opener, branch, defend, jitter, lane }) returns a function (g, s, dt) to call after every update(g, dt).
 const U = { // unit types per faction role
   lastfist:  { basic: 'rifle', b2: { A: 'heavy', B: 'rifle' }, b3: { A: 'sniper' }, veh: 'tank', f2: { A: 'artillery', B: 'flame' }, f3: { A: 'titan', B: 'hydra' }, air: 'aircraft', t2: { A: 'interceptor', B: 'medic' }, t3: { A: 'leviathan' } },
   bloomhost: { basic: 'skitterling', b2: { A: 'leaper', B: 'spitter' }, b3: { A: 'ravager', B: 'bilecaster' }, veh: 'bulwark', f2: { A: 'bilelobber', B: 'thornback' }, f3: { A: 'ruinmaw', B: 'dreadthorn' }, air: 'razorwing', t2: { A: 'needlewing', B: 'broodtyrant' }, t3: { A: 'cloudwing', B: 'worldrender' } },
@@ -72,6 +77,9 @@ function stratBot(S, o = {}) {
   const bot = (g, s, dt) => {
     t -= dt; if (t > 0) return; t = 0.5;
     if (mode === null) { jit = o.jitter === false ? 1 : 0.9 + (o.rnd || Math.random)() * 0.2; /* phase 7c: o.rnd, the match's seeded draw (match.js); Node's Math.random made bot matches unrepeatable */ mode = opener === 'greedy' ? 'eco' : opener === 'turtle' ? 'home' : 'build'; attackV = ATTACK_V[branch] * jit; }
+    const C = S.cur ? S.cur() : { L: S.L, POP_MAX: S.POP_MAX, NODE_U: S.NODE_U, MAP_LANED: false }, LANED = !!C.MAP_LANED, Lx = C.L, POPM = C.POP_MAX;
+    const K = LANED ? (o.lane != null ? o.lane : C.MAP.lanes.length === 3 ? 1 : 0) : 0, laneV = u => LANED ? Math.round(S.laneY(C.MAP.lanes[K], u)) : 0;
+    if (LANED && (g.sides[s].laneNew !== K || g.ents.some(e => e.kind === 'u' && e.side === s && e.hp > 0 && e.lane !== K))) S.setLane(g, s, 'all', null, K);
     const side = g.sides[s], fac = S.facOf(side.faction), R = U[fac], dir = s === 0 ? 1 : -1, home = S.hqU(s), opp = 1 - s, oppHq = S.hqU(opp);
     const mine = g.ents.filter(e => e.kind === 'u' && e.side === s && e.hp > 0 && !e.temp);
     const seen = g.ents.filter(e => e.kind === 'u' && e.side === opp && e.hp > 0 && S.visibleTo(g, s, e));
@@ -98,7 +106,7 @@ function stratBot(S, o = {}) {
       } else if (!r.ok) reserve = S.BD(side.faction, next).cost.c;
     }
     const bReserve = reserve, eKeep = next ? S.BD(side.faction, next).cost.e : 0; // for the next building only (the opening keeps all of it back)
-    if (used >= cap - 3 && cap < S.POP_MAX && !building.some(b => b.type === 'habitat') && !g.ents.some(b => b.kind === 'b' && b.side === s && b.type === 'habitat' && b.upgrading)) {
+    if (used >= cap - 3 && cap < POPM && !building.some(b => b.type === 'habitat') && !g.ents.some(b => b.kind === 'b' && b.side === s && b.type === 'habitat' && b.upgrading)) {
       const hab = S.alive(g, s, 'habitat').find(b => b.built && b.tier < 3);
       if (hab) S.tryUpgrade(g, s, hab); else if (side.slots.some(x => !x)) S.tryBuild(g, s, 'habitat');
     }
@@ -144,8 +152,8 @@ function stratBot(S, o = {}) {
     for (const gh of Object.values(g.fog[s].ghosts)) if (gh.side === opp) { const bd = S.BD(gh.fac, gh.type), gun = bd && bd.gun && bd.gun[gh.tier || 1]; if (gun) guns.push(gh.u - dir * gun.range); }
     const hqGun = S.BD(g.sides[opp].faction, 'hq').gun[g.fog[s].lastHQ.tier || 1].range;
     const containU = dir > 0 ? Math.min(oppHq - hqGun - 45, ...guns.map(x => x - 45)) : Math.max(oppHq + hqGun + 45, ...guns.map(x => x + 45));
-    const flagU = o.nodes === 1 ? S.NODE_U[s === 0 ? 0 : 2] : S.NODE_U[1] - dir * 90, homeU = home + dir * 110; // nodes 1: it gathers on its own node and never contests the middle
-    const order = u => { if (side.stance === 'attack' || side.stance === 'retreat') S.setStance(g, s, 'hold'); if (!side.orders.all || side.orders.all.u !== u) S.giveOrder(g, s, 'all', null, 'move', u, 0, true); };
+    const flagU = LANED ? Math.round(Lx / 2 - dir * 90) : o.nodes === 1 ? S.NODE_U[s === 0 ? 0 : 2] : S.NODE_U[1] - dir * 90, homeU = home + dir * 110; // nodes 1: it gathers on its own node and never contests the middle
+    const order = u => { if (side.stance === 'attack' || side.stance === 'retreat') S.setStance(g, s, 'hold'); if (!side.orders.all || side.orders.all.u !== u) S.giveOrder(g, s, 'all', null, 'move', u, laneV(u), true); };
     const nearHome = army.filter(u => Math.abs(u.u - home) < 800), thV = val(threat);
     // defence first: enemies near the base
     if (threat.length && mode !== 'attack' && mode !== 'contain' && mode !== 'stage') {
@@ -163,7 +171,7 @@ function stratBot(S, o = {}) {
       if (mode === 'breakout') {
         const tgt = threat.reduce((a, e) => Math.abs(e.u - home) < Math.abs(a.u - home) ? e : a, threat[0]);
         const reach = opener === 'turtle' && (!mid || branch === 'tech') ? 330 : 2000; // the turtle fights inside its Turret's cover until mid-game (phase 7c bot fix: all game while it stays a turtle, the Tech branch; it chased staging armies into the open)
-        order(Math.max(0, Math.min(S.L, Math.round(home + dir * Math.min(reach, Math.abs(tgt.u - home))))));
+        order(Math.max(0, Math.min(Lx, Math.round(home + dir * Math.min(reach, Math.abs(tgt.u - home))))));
         if (val(nearHome) < thV * 0.8) mode = 'defend';
         else if (val(nearHome) >= Math.max(1200, thV * 2.5) && (mid || g.t > 200)) { mid = true; S.setStance(g, s, 'attack'); mode = 'attack'; launchV = myV; log.attacks++; if (log.firstAttack === null) log.firstAttack = g.t; } // far stronger: counter-attack
       }
@@ -173,8 +181,8 @@ function stratBot(S, o = {}) {
       else mode = branch === 'contain' ? 'gather' : branch === 'tech' ? 'home' : 'gather';
     }
     if (mode === 'eco') { // the greedy runner walks the nodes (as greedy.js)
-      const nodes = (s === 0 ? [0, 1, 2] : [2, 1, 0]).slice(0, o.nodes || 3), k = nodes.find(i => g.nodes[i].owner !== s);
-      if (k !== undefined && army.length) { const u = g.nodes[k].u - dir * (k === nodes[2] ? 55 : 0); if (lastNode !== k || !side.orders.all) { S.giveOrder(g, s, 'all', null, 'move', u, 0); lastNode = k; } }
+      const nodes = (LANED ? g.nodes.map((n, i) => [n, i]).filter(([n]) => !n.type).sort((a, b) => Math.abs(a[0].u - home) - Math.abs(b[0].u - home) || Math.abs(a[0].v - laneV(a[0].u)) - Math.abs(b[0].v - laneV(b[0].u))).map(x => x[1]) : s === 0 ? [0, 1, 2] : [2, 1, 0]).slice(0, o.nodes || 3), k = nodes.find(i => g.nodes[i].owner !== s);
+      if (k !== undefined && army.length) { const u = g.nodes[k].u - dir * (k === nodes[2] ? 55 : 0); if (lastNode !== k || !side.orders.all) { S.giveOrder(g, s, 'all', null, 'move', u, LANED ? g.nodes[k].v : 0); lastNode = k; } }
       if (g.t >= 150) { mode = 'gather'; lastNode = -1; }
     }
     if (mode === 'build') { // rush and contain openings: gather at home, then go
@@ -185,7 +193,7 @@ function stratBot(S, o = {}) {
     }
     if (mode === 'home') { // the turtle: hold under its guns; attack once at the army limit (or late)
       order(home + dir * 200);
-      const at = used >= Math.min(S.POP_MAX, cap) - 4 && cap >= S.POP_MAX - 10;
+      const at = used >= Math.min(POPM, cap) - 4 && cap >= POPM - 10;
       if ((mid && (at || g.t > 720) && myV > 1500) || (mid && branch !== 'tech')) { mode = branch === 'contain' ? 'contain' : 'gather'; }
       if (at && myV > 1500) { S.setStance(g, s, 'attack'); mode = 'attack'; launchV = myV; log.attacks++; if (log.firstAttack === null) log.firstAttack = g.t; }
     }
@@ -194,7 +202,7 @@ function stratBot(S, o = {}) {
       else {
         order(flagU);
         const there = army.filter(u => Math.abs(u.u - flagU) < 170);
-        if (val(there) >= attackV || (used >= cap - 2 && cap >= S.POP_MAX - 4 && val(there) >= myV * 0.8)) {
+        if (val(there) >= attackV || (used >= cap - 2 && cap >= POPM - 4 && val(there) >= myV * 0.8)) {
           mode = 'stage'; stageT = g.t; log.attacks++; if (log.firstAttack === null) log.firstAttack = g.t;
         }
       }
@@ -208,7 +216,7 @@ function stratBot(S, o = {}) {
       order(containU);
       peakV = Math.max(peakV, myV);
       const theirV = val(seen.filter(e => Math.abs(e.u - oppHq) < 900));
-      if (myV >= Math.max(containV * 2.5, theirV * 2) || (cap >= S.POP_MAX - 4 && used >= cap - 3)) { /* clearly stronger than what it sees (or maxed): all in */ S.setStance(g, s, 'attack'); mode = 'attack'; launchV = myV; log.attacks++; }
+      if (myV >= Math.max(containV * 2.5, theirV * 2) || (cap >= POPM - 4 && used >= cap - 3)) { /* clearly stronger than what it sees (or maxed): all in */ S.setStance(g, s, 'attack'); mode = 'attack'; launchV = myV; log.attacks++; }
       else if (myV < peakV * 0.35 && peakV > 300) { mode = 'gather'; peakV = 0; if (!mid) mid = true; } // the contain broke: regroup
     } else if (mode === 'attack') {
       if (myV < launchV * 0.4) {

@@ -48,7 +48,7 @@ function runMatch(spec) {
   }
   const draw = !g.over || g.winner < 0;
   const res = {
-    seed, t: Math.round(g.t), winner: draw ? -1 : g.winner, diffs: [g.autoDiff, g.diffKey], map: g.map.id, cond: Object.keys(g.cond || {}), // v2.72 // v2.67: what each side played, and where (a guard: tests/ladder.test.js) how: g.over ? (g.result || {}).how : 'timeout', timeout: !g.over,
+    seed, t: Math.round(g.t), winner: draw ? -1 : g.winner, diffs: [g.autoDiff, g.diffKey], map: g.map.id, cond: Object.keys(g.cond || {}), /* v2.72; v2.67: what each side played, and where (a guard: tests/ladder.test.js) */ how: g.over ? (g.result || {}).how : 'timeout', timeout: !g.over, version: S.VERSION, // v2.80: how and timeout were inside the comment before
     reason: g.over ? (g.result || {}).reason : undefined, score: g.over && g.result && g.result.score ? [...g.result.score] : undefined, loser: g.over && g.result ? g.result.loser : undefined, // v2.55: the side whose HQ the storm took in a storm draw // v2.48: a storm draw keeps the score for the record
     sides: [0, 1].map(s => {
       const T = g.log.tot[s], P = g.sides[s].persona || {}, alive = {};
