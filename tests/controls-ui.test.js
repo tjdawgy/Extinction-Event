@@ -27,9 +27,9 @@ const HELPERS = () => {
 };
 const tapUnit = async (page, id) => { const [x, y] = await page.evaluate(i => __scr(i), id); await page.mouse.click(x, y); await page.waitForTimeout(60); };
 const tapGround = async (page, u, v) => { const [x, y] = await page.evaluate(([a, b]) => __gscr(a, b), [u, v]); await page.mouse.click(x, y); await page.waitForTimeout(60); return [x, y]; };
-async function lasso(page, x0, y0, x1, y1) { // hold, then draw a loop around the box
+async function lasso(page, x0, y0, x1, y1) { // v2.78: the rectangle box: hold, then drag from one corner to the other
   await page.mouse.move(x0, y0); await page.mouse.down(); await page.waitForTimeout(380);
-  for (const [x, y] of [[x1, y0], [x1, y1], [x0, y1], [x0, y0 + 4]]) await page.mouse.move(x, y, { steps: 8 });
+  await page.mouse.move(x1, y1, { steps: 10 });
   await page.mouse.up(); await page.waitForTimeout(80);
 }
 const selIds = page => page.evaluate(() => [...SELN].sort((a, b) => a - b));

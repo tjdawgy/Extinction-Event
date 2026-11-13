@@ -47,8 +47,8 @@ const TUT_CH = [
       // v2.74 (docs/CONTROLS.md): select, then command
       { act: true, txt: () => `These are your ${PLURAL.rifle}. Tap one to select it: a ring marks it, and the command bar takes the bottom panel's place.`, hi: tUnit, enter: () => { closePanel(); homeCamera(); selClear(); }, done: () => SELN.size > 0 },
       { act: true, txt: () => 'Now tap a spot on open ground. Your selection walks there, holding its fire, and holds the spot.', hi: () => SELN.size ? tField() : tUnit(), enter: () => { TUT.sig.go = false; }, done: () => TUT.sig.go },
-      { act: true, txt: () => 'Select several at once: press and hold on the battlefield until the ring fills, then draw a loop around your troops.', gesture: 'lasso', hi: tUnits, enter: () => { selClear(); TUT.sig.lasso = false; }, done: () => TUT.sig.lasso },
-      { act: true, txt: () => 'Tap a unit, then tap it again right away: every unit of that type is selected.', gesture: 'dbl', hi: tUnit, enter: () => { selClear(); TUT.sig.selType = false; }, done: () => TUT.sig.selType },
+      { act: true, txt: () => 'Select several at once: press and hold on the battlefield until the ring fills, then drag a box over your troops.', gesture: 'box', hi: tUnits, enter: () => { selClear(); TUT.sig.box = false; }, done: () => TUT.sig.box },
+      { act: true, txt: () => 'Tap a unit, then tap it again right away: every unit of that type on screen is selected.', gesture: 'dbl', hi: tUnit, enter: () => { selClear(); TUT.sig.selType = false; }, done: () => TUT.sig.selType },
       { txt: () => 'The tag shows how many are selected; its × clears them. The selection also clears after every order. With nothing selected, tapping the ground does nothing.', hi: () => tEl('#cmdbar .seltag') },
       { txt: () => 'That\'s the basics: drag to look, select your troops, then tap the ground to move them or give an order.', enter: () => selClear() },
     ] },
@@ -285,7 +285,7 @@ function frame(ts) {
   } else if (game && game.over) update(game, dt);
   if (!gest && Math.abs(cam.vx) > 5) { cam.x += cam.vx * dt; cam.vx *= Math.pow(0.03, dt); clampCam(); }
   if (TUT.on) tutTick(real);
-  render(ctx, game, ts / 1000, sel, selPad); drawCtlOverlay(ctx); // v2.74: the lasso and the move marker
+  render(ctx, game, ts / 1000, sel, selPad); drawCtlOverlay(ctx); // v2.74: the box (v2.78) and the move marker
   drawMinimapNow();
 }
 buildAbil();

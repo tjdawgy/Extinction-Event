@@ -1,5 +1,5 @@
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.77'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.78'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).

@@ -42,8 +42,8 @@ async function playChapter(page, ch) {
       const n = await state(page);
       if (!n.on || n.ch !== ch || n.step !== step) break;
       const kind = await page.evaluate(() => { const st = tCur(); return st.hi === tField && TUT.ch === 0 && TUT.step === 1 ? 'drag' : ''; });
-      const ges = await page.evaluate(() => tCur().gesture || ''); // v2.74: the lasso and double-tap steps
-      if (ges === 'lasso' && n.hi) { const { l, r, t, b } = n.hi, cx = (l + r) / 2; await page.mouse.move(cx, t + 1); await page.mouse.down(); await page.waitForTimeout(400); for (const [x, y] of [[r - 1, t + 1], [r - 1, b - 1], [l + 1, b - 1], [l + 1, t + 1], [cx, t + 1]]) await page.mouse.move(x, y, { steps: 6 }); await page.mouse.up(); }
+      const ges = await page.evaluate(() => tCur().gesture || ''); // v2.74: the box (v2.78) and double-tap steps
+      if (ges === 'box' && n.hi) { const { l, r, t, b } = n.hi; await page.mouse.move(l + 1, t + 1); await page.mouse.down(); await page.waitForTimeout(400); await page.mouse.move(r - 1, b - 1, { steps: 8 }); await page.mouse.up(); }
       else if (ges === 'dbl' && n.hi) await page.mouse.dblclick((n.hi.l + n.hi.r) / 2, (n.hi.t + n.hi.b) / 2);
       else if (kind === 'drag') { const x = (n.hi.l + n.hi.r) / 2, y = (n.hi.t + n.hi.b) / 2; await page.mouse.move(x + 90, y); await page.mouse.down(); await page.mouse.move(x - 90, y + 2, { steps: 8 }); await page.mouse.up(); } // drag inside the highlighted field
       else if (await page.evaluate(() => !!document.querySelector('#bpPick:not(.hide)') && tCur().hi().el === $('bpPick'))) await page.click('#bpPick [data-p="A"]');

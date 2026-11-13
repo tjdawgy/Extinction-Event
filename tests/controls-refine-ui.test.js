@@ -176,3 +176,50 @@ test('tapping an enemy targets it: unit, building; then Hold where they are; wit
   assert.deepStrictEqual(errors, []);
   await page.close();
 });
+
+// v2.78
+test('double-tap a unit: only your units of that type on screen are selected, at once (no wait for a third tap)', { skip }, async () => {
+  const { page, errors } = await openPage(browser, PHONE);
+  await start(page, 'threelane'); await page.evaluate(HELPERS);
+  const I = await page.evaluate(() => {
+    __look(620, 0); const at = (t, u, v) => spawnUnit(game, 0, t, u, v).id;
+    const out = { on: [at('rifle', 560, -20), at('rifle', 610, 30), at('rifle', 660, -40)], tank: at('tank', 600, 0), off: [at('rifle', 1700, -400), at('rifle', 1750, 400)], foe: spawnUnit(game, 1, 'rifle', 700, 0).id };
+    for (const e of game.ents) if (e.kind === 'u') e.hp = e.maxHp = 1e6; refreshUI(true); return out;
+  });
+  const off = await page.evaluate(ids => ids.map(i => { const [x] = __scr(i); return x > innerWidth; }), I.off);
+  assert.deepStrictEqual(off, [true, true], 'two Riflemen are off screen');
+  const [x, y] = await page.evaluate(i => __scr(i), I.on[1]);
+  await page.mouse.dblclick(x, y);
+  assert.deepStrictEqual(await selIds(page), [...I.on].sort((a, b) => a - b), 'only the three on screen (not the Tank, not the enemy, not the far two)');
+  await page.mouse.click(...(await page.evaluate(i => __scr(i), I.tank))); // the next tap adds, right away
+  assert.strictEqual((await selIds(page)).length, 4);
+  assert.deepStrictEqual(errors, []);
+  await page.close();
+});
+
+for (const dev of [PHONE, NARROW]) test(`the rectangle box at ${dev.width}×${dev.height}: hold, then drag corner to corner; the units inside are selected, not the ones outside`, { skip }, async () => {
+  const { page, errors } = await openPage(browser, dev);
+  await start(page, 'threelane'); await page.evaluate(HELPERS);
+  const I = await page.evaluate(() => {
+    __look(760, 0); const at = (t, u, v) => spawnUnit(game, 0, t, u, v).id;
+    const out = { inside: [at('rifle', 700, -40), at('tank', 740, 0), at('heavy', 780, 30)], outside: [at('rifle', 640, 90), at('rifle', 880, -60)], foe: spawnUnit(game, 1, 'rifle', 760, 20).id };
+    for (const e of game.ents) if (e.kind === 'u') e.hp = e.maxHp = 1e6; refreshUI(true); return out;
+  });
+  const box = await page.evaluate(ids => { const p = ids.map(i => __scr(i)); return [Math.min(...p.map(q => q[0])) - 18, Math.min(...p.map(q => q[1])) - 16, Math.max(...p.map(q => q[0])) + 18, Math.max(...p.map(q => q[1])) + 22]; }, I.inside);
+  const out = await page.evaluate(ids => ids.map(i => __scr(i)), I.outside);
+  const [l, t, r, b] = box; for (const [x, y] of out) assert.ok(x < l || x > r || y < t || y > b, 'the outside units really are outside');
+  await page.mouse.move(l, t); await page.mouse.down(); await page.waitForTimeout(380);
+  await page.mouse.move((l + r) / 2, (t + b) / 2, { steps: 5 });
+  await page.mouse.move(r, b, { steps: 5 });
+  const mid = await page.evaluate(() => ({ box: !!(gest && gest.box), cam: cam.x }));
+  assert.ok(mid.box, 'mid-drag: a box, not a scroll'); assert.strictEqual(mid.cam, 760, 'the camera stays put');
+  await page.mouse.up(); await page.waitForTimeout(80);
+  assert.deepStrictEqual(await selIds(page), [...I.inside].sort((a, c) => a - c), 'the units inside the box, never the enemy, not the ones outside');
+  // a quick drag still scrolls; a box with nothing of yours selects nothing
+  await page.click('#selX'); const c0 = await page.evaluate(() => cam.x);
+  await page.mouse.move(500, 200); await page.mouse.down(); await page.mouse.move(380, 205, { steps: 4 }); await page.mouse.up();
+  assert.ok(await page.evaluate(c => Math.abs(cam.x - c) > 40, c0), 'a quick drag scrolls'); assert.deepStrictEqual(await selIds(page), []);
+  assert.deepStrictEqual(errors, []);
+  await page.close();
+});
+

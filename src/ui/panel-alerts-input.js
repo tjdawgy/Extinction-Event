@@ -260,14 +260,14 @@ cv.addEventListener('pointerdown', e => {
   const p = localXY(e);
   cam.vx = 0;
   gest = { id: e.pointerId, lx: p.x, ly: p.y, sx: p.x, sy: p.y, t0: performance.now(), t: performance.now(), moved: 0 };
-  // v2.74: hold still a moment, then draw: a lasso (a quick drag still scrolls)
-  if (ctlOn() && !paused && !aim && !wpt) { const G = gest; G.armT = setTimeout(() => { if (gest === G && G.moved < CT.still) { G.lasso = [[G.lx, G.ly]]; cam.vx = 0; } }, CT.lassoMs); }
+  // v2.74: hold still a moment, then drag: a box (v2.78; it was a lasso). A quick drag still scrolls
+  if (ctlOn() && !paused && !aim && !wpt) { const G = gest; G.armT = setTimeout(() => { if (gest === G && G.moved < CT.still) { G.box = true; cam.vx = 0; } }, CT.lassoMs); }
 });
 cv.addEventListener('pointermove', e => {
   if (!gest || e.pointerId !== gest.id) return;
   const p = localXY(e);
   const dx = p.x - gest.lx, dy = p.y - gest.ly, now = performance.now(), dtm = Math.max(8, now - gest.t);
-  if (gest.lasso) { const q = gest.lasso[gest.lasso.length - 1]; if (Math.hypot(p.x - q[0], p.y - q[1]) >= 3) gest.lasso.push([p.x, p.y]); gest.lx = p.x; gest.ly = p.y; gest.moved = Math.max(gest.moved, Math.hypot(p.x - gest.sx, p.y - gest.sy)); return; } // v2.74: drawing a lasso, not scrolling
+  if (gest.box) { gest.lx = p.x; gest.ly = p.y; gest.moved = Math.max(gest.moved, Math.hypot(p.x - gest.sx, p.y - gest.sy)); return; } // v2.78: drawing a box, not scrolling
   gest.lx = p.x; gest.ly = p.y; gest.t = now;
   if (CAMY.max > CAMY.min) cam.y -= dy / V.S; // v2.65: a deep map pans up and down too
   gest.moved = Math.max(gest.moved, Math.hypot(p.x - gest.sx, p.y - gest.sy));
@@ -279,9 +279,8 @@ function endPtr(e) {
   if (!gest || e.pointerId !== gest.id) return;
   const p = localXY(e);
   clearTimeout(gest.armT);
-  if (gest.lasso && e.type === 'pointerup') { // v2.74: a lasso drawn (a hold without drawing is still a tap)
-    const L_ = gest.lasso, xs = L_.map(q => q[0]), ys = L_.map(q => q[1]);
-    if (Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) >= CT.lassoMin) lassoSelect(L_);
+  if (gest.box && e.type === 'pointerup') { // v2.78: a box drawn (a hold without dragging is still a tap)
+    if (Math.max(Math.abs(p.x - gest.sx), Math.abs(p.y - gest.sy)) >= CT.lassoMin) boxSelect(gest.sx, gest.sy, p.x, p.y);
     else if (gest.moved < 10 && performance.now() - gest.t0 < 800) handleTap(p.x, p.y);
     gest = null; return;
   }

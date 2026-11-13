@@ -1,13 +1,13 @@
 /* ---------- Army controls (v2.74, docs/CONTROLS.md): select units, then command them ----------
-   Select: tap a unit (more taps add), double-tap a unit (every unit of its type), hold a moment then draw a loop (lasso),
-   All (the whole army), a lane's name (every unit in that lane; v2.76: one tap, and no active lane or base flags any more).
+   Select: tap a unit (more taps add), double-tap a unit (every unit of its type on screen; v2.78), hold a moment then drag
+   a rectangle box (v2.78; it replaced the lasso), All (the whole army), a lane's name (every unit in that lane; v2.76: one tap, and no active lane or base flags any more).
    Only your own units, never enemies or relic guards. Command: tap the ground (move there and hold), tap an enemy you can
    see (attack it, then hold; v2.77), or the command bar's Attack (on a lane map it first asks which lane, the one nearest
    the selection highlighted; v2.77), Hold, Retreat. The command bar takes the bottom panel's place while anything is selected; the selection clears
    after an order or with the tag's ×. The SIM side is directControl / command (src/sim/control.js). */
 const SELN = new Set(); // the selected units' ids
 const CT = { hitPx: 26, dbl: 350, lassoMs: 260, lassoMin: 14, lineSel: 22, still: 8, baseOut: 140, onBld: 12 }; // onBld: a tap on an enemy building targets it unless one of yours is this close under the tap
-let ctlMark = null, ctlLoop = null; // ctlLoop: the last lasso, fading out; ctlMark: where the last move order went
+let ctlMark = null, ctlLoop = null; // ctlLoop: the last box, fading out; ctlMark: where the last move order went (or its target)
 const ctlOn = () => !!(game && running && !game.over && !game.spectate && game.sides[0].direct);
 const laneName = k => MAP.lanes[k].id[0].toUpperCase() + MAP.lanes[k].id.slice(1);
 const myUnits = () => game.ents.filter(e => e.kind === 'u' && e.side === 0 && e.hp > 0);
@@ -35,7 +35,7 @@ function foeBldAt(x, y) { // an enemy building you can see under a tap (its body
 }
 function selSet(list, add) { if (!add) SELN.clear(); for (const e of list) SELN.add(e.id); if (SELN.size) { closePanel(); hideInfo(); endAim(); } refreshCtl(); }
 const selAll = () => selSet(myUnits());
-const selType = t => selSet(myUnits().filter(e => e.type === t));
+const selType = t => { const F = fieldView(); selSet(myUnits().filter(e => e.type === t && onScreen(e, F)), true); }; // v2.78: only those on screen (added to the selection)
 // v2.76: the lane a unit is in, from where it stands (the lane's centre line nearest it); in the base (up to CT.baseOut
 // beyond the base rally point, where the lanes meet) it is in none, and counts toward All only
 const unitLane = e => { if (!MAP_LANED || dirOf(0) * (e.u - ctlBase(0).u) <= CT.baseOut) return null; return laneAt(e.u, e.v); };
@@ -102,17 +102,24 @@ function ctlFieldTap(x, y) {
   if (live) { const w = toWorld(x, y); issue('go', clamp(w.x, 0, L), w.y / DY); return true; }
   return false;
 }
-// The lasso: the units whose body is inside the loop (a stroke with almost no area: the units along it)
-function lassoSelect(pts) {
-  ctlLoop = { pts, t: performance.now() };
-  let area = 0; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) area += (pts[j][0] + pts[i][0]) * (pts[j][1] - pts[i][1]);
-  area = Math.abs(area / 2);
-  const inside = (x, y) => { let c = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const [xi, yi] = pts[i], [xj, yj] = pts[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
-  const segD = (x, y) => { let m = 1e9; for (let i = 1; i < pts.length; i++) { const [ax, ay] = pts[i - 1], [bx, by] = pts[i], dx = bx - ax, dy = by - ay, l = dx * dx + dy * dy, k = l ? clamp(((x - ax) * dx + (y - ay) * dy) / l, 0, 1) : 0; m = Math.min(m, Math.hypot(x - ax - k * dx, y - ay - k * dy)); } return m; };
-  const got = myUnits().filter(e => { const p = uScreen(e); return area > 600 ? inside(p.x, p.y) || inside(p.x, p.fy) : segD(p.x, p.y) <= CT.lineSel; });
-  if (!got.length) { toast('No units of yours inside the loop', ''); return; }
-  selSet(got, true); TUT.sig.lasso = true;
+// v2.78: the rectangle box (replacing v2.74's lasso): press and hold until the ring fills, then drag; the box runs from the
+// corner where the finger went down to where it is now. The units whose body or feet are inside it are selected (added).
+function boxSelect(x0, y0, x1, y1) {
+  const l = Math.min(x0, x1), r = Math.max(x0, x1), t = Math.min(y0, y1), b = Math.max(y0, y1);
+  ctlLoop = { box: [l, t, r, b], t: performance.now() };
+  const inB = (x, y) => x >= l && x <= r && y >= t && y <= b;
+  const got = myUnits().filter(e => { const p = uScreen(e); return inB(p.x, p.y) || inB(p.x, p.fy); });
+  if (!got.length) { toast('No units of yours inside the box', ''); return; }
+  selSet(got, true); TUT.sig.box = true;
 }
+// v2.78: what of the battlefield is on screen (canvas coordinates): right of the army column, below the top bar, above the
+// bottom panel
+function fieldView() {
+  const r = cv.getBoundingClientRect(), q = id => { const el = $(id); return el && el.getClientRects().length ? el.getBoundingClientRect() : null; };
+  const ln = q('lanes'), hd = q('hud'), pn = q('panel');
+  return { l: (ln ? ln.right : 0) - r.left, r: r.width, t: (hd ? hd.bottom : 0) - r.top, b: (pn ? pn.top : r.height) - r.top };
+}
+const onScreen = (e, F) => { const p = uScreen(e); return p.x >= F.l && p.x <= F.r && ((p.y >= F.t && p.y <= F.b) || (p.fy >= F.t && p.fy <= F.b)); };
 // The left column: All, then one entry per lane (north on top). A tap on a lane selects its units (v2.76: one tap)
 function buildLanes() {
   const box = $('lanes'); box.innerHTML = '';
@@ -148,21 +155,23 @@ function refreshCtl() {
 for (const b of document.querySelectorAll('#cmdbar [data-c]')) b.addEventListener('click', () => { if (paused) return; if (b.dataset.c === 'attack' && MAP_LANED) { TUT.sig.pick = true; openPick(); } else issue(b.dataset.c); }); // v2.77: on a lane map, Attack asks which lane
 $('selX').addEventListener('click', selClear);
 $('cmdbar').addEventListener('animationend', () => $('cmdbar').classList.remove('shake'));
-// Drawn over the battlefield in screen space: the hold ring before a lasso, the loop being drawn, and where a move went
+// Drawn over the battlefield in screen space: the hold ring before a box, the box being drawn, and where a move went
 function drawCtlOverlay(c) {
   if (!game || !ctlOn()) return;
   c.setTransform(V.dpr, 0, 0, V.dpr, 0, 0);
   const now = performance.now();
-  if (gest && gest.armT && !gest.lasso && gest.moved < CT.still) { // a ring fills under the finger: hold on to start a lasso
+  if (gest && gest.armT && !gest.box && gest.moved < CT.still) { // a ring fills under the finger: hold on to start a box
     const k = clamp((now - gest.t0 - 60) / (CT.lassoMs - 60), 0, 1);
     if (k > 0) { c.strokeStyle = 'rgba(127,227,255,0.9)'; c.lineWidth = 3; c.beginPath(); c.arc(gest.sx, gest.sy, 22, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2); c.stroke(); }
   }
-  const loop = gest && gest.lasso && gest.lasso.length > 1 ? { pts: gest.lasso, a: 1 } : ctlLoop && now - ctlLoop.t < 600 ? { pts: ctlLoop.pts, a: 1 - (now - ctlLoop.t) / 600 } : null;
-  if (loop) { // the loop being drawn, then fading for a moment once let go
-    const L_ = loop.pts; c.globalAlpha = loop.a;
-    c.beginPath(); c.moveTo(L_[0][0], L_[0][1]); for (const [x, y] of L_) c.lineTo(x, y); c.closePath();
-    c.fillStyle = 'rgba(127,227,255,0.12)'; c.fill();
-    c.setLineDash([7, 5]); c.strokeStyle = 'rgba(127,227,255,0.95)'; c.lineWidth = 2; c.stroke(); c.setLineDash([]); c.globalAlpha = 1;
+  const bx = gest && gest.box ? { b: [Math.min(gest.sx, gest.lx), Math.min(gest.sy, gest.ly), Math.max(gest.sx, gest.lx), Math.max(gest.sy, gest.ly)], a: 1 } : ctlLoop && now - ctlLoop.t < 600 ? { b: ctlLoop.box, a: 1 - (now - ctlLoop.t) / 600 } : null;
+  if (bx) { // the box being drawn, then fading for a moment once let go
+    const [l, t, r, b] = bx.b; c.globalAlpha = bx.a;
+    c.fillStyle = 'rgba(127,227,255,0.12)'; c.fillRect(l, t, r - l, b - t);
+    c.setLineDash([7, 5]); c.strokeStyle = 'rgba(127,227,255,0.95)'; c.lineWidth = 2; c.strokeRect(l + 0.5, t + 0.5, r - l, b - t); c.setLineDash([]);
+    c.fillStyle = 'rgba(127,227,255,0.95)'; for (const [x, y] of [[l, t], [r, t], [l, b], [r, b]]) c.fillRect(x - 3, y - 3, 6, 6);
+    if (gest && gest.box) { const n = myUnits().filter(e => { const p = uScreen(e); return (p.x >= l && p.x <= r) && ((p.y >= t && p.y <= b) || (p.fy >= t && p.fy <= b)); }).length; if (n) { c.font = '700 12px system-ui,sans-serif'; c.fillText(`${n}`, r + 6, b + 4); } } // how many it would take
+    c.globalAlpha = 1;
   }
   if (ctlMark && ctlMark.id && now - ctlMark.t < 900) { // v2.77: a target: a red reticle closing on it
     const T = game.ents.concat(game.guards || []).find(e => e.id === ctlMark.id);
