@@ -91,6 +91,7 @@ function fwdRally(g, s, b) { // where a unit trained by building b starts and ga
   if (!FWD_RALLY.on || !(b.slot >= FWD_SLOT) || !MAP_LANED) return null;
   const F = FWD_PADS[b.slot - FWD_SLOT]; if (!F) return null;
   let lane = 0, bd = 1e9; MAP.lanes.forEach((ln, k) => { const d = Math.abs(laneY(ln, F.at[0]) - F.at[1]); if (d < bd) { bd = d; lane = k; } });
+  if (g.sides[s].direct) return ctlFwdSpot(g, s, b, lane, F.node); // v2.73: under direct control they gather beside the building
   const R = g.sides[s].rally, u = clamp(R ? R.fwd : hqU(s) + dirOf(s) * RALLY.fwdOut, 0, L), v = laneY(MAP.lanes[lane], u);
   return { u, v, lane, n: F.node };
 }
@@ -360,6 +361,7 @@ function spawnUnit(g, s, type, u, v) {
     moving: false, rallyOff: -simRnd() * 100, recoil: 0, hitT: 0, shT: 0, vet: 0, aimAir: 0, medAt: -1, tgt: 0, braceT: 0, braceCd: 0, lastHurt: -99, lastAct: -99, creepAt: -1, temp: 0, tLife: 0, tSrc: null, kid: 0, spawnT: 0, dis: 0, disT: 0, slow: 0, slowT: 0, chT: 0, chTgt: 0, pulseCd: 0, shp: d.shp || 0, maxShp: d.shp || 0, shpT: -99, shpHit: -99, ovT: 0, frzT: 0, leapCd: 0, leaping: 0, lu: 0, lv: 0, ld: 0, corr: 0, corrT: 0, burstCd: 0 }; // tgt: what it last attacked; braceT/braceCd: the Bulwark's brace (v2.17); lastHurt/lastAct: last damage taken/dealt, creepAt: last creep regen (v2.18); leap*: the Leaper's jump, corr/corrT: corrosion, burstCd: the Dreadthorn's spines (v2.19) // vet: a Drilled Rifleman (v2.13); aimAir: where a Hydra's guns point (v2.14); medAt: last healed by a Medicopter (v2.15) // shT (shield until) set from the start keeps every unit the same shape for the JS engine
   if (MAP_LANED) unit.lane = laneNew(g.sides[s]); // v2.63: the lane it walks (Classic: no lane key at all)
   if (NAV.on && !d.air && navShut(unit.u, unit.v)) [unit.u, unit.v] = navOpen(unit.u, unit.v); // v2.66: a ground unit never appears on closed ground (a warp-in or brood on the ridge)
+  if (g.sides[s].direct) ctlSpawn(g, unit); // v2.73: under direct control a new unit holds where it appears
   g.ents.push(unit);
   g.sides[s].stats.built++;
   return unit;

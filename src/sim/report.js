@@ -24,7 +24,8 @@ function logEvText(e, me, g) { // one log event as a line of text (me: written f
       : a === 'mwarp' ? `Mass Warp: ${Math.round(b || 0)} units warped` : a === 'overcharge' ? `Shield Overcharge: ${Math.round(b || 0)} damage blocked, ${Math.round(x || 0)} shields restored` // v2.28
       : a === 'beam' ? `Purification Beam: ${Math.round(b || 0)} damage, ${x || 0} destroyed` : `Corrosive Bloom: ${Math.round(b || 0)} damage, ${x || 0} destroyed`;
     case 'H': return 'HQ shield down';
-    case 'O': return `Order: ${a === 'all' ? 'whole army' : a === 'group' ? GROUP_NAME[b] : (PLURAL[b] || b)} ${ORDER_NAME[x] ? ORDER_NAME[x].toLowerCase() : x}`;
+    case 'O': if (a === 'sel') return `Order: ${b} selected unit${b === 1 ? '' : 's'} ${x === 'move' ? 'move' : x}`; // v2.73: direct control
+      return `Order: ${a === 'all' ? 'whole army' : a === 'group' ? GROUP_NAME[b] : (PLURAL[b] || b)} ${ORDER_NAME[x] ? ORDER_NAME[x].toLowerCase() : x}`;
     case 'G': return b ? 'Feint attack launched (pulled back)' : a === 'raid' ? 'Raid launched' : a === 'relic' ? 'Sent a group for a relic' : a === 'turtle' || a === 'rush' || a === 'greed' ? `Read the enemy's ${a === 'turtle' ? 'Turrets' : a === 'rush' ? 'rush' : 'greedy economy'}; changed plan` : `Attack launched${a === 'siege' ? ' (siege)' : ''}`; // v2.52: a read is not an attack
     case 'W': return 'Extinction Event warning (30 s)';
     case 'X': return 'Extinction Event began';

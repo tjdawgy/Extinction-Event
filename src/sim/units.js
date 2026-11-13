@@ -41,7 +41,7 @@ function giveOrder(g, s, scope, key, o, u, v, quiet) { // quiet: the AI's automa
 // nowave; its batch rule has been off since v2.38).
 function updateRallyWait(g) {
   for (let s = 0; s < 2; s++) {
-    if (!playerSide(g, s)) continue;
+    if (!playerSide(g, s) || g.sides[s].direct) continue; // v2.73: under direct control nothing waits to be sent
     const side = g.sides[s], dir = dirOf(s), r = rallyU(s, g), f = g.front[s];
     if (side.stance !== 'attack' || f === null) { if (side.rwAt !== undefined) { side.rwAt = undefined; for (const e of g.ents) if (e.kind === 'u' && e.side === s) { e.rwT = 0; e.rwS = 0; e.rwGo = 0; } } continue; }
     if (side.rwAt !== side.stanceAt) { side.rwAt = side.stanceAt; for (const e of g.ents) if (e.kind === 'u' && e.side === s) { e.rwT = 0; e.rwGo = 1; } continue; } // the army the Attack order found goes at once
@@ -88,6 +88,7 @@ function aiMicro(g, s, D, mine) {
 // offspring; v2.31) follows the army's current orders like a trained unit. On Hold (the stance or a group or type order) it
 // holds where it arrived; before v2.31 it had no hold spot and walked back to the rally flag.
 function arriveOrders(g, e) {
+  if (g.sides[e.side].direct) { ctlHold(e, e.u, e.v); return; } // v2.73: direct control: it holds where it arrived
   const side = g.sides[e.side], ord = unitOrder(side, e.type);
   if ((ord ? ord.o : side.stance) === 'hold') { e.holdU = e.u; e.holdV = e.v; } else { e.holdU = undefined; e.holdV = undefined; }
 }
@@ -221,6 +222,7 @@ function navEject(u) { // put a ground unit standing on closed ground back on th
     if (best) { [u.u, u.v] = best; return; }
   }
 }
+const HOLD_PO = { o: 'hold' }; // v2.73: a direct side's unit without an order holds
 const RETREAT = { fire: false }; // v2.35 (audit): retreating units hold their fire; fire true restores the v2.34 rule (firing on the move)
 function updateUnit(g, u, foes, dt) {
   const d = UDEF[u.type];
@@ -230,10 +232,12 @@ function updateUnit(g, u, foes, dt) {
   if (u.recoil > 0) u.recoil = Math.max(0, u.recoil - dt * 5);
   if (u.hitT > 0) u.hitT -= dt;
   if (u.fwdHome && g.nodes[u.fwdHome.n].owner !== u.side) u.fwdHome = undefined; // v2.68: its forward post lost: home is the base again
-  const side = g.sides[u.side], dir = dirOf(u.side), home = u.medHome ? homeFlagU(g, u.side) + u.rallyOff * dir * 0.3 : (side.defU != null ? side.defU : u.fwdHome ? u.fwdHome.u : rallyU(u.side, g)) + u.rallyOff * dir * (u.fwdHome ? 0.3 : 1); // defU (v2.40): a Default AI under attack rallies inside its HQ's cover; v2.62: a damaged unit sent home goes to the base flag
-  const ord = unitOrder(side, u.type, u.lane);
+  const side = g.sides[u.side], dir = dirOf(u.side); let home = u.medHome ? homeFlagU(g, u.side) + u.rallyOff * dir * 0.3 : (side.defU != null ? side.defU : u.fwdHome ? u.fwdHome.u : rallyU(u.side, g)) + u.rallyOff * dir * (u.fwdHome ? 0.3 : 1); // defU (v2.40): a Default AI under attack rallies inside its HQ's cover; v2.62: a damaged unit sent home goes to the base flag
+  const po = side.direct ? u.po || HOLD_PO : null; // v2.73: a direct side's unit follows its own order
+  if (po) home = side.flags[flagIx(g, u)].u;
+  const ord = po ? null : unitOrder(side, u.type, u.lane);
   const runs = side.persona && aiFix(side.persona, 'scoutGo') && ((u.id === side.scoutId && side.scoutU != null) || (side.raid && side.raid.ids.includes(u.id)) || capBusy(side, u.id)); // v2.60: a Hard scout or raider; v2.67: a capture group (lane maps)
-  const st = u.medHome ? 'retreat' : runs ? 'run' : ord ? ord.o : side.stance; // a group or type order overrides the global stance; v2.62: sent home = Retreat to the base flag
+  let st = po ? po.o : u.medHome ? 'retreat' : runs ? 'run' : ord ? ord.o : side.stance; // a group or type order overrides the global stance; v2.62: sent home = Retreat to the base flag
   const A = d.weapon ? acquire(g, u, d, foes, d.chase) : NO_TARGET, { best, close } = A; // Medicopters and Recon Drones carry no weapon; melee: the chase search in the same pass (v2.37)
   const sp = (d.fac === 'bloomhost' && !d.air && onCreep(g, u.side, u.u, u.v) ? CREEP.speed : 1) * (frz ? ABIL.frenzy.speed : 1) * (u.slowT > g.t ? 1 - u.slow : 1) * (u.snT > g.t ? 0 : 1); // creep (v2.18), Frenzy Bloom (v2.20), a Gravemantle's slow (v2.27), a Rootheart's snare (v2.33)
   if (u.leaping) { // mid-leap (v2.19): fly to the landing spot, nothing else
@@ -248,6 +252,11 @@ function updateUnit(g, u, foes, dt) {
   if (u.phT > g.t) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // P13 (v2.37): a phased Wraithwing holds still and can't fire
   // Retreat: keep running home until back at the rally flag. A retreating unit holds its fire (v2.35, audit): it
   // attacks again only once the retreat ends, back at the flag or under a new order
+  if (po && (st === 'go' || st === 'retreat')) { // v2.73: walking to a spot or back to its lane's base flag, holding fire; there, it holds
+    const [tu, tv] = st === 'go' ? [po.u, po.v] : flagSpot(side.flags[flagIx(g, u)], u);
+    if (Math.hypot(tu - u.u, tv - u.v) > CTRL.arrive) { u.tgt = 0; u.chT = 0; moveToward(u, d, tu, tv, dt, sp); return; }
+    ctlHold(u, tu, tv); st = 'hold';
+  }
   if (u.medHome) { // v2.71: sent home, with a repair depot its side holds nearer than the base flag: heal there instead
     const dp = medDepot(g, u);
     if (dp) {
@@ -341,7 +350,7 @@ const NO_TARGET = { best: null, close: false };
 // (on any stance but Retreat and Regroup). The player and the AI both get this behaviour; neither has to order it.
 // u.siege: 0 mobile, 1 planting, 2 planted, 3 unplanting; u.sgT: when the change ends; u.sgIdle: last time it had a target.
 function titanSiege(g, u, d, st, foes) {
-  const S = d.siege, R2 = d.range + S.reach, go = st === 'retreat' || st === 'move';
+  const S = d.siege, R2 = d.range + S.reach, go = st === 'retreat' || st === 'move' || st === 'go'; // v2.73: 'go', a direct side's move
   if (u.siege === 1 || u.siege === 3) {
     u.moving = false; u.tgt = 0;
     if (g.t >= u.sgT) { u.siege = u.siege === 1 ? 2 : 0; u.sgIdle = g.t; }

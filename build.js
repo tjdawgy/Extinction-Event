@@ -15,7 +15,7 @@ const PARTS = [
   'sim/maps.js', // v2.59: the map data (docs/MAP_FORMAT.md), read by everything after it
   'sim/maps-twolane.js', // v2.65: the Two-Lane map (docs/TWO_LANE.md)
   'sim/maps-threelane.js', // v2.70: the Three-Lane map (docs/PHASE1_DESIGNS.md, Proposal D)
-  'sim/core.js', 'sim/trees-balance.js', 'sim/ai-presets.js', 'sim/game.js', 'sim/fog-update.js', 'sim/units.js',
+  'sim/core.js', 'sim/trees-balance.js', 'sim/ai-presets.js', 'sim/game.js', 'sim/fog-update.js', 'sim/units.js', 'sim/control.js', // v2.73: direct control (docs/CONTROLS.md)
   'sim/creep-field-signature.js', 'sim/abilities.js', 'sim/storm-combat.js', 'sim/nodes-special.js', 'sim/conditions.js', 'sim/ai.js', 'sim/stats-log-save.js', 'sim/report.js',
   // RENDER: drawing (ends at the RENDER END marker)
   'render/core.js', 'render/buildings-lastfist.js', 'render/buildings-bloomhost.js', 'render/buildings-axiarchs-units.js',
