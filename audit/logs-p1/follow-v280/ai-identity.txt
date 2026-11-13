@@ -8,3 +8,4 @@ twolane + richCenter (seed 313, lastfist vs bloomhost): 309 checkpoints match v2
 twolane + scarce (seed 314, bloomhost vs axiarchs): 749 checkpoints match v2.79 (20:47, ended, winner 1)
 twolane + meteors (seed 315, axiarchs vs lastfist): 684 checkpoints match v2.79 (18:59, ended, winner 0)
 threelane (seed 321, lastfist vs bloomhost): 643 checkpoints match v2.79 (17:50, ended, winner 1)
+threelane + heavyFog (seed 322, bloomhost vs axiarchs): 301 checkpoints match v2.79 (8:21, ended, winner 0)
