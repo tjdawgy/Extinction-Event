@@ -108,6 +108,7 @@ test('P7 Worldbreaker: its distortion zone disrupts enemy units inside (they dea
 });
 
 test('P8 Titan: plants (2 s) before firing, +90 range planted, can\'t move or be pulled, unplants (1.5 s) on Retreat or when idle', () => {
+  sim.REWORK.b2b = false; // v2.83: the v2.37 siege lock, as it plays with rework batch 2b off
   const g = quiet(); seeAll(g); sim.setStance(g, 0, 'attack');
   const ti = sim.spawnUnit(g, 0, 'titan', MID - 225, 0), t = put(g, 1, 'tank', MID, 0); t.hp = t.maxHp = 1e5; t.cd = 1e6;
   step(g, 0.2); assert.strictEqual(ti.siege, 1, 'planting: the tank is inside planted reach (280) and sight (240), beyond mobile reach (190)');
@@ -118,11 +119,12 @@ test('P8 Titan: plants (2 s) before firing, +90 range planted, can\'t move or be
   // idle: no target in reach for 4 s → unplants on its own
   const g2 = quiet(); seeAll(g2); const t2 = sim.spawnUnit(g2, 0, 'titan', MID - 200, 0), e2 = put(g2, 1, 'rifle', MID, 0); e2.cd = 1e6;
   step(g2, 2.5); assert.strictEqual(t2.siege, 2); e2.hp = 0; e2.dead = true; step(g2, 4.5); assert.ok(t2.siege === 3 || t2.siege === 0, 'unplants when idle');
+  sim.REWORK.b2b = true;
 });
 
 test('P8 Titan in AI play: the AI\'s Titans plant and unplant on their own', () => {
   const mul = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
-  const S = loadSim({ random: mul(3) });
+  const S = loadSim({ random: mul(3) }); S.REWORK.b2b = false; // v2.83: the v2.37 siege lock (batch 2b off)
   const g = S.newGame('hard', { autoPlayer: true, autoDiff: 'hard', persona: 'aggressor', autoPersona: 'turtle', factions: ['lastfist', 'lastfist'], ai: 'default', autoAi: 'default' }); // v2.40: the Default AI
   g.countdown = 0; for (const s of [0, 1]) for (let i = 0; i < 3; i++) S.spawnUnit(g, s, 'titan', S.rallyU(s) + (i - 1) * 20, (i - 1) * 30); // the AI moves them with its own pushes and retreats
   const seen = new Set(); let fired = 0;

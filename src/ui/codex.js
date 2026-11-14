@@ -67,7 +67,7 @@ function cxTree(fac, type) {
   return `<div class="cxtree" id="cx-t-${type}"><div class="cxchain">${root}${[2, 3].filter(t => tiers[t]).map(t => `<div class="cxnode"><span class="tg">T${t}</span>${d.up && d.up[t] ? 'Upgrade' : src ? `With the ${cxLink('b:' + src, BD(fac, src).name)} at T${t}` : ''}${cxUpCost(d, t)}${cxEsc(tiers[t])}${cxUnitLinks(cxTierUnits(fac, type, t))}</div>`).join('')}</div></div>`;
 }
 function cxTroop(fac, t) {
-  const d = UDEF[t], tip = UNIT_TIPS[t];
+  const d = rwShow(null, t), tip = UNIT_TIPS[t];
   const facts = [`Cost ${cxCost(d.cost)}`, d.pop ? `Army size <b>${fmtPop(d.pop)}</b>` : '', `HP <b>${cxN(d.hp)}</b>`, d.shp ? `Shields <b>${cxN(d.shp)}</b>` : ''].filter(Boolean);
   return `<article class="cxcard" id="cx-u-${t}"><canvas class="cxi u" data-k="u" data-f="${fac}" data-t="${t}"></canvas><div class="cxt"><h3>${cxEsc(d.name)}</h3><p>${cxEsc(d.desc || '')}</p>
     <div class="cxfacts"><span>Unlock: ${cxUnlock(fac, t)}</span>${facts.map(x => `<span>${x}</span>`).join('')}</div>
@@ -90,9 +90,9 @@ const CX_COLS = [
 ];
 function cxTable(fac) {
   const us = cxUnits(fac), cols = CX_COLS.filter(c => !c.only || c.only(us)), S = CX.sort[fac];
-  if (S) { const c = cols.find(x => x.k === S.k); if (c) us.sort((a, b) => { const x = c.v(UDEF[a]), y = c.v(UDEF[b]); return (c.s ? String(x).localeCompare(String(y)) : x - y) * S.dir; }); }
+  if (S) { const c = cols.find(x => x.k === S.k); if (c) us.sort((a, b) => { const x = c.v(rwShow(null, a)), y = c.v(rwShow(null, b)); return (c.s ? String(x).localeCompare(String(y)) : x - y) * S.dir; }); }
   return `<table class="cxtbl"><thead><tr>${cols.map(c => `<th class="${S && S.k === c.k ? 'on' : ''}"><button data-sort="${c.k}">${c.h}${S && S.k === c.k ? (S.dir > 0 ? ' ▲' : ' ▼') : ''}</button></th>`).join('')}</tr></thead>
-    <tbody>${us.map(t => { const d = UDEF[t]; return `<tr data-t="${t}">${cols.map(c => { const v = c.v(d); return `<td>${c.k === 'name' ? cxLink('u:' + t, v) : c.f ? c.f(v, d) : cxEsc(cxN(v))}</td>`; }).join('')}</tr>`; }).join('')}</tbody></table>`;
+    <tbody>${us.map(t => { const d = rwShow(null, t); return `<tr data-t="${t}">${cols.map(c => { const v = c.v(d); return `<td>${c.k === 'name' ? cxLink('u:' + t, v) : c.f ? c.f(v, d) : cxEsc(cxN(v))}</td>`; }).join('')}</tr>`; }).join('')}</tbody></table>`;
 }
 function cxFaction(fac) {
   const R = cxRoles(fac), B = BDEFS[fac];

@@ -610,7 +610,10 @@ function drawFog(c, F) {
 
 function drawUnit(c, u) {
   const d = UDEF[u.type], w = P(u.u, u.v), bob = d.air ? Math.sin(u.anim * 2.2) * 3 : 0;
-  if (u.bur) { if (VFX.g) noteBurrow(VFX.g, u); drawBurrowed(c, u, w, VFX.lastT); return; } // v2.82: a burrowed Gorebore is only a moving hump of earth
+  if (u.gone === 3) return; // v2.83: inside a Ruinmaw's tunnel: off the field
+  if (u.bur) { if (VFX.g) noteBurrow(VFX.g, u); (u.type === 'ruinmaw' ? drawBurrowedBig : drawBurrowed)(c, u, w, VFX.lastT); return; } // v2.82: a burrowed Gorebore is only a moving hump of earth (v2.83: a Ruinmaw a wider one)
+  const b2b = VFX.g && rwB2b(VFX.g);
+  if (b2b && u.type === 'titan') drawCoverRing(c, u, w, VFX.lastT); // v2.83: the reach of its cover
   const ex = u.exT > VFX.lastT; // v2.82: exiled: faded, washed out, a violet shimmer and a ring for the time left
   c.fillStyle = d.air ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.32)';
   const big = u.type === 'leviathan' || u.type === 'worldrender' || u.type === 'sovereign' ? 2.4 : u.type === 'broodtyrant' || u.type === 'voidcarrier' ? 1.6 : u.type === 'drone' || u.type === 'needlewing' || u.type === 'prismwing' ? 0.5 : 1; // a Leviathan's shadow is seen coming
@@ -631,6 +634,7 @@ function drawUnit(c, u) {
   c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
   c.restore();
   if (ex) drawExiled(c, u, w, VFX.lastT);
+  if (u.cov && b2b) drawCovered(c, u, w, VFX.lastT); // v2.83: in a Titan's cover
   if (u.shT > VFX.lastT) drawShield(c, u, VFX.lastT);
   if (VFX.g) drawAxFx(c, VFX.g, u, w); // v2.27: a Marksman's charge, a Gravemantle's aura, slowed and disrupted marks
   if (u.ovT > VFX.lastT) drawOvercharge(c, u, w, VFX.lastT); // v2.28
@@ -677,15 +681,7 @@ function drawSurge(c, u, w, t) {
 // P8 (v2.37): a Titan in siege lock. Four stabiliser legs swing out and drive into the ground as it plants (k 0-1), with
 // a heavy ring once locked; they fold back as it unplants. Drawn under the walker.
 function drawSiegeLock(c, u, w) {
-  const S = UDEF.titan.siege || { plant: 2, unplant: 1.5 }, t = VFX.lastT;
-  const k = u.siege === 2 ? 1 : u.siege === 1 ? clamp(1 - (u.sgT - t) / S.plant, 0, 1) : clamp((u.sgT - t) / S.unplant, 0, 1);
-  const e = 1 - (1 - k) * (1 - k), sx = 22 * US * e, sy = 8 * US * e;
-  c.strokeStyle = '#3e4b65'; c.lineWidth = 3 * US; c.lineCap = 'round';
-  for (const [ax, ay] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-    const bx = w.x + ax * 6 * US, by = w.y - 6 * US, fx = w.x + ax * (8 * US + sx), fy = w.y + ay * sy * 0.5;
-    c.beginPath(); c.moveTo(bx, by); c.lineTo(fx, fy - 4 * e); c.lineTo(fx, fy); c.stroke();
-  }
-  c.lineCap = 'butt';
+  const t = VFX.lastT, k = titanK(u, t), e = 1 - (1 - k) * (1 - k), sx = 22 * US * e; // v2.83: the stabiliser claws are part of the Titan's art now
   if (u.siege === 2) { // locked: a heavy dashed ring and team-coloured lock lights
     c.strokeStyle = `rgba(${TEAM[u.side].glow},0.55)`; c.lineWidth = 1.6; c.setLineDash([6, 5]); c.lineDashOffset = -t * 10;
     c.beginPath(); c.ellipse(w.x, w.y, 34 * US, 34 * US * 0.38, 0, 0, 7); c.stroke(); c.setLineDash([]); c.lineDashOffset = 0;

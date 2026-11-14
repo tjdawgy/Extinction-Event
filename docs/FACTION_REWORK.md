@@ -70,7 +70,11 @@ Starting values as asked (ART, BORE, SEVER). Departures and choices the design l
   supply ×1.5 each; a lone unit only at 4+ supply.
 - AI: Gorebore and Severance have their own scores (Gorebore: the share of enemy ranged backline; Severance: a few per
   army, more against many units); neither counts as artillery or siege. Gorebores are left out of the "mass" hold-back.
-  AI units step out of shell markers like meteor circles. The siege push (2+ Artillery or Titans) still happens.
+  The siege push (2+ Artillery or Titans) still happens.
+- **Fixed in v2.83 (from playtesting 2a):** v2.82 had AI units step out of shell markers the way they step out of meteor
+  circles (`markDodge`). It made the Artillery useless and armies never advanced past it, so it is gone: no unit, AI or
+  player, moves out of a marker on its own. Shells still land where they were aimed, with the marker and the 1.6 s
+  minimum flight, so a player can still dodge on purpose by moving units. The meteor-warning dodge is unchanged.
 
 ### Artillery (Last Fist, War Factory Siege T2)
 
@@ -80,7 +84,7 @@ each with its own on/off switch so both can be tried in the Test Range:
 - **Deploy time:** it must set up before firing and pack up before moving. Deploying is automatic when it stops to fire
   (no extra taps).
 - **Telegraphed shells:** a ground marker shows where each shell will land shortly before impact, so moving units can
-  dodge. The AI dodges markers the way it already dodges meteor warnings.
+  dodge. Nobody dodges automatically (v2.83): units walk on through the markers unless a player moves them out.
 
 **Counter:** flank it, catch it moving, Gorebores, keep moving under fire.
 
@@ -102,6 +106,36 @@ army: exile the half you do not want to fight now, or exile the defenders while 
 
 **Counter:** spread out, punish it in its long cooldown.
 
+**Batch 2b (Titan, Ruinmaw, Worldbreaker): done in v2.83.** Code: src/sim/rework-2b.js (`REWORK.b2b` → `g.rw.b2b`; on by
+default; each Test Range row has its own switch), art in src/render/units-rework-2b.js. Starting values as asked (`TITAN`,
+`RUIN`, `WB`). The units keep their internal ids; with `b2b` on a game plays each through its own definition (`rwD`, a
+copy of its UDEF entry), so UDEF never changes and a b2b-off game in the same page plays v2.82 exactly. Departures and
+choices the design left open:
+- Titan: its cannon range is 160 as asked (it was 190 mobile / 280 planted). It no longer shells buildings from range: on
+  Attack or sent at a building it walks up to 100 (breach range) and plants there, so it never chips a building from 160
+  at 1×. Cover is "not melee": every melee unit's weapon and the ground effects (eruptions, thorns, meteors, acid and
+  spore pools, Mite bursts) are not covered; everything else is, building guns included. Planted, it still fires at
+  units in its 160 range when no building is within 100; it unplants 2 s after the last building in reach.
+- Ruinmaw: 1500 HP, heavy armour (a unit field `u.arm`, since UDEF keeps v2.82's), speed 30 underground. It has no
+  burrow cooldown (it digs whenever it moves). The Tunnel is a command in the command bar (as asked) rather than tapping
+  the entrance (as this doc first said); the entrance is drawn beside the Hive while a gate is open. Units out of its
+  mouth step 44 ahead of it to a spot each (spacing) and hold there (the player's) or fight around it for 20 s (the
+  AI's). A player's units that reach the entrance while the gate is shut wait there; an AI's give up. A player's
+  Ruinmaw with no order holds (direct control: nothing moves on its own), unlike this doc's "tunnels toward the nearest
+  enemy building on its own"; the AI picks spots.
+- Worldbreaker: the crack runs through its target out to its full range (210), not just to the target: ending at the
+  target would hit nothing but the nearest unit, since the target is the nearest. An AI's ridge shot ends at the spot
+  the AI chose (wbAim). The player's ridge forms at the crack's end. A ridge never spans the lane: at least 50 of open
+  ground is left at one end (lane edge or wall). Enemy ground units whose way crosses a ridge walk to the nearer open end
+  at full speed (on Classic too, where sideways movement is otherwise slower) and a step that would cross is undone.
+  Burrowed units pass under it; aircraft over it; its own side through it.
+- AI: Titans: Last Fist infantry more than 60 ahead of the nearest Titan wait for it on the attack. Ruinmaws: own score
+  (more with more Bloomhost ground units, at most two), own persona tastes, not a siege unit; they surface beside the
+  least defended enemy Refinery, Reactor or Habitat the AI knows of (else 160 behind the enemy front on a flank), send
+  up to 8 ground units from home through at a time (10 in the tunnel at most), go home underground under 35% health.
+  Worldbreakers: own score (more against melee and light armies) and tastes; ridges before a melee charge, between a
+  retreating army and the enemy, else 60 behind the target.
+
 ### Titan (Last Fist, War Factory Siege T3)
 
 Walking cover. Friendly infantry near it take less damage from ranged attacks; infantry advance in its shadow. When it
@@ -117,17 +151,19 @@ the player chooses. Surfaced, it is a gate: Bloomhost ground units sent into its
 mouth. It also chews any building it surfaces beside. Killing it collapses the tunnel and drops whatever is inside. It no
 longer leaves acid pools (those move to the Bilecaster).
 
-**Player control** (the one rework unit the player steers): select the Ruinmaw and tap a spot to choose where it tunnels
-and surfaces. While it is surfaced, a tunnel entrance shows at the Bloomhost base; select ground units and tap the
-entrance to send them through, and they come out of the Ruinmaw's mouth. If the player gives no order, it tunnels toward
-the nearest enemy building on its own. The AI chooses its own surfacing spots.
+**Player control** (the one rework unit the player steers): select the Ruinmaw and tap a spot (a normal move order) to
+choose where it tunnels and surfaces. While it is surfaced, a tunnel entrance shows at the Bloomhost base and a
+**Tunnel** command appears in the command bar for selected Bloomhost ground units: they walk to the entrance, and 3 s
+later come out of the Ruinmaw's mouth, one every 0.5 s. Moving the Ruinmaw closes the gate (units inside come back out at
+the entrance); if it dies, units inside are lost. The AI chooses its own surfacing spots. (v2.83 as built; see Batch 2b.)
 
 **Counter:** track the trail, kill it fast once it surfaces.
 
 ### Worldbreaker (Axiarchs, Architectum Rupture T3)
 
 Fault line. It slams the ground and a rupture races forward in a straight line, damaging everything along it, with heavy
-building damage. The crack becomes a short-lived wall enemy ground units cannot cross. With Severance, it decides where
+building damage. Every 12 s the crack ends in a short-lived ridge across the lane that enemy ground units cannot cross
+and must walk around (it never spans the whole lane). With Severance, it decides where
 the fight happens.
 
 **Counter:** do not line up, reach it from the side; slow, cannot hit aircraft.
@@ -279,7 +315,7 @@ visual references. A final art batch after batch 4 redraws the unchanged units a
 ## Batch order
 
 1. Test Range and this doc.
-2. Artillery and siege: Artillery, Gorebore, Severance (2a, done v2.82), Titan, Ruinmaw, Worldbreaker (2b).
+2. Artillery and siege: Artillery, Gorebore, Severance (2a, done v2.82), Titan, Ruinmaw, Worldbreaker (2b, done v2.83).
 3. Divers and melee: Leaper, Riftstalker, Parallax, Ravager, Dreadthorn, Bastion, Shardling, Bulwark.
 4. Ranged and air: Sniper, Astral Marksman, Bilecaster, Gunship, Wraithwing, Leviathan, Brood Tyrant, Worldrender,
    Voidcarrier, Astral Sovereign.

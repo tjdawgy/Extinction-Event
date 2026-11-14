@@ -192,10 +192,11 @@ function damage(g, e, amt, weapon, fromSide, src) {
   damage1(g, e, amt, weapon, fromSide, src);
 }
 function damage1(g, e, amt, weapon, fromSide, src) {
-  const armor = e.kind === 'b' ? 'building' : UDEF[e.type].armor;
+  const armor = e.kind === 'b' ? 'building' : e.arm || UDEF[e.type].armor; // e.arm (v2.83): a unit's own armour (a batch 2b Ruinmaw's)
   const mult = DMG[weapon][armor];
   if (!mult) return;
   let dmg = amt * mult * (sideBuff(g, e.side) ? NANO.cut : 1) * (1 + corrNow(e, g.t)); // corroded: takes more (v2.19; v2.37 the second slot)
+  if (e.cov && !noCover(weapon)) dmg *= 1 - TITAN.cover; // v2.83: Last Fist infantry in a Titan's cover take less from ranged attacks
   const br = e.kind === 'u' && UDEF[e.type].brace, pre = dmg;
   if (br) { // the Bulwark braces on the first hit after its cooldown (v2.17)
     if (!(e.braceT > g.t) && g.t >= e.braceCd) { e.braceT = g.t + br.dur; e.braceCd = g.t + br.cd; }
@@ -259,6 +260,7 @@ function kill(g, e, by, weapon) {
     salvage(g, e, w);
     if (e.tSrc === 'mite') miteBurst(g, e); // v2.33: killed, never expired (expiry doesn't come through kill)
     echoStore(g, e); // v2.34: an Axiarch T2/T3 unit's echo
+    if (e.type === 'ruinmaw' && rwB2b(g)) ruinCollapse(g, e, by); // v2.83: its tunnel collapses on whoever is inside
     fxBoom(g, w.x, w.y, e.type === 'sovereign' ? 44 : e.type === 'voidcarrier' ? 28 : e.type === 'prismwing' ? 10 : e.type === 'shardstorm' ? 14 : e.type === 'riftstalker' || e.type === 'lancer' || e.type === 'marksman' ? 10 : e.type === 'parallax' ? 12 : e.type === 'shardling' ? 8 : e.type === 'bastion' ? 20 : e.type === 'wraithwing' ? 14 : e.type === 'skitterling' ? 6 : e.type === 'bulwark' || e.type === 'ruinmaw' || e.type === 'dreadthorn' || e.type === 'thornback' ? 18 : d.fac === 'bloomhost' && !d.air ? 10 : d.air ? (e.type === 'razorwing' || e.type === 'cloudwing' ? 12 : e.type === 'needlewing' ? 8 : e.type === 'worldrender' ? 44 : 28) : e.type === 'rifle' || e.type === 'sniper' ? 9 : e.type === 'heavy' ? 15 : e.type === 'titan' ? 46 : 30);
     return;
   }

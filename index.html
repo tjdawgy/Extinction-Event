@@ -411,6 +411,8 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 #cmdbar>button{flex:0 1 96px;min-width:64px;border-radius:10px;border:1px solid var(--line);background:rgba(30,46,76,.85);color:var(--text);font-weight:800;font-size:14px}
 #cmdbar>button[data-c="attack"]{background:#3a1616;border-color:rgba(255,77,77,.7);color:#ffd6d6}
 #cmdbar>button[data-c="retreat"]{background:#3a3014;border-color:rgba(255,211,77,.6);color:#ffeab0}
+#cmdbar>button[data-c="tunnel"]{background:#22381a;border-color:rgba(170,240,110,.65);color:#e0ffc8} /* v2.83: the Ruinmaw's tunnel */
+#cmdbar>button.hide{display:none}
 #cmdbar .seltag{flex:0 0 auto;display:flex;align-items:center;gap:2px;padding-left:10px;border-radius:10px;border:1px solid rgba(127,227,255,.6);background:rgba(16,48,58,.85);font-size:12.5px;color:#d6f6ff;white-space:nowrap}
 #cmdbar .seltag b{font-size:15px}
 #selX{width:44px;align-self:stretch;border:0;background:transparent;color:#d6f6ff;font-size:22px;font-weight:700;line-height:1}
@@ -504,7 +506,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
   <footer id="panel">
     <div class="tabs"><button data-tab="build" class="on">Build</button><button data-tab="train">Train</button></div>
     <div id="cards"></div>
-    <div id="cmdbar" class="hide" role="toolbar" aria-label="Orders for the selected units"><div class="seltag"><span><b id="selN">0</b> selected</span><button id="selX" aria-label="Clear the selection">×</button></div><button data-c="attack">Attack</button><button data-c="hold">Hold</button><button data-c="retreat">Retreat</button><span class="cmdhint">Tap the ground to move them there</span></div>
+    <div id="cmdbar" class="hide" role="toolbar" aria-label="Orders for the selected units"><div class="seltag"><span><b id="selN">0</b> selected</span><button id="selX" aria-label="Clear the selection">×</button></div><button data-c="attack">Attack</button><button data-c="hold">Hold</button><button data-c="retreat">Retreat</button><button data-c="tunnel" class="hide" aria-label="Send the selected units through the tunnel">Tunnel</button><span class="cmdhint">Tap the ground to move them there</span></div>
     <div id="trBar" role="toolbar" aria-label="Test Range: what a tap places, and each side's orders"><button id="trTool"></button><div class="trseg" id="trBb"><span>Blue</span><button data-m="attack">Attack</button><button data-m="hold">Hold</button><em>You</em></div><div class="trseg" id="trBr"><span>Red</span><button data-m="attack">Attack</button><button data-m="hold">Hold</button><em>Calm</em></div></div>
     <div id="grps" class="hide" role="group" aria-label="Control groups"><button data-g="0" aria-label="Group 1: tap to select, double-tap to jump there, hold to save the selection"><b>1</b><i>–</i></button><button data-g="1" aria-label="Group 2: tap to select, double-tap to jump there, hold to save the selection"><b>2</b><i>–</i></button><button data-g="2" aria-label="Group 3: tap to select, double-tap to jump there, hold to save the selection"><b>3</b><i>–</i></button></div>
   </footer>
@@ -759,7 +761,7 @@ MAPS.threelane = (() => {
   };
 })();
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.82'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.83'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -1999,6 +2001,7 @@ function spawnUnit(g, s, type, u, v) {
   const unit = { id: g.nid++, kind: 'u', type, side: s, u, v, z: d.air ? (type === 'interceptor' ? rand(100, 124) : type === 'leviathan' ? rand(88, 98) : type === 'drone' ? rand(104, 114) : type === 'razorwing' ? rand(56, 72) : type === 'needlewing' ? rand(50, 64) : type === 'cloudwing' ? rand(62, 76) : type === 'broodtyrant' ? rand(78, 88) : type === 'worldrender' ? rand(84, 94) : type === 'wraithwing' ? rand(64, 80) : type === 'prismwing' ? rand(56, 70) : type === 'shardstorm' ? rand(66, 80) : type === 'voidcarrier' ? rand(78, 88) : type === 'sovereign' ? rand(84, 94) : rand(70, 94)) : 0,
     laneV: rand(-LANE_V, LANE_V), hp: d.hp, maxHp: d.hp, cd: simRnd() * 0.5, face: dirOf(s), anim: fxRnd() * 10,
     moving: false, rallyOff: -simRnd() * 100, recoil: 0, hitT: 0, shT: 0, vet: 0, aimAir: 0, medAt: -1, tgt: 0, braceT: 0, braceCd: 0, lastHurt: -99, lastAct: -99, creepAt: -1, temp: 0, tLife: 0, tSrc: null, kid: 0, spawnT: 0, dis: 0, disT: 0, slow: 0, slowT: 0, chT: 0, chTgt: 0, pulseCd: 0, shp: d.shp || 0, maxShp: d.shp || 0, shpT: -99, shpHit: -99, ovT: 0, frzT: 0, leapCd: 0, leaping: 0, lu: 0, lv: 0, ld: 0, corr: 0, corrT: 0, burstCd: 0 }; // tgt: what it last attacked; braceT/braceCd: the Bulwark's brace (v2.17); lastHurt/lastAct: last damage taken/dealt, creepAt: last creep regen (v2.18); leap*: the Leaper's jump, corr/corrT: corrosion, burstCd: the Dreadthorn's spines (v2.19) // vet: a Drilled Rifleman (v2.13); aimAir: where a Hydra's guns point (v2.14); medAt: last healed by a Medicopter (v2.15) // shT (shield until) set from the start keeps every unit the same shape for the JS engine
+  if (rwB2b(g)) rw2bSpawn(g, unit); // v2.83: a batch 2b Ruinmaw's health and armour
   if (MAP_LANED) unit.lane = laneNew(g.sides[s]); // v2.63: the lane it walks (Classic: no lane key at all)
   if (NAV.on && !d.air && navShut(unit.u, unit.v)) [unit.u, unit.v] = navOpen(unit.u, unit.v); // v2.66: a ground unit never appears on closed ground (a warp-in or brood on the ridge)
   if (g.sides[s].direct) ctlSpawn(g, unit); // v2.73: under direct control a new unit holds where it appears
@@ -2182,12 +2185,14 @@ function update(g, dt) {
   }
   updateGuards(g, foes, dt); // v2.71: the relic guards fire, and both sides may target them
   indexFoes(foes[0], dt); indexFoes(foes[1], dt); // v2.37: lane-sorted, so target searches look only near the searcher
+  RDG.list = null; if (rwB2b(g)) update2b(g); // v2.83: Titan cover, Worldbreaker cracks and ridges (RDG.list: this game's ridges, while its units move)
   const n = g.ents.length; NAV.now = g.t; // v2.65: the clock the navigation paths age by
   for (let i = 0; i < n; i++) {
     const e = g.ents[i];
     if (e.hp <= 0) continue;
     if (e.kind === 'b') updateBuilding(g, e, foes[e.side], dt); else { updateUnit(g, e, foes[e.side], dt); if (NAV.on && e.hp > 0 && !UDEF[e.type].air && !e.leaping && navShut(e.u, e.v)) navEject(e); } // v2.65: never inside a wall
   }
+  RDG.list = null;
   updateProjs(g, dt);
   if (g.mk) updateMarks(g); // v2.82: telegraphed shells' markers
   updateMedics(g, dt);
@@ -2579,6 +2584,10 @@ function setStance(g, s, v) {
 }
 
 function moveToward(u, d, tu, tv, dt, mul = 1) { // mul: speed multiplier (creep, v2.18)
+  if (RDG.list && !RDG.busy && !d.air && !u.bur) return ridgeMove(u, d, tu, tv, dt, mul); // v2.83: a Worldbreaker's ridge in the way (only while one stands)
+  return moveToward0(u, d, tu, tv, dt, mul);
+}
+function moveToward0(u, d, tu, tv, dt, mul = 1) {
   if (MAP_LANED && u.lane != null && !d.air && moveLane(u, d, tu, tv, dt, mul)) return true;
   if (NAV.on && !d.air) return moveNav(u, d, tu, tv, dt, mul); // v2.65: around the map's blockers
   if (MAP_2D && d.air) { // v2.66: on a grid map aircraft fly at full speed in any direction (straight over the ridge)
@@ -2702,7 +2711,7 @@ function navEject(u) { // put a ground unit standing on closed ground back on th
 const HOLD_PO = { o: 'hold' }; // v2.73: a direct side's unit without an order holds
 const RETREAT = { fire: false }; // v2.35 (audit): retreating units hold their fire; fire true restores the v2.34 rule (firing on the move)
 function updateUnit(g, u, foes, dt) {
-  const d = UDEF[u.type];
+  const d = rwD(g, u.type); // v2.83: a batch 2b unit plays by its own definition in a game with b2b on (else UDEF's)
   if (u.exT) { if (g.t < u.exT) { u.moving = false; u.tgt = 0; return; } exileEnd(g, u); } // v2.82: exiled by a Severance: frozen until it snaps back
   u.anim += dt;
   const frz = u.frzT > g.t; // Frenzy Bloom (v2.20): faster attacks and movement
@@ -2719,23 +2728,25 @@ function updateUnit(g, u, foes, dt) {
   const A = d.weapon ? acquire(g, u, d, foes, d.chase) : NO_TARGET; let { best, close } = A; // Medicopters and Recon Drones carry no weapon; melee: the chase search in the same pass (v2.37)
   const cs = po && po.o !== 'hold' && (po.o !== 'attack' || po.ju != null) ? ctlStep(g, u, d) : null; // v2.76: heading somewhere (go, target), or retreating
   if (po) st = cs && cs.go ? 'adv' : cs && cs.run ? 'retreat' : (u.po || HOLD_PO).o; // 'adv': on the way, stopping to fight what it meets (a Titan plants for it)
-  const sp = u.bur ? BORE.speed / d.speed : (d.fac === 'bloomhost' && !d.air && onCreep(g, u.side, u.u, u.v) ? CREEP.speed : 1) * (frz ? ABIL.frenzy.speed : 1) * (u.slowT > g.t ? 1 - u.slow : 1) * (u.snT > g.t ? 0 : 1); // creep (v2.18), Frenzy Bloom (v2.20), a Gravemantle's slow (v2.27), a Rootheart's snare (v2.33)
+  const sp = u.bur ? (d.bore ? BORE.speed / d.speed : 1) : (d.fac === 'bloomhost' && !d.air && onCreep(g, u.side, u.u, u.v) ? CREEP.speed : 1) * (frz ? ABIL.frenzy.speed : 1) * (u.slowT > g.t ? 1 - u.slow : 1) * (u.snT > g.t ? 0 : 1); // creep (v2.18), Frenzy Bloom (v2.20), a Gravemantle's slow (v2.27), a Rootheart's snare (v2.33)
   if (u.leaping) { // mid-leap (v2.19): fly to the landing spot, nothing else
     const du = u.lu - u.u, dv = u.lv - u.v, dd = Math.hypot(du, dv), st = d.leap.speed * dt;
     if (dd <= st) { u.u = u.lu; u.v = u.lv; u.z = 0; u.leaping = 0; u.leapCd = g.t + d.leap.cd; }
     else { u.u += du / dd * st; u.v += dv / dd * st; u.z = Math.sin(Math.PI * clamp(1 - dd / u.ld, 0, 1)) * Math.min(26, u.ld * 0.18); u.face = du >= 0 ? 1 : -1; }
     u.moving = true; return;
   }
+  if (u.tn && tunnelStep(g, u, d, side, dt, sp)) return; // v2.83: walking to the tunnel entrance, or inside it
   if (side.hush) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // v2.81: a Test Range side told not to fight back stands still (never set in a match)
-  if (d.bore && rwB2a(g) && boreStep(g, u, d, st, cs, foes, dt)) return; // v2.82: a Gorebore underground on its way, or erupting
+  if (d.bore && rwB2a(g) && boreStep(g, u, d, st, cs, foes, dt)) return;
+  if (d.tunnel && ruinStep(g, u, d, side, dt, st, cs)) return; // v2.83: an AI's Ruinmaw on its way to, or at, its spot // v2.82: a Gorebore underground on its way, or erupting
   if (u.type === 'artillery' && rwDep(g)) { // v2.82: the Artillery deploys before firing and packs up before moving
     const tb = cs && cs.want ? cs.want : cs && cs.go && best && best.side === NEUTRAL ? null : best;
     if (artDeploy(g, u, d, tb, close, st === 'retreat' || st === 'move' || !!(cs && cs.run) || u.aiBack > g.t, st === 'hold')) return;
   }
   if (g.meteor && g.meteor.at && side.persona && !g.sides[u.side].bot && !d.air && !u.siege && !u.dep && !u.bur) { const p = meteorDodge(g, u); if (p) { u.tgt = 0; u.chT = 0; moveToward(u, d, p[0], p[1], dt, sp); return; } } // v2.72: an AI's unit steps out of a meteor's circle
-  if (g.mk && g.mk.length && side.persona && !side.bot && !d.air && !u.siege && !u.dep && !u.bur) { const p = markDodge(g, u); if (p) { u.tgt = 0; u.chT = 0; moveToward(u, d, p[0], p[1], dt, sp); return; } } // v2.82: an AI's unit steps out of an enemy shell's marker
   if (u.aiBack > g.t && !u.siege) { u.tgt = 0; u.chT = 0; { const bu = side.backU != null ? side.backU : home; moveToward(u, d, bu, laneTv(u, bu), dt, sp); } return; } // v2.38: a Default AI pulls it back for a moment (unit timing)
   if (d.siege && titanSiege(g, u, d, st, foes, cs && cs.chase)) return; // P8 (v2.37): planting, planted or unplanting
+  if (d.breach && titanBreach(g, u, d, st, cs, foes, dt, sp)) return; // v2.83: planting beside a building, planted, unplanting
   if (u.phT > g.t) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // P13 (v2.37): a phased Wraithwing holds still and can't fire
   // Retreat: keep running home until back at the rally flag. A retreating unit holds its fire (v2.35, audit): it
   // attacks again only once the retreat ends, back at the flag or under a new order
@@ -2810,9 +2821,10 @@ function updateUnit(g, u, foes, dt) {
     }
     else tu = u.rwT > g.t ? home : end; // v2.43: waiting at the rally point for its group
     if (side.bbStage != null && !d.air) tu = side.bbStage - dir * u.rallyOff * 0.5; // v2.69 (a): mass at the edge of the HQ gun's range
-    else if (side.bbLead != null && !d.air && !AI_SIEGE.includes(u.type) && dir * (u.u - side.bbLead) < 0) tu = side.bbLead - dir * u.rallyOff * 0.5; // the siege units go in first
+    else if (side.bbLead != null && !d.air && !aiSiegeT(g, u.type) && dir * (u.u - side.bbLead) < 0) tu = side.bbLead - dir * u.rallyOff * 0.5; // the siege units go in first
     if (side.leash != null && !d.siege && !d.air) tu = dir > 0 ? Math.min(tu, side.leash) : Math.max(tu, side.leash); // v2.38: a Default AI's army stays within reach of its Titans while they plant
   }
+  if (u.rmF) { const R = g.t < u.rmF.t ? ctlEnt(g, u.rmF.r) : null; if (R && ruinGate(R)) { tu = u.rmF.u; tv = u.rmF.v; } else u.rmF = undefined; } // v2.83: an AI's unit out of a Ruinmaw's mouth fights around it
   if (MAP_LANED && tv === u.laneV) tv = laneTv(u, tu); // v2.63: the lane's depth there (Classic: unchanged)
   if (!moveToward(u, d, tu, tv, dt, sp)) u.face = dir;
 }
@@ -3067,9 +3079,11 @@ function command(g, s, ids, o, a, b) {
   if (g.countdown > 0) return WAIT_GO;
   const side = g.sides[s];
   if (!side.direct) return { ok: false, msg: 'Not under direct control' };
-  if (!['go', 'target', 'attack', 'hold', 'retreat'].includes(o)) return { ok: false, msg: 'Unknown order' };
-  const want = new Set(ids), us = g.ents.filter(e => e.kind === 'u' && e.side === s && e.hp > 0 && want.has(e.id));
+  if (!['go', 'target', 'attack', 'hold', 'retreat', 'tunnel'].includes(o)) return { ok: false, msg: 'Unknown order' };
+  const want = new Set(ids), us = g.ents.filter(e => e.kind === 'u' && e.side === s && e.hp > 0 && want.has(e.id) && !(e.tn && e.tn.ph === 1)); // v2.83: not a unit inside a tunnel
   if (!us.length) return { ok: false, msg: 'No units selected' };
+  if (o === 'tunnel') return ctlTunnel(g, s, us);
+  for (const e of us) e.tn = undefined; // v2.83: any other order calls a unit on its way to a tunnel back
   let T = null;
   if (o === 'go') {
     let u = a, v = b;
@@ -3097,6 +3111,16 @@ function command(g, s, ids, o, a, b) {
   lg(g, s, 'O', 'sel', us.length, o === 'go' ? 'move' : o);
   const n = us.length, who = `${n} unit${n === 1 ? '' : 's'}`;
   return { ok: true, n, msg: o === 'go' ? `${who}: moving` : o === 'target' ? `${who}: attacking the target` : o === 'hold' ? `${who}: holding position` : o === 'attack' ? `${who}: attacking down the ${MAP_LANED && a != null ? MAP.lanes[a].id + ' lane' : 'lane'}` : `${who}: retreating to the base` };
+}
+// The Tunnel order (v2.83, batch 2b): the selection's Bloomhost ground units walk to the side's tunnel entrance and go
+// through the surfaced Ruinmaw nearest the enemy (tunnelGate); the rest of the selection is left as it was
+function ctlTunnel(g, s, us) {
+  if (!rwB2b(g)) return { ok: false, msg: 'Unknown order' };
+  const R = tunnelGate(g, s); if (!R) return { ok: false, msg: 'No Ruinmaw is surfaced' };
+  const go = us.filter(tunnelOk); if (!go.length) return { ok: false, msg: 'Only Bloomhost ground units can use the tunnel' };
+  for (const e of go) { e.po = { o: 'tunnel', r: R.id }; e.tn = { r: R.id, ph: 0 }; e.holdU = undefined; e.holdV = undefined; }
+  lg(g, s, 'O', 'sel', go.length, 'tunnel');
+  return { ok: true, n: go.length, msg: `${go.length} unit${go.length === 1 ? '' : 's'}: into the tunnel` };
 }
 // Control groups (v2.76): slot k holds the ids of side s's units saved into it; dead units drop out, nothing is added
 function setGroup(g, s, k, ids) {
@@ -3139,6 +3163,7 @@ function ctlStep(g, u, d) {
     if (Math.hypot(po.ju - u.u, po.jv - u.v) > CTRL.arrive * 3) return { go: [po.ju, po.jv] };
     delete po.ju; delete po.jv; return null;
   }
+  if (po.o === 'tunnel') { if (!u.tn) ctlHere(g, u); return null; } // v2.83: tunnelStep moves it; without a tunnel left, it holds
   if (po.o === 'go') {
     if (Math.hypot(po.u - u.u, po.v - u.v) > CTRL.arrive) return po.back ? { run: [po.u, po.v] } : { go: [po.u, po.v] };
     ctlHold(u, po.u, po.v); return null;
@@ -3446,6 +3471,7 @@ function fire(g, src, t, def) {
   if (src.kind === 'u') src.lastAct = g.t; // in combat (creep regen waits, v2.18)
   if (def.weapon === 'flame') { flameBurst(g, src, def, t); return; }
   if (def.melee) { meleeHit(g, src, t, def); return; }
+  if (def.rupture) { ruptureFire(g, src, t); return; } // v2.83: a Worldbreaker's crack (batch 2b)
   if (def.beam) { // the Null Lance (v2.25): the beam lands at once; the SIM leaves a short beam mark for the renderer
     const m = muzzle(src), a = P(m.u, m.v, m.z), b = P(t.u, t.v, aimZ(t));
     damage(g, t, def.dmg * (sideBuff(g, src.side) ? NANO.dmg : 1) * outMul(g, src), def.weapon, src.side, src);
@@ -3458,6 +3484,7 @@ function fire(g, src, t, def) {
   let mul = 1; // v2.37: the Lancer's focus (P14), a planted Titan against buildings (P8)
   if (def.focus && src.kind === 'u') { src.fcN = src.fcTgt === t.id ? Math.min(def.focus.max, (src.fcN || 0) + 1) : 0; src.fcTgt = t.id; mul = 1 + def.focus.per * src.fcN; }
   if (def.siege && src.siege === 2 && t.kind === 'b') mul = def.siege.bmul;
+  if (def.breach && src.siege === 2 && t.kind === 'b') mul = TITAN.bmul; // v2.83: a Titan planted beside a building (batch 2b)
   if (def.salvo || def.carpet) { volley(g, src, t, def, m); if (src.kind === 'u') src.recoil = 1; return; } // P1, P10
   const p = { u: m.u, v: m.v, z: m.z, pu: m.u, pv: m.v, pz: m.z, tu: t.u, tv: t.v, tz: aimZ(t), target: t, side: src.side,
     weapon: def.weapon, dmg: def.dmg * mul * (sideBuff(g, src.side) ? NANO.dmg : 1) * (src.vet ? DRILL.dmg : 1) * outMul(g, src), splash: def.splash || 0, t: 0 }; // disrupted: less damage (v2.27)
@@ -3940,10 +3967,11 @@ function damage(g, e, amt, weapon, fromSide, src) {
   damage1(g, e, amt, weapon, fromSide, src);
 }
 function damage1(g, e, amt, weapon, fromSide, src) {
-  const armor = e.kind === 'b' ? 'building' : UDEF[e.type].armor;
+  const armor = e.kind === 'b' ? 'building' : e.arm || UDEF[e.type].armor; // e.arm (v2.83): a unit's own armour (a batch 2b Ruinmaw's)
   const mult = DMG[weapon][armor];
   if (!mult) return;
   let dmg = amt * mult * (sideBuff(g, e.side) ? NANO.cut : 1) * (1 + corrNow(e, g.t)); // corroded: takes more (v2.19; v2.37 the second slot)
+  if (e.cov && !noCover(weapon)) dmg *= 1 - TITAN.cover; // v2.83: Last Fist infantry in a Titan's cover take less from ranged attacks
   const br = e.kind === 'u' && UDEF[e.type].brace, pre = dmg;
   if (br) { // the Bulwark braces on the first hit after its cooldown (v2.17)
     if (!(e.braceT > g.t) && g.t >= e.braceCd) { e.braceT = g.t + br.dur; e.braceCd = g.t + br.cd; }
@@ -4007,6 +4035,7 @@ function kill(g, e, by, weapon) {
     salvage(g, e, w);
     if (e.tSrc === 'mite') miteBurst(g, e); // v2.33: killed, never expired (expiry doesn't come through kill)
     echoStore(g, e); // v2.34: an Axiarch T2/T3 unit's echo
+    if (e.type === 'ruinmaw' && rwB2b(g)) ruinCollapse(g, e, by); // v2.83: its tunnel collapses on whoever is inside
     fxBoom(g, w.x, w.y, e.type === 'sovereign' ? 44 : e.type === 'voidcarrier' ? 28 : e.type === 'prismwing' ? 10 : e.type === 'shardstorm' ? 14 : e.type === 'riftstalker' || e.type === 'lancer' || e.type === 'marksman' ? 10 : e.type === 'parallax' ? 12 : e.type === 'shardling' ? 8 : e.type === 'bastion' ? 20 : e.type === 'wraithwing' ? 14 : e.type === 'skitterling' ? 6 : e.type === 'bulwark' || e.type === 'ruinmaw' || e.type === 'dreadthorn' || e.type === 'thornback' ? 18 : d.fac === 'bloomhost' && !d.air ? 10 : d.air ? (e.type === 'razorwing' || e.type === 'cloudwing' ? 12 : e.type === 'needlewing' ? 8 : e.type === 'worldrender' ? 44 : 28) : e.type === 'rifle' || e.type === 'sniper' ? 9 : e.type === 'heavy' ? 15 : e.type === 'titan' ? 46 : 30);
     return;
   }
@@ -4221,7 +4250,8 @@ function meteorDodge(g, u) {
      modelled on the Titan's siege lock (titanSiege).
    - artTelegraph (Artillery): every shell lands where it was aimed when fired (no tracking) after at least ART.fly s, and
      its spot is marked on the ground from firing to impact (g.mk, the shells' own list). Units out of the marker when it
-     lands take nothing. AI units step out of markers as they step out of meteor circles (markDodge).
+     lands take nothing. No unit steps out of a marker on its own (v2.83: the AI's marker dodge of v2.82 is gone; it made
+     the Artillery useless and armies stopped advancing); a player can move units out deliberately.
    - Gorebore (Bloomhost, replaces the Bile Lobber; internal id 'gorebore'): burrows whenever it moves and burrow is ready,
      travels underground at BORE.speed, untargetable and unhurt (u.gone 1), and erupts under its target (BORE.dmg within
      BORE.r), then stays up BORE.expose s with a melee bite; burrow is ready again BORE.cd s after the eruption.
@@ -4231,8 +4261,8 @@ function meteorDodge(g, u) {
      exiles a weak bolt (its UDEF weapon).
    New internal ids rather than renamed ones: a game with b2a off still has Bile Lobbers and Rift Mortars, and saves, match
    history and tests keep naming them. */
-const REWORK = { b2a: true, artDeploy: true, artTelegraph: true };
-const RW_KEYS = ['b2a', 'artDeploy', 'artTelegraph'];
+const REWORK = { b2a: true, artDeploy: true, artTelegraph: true, b2b: true }; // b2b (v2.83): batch 2b, src/sim/rework-2b.js
+const RW_KEYS = ['b2a', 'artDeploy', 'artTelegraph', 'b2b'];
 const rwInit = o => { const r = Object.assign({}, REWORK, o || {}), out = {}; for (const k of RW_KEYS) out[k] = !!r[k]; return out; };
 const rwB2a = g => !!(g && g.rw && g.rw.b2a);
 const rwDep = g => rwB2a(g) && !!g.rw.artDeploy;
@@ -4303,19 +4333,6 @@ function telegraph(g, p) {
   (g.mk || (g.mk = [])).push({ u: p.tu, v: p.tv, r: p.splash, side: p.side, t0: g.t, t1: g.t + p.T });
 }
 function updateMarks(g) { if (g.mk && g.mk.length) g.mk = g.mk.filter(m => m.t1 > g.t); }
-// an AI's ground unit inside an enemy shell marker: where it steps to (just outside, away from the centre), else null
-function markDodge(g, u) {
-  let best = null, bt = 1e9;
-  for (const m of g.mk) {
-    if (m.side === u.side) continue;
-    const du = u.u - m.u, dv = (u.v - m.v) * 0.6, dd = Math.hypot(du, dv), R = m.r + ART.step;
-    if (dd >= R || m.t1 >= bt) continue;
-    const k = dd > 1 ? R / dd : 1;
-    best = dd > 1 ? [clamp(m.u + du * k, 0, L), m.v + (u.v - m.v) * k] : [clamp(m.u - R * dirOf(u.side), 0, L), m.v]; bt = m.t1;
-  }
-  return best;
-}
-
 /* ---- Gorebore ---- */
 const BORE_FAR = ['sniper', 'marksman'];
 function boreRank(e) { // 0: ranged backline, 1: other ranged, 2: any other unit, 3: a building
@@ -4440,6 +4457,399 @@ function exileEnd(g, u) { // back: every timed effect resumes where it stopped
 const aiFar = t => { const d = UDEF[t]; return !!(d.weapon && !d.melee && (d.minRange || BORE_FAR.includes(t) || d.range >= 200)); };
 const aiFarShare = th => th.length ? th.filter(u => aiFar(u.type)).length / th.length : 0;
 const aiRangedShare = th => th.length ? th.filter(u => { const d = UDEF[u.type]; return d.weapon && !d.melee && !d.air && d.range > 40; }).length / th.length : 0;
+/* ---------- Faction rework, batch 2b (v2.83, docs/FACTION_REWORK.md "Batch 2"): Titan, Ruinmaw, Worldbreaker ----------
+   REWORK.b2b, stored per game in g.rw like b2a (rwB2b). Off: the three units play exactly as in v2.82 and nothing below
+   runs or is saved. On (the new-game default), each keeps its internal id and is played through its own definition for
+   that game (rwD: a copy of its UDEF entry with the batch's values; UDEF itself is never changed, so a b2b-off game in the
+   same page still reads the old values).
+   - Titan (Last Fist): walking cover. Friendly Last Fist infantry within TITAN.coverR of a Titan take TITAN.cover less
+     damage from anything not melee (u.cov, set each tick by updateCover; several Titans don't stack). It no longer plants
+     for range: it fires on the move at TITAN.range like any gun. Breaching: an enemy building within TITAN.breach (its
+     edge) makes it plant (TITAN.plant s; the siege lock's states u.siege 1-3 and u.sgT), and planted it hits buildings
+     TITAN.bmul harder; it unplants (TITAN.unplant s) TITAN.idle s after the last building in reach, or when ordered away.
+   - Ruinmaw (Bloomhost): a living tunnel. RUIN.hp, heavy armour (u.arm), no ranged attack, no acid pools. Whenever it
+     moves it is underground (the Gorebore's u.bur / u.gone 1: untargetable, unhurt, never exiled, a dirt trail) at
+     RUIN.speed, and it surfaces where it stops. Surfaced it is a gate: ground units sent into the tunnel (u.tn, the Tunnel
+     command or the AI) walk to their side's entrance (the Hive; in the Test Range their starting edge), enter (u.gone 3,
+     off the field), and RUIN.transit s later pour out of its mouth, one every RUIN.every s. It moving again sends everyone
+     inside back out at the entrance; it dying kills everyone inside. Surfaced it bites units (RUIN.bite every RUIN.biteCd s)
+     and chews an adjacent building (RUIN.chew every RUIN.chewCd s).
+   - Worldbreaker (Axiarchs): a fault line. Every WB.cd s it slams the ground and a crack runs from it through its target out to
+     its full range (WB.range, at WB.speed, WB.w wide; g.rup): everything of the enemy's on the ground along it takes WB.dmg, buildings WB.bmul. Every
+     WB.ridgeCd s the crack ends in a ridge (g.rdg) of WB.len across it for WB.life s: enemy ground units can't cross it and
+     walk around an end (ridgeMove); its own side's units pass. It never spans the whole lane (one end always has WB.gap of
+     open ground), and enemy units standing where it rises are pushed to the nearer side. The AI aims its ridges (wbAim). */
+const rwB2b = g => !!(g && g.rw && g.rw.b2b);
+const TITAN = { cover: 0.3, coverR: 70, range: 160, breach: 100, bmul: 2.5, plant: 2, unplant: 1.5, idle: 2, escort: 60 };
+const RUIN = { hp: 1500, armor: 'heavy', speed: 30, bite: 40, biteCd: 1.6, biteR: 26, chew: 60, chewCd: 2, chewR: 30, transit: 3, every: 0.5, mouth: 36, fan: 44, enter: 30, edge: 40, stay: 20, send: 8, maxIn: 10, back: 0.35 };
+const WB = { cd: 3.2, range: 210, speed: 220, w: 20, dmg: 90, bmul: 2.5, ridgeCd: 12, len: 140, life: 5, thick: 14, gap: 50, rise: 0.4, end: 18 };
+Object.assign(DMG, {
+  ruinbite: { light: 1.0, heavy: 1.0, vehicle: 1.0, air: 0, building: 0 },   // the Ruinmaw's bite (units)
+  ruinchew: { light: 0, heavy: 0, vehicle: 0, air: 0, building: 1.0 },       // its chewing (buildings)
+  rupture:  { light: 1.0, heavy: 1.0, vehicle: 1.0, air: 0, building: WB.bmul }, // the Worldbreaker's crack
+});
+// The batch's own definitions, built from the current UDEF entry (setBalance / setRedesign still apply underneath)
+const RW2B_D = {
+  titan: () => Object.assign({}, UDEF.titan, { range: TITAN.range, siege: undefined, breach: true }),
+  ruinmaw: () => Object.assign({}, UDEF.ruinmaw, { speed: RUIN.speed, weapon: undefined, range: RUIN.biteR, splash: 0, acid: undefined, armor: RUIN.armor, hp: RUIN.hp, tunnel: true }),
+  worldbreaker: () => Object.assign({}, UDEF.worldbreaker, { weapon: 'rupture', range: WB.range, cd: WB.cd, dmg: WB.dmg, splash: 0, acid: undefined, rupture: true }),
+};
+const RWD_C = { g: null, t: -1, m: {} };
+function rwD(g, t) { // the definition a unit of type t plays by in game g
+  const f = rwB2b(g) && RW2B_D[t]; if (!f) return UDEF[t];
+  if (RWD_C.g !== g || RWD_C.t !== g.t) { RWD_C.g = g; RWD_C.t = g.t; RWD_C.m = {}; }
+  return RWD_C.m[t] || (RWD_C.m[t] = f());
+}
+// What the UI shows for a type (Codex, the info card): game g's definition, or the new-game default without a game; the
+// Ruinmaw's bite counts as its weapon there
+function rwShow(g, t) {
+  if (!(g ? rwB2b(g) : REWORK.b2b) || !RW2B_D[t]) return UDEF[t];
+  const d = RW2B_D[t](); if (t === 'ruinmaw') Object.assign(d, { weapon: 'ruinbite', dmg: RUIN.bite, cd: RUIN.biteCd, melee: true }); return d;
+}
+function rw2bSpawn(g, e) { if (e.type === 'ruinmaw') { e.hp = e.maxHp = RUIN.hp; e.arm = RUIN.armor; } } // spawnUnit, b2b on
+
+// Texts the player sees follow the new-game default
+for (const [t, on] of [['titan', 'Huge walker that covers nearby infantry from ranged fire and plants beside enemy buildings to breach them. Rooted while planted; Heavies and aircraft wear it down.'],
+  ['ruinmaw', 'Colossal worm that tunnels unseen (its trail shows) and surfaces where you send it. Surfaced, it is a gate: Bloomhost ground units sent into the tunnel pour out of its mouth. It bites and chews what is beside it.'],
+  ['worldbreaker', 'Orb strider that slams a crack along the ground to its target, hitting everything in the line, and every so often raises a ridge enemy ground units must walk around. Slow, and it can\'t hit aircraft.']]) {
+  const d0 = UDEF[t].desc; Object.defineProperty(UDEF[t], 'desc', { get: () => REWORK.b2b ? on : d0, enumerable: true, configurable: true });
+}
+// (rwText reads REWORK.b2a for its switch; these follow b2b)
+function rw2bText(o, k, on, off) { Object.defineProperty(o, k, { get: () => REWORK.b2b ? on : off, enumerable: true, configurable: true }); }
+rw2bText(TREES.factory.A.steps[3], 'txt', 'Unlocks Titans: walkers whose cover shields nearby infantry and that plant to breach buildings', 'Unlocks Titans: walkers that plant for siege range');
+{ const s = TREES_BH.factory.A.steps[3], o = Object.getOwnPropertyDescriptor(s, 'txt'), off = o.get ? o.get() : o.value; rw2bText(s, 'txt', 'Unlocks Ruinmaws: living tunnels that surface behind the enemy and pour your army out', off); }
+{ const s = TREES_AX.factory.A.steps[3], o = Object.getOwnPropertyDescriptor(s, 'txt'), off = o.get ? o.get() : o.value; rw2bText(s, 'txt', 'Unlocks Worldbreakers: fault lines that crack the ground and raise ridges across the lane', off); }
+
+/* ---- Titan: cover ---- */
+const coverInf = t => GROUP_OF[t] === 'inf' && (UDEF[t].fac || DEFAULT_FACTION) === 'lastfist';
+let NOCOVER = null; // weapons that are not a ranged attack: every melee unit's, the ground effects and the commander abilities
+const noCover = w => (NOCOVER || (NOCOVER = new Set([...Object.values(UDEF).filter(d => d.melee).map(d => d.weapon), 'gorebite', 'erupt', 'ruinbite', 'ruinchew', 'thorns', 'meteor', 'acidpool', 'spores', 'miteacid', 'orbital', 'beam']))).has(w);
+function updateCover(g) {
+  const ti = [[], []];
+  for (const e of g.ents) if (e.kind === 'u' && e.type === 'titan' && e.hp > 0 && !e.gone && e.side >= 0 && e.side < 2) ti[e.side].push(e);
+  const R2 = TITAN.coverR * TITAN.coverR;
+  for (const e of g.ents) {
+    if (e.kind !== 'u' || e.hp <= 0 || !coverInf(e.type)) continue;
+    let c = 0;
+    if (!e.gone && e.side >= 0 && e.side < 2) for (const t of ti[e.side]) { const du = t.u - e.u, dv = t.v - e.v; if (du * du + dv * dv <= R2) { c = 1; break; } }
+    if (c || e.cov) e.cov = c;
+  }
+}
+/* ---- Titan: breaching ---- */
+function breachTarget(g, u, want) { // the enemy building it plants for: the one it was sent at, else the nearest within reach
+  const ok = b => b && b.kind === 'b' && b.side !== u.side && b.side !== NEUTRAL && b.hp > 0 && !b.shielded && effDist(u, b) <= TITAN.breach && visibleTo(g, u.side, b);
+  if (ok(want)) return want;
+  let best = null, bd = 1e9;
+  for (const b of g.ents) if (b.kind === 'b' && ok(b)) { const k = effDist(u, b); if (k < bd || (k === bd && b.id < best.id)) { bd = k; best = b; } }
+  return best;
+}
+// True: it handled the tick (planting, planted, unplanting, or walking in on a building). go: ordered away. Mobile, a
+// building it would shoot at (on Attack, or sent at it) is walked up to until it can plant beside it (it never shells
+// buildings from range); otherwise false: it fights like any gun
+function titanBreach(g, u, d, st, cs, foes, dt, sp) {
+  const go = st === 'retreat' || st === 'move' || !!(cs && cs.run) || u.aiBack > g.t;
+  if (u.siege === 1 || u.siege === 3) { u.moving = false; u.tgt = 0; if (g.t >= u.sgT) { u.siege = u.siege === 1 ? 2 : 0; u.sgIdle = g.t; } return true; }
+  const B = breachTarget(g, u, cs && cs.chase);
+  if (u.siege === 2) {
+    if (B) u.sgIdle = g.t;
+    if (go || (!B && g.t - u.sgIdle >= TITAN.idle)) { u.siege = 3; u.sgT = g.t + TITAN.unplant; u.tgt = 0; return true; }
+    const T = B || (cs && cs.want) || acquire(g, u, d, foes).best;
+    u.moving = false; u.tgt = T ? T.id : 0;
+    if (T) { if (Math.abs(T.u - u.u) > 1) u.face = T.u >= u.u ? 1 : -1; if (u.cd <= 0) { fire(g, u, T, d); u.cd = d.cd * rand(0.9, 1.1); } }
+    return true;
+  }
+  if (go) return false;
+  if (!B) {
+    if (st === 'hold' || (cs && cs.go && !cs.chase)) return false;
+    const T = cs && cs.chase ? cs.chase : acquire(g, u, d, foes).best;
+    if (!T || T.kind !== 'b' || T.shielded) return false;
+    u.tgt = 0; moveToward(u, d, T.u, T.v, dt, sp); return true;
+  }
+  u.siege = 1; u.sgT = g.t + TITAN.plant; u.moving = false; u.tgt = 0; if (Math.abs(B.u - u.u) > 1) u.face = B.u >= u.u ? 1 : -1;
+  ev(g, { type: 'breach', u: u.u, side: u.side });
+  return true;
+}
+
+/* ---- Ruinmaw ---- */
+const ruinGate = R => !!R && R.type === 'ruinmaw' && R.hp > 0 && !R.bur && !R.moving && !R.dead;
+const tunnelOk = e => e.kind === 'u' && UDEF[e.type].fac === 'bloomhost' && !UDEF[e.type].air && e.type !== 'ruinmaw' && e.hp > 0;
+function tunnelEntrance(g, s) { // where side s's units go into the tunnel: beside its Hive, toward the field (Test Range: its edge)
+  if (g.range) return { u: s === 0 ? RUIN.edge : L - RUIN.edge, v: 0 };
+  const hq = g.sides[s].hq; let u = clamp(hq.u + dirOf(s) * (hq.half + 24), 0, L), v = hq.v;
+  if (NAV.on && navShut(u, v)) [u, v] = navOpen(u, v);
+  return { u, v };
+}
+const ruinMouth = (R, k) => { let u = clamp(R.u + R.face * RUIN.mouth, 0, L), v = R.v + ((k % 3) - 1) * 8; if (NAV.on && navShut(u, v)) [u, v] = navOpen(u, v); return [u, v]; };
+const inTunnel = (g, R) => g.ents.filter(e => e.kind === 'u' && e.hp > 0 && e.tn && e.tn.r === R.id && e.tn.ph === 1);
+function ruinDig(g, u) { // it moves: underground, and the gate closes (whoever is inside comes back out at the entrance)
+  if (u.bur) return;
+  u.bur = 1; u.gone = 1; u.tgt = 0;
+  const E = tunnelEntrance(g, u.side); let k = 0;
+  for (const e of inTunnel(g, u)) { e.tn = undefined; e.gone = 0; e.u = E.u + ((k % 3) - 1) * 10; e.v = E.v + (Math.floor(k / 3) % 3 - 1) * 10; k++; tunnelOut(g, e, E.u, E.v); }
+  ev(g, { type: 'burrow', u: u.u, v: u.v, side: u.side });
+}
+function ruinUp(g, u) { // it stops: up it comes, and the gate opens
+  u.bur = 0; u.gone = 0; u.gateT = g.t; u.outT = g.t;
+  const w = P(u.u, u.v, 0); g.fx.push({ k: 'erupt', side: u.side, u: u.u, x: w.x, y: w.y, t: 0, life: 0.9, r: 36 });
+  ev(g, { type: 'surface', u: u.u, v: u.v, side: u.side });
+}
+function tunnelOut(g, e, u, v) { // a unit back on the field (out of the mouth, or back at the entrance)
+  const side = g.sides[e.side];
+  if (side.direct) { if (e.po && e.po.o === 'tunnel') ctlSettle(g, e, u, v); }
+  if (MAP_LANED && !UDEF[e.type].air) e.lane = laneAt(e.u, e.v);
+  e.moving = false; e.nav = undefined;
+}
+function ruinEmit(g, R) { // the gate: the next unit whose transit is done comes out of its mouth
+  if (g.t < (R.outT || 0)) return;
+  let e = null;
+  for (const x of g.ents) if (x.kind === 'u' && x.hp > 0 && x.tn && x.tn.r === R.id && x.tn.ph === 1 && x.tn.at <= g.t && (!e || x.tn.at < e.tn.at || (x.tn.at === e.tn.at && x.id < e.id))) e = x;
+  if (!e) return;
+  R.outN = (R.outN || 0) + 1; R.outT = g.t + RUIN.every; R.recoil = 1;
+  const [u, v] = ruinMouth(R, R.outN);
+  e.tn = undefined; e.gone = 0; e.u = u; e.v = v; e.face = R.face; e.tgt = 0;
+  const fu = clamp(R.u + R.face * (RUIN.mouth + RUIN.fan), 0, L), fv = R.v; // they fan out in front of its mouth
+  if (!g.sides[e.side].direct) e.rmF = { r: R.id, u: fu, v: fv, t: g.t + RUIN.stay }; // an AI's unit fights around the Ruinmaw
+  tunnelOut(g, e, fu, fv);
+  const w = P(u, v, 0); g.fx.push({ k: 'emerge', side: e.side, u, x: w.x, y: w.y, t: 0, life: 0.6 });
+}
+function ruinCollapse(g, R, by) { // killed: the tunnel collapses on whoever is inside
+  for (const e of inTunnel(g, R)) { e.tn = undefined; e.gone = 0; e.u = R.u; e.v = R.v; e.hp = 0; kill(g, e, by, 'tunnel'); }
+}
+// Surfaced: a bite at a unit beside it, a chew at a building beside it
+function ruinFight(g, u) {
+  const mul = (sideBuff(g, u.side) ? NANO.dmg : 1) * outMul(g, u);
+  if (g.t >= (u.bcd || 0)) {
+    let T = null, bd = 1e9;
+    for (const e of g.ents) if (e.kind === 'u' && e.side !== u.side && e.hp > 0 && !e.gone && !UDEF[e.type].air && !(e.phT > g.t)) { const k = effDist(u, e); if (k <= RUIN.biteR && (k < bd || (k === bd && e.id < T.id))) { bd = k; T = e; } }
+    if (T) { u.bcd = g.t + RUIN.biteCd; u.recoil = 1; u.lastAct = g.t; u.face = T.u >= u.u ? 1 : -1; u.tgt = T.id; damage(g, T, RUIN.bite * mul, 'ruinbite', u.side, u); }
+  }
+  if (g.t >= (u.ccd || 0)) {
+    let B = null, bd = 1e9;
+    for (const b of g.ents) if (b.kind === 'b' && b.side !== u.side && b.side !== NEUTRAL && b.hp > 0 && !b.shielded) { const k = effDist(u, b); if (k <= RUIN.chewR && (k < bd || (k === bd && b.id < B.id))) { bd = k; B = b; } }
+    if (B) {
+      u.ccd = g.t + RUIN.chewCd; u.recoil = 1; u.lastAct = g.t; u.face = B.u >= u.u ? 1 : -1;
+      damage(g, B, RUIN.chew * mul, 'ruinchew', u.side, u);
+      const w = P(clamp(u.u + u.face * 22, 0, L), u.v, 8); fxBoom(g, w.x, w.y, 14);
+    }
+  }
+}
+// The Ruinmaw's tick before the usual code. True: handled (an AI's Ruinmaw on its way to, or holding, the spot it chose)
+const ruinReach = e => e.kind === 'b' ? RUIN.chewR : RUIN.biteR - 2; // close enough to bite (a unit) or chew (a building)
+const ruinFoe = (g, u) => g.ents.some(e => e.side !== u.side && e.side !== NEUTRAL && e.hp > 0 && !e.gone && !e.shielded && !(e.kind === 'u' && UDEF[e.type].air) && effDist(u, e) <= ruinReach(e) && visibleTo(g, u.side, e));
+function ruinStep(g, u, d, side, dt, st, cs) {
+  if (!side.direct && u.rmGo) {
+    const [tu, tv] = u.rmGo;
+    if (Math.hypot(tu - u.u, tv - u.v) > 4) { ruinDig(g, u); u.tgt = 0; if (!moveToward(u, d, tu, tv, dt, 1)) { u.u = tu; u.v = tv; } u.moving = true; return true; }
+    if (u.bur || u.moving) { u.moving = false; ruinUp(g, u); }
+    u.rmAt = 1; ruinFight(g, u); ruinEmit(g, u); return true;
+  }
+  u.rmAt = 0;
+  // on Attack, or sent at a target: it comes up to fight what it reaches (a move order picks its spot: it never stops on the way)
+  const T = cs && cs.chase, near = T ? T.hp > 0 && effDist(u, T) <= ruinReach(T) : (st === 'attack' || st === 'run') && ruinFoe(g, u);
+  if (near) { u.moving = false; if (u.bur) ruinUp(g, u); ruinFight(g, u); ruinEmit(g, u); return true; }
+  if (u.bur) { if (u.moving) return false; ruinUp(g, u); } // stopped: it surfaces where it is
+  else if (u.moving) { ruinDig(g, u); return false; }
+  ruinFight(g, u); ruinEmit(g, u);
+  return false;
+}
+// A unit sent into the tunnel. True: handled (walking to the entrance, or inside)
+function tunnelStep(g, u, d, side, dt, sp) {
+  const T = u.tn;
+  if (T.ph === 1) { u.moving = false; u.tgt = 0; u.chT = 0; return true; } // inside: off the field
+  const R = ctlEnt(g, T.r);
+  if (!R || R.hp <= 0 || R.dead || R.type !== 'ruinmaw') { u.tn = undefined; if (side.direct && u.po && u.po.o === 'tunnel') ctlHere(g, u); return false; }
+  const E = tunnelEntrance(g, u.side);
+  u.tgt = 0; u.chT = 0;
+  if (Math.hypot(E.u - u.u, E.v - u.v) > RUIN.enter) { moveToward(u, d, E.u, E.v, dt, sp); return true; }
+  u.moving = false;
+  if (!ruinGate(R)) { if (!side.direct) u.tn = undefined; return !!u.tn; } // the gate is shut: a player's unit waits, an AI's gives up
+  T.ph = 1; T.at = g.t + RUIN.transit; u.gone = 3; u.rmF = undefined;
+  const w = P(u.u, u.v, 0); g.fx.push({ k: 'emerge', side: u.side, u: u.u, x: w.x, y: w.y, t: 0, life: 0.45, inn: 1 });
+  return true;
+}
+// The Tunnel order (command(…, 'tunnel')): the side's surfaced Ruinmaw nearest the enemy, or null
+function tunnelGate(g, s) {
+  let R = null; const dir = dirOf(s);
+  for (const e of g.ents) if (e.kind === 'u' && e.side === s && ruinGate(e) && (!R || dir * e.u > dir * R.u || (e.u === R.u && e.id < R.id))) R = e;
+  return R;
+}
+
+/* ---- Worldbreaker ---- */
+function ruptureFire(g, u, T) {
+  const side = g.sides[u.side], ridge = g.t >= (u.rdCd || 0);
+  let at = { u: T.u, v: T.v }, aim = false;
+  if (ridge) { u.rdCd = g.t + WB.ridgeCd; if (!side.direct && side.persona) { at = wbAim(g, u, T); aim = true; } }
+  const su = u.u + u.face * 6, sv = u.v, du = at.u - su, dv = at.v - sv, dd = Math.max(1, Math.hypot(du, dv));
+  const len = aim ? Math.min(dd, WB.range) : Math.max(WB.range, Math.min(dd, WB.range + (T.kind === 'b' ? T.half : 0))); // through its target out to full range (an AI's aimed ridge: to the spot)
+  (g.rup || (g.rup = [])).push({ id: g.nid++, side: u.side, su, sv, du: du / dd, dv: dv / dd, len, t0: g.t, f: 0, r: ridge ? 1 : 0, dmg: WB.dmg * (sideBuff(g, u.side) ? NANO.dmg : 1) * outMul(g, u), hit: [] });
+  u.recoil = 1; u.slamT = g.t; u.lastAct = g.t; u.face = du >= 0 ? 1 : -1;
+  g.shake = Math.max(g.shake || 0, 2);
+  ev(g, { type: 'rupture', u: u.u, side: u.side });
+}
+// Where an AI's ridge goes (the crack ends there): in front of a melee charge, between its retreating army and the enemy,
+// else just behind its target (cutting the reinforcements walking up behind it). The crack ends at the spot.
+function wbAim(g, u, T) {
+  const s = u.side, side = g.sides[s], dir = dirOf(s), R = WB.range;
+  const foes = g.ents.filter(e => e.kind === 'u' && e.side === 1 - s && e.hp > 0 && !e.gone && !UDEF[e.type].air && Math.hypot(e.u - u.u, e.v - u.v) <= R + 60 && visibleTo(g, s, e));
+  const toward = (p, back) => { const du = p.u - u.u, dv = p.v - u.v, dd = Math.max(1, Math.hypot(du, dv)), k = clamp(dd - back, 50, R) / dd; return { u: u.u + du * k, v: u.v + dv * k }; };
+  const melee = foes.filter(e => UDEF[e.type].melee && dir * (e.u - u.u) > -20);
+  if (melee.length >= 2) { const c = { u: melee.reduce((a, e) => a + e.u, 0) / melee.length, v: melee.reduce((a, e) => a + e.v, 0) / melee.length }; return toward(c, 45); }
+  if ((side.stance === 'retreat' || g.ents.some(e => e.kind === 'u' && e.side === s && e.aiBack > g.t)) && foes.length) {
+    const near = foes.reduce((a, e) => Math.hypot(e.u - u.u, e.v - u.v) < Math.hypot(a.u - u.u, a.v - u.v) ? e : a, foes[0]); return toward(near, 40);
+  }
+  return toward(T, -60);
+}
+// The cracks running: each hits what it passes once; one that ends in a ridge raises it
+function updateRuptures(g) {
+  if (!g.rup || !g.rup.length) return;
+  const keep = [];
+  for (const r of g.rup) {
+    const nf = Math.min(r.len, (g.t - r.t0) * WB.speed), hw = WB.w / 2;
+    for (const e of g.ents) {
+      if (e.side !== 1 - r.side || e.hp <= 0 || e.gone || (e.kind === 'u' && UDEF[e.type].air) || r.hit.includes(e.id)) continue;
+      const pu = e.u - r.su, pv = e.v - r.sv, t = pu * r.du + pv * r.dv, off = Math.abs(pu * r.dv - pv * r.du), ex = e.kind === 'b' ? e.half : 0;
+      if (off > hw + ex || t > nf + ex || t < -ex) continue;
+      r.hit.push(e.id); damage(g, e, r.dmg, 'rupture', r.side);
+    }
+    r.f = nf;
+    if (nf >= r.len) { if (r.r) raiseRidge(g, r); } else keep.push(r);
+  }
+  g.rup = keep;
+}
+// Is (u, v) ground a unit can stand on (a ridge's ends stop at walls and the lane's edge)
+const rdgOpen = (u, v) => u >= 4 && u <= L - 4 && (MAP_2D ? Math.abs(v) <= MAP.size.h / 2 - 8 && (!NAV.on || !navShut(u, v)) : Math.abs(v) <= LANE_V);
+function raiseRidge(g, r) {
+  const cu = r.su + r.du * r.len, cv = r.sv + r.dv * r.len, au = -r.dv, av = r.du; // across the crack
+  if (!rdgOpen(cu, cv)) return;
+  const reach = sg => { let k = 0; while (k < 260 && rdgOpen(cu + au * sg * (k + 5), cv + av * sg * (k + 5))) k += 5; return k; };
+  const sA = -reach(-1), sB = reach(1), half = WB.len / 2;
+  let lo = Math.max(sA, -half), hi = Math.min(sB, half);
+  if (hi - lo < WB.len) { if (lo > -half) hi = Math.min(sB, lo + WB.len); else lo = Math.max(sA, hi - WB.len); }
+  if (lo - sA < WB.gap && sB - hi < WB.gap) { if (sB - hi >= lo - sA) hi = Math.min(hi, sB - WB.gap); else lo = Math.max(lo, sA + WB.gap); } // never wall to wall
+  if (hi - lo < 30) return;
+  const R = { id: r.id, side: r.side, au: cu + au * lo, av: cv + av * lo, bu: cu + au * hi, bv: cv + av * hi, t0: g.t, t1: g.t + WB.life, oa: lo - sA >= WB.gap * 0.6 ? 1 : 0, ob: sB - hi >= WB.gap * 0.6 ? 1 : 0 };
+  if (!R.oa && !R.ob) R.ob = 1;
+  (g.rdg || (g.rdg = [])).push(R);
+  // enemy ground units standing where it rises: pushed to the nearer side
+  const lu = R.bu - R.au, lv = R.bv - R.av, ll = Math.max(1, Math.hypot(lu, lv)), nu = -lv / ll, nv = lu / ll, need = WB.thick / 2 + 8;
+  for (const e of g.ents) {
+    if (e.kind !== 'u' || e.side !== 1 - r.side || e.hp <= 0 || e.gone || UDEF[e.type].air) continue;
+    const pu = e.u - R.au, pv = e.v - R.av, t = (pu * lu + pv * lv) / ll, off = pu * nu + pv * nv;
+    if (t < -4 || t > ll + 4 || Math.abs(off) >= need) continue;
+    const sg = off > 0 || (off === 0 && nu * r.du + nv * r.dv > 0) ? 1 : -1, k = sg * need - off;
+    e.u = clamp(e.u + nu * k, 0, L); e.v += nv * k; e.nav = undefined;
+    if (NAV.on && navShut(e.u, e.v)) navEject(e);
+  }
+  g.shake = Math.max(g.shake || 0, 3);
+  ev(g, { type: 'ridge', u: cu, v: cv, side: r.side });
+}
+function updateRidges(g) { if (g.rdg && g.rdg.length) g.rdg = g.rdg.filter(R => R.t1 > g.t); }
+// Moving past ridges: a ground unit of the other side whose way crosses a ridge walks to the nearer open end first, and a
+// step that would cross one is undone (sliding along it where it can). RDG.list: the ridges of the game being updated.
+const RDG = { list: null, busy: false };
+function rdgCross(R, u0, v0, u1, v1, m) { // does the step (u0, v0) → (u1, v1) cross the ridge's line within its length (+m)?
+  const lu = R.bu - R.au, lv = R.bv - R.av, ll = Math.max(1, Math.hypot(lu, lv)), nu = -lv / ll, nv = lu / ll;
+  const o0 = (u0 - R.au) * nu + (v0 - R.av) * nv, o1 = (u1 - R.au) * nu + (v1 - R.av) * nv;
+  if ((o0 > 0) === (o1 > 0) || o0 === o1) return false;
+  const k = o0 / (o0 - o1), t = ((u0 + (u1 - u0) * k - R.au) * lu + (v0 + (v1 - v0) * k - R.av) * lv) / ll;
+  return t >= -m && t <= ll + m;
+}
+function ridgeMove(u, d, tu, tv, dt, mul) {
+  let wu = tu, wv = tv, best = null, bd = 1e9;
+  for (const R of RDG.list) {
+    if (R.side === u.side || !rdgCross(R, u.u, u.v, tu, tv, 4)) continue;
+    const lu = R.bu - R.au, lv = R.bv - R.av, ll = Math.max(1, Math.hypot(lu, lv)), su = lu / ll, sv = lv / ll;
+    for (const [ok, eu, ev_] of [[R.oa, R.au - su * WB.end, R.av - sv * WB.end], [R.ob, R.bu + su * WB.end, R.bv + sv * WB.end]]) {
+      if (!ok) continue;
+      const k = Math.hypot(eu - u.u, ev_ - u.v) + Math.hypot(tu - eu, tv - ev_);
+      if (k < bd) { bd = k; best = [eu, ev_]; }
+    }
+  }
+  const u0 = u.u, v0 = u.v; let r;
+  RDG.busy = true;
+  if (best) { // to the end, straight and at full speed (a lane map's walls: around them as usual)
+    [wu, wv] = best;
+    if (NAV.on) { const k = u.lane; u.lane = null; r = moveToward(u, d, wu, wv, dt, mul); u.lane = k; }
+    else { const du = wu - u.u, dv = wv - u.v, dd = Math.hypot(du, dv), st = d.speed * mul * dt; if (dd < 2) { u.moving = false; r = false; } else { const k = Math.min(1, st / dd); u.u = clamp(u.u + du * k, 0, L); u.v += dv * k; if (Math.abs(du) > 0.5) u.face = Math.sign(du); u.moving = true; r = true; } }
+  }
+  else r = moveToward(u, d, wu, wv, dt, mul);
+  RDG.busy = false;
+  const crosses = (a, b) => RDG.list.some(R => R.side !== u.side && rdgCross(R, u0, v0, a, b, 2));
+  if (crosses(u.u, u.v)) { const u1 = u.u, v1 = u.v; if (!crosses(u0, v1)) u.u = u0; else if (!crosses(u1, v0)) u.v = v0; else { u.u = u0; u.v = v0; } }
+  return r;
+}
+
+/* ---- each tick (update), b2b on ---- */
+function update2b(g) {
+  updateCover(g);
+  updateRuptures(g);
+  updateRidges(g);
+  RDG.list = g.rdg && g.rdg.length ? g.rdg : null;
+}
+
+/* ---- the AI ---- */
+// An AI side's Titans, Ruinmaws and Worldbreakers (every difficulty, each decision): infantry walk in a Titan's shadow; a
+// Ruinmaw tunnels to a spot beside the enemy's economy (else onto a flank behind its front), and while it is up there,
+// ground units at home go through its tunnel. (Planting beside buildings and the ridges are the units' own logic.)
+function aiRework2b(g, s, mine) {
+  const side = g.sides[s], dir = dirOf(s), opp = 1 - s;
+  // Titans: on the attack, Last Fist infantry more than TITAN.escort ahead of the nearest Titan wait for it (they fight what
+  // is in reach); planted Titans are never pulled back (aiBack skips them)
+  const ti = mine.filter(u => u.type === 'titan');
+  if (ti.length && side.stance === 'attack') for (const u of mine) {
+    if (!coverInf(u.type) || u.id === side.scoutId) continue;
+    let near = null, nd = 1e9; for (const t of ti) { const k = Math.abs(t.u - u.u) + Math.abs(t.v - u.v) * 0.5; if (k < nd) { nd = k; near = t; } }
+    if (near && nd < 400 && dir * (u.u - near.u) > TITAN.escort) u.aiWait = g.t + 1.5;
+  }
+  // Ruinmaws
+  for (const R of mine.filter(u => u.type === 'ruinmaw')) {
+    if (R.rmGo && R.hp < R.maxHp * RUIN.back && !R.rmHome) { R.rmGo = [rallyU(s), MAP.bases[s].rally[1]]; R.rmHome = 1; continue; } // badly hurt: home, underground
+    if (R.rmHome) { if (R.rmAt && R.hp >= R.maxHp * 0.8) { R.rmGo = null; R.rmHome = 0; } continue; }
+    const spot = R.rmGo ? null : ruinSpot(g, s, R);
+    if (spot) { R.rmGo = spot; R.rmSince = g.t; continue; }
+    if (R.rmGo && R.rmAt) {
+      const busy = g.ents.some(b => b.kind === 'b' && b.side === opp && b.hp > 0 && effDist(R, b) <= 150) || g.ents.some(e => e.tn && e.tn.r === R.id);
+      if (!busy && g.t - (R.rmSince || 0) > RUIN.stay) { R.rmGo = null; continue; } // nothing left here: pick another spot next time
+      // the gate is up: ground units at home go through
+      const n = g.ents.filter(e => e.tn && e.tn.r === R.id && e.hp > 0).length;
+      if (n < RUIN.maxIn) {
+        const pool = mine.filter(e => tunnelOk(e) && !e.tn && !e.temp && e.id !== side.scoutId && !capBusy(side, e.id) && Math.abs(e.u - hqU(s)) < 520).sort((a, b) => a.id - b.id);
+        for (const e of pool.slice(0, Math.min(RUIN.send, RUIN.maxIn - n))) { e.tn = { r: R.id, ph: 0 }; e.aiWait = 0; e.aiBack = 0; }
+      }
+    }
+  }
+}
+// Where an AI's Ruinmaw surfaces: beside the enemy economy building it knows of that is least covered by enemy guns it
+// knows (none known: behind the enemy front, on the flank); null while its army has nothing to attack and it is home
+function ruinSpot(g, s, R) {
+  const opp = 1 - s, f = g.fog[s], dir = dirOf(s);
+  const guns = Object.values(f.ghosts).filter(gh => gh.side === opp && (gh.type === 'turret' || gh.type === 'hq' || gh.type === 'bunker'));
+  let best = null, bs = 1e9;
+  for (const gh of Object.values(f.ghosts)) {
+    if (gh.side !== opp || !['refinery', 'reactor', 'habitat'].includes(gh.type)) continue;
+    const cover = guns.filter(x => Math.hypot(x.u - gh.u, x.v - gh.v) < 320).length;
+    const sc = cover * 400 + Math.hypot(gh.u - R.u, gh.v - R.v) * 0.5;
+    if (sc < bs || (sc === bs && best && gh.id < best.id)) { bs = sc; best = gh; }
+  }
+  if (best) {
+    const side = Math.sign(best.v - R.v) || 1; let u = best.u, v = best.v - side * (best.half + 18); // beside it, on the near side across the lane
+    if (!MAP_2D) v = clamp(v, -LANE_V + 8, LANE_V - 8);
+    if (NAV.on && navShut(u, v)) [u, v] = navOpen(u, v);
+    return [clamp(u, 0, L), v];
+  }
+  const fr = g.front[opp];
+  if (fr === null || g.sides[s].stance !== 'attack') return null;
+  let u = clamp(fr + dir * 160, 0, L), v;
+  if (MAP_LANED) { const ln = MAP.lanes[R.lane != null ? R.lane : laneAt(R.u, R.v)]; v = laneY(ln, u) + (R.id % 2 ? 1 : -1) * ln.width * 0.38; }
+  else v = (R.id % 2 ? 1 : -1) * LANE_V * 0.8;
+  if (NAV.on && navShut(u, v)) [u, v] = navOpen(u, v);
+  return [u, v];
+}
+// The AI's reads for its scores (v2.83)
+const aiMeleeShare = th => th.length ? th.filter(u => UDEF[u.type].melee && !UDEF[u.type].air).length / th.length : 0;
+const aiSiegeT = (g, t) => AI_SIEGE.includes(t) && !(t === 'ruinmaw' && rwB2b(g)); // a Ruinmaw is no siege gun in batch 2b
+// Persona tastes for the two units with no Last Fist counterpart in batch 2b (AI_TWIN maps them to the Titan otherwise)
+const RW2B_TASTE = { ruinmaw: { aggressor: 1.2, trickster: 1.3, turtle: 0.8, economist: 1.0 }, worldbreaker: { turtle: 1.3, economist: 1.1, aggressor: 0.9, trickster: 1.0 } };
 /* ---------- Enemy AI: same economy, same rules, same upgrades as the player ---------- */
 // Known base defenses: the enemy HQ gun plus remembered Turrets, each at its last-seen tier
 const HQ_VAL = 400, TURRET_VAL = 300;
@@ -4729,7 +5139,13 @@ function aiUpdate(g, s, dt) {
       voidcarrier: 1.5 + comp.vehicle * 0.6 + (turtle ? 0.8 : 0) - antiAir * 1.0 - comp.air * 0.5,
       sovereign: 1.7 + comp.vehicle * 0.5 + (turtle ? 0.8 : 0) - antiAir * 1.2 - comp.air * 0.5,
     };
-    if (!threat) for (const t of types) { const b = P.bias[t] || P.bias[AI_TWIN[t]]; if (b && sc[t] > 0) sc[t] *= b; } // the personality's taste in units (threats are answered on merit)
+    if (rwB2b(g)) { // v2.83 (rework batch 2b): the Titan is cover for infantry, the Ruinmaw a tunnel for ground units, the Worldbreaker answers charges and clumps
+      const nGround = mine.filter(u => tunnelOk(u)).length, nR = mine.filter(u => u.type === 'ruinmaw').length;
+      sc.titan = 1.0 + nInf / Math.max(1, mine.length) * 1.2 + comp.light * 0.3 + comp.heavy * 0.3 + (turtle ? 0.4 : 0) + (oppTier - 1) * 0.2 - comp.air * 1.2;
+      sc.ruinmaw = nR >= 2 ? 0.1 : 1.0 + Math.min(1, nGround / 12) * 0.8 + (turtle ? 0.5 : 0) + comp.light * 0.2 - comp.air * 1.0;
+      sc.worldbreaker = 1.1 + aiMeleeShare(theirs) * 1.0 + comp.light * 0.5 + comp.heavy * 0.4 + (turtle ? 0.4 : 0) - comp.air * 1.2;
+    }
+    if (!threat) for (const t of types) { const b = P.bias[t] || (rwB2b(g) && RW2B_TASTE[t] ? RW2B_TASTE[t][P.kind] : P.bias[AI_TWIN[t]]); if (b && sc[t] > 0) sc[t] *= b; } // v2.83: the Ruinmaw and Worldbreaker have tastes of their own in batch 2b // the personality's taste in units (threats are answered on merit)
     for (const t of types) if (dl.comp[t] !== undefined) sc[t] *= dl.comp[t]; // the composition dial (v2.38; legacy has none)
     if (smart) aiSmartScores(g, s, sc, types, { comp, antiAir, theirs, mine, nFront, turtle, log, threat, P }); // v2.38: the Default AI values v2.37 roles
     if (holdEarly) for (const t of types) { if (t === 'tank' || t === 'bulwark' || t === 'bastion') sc[t] *= 1.6; if (t === 'shardling' || t === 'skitterling') sc[t] *= 0.6; } // v2.40 (hold)
@@ -4783,7 +5199,7 @@ function aiUpdate(g, s, dt) {
   // 4) Strategy: hold the near node, take the field, siege just outside the enemy guns, or go all in
   const hqGun = BDEF.hq.gun[oppTier], hqVal = knownDefense(g, s);
   const rich = side.res.c > dl.bank;
-  const nSiege = mine.filter(u => AI_SIEGE.includes(u.type)).length;
+  const nSiege = mine.filter(u => aiSiegeT(g, u.type)).length; // v2.83: not a batch 2b Ruinmaw
   const ae = P.attackEdge * (ecoMood ? 1.2 : 1); // how much of an edge this personality wants before a base attack
   const wave = Math.min(3600, 400 + g.t * 4) * D.wave * P.wave * (ecoMood ? 1.3 : 1) * (hasCond(g, 'scarce') ? COND.scarce.army : 1); // v2.72: scarce: smaller armies
   const full = used >= cap * fill - 2, since = g.t - side.stanceAt; // full by its own army limit
@@ -4896,6 +5312,7 @@ function aiUpdate(g, s, dt) {
   aiAbility(g, s, P, { mine, theirs, threat, myV, thV });
   aiMicro(g, s, D, mine);
   if (smart) aiSmartArmy(g, s, mine, dl, P); // v2.38: the Default AI's unit handling
+  if (rwB2b(g)) aiRework2b(g, s, mine); // v2.83: Titan escorts, Ruinmaw spots and tunnels (every difficulty)
 }
 // Spotters: siege guns can't fire at what their side can't see, so while sieging, one unit walks up until
 // its sight reaches the front of the enemy base (as far as this side knows where that is). Seeing the base
@@ -5209,7 +5626,7 @@ function aiBreak(g, s, mine) {
     if (V > 0 && atV > 0 && (atV >= V * B.gather || g.t - bb.t > B.wait)) { bb.ph = 'go'; bb.goT = g.t; bb.goV = atV; bb.n++; }
   } else if (pastV < bb.goV * B.regroup && V - pastV >= B.again) { bb.ph = 'gather'; bb.t = g.t; }
   side.bbStage = bb.ph === 'gather' ? stage : null;
-  side.bbLead = bb.ph === 'go' && g.t - bb.goT < B.lead && grp.some(u => AI_SIEGE.includes(u.type)) ? stage : null;
+  side.bbLead = bb.ph === 'go' && g.t - bb.goT < B.lead && grp.some(u => aiSiegeT(g, u.type)) ? stage : null;
 }
 // v2.60 (raid, ATTACK.raid): with no push on, a few of its fastest ground units (at most share of its army) take the enemy's
 // own node, or the centre if it already holds theirs; they come home when hurt, after dur seconds, or when the army attacks
@@ -5327,7 +5744,7 @@ const SMART_SPOT = ['drone', 'aircraft', 'razorwing', 'needlewing', 'prismwing',
 function aiSmartSpotter(g, s) {
   const side = g.sides[s], dir = dirOf(s);
   side.spotAny = true;
-  const reach = u => { const d = UDEF[u.type]; return d.siege ? d.range + d.siege.reach : d.range; };
+  const reach = u => { const d = rwD(g, u.type); return d.siege ? d.range + d.siege.reach : d.range; }; // v2.83: a batch 2b Titan doesn't plant for range
   const mine = side.stance === 'attack' ? g.ents.filter(e => e.kind === 'u' && e.side === s && e.hp > 0) : [];
   const longs = mine.filter(u => UDEF[u.type].weapon && !UDEF[u.type].air && reach(u) > SIGHT[u.type] + 10);
   if (!longs.length) { side.spotter = null; side.spotU = null; return; }
@@ -5496,7 +5913,7 @@ function serialize(g, extra) {
   const projs = g.projs.map(p => Object.assign({}, p, { target: p.target ? p.target.id : null }));
   const sides = g.sides.map(sd => Object.assign({}, sd, { hq: sd.hq.id, slots: sd.slots.map(b => b ? b.id : null), res: Object.assign({}, sd.res), stats: Object.assign({}, sd.stats), salv: Object.assign({}, sd.salv) }));
   const fog = g.fog.map(f => ({ exp: Array.from(f.exp).join(''), seen: Array.from(f.seen).join(''), ghosts: f.ghosts, creep: f.creep, field: f.field, intel: f.intel, lastHQ: f.lastHQ, lastSpot: f.lastSpot, seenUnits: f.seenUnits }));
-  return JSON.stringify({ v: SAVE_VER, map: { id: MAP.id, v: MAP.v }, t: g.t, nid: g.nid, diffKey: g.diffKey, ents, projs, sides, nodes: g.nodes, fog, abil: g.abil, endHold: g.endHold || null, log: g.log, creep: g.creep, field: g.field, warps: g.warps, acid: g.acid, stats: g.stats, ...(g.guards && g.guards.length ? { guards: g.guards } : {}), ...(g.cond && Object.keys(g.cond).length ? { cond: g.cond, meteor: g.meteor || null } : {}), ...(rwB2a(g) ? { rw: g.rw, mk: g.mk || [] } : {}), seed: g.seed, rs: g.rs, fs: g.fs, extra }); // rw, mk (v2.82): the rework's switches and shell markers, only when batch 2a is on (older saves and b2a-off games stay as they were) // seed/rs/fs (v2.50): the random streams, so a resumed match rolls on where it stopped
+  return JSON.stringify({ v: SAVE_VER, map: { id: MAP.id, v: MAP.v }, t: g.t, nid: g.nid, diffKey: g.diffKey, ents, projs, sides, nodes: g.nodes, fog, abil: g.abil, endHold: g.endHold || null, log: g.log, creep: g.creep, field: g.field, warps: g.warps, acid: g.acid, stats: g.stats, ...(g.guards && g.guards.length ? { guards: g.guards } : {}), ...(g.cond && Object.keys(g.cond).length ? { cond: g.cond, meteor: g.meteor || null } : {}), ...(rwB2a(g) || rwB2b(g) ? { rw: g.rw, mk: g.mk || [] } : {}), ...(rwB2b(g) && ((g.rup && g.rup.length) || (g.rdg && g.rdg.length)) ? { rup: g.rup || [], rdg: g.rdg || [] } : {}), seed: g.seed, rs: g.rs, fs: g.fs, extra }); // rw, mk (v2.82): the rework's switches and shell markers, only when batch 2a is on (older saves and b2a-off games stay as they were) // seed/rs/fs (v2.50): the random streams, so a resumed match rolls on where it stopped
 }
 function deserialize(str) {
   const o = JSON.parse(str);
@@ -5507,7 +5924,8 @@ function deserialize(str) {
   const g = newGame(o.diffKey);
   if (o.rs !== undefined && !RNG.legacy) { g.seed = o.seed >>> 0; g.rs = o.rs | 0; g.fs = o.fs | 0; } // v2.50: an older save keeps the fresh seed newGame drew
   g.t = o.t; g.nid = o.nid; g.ents = o.ents; g.nodes = o.nodes; g.guards = o.guards || []; g.cond = o.cond || {}; g.meteor = o.meteor || null; // v2.72: battlefield conditions // v2.71: relic guards (a save from before has none)
-  g.rw = rwInit(o.rw || { b2a: false, artDeploy: false, artTelegraph: false }); if (o.mk) g.mk = o.mk; // v2.82: a save without the rework's switches plays as before it
+  g.rw = rwInit(o.rw ? Object.assign({ b2b: false }, o.rw) : { b2a: false, artDeploy: false, artTelegraph: false, b2b: false }); if (o.mk) g.mk = o.mk; // v2.82: a save without the rework's switches plays as before it (v2.83: a v2.82 save without b2b too)
+  if (o.rup) g.rup = o.rup; if (o.rdg) g.rdg = o.rdg; // v2.83: Worldbreaker cracks and ridges
   g.stats = o.stats && o.stats.v === 1 ? o.stats : newStats(o.t); // v2.51: an older save starts its record now
   const byId = new Map(g.ents.map(e => [e.id, e]));
   g.projs = o.projs.map(p => Object.assign(p, { target: p.target != null ? byId.get(p.target) || null : null }));
@@ -7469,7 +7887,8 @@ const SPR = { scale: 0, map: new Map(), budget: 0 };
 function sprPose(u) { // a stand-in unit snapped to one of the cached poses, with its cache key; null = draw live
   const box = SPR_BOX[u.type];
   if (!box || u.recoil > 0.02) return null;
-  let q = 0, anim = 0, dpk = 0, k = '';
+  if (u.type === 'worldbreaker' && u.slamT != null && VFX.g && VFX.lastT - u.slamT < 0.6) return null; // v2.83: its slam draws live
+  let q = 0, anim = 0, dpk = 0, k = '', sk = 0, gk = 0;
   const spin = typeof SPR_SPIN !== 'undefined' && SPR_SPIN[u.type]; // v2.82: always turning (the Severance's ring)
   if (spin) { const [ks, n] = spin, c = ((Math.round(u.anim * ks / (2 * Math.PI) * n) % n) + n) % n; q = 1 + c; anim = c * 2 * Math.PI / n / ks; }
   else if (u.moving) {
@@ -7477,8 +7896,10 @@ function sprPose(u) { // a stand-in unit snapped to one of the cached poses, wit
     else if (u.type !== 'artillery') { const [k, n] = SPR_STEP[u.type], c = Math.round(u.anim * k / (2 * Math.PI) * n) % n; q = 1 + c; anim = c * 2 * Math.PI / n / k; }
   }
   if (u.type === 'artillery' && u.dep && VFX.g) { dpk = Math.round(artK(u, VFX.lastT) * 6) / 6; if (dpk) k = 'd' + dpk.toFixed(2); } // v2.82: its legs, in seven steps
+  if (u.type === 'titan' && u.siege && VFX.g) { sk = Math.round(titanK(u, VFX.lastT) * 6) / 6; if (sk) k += 's' + sk.toFixed(2); } // v2.83: claws and plate, in seven steps
+  if (u.type === 'ruinmaw' && VFX.g) { gk = Math.round(ruinGk(u, VFX.lastT) * 4) / 4; if (gk) k += 'g' + gk; } // v2.83: its maw opening as a gate
   if (u.exT > VFX.lastT) k += 'x'; // v2.82: exiled: the washed-out colours
-  return { key: u.type + u.side + '.' + q + (u.aimAir ? 'a' : '') + k, box, u: { anim, moving: !spin && q > 0, recoil: 0, aimAir: u.aimAir, dpk } }; // a Hydra's guns up or level
+  return { key: u.type + u.side + '.' + q + (u.aimAir ? 'a' : '') + k, box, u: { anim, moving: !spin && q > 0, recoil: 0, aimAir: u.aimAir, dpk, sk, gk } }; // a Hydra's guns up or level
 }
 function drawUnitArt(c, u, T) {
   const p = sprPose(u);
@@ -7637,14 +8058,20 @@ function trailOf(g) { let a = BTRAIL.get(g); if (!a) { a = []; BTRAIL.set(g, a);
 function noteBurrow(g, u) {
   const a = trailOf(g); let last = null;
   for (let i = a.length - 1; i >= 0; i--) if (a[i].id === u.id) { last = a[i]; break; }
-  if (!last || Math.hypot(last.u - u.u, last.v - u.v) > 7 || g.t - last.t > 0.5) a.push({ u: u.u, v: u.v, t: g.t, side: u.side, id: u.id, s: (u.id * 7 + a.length) % 5 });
+  if (!last || Math.hypot(last.u - u.u, last.v - u.v) > 7 || g.t - last.t > 0.5) a.push({ u: u.u, v: u.v, t: g.t, side: u.side, id: u.id, s: (u.id * 7 + a.length) % 5, big: u.type === 'ruinmaw' ? 1 : 0 }); // big (v2.83): a Ruinmaw's wide trail
 }
 function drawTrails(c, g, lit) {
   const a = BTRAIL.get(g); if (!a || !a.length) return;
-  while (a.length && (g.t - a[0].t > BORE.trail || a[0].t > g.t)) a.shift();
+  const life = p => BORE.trail * (p.big ? 2 : 1); // v2.83: a Ruinmaw's trail lasts twice as long
+  while (a.length && a[0].t > g.t) a.shift();
+  for (let i = a.length - 1; i >= 0; i--) if (g.t - a[i].t > life(a[i])) a.splice(i, 1);
   for (const p of a) {
     if (!lit(p.u, p.v)) continue;
-    const k = 1 - (g.t - p.t) / BORE.trail, w = P(p.u, p.v), r = 4 + (p.s % 3);
+    const k = 1 - (g.t - p.t) / life(p), w = P(p.u, p.v), r = (4 + (p.s % 3)) * (p.big ? 2 : 1);
+    if (p.big) { // v2.83: a Ruinmaw's wide furrow, with cracks out to the sides
+      c.globalAlpha = 0.55 * k; c.fillStyle = '#2c2016'; c.beginPath(); c.ellipse(w.x, w.y + 1, r * 1.9, r * 0.5, 0, 0, 7); c.fill();
+      c.globalAlpha = 0.8 * k; c.strokeStyle = '#1e150d'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(w.x - r * 1.4, w.y + 2); c.lineTo(w.x - r * 2.3, w.y + 5 + p.s % 2); c.moveTo(w.x + r * 1.2, w.y + 1.5); c.lineTo(w.x + r * 2.1, w.y + 4 - p.s % 2); c.moveTo(w.x - r, w.y - 1); c.lineTo(w.x - r * 1.7, w.y - 3); c.stroke();
+    }
     c.globalAlpha = 0.85 * k; c.fillStyle = '#5a4430'; c.beginPath(); c.ellipse(w.x, w.y, r * 1.4, r * 0.55, 0, Math.PI, 0); c.fill();
     c.fillStyle = '#7d6142'; c.beginPath(); c.ellipse(w.x - 0.6, w.y - r * 0.2, r * 0.9, r * 0.35, 0, Math.PI, 0); c.fill();
     c.strokeStyle = '#2e2218'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(w.x - r * 1.6, w.y + 1); c.lineTo(w.x - r * 0.6, w.y + 0.2 + (p.s - 2) * 0.4); c.lineTo(w.x + r * 0.4, w.y + 1.2); c.stroke();
@@ -7699,6 +8126,272 @@ function drawExiled(c, u, w, t) {
   c.strokeStyle = 'rgba(230,220,255,0.6)'; c.lineWidth = 0.8; c.beginPath(); c.ellipse(w.x, y, r + 2, (r + 2) * 0.38, 0, 0, 7); c.stroke();
   for (let i = 0; i < 3; i++) { const q = (t * 0.8 + i / 3 + u.id * 0.21) % 1; c.globalAlpha = 0.7 * (1 - q); c.fillStyle = '#e6dcff'; c.fillRect(w.x + Math.sin(i * 2.1 + t * 3) * r * 0.6, y - q * h * 1.1, 1.4, 1.4); }
   c.globalAlpha = 1;
+}
+/* ---------- Faction rework art, batch 2b (v2.83; docs/FACTION_REWORK.md "Art direction") ----------
+   Titan (a Last Fist strider mech: hydraulic legs, glowing cockpit glass, team armour plates, hazard stripes, smoking
+   stacks, a heavy cannon; planted: stabiliser claws dig in and a front plate lowers), Ruinmaw (a colossal worm arching
+   out of the ground: team carapace segments, a ring maw of bone teeth that opens on a glowing gullet while it is a
+   gate) and Worldbreaker (an orb strider: a dark energy orb in an obsidian shell on floating spike legs that never touch
+   the ground; the slam lifts them and drives them down). Each is cached as poses (the Titan's plant and the Ruinmaw's
+   gate in steps; a Worldbreaker draws live only during its slam). Effects: Titan cover (a faint ring under the Titan and
+   a shimmer over each covered infantry unit), the Ruinmaw's wide trail and burrowed hump, the tunnel entrance, units
+   entering and pouring out, the Worldbreaker's racing crack and its ridge of floating obsidian slabs. */
+const TI_OL = ['#7f8d50', '#5a6740', '#3a4429'];
+function tiLeg(c, T, ph, near, k) { // a reverse-knee strider leg with exposed pistons; k: planted share (legs spread, knees bent)
+  const sw = Math.sin(ph) * 7 * (1 - k), lift = Math.max(0, -Math.cos(ph)) * 4 * (1 - k), hx = near ? 2 : -3, hy = -27 + 4 * k;
+  const fx = hx + sw + (near ? 7 : -7) * k, fy = -lift, kx = hx + sw * 0.4 + (near ? -6 : -8) - 3 * k, ky = -14 + 2 * k;
+  const thick = near ? 6 : 5;
+  c.lineCap = 'round';
+  c.strokeStyle = OUTL; c.lineWidth = thick + 2; c.beginPath(); c.moveTo(hx, hy); c.lineTo(kx, ky); c.lineTo(fx, fy - 3); c.stroke();
+  c.strokeStyle = near ? STEEL[1] : STEEL[2]; c.lineWidth = thick; c.stroke();
+  c.strokeStyle = near ? T.main : T.hull; c.lineWidth = thick - 2.5; c.beginPath(); c.moveTo(hx, hy); c.lineTo(kx + (hx - kx) * 0.15, ky + (hy - ky) * 0.15); c.stroke(); // armoured thigh plate
+  c.strokeStyle = '#d9dee6'; c.lineWidth = 1.1; c.beginPath(); c.moveTo(hx + 2.5, hy + 1); c.lineTo(kx + 3, ky - 1); c.moveTo(kx + 2, ky + 1); c.lineTo(fx + 2, fy - 6); c.stroke(); // piston rods
+  c.strokeStyle = STEEL[2]; c.lineWidth = 2.4; c.beginPath(); c.moveTo(hx + 2.5, hy + 1); c.lineTo(hx + 2.5 + (kx - hx) * 0.45, hy + 1 + (ky - hy) * 0.45); c.stroke(); // piston sleeve
+  c.lineCap = 'butt';
+  c.fillStyle = near ? STEEL[1] : '#252b35'; c.beginPath(); c.arc(kx, ky, near ? 3 : 2.6, 0, 7); c.fill(); outline(c, 0.8); // knee joint
+  c.fillStyle = near ? '#2a313c' : '#1c2129'; rr(c, fx - 7, fy - 3.4, 14, 3.6, 1.6); c.fill(); outline(c, 0.8); // foot pad
+}
+function dTitan2(c, T, u) {
+  const ph = u.moving ? (u.anim || 0) * 3.2 : 0, k = u.sk !== undefined ? u.sk : titanK(u, VFX.lastT), // a live draw (mid-recoil) reads the plant itself
+    e = 1 - (1 - k) * (1 - k), bob = (u.moving ? -Math.abs(Math.cos(ph)) * 1.6 + 1.6 : 0) + 4 * e, rk = (u.recoil || 0) * 4;
+  // stabiliser claws (planted): two braced claws that dig in fore and aft
+  if (e > 0.02) for (const s of [-1, 1]) {
+    const bx = s * 9, by = -22 + bob, tx = s * (12 + 14 * e), ty = 2 * e;
+    c.strokeStyle = OUTL; c.lineWidth = 5; c.lineCap = 'round'; c.beginPath(); c.moveTo(bx, by); c.lineTo((bx + tx) / 2 + s * 3, by - 3 * e); c.lineTo(tx, ty - 1); c.stroke();
+    c.strokeStyle = STEEL[1]; c.lineWidth = 3.2; c.stroke(); c.lineCap = 'butt';
+    c.fillStyle = STEEL[2]; for (const d of [-2.5, 0, 2.5]) { c.beginPath(); c.moveTo(tx + d - 1.2, ty - 1); c.lineTo(tx + d + s * 1.2, ty + 2.6 * e); c.lineTo(tx + d + 1.2, ty - 1); c.fill(); }
+    c.fillStyle = 'rgba(70,52,34,0.8)'; c.beginPath(); c.ellipse(tx, ty + 0.5, 5 * e, 1.6 * e, 0, 0, 7); c.fill(); // dirt thrown up
+  }
+  tiLeg(c, T, ph + Math.PI, false, e);
+  c.save(); c.translate(0, bob);
+  // exhaust stacks, smoking
+  for (const [x, h] of [[-16, 15], [-11.5, 12]]) { c.fillStyle = lgrad(c, x - 2, 0, x + 2, 0, [STEEL[0], STEEL[2]]); rr(c, x - 2, -48 - h + 12, 4, h, 1); c.fill(); outline(c, 0.7); c.fillStyle = '#20252d'; c.fillRect(x - 2, -48 - h + 12, 4, 1.6); }
+  const a = u.anim || 0; c.fillStyle = 'rgba(80,80,88,0.5)';
+  for (let i = 0; i < 3; i++) { const q = (a * 0.7 + i / 3) % 1; c.globalAlpha = 0.6 * (1 - q); c.beginPath(); c.arc(-16 - q * 6, -52 - q * 14, 2.4 + q * 3.4, 0, 7); c.fill(); }
+  c.globalAlpha = 1;
+  // hull: olive frame, team armour plates over most of it
+  c.fillStyle = lgrad(c, 0, -46, 0, -22, TI_OL); poly(c, [[-15, -24], [-17, -36], [-12, -46], [8, -47], [16, -40], [17, -27], [10, -22], [-10, -22]]); c.fill(); outline(c, 1.2);
+  c.fillStyle = lgrad(c, 0, -45, 0, -28, [T.light, T.main, T.hull]); poly(c, [[-14, -30], [-15, -37], [-11, -44.5], [4, -45.5], [3, -30]]); c.fill(); outline(c, 0.9);
+  c.fillStyle = lgrad(c, 0, -30, 0, -23, [T.main, T.hull]); poly(c, [[-13, -29], [12, -29], [9, -23], [-9, -23]]); c.fill(); outline(c, 0.8);
+  c.strokeStyle = 'rgba(0,0,0,0.35)'; c.lineWidth = 0.7; c.beginPath(); c.moveTo(-5, -45); c.lineTo(-6, -30); c.stroke();
+  c.fillStyle = M.d; for (const [x, y] of [[-12, -33], [-1, -42], [-1, -33], [6, -26], [-8, -26]]) { c.beginPath(); c.arc(x, y, 0.75, 0, 7); c.fill(); } // rivets
+  c.save(); c.beginPath(); c.rect(-15, -37, 5, 7); c.clip(); c.fillStyle = HAZ; c.fillRect(-15, -37, 5, 7); c.strokeStyle = '#1a1a1a'; c.lineWidth = 1.3; // hazard stripes
+  for (let i = -3; i < 3; i++) { c.beginPath(); c.moveTo(-16 + i * 3, -29); c.lineTo(-10 + i * 3, -38); c.stroke(); } c.restore();
+  rim(c, -11, -46, 6);
+  c.fillStyle = RUSTO; rr(c, -19, -34, 4, 9, 1.5); c.fill(); outline(c, 0.7); // a fuel tank on its back
+  // cockpit: armoured nose with glowing glass
+  c.fillStyle = lgrad(c, 0, -46, 0, -34, [STEEL[0], STEEL[1], STEEL[2]]); poly(c, [[4, -46], [12, -46], [18, -41], [17, -35], [6, -34]]); c.fill(); outline(c);
+  c.fillStyle = `rgba(${T.glow},0.95)`; poly(c, [[9, -44.5], [13, -44.5], [16.4, -41], [10, -41]]); c.fill();
+  c.globalCompositeOperation = 'lighter'; c.fillStyle = `rgba(${T.glow},0.35)`; c.beginPath(); c.ellipse(13, -42.5, 6, 3, 0, 0, 7); c.fill(); c.globalCompositeOperation = 'source-over';
+  c.fillStyle = 'rgba(255,255,255,0.7)'; c.fillRect(10.5, -44, 2.2, 0.9);
+  // the heavy cannon (tip at MUZ.titan: 38, -27)
+  c.fillStyle = lgrad(c, 0, -33, 0, -24, [STEEL[0], STEEL[1], STEEL[2]]); rr(c, 4, -33, 12, 9, 2); c.fill(); outline(c); // mantlet
+  c.fillStyle = lgrad(c, 0, -30, 0, -24.5, [STEEL[0], STEEL[2]]); c.fillRect(14 - rk, -30, 21, 5); c.strokeStyle = OUTL; c.lineWidth = 0.9; c.strokeRect(14 - rk, -30, 21, 5);
+  c.fillStyle = STEEL[2]; c.fillRect(33 - rk, -31.2, 6, 7.4); c.fillStyle = '#0c0e12'; c.fillRect(38.2 - rk, -28.6, 0.9, 2.4); // muzzle brake
+  c.fillStyle = T.main; c.fillRect(22 - rk, -30.4, 3, 5.8); // a team band
+  // the front armour plate: folded up under the cannon on the move, lowered over the legs when planted
+  c.save(); c.translate(14, -27); c.rotate(-1.35 * (1 - e));
+  c.fillStyle = lgrad(c, 0, 0, 0, 14, [T.main, T.hull]); poly(c, [[-1, 0], [5, 1], [6, 13], [0, 14]]); c.fill(); outline(c, 0.9);
+  c.save(); c.beginPath(); c.rect(0, 9, 6, 4); c.clip(); c.fillStyle = HAZ; c.fillRect(0, 9, 6, 4); c.strokeStyle = '#1a1a1a'; c.lineWidth = 1.1; for (let i = -2; i < 3; i++) { c.beginPath(); c.moveTo(i * 2.6, 14); c.lineTo(i * 2.6 + 4, 8); c.stroke(); } c.restore();
+  c.restore();
+  c.restore();
+  tiLeg(c, T, ph, true, e);
+}
+
+// Ruinmaw: a colossal worm arching out of the ground, its head facing forward. u.gk 0..1: its maw opening into a glowing
+// gullet (a gate)
+const RM_FLESH = ['#94626a', '#6a3c46', '#3e2129'], RM_GLOW = '206,255,120';
+function dRuin2(c, T, u) {
+  c.save(); c.scale(1.3, 1.3); dRuinBody(c, T, u); c.restore(); // colossal: drawn 1.3× (its mouth lands at RUIN.mouth, where units come out)
+}
+function dRuinBody(c, T, u) {
+  const g = u.gk !== undefined ? u.gk : ruinGk(u, VFX.lastT), wav = u.moving ? Math.sin((u.anim || 0) * 4) * 1.5 : 0, pulse = 0.7 + 0.3 * Math.sin((u.anim || 0) * 2.5);
+  // the dirt it rises from
+  c.fillStyle = '#4e3b29'; c.beginPath(); c.ellipse(-12, 0, 22, 5, 0, Math.PI, 0); c.fill();
+  c.fillStyle = '#6b5236'; for (const [x, r] of [[-28, 3], [-20, 4], [2, 3.5], [8, 2.5]]) { c.beginPath(); c.ellipse(x, -0.5, r, r * 0.6, 0, Math.PI, 0); c.fill(); }
+  // body: segments from the ground up to the head, back to front
+  const seg = [[-24, -5, 7], [-19, -13, 8.5], [-12, -20, 10], [-3, -25, 11], [7, -27, 11.5]];
+  for (let i = 0; i < seg.length; i++) {
+    const [x, y, r] = seg[i], yy = y + wav * (i % 2 ? 1 : -1) * 0.5;
+    c.fillStyle = lgrad(c, x, yy + r, x, yy - r, [RM_FLESH[2], RM_FLESH[1]]); c.beginPath(); c.ellipse(x, yy + 2, r * 0.95, r * 0.85, 0, 0, 7); c.fill(); outline(c, 0.9); // the soft underside
+    c.fillStyle = lgrad(c, x, yy - r, x, yy + r * 0.3, [T.light, T.main, T.hull]); c.beginPath(); c.ellipse(x, yy - r * 0.15, r, r * 0.72, -0.25, Math.PI * 1.02, Math.PI * 2.05); c.closePath(); c.fill(); outline(c, 1); // carapace plate
+    c.strokeStyle = 'rgba(255,255,255,0.35)'; c.lineWidth = 0.8; c.beginPath(); c.ellipse(x, yy - r * 0.2, r * 0.8, r * 0.55, -0.25, Math.PI * 1.15, Math.PI * 1.75); c.stroke(); // rim light
+    if (i < seg.length - 1) { c.globalCompositeOperation = 'lighter'; c.fillStyle = `rgba(${GB_SAC},${0.55 * pulse})`; c.beginPath(); c.arc(x + r * 0.5, yy + r * 0.45, 1.8, 0, 7); c.fill(); c.globalCompositeOperation = 'source-over'; } // glow sacs between plates
+  }
+  // bone spurs along its back
+  c.fillStyle = GB_BONE; for (const [x, y] of [[-19, -21], [-12, -29], [-3, -35], [6, -37]]) { c.beginPath(); c.moveTo(x - 2, y + 2); c.lineTo(x - 3.5, y - 4); c.lineTo(x + 2, y + 1.5); c.fill(); outline(c, 0.5); }
+  // the head: a ring maw of bone teeth facing forward
+  const hx = 17, hy = -25, R = 9 + g * 3, open = 4.5 + g * 4 + (u.recoil || 0) * 2;
+  c.fillStyle = lgrad(c, hx, hy - 12, hx, hy + 12, [RM_FLESH[0], RM_FLESH[2]]); c.beginPath(); c.ellipse(hx, hy, 9.5, 12, 0, 0, 7); c.fill(); outline(c, 1.1);
+  c.fillStyle = lgrad(c, hx, hy - 12, hx, hy, [T.light, T.main]); c.beginPath(); c.ellipse(hx - 2, hy - 2, 8.5, 10, 0, Math.PI * 1.05, Math.PI * 1.75); c.closePath(); c.fill(); outline(c, 0.8); // a team crest
+  c.fillStyle = '#1a0a0e'; c.beginPath(); c.ellipse(hx + 6, hy + 1, open * 0.55, open, 0, 0, 7); c.fill(); // the mouth
+  if (g > 0.05) { // the gullet glows: a way through
+    c.globalCompositeOperation = 'lighter';
+    c.fillStyle = `rgba(${RM_GLOW},${0.55 * g})`; c.beginPath(); c.ellipse(hx + 6, hy + 1, open * 0.45, open * 0.85, 0, 0, 7); c.fill();
+    c.fillStyle = `rgba(255,255,220,${0.6 * g})`; c.beginPath(); c.ellipse(hx + 6.5, hy + 1, open * 0.18, open * 0.4, 0, 0, 7); c.fill();
+    c.fillStyle = `rgba(${RM_GLOW},${0.25 * g})`; c.beginPath(); c.ellipse(hx + 9, hy + 1, open * 1.3, open * 1.6, 0, 0, 7); c.fill();
+    c.globalCompositeOperation = 'source-over';
+  }
+  c.fillStyle = GB_BONE; for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2, x = hx + 6 + Math.cos(a) * open * 0.55, y = hy + 1 + Math.sin(a) * open; c.beginPath(); c.moveTo(x, y); c.lineTo(hx + 6 + Math.cos(a + 0.18) * (open * 0.55 + 3.2 + g), hy + 1 + Math.sin(a + 0.18) * (open + 3.4 + g)); c.lineTo(hx + 6 + Math.cos(a + 0.36) * open * 0.55, hy + 1 + Math.sin(a + 0.36) * open); c.fill(); }
+  c.fillStyle = `rgba(${GB_SAC},0.95)`; for (const [x, y] of [[hx - 3, hy - 6], [hx - 1, hy - 8.5]]) { c.beginPath(); c.arc(x, y, 1.2, 0, 7); c.fill(); } // eyes
+  if (g < 0.5) { c.fillStyle = 'rgba(190,240,140,0.7)'; c.fillRect(hx + 5.5, hy + open + 0.5, 1, 3 + ((u.anim || 0) * 3) % 3); } // drool
+}
+
+// Worldbreaker: an orb strider. A dark energy orb in an obsidian shell on four floating spike legs that never touch the
+// ground. sl (0..1, live): the slam (legs and orb lift, then drive down)
+function dWB2(c, T, u) {
+  const t = VFX.lastT, sl = u.slamT != null && VFX.g ? clamp((t - u.slamT) / 0.55, 0, 1) : 1;
+  const up = sl < 0.45 ? Math.sin(sl / 0.45 * Math.PI / 2) * 9 : sl < 0.6 ? 9 * (1 - (sl - 0.45) / 0.15) - 2 * ((sl - 0.45) / 0.15) : -2 * (1 - (sl - 0.6) / 0.4);
+  const a = u.anim || 0, bob = Math.sin(a * 1.4) * 1.2, oy = -42 - up + bob, glow = 0.7 + 0.3 * Math.sin(a * 2.2);
+  const legs = [[-17, -1, false], [-6, 1.5, false], [7, -1.5, true], [18, 1, true]];
+  const leg = ([fx, fy, near]) => { // a spike from under the orb down to just above the ground
+    const lift = up * 1.1 + (u.moving ? Math.max(0, Math.sin(a * 5 + fx)) * 3 : 0), tipY = -3 + fy - lift, tipX = fx * 1.05;
+    c.strokeStyle = `rgba(${T.glow},${near ? 0.45 : 0.25})`; c.lineWidth = 0.8; c.beginPath(); c.moveTo(fx * 0.35, oy + 8); c.lineTo(tipX, tipY - 6); c.stroke(); // a thread of light
+    c.fillStyle = lgrad(c, fx * 0.4, oy + 6, tipX, tipY, near ? ['#4a3f66', '#1b1628', '#0b0a12'] : ['#2f2843', '#141120', '#09080e']);
+    poly(c, [[fx * 0.3 - 2.2, oy + 7], [fx * 0.3 + 2.2, oy + 7], [tipX + 1.6, tipY - 9], [tipX, tipY], [tipX - 1.6, tipY - 9]]); c.fill(); outline(c, 0.7);
+    c.fillStyle = `rgba(${T.glow},0.85)`; c.beginPath(); c.arc(tipX, tipY + 1.4, 1.1, 0, 7); c.fill(); // the light under each tip
+  };
+  for (const L_ of legs) if (!L_[2]) leg(L_);
+  // the light it stands on
+  c.globalCompositeOperation = 'lighter'; c.fillStyle = `rgba(${T.glow},${0.12 + 0.1 * glow})`; c.beginPath(); c.ellipse(0, -0.5, 22, 3.6, 0, 0, 7); c.fill(); c.globalCompositeOperation = 'source-over';
+  // the orb: dark energy, swirling
+  c.globalCompositeOperation = 'lighter'; c.fillStyle = `rgba(${T.glow},${0.25 * glow})`; c.beginPath(); c.arc(0, oy, 16, 0, 7); c.fill(); c.globalCompositeOperation = 'source-over';
+  const og = c.createRadialGradient(-2, oy - 3, 1, 0, oy, 12); og.addColorStop(0, '#f0e6ff'); og.addColorStop(0.25, `rgba(${T.glow},1)`); og.addColorStop(0.6, '#3a1f6a'); og.addColorStop(1, '#0d0718');
+  c.fillStyle = og; c.beginPath(); c.arc(0, oy, 11, 0, 7); c.fill();
+  c.strokeStyle = `rgba(${T.glow},0.8)`; c.lineWidth = 0.9; c.beginPath(); c.arc(0, oy, 7, a * 2, a * 2 + 2.4); c.stroke(); c.beginPath(); c.arc(0, oy, 4.5, -a * 3, -a * 3 + 2); c.stroke();
+  // the obsidian shell: four plates around the orb, glowing seams between them
+  for (let i = 0; i < 4; i++) {
+    const a0 = i * Math.PI / 2 + 0.35 + Math.sin(a * 0.8) * 0.05, a1 = a0 + 1.05, r0 = 11.5, r1 = 15.5;
+    c.fillStyle = lgrad(c, 0, oy - 15, 0, oy + 15, ['#544774', '#1d1830', '#09080f']);
+    c.beginPath(); c.arc(0, oy, r1, a0, a1); c.arc(0, oy, r0, a1, a0, true); c.closePath(); c.fill(); outline(c, 0.8);
+    c.strokeStyle = 'rgba(220,210,255,0.4)'; c.lineWidth = 0.7; c.beginPath(); c.arc(0, oy, r1 - 0.6, a0 + 0.1, a0 + 0.6); c.stroke();
+  }
+  c.fillStyle = T.main; for (const ang of [-1.2, 0.4, 2.0]) { c.beginPath(); c.arc(Math.cos(ang) * 13.5, oy + Math.sin(ang) * 13.5, 1.5, 0, 7); c.fill(); } // team glyph studs
+  // a halo
+  c.strokeStyle = `rgba(${T.glow},0.55)`; c.lineWidth = 1.2; c.beginPath(); c.ellipse(0, oy - 18, 9, 2.4, 0, 0, 7); c.stroke();
+  for (const L_ of legs) if (L_[2]) leg(L_);
+}
+
+DRAW_U.titan = dTitan2; DRAW_U.ruinmaw = dRuin2; DRAW_U.worldbreaker = dWB2;
+Object.assign(SPR_BOX, { titan: [-34, -66, 80, 72], ruinmaw: [-54, -72, 112, 78], worldbreaker: [-28, -70, 56, 74] });
+Object.assign(UVIS, { titan: { h: 52, w: 19 }, ruinmaw: { h: 50, w: 28 }, worldbreaker: { h: 58, w: 20 } });
+// the Titan's plant share (0 mobile, 1 planted) at time t (batch 2b's times; the v2.37 siege lock's in a b2b-off game)
+function titanK(u, t) {
+  if (!u.siege) return 0;
+  if (u.siege === 2) return 1;
+  const S = VFX.g && rwB2b(VFX.g) ? TITAN : (UDEF.titan.siege || TITAN);
+  return u.siege === 1 ? clamp(1 - (u.sgT - t) / S.plant, 0, 1) : clamp((u.sgT - t) / S.unplant, 0, 1);
+}
+const ruinGk = (u, t) => VFX.g && rwB2b(VFX.g) && u.type === 'ruinmaw' && !u.bur && !u.moving ? clamp((t - (u.gateT || 0)) / 0.5, 0, 1) : 0; // its maw opening as a gate
+
+/* ---- effects ---- */
+// Titan cover: a faint ring of its reach under each Titan, and a shimmer over each covered unit (subtle in a crowd)
+function drawCoverRing(c, u, w, t) {
+  const T = TEAM[u.side], R = TITAN.coverR;
+  c.globalAlpha = 0.16; c.strokeStyle = T.main; c.lineWidth = 1.2; c.setLineDash([3, 5]); c.lineDashOffset = -t * 6; c.beginPath(); c.ellipse(w.x, w.y, R, R * DY, 0, 0, 7); c.stroke(); c.setLineDash([]); c.lineDashOffset = 0;
+  c.globalAlpha = 0.05; c.fillStyle = T.main; c.fill(); c.globalAlpha = 1;
+}
+function drawCovered(c, u, w, t) {
+  const h = visH(u.type) * US, y = w.y - u.z, k = 0.5 + 0.5 * Math.sin(t * 3 + u.id * 1.7), T = TEAM[u.side];
+  c.globalAlpha = 0.22 + 0.12 * k; c.strokeStyle = `rgb(${T.glow})`; c.lineWidth = 1;
+  c.beginPath(); c.ellipse(w.x, y - h * 0.55, h * 0.42, h * 0.62, 0, Math.PI * 1.08, Math.PI * 1.92); c.stroke(); // a thin arc of shield over it
+  c.globalAlpha = 1;
+}
+// The Ruinmaw underground: a wide hump of churned earth with cracks glowing through it
+function drawBurrowedBig(c, u, w, t) {
+  const r = 15, k = 0.5 + 0.5 * Math.sin(t * 5 + u.id);
+  c.fillStyle = '#463323'; c.beginPath(); c.ellipse(w.x, w.y, r * 1.7, r * 0.7, 0, Math.PI, 0); c.fill();
+  c.fillStyle = '#6a5034'; c.beginPath(); c.ellipse(w.x + u.face * 4, w.y - 3, r * 1.1, r * 0.45, 0, Math.PI, 0); c.fill();
+  c.strokeStyle = `rgba(${GB_SAC},${0.3 + 0.45 * k})`; c.lineWidth = 1.3; c.beginPath(); c.moveTo(w.x - 18, w.y - 1); c.lineTo(w.x - 9, w.y - 7); c.lineTo(w.x - 1, w.y - 3); c.lineTo(w.x + 7, w.y - 8); c.lineTo(w.x + 16, w.y - 2); c.stroke();
+  c.fillStyle = '#8a6a46'; for (let i = 0; i < 5; i++) { const q = ((t * 2.5 + i / 5 + u.id * 0.13) % 1); c.globalAlpha = 1 - q; c.fillRect(w.x + u.face * (12 + q * 10) - 1.5, w.y - 4 - Math.sin(q * Math.PI) * 9, 3, 3); }
+  c.globalAlpha = 1;
+}
+// The tunnel entrance (the owner's side, while one of its Ruinmaws is a gate, or units are on their way in)
+function drawTunnelMouths(c, g, t) {
+  for (let s = 0; s < 2; s++) {
+    if (s !== 0 && !g.spectate) continue;
+    const R = tunnelGate(g, s), coming = g.ents.some(e => e.side === s && e.tn && e.hp > 0); if (!R && !coming) continue;
+    const E = tunnelEntrance(g, s), w = P(E.u, E.v), k = 0.5 + 0.5 * Math.sin(t * 3);
+    c.fillStyle = '#3a2a1c'; c.beginPath(); c.ellipse(w.x, w.y, 17, 7, 0, 0, 7); c.fill();
+    c.fillStyle = '#0d0806'; c.beginPath(); c.ellipse(w.x, w.y + 0.5, 12, 4.6, 0, 0, 7); c.fill();
+    if (R) { c.globalCompositeOperation = 'lighter'; c.fillStyle = `rgba(${RM_GLOW},${0.25 + 0.2 * k})`; c.beginPath(); c.ellipse(w.x, w.y + 0.5, 9, 3.2, 0, 0, 7); c.fill(); c.globalCompositeOperation = 'source-over'; }
+    c.strokeStyle = TEAM[s].main; c.lineWidth = 1.4; c.globalAlpha = 0.8; c.beginPath(); c.ellipse(w.x, w.y, 17, 7, 0, 0, 7); c.stroke(); c.globalAlpha = 1;
+    if (R && s === 0) { const r = P(R.u, R.v); c.globalAlpha = 0.25; c.strokeStyle = `rgb(${RM_GLOW})`; c.lineWidth = 1; c.setLineDash([2, 6]); c.lineDashOffset = -t * 12; c.beginPath(); c.moveTo(w.x, w.y); c.lineTo(r.x, r.y); c.stroke(); c.setLineDash([]); c.lineDashOffset = 0; c.globalAlpha = 1; } // the way through, faintly
+  }
+}
+// A unit going in (inn) or coming out: a burst of dirt and a green glow
+function drawEmerge(c, f) {
+  const k = f.t / f.life, out = f.inn ? 1 - k : k;
+  c.globalCompositeOperation = 'lighter'; stamp(c, GLOW.acid, f.x, f.y - 6, 14 * (0.6 + out * 0.6), 0.7 * (1 - k)); c.globalCompositeOperation = 'source-over';
+  c.globalAlpha = 1 - k; c.fillStyle = '#6e5538';
+  for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2, d = 4 + 12 * out; c.fillRect(f.x + Math.cos(a) * d - 1.2, f.y + Math.sin(a) * d * 0.4 - Math.sin(out * Math.PI) * 9 - 1.2, 2.4, 2.4); }
+  c.strokeStyle = '#8a6a46'; c.lineWidth = 1.5; c.beginPath(); c.ellipse(f.x, f.y, 6 + 8 * out, (6 + 8 * out) * 0.4, 0, 0, 7); c.stroke(); c.globalAlpha = 1;
+}
+// Worldbreaker cracks: a glowing jagged line racing from its feet to the end, the front throwing up shards; the crack
+// glows on for a moment after it stops. Ridges: floating obsidian slabs with glyph glow that rise, hold and fade.
+const RUPV = new WeakMap(); // game → [{ r, end }] cracks seen, kept while they fade
+function rupSeen(g) {
+  let a = RUPV.get(g); if (!a) { a = []; RUPV.set(g, a); }
+  for (const r of g.rup || []) if (!a.some(x => x.r.id === r.id)) a.push({ r: Object.assign({}, r, { hit: null }) });
+  const now = g.t; for (let i = a.length - 1; i >= 0; i--) { const x = a[i], done = x.r.t0 + x.r.len / WB.speed; if (now - done > 1.2 || x.r.t0 > now + 0.01) a.splice(i, 1); }
+  return a;
+}
+const jag = (id, i) => (((id * 97 + i * 131) % 17) / 17 - 0.5) * 2; // a fixed wobble per crack and point
+function drawRuptures(c, g, lit) {
+  if (!VFX.g || !rwB2b(g)) return;
+  drawRidgeBase(c, g, lit);
+  const a = rupSeen(g); if (!a.length) return;
+  for (const { r } of a) {
+    const front = Math.min(r.len, (g.t - r.t0) * WB.speed), done = r.t0 + r.len / WB.speed, fade = g.t > done ? 1 - (g.t - done) / 1.2 : 1;
+    if (front <= 0 || fade <= 0) continue;
+    if (r.side !== 0 && !g.spectate && !lit(r.su + r.du * front, r.sv + r.dv * front) && !lit(r.su, r.sv)) continue;
+    const T = TEAM[r.side], n = Math.max(2, Math.ceil(front / 9)), pts = [];
+    for (let i = 0; i <= n; i++) { const d = front * i / n, o = i && i < n ? jag(r.id, i) * 4 : 0, w = P(r.su + r.du * d - r.dv * o, r.sv + r.dv * d + r.du * o); pts.push(w); }
+    c.lineCap = 'round'; c.lineJoin = 'round';
+    c.globalAlpha = 0.7 * fade; c.strokeStyle = '#120c1c'; c.lineWidth = 12; c.beginPath(); pts.forEach((p, i) => i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)); c.stroke(); // the split in the ground
+    c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.35 * fade; c.strokeStyle = `rgba(${T.glow},0.8)`; c.lineWidth = 18; c.stroke(); // its glow on the ground
+    c.globalAlpha = 0.95 * fade; c.strokeStyle = `rgba(${T.glow},0.95)`; c.lineWidth = 5; c.stroke();
+    c.strokeStyle = 'rgba(255,245,255,0.95)'; c.lineWidth = 2; c.stroke();
+    for (let i = 1; i < n; i += 2) { const p = pts[i], s = jag(r.id, i + 7); c.strokeStyle = `rgba(${T.glow},0.6)`; c.lineWidth = 1; c.beginPath(); c.moveTo(p.x, p.y); c.lineTo(p.x + s * 6, p.y + (i % 4 ? 3 : -3)); c.stroke(); } // side cracks
+    if (front < r.len) { const p = pts[pts.length - 1]; stamp(c, GLOW['t' + r.side], p.x, p.y - 4, 16, 0.9); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1; c.fillStyle = '#2a2140'; for (let i = 0; i < 4; i++) { const q = ((g.t * 6 + i / 4) % 1); c.fillRect(p.x + jag(r.id, i) * 6 - 1.5, p.y - 2 - q * 14, 3, 3); } }
+    c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1; c.lineCap = 'butt'; c.lineJoin = 'miter';
+  }
+}
+// the ground under a ridge: a dark fissure with a glow, so its whole length reads
+function drawRidgeBase(c, g, lit) {
+  if (!g.rdg) return;
+  for (const R of g.rdg) {
+    const k = Math.min(clamp((g.t - R.t0) / WB.rise, 0, 1), clamp((R.t1 - g.t) / 0.6, 0, 1)); if (k <= 0) continue;
+    if (R.side !== 0 && !g.spectate && !lit((R.au + R.bu) / 2, (R.av + R.bv) / 2)) continue;
+    const a = P(R.au, R.av), b = P(R.bu, R.bv), T = TEAM[R.side];
+    c.lineCap = 'round'; c.globalAlpha = 0.6 * k; c.strokeStyle = '#0d0a16'; c.lineWidth = 16; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
+    c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.5 * k; c.strokeStyle = `rgba(${T.glow},0.9)`; c.lineWidth = 4; c.stroke(); c.globalCompositeOperation = 'source-over';
+    c.globalAlpha = 1; c.lineCap = 'butt';
+  }
+}
+// a ridge as slabs for the back-to-front list (each slab is drawn in its place among the units)
+function ridgeSlabs(g, list, lit) {
+  if (!rwB2b(g) || !g.rdg) return;
+  for (const R of g.rdg) {
+    const lu = R.bu - R.au, lv = R.bv - R.av, ll = Math.hypot(lu, lv), n = Math.max(2, Math.round(ll / 12));
+    for (let i = 0; i < n; i++) { const k = (i + 0.5) / n, u = R.au + lu * k, v = R.av + lv * k; if (R.side === 0 || g.spectate || lit(u, v)) list.push({ kind: 'slab', u, v, R, i }); }
+  }
+}
+function drawSlab(c, g, e) {
+  const R = e.R, t = g.t, rise = clamp((t - R.t0) / WB.rise, 0, 1), fade = clamp((R.t1 - t) / 0.6, 0, 1), k = Math.min(1 - (1 - rise) * (1 - rise), fade);
+  if (k <= 0) return;
+  const w = P(e.u, e.v), T = TEAM[R.side], s = jag(R.id, e.i), h = (8 + (e.i % 3) * 2.5 + s * 1.5) * k, wd = 10 + (e.i % 2) * 3, fl = 1.5 + Math.sin(t * 2 + e.i) * 0.8;
+  w.x += (e.i % 2 ? 3 : -3) + s * 1.5; // staggered, a jagged band
+  c.fillStyle = `rgba(0,0,0,${0.3 * k})`; c.beginPath(); c.ellipse(w.x, w.y, wd + 2, 2.6, 0, 0, 7); c.fill();
+  c.globalAlpha = k;
+  const y0 = w.y - fl, tilt = s * 2;
+  c.fillStyle = lgrad(c, w.x - wd, y0 - h, w.x + wd, y0, ['#5a4c80', '#1c1730', '#08070d']);
+  poly(c, [[w.x - wd, y0], [w.x - wd * 0.8 + tilt, y0 - h * 0.85], [w.x + tilt * 0.5, y0 - h], [w.x + wd * 0.85 + tilt, y0 - h * 0.7], [w.x + wd, y0]]); c.fill(); outline(c, 0.8);
+  c.strokeStyle = `rgba(230,220,255,${0.5 * k})`; c.lineWidth = 0.8; c.beginPath(); c.moveTo(w.x - wd * 0.8 + tilt, y0 - h * 0.85); c.lineTo(w.x + tilt * 0.5, y0 - h); c.stroke(); // rim light
+  c.globalCompositeOperation = 'lighter'; c.strokeStyle = `rgba(${T.glow},${0.85 * k})`; c.lineWidth = 1; // glyphs
+  c.beginPath(); c.moveTo(w.x - 2 + tilt * 0.4, y0 - h * 0.62); c.lineTo(w.x + 1.5 + tilt * 0.4, y0 - h * 0.5); c.lineTo(w.x - 1.5 + tilt * 0.3, y0 - h * 0.36); c.moveTo(w.x + tilt * 0.2, y0 - h * 0.25); c.lineTo(w.x + tilt * 0.2, y0 - h * 0.12); c.stroke();
+  c.fillStyle = `rgba(${T.glow},${0.25 * k})`; c.beginPath(); c.ellipse(w.x, w.y - 0.5, wd, 1.6, 0, 0, 7); c.fill(); // the light holding it up
+  c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
 }
 /* ---------- Backdrop: sky, mountains and the ground plane ---------- */
 function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -8312,7 +9005,10 @@ function drawFog(c, F) {
 
 function drawUnit(c, u) {
   const d = UDEF[u.type], w = P(u.u, u.v), bob = d.air ? Math.sin(u.anim * 2.2) * 3 : 0;
-  if (u.bur) { if (VFX.g) noteBurrow(VFX.g, u); drawBurrowed(c, u, w, VFX.lastT); return; } // v2.82: a burrowed Gorebore is only a moving hump of earth
+  if (u.gone === 3) return; // v2.83: inside a Ruinmaw's tunnel: off the field
+  if (u.bur) { if (VFX.g) noteBurrow(VFX.g, u); (u.type === 'ruinmaw' ? drawBurrowedBig : drawBurrowed)(c, u, w, VFX.lastT); return; } // v2.82: a burrowed Gorebore is only a moving hump of earth (v2.83: a Ruinmaw a wider one)
+  const b2b = VFX.g && rwB2b(VFX.g);
+  if (b2b && u.type === 'titan') drawCoverRing(c, u, w, VFX.lastT); // v2.83: the reach of its cover
   const ex = u.exT > VFX.lastT; // v2.82: exiled: faded, washed out, a violet shimmer and a ring for the time left
   c.fillStyle = d.air ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.32)';
   const big = u.type === 'leviathan' || u.type === 'worldrender' || u.type === 'sovereign' ? 2.4 : u.type === 'broodtyrant' || u.type === 'voidcarrier' ? 1.6 : u.type === 'drone' || u.type === 'needlewing' || u.type === 'prismwing' ? 0.5 : 1; // a Leviathan's shadow is seen coming
@@ -8333,6 +9029,7 @@ function drawUnit(c, u) {
   c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
   c.restore();
   if (ex) drawExiled(c, u, w, VFX.lastT);
+  if (u.cov && b2b) drawCovered(c, u, w, VFX.lastT); // v2.83: in a Titan's cover
   if (u.shT > VFX.lastT) drawShield(c, u, VFX.lastT);
   if (VFX.g) drawAxFx(c, VFX.g, u, w); // v2.27: a Marksman's charge, a Gravemantle's aura, slowed and disrupted marks
   if (u.ovT > VFX.lastT) drawOvercharge(c, u, w, VFX.lastT); // v2.28
@@ -8379,15 +9076,7 @@ function drawSurge(c, u, w, t) {
 // P8 (v2.37): a Titan in siege lock. Four stabiliser legs swing out and drive into the ground as it plants (k 0-1), with
 // a heavy ring once locked; they fold back as it unplants. Drawn under the walker.
 function drawSiegeLock(c, u, w) {
-  const S = UDEF.titan.siege || { plant: 2, unplant: 1.5 }, t = VFX.lastT;
-  const k = u.siege === 2 ? 1 : u.siege === 1 ? clamp(1 - (u.sgT - t) / S.plant, 0, 1) : clamp((u.sgT - t) / S.unplant, 0, 1);
-  const e = 1 - (1 - k) * (1 - k), sx = 22 * US * e, sy = 8 * US * e;
-  c.strokeStyle = '#3e4b65'; c.lineWidth = 3 * US; c.lineCap = 'round';
-  for (const [ax, ay] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-    const bx = w.x + ax * 6 * US, by = w.y - 6 * US, fx = w.x + ax * (8 * US + sx), fy = w.y + ay * sy * 0.5;
-    c.beginPath(); c.moveTo(bx, by); c.lineTo(fx, fy - 4 * e); c.lineTo(fx, fy); c.stroke();
-  }
-  c.lineCap = 'butt';
+  const t = VFX.lastT, k = titanK(u, t), e = 1 - (1 - k) * (1 - k), sx = 22 * US * e; // v2.83: the stabiliser claws are part of the Titan's art now
   if (u.siege === 2) { // locked: a heavy dashed ring and team-coloured lock lights
     c.strokeStyle = `rgba(${TEAM[u.side].glow},0.55)`; c.lineWidth = 1.6; c.setLineDash([6, 5]); c.lineDashOffset = -t * 10;
     c.beginPath(); c.ellipse(w.x, w.y, 34 * US, 34 * US * 0.38, 0, 0, 7); c.stroke(); c.setLineDash([]); c.lineDashOffset = 0;
@@ -8530,6 +9219,7 @@ function vfxStep(g) {
   if (VFX.shake > 0) VFX.shake = Math.max(0, VFX.shake - dt * 18);
 }
 
+const RDG_HEARD = new WeakSet(); // v2.83: ridges already heard rising
 function vfxScan(g, dt) {
   const F = viewFog(g), lit = (u, v) => F.vis[cellOf(u, v)] === 1, frame = ++VFX.frame, R = VFX.rec;
   VFX.nshots = 0;
@@ -8553,8 +9243,9 @@ function vfxScan(g, dt) {
       if ((e.phT || 0) > (r.phT || 0) && onView(x)) sfx('phaseOut', x);
       if ((e.dep || 0) !== (r.dep || 0) && (e.dep === 1 || e.dep === 3) && onView(x)) sfx('siegeLock', x); // v2.82: the Artillery deploys or packs up
       if ((e.exT || 0) > (r.exT || 0) && onView(x)) sfx('phaseOut', x); // v2.82: exiled
+      if (e.type === 'ruinmaw' && (e.bur || 0) !== (r.bur || 0) && onView(x)) sfx(e.bur ? 'slam' : 'crush', x); // v2.83: a Ruinmaw dives or surfaces
     }
-    r.dep = e.dep || 0; r.exT = e.exT || 0;
+    r.dep = e.dep || 0; r.exT = e.exT || 0; r.bur = e.bur || 0;
     r.siege = e.siege || 0; r.surgeT = e.surgeT || 0; r.phT = e.phT || 0;
     if (e.hp < r.hp - 0.01) { r.ghost = Math.max(r.ghost, r.hp); r.ghostT = 0.35; }      // health just lost shows as a draining white chunk
     else if (r.ghostT > 0) r.ghostT -= dt;
@@ -8562,6 +9253,7 @@ function vfxScan(g, dt) {
     r.hp = e.hp;
     if (e.kind === 'u' && e.type === 'titan') { const s = titanStep(e); if (s !== r.step) { r.step = s; if (e.moving) onStep(g, e, lit); } }
   }
+  if (g.rdg && g.rdg.length && VFX.primed) for (const Q of g.rdg) if (!RDG_HEARD.has(Q)) { RDG_HEARD.add(Q); const x = P((Q.au + Q.bu) / 2, 0).x; if (onView(x) && (Q.side === 0 || lit((Q.au + Q.bu) / 2, (Q.av + Q.bv) / 2))) sfx('shatter', x); } // v2.83: a ridge rises
   for (const e of VFX.prevE) { const r = R.get(e); if (r && r.f !== frame && e.hp <= 0) onDeath(g, e, lit); }
   VFX.prevE.length = 0; for (const e of g.ents) VFX.prevE.push(e);
   VFX.primed = true;
@@ -9368,6 +10060,7 @@ function render(c, g, time, sel, selPad) {
   drawDecals(c);
   drawMeteor(c, g, time); // v2.72: a meteor's warning circle, then its fall
   drawMarks(c, g, lit); drawTrails(c, g, lit); // v2.82: telegraphed shells' markers, Gorebore burrow trails
+  if (rwB2b(g)) { drawRuptures(c, g, lit); drawTunnelMouths(c, g, time); } // v2.83: Worldbreaker cracks, tunnel entrances
   if (g.sides[0].direct && !g.over && !g.range) { const B = ctlBase(0), w = P(B.u, B.v); c.save(); c.globalAlpha = 0.22; c.strokeStyle = TEAM[0].main; c.lineWidth = 1.5; c.setLineDash([6, 6]); c.beginPath(); c.ellipse(w.x, w.y, CTRL.healR, CTRL.healR, 0, 0, 7); c.stroke(); c.restore(); } // v2.76: where the base rally point heals
   if (g) { drawSelection(c, g, time); drawBuildingSel(c, g, time, false); }
   drawWrecks(c, time);
@@ -9378,9 +10071,11 @@ function render(c, g, time, sel, selPad) {
   for (const x of g.guards || []) if (x.hp > 0 && (g.spectate || visibleTo(g, 0, x))) list.push(x); // v2.71: relic guards (neutral gold)
   if (!g.range && g.sides[0].direct && !g.over) { const B = ctlBase(0); list.push({ kind: 'flag', u: B.u, v: B.v - 2, on: true }); } // v2.81: none in the Test Range (g.range); v2.76: the base rally point (one flag; v2.74 had one per lane)
   else if (!g.range && !g.sides[0].direct && g.sides[0].stance !== 'attack') list.push({ kind: 'flag', u: rallyU(0, g) + 30, v: -20, on: true }); // spectating: the rally point
+  ridgeSlabs(g, list, lit); // v2.83: a Worldbreaker's ridges, slab by slab among the units
   list.sort((a, b) => (a.v - b.v) || (a.u - b.u));
   for (const e of list) {
     if (e.kind === 'b') drawBuilding(c, e, time);
+    else if (e.kind === 'slab') drawSlab(c, g, e);
     else if (e.kind === 'ghost') drawGhost(c, e.gh);
     else if (e.kind === 'u') drawUnit(c, e);
     else if (e.kind === 'node') drawNode(c, e.n, time);
@@ -9480,6 +10175,7 @@ function render(c, g, time, sel, selPad) {
     if (f.k === 'shatter') { if (lit(f.u, f.v)) drawShatter(c, f); continue; } // a Phase Beacon bubble collapsing (v2.34) // a killed Mite (v2.33)
     if (f.k === 'pierce') { if (lit(f.u, f.v)) drawPierce(c, f); continue; } // P4 (v2.37)
     if (f.k === 'blink') { if (lit(f.u, f.v)) drawBlink(c, f); continue; } // P5 (v2.37)
+    if (f.k === 'emerge') { if (f.side === 0 || g.spectate || lit(f.u, f.y / DY)) drawEmerge(c, f); continue; } // v2.83: into or out of a tunnel
     if (f.k === 'erupt' || f.k === 'rift' || f.k === 'unexile') { if (lit(f.u, f.y / DY)) (f.k === 'erupt' ? drawErupt : f.k === 'rift' ? drawRift : drawUnexile)(c, f); continue; } // v2.82
     if (f.k === 'devour') { if (lit(f.u, f.v)) drawDevour(c, f); continue; } // P11 (v2.37)
     if (f.k === 'roots') { drawRoots(c, f, lit); continue; } // a Rootheart's snare pulse (v2.33), only where the player can see // Salvage (v2.30): the player's own, where they can see
@@ -9495,7 +10191,7 @@ function render(c, g, time, sel, selPad) {
   c.font = '600 11px -apple-system,system-ui,sans-serif'; c.textAlign = 'center';
   const barMin = (V.ft - V.A) / V.S + YB() + 12 / V.S; // highest world row that clears the top bar (with room for tier pips)
   for (const e of (g.guards && g.guards.length ? g.ents.concat(g.guards.filter(x => x.hp > 0)) : g.ents)) { // v2.71: and the relic guards
-    if (!seen(e) || e.bur) continue; // v2.82: no bars over a burrowed Gorebore
+    if (!seen(e) || e.bur || e.gone === 3) continue; // v2.82: no bars over a burrowed Gorebore (v2.83: or a unit in a tunnel)
     if (e.kind === 'b') {
       const x = P(e.u, e.v).x, top = Math.max(bTop(e) - 8, barMin), hq = e.type === 'hq';
       bar(c, x, top, hq ? 84 : 52, e.hp / e.maxHp, hq ? 5 : 3.5, lostF(e));
@@ -9758,7 +10454,7 @@ const UNIT_TIPS = {
   get sniper() { const u = UDEF.sniper; return [`Infantry, best in a line: the round goes through its target and hits up to ${u.pierce?.n} more behind it, weaker each time`, 'Tanks, Gunships; units spread out']; }, // v2.37
   tank: ['Infantry, vehicles and buildings', 'Heavies, Gunships'],
   get artillery() { const u = UDEF.artillery, rw = REWORK.b2a; return [`Clumps, dug-in units and buildings from ${txN(u.range)} range: every shot is a salvo of ${u.salvo?.n} shells that blankets the area (minimum range ${txN(u.minRange)})${rw && REWORK.artDeploy ? `; it deploys in ${txN(ART.deploy)} s before firing and packs up in ${txN(ART.pack)} s before moving` : ''}${rw && REWORK.artTelegraph ? `; each shell's landing spot is marked on the ground for at least ${txN(ART.fly)} s` : ''}`, rw ? 'Flanks, catching it on the move, Gorebores, Gunships; units that keep moving step out of its markers' : 'Anything that gets close, Gunships; a lone fast unit (the shells land wide)']; }, // v2.37; v2.82: deploy and telegraphed shells
-  get titan() { const u = UDEF.titan; return [`Buildings and everything on the ground once planted: siege lock takes ${txN(u.siege?.plant)} s, then +${txN(u.siege?.reach)} range and +${txP((u.siege?.bmul) - 1)} against buildings; it can't move until it unplants (${txN(u.siege?.unplant)} s)`, 'Heavies, Gunships; fast units that arrive while it plants or unplants']; }, // v2.37
+  get titan() { const u = UDEF.titan; if (REWORK.b2b) return [`Holding ground with infantry: Last Fist infantry within ${txN(TITAN.coverR)} of it take ${txP(TITAN.cover)} less damage from ranged attacks (several Titans don't add up); next to an enemy building it plants (${txN(TITAN.plant)} s, rooted until it unplants in ${txN(TITAN.unplant)} s) and hits buildings within ${txN(TITAN.breach)} ${txX(TITAN.bmul)} as hard; its cannon reaches ${txN(TITAN.range)}`, 'Heavies, Gunships; killing or scattering its infantry, and hitting it while it is planted']; return [`Buildings and everything on the ground once planted: siege lock takes ${txN(u.siege?.plant)} s, then +${txN(u.siege?.reach)} range and +${txP((u.siege?.bmul) - 1)} against buildings; it can't move until it unplants (${txN(u.siege?.unplant)} s)`, 'Heavies, Gunships; fast units that arrive while it plants or unplants']; }, // v2.37
   aircraft: ['Vehicles and Artillery', 'Interceptors, Heavies, Turrets'],
   interceptor: ['Aircraft only; escorts your Leviathans and Gunships', 'Heavies, Riflemen, Turrets'],
   get leviathan() { const u = UDEF.leviathan; return [`Buildings in a row: it carpet-bombs a line of ${u.carpet?.n} bombs along its path; it can't hit aircraft`, 'Interceptors, Heavies, Hydras, Turrets; a single hardened target']; }, // v2.37
@@ -9776,7 +10472,7 @@ const UNIT_TIPS = {
   get bilecaster() { const u = UDEF.bilecaster; return [`Marking targets from ${txN(u.range)} range: a single bile dart whose corrosion lasts ${txN(u.corrode.dur)} s (+${txP(u.corrode.amt)} damage taken)`, "Swarms (one target at a time), anything that reaches it; it can't hit aircraft"]; }, // v2.37
   get bilelobber() { const u = UDEF.bilelobber; return [`Softening an army from ${txN(u.range)} range: its splash corrodes everything it hits for ${txN(u.corrode?.dur)} s (minimum range ${txN(u.minRange)})`, 'Anything that gets close, aircraft; weak against buildings on its own']; }, // v2.37
   get gorebore() { return [`Artillery, Snipers and other ranged backlines: it burrows (speed ${txN(BORE.speed)}, can't be hit) and erupts under them for ${txN(BORE.dmg)} damage around it (radius ${txN(BORE.r)}), then fights up close; it can burrow again ${txN(BORE.cd)} s after each eruption`, `Watching for its dirt trail, guards beside the backline, focus fire while it is up (${txN(BORE.expose)} s exposed after each eruption); it can't hit aircraft`]; }, // v2.82
-  ruinmaw: ['Buildings above all; every hit leaves a short acid pool', 'Fast attackers, aircraft, Heavies'],
+  get ruinmaw() { if (!REWORK.b2b) return ['Buildings above all; every hit leaves a short acid pool', 'Fast attackers, aircraft, Heavies']; return [`Getting your army behind the enemy: it tunnels unseen (speed ${txN(RUIN.speed)}, can't be hit) and surfaces where you send it; surfaced it is a gate: Bloomhost ground units you send into the Tunnel (at your Hive) come out of its mouth ${txN(RUIN.transit)} s later, one every ${txN(RUIN.every)} s. It bites units beside it for ${txN(RUIN.bite)} and chews a building beside it for ${txN(RUIN.chew)} every ${txN(RUIN.chewCd)} s`, 'Watching for its trail, killing it fast once it surfaces (everyone inside its tunnel dies with it); Heavies, aircraft']; }, // v2.83
   get thornback() { const u = UDEF.thornback; return [`The front line; anyone who hits it up close takes ${txP(u.thorns.frac)} of the damage back`, 'Ranged focus, Tanks, aircraft']; },
   get dreadthorn() { const u = UDEF.dreadthorn; return [`Packed infantry: a hit of ${txN(u.burst.trigger)}+ releases a spine burst around it (every ${txN(u.burst.cd)} s)`, 'Ranged focus, Tanks, aircraft']; },
   shardling: ['Lone ranged units and nodes: fast light blades, ground and buildings', 'Focus fire, splash, Flame Tanks; it can\'t hit aircraft'],
@@ -9788,7 +10484,7 @@ const UNIT_TIPS = {
   marksman: ['Infantry from very long range, after a visible charge-up on its target', 'Fast attackers, aircraft (it can\'t hit them); weak against buildings'],
   get riftmortar() { const u = UDEF.riftmortar; return [`Single high-value targets and buildings from ${txN(u.range)} range: a precise, heavy strike with a tight blast (minimum range ${txN(u.minRange)})`, 'Swarms (little splash), anything that gets close, aircraft']; }, // v2.37
   get severance() { return [`Splitting an army: every ${txN(SEVER.cd)} s a slow rift orb (range ${txN(SEVER.range)}) hits every enemy unit within ${txN(SEVER.r)} for ${txN(SEVER.dmg)} and exiles them for ${txN(SEVER.dur)} s (frozen and untouchable; then ${txN(SEVER.imm)} s immune); a weak bolt in between`, 'Units spread out, dodging the slow orb, anything that punishes its long cooldown; it can\'t hurt buildings much or hit aircraft']; }, // v2.82
-  get worldbreaker() { const u = UDEF.worldbreaker; return [`Armies dug in: every hit leaves a distortion zone where enemy units deal ${txP(DIST.amt)} less damage`, 'Mobile armies that step out, aircraft, Heavies']; }, // v2.37
+  get worldbreaker() { const u = UDEF.worldbreaker; if (REWORK.b2b) return [`Lines of units and buildings: every ${txN(WB.cd)} s a crack runs through its target out to ${txN(WB.range)}, hitting everything along it for ${txN(WB.dmg)} (buildings ${txX(WB.bmul)}); every ${txN(WB.ridgeCd)} s it ends in a ridge ${txN(WB.len)} long for ${txN(WB.life)} s that enemy ground units must walk around`, "Spreading out instead of lining up, reaching it from the side, aircraft (it can't hit them); it is slow"]; return [`Armies dug in: every hit leaves a distortion zone where enemy units deal ${txP(DIST.amt)} less damage`, 'Mobile armies that step out, aircraft, Heavies']; }, // v2.37
   get gravemantle() { const u = UDEF.gravemantle; return [`Holding ground: enemy ground units near it are slowed ${txP(u.aura.slow)}; a weak shot at ground units and buildings`, "Ranged focus, aircraft (it can't hit them)"]; },
   get eventide() { const u = UDEF.eventide; return [`Packed ground units: a gravity pulse pulls them in (every ${txN(u.pulse.cd)} s); a weak shot at ground units and buildings`, "Ranged focus, aircraft (it can't hit them)"]; },
   get prismwing() { const u = UDEF.prismwing; return [`Ground units and buildings in numbers: linked Prismwings share ${txP(u.link.share)} of the shield damage each one takes`, "Anything that hits air, splash on the pack; it can't hit aircraft"]; },
@@ -9805,7 +10501,7 @@ const stat = (label, val) => `<div><small>${label}</small><b>${val}</b></div>`;
 function showInfo(kind, type) {
   let name, sub, body;
   if (kind === 'u') {
-    const d = UDEF[type], arm = { light: 'Light', heavy: 'Heavy', vehicle: 'Vehicle', air: 'Air' }[d.armor];
+    const d = rwShow(game && !game.over ? game : null, type), arm = { light: 'Light', heavy: 'Heavy', vehicle: 'Vehicle', air: 'Air' }[d.armor];
     const hits = d.hitsGround === false ? 'Air only' : d.hitsAir ? 'Ground, air' : 'Ground only';
     name = d.name; sub = d.spawned ? `Spawned by the ${BD(d.fac, d.from).name} · free, temporary` : `${BD(d.fac, d.from).name} T${d.tier}`; // v2.33: the Mite
     body = `<div class="istats">${stat('HP', d.hp)}${d.shp ? stat('Shields', d.shp) : ''}${d.weapon ? stat('Damage/s', Math.round(d.dmg / d.cd)) + stat('Range', d.range + (d.minRange ? ` (min ${d.minRange})` : '')) : d.heal ? stat('Heals', `${d.heal * 100}%/s`) + stat('Radius', d.healR) : stat('Sight', SIGHT[type]) + stat('Max', d.max)}${stat('Speed', d.speed)}
@@ -10136,7 +10832,7 @@ const CT = { hitPx: 26, dbl: 350, lassoMs: 260, lassoMin: 14, lineSel: 22, still
 let ctlMark = null, ctlLoop = null; // ctlLoop: the last box, fading out; ctlMark: where the last move order went (or its target)
 const ctlOn = () => !!(game && running && !game.over && !game.spectate && game.sides[0].direct && (!game.range || game.sides[0].manual)); // v2.81: in the Test Range only with Control blue myself
 const laneName = k => MAP.lanes[k].id[0].toUpperCase() + MAP.lanes[k].id.slice(1);
-const myUnits = () => game.ents.filter(e => e.kind === 'u' && e.side === 0 && e.hp > 0);
+const myUnits = () => game.ents.filter(e => e.kind === 'u' && e.side === 0 && e.hp > 0 && e.gone !== 3); // v2.83: not units inside a tunnel
 function selLive() { // the selected units still alive (the dead drop out of the selection)
   const out = myUnits().filter(e => SELN.has(e.id));
   if (out.length !== SELN.size) { SELN.clear(); for (const e of out) SELN.add(e.id); }
@@ -10280,6 +10976,7 @@ function refreshCtl() {
   const sl = selLive(), m = sl.length;
   bar.classList.toggle('hide', !m); document.body.classList.toggle('selecting', !!m); if (!m) closePick();
   if (m) setHTML($('selN'), String(m));
+  const tb = bar.querySelector('[data-c="tunnel"]'); tb.classList.toggle('hide', !(m && rwB2b(game) && sl.some(tunnelOk) && tunnelGate(game, 0))); // v2.83: Tunnel, while a Ruinmaw of yours is surfaced and Bloomhost ground units are selected
 }
 for (const b of document.querySelectorAll('#cmdbar [data-c]')) b.addEventListener('click', () => { if (paused) return; if (b.dataset.c === 'attack' && MAP_LANED) { TUT.sig.pick = true; openPick(); } else issue(b.dataset.c); }); // v2.77: on a lane map, Attack asks which lane
 $('selX').addEventListener('click', selClear);
@@ -11429,7 +12126,7 @@ function cxTree(fac, type) {
   return `<div class="cxtree" id="cx-t-${type}"><div class="cxchain">${root}${[2, 3].filter(t => tiers[t]).map(t => `<div class="cxnode"><span class="tg">T${t}</span>${d.up && d.up[t] ? 'Upgrade' : src ? `With the ${cxLink('b:' + src, BD(fac, src).name)} at T${t}` : ''}${cxUpCost(d, t)}${cxEsc(tiers[t])}${cxUnitLinks(cxTierUnits(fac, type, t))}</div>`).join('')}</div></div>`;
 }
 function cxTroop(fac, t) {
-  const d = UDEF[t], tip = UNIT_TIPS[t];
+  const d = rwShow(null, t), tip = UNIT_TIPS[t];
   const facts = [`Cost ${cxCost(d.cost)}`, d.pop ? `Army size <b>${fmtPop(d.pop)}</b>` : '', `HP <b>${cxN(d.hp)}</b>`, d.shp ? `Shields <b>${cxN(d.shp)}</b>` : ''].filter(Boolean);
   return `<article class="cxcard" id="cx-u-${t}"><canvas class="cxi u" data-k="u" data-f="${fac}" data-t="${t}"></canvas><div class="cxt"><h3>${cxEsc(d.name)}</h3><p>${cxEsc(d.desc || '')}</p>
     <div class="cxfacts"><span>Unlock: ${cxUnlock(fac, t)}</span>${facts.map(x => `<span>${x}</span>`).join('')}</div>
@@ -11452,9 +12149,9 @@ const CX_COLS = [
 ];
 function cxTable(fac) {
   const us = cxUnits(fac), cols = CX_COLS.filter(c => !c.only || c.only(us)), S = CX.sort[fac];
-  if (S) { const c = cols.find(x => x.k === S.k); if (c) us.sort((a, b) => { const x = c.v(UDEF[a]), y = c.v(UDEF[b]); return (c.s ? String(x).localeCompare(String(y)) : x - y) * S.dir; }); }
+  if (S) { const c = cols.find(x => x.k === S.k); if (c) us.sort((a, b) => { const x = c.v(rwShow(null, a)), y = c.v(rwShow(null, b)); return (c.s ? String(x).localeCompare(String(y)) : x - y) * S.dir; }); }
   return `<table class="cxtbl"><thead><tr>${cols.map(c => `<th class="${S && S.k === c.k ? 'on' : ''}"><button data-sort="${c.k}">${c.h}${S && S.k === c.k ? (S.dir > 0 ? ' ▲' : ' ▼') : ''}</button></th>`).join('')}</tr></thead>
-    <tbody>${us.map(t => { const d = UDEF[t]; return `<tr data-t="${t}">${cols.map(c => { const v = c.v(d); return `<td>${c.k === 'name' ? cxLink('u:' + t, v) : c.f ? c.f(v, d) : cxEsc(cxN(v))}</td>`; }).join('')}</tr>`; }).join('')}</tbody></table>`;
+    <tbody>${us.map(t => { const d = rwShow(null, t); return `<tr data-t="${t}">${cols.map(c => { const v = c.v(d); return `<td>${c.k === 'name' ? cxLink('u:' + t, v) : c.f ? c.f(v, d) : cxEsc(cxN(v))}</td>`; }).join('')}</tr>`; }).join('')}</tbody></table>`;
 }
 function cxFaction(fac) {
   const R = cxRoles(fac), B = BDEFS[fac];
@@ -11569,9 +12266,9 @@ function trVfxUse(k) {
 }
 
 // v2.82: a row's rework switches (REWORK's for a setup saved before them)
-const TR_RW = [['b2a', 'Batch 2a'], ['artDeploy', 'Deploy'], ['artTelegraph', 'Telegraph']];
+const TR_RW = [['b2a', 'Batch 2a'], ['artDeploy', 'Deploy'], ['artTelegraph', 'Telegraph'], ['b2b', 'Batch 2b']]; // b2b (v2.83)
 function trRw(k) { const S = TR.set; if (!Array.isArray(S.rw)) S.rw = []; return S.rw[k] || (S.rw[k] = rwInit()); }
-const trRwTag = k => { const r = trRw(k); return !r.b2a ? 'pre-2a' : r.artDeploy && r.artTelegraph ? '2a' : `2a${r.artDeploy ? ' deploy' : ''}${r.artTelegraph ? ' telegraph' : ''}${!r.artDeploy && !r.artTelegraph ? ' (no Artillery switches)' : ''}`; };
+const trRwTag = k => { const r = trRw(k), a = !r.b2a ? 'pre-2a' : r.artDeploy && r.artTelegraph ? '2a' : `2a${r.artDeploy ? ' deploy' : ''}${r.artTelegraph ? ' telegraph' : ''}${!r.artDeploy && !r.artTelegraph ? ' (no Artillery switches)' : ''}`; return `${a}, ${r.b2b ? '2b' : 'pre-2b'}`; }; // v2.83: and batch 2b
 // Rows: each row's factions (the first thing placed on each side), building every row from the items
 const trFacs = k => [0, 1].map(s => { const it = TR.set.items.find(i => i.row === k && i.side === s); return it ? (it.kind === 'u' ? rangeFac(it.type) : it.fac) : DEFAULT_FACTION; });
 function trBuild() {
@@ -11684,6 +12381,9 @@ function trState(g, e) {
   if (e.siege) out.push(['', 'planting', 'planted', 'unplanting'][e.siege]);
   if (e.dep) out.push(['', 'deploying', 'deployed', 'packing up'][e.dep]); // v2.82
   if (e.bur) out.push('burrowed (can\'t be hit)'); else if (e.surfT > g.t) out.push('surfaced, exposed'); else if (d && d.bore && rwB2a(g)) out.push(g.t >= (e.burCd || 0) ? 'burrow ready' : `burrow in ${Math.ceil(e.burCd - g.t)} s`);
+  if (e.tn) out.push(e.tn.ph === 1 ? 'in the tunnel' : 'walking to the tunnel'); // v2.83
+  if (e.type === 'ruinmaw' && rwB2b(g) && !e.bur) out.push(e.moving ? 'surfacing' : 'surfaced: the tunnel is open');
+  if (e.cov && rwB2b(g)) out.push('in a Titan\'s cover');
   if (e.exT > g.t) out.push(`exiled (${Math.ceil(e.exT - g.t)} s)`); else if (e.exImm > g.t) out.push('immune to exile');
   if (d && d.exile && rwB2a(g)) out.push(g.t >= (e.exCd || 0) ? 'exile ready' : `exile in ${Math.ceil(e.exCd - g.t)} s`);
   if (e.leaping) out.push('leaping');
@@ -11840,7 +12540,7 @@ function trUI() { // every UI refresh: the readouts, the clock, the info card, t
     const R = rangeRead(g), T = trView(k), el = box.children[k];
     const who = s => { const c = {}; for (const e of g.ents) if (e.side === s && e.hp > 0) { const nm = e.kind === 'u' ? UDEF[e.type].name : bdOf(e).name; c[nm] = (c[nm] || 0) + 1; } const a = Object.entries(c).sort((x, y) => y[1] - x[1]); return a.length ? a.slice(0, 2).map(([nm, m]) => `${cxEsc(nm)} ×${m}`).join(', ') + (a.length > 2 ? ' …' : '') : 'none'; };
     const w = R.wipe ? ` · <b class="w">${TR_SIDE[R.wipe.side]} wiped out at ${fmtTime(R.wipe.t)}</b>` : '';
-    setHTML(el, `${n > 1 ? `<b>Row ${k + 1}</b> <i class="rw">${cxEsc(trRwTag(k))}</i> ` : trRw(0).b2a && trRw(0).artDeploy && trRw(0).artTelegraph ? '' : `<i class="rw">${cxEsc(trRwTag(0))}</i> `}<span class="b">${who(0)}</span> vs <span class="r">${who(1)}</span> · damage <span class="b">${txN(Math.round(R.dmg[0]))}</span> / <span class="r">${txN(Math.round(R.dmg[1]))}</span> · kills <span class="b">${R.kills[0]}</span> / <span class="r">${R.kills[1]}</span>${w}`);
+    setHTML(el, `${n > 1 ? `<b>Row ${k + 1}</b> <i class="rw">${cxEsc(trRwTag(k))}</i> ` : trRw(0).b2a && trRw(0).artDeploy && trRw(0).artTelegraph && trRw(0).b2b ? '' : `<i class="rw">${cxEsc(trRwTag(0))}</i> `}<span class="b">${who(0)}</span> vs <span class="r">${who(1)}</span> · damage <span class="b">${txN(Math.round(R.dmg[0]))}</span> / <span class="r">${txN(Math.round(R.dmg[1]))}</span> · kills <span class="b">${R.kills[0]}</span> / <span class="r">${R.kills[1]}</span>${w}`);
     el.style.left = (T.F.l + 6) + 'px'; el.style.top = (n > 1 ? T.y0 + 2 : T.y1 - 20) + 'px'; // one row: the bottom (toasts show at the top); Compare: each strip's top, above its units el.style.maxWidth = (T.F.r - T.F.l - 12) + 'px';
   });
 }
@@ -12001,6 +12701,7 @@ const TUT_CH = [
       { txt: () => 'Tap a group\'s slot to select that group; tap it again right away to jump the camera there. Its count shows how many are left: new units are never added on their own.', hi: () => tEl('#grps') },
       { txt: () => 'With units selected, tap an enemy unit or building to attack it. They fight what they meet on the way, then hold where they are once it is destroyed. Moving units always stop to fight; only Retreat ignores enemies.' },
       { txt: () => 'Retreat brings them back to the rally point without firing. Units heal at the rally point, and at repair depots you hold, but only when you move them there: nothing goes home on its own.', hi: tFlag },
+      { txt: () => `Playing Bloomhost, a Tunnel button joins these while one of your ${UDEF.ruinmaw.name}s is surfaced: it sends the selected ground units into the tunnel at your Hive, and ${RUIN.transit} s later they pour out of the ${UDEF.ruinmaw.name}'s mouth.` }, // v2.83
       { txt: () => 'On a lane map the column on the left lists each lane with its unit count: tap a lane to select the units in it. There, Attack asks which lane to attack down, with the lane nearest your units highlighted.', hi: () => tEl('#lanes') },
     ] },
   { key: 'upgrades', name: 'Upgrades', blurb: 'Upgrade tiers, paths and what they unlock',
@@ -12167,7 +12868,7 @@ $('tutSkipC').addEventListener('click', tutSkipChapter);
 // The How to Play tab: the chapter list
 CODEX_HOWTO.html = () => { const D = tutDone(); return `<h2>How to Play</h2><p>Hands-on lessons in a practice match as ${factionName('lastfist')}. You can't lose, every step can be skipped, and any chapter can be played or replayed at any time.</p>` +
   TUT_CH.map((C, i) => `<div class="cxch${D[C.key] ? ' done' : ''}" id="cx-tut-${C.key}"><span class="ck" aria-label="${D[C.key] ? 'Completed' : 'Not played'}">${D[C.key] ? '✓' : ''}</span><div class="cxct"><b>${i + 1}. ${cxEsc(C.name)}</b><small>${cxEsc(C.blurb)}</small></div><button class="cxplay" data-tut="${i}">Play</button></div>`).join('') +
-  `<h3 id="cx-controls">Army controls</h3><p><b>Select, then command.</b> Tap one of your units to select it; tap more to add them. <b>Double-tap</b> a unit to add every unit of its type that is on screen. <b>Press and hold</b> on the battlefield until the ring fills, then drag a box from corner to corner: the units inside it are selected. <b>All</b>, at the top of the column on the left, selects your whole army. A tag shows how many are selected; its × clears them. Only your own units can be selected.</p><p>With units selected, the command bar takes the bottom panel's place. <b>Tap the ground</b> to send them there: they stop to fight enemies they meet on the way, then hold the spot, each in its own space. <b>Tap an enemy</b> unit or building you can see to attack it; once it is destroyed they hold where they are. <b>Attack</b> sends them down a lane, fighting their way to the enemy base: on a lane map it first shows the lanes, the one nearest them highlighted; tap one, or anywhere else to cancel. On Classic they go at once. <b>Hold</b> stops them to fight anything in range. <b>Retreat</b> brings them back to the rally point in the middle of your base, without firing or stopping for enemies. The selection clears after an order. Nothing moves on its own.</p><p><b>New units</b> gather at the rally point and wait there on Hold; from a forward ${tN('barracks')}, beside it. Units never stack: wherever they gather, each takes its own space. <b>Healing:</b> your units heal ${Math.round(CTRL.heal * 100)}% of their health a second, once unhurt for ${CTRL.calm} s, at the rally point and at repair depots you hold, only where you move them.</p><p><b>Lanes</b> (Two-Lane, Three-Lane): the column on the left lists each lane, north on top, with its unit count. <b>Tap a lane</b> to select the units in it (units in your base count toward All only).</p><p><b>Control groups:</b> three slots at the bottom right. <b>Hold</b> a slot to save the selection into it; <b>tap</b> it to select that group; <b>double-tap</b> it to jump the camera there. Each shows how many are left; the dead drop out and new units are never added. Groups are saved with the match. Aircraft fly straight over the ridge and the walls. On Three-Lane the walls between the lanes each have one gap, at the rich centre node.</p>` +
+  `<h3 id="cx-controls">Army controls</h3><p><b>Select, then command.</b> Tap one of your units to select it; tap more to add them. <b>Double-tap</b> a unit to add every unit of its type that is on screen. <b>Press and hold</b> on the battlefield until the ring fills, then drag a box from corner to corner: the units inside it are selected. <b>All</b>, at the top of the column on the left, selects your whole army. A tag shows how many are selected; its × clears them. Only your own units can be selected.</p><p>With units selected, the command bar takes the bottom panel's place. <b>Tap the ground</b> to send them there: they stop to fight enemies they meet on the way, then hold the spot, each in its own space. <b>Tap an enemy</b> unit or building you can see to attack it; once it is destroyed they hold where they are. <b>Attack</b> sends them down a lane, fighting their way to the enemy base: on a lane map it first shows the lanes, the one nearest them highlighted; tap one, or anywhere else to cancel. On Classic they go at once. <b>Hold</b> stops them to fight anything in range. <b>Retreat</b> brings them back to the rally point in the middle of your base, without firing or stopping for enemies. <b>Tunnel</b> (Bloomhost, while one of your ${UDEF.ruinmaw.name}s is surfaced) appears beside them when you have Bloomhost ground units selected: they walk to the tunnel entrance beside your Hive, go in, and ${RUIN.transit} s later pour out of the ${UDEF.ruinmaw.name}'s mouth, one every ${RUIN.every} s. Moving the ${UDEF.ruinmaw.name} sends anyone inside back out at the entrance; if it dies, everyone inside dies with it. The selection clears after an order. Nothing moves on its own.</p><p><b>New units</b> gather at the rally point and wait there on Hold; from a forward ${tN('barracks')}, beside it. Units never stack: wherever they gather, each takes its own space. <b>Healing:</b> your units heal ${Math.round(CTRL.heal * 100)}% of their health a second, once unhurt for ${CTRL.calm} s, at the rally point and at repair depots you hold, only where you move them.</p><p><b>Lanes</b> (Two-Lane, Three-Lane): the column on the left lists each lane, north on top, with its unit count. <b>Tap a lane</b> to select the units in it (units in your base count toward All only).</p><p><b>Control groups:</b> three slots at the bottom right. <b>Hold</b> a slot to save the selection into it; <b>tap</b> it to select that group; <b>double-tap</b> it to jump the camera there. Each shows how many are left; the dead drop out and new units are never added. Groups are saved with the match. Aircraft fly straight over the ridge and the walls. On Three-Lane the walls between the lanes each have one gap, at the rich centre node.</p>` +
   `<h3 id="cx-special">Repair depots and relics (Three-Lane)</h3><p>A <b>repair depot</b> is captured like a node: your units near it heal ${REPAIR.heal}% of their health a second once unhurt for ${REPAIR.calm} s: move damaged units there (or to the rally point) to save them. A <b>relic</b> is a neutral camp off the lanes: its gold guards never move and fire at anyone who comes close. Destroy them and stand on the relic to take it, once, for ${RELIC.reward.c} credits.</p>` +
   `<h3 id="cx-cond">Battlefield conditions</h3><p>On the map screen you can add conditions to a match (or let <b>Random</b> pick one): ${COND_KEYS.map(k => `<b>${COND_UI[k].name}</b>: ${COND_UI[k].line()}`).join(' ')} Each map lists the ones it allows; a match shows its conditions as small icons on the minimap's right edge.</p>` +
   `<h3 id="cx-break">Breaking a base</h3><p>Your HQ is shielded while a production building (${tN('barracks')}, ${tN('factory')} or ${tN('techlab')}) stands in your base: destroy them and the HQ is open. A destroyed building leaves <b>rubble</b>: nothing can be built on its pad for ${BREAK.rubble.t} s. From ${mmss(BREAK.power.from)} the base guns (HQ, turrets, bunkers) lose ${Math.round(BREAK.power.step * 100)}% of their power every minute as the Extinction Event nears, the same for both sides: <b>Power failing</b>.</p>`; }; // v2.66; v2.69: base-breaking; v2.74: the army controls (docs/CONTROLS.md)

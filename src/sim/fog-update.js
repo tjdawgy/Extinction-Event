@@ -110,12 +110,14 @@ function update(g, dt) {
   }
   updateGuards(g, foes, dt); // v2.71: the relic guards fire, and both sides may target them
   indexFoes(foes[0], dt); indexFoes(foes[1], dt); // v2.37: lane-sorted, so target searches look only near the searcher
+  RDG.list = null; if (rwB2b(g)) update2b(g); // v2.83: Titan cover, Worldbreaker cracks and ridges (RDG.list: this game's ridges, while its units move)
   const n = g.ents.length; NAV.now = g.t; // v2.65: the clock the navigation paths age by
   for (let i = 0; i < n; i++) {
     const e = g.ents[i];
     if (e.hp <= 0) continue;
     if (e.kind === 'b') updateBuilding(g, e, foes[e.side], dt); else { updateUnit(g, e, foes[e.side], dt); if (NAV.on && e.hp > 0 && !UDEF[e.type].air && !e.leaping && navShut(e.u, e.v)) navEject(e); } // v2.65: never inside a wall
   }
+  RDG.list = null;
   updateProjs(g, dt);
   if (g.mk) updateMarks(g); // v2.82: telegraphed shells' markers
   updateMedics(g, dt);

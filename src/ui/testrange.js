@@ -37,9 +37,9 @@ function trVfxUse(k) {
 }
 
 // v2.82: a row's rework switches (REWORK's for a setup saved before them)
-const TR_RW = [['b2a', 'Batch 2a'], ['artDeploy', 'Deploy'], ['artTelegraph', 'Telegraph']];
+const TR_RW = [['b2a', 'Batch 2a'], ['artDeploy', 'Deploy'], ['artTelegraph', 'Telegraph'], ['b2b', 'Batch 2b']]; // b2b (v2.83)
 function trRw(k) { const S = TR.set; if (!Array.isArray(S.rw)) S.rw = []; return S.rw[k] || (S.rw[k] = rwInit()); }
-const trRwTag = k => { const r = trRw(k); return !r.b2a ? 'pre-2a' : r.artDeploy && r.artTelegraph ? '2a' : `2a${r.artDeploy ? ' deploy' : ''}${r.artTelegraph ? ' telegraph' : ''}${!r.artDeploy && !r.artTelegraph ? ' (no Artillery switches)' : ''}`; };
+const trRwTag = k => { const r = trRw(k), a = !r.b2a ? 'pre-2a' : r.artDeploy && r.artTelegraph ? '2a' : `2a${r.artDeploy ? ' deploy' : ''}${r.artTelegraph ? ' telegraph' : ''}${!r.artDeploy && !r.artTelegraph ? ' (no Artillery switches)' : ''}`; return `${a}, ${r.b2b ? '2b' : 'pre-2b'}`; }; // v2.83: and batch 2b
 // Rows: each row's factions (the first thing placed on each side), building every row from the items
 const trFacs = k => [0, 1].map(s => { const it = TR.set.items.find(i => i.row === k && i.side === s); return it ? (it.kind === 'u' ? rangeFac(it.type) : it.fac) : DEFAULT_FACTION; });
 function trBuild() {
@@ -152,6 +152,9 @@ function trState(g, e) {
   if (e.siege) out.push(['', 'planting', 'planted', 'unplanting'][e.siege]);
   if (e.dep) out.push(['', 'deploying', 'deployed', 'packing up'][e.dep]); // v2.82
   if (e.bur) out.push('burrowed (can\'t be hit)'); else if (e.surfT > g.t) out.push('surfaced, exposed'); else if (d && d.bore && rwB2a(g)) out.push(g.t >= (e.burCd || 0) ? 'burrow ready' : `burrow in ${Math.ceil(e.burCd - g.t)} s`);
+  if (e.tn) out.push(e.tn.ph === 1 ? 'in the tunnel' : 'walking to the tunnel'); // v2.83
+  if (e.type === 'ruinmaw' && rwB2b(g) && !e.bur) out.push(e.moving ? 'surfacing' : 'surfaced: the tunnel is open');
+  if (e.cov && rwB2b(g)) out.push('in a Titan\'s cover');
   if (e.exT > g.t) out.push(`exiled (${Math.ceil(e.exT - g.t)} s)`); else if (e.exImm > g.t) out.push('immune to exile');
   if (d && d.exile && rwB2a(g)) out.push(g.t >= (e.exCd || 0) ? 'exile ready' : `exile in ${Math.ceil(e.exCd - g.t)} s`);
   if (e.leaping) out.push('leaping');
@@ -308,7 +311,7 @@ function trUI() { // every UI refresh: the readouts, the clock, the info card, t
     const R = rangeRead(g), T = trView(k), el = box.children[k];
     const who = s => { const c = {}; for (const e of g.ents) if (e.side === s && e.hp > 0) { const nm = e.kind === 'u' ? UDEF[e.type].name : bdOf(e).name; c[nm] = (c[nm] || 0) + 1; } const a = Object.entries(c).sort((x, y) => y[1] - x[1]); return a.length ? a.slice(0, 2).map(([nm, m]) => `${cxEsc(nm)} ×${m}`).join(', ') + (a.length > 2 ? ' …' : '') : 'none'; };
     const w = R.wipe ? ` · <b class="w">${TR_SIDE[R.wipe.side]} wiped out at ${fmtTime(R.wipe.t)}</b>` : '';
-    setHTML(el, `${n > 1 ? `<b>Row ${k + 1}</b> <i class="rw">${cxEsc(trRwTag(k))}</i> ` : trRw(0).b2a && trRw(0).artDeploy && trRw(0).artTelegraph ? '' : `<i class="rw">${cxEsc(trRwTag(0))}</i> `}<span class="b">${who(0)}</span> vs <span class="r">${who(1)}</span> · damage <span class="b">${txN(Math.round(R.dmg[0]))}</span> / <span class="r">${txN(Math.round(R.dmg[1]))}</span> · kills <span class="b">${R.kills[0]}</span> / <span class="r">${R.kills[1]}</span>${w}`);
+    setHTML(el, `${n > 1 ? `<b>Row ${k + 1}</b> <i class="rw">${cxEsc(trRwTag(k))}</i> ` : trRw(0).b2a && trRw(0).artDeploy && trRw(0).artTelegraph && trRw(0).b2b ? '' : `<i class="rw">${cxEsc(trRwTag(0))}</i> `}<span class="b">${who(0)}</span> vs <span class="r">${who(1)}</span> · damage <span class="b">${txN(Math.round(R.dmg[0]))}</span> / <span class="r">${txN(Math.round(R.dmg[1]))}</span> · kills <span class="b">${R.kills[0]}</span> / <span class="r">${R.kills[1]}</span>${w}`);
     el.style.left = (T.F.l + 6) + 'px'; el.style.top = (n > 1 ? T.y0 + 2 : T.y1 - 20) + 'px'; // one row: the bottom (toasts show at the top); Compare: each strip's top, above its units el.style.maxWidth = (T.F.r - T.F.l - 12) + 'px';
   });
 }

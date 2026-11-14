@@ -8,7 +8,7 @@ const step = (s, g, sec) => { for (let i = 0; i < Math.round(sec * 60); i++) s.r
 
 test('switches: per game; b2a off keeps the Bile Lobber and Rift Mortar, on gives the Gorebore and Severance', () => {
   const s = loadSim();
-  assert.strictEqual(JSON.stringify(s.rwInit()), JSON.stringify({ b2a: true, artDeploy: true, artTelegraph: true }), 'the new default is on');
+  assert.strictEqual(JSON.stringify(s.rwInit()), JSON.stringify({ b2a: true, artDeploy: true, artTelegraph: true, b2b: true }), 'the new default is on (v2.83: b2b too)');
   const on = s.rangeGame({ factions: ['bloomhost', 'axiarchs'] }), off = s.rangeGame({ factions: ['bloomhost', 'axiarchs'], rework: { b2a: false } });
   assert.strictEqual(s.rangeUnit(on, 0, 'bilelobber', 600, 0).type, 'gorebore');
   assert.strictEqual(s.rangeUnit(off, 0, 'gorebore', 600, 0).type, 'bilelobber');
@@ -53,10 +53,13 @@ test('Telegraphed shells: a marker from firing to impact, at least ART.fly s; a 
   step(s, g, 0.2); g.sides[0].hush = true; step(s, g, 3);
   assert.strictEqual(r.hp, r.maxHp, 'no damage outside the marker');
   assert.strictEqual(g.mk.length, 0, 'markers cleared at impact');
-  // the AI's dodge: a spot just outside the marker
-  const m = { u: 900, v: 0, r: 40, side: 0, t0: 0, t1: 9 }, q = { u: 905, v: 5, side: 1 }; g.mk = [m];
-  const p = s.markDodge(g, q); assert.ok(p && Math.hypot(p[0] - m.u, (p[1] - m.v) * 0.6) >= m.r, 'steps out');
-  assert.strictEqual(s.markDodge(g, { u: 905, v: 0, side: 0 }), null, 'its own side\'s markers are ignored');
+  // v2.83: no unit steps out of a marker on its own (the AI's marker dodge of v2.82 is gone); the meteor dodge stays
+  assert.strictEqual(s.markDodge, undefined, 'no marker dodge');
+  const h = s.newGame('normal', { seed: 3, countdown: 0 }); h.sides[1].aiT = 1e9; h.sides[1].stance = 'hold';
+  const run = sec => { for (let i = 0; i < sec * 60; i++) s.update(h, s.TICK); };
+  const q = s.spawnUnit(h, 1, 'rifle', s.rallyU(1, h), 0); run(6);
+  const at = [q.u, q.v]; h.mk = [{ u: q.u, v: q.v, r: 40, side: 0, t0: h.t, t1: h.t + 3 }]; run(1.5);
+  assert.ok(Math.hypot(q.u - at[0], q.v - at[1]) < 2, 'an AI unit inside an enemy marker stays where it was');
 });
 
 test('Gorebore: burrows, can\'t be hurt underground, erupts under the backline unit first, then is exposed and on cooldown', () => {
@@ -97,11 +100,11 @@ test('Severance: a slow orb; enemy units hit take its damage, then are frozen, u
   if (us[0].exS !== undefined) assert.ok(Math.abs(us[0].corrT - (c0 + s.SEVER.dur)) < 1e-6, 'corrosion paused for the exile');
 });
 
-test('saves: the switches are saved only with b2a on; a save without them plays as before the rework', () => {
+test('saves: the switches are saved only with b2a (or b2b, v2.83) on; a save without them plays as before the rework', () => {
   const s = loadSim();
   const g = s.newGame('normal', { seed: 5 }), o = JSON.parse(s.serialize(g, {}));
-  assert.strictEqual(JSON.stringify(o.rw), JSON.stringify({ b2a: true, artDeploy: true, artTelegraph: true }));
-  const g0 = s.newGame('normal', { seed: 5, rework: { b2a: false } }), o0 = JSON.parse(s.serialize(g0, {}));
+  assert.strictEqual(JSON.stringify(o.rw), JSON.stringify({ b2a: true, artDeploy: true, artTelegraph: true, b2b: true }));
+  const g0 = s.newGame('normal', { seed: 5, rework: { b2a: false, b2b: false } }), o0 = JSON.parse(s.serialize(g0, {}));
   assert.ok(!('rw' in o0) && !('mk' in o0));
   assert.strictEqual(s.deserialize(s.serialize(g0, {})).rw.b2a, false);
   assert.strictEqual(s.deserialize(s.serialize(g, {})).rw.b2a, true);

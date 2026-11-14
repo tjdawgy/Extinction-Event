@@ -287,7 +287,13 @@ function aiUpdate(g, s, dt) {
       voidcarrier: 1.5 + comp.vehicle * 0.6 + (turtle ? 0.8 : 0) - antiAir * 1.0 - comp.air * 0.5,
       sovereign: 1.7 + comp.vehicle * 0.5 + (turtle ? 0.8 : 0) - antiAir * 1.2 - comp.air * 0.5,
     };
-    if (!threat) for (const t of types) { const b = P.bias[t] || P.bias[AI_TWIN[t]]; if (b && sc[t] > 0) sc[t] *= b; } // the personality's taste in units (threats are answered on merit)
+    if (rwB2b(g)) { // v2.83 (rework batch 2b): the Titan is cover for infantry, the Ruinmaw a tunnel for ground units, the Worldbreaker answers charges and clumps
+      const nGround = mine.filter(u => tunnelOk(u)).length, nR = mine.filter(u => u.type === 'ruinmaw').length;
+      sc.titan = 1.0 + nInf / Math.max(1, mine.length) * 1.2 + comp.light * 0.3 + comp.heavy * 0.3 + (turtle ? 0.4 : 0) + (oppTier - 1) * 0.2 - comp.air * 1.2;
+      sc.ruinmaw = nR >= 2 ? 0.1 : 1.0 + Math.min(1, nGround / 12) * 0.8 + (turtle ? 0.5 : 0) + comp.light * 0.2 - comp.air * 1.0;
+      sc.worldbreaker = 1.1 + aiMeleeShare(theirs) * 1.0 + comp.light * 0.5 + comp.heavy * 0.4 + (turtle ? 0.4 : 0) - comp.air * 1.2;
+    }
+    if (!threat) for (const t of types) { const b = P.bias[t] || (rwB2b(g) && RW2B_TASTE[t] ? RW2B_TASTE[t][P.kind] : P.bias[AI_TWIN[t]]); if (b && sc[t] > 0) sc[t] *= b; } // v2.83: the Ruinmaw and Worldbreaker have tastes of their own in batch 2b // the personality's taste in units (threats are answered on merit)
     for (const t of types) if (dl.comp[t] !== undefined) sc[t] *= dl.comp[t]; // the composition dial (v2.38; legacy has none)
     if (smart) aiSmartScores(g, s, sc, types, { comp, antiAir, theirs, mine, nFront, turtle, log, threat, P }); // v2.38: the Default AI values v2.37 roles
     if (holdEarly) for (const t of types) { if (t === 'tank' || t === 'bulwark' || t === 'bastion') sc[t] *= 1.6; if (t === 'shardling' || t === 'skitterling') sc[t] *= 0.6; } // v2.40 (hold)
@@ -341,7 +347,7 @@ function aiUpdate(g, s, dt) {
   // 4) Strategy: hold the near node, take the field, siege just outside the enemy guns, or go all in
   const hqGun = BDEF.hq.gun[oppTier], hqVal = knownDefense(g, s);
   const rich = side.res.c > dl.bank;
-  const nSiege = mine.filter(u => AI_SIEGE.includes(u.type)).length;
+  const nSiege = mine.filter(u => aiSiegeT(g, u.type)).length; // v2.83: not a batch 2b Ruinmaw
   const ae = P.attackEdge * (ecoMood ? 1.2 : 1); // how much of an edge this personality wants before a base attack
   const wave = Math.min(3600, 400 + g.t * 4) * D.wave * P.wave * (ecoMood ? 1.3 : 1) * (hasCond(g, 'scarce') ? COND.scarce.army : 1); // v2.72: scarce: smaller armies
   const full = used >= cap * fill - 2, since = g.t - side.stanceAt; // full by its own army limit
@@ -454,6 +460,7 @@ function aiUpdate(g, s, dt) {
   aiAbility(g, s, P, { mine, theirs, threat, myV, thV });
   aiMicro(g, s, D, mine);
   if (smart) aiSmartArmy(g, s, mine, dl, P); // v2.38: the Default AI's unit handling
+  if (rwB2b(g)) aiRework2b(g, s, mine); // v2.83: Titan escorts, Ruinmaw spots and tunnels (every difficulty)
 }
 // Spotters: siege guns can't fire at what their side can't see, so while sieging, one unit walks up until
 // its sight reaches the front of the enemy base (as far as this side knows where that is). Seeing the base
@@ -767,7 +774,7 @@ function aiBreak(g, s, mine) {
     if (V > 0 && atV > 0 && (atV >= V * B.gather || g.t - bb.t > B.wait)) { bb.ph = 'go'; bb.goT = g.t; bb.goV = atV; bb.n++; }
   } else if (pastV < bb.goV * B.regroup && V - pastV >= B.again) { bb.ph = 'gather'; bb.t = g.t; }
   side.bbStage = bb.ph === 'gather' ? stage : null;
-  side.bbLead = bb.ph === 'go' && g.t - bb.goT < B.lead && grp.some(u => AI_SIEGE.includes(u.type)) ? stage : null;
+  side.bbLead = bb.ph === 'go' && g.t - bb.goT < B.lead && grp.some(u => aiSiegeT(g, u.type)) ? stage : null;
 }
 // v2.60 (raid, ATTACK.raid): with no push on, a few of its fastest ground units (at most share of its army) take the enemy's
 // own node, or the centre if it already holds theirs; they come home when hurt, after dur seconds, or when the army attacks
@@ -885,7 +892,7 @@ const SMART_SPOT = ['drone', 'aircraft', 'razorwing', 'needlewing', 'prismwing',
 function aiSmartSpotter(g, s) {
   const side = g.sides[s], dir = dirOf(s);
   side.spotAny = true;
-  const reach = u => { const d = UDEF[u.type]; return d.siege ? d.range + d.siege.reach : d.range; };
+  const reach = u => { const d = rwD(g, u.type); return d.siege ? d.range + d.siege.reach : d.range; }; // v2.83: a batch 2b Titan doesn't plant for range
   const mine = side.stance === 'attack' ? g.ents.filter(e => e.kind === 'u' && e.side === s && e.hp > 0) : [];
   const longs = mine.filter(u => UDEF[u.type].weapon && !UDEF[u.type].air && reach(u) > SIGHT[u.type] + 10);
   if (!longs.length) { side.spotter = null; side.spotU = null; return; }

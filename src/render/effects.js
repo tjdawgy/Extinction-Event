@@ -101,6 +101,7 @@ function vfxStep(g) {
   if (VFX.shake > 0) VFX.shake = Math.max(0, VFX.shake - dt * 18);
 }
 
+const RDG_HEARD = new WeakSet(); // v2.83: ridges already heard rising
 function vfxScan(g, dt) {
   const F = viewFog(g), lit = (u, v) => F.vis[cellOf(u, v)] === 1, frame = ++VFX.frame, R = VFX.rec;
   VFX.nshots = 0;
@@ -124,8 +125,9 @@ function vfxScan(g, dt) {
       if ((e.phT || 0) > (r.phT || 0) && onView(x)) sfx('phaseOut', x);
       if ((e.dep || 0) !== (r.dep || 0) && (e.dep === 1 || e.dep === 3) && onView(x)) sfx('siegeLock', x); // v2.82: the Artillery deploys or packs up
       if ((e.exT || 0) > (r.exT || 0) && onView(x)) sfx('phaseOut', x); // v2.82: exiled
+      if (e.type === 'ruinmaw' && (e.bur || 0) !== (r.bur || 0) && onView(x)) sfx(e.bur ? 'slam' : 'crush', x); // v2.83: a Ruinmaw dives or surfaces
     }
-    r.dep = e.dep || 0; r.exT = e.exT || 0;
+    r.dep = e.dep || 0; r.exT = e.exT || 0; r.bur = e.bur || 0;
     r.siege = e.siege || 0; r.surgeT = e.surgeT || 0; r.phT = e.phT || 0;
     if (e.hp < r.hp - 0.01) { r.ghost = Math.max(r.ghost, r.hp); r.ghostT = 0.35; }      // health just lost shows as a draining white chunk
     else if (r.ghostT > 0) r.ghostT -= dt;
@@ -133,6 +135,7 @@ function vfxScan(g, dt) {
     r.hp = e.hp;
     if (e.kind === 'u' && e.type === 'titan') { const s = titanStep(e); if (s !== r.step) { r.step = s; if (e.moving) onStep(g, e, lit); } }
   }
+  if (g.rdg && g.rdg.length && VFX.primed) for (const Q of g.rdg) if (!RDG_HEARD.has(Q)) { RDG_HEARD.add(Q); const x = P((Q.au + Q.bu) / 2, 0).x; if (onView(x) && (Q.side === 0 || lit((Q.au + Q.bu) / 2, (Q.av + Q.bv) / 2))) sfx('shatter', x); } // v2.83: a ridge rises
   for (const e of VFX.prevE) { const r = R.get(e); if (r && r.f !== frame && e.hp <= 0) onDeath(g, e, lit); }
   VFX.prevE.length = 0; for (const e of g.ents) VFX.prevE.push(e);
   VFX.primed = true;
@@ -939,6 +942,7 @@ function render(c, g, time, sel, selPad) {
   drawDecals(c);
   drawMeteor(c, g, time); // v2.72: a meteor's warning circle, then its fall
   drawMarks(c, g, lit); drawTrails(c, g, lit); // v2.82: telegraphed shells' markers, Gorebore burrow trails
+  if (rwB2b(g)) { drawRuptures(c, g, lit); drawTunnelMouths(c, g, time); } // v2.83: Worldbreaker cracks, tunnel entrances
   if (g.sides[0].direct && !g.over && !g.range) { const B = ctlBase(0), w = P(B.u, B.v); c.save(); c.globalAlpha = 0.22; c.strokeStyle = TEAM[0].main; c.lineWidth = 1.5; c.setLineDash([6, 6]); c.beginPath(); c.ellipse(w.x, w.y, CTRL.healR, CTRL.healR, 0, 0, 7); c.stroke(); c.restore(); } // v2.76: where the base rally point heals
   if (g) { drawSelection(c, g, time); drawBuildingSel(c, g, time, false); }
   drawWrecks(c, time);
@@ -949,9 +953,11 @@ function render(c, g, time, sel, selPad) {
   for (const x of g.guards || []) if (x.hp > 0 && (g.spectate || visibleTo(g, 0, x))) list.push(x); // v2.71: relic guards (neutral gold)
   if (!g.range && g.sides[0].direct && !g.over) { const B = ctlBase(0); list.push({ kind: 'flag', u: B.u, v: B.v - 2, on: true }); } // v2.81: none in the Test Range (g.range); v2.76: the base rally point (one flag; v2.74 had one per lane)
   else if (!g.range && !g.sides[0].direct && g.sides[0].stance !== 'attack') list.push({ kind: 'flag', u: rallyU(0, g) + 30, v: -20, on: true }); // spectating: the rally point
+  ridgeSlabs(g, list, lit); // v2.83: a Worldbreaker's ridges, slab by slab among the units
   list.sort((a, b) => (a.v - b.v) || (a.u - b.u));
   for (const e of list) {
     if (e.kind === 'b') drawBuilding(c, e, time);
+    else if (e.kind === 'slab') drawSlab(c, g, e);
     else if (e.kind === 'ghost') drawGhost(c, e.gh);
     else if (e.kind === 'u') drawUnit(c, e);
     else if (e.kind === 'node') drawNode(c, e.n, time);
@@ -1051,6 +1057,7 @@ function render(c, g, time, sel, selPad) {
     if (f.k === 'shatter') { if (lit(f.u, f.v)) drawShatter(c, f); continue; } // a Phase Beacon bubble collapsing (v2.34) // a killed Mite (v2.33)
     if (f.k === 'pierce') { if (lit(f.u, f.v)) drawPierce(c, f); continue; } // P4 (v2.37)
     if (f.k === 'blink') { if (lit(f.u, f.v)) drawBlink(c, f); continue; } // P5 (v2.37)
+    if (f.k === 'emerge') { if (f.side === 0 || g.spectate || lit(f.u, f.y / DY)) drawEmerge(c, f); continue; } // v2.83: into or out of a tunnel
     if (f.k === 'erupt' || f.k === 'rift' || f.k === 'unexile') { if (lit(f.u, f.y / DY)) (f.k === 'erupt' ? drawErupt : f.k === 'rift' ? drawRift : drawUnexile)(c, f); continue; } // v2.82
     if (f.k === 'devour') { if (lit(f.u, f.v)) drawDevour(c, f); continue; } // P11 (v2.37)
     if (f.k === 'roots') { drawRoots(c, f, lit); continue; } // a Rootheart's snare pulse (v2.33), only where the player can see // Salvage (v2.30): the player's own, where they can see
@@ -1066,7 +1073,7 @@ function render(c, g, time, sel, selPad) {
   c.font = '600 11px -apple-system,system-ui,sans-serif'; c.textAlign = 'center';
   const barMin = (V.ft - V.A) / V.S + YB() + 12 / V.S; // highest world row that clears the top bar (with room for tier pips)
   for (const e of (g.guards && g.guards.length ? g.ents.concat(g.guards.filter(x => x.hp > 0)) : g.ents)) { // v2.71: and the relic guards
-    if (!seen(e) || e.bur) continue; // v2.82: no bars over a burrowed Gorebore
+    if (!seen(e) || e.bur || e.gone === 3) continue; // v2.82: no bars over a burrowed Gorebore (v2.83: or a unit in a tunnel)
     if (e.kind === 'b') {
       const x = P(e.u, e.v).x, top = Math.max(bTop(e) - 8, barMin), hq = e.type === 'hq';
       bar(c, x, top, hq ? 84 : 52, e.hp / e.maxHp, hq ? 5 : 3.5, lostF(e));

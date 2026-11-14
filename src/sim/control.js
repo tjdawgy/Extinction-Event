@@ -183,9 +183,11 @@ function command(g, s, ids, o, a, b) {
   if (g.countdown > 0) return WAIT_GO;
   const side = g.sides[s];
   if (!side.direct) return { ok: false, msg: 'Not under direct control' };
-  if (!['go', 'target', 'attack', 'hold', 'retreat'].includes(o)) return { ok: false, msg: 'Unknown order' };
-  const want = new Set(ids), us = g.ents.filter(e => e.kind === 'u' && e.side === s && e.hp > 0 && want.has(e.id));
+  if (!['go', 'target', 'attack', 'hold', 'retreat', 'tunnel'].includes(o)) return { ok: false, msg: 'Unknown order' };
+  const want = new Set(ids), us = g.ents.filter(e => e.kind === 'u' && e.side === s && e.hp > 0 && want.has(e.id) && !(e.tn && e.tn.ph === 1)); // v2.83: not a unit inside a tunnel
   if (!us.length) return { ok: false, msg: 'No units selected' };
+  if (o === 'tunnel') return ctlTunnel(g, s, us);
+  for (const e of us) e.tn = undefined; // v2.83: any other order calls a unit on its way to a tunnel back
   let T = null;
   if (o === 'go') {
     let u = a, v = b;
@@ -213,6 +215,16 @@ function command(g, s, ids, o, a, b) {
   lg(g, s, 'O', 'sel', us.length, o === 'go' ? 'move' : o);
   const n = us.length, who = `${n} unit${n === 1 ? '' : 's'}`;
   return { ok: true, n, msg: o === 'go' ? `${who}: moving` : o === 'target' ? `${who}: attacking the target` : o === 'hold' ? `${who}: holding position` : o === 'attack' ? `${who}: attacking down the ${MAP_LANED && a != null ? MAP.lanes[a].id + ' lane' : 'lane'}` : `${who}: retreating to the base` };
+}
+// The Tunnel order (v2.83, batch 2b): the selection's Bloomhost ground units walk to the side's tunnel entrance and go
+// through the surfaced Ruinmaw nearest the enemy (tunnelGate); the rest of the selection is left as it was
+function ctlTunnel(g, s, us) {
+  if (!rwB2b(g)) return { ok: false, msg: 'Unknown order' };
+  const R = tunnelGate(g, s); if (!R) return { ok: false, msg: 'No Ruinmaw is surfaced' };
+  const go = us.filter(tunnelOk); if (!go.length) return { ok: false, msg: 'Only Bloomhost ground units can use the tunnel' };
+  for (const e of go) { e.po = { o: 'tunnel', r: R.id }; e.tn = { r: R.id, ph: 0 }; e.holdU = undefined; e.holdV = undefined; }
+  lg(g, s, 'O', 'sel', go.length, 'tunnel');
+  return { ok: true, n: go.length, msg: `${go.length} unit${go.length === 1 ? '' : 's'}: into the tunnel` };
 }
 // Control groups (v2.76): slot k holds the ids of side s's units saved into it; dead units drop out, nothing is added
 function setGroup(g, s, k, ids) {
@@ -255,6 +267,7 @@ function ctlStep(g, u, d) {
     if (Math.hypot(po.ju - u.u, po.jv - u.v) > CTRL.arrive * 3) return { go: [po.ju, po.jv] };
     delete po.ju; delete po.jv; return null;
   }
+  if (po.o === 'tunnel') { if (!u.tn) ctlHere(g, u); return null; } // v2.83: tunnelStep moves it; without a tunnel left, it holds
   if (po.o === 'go') {
     if (Math.hypot(po.u - u.u, po.v - u.v) > CTRL.arrive) return po.back ? { run: [po.u, po.v] } : { go: [po.u, po.v] };
     ctlHold(u, po.u, po.v); return null;

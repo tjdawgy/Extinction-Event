@@ -292,6 +292,7 @@ function fire(g, src, t, def) {
   if (src.kind === 'u') src.lastAct = g.t; // in combat (creep regen waits, v2.18)
   if (def.weapon === 'flame') { flameBurst(g, src, def, t); return; }
   if (def.melee) { meleeHit(g, src, t, def); return; }
+  if (def.rupture) { ruptureFire(g, src, t); return; } // v2.83: a Worldbreaker's crack (batch 2b)
   if (def.beam) { // the Null Lance (v2.25): the beam lands at once; the SIM leaves a short beam mark for the renderer
     const m = muzzle(src), a = P(m.u, m.v, m.z), b = P(t.u, t.v, aimZ(t));
     damage(g, t, def.dmg * (sideBuff(g, src.side) ? NANO.dmg : 1) * outMul(g, src), def.weapon, src.side, src);
@@ -304,6 +305,7 @@ function fire(g, src, t, def) {
   let mul = 1; // v2.37: the Lancer's focus (P14), a planted Titan against buildings (P8)
   if (def.focus && src.kind === 'u') { src.fcN = src.fcTgt === t.id ? Math.min(def.focus.max, (src.fcN || 0) + 1) : 0; src.fcTgt = t.id; mul = 1 + def.focus.per * src.fcN; }
   if (def.siege && src.siege === 2 && t.kind === 'b') mul = def.siege.bmul;
+  if (def.breach && src.siege === 2 && t.kind === 'b') mul = TITAN.bmul; // v2.83: a Titan planted beside a building (batch 2b)
   if (def.salvo || def.carpet) { volley(g, src, t, def, m); if (src.kind === 'u') src.recoil = 1; return; } // P1, P10
   const p = { u: m.u, v: m.v, z: m.z, pu: m.u, pv: m.v, pz: m.z, tu: t.u, tv: t.v, tz: aimZ(t), target: t, side: src.side,
     weapon: def.weapon, dmg: def.dmg * mul * (sideBuff(g, src.side) ? NANO.dmg : 1) * (src.vet ? DRILL.dmg : 1) * outMul(g, src), splash: def.splash || 0, t: 0 }; // disrupted: less damage (v2.27)

@@ -12,7 +12,7 @@ const CT = { hitPx: 26, dbl: 350, lassoMs: 260, lassoMin: 14, lineSel: 22, still
 let ctlMark = null, ctlLoop = null; // ctlLoop: the last box, fading out; ctlMark: where the last move order went (or its target)
 const ctlOn = () => !!(game && running && !game.over && !game.spectate && game.sides[0].direct && (!game.range || game.sides[0].manual)); // v2.81: in the Test Range only with Control blue myself
 const laneName = k => MAP.lanes[k].id[0].toUpperCase() + MAP.lanes[k].id.slice(1);
-const myUnits = () => game.ents.filter(e => e.kind === 'u' && e.side === 0 && e.hp > 0);
+const myUnits = () => game.ents.filter(e => e.kind === 'u' && e.side === 0 && e.hp > 0 && e.gone !== 3); // v2.83: not units inside a tunnel
 function selLive() { // the selected units still alive (the dead drop out of the selection)
   const out = myUnits().filter(e => SELN.has(e.id));
   if (out.length !== SELN.size) { SELN.clear(); for (const e of out) SELN.add(e.id); }
@@ -156,6 +156,7 @@ function refreshCtl() {
   const sl = selLive(), m = sl.length;
   bar.classList.toggle('hide', !m); document.body.classList.toggle('selecting', !!m); if (!m) closePick();
   if (m) setHTML($('selN'), String(m));
+  const tb = bar.querySelector('[data-c="tunnel"]'); tb.classList.toggle('hide', !(m && rwB2b(game) && sl.some(tunnelOk) && tunnelGate(game, 0))); // v2.83: Tunnel, while a Ruinmaw of yours is surfaced and Bloomhost ground units are selected
 }
 for (const b of document.querySelectorAll('#cmdbar [data-c]')) b.addEventListener('click', () => { if (paused) return; if (b.dataset.c === 'attack' && MAP_LANED) { TUT.sig.pick = true; openPick(); } else issue(b.dataset.c); }); // v2.77: on a lane map, Attack asks which lane
 $('selX').addEventListener('click', selClear);

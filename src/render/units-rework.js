@@ -137,14 +137,20 @@ function trailOf(g) { let a = BTRAIL.get(g); if (!a) { a = []; BTRAIL.set(g, a);
 function noteBurrow(g, u) {
   const a = trailOf(g); let last = null;
   for (let i = a.length - 1; i >= 0; i--) if (a[i].id === u.id) { last = a[i]; break; }
-  if (!last || Math.hypot(last.u - u.u, last.v - u.v) > 7 || g.t - last.t > 0.5) a.push({ u: u.u, v: u.v, t: g.t, side: u.side, id: u.id, s: (u.id * 7 + a.length) % 5 });
+  if (!last || Math.hypot(last.u - u.u, last.v - u.v) > 7 || g.t - last.t > 0.5) a.push({ u: u.u, v: u.v, t: g.t, side: u.side, id: u.id, s: (u.id * 7 + a.length) % 5, big: u.type === 'ruinmaw' ? 1 : 0 }); // big (v2.83): a Ruinmaw's wide trail
 }
 function drawTrails(c, g, lit) {
   const a = BTRAIL.get(g); if (!a || !a.length) return;
-  while (a.length && (g.t - a[0].t > BORE.trail || a[0].t > g.t)) a.shift();
+  const life = p => BORE.trail * (p.big ? 2 : 1); // v2.83: a Ruinmaw's trail lasts twice as long
+  while (a.length && a[0].t > g.t) a.shift();
+  for (let i = a.length - 1; i >= 0; i--) if (g.t - a[i].t > life(a[i])) a.splice(i, 1);
   for (const p of a) {
     if (!lit(p.u, p.v)) continue;
-    const k = 1 - (g.t - p.t) / BORE.trail, w = P(p.u, p.v), r = 4 + (p.s % 3);
+    const k = 1 - (g.t - p.t) / life(p), w = P(p.u, p.v), r = (4 + (p.s % 3)) * (p.big ? 2 : 1);
+    if (p.big) { // v2.83: a Ruinmaw's wide furrow, with cracks out to the sides
+      c.globalAlpha = 0.55 * k; c.fillStyle = '#2c2016'; c.beginPath(); c.ellipse(w.x, w.y + 1, r * 1.9, r * 0.5, 0, 0, 7); c.fill();
+      c.globalAlpha = 0.8 * k; c.strokeStyle = '#1e150d'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(w.x - r * 1.4, w.y + 2); c.lineTo(w.x - r * 2.3, w.y + 5 + p.s % 2); c.moveTo(w.x + r * 1.2, w.y + 1.5); c.lineTo(w.x + r * 2.1, w.y + 4 - p.s % 2); c.moveTo(w.x - r, w.y - 1); c.lineTo(w.x - r * 1.7, w.y - 3); c.stroke();
+    }
     c.globalAlpha = 0.85 * k; c.fillStyle = '#5a4430'; c.beginPath(); c.ellipse(w.x, w.y, r * 1.4, r * 0.55, 0, Math.PI, 0); c.fill();
     c.fillStyle = '#7d6142'; c.beginPath(); c.ellipse(w.x - 0.6, w.y - r * 0.2, r * 0.9, r * 0.35, 0, Math.PI, 0); c.fill();
     c.strokeStyle = '#2e2218'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(w.x - r * 1.6, w.y + 1); c.lineTo(w.x - r * 0.6, w.y + 0.2 + (p.s - 2) * 0.4); c.lineTo(w.x + r * 0.4, w.y + 1.2); c.stroke();

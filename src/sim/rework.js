@@ -8,7 +8,8 @@
      modelled on the Titan's siege lock (titanSiege).
    - artTelegraph (Artillery): every shell lands where it was aimed when fired (no tracking) after at least ART.fly s, and
      its spot is marked on the ground from firing to impact (g.mk, the shells' own list). Units out of the marker when it
-     lands take nothing. AI units step out of markers as they step out of meteor circles (markDodge).
+     lands take nothing. No unit steps out of a marker on its own (v2.83: the AI's marker dodge of v2.82 is gone; it made
+     the Artillery useless and armies stopped advancing); a player can move units out deliberately.
    - Gorebore (Bloomhost, replaces the Bile Lobber; internal id 'gorebore'): burrows whenever it moves and burrow is ready,
      travels underground at BORE.speed, untargetable and unhurt (u.gone 1), and erupts under its target (BORE.dmg within
      BORE.r), then stays up BORE.expose s with a melee bite; burrow is ready again BORE.cd s after the eruption.
@@ -18,8 +19,8 @@
      exiles a weak bolt (its UDEF weapon).
    New internal ids rather than renamed ones: a game with b2a off still has Bile Lobbers and Rift Mortars, and saves, match
    history and tests keep naming them. */
-const REWORK = { b2a: true, artDeploy: true, artTelegraph: true };
-const RW_KEYS = ['b2a', 'artDeploy', 'artTelegraph'];
+const REWORK = { b2a: true, artDeploy: true, artTelegraph: true, b2b: true }; // b2b (v2.83): batch 2b, src/sim/rework-2b.js
+const RW_KEYS = ['b2a', 'artDeploy', 'artTelegraph', 'b2b'];
 const rwInit = o => { const r = Object.assign({}, REWORK, o || {}), out = {}; for (const k of RW_KEYS) out[k] = !!r[k]; return out; };
 const rwB2a = g => !!(g && g.rw && g.rw.b2a);
 const rwDep = g => rwB2a(g) && !!g.rw.artDeploy;
@@ -90,19 +91,6 @@ function telegraph(g, p) {
   (g.mk || (g.mk = [])).push({ u: p.tu, v: p.tv, r: p.splash, side: p.side, t0: g.t, t1: g.t + p.T });
 }
 function updateMarks(g) { if (g.mk && g.mk.length) g.mk = g.mk.filter(m => m.t1 > g.t); }
-// an AI's ground unit inside an enemy shell marker: where it steps to (just outside, away from the centre), else null
-function markDodge(g, u) {
-  let best = null, bt = 1e9;
-  for (const m of g.mk) {
-    if (m.side === u.side) continue;
-    const du = u.u - m.u, dv = (u.v - m.v) * 0.6, dd = Math.hypot(du, dv), R = m.r + ART.step;
-    if (dd >= R || m.t1 >= bt) continue;
-    const k = dd > 1 ? R / dd : 1;
-    best = dd > 1 ? [clamp(m.u + du * k, 0, L), m.v + (u.v - m.v) * k] : [clamp(m.u - R * dirOf(u.side), 0, L), m.v]; bt = m.t1;
-  }
-  return best;
-}
-
 /* ---- Gorebore ---- */
 const BORE_FAR = ['sniper', 'marksman'];
 function boreRank(e) { // 0: ranged backline, 1: other ranged, 2: any other unit, 3: a building
