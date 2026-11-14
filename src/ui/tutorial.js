@@ -273,6 +273,7 @@ function tutFirstPrompt() {
 function frame(ts) {
   requestAnimationFrame(frame);
   if (CX.open) { last = ts; return; } // the Codex covers the screen: nothing to draw (the match is paused)
+  if (TR.on) { trFrame(ts); return; } // v2.81: the Test Range steps and draws its own rows
   vfxQuality(ts - last, !!(game && running && !paused));
   const real = Math.min(CATCH_UP, Math.max(0, (ts - last) / 1000)); last = ts;
   const dt = Math.min(0.05, real); // camera glide and the end screen's effects (as before)

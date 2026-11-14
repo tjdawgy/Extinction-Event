@@ -85,7 +85,10 @@ Map data format: [docs/MAP_FORMAT.md](docs/MAP_FORMAT.md) (approved after Phase 
   - [x] Three-Lane with crossings. *(v2.70: three lanes, crossings, two capture groups, the watchtower alarm)*
 - [ ] **Controls redesign.** The army controls are clunky on multi-lane maps (commands in a tab, overlapping orders, key actions in long-presses). New principle: select units, then tell them where to go or what to do; nothing moves on its own; the only automatic behaviours are Attack, Hold and Retreat. Design: [docs/CONTROLS.md](docs/CONTROLS.md) (replaces docs/SPLIT_ARMY.md and the v2.62 rally flags and Send damaged home). The AI doesn't use these controls and must play the same. *(v2.73–v2.75; refined after the Three-Lane playtest in v2.76–v2.79: one base rally point, Attack picks a lane, units engage while moving, spacing, the rectangle box, on-screen double-tap, tap an enemy to target it, three control groups; the AI identical to v2.75)*
   - [x] Target follow-up: after a targeted enemy dies, a group an enemy static defence can reach falls back just outside its reach, spaced out, and holds. *(v2.80; the AI identical to v2.79 on the 14 seeded matches)*
-- [ ] **Balance pass.**
+- [ ] **Faction rework** (comes first: the balance pass below is paused until it is done). Make Last Fist, Bloomhost and the Axiarchs three genuinely different armies by breaking the mirror: each owns battlefield roles nobody else has and lacks others. Design and batch order: [docs/FACTION_REWORK.md](docs/FACTION_REWORK.md); every rework batch works from it.
+  - [x] Batch 1: the Test Range (a sandbox on the real SIM, from the main menu) and the design doc. *(v2.81)*
+  - [ ] Batch 2: artillery and siege. Batch 3: divers and melee. Batch 4: ranged and air. Batch 5: art for the unchanged units and the buildings.
+- [ ] **Balance pass** (paused until the faction rework is done).
   - [x] Extend the sim harness to run on every map. *(v2.67: `--map` in audit/sim/ladder.js, `mapId` in match.js; audit/sim/shares.js)*
   - Plan: [docs/PHASE1_BALANCE_PLAN.md](docs/PHASE1_BALANCE_PLAN.md) (design only, after v2.72).
   - Fix the Tech vs Contain spread.

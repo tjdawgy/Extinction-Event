@@ -231,7 +231,7 @@ function groupUnits(g, s, k) { // the group's living units (the dead are dropped
 // Healing at the base rally point: a direct side's units within CTRL.healR of it, unhurt for CTRL.calm s
 function updateBaseHeal(g, dt) {
   for (let s = 0; s < 2; s++) {
-    const side = g.sides[s]; if (!side.direct) continue;
+    const side = g.sides[s]; if (!side.direct || g.range) continue; // v2.81: no base in the Test Range
     const B = ctlBase(s);
     for (const e of g.ents) {
       if (e.kind !== 'u' || e.side !== s || e.hp <= 0 || e.hp >= e.maxHp || g.t - e.lastHurt <= CTRL.calm) continue;

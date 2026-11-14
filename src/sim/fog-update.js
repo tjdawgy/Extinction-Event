@@ -39,6 +39,7 @@ function visibleTo(g, s, e) {
 function updateVision(g) {
   for (let s = 0; s < 2; s++) {
     const f = g.fog[s], vis = f.vis, exp = f.exp;
+    if (g.range) { vis.fill(1); exp.fill(1); f.seen.fill(1); continue; } // v2.81: the Test Range has no fog (never set in a match)
     vis.fill(0);
     const reveal = MAP_2D ? (u, r, v) => { // v2.63: a circle of sight, a span per row
       for (let row = fogRow(v - r), r1 = fogRow(v + r); row <= r1; row++) { const y = FOG_Y0 + row * FOG_CELL + FOG_CELL / 2, dy = y - v; if (dy > r || dy < -r) continue; const dx = Math.sqrt(r * r - dy * dy), b = row * FOG_NX; vis.fill(1, b + fogCol(u - dx), b + fogCol(u + dx) + 1); }
@@ -277,7 +278,7 @@ function updateBuilding(g, b, foes, dt) {
     addPart(g, { x: w.x, y: w.y, vx: fxRand(-6, 6), vy: fxRand(-28, -14), life: fxRand(1, 1.8), size: fxRand(4, 7), smoke: true, grav: -6 });
   }
   const gun = d.gun && d.gun[b.tier];
-  if (gun) {
+  if (gun && !g.sides[b.side].hush) { // hush (v2.81): a Test Range side told not to fight back (never set in a match)
     if (b.cd > 0) b.cd -= dt;
     const { best } = acquire(g, b, gun, foes);
     if (best) {

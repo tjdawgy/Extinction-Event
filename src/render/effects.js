@@ -904,7 +904,7 @@ function render(c, g, time, sel, selPad) {
   drawCreep(c, g, F); // under everything on the field (v2.18)
   drawField(c, g, F); // the Axiarch power field (v2.26), also under everything
 
-  for (let s = 0; s < 2; s++) {
+  for (let s = 0; s < 2 && !g.range; s++) { // v2.81: the Test Range has no bases
     const fac = g.sides[s].faction, hpos = hqPos(s), hp = P(hpos.u, hpos.v);
     // v2.17: enemy pads stay hidden until their ground has been in view (their look would give the faction away)
     if (s === 0 || cellsLit(F.seen, hpos.u, HQ_PAD_H, hpos.v)) drawPad(c, hp.x, hp.y, HQ_PAD_H, s, false, time, sel && sel.type === 'hq' && sel.side === s, fac);
@@ -935,7 +935,7 @@ function render(c, g, time, sel, selPad) {
   for (const a of g.acid) if (lit(a.u, a.v)) drawAcidPool(c, a, g.t);
   drawDecals(c);
   drawMeteor(c, g, time); // v2.72: a meteor's warning circle, then its fall
-  if (g.sides[0].direct && !g.over) { const B = ctlBase(0), w = P(B.u, B.v); c.save(); c.globalAlpha = 0.22; c.strokeStyle = TEAM[0].main; c.lineWidth = 1.5; c.setLineDash([6, 6]); c.beginPath(); c.ellipse(w.x, w.y, CTRL.healR, CTRL.healR, 0, 0, 7); c.stroke(); c.restore(); } // v2.76: where the base rally point heals
+  if (g.sides[0].direct && !g.over && !g.range) { const B = ctlBase(0), w = P(B.u, B.v); c.save(); c.globalAlpha = 0.22; c.strokeStyle = TEAM[0].main; c.lineWidth = 1.5; c.setLineDash([6, 6]); c.beginPath(); c.ellipse(w.x, w.y, CTRL.healR, CTRL.healR, 0, 0, 7); c.stroke(); c.restore(); } // v2.76: where the base rally point heals
   if (g) { drawSelection(c, g, time); drawBuildingSel(c, g, time, false); }
   drawWrecks(c, time);
   // everything on the field, back to front
@@ -943,8 +943,8 @@ function render(c, g, time, sel, selPad) {
   for (const gh of ghosts) list.push({ kind: 'ghost', u: gh.u, v: gh.v, gh });
   for (const n of g.nodes) list.push({ kind: 'node', u: n.u, v: n.v - 1, n });
   for (const x of g.guards || []) if (x.hp > 0 && (g.spectate || visibleTo(g, 0, x))) list.push(x); // v2.71: relic guards (neutral gold)
-  if (g.sides[0].direct && !g.over) { const B = ctlBase(0); list.push({ kind: 'flag', u: B.u, v: B.v - 2, on: true }); } // v2.76: the base rally point (one flag; v2.74 had one per lane)
-  else if (!g.sides[0].direct && g.sides[0].stance !== 'attack') list.push({ kind: 'flag', u: rallyU(0, g) + 30, v: -20, on: true }); // spectating: the rally point
+  if (!g.range && g.sides[0].direct && !g.over) { const B = ctlBase(0); list.push({ kind: 'flag', u: B.u, v: B.v - 2, on: true }); } // v2.81: none in the Test Range (g.range); v2.76: the base rally point (one flag; v2.74 had one per lane)
+  else if (!g.range && !g.sides[0].direct && g.sides[0].stance !== 'attack') list.push({ kind: 'flag', u: rallyU(0, g) + 30, v: -20, on: true }); // spectating: the rally point
   list.sort((a, b) => (a.v - b.v) || (a.u - b.u));
   for (const e of list) {
     if (e.kind === 'b') drawBuilding(c, e, time);

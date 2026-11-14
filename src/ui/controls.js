@@ -10,7 +10,7 @@
 const SELN = new Set(); // the selected units' ids
 const CT = { hitPx: 26, dbl: 350, lassoMs: 260, lassoMin: 14, lineSel: 22, still: 8, baseOut: 140, onBld: 12 }; // onBld: a tap on an enemy building targets it unless one of yours is this close under the tap
 let ctlMark = null, ctlLoop = null; // ctlLoop: the last box, fading out; ctlMark: where the last move order went (or its target)
-const ctlOn = () => !!(game && running && !game.over && !game.spectate && game.sides[0].direct);
+const ctlOn = () => !!(game && running && !game.over && !game.spectate && game.sides[0].direct && (!game.range || game.sides[0].manual)); // v2.81: in the Test Range only with Control blue myself
 const laneName = k => MAP.lanes[k].id[0].toUpperCase() + MAP.lanes[k].id.slice(1);
 const myUnits = () => game.ents.filter(e => e.kind === 'u' && e.side === 0 && e.hp > 0);
 function selLive() { // the selected units still alive (the dead drop out of the selection)
@@ -144,7 +144,7 @@ function buildLanes() {
 }
 function refreshCtl() {
   const box = $('lanes'), bar = $('cmdbar'), on = ctlOn();
-  box.classList.toggle('hide', !on); V.lpad = game && !game.spectate && game.sides[0].direct ? 58 : 0; // the column's width: the camera can scroll the field's left edge clear of it
+  box.classList.toggle('hide', !on); V.lpad = game && !game.spectate && game.sides[0].direct && (!game.range || game.sides[0].manual) ? 58 : 0; // the column's width: the camera can scroll the field's left edge clear of it
   refreshGroups(on);
   if (!on) { bar.classList.add('hide'); closePick(); document.body.classList.remove('selecting'); return; }
   const us = myUnits(), n = MAP_LANED ? MAP.lanes.length : 0, cnt = new Array(n).fill(0);

@@ -26,7 +26,7 @@ function wireDiff() {
 }
 const SAVE_KEY = 'colonyMobile.save';
 function saveGame() {
-  if (!game || game.over || game.spectate || game.tut) return; // a spectated match is never saved over the player's (v2.46: nor a tutorial match)
+  if (!game || game.over || game.spectate || game.tut || game.range) return; // v2.81: nor the Test Range; a spectated match is never saved over the player's (v2.46: nor a tutorial match)
   try { localStorage.setItem(SAVE_KEY, serialize(game, { camX: cam.x, speed })); } catch (e) {}
 }
 function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
@@ -35,6 +35,7 @@ function peekSave() {
 }
 function showStart() {
   tutOff(); // v2.46
+  trOff(); // v2.81
   document.body.classList.remove('spectate'); // v2.38
   clearTimeout(endTimer); endTimer = null; endAim(); $('abil').classList.add('hide'); $('ext').classList.add('hide'); document.body.classList.remove('ext-on');
   running = false; paused = false; game = null; closePanel(); hideInfo(); hideCountdown(); applyZoom(1);
@@ -47,8 +48,9 @@ function showStart() {
       <div><b>Command your army</b>Select units (tap them, double-tap one for its type, hold and draw a loop, or All on the left), then tap the ground to move them, or Attack, Hold or Retreat. Drag to look around.</div>
     </div>
     <div class="setup"><span class="lbl">Difficulty</span>${diffSeg()}<span class="lbl">You</span>${facSeg('meSeg', 'me')}<span class="lbl">Opponent</span>${facSeg('foeSeg', 'foe')}<p class="fdesc" id="facDesc">${factionDesc(facPick.me)}</p></div>
-    <div class="row">${sv ? `<button class="big" id="bResume">Resume match</button><button class="ghost" id="bPlay">New match</button><span class="lbl">${DIFF[sv.diffKey] ? DIFF[sv.diffKey].label : ''}${sv.map !== 'classic' ? ', ' + cxEsc(MAPS[sv.map].display.name) : ''}, ${fmtTime(sv.t)} in</span>` : '<button class="big" id="bPlay">Start match</button>'}<button class="ghost" id="bCodex">Codex</button><button class="ghost" id="bSound">${sndLabel()}</button></div>`);
+    <div class="row">${sv ? `<button class="big" id="bResume">Resume match</button><button class="ghost" id="bPlay">New match</button><span class="lbl">${DIFF[sv.diffKey] ? DIFF[sv.diffKey].label : ''}${sv.map !== 'classic' ? ', ' + cxEsc(MAPS[sv.map].display.name) : ''}, ${fmtTime(sv.t)} in</span>` : '<button class="big" id="bPlay">Start match</button>'}<button class="ghost" id="bCodex">Codex</button><button class="ghost" id="bRange">Test Range</button><button class="ghost" id="bSound">${sndLabel()}</button></div>`);
   wireDiff(); wireFactions(); wireSound();
+  $('bRange').addEventListener('click', trOpen); // v2.81: the Test Range
   $('bCodex').addEventListener('click', () => openCodex(CX.tab));
   $('bPlay').addEventListener('click', showMapSelect);
   if (sv) $('bResume').addEventListener('click', resumeGame);
@@ -143,7 +145,7 @@ function showDev() {
   $('bDevBack').addEventListener('click', showStart);
 }
 function startSpectate() {
-  tutOff();
+  tutOff(); trOff();
   clearTimeout(endTimer); endTimer = null;
   const per = p => p === 'random' ? undefined : p;
   game = newGame('hard', { map: MAPS[mapPick] ? mapPick : 'classic', countdown: 0, autoPlayer: true, autoDiff: 'hard', factions: [devPick.a.f, devPick.b.f], autoAi: devPick.a.ai, ai: devPick.b.ai, autoPersona: per(devPick.a.p), persona: per(devPick.b.p) });
@@ -159,7 +161,7 @@ function startSpectate() {
   toast(`Spectating: ${nm('a')} vs ${nm('b')}`, 'ok');
 }
 function resumeGame() {
-  tutOff();
+  tutOff(); trOff();
   let g = null;
   try { g = deserialize(localStorage.getItem(SAVE_KEY)); } catch (e) { g = null; }
   if (!g) { clearSave(); toast('That save could not be loaded', 'bad'); showStart(); return; }
@@ -176,7 +178,7 @@ function resumeGame() {
   pauseGame(true); // a restored match waits for the player to tap Resume
 }
 function startGame() {
-  tutOff(); // v2.46: a normal match never carries tutorial state
+  tutOff(); trOff(); // v2.46: a normal match never carries tutorial state
   document.body.classList.remove('spectate'); // v2.38
   clearTimeout(endTimer); endTimer = null;
   const me = pickFaction(facPick.me), foe = pickFaction(facPick.foe); // the opponent's pick is never shown during the match
@@ -205,6 +207,7 @@ function lanesTip() {
   $('bTipOk').addEventListener('click', () => { T.lanes = 1; try { localStorage.setItem(TIPS_KEY, JSON.stringify(T)); } catch (e) {} el.remove(); });
 }
 function pauseGame(restored) {
+  if (game && game.range) { trHalt(); return; } // v2.81: the Test Range has its own Start / Pause
   paused = true; endAim(); closePick(); saveGame(); // v2.77: and the Attack lane picker
   if (game.tut) { // v2.46: the tutorial's pause menu
     overlay(`<h1>Paused</h1><p>Tutorial: ${cxEsc(TUT_CH[TUT.ch] ? TUT_CH[TUT.ch].name : '')}</p><div class="row"><button class="big" id="bRes">Resume</button><button class="ghost" id="bEndTut">End Tutorial</button><button class="ghost" id="bCodex">Codex</button><button class="ghost" id="bSound">${sndLabel()}</button></div>`);

@@ -169,7 +169,7 @@ function startWarp(g, s, type, extra) { // extra: an echo's flags (v2.34)
 const pullOk = (g, u, v) => u >= 0 && u <= L && Math.abs(v) <= LANE_V && !g.ents.some(b => b.kind === 'b' && b.hp > 0 && Math.hypot(b.u - u, b.v - v) < b.half + 8);
 function updateAuras(g) {
   for (const a of g.ents) {
-    if (a.kind !== 'u' || a.hp <= 0) continue;
+    if (a.kind !== 'u' || a.hp <= 0 || g.sides[a.side].hush) continue; // hush (v2.81): a Test Range side told not to fight back (never set in a match)
     const d = UDEF[a.type];
     if (d.aura) for (const e of g.ents) if (e.kind === 'u' && e.side !== a.side && e.hp > 0 && !UDEF[e.type].air && Math.hypot(e.u - a.u, (e.v - a.v) * 0.6) <= d.aura.r) slowU(g, e, d.aura.slow, SLOW.dur);
     if (d.pulse && g.t >= a.pulseCd) {

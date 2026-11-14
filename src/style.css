@@ -402,3 +402,51 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 #alerts,#od{left:calc(env(safe-area-inset-left,0px) + 66px)} /* right of the left column */
 .spectate #lanes,.spectate #cmdbar{display:none}
 @media (max-width:700px){#cmdbar>button{font-size:13px;flex-basis:82px}#cmdbar .cmdhint{font-size:10px}#panel.grp #cmdbar .cmdhint{display:none}} /* v2.79: with the group slots there is no room for the hint on the narrow phone */
+/* v2.81: the Test Range (src/ui/testrange.js). Its top bar replaces the resources, HQ, minimap, speed and pause; its bottom bar replaces Build and Train */
+#trTop,#trBar,#trRead{display:none}
+.trange .res,.trange .hqr,.trange #mm,.trange #bSpeed,.trange #bPause,.trange #abil,.trange #panel>.tabs,.trange #cards{display:none}
+.trange #hud{gap:5px;padding:0 5px}
+.trange #trTop{display:flex;flex:1 1 auto;align-items:center;gap:5px;min-width:0}
+#trTop button{flex:0 0 auto;height:44px;min-width:44px;padding:0 10px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.25);font-weight:800;font-size:13px;color:var(--text);white-space:nowrap}
+#trTop #trGo{min-width:76px;border:0;background:linear-gradient(#4fd3ff,#1b8fd0);color:#001522}
+#trTop #trGo.run{background:rgba(30,46,76,.85);color:var(--text);border:1px solid rgba(57,200,255,.6)}
+#trTop #trSpd{min-width:50px}
+#trTop .trt{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:800;font-size:13px;color:var(--muted);padding:0 2px}
+.trange #panel{height:56px}
+.trange #trBar{display:flex;position:absolute;inset:0;z-index:1;align-items:stretch;gap:6px;padding:5px}
+.trange #panel.grp #trBar{right:151px} .trange #grps{margin-left:auto}
+#trTool{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:7px;text-align:left;padding:0 10px;border-radius:10px;border:1px solid rgba(127,227,255,.45);background:rgba(16,30,50,.92);color:var(--text);overflow:hidden}
+#trTool i{flex:none;width:11px;height:11px;border-radius:50%}
+#trTool span{display:flex;flex-direction:column;min-width:0;line-height:1.15}
+#trTool b{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#trTool small{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trseg{flex:0 0 auto;display:flex;align-items:stretch;gap:3px;padding:0 3px;border-radius:11px;background:rgba(0,0,0,.2)}
+.trseg>span{align-self:center;font-size:10.5px;font-weight:800;padding:0 3px}
+#trBb>span{color:var(--blue)} #trBr>span{color:var(--red)}
+.trseg button{min-width:56px;padding:0 6px;border-radius:9px;border:1px solid var(--line);background:rgba(30,46,76,.6);font-weight:800;font-size:12.5px;color:var(--muted)}
+.trseg button.on{background:var(--panel3);color:var(--text);box-shadow:inset 0 0 0 1px rgba(57,200,255,.6)}
+#trBr button.on{box-shadow:inset 0 0 0 1px rgba(255,77,77,.7)}
+.trseg em{display:none;align-self:center;font-style:normal;font-size:11px;font-weight:800;color:var(--muted);padding:0 8px}
+.trseg.you button,.trseg.calm button{display:none} .trseg.you em,.trseg.calm em{display:block}
+.trange #trRead{display:block;position:fixed;inset:0;z-index:1;pointer-events:none}
+#trRead div{position:absolute;padding:2px 7px;border-radius:7px;background:rgba(6,10,20,.66);font-size:10.5px;line-height:1.35;color:#cfd8e6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.trcmp #trRead div{font-size:9.5px;padding:1px 6px;line-height:1.3} #trRead .b{color:#7adcff;font-weight:700} #trRead .r{color:#ff8a8a;font-weight:700} #trRead .w{color:#ffe9a8}
+.trange #info{pointer-events:auto} /* its Remove button and × take taps (the card sits over the field) */
+.trinf{display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;margin-top:5px}
+.trinf em,.trinf .st i{font-style:normal;color:var(--muted)} .trinf .st i{color:#cfd8e6} .trinf .st{flex:1 1 100%;color:#cfd8e6}
+.trinf .trrm{margin-left:auto;height:44px;padding:0 16px;border-radius:10px;border:1px solid var(--bad);background:#3a1418;color:#ffd6dc;font-weight:800}
+.box.trs{width:min(700px,100%);padding:10px 14px}
+.trs .trhd{display:flex;align-items:center;gap:10px} .trs .trhd h1{font-size:22px} .trs .trhd small{color:var(--muted);font-size:12px} .trs .trhd .ghost{margin-left:auto;height:44px;padding:0 18px}
+.trg{display:grid;grid-template-columns:auto minmax(0,1fr);gap:7px 10px;align-items:center;margin-top:8px}
+.trg .lbl{color:var(--muted);font-size:12px;max-width:92px;line-height:1.15}
+.trs .seg button{height:44px;min-width:44px;padding:0 10px}
+.trrow{display:flex;flex-wrap:wrap;align-items:center;gap:6px} .trl{font-size:12px;font-weight:800;color:var(--muted)}
+.trn{color:var(--muted);font-size:11px;line-height:1.25;flex:1 1 160px}
+.trunits{display:flex;flex-wrap:wrap;gap:5px}
+.trunits button{width:80px;height:62px;border-radius:10px;border:1px solid var(--line);background:linear-gradient(rgba(30,46,76,.9),rgba(15,24,43,.9));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:2px;font-size:10.5px;font-weight:700;line-height:1.1;color:var(--text)}
+.trunits canvas{width:56px;height:32px;flex:none}
+.trunits button.on{border-color:#fff;box-shadow:inset 0 0 0 2px var(--blue)}
+.trq{min-height:44px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:rgba(30,46,76,.7);font-weight:800;font-size:12.5px;color:var(--text);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.15}
+.trq small{font-size:10px;font-weight:600;color:var(--muted)}
+.trsv input{height:44px;width:170px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.3);color:var(--text);padding:0 10px;font:inherit;-webkit-user-select:text;user-select:text}
+.trit{display:inline-flex;gap:2px} .trdel{min-width:44px;padding:0;color:#ffb3bd}

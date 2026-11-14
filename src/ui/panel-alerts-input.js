@@ -224,6 +224,7 @@ function handleTap(x, y) {
   if (!game) return;
   hideInfo();
   if (game.spectate) return; // a spectator only watches (drag still moves the camera)
+  if (game.range) { trTap(x, y); return; } // v2.81: the Test Range places, inspects, and (Control blue myself) commands
   if (wpt) { wptTap(x, y); return; }
   if (aim) { aimTap(x, y); return; }
   if (ctlFieldTap(x, y)) return; // v2.74: a unit selects it; with units selected, the ground is where they go

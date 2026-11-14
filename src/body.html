@@ -9,6 +9,7 @@
     <div class="res" id="resP"><i class="ico p"></i><div><b id="vP">0/0</b><small>army</small></div></div>
     <div class="hqr" id="hq0" role="img" aria-label="Your HQ"><svg class="shd" viewBox="0 0 12 14" aria-hidden="true"><path d="M6 1l5 2v4c0 3-2.2 5-5 6C3.2 12 1 10 1 7V3z"/><path class="x" d="M3.6 4.6l4.8 4.8M8.4 4.6L3.6 9.4"/></svg><div><span class="hb"><i></i></span><small></small></div></div>
     <canvas id="mm" aria-label="Battlefield overview: tap to jump"></canvas>
+    <div id="trTop" role="toolbar" aria-label="Test Range"><button id="trSet">Setup</button><button id="trGo">Start</button><button id="trReset" aria-label="Reset: replay the same setup">Reset</button><button id="trClear">Clear</button><button id="trSpd" aria-label="Speed">1×</button><b class="trt" id="trT">0:00</b><button id="trExit">Exit</button></div>
     <button class="hbtn" id="bSpeed" aria-label="Game speed">1×</button>
     <button class="hbtn" id="bPause" aria-label="Pause"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="2" y="1" width="3.5" height="12" rx="1" fill="currentColor"/><rect x="8.5" y="1" width="3.5" height="12" rx="1" fill="currentColor"/></svg></button>
   </header>
@@ -35,9 +36,11 @@
     <div class="tabs"><button data-tab="build" class="on">Build</button><button data-tab="train">Train</button></div>
     <div id="cards"></div>
     <div id="cmdbar" class="hide" role="toolbar" aria-label="Orders for the selected units"><div class="seltag"><span><b id="selN">0</b> selected</span><button id="selX" aria-label="Clear the selection">×</button></div><button data-c="attack">Attack</button><button data-c="hold">Hold</button><button data-c="retreat">Retreat</button><span class="cmdhint">Tap the ground to move them there</span></div>
+    <div id="trBar" role="toolbar" aria-label="Test Range: what a tap places, and each side's orders"><button id="trTool"></button><div class="trseg" id="trBb"><span>Blue</span><button data-m="attack">Attack</button><button data-m="hold">Hold</button><em>You</em></div><div class="trseg" id="trBr"><span>Red</span><button data-m="attack">Attack</button><button data-m="hold">Hold</button><em>Calm</em></div></div>
     <div id="grps" class="hide" role="group" aria-label="Control groups"><button data-g="0" aria-label="Group 1: tap to select, double-tap to jump there, hold to save the selection"><b>1</b><i>–</i></button><button data-g="1" aria-label="Group 2: tap to select, double-tap to jump there, hold to save the selection"><b>2</b><i>–</i></button><button data-g="2" aria-label="Group 3: tap to select, double-tap to jump there, hold to save the selection"><b>3</b><i>–</i></button></div>
   </footer>
 </div>
+<div id="trRead" aria-live="off"></div>
 <div id="ov"><div class="box" id="box"></div></div>
 <div id="tutHi" class="hide" aria-hidden="true"></div>
 <div id="tutB" class="hide" role="dialog" aria-label="Tutorial" aria-live="polite"><div class="tbh"><b id="tutT"></b><small id="tutN"></small></div><p id="tutX"></p><div id="tutXtra"></div><div class="tbr"><button id="tutSkipC">Skip Chapter</button><span class="sp"></span><button id="tutSkip">Skip ▸</button><button id="tutNext" class="pri">Next</button></div></div>
