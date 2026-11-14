@@ -136,7 +136,7 @@ test('saves v26 keep Celestial Array paths and the new units; a v25 save loads (
 });
 
 test('every Axiarch unit hits exactly the targets spec section 6 gives it (A aircraft, G ground units, B buildings)', () => {
-  const SPEC = { shardling: 'GB', riftstalker: 'GB', parallax: 'GB', lancer: 'AGB', marksman: 'GB', bastion: 'GB', riftmortar: 'GB', worldbreaker: 'GB', gravemantle: 'GB', eventide: 'GB', // v2.31: Gravemantle and Eventide G → G, B
+  const SPEC = { shardling: 'GB', riftstalker: 'GB', parallax: 'GB', lancer: 'AGB', marksman: 'GB', bastion: 'GB', riftmortar: 'GB', severance: 'GB', worldbreaker: 'GB', gravemantle: 'GB', eventide: 'GB', // v2.31: Gravemantle and Eventide G → G, B
     wraithwing: 'AGB', prismwing: 'GB', shardstorm: 'AGB', voidcarrier: 'GB', sovereign: 'GB' }; // v2.31: Shardstorm A, G → A, G, B
   assert.deepStrictEqual(Object.keys(U).filter(t => U[t].fac === 'axiarchs').sort(), Object.keys(SPEC).sort(), 'every Axiarch unit is listed');
   for (const [t, want] of Object.entries(SPEC)) {

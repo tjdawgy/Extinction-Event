@@ -28,7 +28,7 @@ test('Test Range: setup, placing, inspecting, Start, speeds, Reset replays exact
   for (const fac of ['lastfist', 'bloomhost', 'axiarchs']) { // every unit of the faction, from UDEF at run time; both target buildings
     await page.click(`#trPf button[data-k="${fac}"]`);
     const got = await page.evaluate(() => [...document.querySelectorAll('#trU button')].map(b => b.dataset.type));
-    assert.deepStrictEqual(got, await page.evaluate(f => Object.keys(UDEF).filter(t => (UDEF[t].fac || 'lastfist') === f), fac));
+    assert.deepStrictEqual(got, await page.evaluate(f => Object.keys(UDEF).filter(t => (UDEF[t].fac || 'lastfist') === f && rwShown(t)), fac)); // v2.82: the units a new match has
     assert.deepStrictEqual(await page.evaluate(() => [...document.querySelectorAll('#trB button')].map(b => b.dataset.type)), ['turret', 'refinery']);
   }
   const small = await page.evaluate(() => [...document.querySelectorAll('#box button')].filter(b => { const r = b.getBoundingClientRect(); return r.height && r.height < 44; }).map(b => b.textContent));
@@ -102,7 +102,7 @@ test('Test Range: Control blue myself (box, move, target), Compare with three is
   assert.ok(await page.evaluate(() => TR.games.length === 3 && !game.sides[0].manual && !ctlOn()), 'Compare turns player control off');
   await page.click('#trQ button[data-i="0"]');
   assert.deepStrictEqual(await page.evaluate(() => TR.games.map(g => g.ents.filter(e => e.side === 1).length)), [13, 10, 10]); // row 1 keeps the Armor placed before
-  for (const [k, fac, t] of [[0, 'lastfist', 'artillery'], [1, 'bloomhost', 'bilelobber']]) { await pick(page, 0, fac, 3, t); await page.mouse.click(250, await rowY(page, k)); }
+  for (const [k, fac, t] of [[0, 'lastfist', 'artillery'], [1, 'bloomhost', 'gorebore']]) { await pick(page, 0, fac, 3, t); await page.mouse.click(250, await rowY(page, k)); }
   assert.deepStrictEqual(await page.evaluate(() => TR.games.map(g => g.ents.filter(e => e.side === 0).length)), [8, 3, 0]);
   assert.deepStrictEqual(await page.evaluate(() => TR.games.map(g => g.sides[0].faction)), ['lastfist', 'bloomhost', 'lastfist']);
   await page.evaluate(() => { for (let i = 0; i < 900; i++) for (const g of TR.games) rangeStep(g); });

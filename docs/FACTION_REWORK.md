@@ -52,6 +52,26 @@ per path) because the UI and AI rely on it; what fills it changes.
 
 ## Batch 2: Artillery and siege
 
+**Batch 2a (Artillery, Gorebore, Severance): done in v2.82.** Code: src/sim/rework.js (switch block `REWORK` → `g.rw`:
+`b2a`, `artDeploy`, `artTelegraph`; on by default; each Test Range row sets its own), art in src/render/units-rework.js.
+Starting values as asked (ART, BORE, SEVER). Departures and choices the design left open:
+- New internal ids `gorebore` and `severance` instead of renaming `bilelobber` / `riftmortar`: a game with b2a off (old
+  saves, Test Range rows, the pinned replays) still trains the old units, so both must exist side by side. Path and step
+  names (Burrowing Evolution, Severances) and the Codex follow the new-game default.
+- Artillery: it keeps its three-shell salvo, so one shot makes three markers (each shell's own landing spot, the salvo's
+  usual scatter). It packs up after 2 s with nothing to shoot (`ART.idle`), never on Hold. A marker is the shell's blast
+  (radius = its splash, shaped like the blast: across the lane counts 0.6).
+- Gorebore: surface speed kept at the Lobber's 22. Underground with no target it travels where its orders send it and
+  surfaces quietly when it stops (no damage, no cooldown). The eruption also hits buildings (at 0.5×); buildings are its
+  last choice of target. It picks targets it can see within 300 (on Hold or a move order: 160 of its spot / 170).
+- Severance: the orb aims at a group's centre now (no lead on moving units). Aircraft can be exiled too; units still
+  immune take the orb's 20 damage but are not exiled. While exiled, shields don't recharge and an exiled Medicopter or
+  aura unit does nothing. "About to fight its army" and "defenders around a building its army attacks" weight a group's
+  supply ×1.5 each; a lone unit only at 4+ supply.
+- AI: Gorebore and Severance have their own scores (Gorebore: the share of enemy ranged backline; Severance: a few per
+  army, more against many units); neither counts as artillery or siege. Gorebores are left out of the "mass" hold-back.
+  AI units step out of shell markers like meteor circles. The siege push (2+ Artillery or Titans) still happens.
+
 ### Artillery (Last Fist, War Factory Siege T2)
 
 Stays the game's only true artillery and keeps its spotter relationship with the Recon Drone. Two built-in weaknesses,
@@ -259,7 +279,7 @@ visual references. A final art batch after batch 4 redraws the unchanged units a
 ## Batch order
 
 1. Test Range and this doc.
-2. Artillery and siege: Artillery, Gorebore, Severance, Titan, Ruinmaw, Worldbreaker.
+2. Artillery and siege: Artillery, Gorebore, Severance (2a, done v2.82), Titan, Ruinmaw, Worldbreaker (2b).
 3. Divers and melee: Leaper, Riftstalker, Parallax, Ravager, Dreadthorn, Bastion, Shardling, Bulwark.
 4. Ranged and air: Sniper, Astral Marksman, Bilecaster, Gunship, Wraithwing, Leviathan, Brood Tyrant, Worldrender,
    Voidcarrier, Astral Sovereign.

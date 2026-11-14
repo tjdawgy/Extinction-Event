@@ -232,7 +232,7 @@ test('the AI casts all three under one shared cooldown; Mass Warp only for 4+ un
 });
 
 test('the AI trains a Gravemantle and an Eventide on the Dominion path (a prepared T3 Architectum), and a unit of each Genesis Gate path', () => {
-  for (const [b, path, want] of [['factory', 'B', ['gravemantle', 'eventide']], ['factory', 'A', ['riftmortar', 'worldbreaker']], ['barracks', 'A', ['riftstalker', 'parallax']], ['barracks', 'B', ['lancer', 'marksman']]]) {
+  for (const [b, path, want] of [['factory', 'B', ['gravemantle', 'eventide']], ['factory', 'A', ['severance', 'worldbreaker']], ['barracks', 'A', ['riftstalker', 'parallax']], ['barracks', 'B', ['lancer', 'marksman']]]) {
     const S = loadSim({ random: mul(7) }); S.RNG.legacy = true; // v2.50: the scenario was found on this Math.random stream
     const g = S.newGame('hard', { factions: ['lastfist', 'axiarchs'] }); g.countdown = 0; g.sides[0].aiT = 1e9;
     const side = g.sides[1]; side.res.c = side.res.e = 6000;

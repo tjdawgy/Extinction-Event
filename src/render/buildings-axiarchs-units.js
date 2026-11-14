@@ -871,12 +871,16 @@ const SPR = { scale: 0, map: new Map(), budget: 0 };
 function sprPose(u) { // a stand-in unit snapped to one of the cached poses, with its cache key; null = draw live
   const box = SPR_BOX[u.type];
   if (!box || u.recoil > 0.02) return null;
-  let q = 0, anim = 0;
-  if (u.moving) {
+  let q = 0, anim = 0, dpk = 0, k = '';
+  const spin = typeof SPR_SPIN !== 'undefined' && SPR_SPIN[u.type]; // v2.82: always turning (the Severance's ring)
+  if (spin) { const [ks, n] = spin, c = ((Math.round(u.anim * ks / (2 * Math.PI) * n) % n) + n) % n; q = 1 + c; anim = c * 2 * Math.PI / n / ks; }
+  else if (u.moving) {
     if (u.type === 'tank' || u.type === 'flame') { q = 1 + (((u.anim * 30) % 5 + 5) % 5 / 1.25 | 0); anim = (q - 1) * 1.25 / 30; }
     else if (u.type !== 'artillery') { const [k, n] = SPR_STEP[u.type], c = Math.round(u.anim * k / (2 * Math.PI) * n) % n; q = 1 + c; anim = c * 2 * Math.PI / n / k; }
   }
-  return { key: u.type + u.side + '.' + q + (u.aimAir ? 'a' : ''), box, u: { anim, moving: q > 0, recoil: 0, aimAir: u.aimAir } }; // a Hydra's guns up or level
+  if (u.type === 'artillery' && u.dep && VFX.g) { dpk = Math.round(artK(u, VFX.lastT) * 6) / 6; if (dpk) k = 'd' + dpk.toFixed(2); } // v2.82: its legs, in seven steps
+  if (u.exT > VFX.lastT) k += 'x'; // v2.82: exiled: the washed-out colours
+  return { key: u.type + u.side + '.' + q + (u.aimAir ? 'a' : '') + k, box, u: { anim, moving: !spin && q > 0, recoil: 0, aimAir: u.aimAir, dpk } }; // a Hydra's guns up or level
 }
 function drawUnitArt(c, u, T) {
   const p = sprPose(u);

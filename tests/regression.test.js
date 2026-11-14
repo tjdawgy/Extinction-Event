@@ -138,7 +138,7 @@ test('save keys stay colonyMobile.save and colonyMobile.diff (plus the separate 
   const o = JSON.parse(sim.serialize(sim.newGame('easy'), {}));
   assert.strictEqual(o.v, 31);
   assert.strictEqual(JSON.stringify(o.map), JSON.stringify({ id: 'classic', v: 1 }));
-  assert.deepStrictEqual(Object.keys(o).sort(), ['abil', 'acid', 'creep', 'diffKey', 'endHold', 'ents', 'extra', 'field', 'fog', 'fs', 'log', 'map', 'nid', 'nodes', 'projs', 'rs', 'seed', 'sides', 'stats', 't', 'v', 'warps']); // v2.50: seed, rs, fs (the random streams); v2.51: stats
+  assert.deepStrictEqual(Object.keys(o).sort(), ['abil', 'acid', 'creep', 'diffKey', 'endHold', 'ents', 'extra', 'field', 'fog', 'fs', 'log', 'map', 'mk', 'nid', 'nodes', 'projs', 'rs', 'rw', 'seed', 'sides', 'stats', 't', 'v', 'warps']); // v2.82: rw, mk (faction rework batch 2a; only while it is on); v2.50: seed, rs, fs (the random streams); v2.51: stats
 });
 
 test('old or broken saves never load into a bad state', () => {

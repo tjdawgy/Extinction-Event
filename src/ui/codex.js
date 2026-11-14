@@ -24,7 +24,7 @@ function cxRoles(fac) {
 // A faction's units: by building (Barracks, Factory, Tech Lab, then the rest), then path, then tier
 function cxUnits(fac) {
   const bi = t => { const i = CX_PROD.indexOf(UDEF[t].from); return i < 0 ? 9 : i; }, pi = t => UNIT_PATH[t] ? UNIT_PATH[t].p : '';
-  return Object.keys(UDEF).filter(t => (UDEF[t].fac || DEFAULT_FACTION) === fac)
+  return Object.keys(UDEF).filter(t => (UDEF[t].fac || DEFAULT_FACTION) === fac && rwShown(t)) // v2.82: the units a new match has (Gorebore or Bile Lobber, …)
     .sort((a, b) => bi(a) - bi(b) || pi(a).localeCompare(pi(b)) || UDEF[a].tier - UDEF[b].tier || UNIT_ORDER.indexOf(a) - UNIT_ORDER.indexOf(b));
 }
 // The units a building tier opens without a path (T1 units, or a building without a tree)
@@ -61,7 +61,7 @@ function cxTree(fac, type) {
   if (T) return `<div class="cxtree" id="cx-t-${type}">${root}<div class="cxbr">${Object.keys(T).map(p => {
     const P = T[p];
     return `<div class="cxcol"><div class="cxpath">Path ${p}: ${cxEsc(P.name)}</div>${[2, 3].map(t => { const st = P.steps[t] || {};
-      return `<div class="cxnode"><span class="tg">T${t}</span><b>${cxEsc(st.short || '')}</b>${cxUpCost(d, t)}${st.unlock ? cxUnitLinks(st.unlock) : cxEsc(st.txt || '')}</div>`; }).join('')}</div>`;
+      return `<div class="cxnode"><span class="tg">T${t}</span><b>${cxEsc(st.short || '')}</b>${cxUpCost(d, t)}${st.unlock ? cxUnitLinks(st.unlock.map(u => rwType({ rw: REWORK }, u))) : cxEsc(st.txt || '')}</div>`; }).join('')}</div>`;
   }).join('')}</div></div>`;
   const src = d.noPad && BDEFS[fac].sigB ? 'sigB' : null; // the bunker follows the Depot's tier
   return `<div class="cxtree" id="cx-t-${type}"><div class="cxchain">${root}${[2, 3].filter(t => tiers[t]).map(t => `<div class="cxnode"><span class="tg">T${t}</span>${d.up && d.up[t] ? 'Upgrade' : src ? `With the ${cxLink('b:' + src, BD(fac, src).name)} at T${t}` : ''}${cxUpCost(d, t)}${cxEsc(tiers[t])}${cxUnitLinks(cxTierUnits(fac, type, t))}</div>`).join('')}</div></div>`;

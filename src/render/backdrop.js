@@ -610,6 +610,8 @@ function drawFog(c, F) {
 
 function drawUnit(c, u) {
   const d = UDEF[u.type], w = P(u.u, u.v), bob = d.air ? Math.sin(u.anim * 2.2) * 3 : 0;
+  if (u.bur) { if (VFX.g) noteBurrow(VFX.g, u); drawBurrowed(c, u, w, VFX.lastT); return; } // v2.82: a burrowed Gorebore is only a moving hump of earth
+  const ex = u.exT > VFX.lastT; // v2.82: exiled: faded, washed out, a violet shimmer and a ring for the time left
   c.fillStyle = d.air ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.32)';
   const big = u.type === 'leviathan' || u.type === 'worldrender' || u.type === 'sovereign' ? 2.4 : u.type === 'broodtyrant' || u.type === 'voidcarrier' ? 1.6 : u.type === 'drone' || u.type === 'needlewing' || u.type === 'prismwing' ? 0.5 : 1; // a Leviathan's shadow is seen coming
   c.beginPath(); c.ellipse(w.x, w.y, (d.air ? 16 * big : UVIS[u.type] ? UVIS[u.type].w : Math.max(8, d.h * 0.7)) * US, (d.air ? 3.5 * big : 2.6) * US, 0, 0, 7); c.fill();
@@ -618,7 +620,9 @@ function drawUnit(c, u) {
   c.save(); c.translate(w.x, w.y - u.z + bob); c.scale(u.face * US * (u.kid ? 0.75 : 1), US * (u.kid ? 0.75 : 1)); // a Cloudwing's offspring is smaller (v2.21)
   const ph = u.phT > VFX.lastT; // P13 (v2.37): a phased Wraithwing is a faint violet ghost
   if (ph) c.globalAlpha = 0.25 + 0.1 * Math.sin(VFX.lastT * 40);
-  drawUnitArt(c, u, TEAM[u.side]);
+  if (ex) c.globalAlpha = 0.45 + 0.08 * Math.sin(VFX.lastT * 12 + u.id);
+  drawUnitArt(c, u, ex ? TEAM_EX : TEAM[u.side]);
+  if (ex) c.globalAlpha = 1;
   if (ph) { c.globalAlpha = 1; c.globalCompositeOperation = 'lighter'; stamp(c, GLOW.violet, 0, -4, 18, 0.55); c.globalCompositeOperation = 'source-over'; }
   c.globalCompositeOperation = 'lighter';
   if (u.hitT > 0) { c.globalAlpha = 0.6 * Math.min(1, u.hitT / 0.12); drawUnitArt(c, u, TEAM[u.side]); } // hit: the unit itself flashes
@@ -626,6 +630,7 @@ function drawUnit(c, u) {
   if (u.braceT > VFX.lastT) { c.globalAlpha = 0.55; c.strokeStyle = TEAM[u.side].light; c.lineWidth = 1.6; c.beginPath(); c.moveTo(-21, -7); c.bezierCurveTo(-19, -30, 12, -32, 19, -13); c.stroke(); } // a bracing Bulwark: its plates lock and glow
   c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
   c.restore();
+  if (ex) drawExiled(c, u, w, VFX.lastT);
   if (u.shT > VFX.lastT) drawShield(c, u, VFX.lastT);
   if (VFX.g) drawAxFx(c, VFX.g, u, w); // v2.27: a Marksman's charge, a Gravemantle's aura, slowed and disrupted marks
   if (u.ovT > VFX.lastT) drawOvercharge(c, u, w, VFX.lastT); // v2.28

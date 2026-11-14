@@ -122,7 +122,10 @@ function vfxScan(g, dt) {
       if ((e.siege || 0) !== (r.siege || 0) && (e.siege === 1 || e.siege === 3) && onView(x)) sfx('siegeLock', x);
       if ((e.surgeT || 0) > (r.surgeT || 0) && onView(x)) sfx('shieldUp', x);
       if ((e.phT || 0) > (r.phT || 0) && onView(x)) sfx('phaseOut', x);
+      if ((e.dep || 0) !== (r.dep || 0) && (e.dep === 1 || e.dep === 3) && onView(x)) sfx('siegeLock', x); // v2.82: the Artillery deploys or packs up
+      if ((e.exT || 0) > (r.exT || 0) && onView(x)) sfx('phaseOut', x); // v2.82: exiled
     }
+    r.dep = e.dep || 0; r.exT = e.exT || 0;
     r.siege = e.siege || 0; r.surgeT = e.surgeT || 0; r.phT = e.phT || 0;
     if (e.hp < r.hp - 0.01) { r.ghost = Math.max(r.ghost, r.hp); r.ghostT = 0.35; }      // health just lost shows as a draining white chunk
     else if (r.ghostT > 0) r.ghostT -= dt;
@@ -935,6 +938,7 @@ function render(c, g, time, sel, selPad) {
   for (const a of g.acid) if (lit(a.u, a.v)) drawAcidPool(c, a, g.t);
   drawDecals(c);
   drawMeteor(c, g, time); // v2.72: a meteor's warning circle, then its fall
+  drawMarks(c, g, lit); drawTrails(c, g, lit); // v2.82: telegraphed shells' markers, Gorebore burrow trails
   if (g.sides[0].direct && !g.over && !g.range) { const B = ctlBase(0), w = P(B.u, B.v); c.save(); c.globalAlpha = 0.22; c.strokeStyle = TEAM[0].main; c.lineWidth = 1.5; c.setLineDash([6, 6]); c.beginPath(); c.ellipse(w.x, w.y, CTRL.healR, CTRL.healR, 0, 0, 7); c.stroke(); c.restore(); } // v2.76: where the base rally point heals
   if (g) { drawSelection(c, g, time); drawBuildingSel(c, g, time, false); }
   drawWrecks(c, time);
@@ -969,6 +973,8 @@ function render(c, g, time, sel, selPad) {
   for (const p of g.projs) {
     if (p.side !== 0 && !lit(p.u, p.v)) continue;
     const a = P(p.pu, p.pv, p.pz), b = P(p.u, p.v, p.z), wp = p.weapon;
+    if (wp === 'exile') { drawOrb(c, g, p, b); continue; } // v2.82: a Severance's rift orb
+    if (wp === 'sever') { c.strokeStyle = `rgba(${RIFTA},0.6)`; c.lineWidth = 1.6; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke(); c.fillStyle = '#e6dcff'; c.beginPath(); c.arc(b.x, b.y, 1.8, 0, 7); c.fill(); continue; } // its bolt
     if (drawFacProj(c, g, p, a, b, wp, time)) continue; // faction weapons (v2.36)
     if (wp === 'rifle' || wp === 'flak' || wp === 'gatling' || wp === 'rail' || wp === 'spine' || wp === 'bolt' || wp === 'astral') {
       c.strokeStyle = wp === 'rail' || wp === 'astral' || wp === 'bolt' ? '#bff4ff' : wp === 'flak' ? '#ffe9a8' : wp === 'gatling' ? '#ffd38a' : wp === 'spine' ? '#d6ff9a' : '#fff3b0';
@@ -1009,7 +1015,7 @@ function render(c, g, time, sel, selPad) {
       c.fillStyle = '#9be15d'; c.beginPath(); c.arc(b.x, b.y, 3.4, 0, 7); c.fill(); c.fillStyle = '#e4ffc8'; c.beginPath(); c.arc(b.x - 1, b.y - 1, 1.2, 0, 7); c.fill();
     } else if (wp === 'shell') {
       const gp = P(p.u, p.v, 0);
-      if (showLanding(p, lit)) {
+      if (!p.mk && showLanding(p, lit)) { // v2.82: a telegraphed shell has its own marker (drawMarks)
         const t = P(p.tu, p.tv, 0), k = clamp(p.t / p.T, 0, 1);
         c.strokeStyle = TEAM[p.side].main; c.globalAlpha = 0.2 + 0.5 * k; c.lineWidth = 1.2;
         c.beginPath(); c.ellipse(t.x, t.y, 26 - 8 * k, (26 - 8 * k) * 0.42, 0, 0, 7); c.stroke(); c.globalAlpha = 1;
@@ -1045,6 +1051,7 @@ function render(c, g, time, sel, selPad) {
     if (f.k === 'shatter') { if (lit(f.u, f.v)) drawShatter(c, f); continue; } // a Phase Beacon bubble collapsing (v2.34) // a killed Mite (v2.33)
     if (f.k === 'pierce') { if (lit(f.u, f.v)) drawPierce(c, f); continue; } // P4 (v2.37)
     if (f.k === 'blink') { if (lit(f.u, f.v)) drawBlink(c, f); continue; } // P5 (v2.37)
+    if (f.k === 'erupt' || f.k === 'rift' || f.k === 'unexile') { if (lit(f.u, f.y / DY)) (f.k === 'erupt' ? drawErupt : f.k === 'rift' ? drawRift : drawUnexile)(c, f); continue; } // v2.82
     if (f.k === 'devour') { if (lit(f.u, f.v)) drawDevour(c, f); continue; } // P11 (v2.37)
     if (f.k === 'roots') { drawRoots(c, f, lit); continue; } // a Rootheart's snare pulse (v2.33), only where the player can see // Salvage (v2.30): the player's own, where they can see
     if (f.k !== 'boom' || !lit(f.x, f.y / DY)) continue;
@@ -1059,7 +1066,7 @@ function render(c, g, time, sel, selPad) {
   c.font = '600 11px -apple-system,system-ui,sans-serif'; c.textAlign = 'center';
   const barMin = (V.ft - V.A) / V.S + YB() + 12 / V.S; // highest world row that clears the top bar (with room for tier pips)
   for (const e of (g.guards && g.guards.length ? g.ents.concat(g.guards.filter(x => x.hp > 0)) : g.ents)) { // v2.71: and the relic guards
-    if (!seen(e)) continue;
+    if (!seen(e) || e.bur) continue; // v2.82: no bars over a burrowed Gorebore
     if (e.kind === 'b') {
       const x = P(e.u, e.v).x, top = Math.max(bTop(e) - 8, barMin), hq = e.type === 'hq';
       bar(c, x, top, hq ? 84 : 52, e.hp / e.maxHp, hq ? 5 : 3.5, lostF(e));

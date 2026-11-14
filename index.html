@@ -447,7 +447,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .trseg.you button,.trseg.calm button{display:none} .trseg.you em,.trseg.calm em{display:block}
 .trange #trRead{display:block;position:fixed;inset:0;z-index:1;pointer-events:none}
 #trRead div{position:absolute;padding:2px 7px;border-radius:7px;background:rgba(6,10,20,.66);font-size:10.5px;line-height:1.35;color:#cfd8e6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
-.trcmp #trRead div{font-size:9.5px;padding:1px 6px;line-height:1.3} #trRead .b{color:#7adcff;font-weight:700} #trRead .r{color:#ff8a8a;font-weight:700} #trRead .w{color:#ffe9a8}
+.trcmp #trRead div{font-size:9.5px;padding:1px 6px;line-height:1.3} #trRead .b{color:#7adcff;font-weight:700} #trRead .r{color:#ff8a8a;font-weight:700} #trRead .w{color:#ffe9a8} #trRead .rw{color:#d9c8ff;font-style:normal;font-weight:700} .trrw{display:flex;flex-direction:column;gap:5px}
 .trange #info{pointer-events:auto} /* its Remove button and × take taps (the card sits over the field) */
 .trinf{display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;margin-top:5px}
 .trinf em,.trinf .st i{font-style:normal;color:var(--muted)} .trinf .st i{color:#cfd8e6} .trinf .st{flex:1 1 100%;color:#cfd8e6}
@@ -759,7 +759,7 @@ MAPS.threelane = (() => {
   };
 })();
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.81'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.82'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -4273,6 +4273,8 @@ rwText(TREES_BH.factory.A.steps[2], 'txt', 'Unlocks Gorebores: burrow under the 
 rwText(TREES_AX.factory.A.steps[2], 'short', 'Severances', 'Rift Mortars');
 rwText(TREES_AX.factory.A.steps[2], 'txt', 'Unlocks Severances: rift orbs that exile enemy units for a few seconds', 'Unlocks Rift Mortars: precise long-range strikes');
 
+// The Artillery's description follows the new-game default (its numbers are in UNIT_TIPS, read live)
+{ const d0 = UDEF.artillery.desc; Object.defineProperty(UDEF.artillery, 'desc', { get: () => REWORK.b2a ? 'Long-range gun that fires shell salvos over the front line. It deploys before it fires and packs up before it moves, and its shells\' landing spots show on the ground. Very fragile, and it can\'t hit targets that get too close.' : d0, enumerable: true, configurable: true }); }
 /* ---- Artillery: deploy (artDeploy) ---- */
 // Returns true when it handled the tick (deploying, packing, deployed: nothing else moves it). best/close: what the usual
 // search found (a direct side's target first); go: it is ordered away (retreat, regroup, a retreat-style move, an AI pull-back)
@@ -7467,12 +7469,16 @@ const SPR = { scale: 0, map: new Map(), budget: 0 };
 function sprPose(u) { // a stand-in unit snapped to one of the cached poses, with its cache key; null = draw live
   const box = SPR_BOX[u.type];
   if (!box || u.recoil > 0.02) return null;
-  let q = 0, anim = 0;
-  if (u.moving) {
+  let q = 0, anim = 0, dpk = 0, k = '';
+  const spin = typeof SPR_SPIN !== 'undefined' && SPR_SPIN[u.type]; // v2.82: always turning (the Severance's ring)
+  if (spin) { const [ks, n] = spin, c = ((Math.round(u.anim * ks / (2 * Math.PI) * n) % n) + n) % n; q = 1 + c; anim = c * 2 * Math.PI / n / ks; }
+  else if (u.moving) {
     if (u.type === 'tank' || u.type === 'flame') { q = 1 + (((u.anim * 30) % 5 + 5) % 5 / 1.25 | 0); anim = (q - 1) * 1.25 / 30; }
     else if (u.type !== 'artillery') { const [k, n] = SPR_STEP[u.type], c = Math.round(u.anim * k / (2 * Math.PI) * n) % n; q = 1 + c; anim = c * 2 * Math.PI / n / k; }
   }
-  return { key: u.type + u.side + '.' + q + (u.aimAir ? 'a' : ''), box, u: { anim, moving: q > 0, recoil: 0, aimAir: u.aimAir } }; // a Hydra's guns up or level
+  if (u.type === 'artillery' && u.dep && VFX.g) { dpk = Math.round(artK(u, VFX.lastT) * 6) / 6; if (dpk) k = 'd' + dpk.toFixed(2); } // v2.82: its legs, in seven steps
+  if (u.exT > VFX.lastT) k += 'x'; // v2.82: exiled: the washed-out colours
+  return { key: u.type + u.side + '.' + q + (u.aimAir ? 'a' : '') + k, box, u: { anim, moving: !spin && q > 0, recoil: 0, aimAir: u.aimAir, dpk } }; // a Hydra's guns up or level
 }
 function drawUnitArt(c, u, T) {
   const p = sprPose(u);
@@ -7492,6 +7498,208 @@ function drawUnitArt(c, u, T) {
   DRAW_U[u.type](c, T, u);
 }
 
+/* ---------- Faction rework art (v2.82, batch 2a; docs/FACTION_REWORK.md "Art direction") ----------
+   The richer unit style: gradients for shading, dark outlines, a light rim on top edges, glowing visors, cores and sacs,
+   and team colour over much of the body. Artillery (scavenged military, stabiliser legs that fold down when deployed),
+   Gorebore (a segmented digging beast) and Severance (a floating obsidian monolith). Each is drawn into the sprite cache
+   as poses like every ground unit (the Artillery's deploy state and the Severance's ring are poses too). */
+const OLIVE = ['#7b8a4c', '#56633a', '#384126'], STEEL = ['#9aa6b6', '#5d6a7c', '#323a48'], RUSTO = '#b8642c', HAZ = '#f2c23a';
+const OUTL = 'rgba(8,10,14,0.85)';
+function lgrad(c, x0, y0, x1, y1, stops) { const g = c.createLinearGradient(x0, y0, x1, y1); stops.forEach((s, i) => g.addColorStop(i / (stops.length - 1), s)); return g; }
+function outline(c, w = 1.1) { c.strokeStyle = OUTL; c.lineWidth = w; c.lineJoin = 'round'; c.stroke(); }
+function rim(c, x0, y, x1, col = 'rgba(255,255,255,0.45)') { c.strokeStyle = col; c.lineWidth = 0.8; c.beginPath(); c.moveTo(x0, y); c.lineTo(x1, y); c.stroke(); }
+
+// Artillery: a tracked gun carrier with a long barrel. u.dpk 0 (packed) … 1 (deployed): the four stabiliser legs fold down
+function dArt2(c, T, u) {
+  const rk = (u.recoil || 0) * 5, k = u.dpk || 0, e = 1 - (1 - k) * (1 - k);
+  const leg = (px, py, s, near) => { // folded up along the hull (k 0) to braced on the ground (k 1)
+    const a0 = s > 0 ? Math.PI + 0.12 : -0.12, a1 = s > 0 ? 0.72 : Math.PI - 0.72, a = a0 + (a1 - a0) * e, L1 = 13;
+    const fx = px + Math.cos(a) * L1, fy = py + Math.sin(a) * L1;
+    c.strokeStyle = near ? STEEL[1] : STEEL[2]; c.lineWidth = near ? 3 : 2.4; c.lineCap = 'round'; c.beginPath(); c.moveTo(px, py); c.lineTo(fx, fy); c.stroke();
+    c.strokeStyle = STEEL[0]; c.lineWidth = 0.9; c.beginPath(); c.moveTo(px, py); c.lineTo(px + (fx - px) * 0.55, py + (fy - py) * 0.55); c.stroke(); // piston
+    if (e > 0.6) { c.fillStyle = near ? STEEL[2] : '#1c222c'; rr(c, fx - 3.5, fy - 1.4, 7, 2.6, 1); c.fill(); } // pad
+    c.lineCap = 'butt';
+  };
+  leg(-17, -9, -1, false); leg(13, -9, 1, false);
+  // exhaust stack and its smoke
+  c.fillStyle = lgrad(c, -18, 0, -13, 0, [STEEL[1], STEEL[2]]); rr(c, -18, -27, 4, 12, 1); c.fill(); outline(c, 0.8);
+  c.fillStyle = 'rgba(70,70,78,0.55)'; c.beginPath(); c.arc(-16 - (u.anim || 0) % 2, -30, 3, 0, 7); c.arc(-18.5, -34, 2.3, 0, 7); c.fill();
+  c.fillStyle = RUSTO; rr(c, -13, -22, 6, 5, 2); c.fill(); outline(c, 0.7); // fuel drum
+  // barrel and cradle (pivot (-4, -18), tip near MUZ.artillery (28, -31))
+  c.save(); c.translate(-4, -18); c.rotate(-0.39 - e * 0.08);
+  c.fillStyle = lgrad(c, 0, -2, 0, 2, [STEEL[0], STEEL[2]]); c.fillRect(-4 - rk, -1.7, 36, 3.4); c.strokeStyle = OUTL; c.lineWidth = 0.8; c.strokeRect(-4 - rk, -1.7, 36, 3.4);
+  c.fillStyle = STEEL[2]; c.fillRect(30 - rk, -2.6, 5, 5.2); c.fillStyle = T.main; c.fillRect(14 - rk, -2.2, 3, 4.4); // muzzle brake, a team band
+  c.fillStyle = lgrad(c, 0, -5, 0, 5, [OLIVE[0], OLIVE[2]]); rr(c, -9, -5, 13, 10, 2.5); c.fill(); outline(c); // breech
+  c.restore();
+  // tracks
+  c.fillStyle = '#1b2029'; rr(c, -21, -9, 40, 9, 4.5); c.fill(); outline(c);
+  for (const x of [-16, -8, 0, 8, 14]) { c.fillStyle = STEEL[1]; c.beginPath(); c.arc(x, -4.5, 2.9, 0, 7); c.fill(); c.fillStyle = STEEL[0]; c.beginPath(); c.arc(x - 0.6, -5.1, 1.1, 0, 7); c.fill(); }
+  // hull: olive body, team armour plates, hazard stripes on the rear plate
+  c.fillStyle = lgrad(c, 0, -19, 0, -8, [OLIVE[0], OLIVE[1], OLIVE[2]]); poly(c, [[-20, -9], [-19, -17], [-6, -19], [12, -18], [17, -12], [16, -9]]); c.fill(); outline(c);
+  c.fillStyle = lgrad(c, 0, -17, 0, -10, [T.light, T.main, T.hull]); poly(c, [[-11, -10], [-10, -17.4], [11, -17.2], [15.5, -12], [14.5, -10]]); c.fill(); outline(c, 0.8);
+  c.strokeStyle = 'rgba(0,0,0,0.35)'; c.lineWidth = 0.7; c.beginPath(); c.moveTo(2, -17); c.lineTo(2.5, -10); c.stroke(); c.fillStyle = M.d; for (const x of [-8, 5, 12]) { c.beginPath(); c.arc(x, -12, 0.7, 0, 7); c.fill(); } // plate seam, rivets
+  c.save(); c.beginPath(); c.rect(-20, -16, 7, 6.5); c.clip(); c.fillStyle = HAZ; c.fillRect(-20, -16, 7, 6.5); c.strokeStyle = '#1a1a1a'; c.lineWidth = 1.4;
+  for (let i = -3; i < 3; i++) { c.beginPath(); c.moveTo(-20 + i * 3.2, -9); c.lineTo(-14 + i * 3.2, -17); c.stroke(); } c.restore();
+  rim(c, -18, -17.5, 11);
+  c.fillStyle = M.d; rr(c, 6, -24, 9, 7, 1.5); c.fill(); outline(c, 0.8); // cab
+  c.fillStyle = `rgba(${T.glow},0.95)`; c.fillRect(10.5, -22.5, 3.6, 2); // visor
+  leg(-17, -9, -1, true); leg(13, -9, 1, true);
+}
+
+// Gorebore: a segmented digging beast. Heavy team-coloured carapace plates on its back, clawed forelimbs, a ring maw of
+// bone teeth, pulsing glow sacs
+const GB_FLESH = ['#8c5a52', '#5c3634', '#3a2124'], GB_BONE = '#efe3c8', GB_SAC = '155,225,93';
+function dGorebore(c, T, u) {
+  const ph = u.moving ? u.anim * 6 : 0, bite = (u.recoil || 0), pulse = 0.75 + 0.25 * Math.sin((u.anim || 0) * 3);
+  // hind legs
+  c.strokeStyle = GB_FLESH[2]; c.lineWidth = 3; c.lineCap = 'round';
+  for (const [x, o] of [[-15, 0], [-7, Math.PI]]) { const s = Math.sin(ph + o) * 3; c.beginPath(); c.moveTo(x, -8); c.lineTo(x - 2 + s, -3); c.lineTo(x + s, 0); c.stroke(); }
+  // body: belly then four overlapping carapace plates, back to front
+  c.fillStyle = lgrad(c, 0, -16, 0, -2, [GB_FLESH[0], GB_FLESH[1], GB_FLESH[2]]); c.beginPath(); c.ellipse(-4, -9, 18, 7, 0, 0, 7); c.fill(); outline(c);
+  for (let i = 0; i < 4; i++) {
+    const x = -18 + i * 7.5, w = 9 + i * 0.6, top = -17 - Math.sin(i * 0.9) * 2;
+    c.fillStyle = lgrad(c, 0, top - 2, 0, -8, [T.light, T.main, T.hull]);
+    c.beginPath(); c.moveTo(x - 1, -8); c.quadraticCurveTo(x - 1, top - 1, x + w * 0.55, top - 1.5); c.quadraticCurveTo(x + w + 1, top, x + w, -9); c.closePath(); c.fill(); outline(c, 0.9);
+    c.strokeStyle = 'rgba(255,255,255,0.35)'; c.lineWidth = 0.7; c.beginPath(); c.moveTo(x + 1, top + 0.5); c.quadraticCurveTo(x + w * 0.5, top - 1.2, x + w - 1, top + 0.5); c.stroke();
+  }
+  // glow sacs along the flank
+  c.globalCompositeOperation = 'lighter';
+  for (const [x, r] of [[-12, 2.2], [-5, 2.6], [2, 2.2]]) { c.fillStyle = `rgba(${GB_SAC},${0.35 * pulse})`; c.beginPath(); c.arc(x, -7, r * 1.9, 0, 7); c.fill(); c.fillStyle = `rgba(${GB_SAC},${0.9 * pulse})`; c.beginPath(); c.arc(x, -7, r, 0, 7); c.fill(); }
+  c.globalCompositeOperation = 'source-over';
+  // head: a blunt digging skull with a ring maw of bone teeth facing forward
+  c.fillStyle = lgrad(c, 8, -18, 8, -4, [GB_FLESH[0], GB_FLESH[2]]); c.beginPath(); c.ellipse(14, -11, 8, 7, 0, 0, 7); c.fill(); outline(c);
+  const open = 3.2 + bite * 1.6;
+  c.fillStyle = '#250f12'; c.beginPath(); c.ellipse(20, -11, 2.4 + bite * 0.6, open, 0, 0, 7); c.fill();
+  c.fillStyle = GB_BONE; for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2, x = 20 + Math.cos(a) * 2.6, y = -11 + Math.sin(a) * (open + 0.4); c.beginPath(); c.moveTo(x, y); c.lineTo(20 + Math.cos(a + 0.2) * 4, -11 + Math.sin(a + 0.2) * (open + 2.2)); c.lineTo(20 + Math.cos(a + 0.4) * 2.6, -11 + Math.sin(a + 0.4) * (open + 0.4)); c.fill(); }
+  c.fillStyle = `rgba(${GB_SAC},0.95)`; c.beginPath(); c.arc(12.5, -15, 1.2, 0, 7); c.fill(); // eye
+  // clawed forelimbs, digging
+  for (const [o, near] of [[Math.PI, false], [0, true]]) {
+    const s = Math.sin(ph * 1.2 + o), kx = 11 + s * 2.5, ky = -6, fx = 17 + s * 4, fy = -0.5;
+    c.strokeStyle = near ? GB_FLESH[1] : GB_FLESH[2]; c.lineWidth = near ? 3.2 : 2.6; c.lineCap = 'round'; c.beginPath(); c.moveTo(8, -9); c.lineTo(kx, ky); c.lineTo(fx, fy); c.stroke();
+    c.strokeStyle = GB_BONE; c.lineWidth = 1.2; for (const d of [-2, 0, 2]) { c.beginPath(); c.moveTo(fx, fy); c.lineTo(fx + 3.5, fy + d * 0.5 - 0.5); c.stroke(); }
+  }
+  c.lineCap = 'butt';
+}
+
+// Severance: a floating obsidian monolith with carved glyphs in team glow, a slowly turning ring and orbiting crystal
+// shards; nothing touches the ground. u.anim drives the turn (cached as poses, SPR_SPIN)
+function dSeverance(c, T, u) {
+  const a = (u.anim || 0) * 0.9, bob = Math.sin((u.anim || 0) * 1.6) * 1.2, y0 = -14 + bob, rk = (u.recoil || 0) * 2;
+  const shard = (k, back) => { const t = a * 1.4 + k * 2.094, x = Math.cos(t) * 15, y = y0 - 18 + Math.sin(t) * 4, z = Math.sin(t);
+    if ((z < 0) !== back) return; c.fillStyle = lgrad(c, x - 2, y - 4, x + 2, y + 4, ['#e9ddff', '#8c74d8', '#2b2346']); poly(c, [[x, y - 4.5], [x + 2, y], [x, y + 4.5], [x - 2, y]]); c.fill(); outline(c, 0.6); };
+  const ringArc = back => { c.strokeStyle = back ? `rgba(${T.glow},0.35)` : `rgba(${T.glow},0.9)`; c.lineWidth = back ? 1.2 : 1.8; c.beginPath(); c.ellipse(0, y0 - 20, 19, 5.5, 0, back ? Math.PI : 0, back ? 2 * Math.PI : Math.PI); c.stroke();
+    if (!back) { c.fillStyle = T.light; for (let i = 0; i < 3; i++) { const t = a + i * 2.094; if (Math.sin(t) > 0) { c.beginPath(); c.arc(Math.cos(t) * 19, y0 - 20 + Math.sin(t) * 5.5, 1.3, 0, 7); c.fill(); } } } };
+  shard(0, true); shard(1, true); shard(2, true); ringArc(true);
+  // the slab: obsidian with a violet sheen, chipped corners
+  c.fillStyle = lgrad(c, -8, 0, 8, 0, ['#3a2f55', '#14111f', '#0a0910']); poly(c, [[-7, y0], [-9, y0 - 10], [-7.5, y0 - 34], [-3, y0 - 40 - rk], [5, y0 - 38 - rk], [8.5, y0 - 30], [7, y0 - 4], [3, y0 + 2]]); c.fill(); outline(c);
+  c.fillStyle = lgrad(c, 0, y0 - 40, 0, y0, [`rgba(${T.glow},0.35)`, `rgba(${T.glow},0.05)`]); poly(c, [[-7.5, y0 - 34], [-3, y0 - 40 - rk], [-1, y0 - 38], [-5, y0 - 12], [-7, y0]]); c.fill(); // team sheen on the lit face
+  rim(c, -3, y0 - 40 - rk, 5, 'rgba(230,220,255,0.6)');
+  // carved glyphs in team glow
+  c.strokeStyle = `rgba(${T.glow},0.95)`; c.lineWidth = 1.1;
+  c.beginPath(); c.moveTo(-2, y0 - 32); c.lineTo(2, y0 - 29); c.lineTo(-2, y0 - 26); c.moveTo(0, y0 - 22); c.lineTo(0, y0 - 16); c.moveTo(-3, y0 - 19); c.lineTo(3, y0 - 19); c.moveTo(-2.5, y0 - 11); c.lineTo(2.5, y0 - 8); c.stroke();
+  c.globalCompositeOperation = 'lighter'; c.fillStyle = `rgba(${T.glow},0.25)`; c.beginPath(); c.arc(0, y0 - 21, 6, 0, 7); c.fill(); c.fillStyle = 'rgba(220,200,255,0.9)'; c.beginPath(); c.arc(0, y0 - 21, 1.8, 0, 7); c.fill(); c.globalCompositeOperation = 'source-over';
+  // thin lines of light holding it over the ground
+  c.globalCompositeOperation = 'lighter'; c.fillStyle = `rgba(${T.glow},0.18)`; c.beginPath(); c.ellipse(0, -1, 9, 2.6, 0, 0, 7); c.fill(); c.fillStyle = `rgba(${T.glow},0.35)`; c.beginPath(); c.ellipse(0, y0 + 3, 3, 1.2, 0, 0, 7); c.fill(); c.globalCompositeOperation = 'source-over'; // its light on the ground below; nothing touches it
+  ringArc(false); shard(0, false); shard(1, false); shard(2, false);
+}
+
+DRAW_U.artillery = dArt2; DRAW_U.gorebore = dGorebore; DRAW_U.severance = dSeverance;
+Object.assign(SPR_BOX, { artillery: [-32, -40, 68, 44], gorebore: [-24, -24, 50, 26], severance: [-24, -62, 48, 64] });
+Object.assign(SPR_STEP, { gorebore: [6, 8] });
+const SPR_SPIN = { severance: [0.9, 10] }; // always turning, cut into poses
+Object.assign(UVIS, { severance: { h: 54, w: 10 } });
+const TEAM_EX = { main: '#a49cc0', light: '#e6e0fa', hull: '#4d4864', glow: '205,190,255', face: ['#c5bde0', '#8f88aa', '#6a6484'] }; // an exiled unit's washed-out colours
+// The Artillery's deploy state as a share (0 packed, 1 deployed) at time t
+function artK(u, t) {
+  if (!u.dep) return 0;
+  if (u.dep === 2) return 1;
+  return u.dep === 1 ? clamp(1 - (u.dpT - t) / ART.deploy, 0, 1) : clamp((u.dpT - t) / ART.pack, 0, 1);
+}
+
+/* ---- effects ---- */
+// A telegraphed shell's marker: a team-coloured ring on the ground the size of its blast, with an inner circle that shrinks
+// and closes at impact (the ring follows the blast's shape: hits count across the lane at 0.6)
+function drawMarks(c, g, lit) {
+  if (!g.mk || !g.mk.length) return;
+  for (const m of g.mk) {
+    if (m.side !== 0 && !lit(m.u, m.v) && !g.spectate) continue;
+    const w = P(m.u, m.v), rx = m.r, ry = m.r / 0.6 * DY, k = clamp((g.t - m.t0) / Math.max(0.1, m.t1 - m.t0), 0, 1), T = TEAM[m.side];
+    c.fillStyle = `rgba(${T.glow},${0.08 + 0.12 * k})`; c.beginPath(); c.ellipse(w.x, w.y, rx, ry, 0, 0, 7); c.fill();
+    c.strokeStyle = `rgba(${T.glow},${0.6 + 0.35 * k})`; c.lineWidth = 1.6; c.beginPath(); c.ellipse(w.x, w.y, rx, ry, 0, 0, 7); c.stroke();
+    c.strokeStyle = `rgba(255,240,200,${0.5 + 0.4 * k})`; c.lineWidth = 1.2; c.beginPath(); c.ellipse(w.x, w.y, rx * (1 - k), ry * (1 - k), 0, 0, 7); c.stroke();
+    c.strokeStyle = `rgba(${T.glow},0.8)`; c.lineWidth = 1; c.beginPath(); c.moveTo(w.x - 4, w.y); c.lineTo(w.x + 4, w.y); c.moveTo(w.x, w.y - 2.5); c.lineTo(w.x, w.y + 2.5); c.stroke();
+  }
+}
+// Burrow trails: dirt mounds and cracks along where each burrowed Gorebore has been, lingering BORE.trail s (only where
+// the viewer can see the ground)
+const BTRAIL = new WeakMap(); // game → [{ u, v, t, side, id }]
+function trailOf(g) { let a = BTRAIL.get(g); if (!a) { a = []; BTRAIL.set(g, a); } return a; }
+function noteBurrow(g, u) {
+  const a = trailOf(g); let last = null;
+  for (let i = a.length - 1; i >= 0; i--) if (a[i].id === u.id) { last = a[i]; break; }
+  if (!last || Math.hypot(last.u - u.u, last.v - u.v) > 7 || g.t - last.t > 0.5) a.push({ u: u.u, v: u.v, t: g.t, side: u.side, id: u.id, s: (u.id * 7 + a.length) % 5 });
+}
+function drawTrails(c, g, lit) {
+  const a = BTRAIL.get(g); if (!a || !a.length) return;
+  while (a.length && (g.t - a[0].t > BORE.trail || a[0].t > g.t)) a.shift();
+  for (const p of a) {
+    if (!lit(p.u, p.v)) continue;
+    const k = 1 - (g.t - p.t) / BORE.trail, w = P(p.u, p.v), r = 4 + (p.s % 3);
+    c.globalAlpha = 0.85 * k; c.fillStyle = '#5a4430'; c.beginPath(); c.ellipse(w.x, w.y, r * 1.4, r * 0.55, 0, Math.PI, 0); c.fill();
+    c.fillStyle = '#7d6142'; c.beginPath(); c.ellipse(w.x - 0.6, w.y - r * 0.2, r * 0.9, r * 0.35, 0, Math.PI, 0); c.fill();
+    c.strokeStyle = '#2e2218'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(w.x - r * 1.6, w.y + 1); c.lineTo(w.x - r * 0.6, w.y + 0.2 + (p.s - 2) * 0.4); c.lineTo(w.x + r * 0.4, w.y + 1.2); c.stroke();
+  }
+  c.globalAlpha = 1;
+}
+// A burrowed Gorebore itself: a moving hump of churned earth with a faint glow pulsing through the cracks
+function drawBurrowed(c, u, w, t) {
+  const r = 9, k = 0.5 + 0.5 * Math.sin(t * 7 + u.id);
+  c.fillStyle = '#4a3726'; c.beginPath(); c.ellipse(w.x, w.y, r * 1.5, r * 0.75, 0, Math.PI, 0); c.fill();
+  c.fillStyle = '#6e5538'; c.beginPath(); c.ellipse(w.x + u.face * 2, w.y - 2, r * 0.9, r * 0.45, 0, Math.PI, 0); c.fill();
+  c.strokeStyle = `rgba(${GB_SAC},${0.35 + 0.45 * k})`; c.lineWidth = 1.1; c.beginPath(); c.moveTo(w.x - 7, w.y - 1); c.lineTo(w.x - 2, w.y - 5); c.lineTo(w.x + 3, w.y - 2); c.lineTo(w.x + 8, w.y - 4); c.stroke();
+  c.fillStyle = '#8a6a46'; for (let i = 0; i < 3; i++) { const q = ((t * 3 + i / 3 + u.id * 0.13) % 1); c.globalAlpha = 1 - q; c.fillRect(w.x + u.face * (6 + q * 6) - 1, w.y - 3 - Math.sin(q * Math.PI) * 6, 2, 2); }
+  c.globalAlpha = 1;
+}
+// An eruption: a burst of dirt and bone spikes thrusting up through the ground, then settling
+function drawErupt(c, f) {
+  const k = f.t / f.life, out = Math.min(1, k * 3), fade = 1 - k, R = f.r || 45;
+  c.globalAlpha = 0.6 * fade; c.strokeStyle = '#8a6a46'; c.lineWidth = 2.4; c.beginPath(); c.ellipse(f.x, f.y, R * out, R * out / 0.6 * DY, 0, 0, 7); c.stroke();
+  c.globalAlpha = fade;
+  for (let i = 0; i < 7; i++) { // bone spikes
+    const a = i / 7 * Math.PI * 2 + 0.3, d = R * 0.45 * (0.4 + (i % 3) * 0.3), x = f.x + Math.cos(a) * d, y = f.y + Math.sin(a) * d * 0.4, h = (12 + (i % 3) * 5) * Math.sin(Math.min(1, k * 2.2) * Math.PI);
+    if (h <= 0.5) continue;
+    c.fillStyle = GB_BONE; c.beginPath(); c.moveTo(x - 2.2, y); c.lineTo(x + Math.cos(a) * 2, y - h); c.lineTo(x + 2.2, y); c.closePath(); c.fill(); outline(c, 0.6);
+  }
+  c.fillStyle = '#6e5538'; for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2, d = R * 0.9 * out, x = f.x + Math.cos(a) * d, y = f.y + Math.sin(a) * d * 0.4 - Math.sin(out * Math.PI) * 16; c.fillRect(x - 1.5, y - 1.5, 3, 3); }
+  c.globalAlpha = 1;
+}
+// The rift orb arriving: a violet-white flash with a team rim, collapsing inward
+function drawRift(c, f) {
+  const k = f.t / f.life, R = f.r || 45, T = TEAM[f.side];
+  c.globalCompositeOperation = 'lighter'; stamp(c, GLOW.violet, f.x, f.y - 6, R * (1 - k * 0.6), 0.9 * (1 - k)); c.globalCompositeOperation = 'source-over';
+  c.globalAlpha = 1 - k; c.strokeStyle = `rgba(${T.glow},0.9)`; c.lineWidth = 2; c.beginPath(); c.ellipse(f.x, f.y, R * (1 - k * 0.5), R / 0.6 * DY * (1 - k * 0.5), 0, 0, 7); c.stroke();
+  c.strokeStyle = '#efe6ff'; c.lineWidth = 1.2; c.beginPath(); c.ellipse(f.x, f.y, R * k, R / 0.6 * DY * k, 0, 0, 7); c.stroke(); c.globalAlpha = 1;
+}
+function drawUnexile(c, f) { const k = f.t / f.life; c.globalAlpha = 1 - k; c.strokeStyle = RIFT; c.lineWidth = 1.6; c.beginPath(); c.ellipse(f.x, f.y - 10, 6 + k * 14, 8 + k * 16, 0, 0, 7); c.stroke(); c.globalAlpha = 1; }
+// The orb in flight: a slow violet-white sphere with a team-coloured rim, and a faint ring where it will land
+function drawOrb(c, g, p, b) {
+  const T = TEAM[p.side], t = g.t, pul = 1 + 0.12 * Math.sin(t * 9);
+  const w = P(p.tu, p.tv); c.globalAlpha = 0.35; c.strokeStyle = RIFT; c.lineWidth = 1; c.setLineDash([3, 4]); c.beginPath(); c.ellipse(w.x, w.y, SEVER.r, SEVER.r / 0.6 * DY, 0, 0, 7); c.stroke(); c.setLineDash([]); c.globalAlpha = 1;
+  const gp = P(p.u, p.v, 0); c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.ellipse(gp.x, gp.y, 5, 2, 0, 0, 7); c.fill();
+  c.globalCompositeOperation = 'lighter'; stamp(c, GLOW.violet, b.x, b.y, 14 * pul, 0.75); c.globalCompositeOperation = 'source-over';
+  c.fillStyle = '#d8c8ff'; c.beginPath(); c.arc(b.x, b.y, 5 * pul, 0, 7); c.fill();
+  c.strokeStyle = T.main; c.lineWidth = 1.8; c.beginPath(); c.arc(b.x, b.y, 5.6 * pul, 0, 7); c.stroke();
+  c.fillStyle = '#ffffff'; c.beginPath(); c.arc(b.x - 1.4, b.y - 1.4, 1.8, 0, 7); c.fill();
+}
+// An exiled unit's mark (drawn over its washed-out body): a violet shimmer and a ring at its feet that shrinks as its exile runs out
+function drawExiled(c, u, w, t) {
+  const h = visH(u.type) * US, k = clamp((u.exT - t) / Math.max(0.1, u.exT - u.exS), 0, 1), y = w.y - u.z, r = Math.max(10, h * 0.6);
+  c.globalCompositeOperation = 'lighter'; stamp(c, GLOW.violet, w.x, y - h * 0.5, Math.max(12, h * 0.8) * (0.9 + 0.1 * Math.sin(t * 10 + u.id)), 0.3); c.globalCompositeOperation = 'source-over';
+  c.globalAlpha = 0.9; c.strokeStyle = RIFT; c.lineWidth = 1.8; c.beginPath(); c.ellipse(w.x, y, r * k + 2, (r * k + 2) * 0.38, 0, 0, 7); c.stroke();
+  c.strokeStyle = 'rgba(230,220,255,0.6)'; c.lineWidth = 0.8; c.beginPath(); c.ellipse(w.x, y, r + 2, (r + 2) * 0.38, 0, 0, 7); c.stroke();
+  for (let i = 0; i < 3; i++) { const q = (t * 0.8 + i / 3 + u.id * 0.21) % 1; c.globalAlpha = 0.7 * (1 - q); c.fillStyle = '#e6dcff'; c.fillRect(w.x + Math.sin(i * 2.1 + t * 3) * r * 0.6, y - q * h * 1.1, 1.4, 1.4); }
+  c.globalAlpha = 1;
+}
 /* ---------- Backdrop: sky, mountains and the ground plane ---------- */
 function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 let BG; const mapBackdrop = () => { BG = (() => {
@@ -8104,6 +8312,8 @@ function drawFog(c, F) {
 
 function drawUnit(c, u) {
   const d = UDEF[u.type], w = P(u.u, u.v), bob = d.air ? Math.sin(u.anim * 2.2) * 3 : 0;
+  if (u.bur) { if (VFX.g) noteBurrow(VFX.g, u); drawBurrowed(c, u, w, VFX.lastT); return; } // v2.82: a burrowed Gorebore is only a moving hump of earth
+  const ex = u.exT > VFX.lastT; // v2.82: exiled: faded, washed out, a violet shimmer and a ring for the time left
   c.fillStyle = d.air ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.32)';
   const big = u.type === 'leviathan' || u.type === 'worldrender' || u.type === 'sovereign' ? 2.4 : u.type === 'broodtyrant' || u.type === 'voidcarrier' ? 1.6 : u.type === 'drone' || u.type === 'needlewing' || u.type === 'prismwing' ? 0.5 : 1; // a Leviathan's shadow is seen coming
   c.beginPath(); c.ellipse(w.x, w.y, (d.air ? 16 * big : UVIS[u.type] ? UVIS[u.type].w : Math.max(8, d.h * 0.7)) * US, (d.air ? 3.5 * big : 2.6) * US, 0, 0, 7); c.fill();
@@ -8112,7 +8322,9 @@ function drawUnit(c, u) {
   c.save(); c.translate(w.x, w.y - u.z + bob); c.scale(u.face * US * (u.kid ? 0.75 : 1), US * (u.kid ? 0.75 : 1)); // a Cloudwing's offspring is smaller (v2.21)
   const ph = u.phT > VFX.lastT; // P13 (v2.37): a phased Wraithwing is a faint violet ghost
   if (ph) c.globalAlpha = 0.25 + 0.1 * Math.sin(VFX.lastT * 40);
-  drawUnitArt(c, u, TEAM[u.side]);
+  if (ex) c.globalAlpha = 0.45 + 0.08 * Math.sin(VFX.lastT * 12 + u.id);
+  drawUnitArt(c, u, ex ? TEAM_EX : TEAM[u.side]);
+  if (ex) c.globalAlpha = 1;
   if (ph) { c.globalAlpha = 1; c.globalCompositeOperation = 'lighter'; stamp(c, GLOW.violet, 0, -4, 18, 0.55); c.globalCompositeOperation = 'source-over'; }
   c.globalCompositeOperation = 'lighter';
   if (u.hitT > 0) { c.globalAlpha = 0.6 * Math.min(1, u.hitT / 0.12); drawUnitArt(c, u, TEAM[u.side]); } // hit: the unit itself flashes
@@ -8120,6 +8332,7 @@ function drawUnit(c, u) {
   if (u.braceT > VFX.lastT) { c.globalAlpha = 0.55; c.strokeStyle = TEAM[u.side].light; c.lineWidth = 1.6; c.beginPath(); c.moveTo(-21, -7); c.bezierCurveTo(-19, -30, 12, -32, 19, -13); c.stroke(); } // a bracing Bulwark: its plates lock and glow
   c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
   c.restore();
+  if (ex) drawExiled(c, u, w, VFX.lastT);
   if (u.shT > VFX.lastT) drawShield(c, u, VFX.lastT);
   if (VFX.g) drawAxFx(c, VFX.g, u, w); // v2.27: a Marksman's charge, a Gravemantle's aura, slowed and disrupted marks
   if (u.ovT > VFX.lastT) drawOvercharge(c, u, w, VFX.lastT); // v2.28
@@ -8338,7 +8551,10 @@ function vfxScan(g, dt) {
       if ((e.siege || 0) !== (r.siege || 0) && (e.siege === 1 || e.siege === 3) && onView(x)) sfx('siegeLock', x);
       if ((e.surgeT || 0) > (r.surgeT || 0) && onView(x)) sfx('shieldUp', x);
       if ((e.phT || 0) > (r.phT || 0) && onView(x)) sfx('phaseOut', x);
+      if ((e.dep || 0) !== (r.dep || 0) && (e.dep === 1 || e.dep === 3) && onView(x)) sfx('siegeLock', x); // v2.82: the Artillery deploys or packs up
+      if ((e.exT || 0) > (r.exT || 0) && onView(x)) sfx('phaseOut', x); // v2.82: exiled
     }
+    r.dep = e.dep || 0; r.exT = e.exT || 0;
     r.siege = e.siege || 0; r.surgeT = e.surgeT || 0; r.phT = e.phT || 0;
     if (e.hp < r.hp - 0.01) { r.ghost = Math.max(r.ghost, r.hp); r.ghostT = 0.35; }      // health just lost shows as a draining white chunk
     else if (r.ghostT > 0) r.ghostT -= dt;
@@ -9151,6 +9367,7 @@ function render(c, g, time, sel, selPad) {
   for (const a of g.acid) if (lit(a.u, a.v)) drawAcidPool(c, a, g.t);
   drawDecals(c);
   drawMeteor(c, g, time); // v2.72: a meteor's warning circle, then its fall
+  drawMarks(c, g, lit); drawTrails(c, g, lit); // v2.82: telegraphed shells' markers, Gorebore burrow trails
   if (g.sides[0].direct && !g.over && !g.range) { const B = ctlBase(0), w = P(B.u, B.v); c.save(); c.globalAlpha = 0.22; c.strokeStyle = TEAM[0].main; c.lineWidth = 1.5; c.setLineDash([6, 6]); c.beginPath(); c.ellipse(w.x, w.y, CTRL.healR, CTRL.healR, 0, 0, 7); c.stroke(); c.restore(); } // v2.76: where the base rally point heals
   if (g) { drawSelection(c, g, time); drawBuildingSel(c, g, time, false); }
   drawWrecks(c, time);
@@ -9185,6 +9402,8 @@ function render(c, g, time, sel, selPad) {
   for (const p of g.projs) {
     if (p.side !== 0 && !lit(p.u, p.v)) continue;
     const a = P(p.pu, p.pv, p.pz), b = P(p.u, p.v, p.z), wp = p.weapon;
+    if (wp === 'exile') { drawOrb(c, g, p, b); continue; } // v2.82: a Severance's rift orb
+    if (wp === 'sever') { c.strokeStyle = `rgba(${RIFTA},0.6)`; c.lineWidth = 1.6; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke(); c.fillStyle = '#e6dcff'; c.beginPath(); c.arc(b.x, b.y, 1.8, 0, 7); c.fill(); continue; } // its bolt
     if (drawFacProj(c, g, p, a, b, wp, time)) continue; // faction weapons (v2.36)
     if (wp === 'rifle' || wp === 'flak' || wp === 'gatling' || wp === 'rail' || wp === 'spine' || wp === 'bolt' || wp === 'astral') {
       c.strokeStyle = wp === 'rail' || wp === 'astral' || wp === 'bolt' ? '#bff4ff' : wp === 'flak' ? '#ffe9a8' : wp === 'gatling' ? '#ffd38a' : wp === 'spine' ? '#d6ff9a' : '#fff3b0';
@@ -9225,7 +9444,7 @@ function render(c, g, time, sel, selPad) {
       c.fillStyle = '#9be15d'; c.beginPath(); c.arc(b.x, b.y, 3.4, 0, 7); c.fill(); c.fillStyle = '#e4ffc8'; c.beginPath(); c.arc(b.x - 1, b.y - 1, 1.2, 0, 7); c.fill();
     } else if (wp === 'shell') {
       const gp = P(p.u, p.v, 0);
-      if (showLanding(p, lit)) {
+      if (!p.mk && showLanding(p, lit)) { // v2.82: a telegraphed shell has its own marker (drawMarks)
         const t = P(p.tu, p.tv, 0), k = clamp(p.t / p.T, 0, 1);
         c.strokeStyle = TEAM[p.side].main; c.globalAlpha = 0.2 + 0.5 * k; c.lineWidth = 1.2;
         c.beginPath(); c.ellipse(t.x, t.y, 26 - 8 * k, (26 - 8 * k) * 0.42, 0, 0, 7); c.stroke(); c.globalAlpha = 1;
@@ -9261,6 +9480,7 @@ function render(c, g, time, sel, selPad) {
     if (f.k === 'shatter') { if (lit(f.u, f.v)) drawShatter(c, f); continue; } // a Phase Beacon bubble collapsing (v2.34) // a killed Mite (v2.33)
     if (f.k === 'pierce') { if (lit(f.u, f.v)) drawPierce(c, f); continue; } // P4 (v2.37)
     if (f.k === 'blink') { if (lit(f.u, f.v)) drawBlink(c, f); continue; } // P5 (v2.37)
+    if (f.k === 'erupt' || f.k === 'rift' || f.k === 'unexile') { if (lit(f.u, f.y / DY)) (f.k === 'erupt' ? drawErupt : f.k === 'rift' ? drawRift : drawUnexile)(c, f); continue; } // v2.82
     if (f.k === 'devour') { if (lit(f.u, f.v)) drawDevour(c, f); continue; } // P11 (v2.37)
     if (f.k === 'roots') { drawRoots(c, f, lit); continue; } // a Rootheart's snare pulse (v2.33), only where the player can see // Salvage (v2.30): the player's own, where they can see
     if (f.k !== 'boom' || !lit(f.x, f.y / DY)) continue;
@@ -9275,7 +9495,7 @@ function render(c, g, time, sel, selPad) {
   c.font = '600 11px -apple-system,system-ui,sans-serif'; c.textAlign = 'center';
   const barMin = (V.ft - V.A) / V.S + YB() + 12 / V.S; // highest world row that clears the top bar (with room for tier pips)
   for (const e of (g.guards && g.guards.length ? g.ents.concat(g.guards.filter(x => x.hp > 0)) : g.ents)) { // v2.71: and the relic guards
-    if (!seen(e)) continue;
+    if (!seen(e) || e.bur) continue; // v2.82: no bars over a burrowed Gorebore
     if (e.kind === 'b') {
       const x = P(e.u, e.v).x, top = Math.max(bTop(e) - 8, barMin), hq = e.type === 'hq';
       bar(c, x, top, hq ? 84 : 52, e.hp / e.maxHp, hq ? 5 : 3.5, lostF(e));
@@ -9537,7 +9757,7 @@ const UNIT_TIPS = {
   heavy: ['Tanks, Titans and aircraft', 'Snipers, Tanks'],
   get sniper() { const u = UDEF.sniper; return [`Infantry, best in a line: the round goes through its target and hits up to ${u.pierce?.n} more behind it, weaker each time`, 'Tanks, Gunships; units spread out']; }, // v2.37
   tank: ['Infantry, vehicles and buildings', 'Heavies, Gunships'],
-  get artillery() { const u = UDEF.artillery; return [`Clumps and buildings from ${txN(u.range)} range: every shot is a salvo of ${u.salvo?.n} shells that blankets the area (minimum range ${txN(u.minRange)})`, 'Anything that gets close, Gunships; a lone fast unit (the shells land wide)']; }, // v2.37
+  get artillery() { const u = UDEF.artillery, rw = REWORK.b2a; return [`Clumps, dug-in units and buildings from ${txN(u.range)} range: every shot is a salvo of ${u.salvo?.n} shells that blankets the area (minimum range ${txN(u.minRange)})${rw && REWORK.artDeploy ? `; it deploys in ${txN(ART.deploy)} s before firing and packs up in ${txN(ART.pack)} s before moving` : ''}${rw && REWORK.artTelegraph ? `; each shell's landing spot is marked on the ground for at least ${txN(ART.fly)} s` : ''}`, rw ? 'Flanks, catching it on the move, Gorebores, Gunships; units that keep moving step out of its markers' : 'Anything that gets close, Gunships; a lone fast unit (the shells land wide)']; }, // v2.37; v2.82: deploy and telegraphed shells
   get titan() { const u = UDEF.titan; return [`Buildings and everything on the ground once planted: siege lock takes ${txN(u.siege?.plant)} s, then +${txN(u.siege?.reach)} range and +${txP((u.siege?.bmul) - 1)} against buildings; it can't move until it unplants (${txN(u.siege?.unplant)} s)`, 'Heavies, Gunships; fast units that arrive while it plants or unplants']; }, // v2.37
   aircraft: ['Vehicles and Artillery', 'Interceptors, Heavies, Turrets'],
   interceptor: ['Aircraft only; escorts your Leviathans and Gunships', 'Heavies, Riflemen, Turrets'],
@@ -9555,6 +9775,7 @@ const UNIT_TIPS = {
   spitter: ['Aircraft and ground from range; its acid makes targets take more damage (corrosion)', 'Anything that reaches it, splash'],
   get bilecaster() { const u = UDEF.bilecaster; return [`Marking targets from ${txN(u.range)} range: a single bile dart whose corrosion lasts ${txN(u.corrode.dur)} s (+${txP(u.corrode.amt)} damage taken)`, "Swarms (one target at a time), anything that reaches it; it can't hit aircraft"]; }, // v2.37
   get bilelobber() { const u = UDEF.bilelobber; return [`Softening an army from ${txN(u.range)} range: its splash corrodes everything it hits for ${txN(u.corrode?.dur)} s (minimum range ${txN(u.minRange)})`, 'Anything that gets close, aircraft; weak against buildings on its own']; }, // v2.37
+  get gorebore() { return [`Artillery, Snipers and other ranged backlines: it burrows (speed ${txN(BORE.speed)}, can't be hit) and erupts under them for ${txN(BORE.dmg)} damage around it (radius ${txN(BORE.r)}), then fights up close; it can burrow again ${txN(BORE.cd)} s after each eruption`, `Watching for its dirt trail, guards beside the backline, focus fire while it is up (${txN(BORE.expose)} s exposed after each eruption); it can't hit aircraft`]; }, // v2.82
   ruinmaw: ['Buildings above all; every hit leaves a short acid pool', 'Fast attackers, aircraft, Heavies'],
   get thornback() { const u = UDEF.thornback; return [`The front line; anyone who hits it up close takes ${txP(u.thorns.frac)} of the damage back`, 'Ranged focus, Tanks, aircraft']; },
   get dreadthorn() { const u = UDEF.dreadthorn; return [`Packed infantry: a hit of ${txN(u.burst.trigger)}+ releases a spine burst around it (every ${txN(u.burst.cd)} s)`, 'Ranged focus, Tanks, aircraft']; },
@@ -9566,6 +9787,7 @@ const UNIT_TIPS = {
   get lancer() { const u = UDEF.lancer; return [`Tanky single targets and aircraft: every hit on the same target does ${txP(u.focus?.per)} more, up to +${txP(u.focus?.per * u.focus?.max)}`, 'Swarms (it starts over on a new target); melee units that reach it']; }, // v2.37
   marksman: ['Infantry from very long range, after a visible charge-up on its target', 'Fast attackers, aircraft (it can\'t hit them); weak against buildings'],
   get riftmortar() { const u = UDEF.riftmortar; return [`Single high-value targets and buildings from ${txN(u.range)} range: a precise, heavy strike with a tight blast (minimum range ${txN(u.minRange)})`, 'Swarms (little splash), anything that gets close, aircraft']; }, // v2.37
+  get severance() { return [`Splitting an army: every ${txN(SEVER.cd)} s a slow rift orb (range ${txN(SEVER.range)}) hits every enemy unit within ${txN(SEVER.r)} for ${txN(SEVER.dmg)} and exiles them for ${txN(SEVER.dur)} s (frozen and untouchable; then ${txN(SEVER.imm)} s immune); a weak bolt in between`, 'Units spread out, dodging the slow orb, anything that punishes its long cooldown; it can\'t hurt buildings much or hit aircraft']; }, // v2.82
   get worldbreaker() { const u = UDEF.worldbreaker; return [`Armies dug in: every hit leaves a distortion zone where enemy units deal ${txP(DIST.amt)} less damage`, 'Mobile armies that step out, aircraft, Heavies']; }, // v2.37
   get gravemantle() { const u = UDEF.gravemantle; return [`Holding ground: enemy ground units near it are slowed ${txP(u.aura.slow)}; a weak shot at ground units and buildings`, "Ranged focus, aircraft (it can't hit them)"]; },
   get eventide() { const u = UDEF.eventide; return [`Packed ground units: a gravity pulse pulls them in (every ${txN(u.pulse.cd)} s); a weak shot at ground units and buildings`, "Ranged focus, aircraft (it can't hit them)"]; },
@@ -11164,7 +11386,7 @@ function cxRoles(fac) {
 // A faction's units: by building (Barracks, Factory, Tech Lab, then the rest), then path, then tier
 function cxUnits(fac) {
   const bi = t => { const i = CX_PROD.indexOf(UDEF[t].from); return i < 0 ? 9 : i; }, pi = t => UNIT_PATH[t] ? UNIT_PATH[t].p : '';
-  return Object.keys(UDEF).filter(t => (UDEF[t].fac || DEFAULT_FACTION) === fac)
+  return Object.keys(UDEF).filter(t => (UDEF[t].fac || DEFAULT_FACTION) === fac && rwShown(t)) // v2.82: the units a new match has (Gorebore or Bile Lobber, …)
     .sort((a, b) => bi(a) - bi(b) || pi(a).localeCompare(pi(b)) || UDEF[a].tier - UDEF[b].tier || UNIT_ORDER.indexOf(a) - UNIT_ORDER.indexOf(b));
 }
 // The units a building tier opens without a path (T1 units, or a building without a tree)
@@ -11201,7 +11423,7 @@ function cxTree(fac, type) {
   if (T) return `<div class="cxtree" id="cx-t-${type}">${root}<div class="cxbr">${Object.keys(T).map(p => {
     const P = T[p];
     return `<div class="cxcol"><div class="cxpath">Path ${p}: ${cxEsc(P.name)}</div>${[2, 3].map(t => { const st = P.steps[t] || {};
-      return `<div class="cxnode"><span class="tg">T${t}</span><b>${cxEsc(st.short || '')}</b>${cxUpCost(d, t)}${st.unlock ? cxUnitLinks(st.unlock) : cxEsc(st.txt || '')}</div>`; }).join('')}</div>`;
+      return `<div class="cxnode"><span class="tg">T${t}</span><b>${cxEsc(st.short || '')}</b>${cxUpCost(d, t)}${st.unlock ? cxUnitLinks(st.unlock.map(u => rwType({ rw: REWORK }, u))) : cxEsc(st.txt || '')}</div>`; }).join('')}</div>`;
   }).join('')}</div></div>`;
   const src = d.noPad && BDEFS[fac].sigB ? 'sigB' : null; // the bunker follows the Depot's tier
   return `<div class="cxtree" id="cx-t-${type}"><div class="cxchain">${root}${[2, 3].filter(t => tiers[t]).map(t => `<div class="cxnode"><span class="tg">T${t}</span>${d.up && d.up[t] ? 'Upgrade' : src ? `With the ${cxLink('b:' + src, BD(fac, src).name)} at T${t}` : ''}${cxUpCost(d, t)}${cxEsc(tiers[t])}${cxUnitLinks(cxTierUnits(fac, type, t))}</div>`).join('')}</div></div>`;
@@ -11329,7 +11551,7 @@ const TR_PRESETS = [ // one-tap enemy groups (red), every row at once in Compare
 ];
 const TR_WY = [-96, 44]; // the world rows a Compare strip shows (the lane's depth, the units standing on it)
 const TR_SIDE = ['Blue', 'Red'];
-const trNewSet = () => ({ rows: 1, items: [], nid: 1, modes: ['attack', 'attack'], fight: true, ctl: false, seed: RANGE.seed });
+const trNewSet = () => ({ rows: 1, items: [], nid: 1, modes: ['attack', 'attack'], fight: true, ctl: false, seed: RANGE.seed, rw: [0, 1, 2].map(() => rwInit()) }); // rw (v2.82): each row's faction-rework switches
 const TR = { on: false, go: false, speed: 1, acc: 0, games: [], set: trNewSet(), tool: null, pick: { side: 0, fac: DEFAULT_FACTION, n: 5, all: false }, info: null, vfx: [], vfxCur: -1, home: null, clrArm: 0 };
 
 // The effects pools (render) belong to one game at a time: each row keeps its own and swaps them in to be drawn
@@ -11346,13 +11568,17 @@ function trVfxUse(k) {
   TR.vfxCur = k;
 }
 
+// v2.82: a row's rework switches (REWORK's for a setup saved before them)
+const TR_RW = [['b2a', 'Batch 2a'], ['artDeploy', 'Deploy'], ['artTelegraph', 'Telegraph']];
+function trRw(k) { const S = TR.set; if (!Array.isArray(S.rw)) S.rw = []; return S.rw[k] || (S.rw[k] = rwInit()); }
+const trRwTag = k => { const r = trRw(k); return !r.b2a ? 'pre-2a' : r.artDeploy && r.artTelegraph ? '2a' : `2a${r.artDeploy ? ' deploy' : ''}${r.artTelegraph ? ' telegraph' : ''}${!r.artDeploy && !r.artTelegraph ? ' (no Artillery switches)' : ''}`; };
 // Rows: each row's factions (the first thing placed on each side), building every row from the items
 const trFacs = k => [0, 1].map(s => { const it = TR.set.items.find(i => i.row === k && i.side === s); return it ? (it.kind === 'u' ? rangeFac(it.type) : it.fac) : DEFAULT_FACTION; });
 function trBuild() {
   const n = TR.set.rows;
   TR.games = [];
   for (let k = 0; k < n; k++) {
-    const g = rangeGame({ seed: TR.set.seed, factions: trFacs(k) });
+    const g = rangeGame({ seed: TR.set.seed, factions: trFacs(k), rework: trRw(k) });
     for (const it of TR.set.items) if (it.row === k) (it.kind === 'u' ? rangeUnit(g, it.side, it.type, it.u, it.v) : rangeBuilding(g, it.side, it.fac, it.type, it.u, it.v)).trk = it.id;
     for (let s = 0; s < 2; s++) g.sides[s].mode = TR.set.modes[s];
     g.sides[1].hush = !TR.set.fight; g.sides[0].manual = !!TR.set.ctl && n === 1;
@@ -11456,6 +11682,10 @@ function trState(g, e) {
   out.push(po.o === 'target' ? `attacking ${T && T.hp > 0 ? (T.kind === 'u' ? UDEF[T.type].name : bdOf(T).name) : 'its target'}` : po.o === 'go' ? (po.back ? 'falling back' : 'moving') : po.o === 'retreat' ? 'retreating' : po.o === 'attack' ? 'attacking down the lane' : 'holding');
   if (tg) out.push(`firing at ${tg.kind === 'u' ? UDEF[tg.type].name : bdOf(tg).name}`); else if (e.moving) out.push('on the move');
   if (e.siege) out.push(['', 'planting', 'planted', 'unplanting'][e.siege]);
+  if (e.dep) out.push(['', 'deploying', 'deployed', 'packing up'][e.dep]); // v2.82
+  if (e.bur) out.push('burrowed (can\'t be hit)'); else if (e.surfT > g.t) out.push('surfaced, exposed'); else if (d && d.bore && rwB2a(g)) out.push(g.t >= (e.burCd || 0) ? 'burrow ready' : `burrow in ${Math.ceil(e.burCd - g.t)} s`);
+  if (e.exT > g.t) out.push(`exiled (${Math.ceil(e.exT - g.t)} s)`); else if (e.exImm > g.t) out.push('immune to exile');
+  if (d && d.exile && rwB2a(g)) out.push(g.t >= (e.exCd || 0) ? 'exile ready' : `exile in ${Math.ceil(e.exCd - g.t)} s`);
   if (e.leaping) out.push('leaping');
   if (e.phT > g.t) out.push('phased');
   if (e.slowT > g.t) out.push('slowed');
@@ -11523,6 +11753,7 @@ function trSetup() {
       <span class="lbl">Enemies fight back</span><div class="trrow">${trSeg('trFb', [[1, 'On'], [0, 'Off']], set.fight ? 1 : 0)}<small class="trn">Off: red neither moves nor fires, so blue's attack can be studied alone</small></div>
       <span class="lbl">Control blue myself</span><div class="trrow">${trSeg('trCb', [[0, 'Off'], [1, 'On']], set.ctl && !cmp ? 1 : 0)}<small class="trn">${cmp ? 'Not in Compare mode' : 'On: blue takes the game\'s own controls (tap, double-tap, box, All, groups, tap the ground or an enemy, Attack, Hold, Retreat)'}</small></div>
       <span class="lbl">Compare</span><div class="trrow">${trSeg('trCr', [[1, '1 row'], [2, '2 rows'], [3, '3 rows']], n)}${cmp ? '<button class="trq" id="trCp">Copy red to every row</button>' : ''}<small class="trn">Rows that can't touch: the same enemy, a different attacker in each</small></div>
+      <span class="lbl">Rework switches</span><div class="trrw">${[...Array(n).keys()].map(k => `<div class="trrow">${cmp ? `<span class="trl">Row ${k + 1}</span>` : ''}${TR_RW.map(([key, nm]) => trSeg(`trRw${k}${key}`, [[1, nm + ' on'], [0, 'off']], trRw(k)[key] ? 1 : 0)).join('')}</div>`).join('')}<small class="trn">Batch 2a off: the Artillery, Bile Lobber and Rift Mortar as before the rework; on: Gorebore and Severance, and the Artillery's Deploy and Telegraph if those are on</small></div>
       <span class="lbl">Setups</span><div class="trrow trsv"><input id="trNm" maxlength="24" placeholder="Name this setup" aria-label="Setup name"><button class="trq" id="trSv">Save</button>
         ${saved.map((x, i) => `<span class="trit"><button class="trq" data-load="${i}">${cxEsc(x.name)}</button><button class="trq trdel" data-del="${i}" aria-label="Delete ${cxEsc(x.name)}">×</button></span>`).join('')}<small class="trn">${saved.length}/${TR_MAX} saved on this device</small></div>
     </div>`);
@@ -11542,6 +11773,7 @@ function trSetup() {
   seg('trFb', k => trFight(k === '1'));
   seg('trCb', k => { if (cmp) { trSetup(); toast('Control blue myself is off in Compare mode', 'bad'); return; } trCtl(k === '1'); });
   seg('trCr', k => trRowsSet(+k));
+  for (let k = 0; k < n; k++) for (const [key] of TR_RW) seg(`trRw${k}${key}`, v => { trRw(k)[key] = v === '1'; TR.go = false; trBuild(); toast(`Row ${k + 1}: ${trRwTag(k)}`, 'ok'); });
   for (const b of document.querySelectorAll('#trQ button')) b.addEventListener('click', () => trPreset(TR_PRESETS[+b.dataset.i]));
   if ($('trCp')) $('trCp').addEventListener('click', trCopyRed);
   $('trSv').addEventListener('click', () => trSave($('trNm').value));
@@ -11577,6 +11809,7 @@ function trLoad(x) {
   const s = x && x.set; if (!s || !Array.isArray(s.items)) return;
   const ok = i => i && (i.kind === 'u' ? !!UDEF[i.type] : BDEFS[i.fac] && BD(i.fac, i.type)) && Number.isFinite(i.u) && Number.isFinite(i.v) && i.row >= 0 && i.row < 3 && (i.side === 0 || i.side === 1);
   TR.set = Object.assign(trNewSet(), s, { items: s.items.filter(ok), modes: Array.isArray(s.modes) ? s.modes.slice(0, 2) : ['attack', 'attack'] });
+  TR.set.rw = [0, 1, 2].map(k => rwInit(Array.isArray(s.rw) && s.rw[k] && typeof s.rw[k] === 'object' ? s.rw[k] : undefined));
   TR.set.rows = clamp(TR.set.rows | 0, 1, 3); TR.set.items = TR.set.items.filter(i => i.row < TR.set.rows);
   TR.set.nid = Math.max(TR.set.nid | 0, ...TR.set.items.map(i => i.id + 1), 1);
   TR.go = false; trBuild(); hideOverlay(); toast(`Loaded ${x.name}: tap Start`, 'ok');
@@ -11607,7 +11840,7 @@ function trUI() { // every UI refresh: the readouts, the clock, the info card, t
     const R = rangeRead(g), T = trView(k), el = box.children[k];
     const who = s => { const c = {}; for (const e of g.ents) if (e.side === s && e.hp > 0) { const nm = e.kind === 'u' ? UDEF[e.type].name : bdOf(e).name; c[nm] = (c[nm] || 0) + 1; } const a = Object.entries(c).sort((x, y) => y[1] - x[1]); return a.length ? a.slice(0, 2).map(([nm, m]) => `${cxEsc(nm)} ×${m}`).join(', ') + (a.length > 2 ? ' …' : '') : 'none'; };
     const w = R.wipe ? ` · <b class="w">${TR_SIDE[R.wipe.side]} wiped out at ${fmtTime(R.wipe.t)}</b>` : '';
-    setHTML(el, `${n > 1 ? `<b>Row ${k + 1}</b> ` : ''}<span class="b">${who(0)}</span> vs <span class="r">${who(1)}</span> · damage <span class="b">${txN(Math.round(R.dmg[0]))}</span> / <span class="r">${txN(Math.round(R.dmg[1]))}</span> · kills <span class="b">${R.kills[0]}</span> / <span class="r">${R.kills[1]}</span>${w}`);
+    setHTML(el, `${n > 1 ? `<b>Row ${k + 1}</b> <i class="rw">${cxEsc(trRwTag(k))}</i> ` : trRw(0).b2a && trRw(0).artDeploy && trRw(0).artTelegraph ? '' : `<i class="rw">${cxEsc(trRwTag(0))}</i> `}<span class="b">${who(0)}</span> vs <span class="r">${who(1)}</span> · damage <span class="b">${txN(Math.round(R.dmg[0]))}</span> / <span class="r">${txN(Math.round(R.dmg[1]))}</span> · kills <span class="b">${R.kills[0]}</span> / <span class="r">${R.kills[1]}</span>${w}`);
     el.style.left = (T.F.l + 6) + 'px'; el.style.top = (n > 1 ? T.y0 + 2 : T.y1 - 20) + 'px'; // one row: the bottom (toasts show at the top); Compare: each strip's top, above its units el.style.maxWidth = (T.F.r - T.F.l - 12) + 'px';
   });
 }
@@ -11620,7 +11853,7 @@ function trReset() { trBuild(); TR.go = true; trTopUI(); toast('Reset: the same 
 function trClear() {
   const now = performance.now();
   if (now - TR.clrArm > 2500) { TR.clrArm = now; toast('Tap Clear again to remove everything', 'warn'); return; }
-  TR.clrArm = 0; const keep = TR.set; TR.set = Object.assign(trNewSet(), { rows: keep.rows, modes: keep.modes, fight: keep.fight, ctl: keep.ctl });
+  TR.clrArm = 0; const keep = TR.set; TR.set = Object.assign(trNewSet(), { rows: keep.rows, modes: keep.modes, fight: keep.fight, ctl: keep.ctl, rw: keep.rw });
   TR.go = false; trBuild(); toast('Cleared', '');
 }
 function trHalt() { TR.go = false; if (TR.on) trTopUI(); } // the page hidden (pauseGame)

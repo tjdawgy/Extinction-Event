@@ -29,7 +29,7 @@ test('Codex: main menu, tabs, every unit and building, pictures, no sideways scr
   for (const fac of FACS) {
     await page.click(`#cxTabs [data-t="${fac}"]`); await page.waitForTimeout(100);
     const r = await page.evaluate(fac => {
-      const want = { b: Object.keys(BDEFS[fac]), u: Object.keys(UDEF).filter(t => (UDEF[t].fac || DEFAULT_FACTION) === fac) };
+      const want = { b: Object.keys(BDEFS[fac]), u: Object.keys(UDEF).filter(t => (UDEF[t].fac || DEFAULT_FACTION) === fac && rwShown(t)) }; // v2.82: a new match's units (the Gorebore, not the Bile Lobber)
       const card = (k, t) => document.getElementById(`cx-${k}-${t}`);
       const ink = c => { const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 0) n++; return n; };
       const check = (k, defs) => want[k].filter(t => { const el = card(k, t), cv = el && el.querySelector('canvas.cxi'); return !el || !defs[t].desc || !el.textContent.includes(defs[t].desc) || !cv || cv.dataset.err || ink(cv) < 50; });

@@ -169,8 +169,8 @@ test('AI decisions use only its own vision (identical choices whatever is hidden
 // pads (4, 1, 6, 3: the nearest at u 341), which the spotter reveals with margin (0 failures in 300 seeds, at most 69% of the
 // HP left against the 80% bar; the spotterless control still never fires), and the run is seeded so it is the same every time.
 test('AI siege under fog: a spotter walks up and Artillery hits the player\'s buildings', () => seeded(7, () => {
-  const setup = withSpotter => {
-    const g = quiet(); give(g, 0);
+  const setup = (withSpotter, rw) => {
+    sim.REWORK.b2a = !!rw; const g = quiet(); sim.REWORK.b2a = true; give(g, 0); // v2.82: the 80% bar is for the Artillery before rework batch 2a (no deploy time)
     ['barracks', 'refinery', 'reactor', 'habitat'].forEach((t, i) => assert.ok(sim.tryBuild(g, 0, t, [4, 1, 6, 3][i]).ok)); // the front pads
     run(g, 16);
     for (let i = 0; i < 3; i++) sim.spawnUnit(g, 1, 'artillery', 1180 - i * 15, 0);
@@ -189,6 +189,9 @@ test('AI siege under fog: a spotter walks up and Artillery hits the player\'s bu
   const lone = setup(false), hpL = hpOf(lone);
   run(lone, 70);
   assert.strictEqual(hpOf(lone), hpL, 'without a spotter the Artillery cannot see the base and does not fire');
+  // v2.82 (rework batch 2a on): the same siege still hits the base; the deploy time costs it some volleys
+  const g2 = setup(true, true), h2 = hpOf(g2); run(g2, 70);
+  assert.ok(hpOf(g2) < h2 * 0.9, `with deploy and telegraphed shells the siege still damages the base (${Math.round(hpOf(g2))} of ${Math.round(h2)} HP left)`);
 }));
 
 test('saves: v6 keeps fog, ghosts and AI memory; v5 saves load with fog from current vision only', () => {

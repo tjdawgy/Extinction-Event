@@ -19,7 +19,7 @@ const TR_PRESETS = [ // one-tap enemy groups (red), every row at once in Compare
 ];
 const TR_WY = [-96, 44]; // the world rows a Compare strip shows (the lane's depth, the units standing on it)
 const TR_SIDE = ['Blue', 'Red'];
-const trNewSet = () => ({ rows: 1, items: [], nid: 1, modes: ['attack', 'attack'], fight: true, ctl: false, seed: RANGE.seed });
+const trNewSet = () => ({ rows: 1, items: [], nid: 1, modes: ['attack', 'attack'], fight: true, ctl: false, seed: RANGE.seed, rw: [0, 1, 2].map(() => rwInit()) }); // rw (v2.82): each row's faction-rework switches
 const TR = { on: false, go: false, speed: 1, acc: 0, games: [], set: trNewSet(), tool: null, pick: { side: 0, fac: DEFAULT_FACTION, n: 5, all: false }, info: null, vfx: [], vfxCur: -1, home: null, clrArm: 0 };
 
 // The effects pools (render) belong to one game at a time: each row keeps its own and swaps them in to be drawn
@@ -36,13 +36,17 @@ function trVfxUse(k) {
   TR.vfxCur = k;
 }
 
+// v2.82: a row's rework switches (REWORK's for a setup saved before them)
+const TR_RW = [['b2a', 'Batch 2a'], ['artDeploy', 'Deploy'], ['artTelegraph', 'Telegraph']];
+function trRw(k) { const S = TR.set; if (!Array.isArray(S.rw)) S.rw = []; return S.rw[k] || (S.rw[k] = rwInit()); }
+const trRwTag = k => { const r = trRw(k); return !r.b2a ? 'pre-2a' : r.artDeploy && r.artTelegraph ? '2a' : `2a${r.artDeploy ? ' deploy' : ''}${r.artTelegraph ? ' telegraph' : ''}${!r.artDeploy && !r.artTelegraph ? ' (no Artillery switches)' : ''}`; };
 // Rows: each row's factions (the first thing placed on each side), building every row from the items
 const trFacs = k => [0, 1].map(s => { const it = TR.set.items.find(i => i.row === k && i.side === s); return it ? (it.kind === 'u' ? rangeFac(it.type) : it.fac) : DEFAULT_FACTION; });
 function trBuild() {
   const n = TR.set.rows;
   TR.games = [];
   for (let k = 0; k < n; k++) {
-    const g = rangeGame({ seed: TR.set.seed, factions: trFacs(k) });
+    const g = rangeGame({ seed: TR.set.seed, factions: trFacs(k), rework: trRw(k) });
     for (const it of TR.set.items) if (it.row === k) (it.kind === 'u' ? rangeUnit(g, it.side, it.type, it.u, it.v) : rangeBuilding(g, it.side, it.fac, it.type, it.u, it.v)).trk = it.id;
     for (let s = 0; s < 2; s++) g.sides[s].mode = TR.set.modes[s];
     g.sides[1].hush = !TR.set.fight; g.sides[0].manual = !!TR.set.ctl && n === 1;
@@ -146,6 +150,10 @@ function trState(g, e) {
   out.push(po.o === 'target' ? `attacking ${T && T.hp > 0 ? (T.kind === 'u' ? UDEF[T.type].name : bdOf(T).name) : 'its target'}` : po.o === 'go' ? (po.back ? 'falling back' : 'moving') : po.o === 'retreat' ? 'retreating' : po.o === 'attack' ? 'attacking down the lane' : 'holding');
   if (tg) out.push(`firing at ${tg.kind === 'u' ? UDEF[tg.type].name : bdOf(tg).name}`); else if (e.moving) out.push('on the move');
   if (e.siege) out.push(['', 'planting', 'planted', 'unplanting'][e.siege]);
+  if (e.dep) out.push(['', 'deploying', 'deployed', 'packing up'][e.dep]); // v2.82
+  if (e.bur) out.push('burrowed (can\'t be hit)'); else if (e.surfT > g.t) out.push('surfaced, exposed'); else if (d && d.bore && rwB2a(g)) out.push(g.t >= (e.burCd || 0) ? 'burrow ready' : `burrow in ${Math.ceil(e.burCd - g.t)} s`);
+  if (e.exT > g.t) out.push(`exiled (${Math.ceil(e.exT - g.t)} s)`); else if (e.exImm > g.t) out.push('immune to exile');
+  if (d && d.exile && rwB2a(g)) out.push(g.t >= (e.exCd || 0) ? 'exile ready' : `exile in ${Math.ceil(e.exCd - g.t)} s`);
   if (e.leaping) out.push('leaping');
   if (e.phT > g.t) out.push('phased');
   if (e.slowT > g.t) out.push('slowed');
@@ -213,6 +221,7 @@ function trSetup() {
       <span class="lbl">Enemies fight back</span><div class="trrow">${trSeg('trFb', [[1, 'On'], [0, 'Off']], set.fight ? 1 : 0)}<small class="trn">Off: red neither moves nor fires, so blue's attack can be studied alone</small></div>
       <span class="lbl">Control blue myself</span><div class="trrow">${trSeg('trCb', [[0, 'Off'], [1, 'On']], set.ctl && !cmp ? 1 : 0)}<small class="trn">${cmp ? 'Not in Compare mode' : 'On: blue takes the game\'s own controls (tap, double-tap, box, All, groups, tap the ground or an enemy, Attack, Hold, Retreat)'}</small></div>
       <span class="lbl">Compare</span><div class="trrow">${trSeg('trCr', [[1, '1 row'], [2, '2 rows'], [3, '3 rows']], n)}${cmp ? '<button class="trq" id="trCp">Copy red to every row</button>' : ''}<small class="trn">Rows that can't touch: the same enemy, a different attacker in each</small></div>
+      <span class="lbl">Rework switches</span><div class="trrw">${[...Array(n).keys()].map(k => `<div class="trrow">${cmp ? `<span class="trl">Row ${k + 1}</span>` : ''}${TR_RW.map(([key, nm]) => trSeg(`trRw${k}${key}`, [[1, nm + ' on'], [0, 'off']], trRw(k)[key] ? 1 : 0)).join('')}</div>`).join('')}<small class="trn">Batch 2a off: the Artillery, Bile Lobber and Rift Mortar as before the rework; on: Gorebore and Severance, and the Artillery's Deploy and Telegraph if those are on</small></div>
       <span class="lbl">Setups</span><div class="trrow trsv"><input id="trNm" maxlength="24" placeholder="Name this setup" aria-label="Setup name"><button class="trq" id="trSv">Save</button>
         ${saved.map((x, i) => `<span class="trit"><button class="trq" data-load="${i}">${cxEsc(x.name)}</button><button class="trq trdel" data-del="${i}" aria-label="Delete ${cxEsc(x.name)}">×</button></span>`).join('')}<small class="trn">${saved.length}/${TR_MAX} saved on this device</small></div>
     </div>`);
@@ -232,6 +241,7 @@ function trSetup() {
   seg('trFb', k => trFight(k === '1'));
   seg('trCb', k => { if (cmp) { trSetup(); toast('Control blue myself is off in Compare mode', 'bad'); return; } trCtl(k === '1'); });
   seg('trCr', k => trRowsSet(+k));
+  for (let k = 0; k < n; k++) for (const [key] of TR_RW) seg(`trRw${k}${key}`, v => { trRw(k)[key] = v === '1'; TR.go = false; trBuild(); toast(`Row ${k + 1}: ${trRwTag(k)}`, 'ok'); });
   for (const b of document.querySelectorAll('#trQ button')) b.addEventListener('click', () => trPreset(TR_PRESETS[+b.dataset.i]));
   if ($('trCp')) $('trCp').addEventListener('click', trCopyRed);
   $('trSv').addEventListener('click', () => trSave($('trNm').value));
@@ -267,6 +277,7 @@ function trLoad(x) {
   const s = x && x.set; if (!s || !Array.isArray(s.items)) return;
   const ok = i => i && (i.kind === 'u' ? !!UDEF[i.type] : BDEFS[i.fac] && BD(i.fac, i.type)) && Number.isFinite(i.u) && Number.isFinite(i.v) && i.row >= 0 && i.row < 3 && (i.side === 0 || i.side === 1);
   TR.set = Object.assign(trNewSet(), s, { items: s.items.filter(ok), modes: Array.isArray(s.modes) ? s.modes.slice(0, 2) : ['attack', 'attack'] });
+  TR.set.rw = [0, 1, 2].map(k => rwInit(Array.isArray(s.rw) && s.rw[k] && typeof s.rw[k] === 'object' ? s.rw[k] : undefined));
   TR.set.rows = clamp(TR.set.rows | 0, 1, 3); TR.set.items = TR.set.items.filter(i => i.row < TR.set.rows);
   TR.set.nid = Math.max(TR.set.nid | 0, ...TR.set.items.map(i => i.id + 1), 1);
   TR.go = false; trBuild(); hideOverlay(); toast(`Loaded ${x.name}: tap Start`, 'ok');
@@ -297,7 +308,7 @@ function trUI() { // every UI refresh: the readouts, the clock, the info card, t
     const R = rangeRead(g), T = trView(k), el = box.children[k];
     const who = s => { const c = {}; for (const e of g.ents) if (e.side === s && e.hp > 0) { const nm = e.kind === 'u' ? UDEF[e.type].name : bdOf(e).name; c[nm] = (c[nm] || 0) + 1; } const a = Object.entries(c).sort((x, y) => y[1] - x[1]); return a.length ? a.slice(0, 2).map(([nm, m]) => `${cxEsc(nm)} ×${m}`).join(', ') + (a.length > 2 ? ' …' : '') : 'none'; };
     const w = R.wipe ? ` · <b class="w">${TR_SIDE[R.wipe.side]} wiped out at ${fmtTime(R.wipe.t)}</b>` : '';
-    setHTML(el, `${n > 1 ? `<b>Row ${k + 1}</b> ` : ''}<span class="b">${who(0)}</span> vs <span class="r">${who(1)}</span> · damage <span class="b">${txN(Math.round(R.dmg[0]))}</span> / <span class="r">${txN(Math.round(R.dmg[1]))}</span> · kills <span class="b">${R.kills[0]}</span> / <span class="r">${R.kills[1]}</span>${w}`);
+    setHTML(el, `${n > 1 ? `<b>Row ${k + 1}</b> <i class="rw">${cxEsc(trRwTag(k))}</i> ` : trRw(0).b2a && trRw(0).artDeploy && trRw(0).artTelegraph ? '' : `<i class="rw">${cxEsc(trRwTag(0))}</i> `}<span class="b">${who(0)}</span> vs <span class="r">${who(1)}</span> · damage <span class="b">${txN(Math.round(R.dmg[0]))}</span> / <span class="r">${txN(Math.round(R.dmg[1]))}</span> · kills <span class="b">${R.kills[0]}</span> / <span class="r">${R.kills[1]}</span>${w}`);
     el.style.left = (T.F.l + 6) + 'px'; el.style.top = (n > 1 ? T.y0 + 2 : T.y1 - 20) + 'px'; // one row: the bottom (toasts show at the top); Compare: each strip's top, above its units el.style.maxWidth = (T.F.r - T.F.l - 12) + 'px';
   });
 }
@@ -310,7 +321,7 @@ function trReset() { trBuild(); TR.go = true; trTopUI(); toast('Reset: the same 
 function trClear() {
   const now = performance.now();
   if (now - TR.clrArm > 2500) { TR.clrArm = now; toast('Tap Clear again to remove everything', 'warn'); return; }
-  TR.clrArm = 0; const keep = TR.set; TR.set = Object.assign(trNewSet(), { rows: keep.rows, modes: keep.modes, fight: keep.fight, ctl: keep.ctl });
+  TR.clrArm = 0; const keep = TR.set; TR.set = Object.assign(trNewSet(), { rows: keep.rows, modes: keep.modes, fight: keep.fight, ctl: keep.ctl, rw: keep.rw });
   TR.go = false; trBuild(); toast('Cleared', '');
 }
 function trHalt() { TR.go = false; if (TR.on) trTopUI(); } // the page hidden (pauseGame)

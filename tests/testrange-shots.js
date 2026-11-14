@@ -1,7 +1,7 @@
 // v2.81 (docs/FACTION_REWORK.md batch 1): screenshots of the Test Range at 667×375 (iPhone landscape in the viewer), made
 // with real taps and drags.   node tests/testrange-shots.js   → docs/screenshots/testrange-<shot>-667x375.png
 // Shots: setup (the setup panel), info (a Tank's card mid-fight, with Remove), fight (a running fight: 10 Riflemen and 3 Tanks against Swarm and a Maw), compare (three
-// rows: Artillery, Bile Lobber and Rift Mortar each against the same Infantry blob), control (Control blue myself, a box
+// rows: Artillery, Gorebore and Severance each against the same Infantry blob), control (Control blue myself, a box
 // selection mid-drag).
 const path = require('path');
 const { findPlaywright, NARROW, openPage } = require('./browser-kit');
@@ -39,7 +39,7 @@ const OUT = path.join(__dirname, '..', 'docs', 'screenshots');
     const { page, errors } = await openPage(browser, dev);
     await page.click('#bRange'); await page.waitForTimeout(300);
     await page.click('#trCr button[data-k="3"]'); await page.click('#trQ button[data-i="0"]');
-    for (const [k, fac, t] of [[0, 'lastfist', 'artillery'], [1, 'bloomhost', 'bilelobber'], [2, 'axiarchs', 'riftmortar']]) { await pick(page, 0, fac, 3, t); await page.mouse.click(230, await rowY(page, k, 0.7)); }
+    for (const [k, fac, t] of [[0, 'lastfist', 'artillery'], [1, 'bloomhost', 'gorebore'], [2, 'axiarchs', 'severance']]) { await pick(page, 0, fac, 3, t); await page.mouse.click(230, await rowY(page, k, 0.7)); }
     await page.click('#trGo'); await page.waitForTimeout(2300); await page.click('#trGo'); await quiet(page); await page.waitForTimeout(100);
     await shot(page, 'compare');
     if (errors.length) console.error(errors);

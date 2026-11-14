@@ -60,6 +60,8 @@ rwText(TREES_BH.factory.A.steps[2], 'txt', 'Unlocks Gorebores: burrow under the 
 rwText(TREES_AX.factory.A.steps[2], 'short', 'Severances', 'Rift Mortars');
 rwText(TREES_AX.factory.A.steps[2], 'txt', 'Unlocks Severances: rift orbs that exile enemy units for a few seconds', 'Unlocks Rift Mortars: precise long-range strikes');
 
+// The Artillery's description follows the new-game default (its numbers are in UNIT_TIPS, read live)
+{ const d0 = UDEF.artillery.desc; Object.defineProperty(UDEF.artillery, 'desc', { get: () => REWORK.b2a ? 'Long-range gun that fires shell salvos over the front line. It deploys before it fires and packs up before it moves, and its shells\' landing spots show on the ground. Very fragile, and it can\'t hit targets that get too close.' : d0, enumerable: true, configurable: true }); }
 /* ---- Artillery: deploy (artDeploy) ---- */
 // Returns true when it handled the tick (deploying, packing, deployed: nothing else moves it). best/close: what the usual
 // search found (a direct side's target first); go: it is ordered away (retreat, regroup, a retreat-style move, an AI pull-back)
