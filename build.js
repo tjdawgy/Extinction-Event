@@ -16,7 +16,7 @@ const PARTS = [
   'sim/maps-twolane.js', // v2.65: the Two-Lane map (docs/TWO_LANE.md)
   'sim/maps-threelane.js', // v2.70: the Three-Lane map (docs/PHASE1_DESIGNS.md, Proposal D)
   'sim/core.js', 'sim/trees-balance.js', 'sim/ai-presets.js', 'sim/game.js', 'sim/fog-update.js', 'sim/units.js', 'sim/control.js', // v2.73: direct control (docs/CONTROLS.md)
-  'sim/creep-field-signature.js', 'sim/abilities.js', 'sim/storm-combat.js', 'sim/nodes-special.js', 'sim/conditions.js', 'sim/ai.js', 'sim/stats-log-save.js', 'sim/testrange.js', 'sim/report.js', // v2.81: the Test Range's SIM helpers
+  'sim/creep-field-signature.js', 'sim/abilities.js', 'sim/storm-combat.js', 'sim/nodes-special.js', 'sim/conditions.js', 'sim/rework.js', 'sim/ai.js', 'sim/stats-log-save.js', 'sim/testrange.js', 'sim/report.js', // v2.81: the Test Range's SIM helpers; v2.82: rework batch 2a
   // RENDER: drawing (ends at the RENDER END marker)
   'render/core.js', 'render/buildings-lastfist.js', 'render/buildings-bloomhost.js', 'render/buildings-axiarchs-units.js',
   'render/backdrop.js', 'render/effects.js', 'render/minimap.js',

@@ -139,6 +139,7 @@ function newGame(diffKey, opts = {}) {
     diff: DIFF[diffKey] || DIFF.normal, diffKey, events: [], auto: !!opts.autoPlayer, autoDiff: opts.autoDiff || 'normal', shake: 0, front: [null, null], countdown: opts.countdown || 0,
     nodes: NODE_U.map((u, i) => nodeOf(i, u)), map: MAP, log: null, forcePath: opts.forcePath || null,
     creep: [[], []], acid: [], field: [[], []], warps: [] }; // creep patches per side (v2.18; Bloomhost only); acid: Ruinmaw pools (v2.19); field: Axiarch power field patches, warps: units mid-warp (v2.26)
+  g.rw = rwInit(opts.rework); // v2.82: the faction rework's switches for this game (REWORK; a Test Range row picks its own)
   seedGame(g, opts.seed); // v2.50: the match's random streams (opts.seed, else a fresh one)
   for (let s = 0; s < 2; s++) {
     g.sides.push({ faction: (opts.factions && opts.factions[s]) || DEFAULT_FACTION, res: { c: START_RES.c, e: START_RES.e }, stance: s === 0 && !(opts.autoPlayer && AUTO_STANCE.retreat) ? 'hold' : 'retreat', stanceAt: 0, pushTo: null, slots: new Array(SLOT_COUNT).fill(null),
@@ -284,7 +285,7 @@ function tryTrain(g, s, type) {
   const d = UDEF[type], side = g.sides[s];
   if (g.over) return { ok: false, msg: 'The match is over' };
   if (g.countdown > 0) return WAIT_GO;
-  const prods = g.ents.filter(e => e.side === s && canMake(e, type));
+  const prods = g.ents.filter(e => e.side === s && canMake(e, type, g));
   if (!prods.length) return { ok: false, msg: unitLockMsg(d) };
   if (d.max && unitCount(g, s, type) >= d.max)
     return { ok: false, msg: `At most ${d.max} ${PLURAL[type]} at a time` }; // the Recon Drone (v2.15), counting those in training; Skitterlings (S1, v2.37)

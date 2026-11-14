@@ -226,6 +226,7 @@ const HOLD_PO = { o: 'hold' }; // v2.73: a direct side's unit without an order h
 const RETREAT = { fire: false }; // v2.35 (audit): retreating units hold their fire; fire true restores the v2.34 rule (firing on the move)
 function updateUnit(g, u, foes, dt) {
   const d = UDEF[u.type];
+  if (u.exT) { if (g.t < u.exT) { u.moving = false; u.tgt = 0; return; } exileEnd(g, u); } // v2.82: exiled by a Severance: frozen until it snaps back
   u.anim += dt;
   const frz = u.frzT > g.t; // Frenzy Bloom (v2.20): faster attacks and movement
   if (u.cd > 0) u.cd -= dt * (frz ? ABIL.frenzy.rate : 1);
@@ -241,7 +242,7 @@ function updateUnit(g, u, foes, dt) {
   const A = d.weapon ? acquire(g, u, d, foes, d.chase) : NO_TARGET; let { best, close } = A; // Medicopters and Recon Drones carry no weapon; melee: the chase search in the same pass (v2.37)
   const cs = po && po.o !== 'hold' && (po.o !== 'attack' || po.ju != null) ? ctlStep(g, u, d) : null; // v2.76: heading somewhere (go, target), or retreating
   if (po) st = cs && cs.go ? 'adv' : cs && cs.run ? 'retreat' : (u.po || HOLD_PO).o; // 'adv': on the way, stopping to fight what it meets (a Titan plants for it)
-  const sp = (d.fac === 'bloomhost' && !d.air && onCreep(g, u.side, u.u, u.v) ? CREEP.speed : 1) * (frz ? ABIL.frenzy.speed : 1) * (u.slowT > g.t ? 1 - u.slow : 1) * (u.snT > g.t ? 0 : 1); // creep (v2.18), Frenzy Bloom (v2.20), a Gravemantle's slow (v2.27), a Rootheart's snare (v2.33)
+  const sp = u.bur ? BORE.speed / d.speed : (d.fac === 'bloomhost' && !d.air && onCreep(g, u.side, u.u, u.v) ? CREEP.speed : 1) * (frz ? ABIL.frenzy.speed : 1) * (u.slowT > g.t ? 1 - u.slow : 1) * (u.snT > g.t ? 0 : 1); // creep (v2.18), Frenzy Bloom (v2.20), a Gravemantle's slow (v2.27), a Rootheart's snare (v2.33)
   if (u.leaping) { // mid-leap (v2.19): fly to the landing spot, nothing else
     const du = u.lu - u.u, dv = u.lv - u.v, dd = Math.hypot(du, dv), st = d.leap.speed * dt;
     if (dd <= st) { u.u = u.lu; u.v = u.lv; u.z = 0; u.leaping = 0; u.leapCd = g.t + d.leap.cd; }
@@ -249,7 +250,13 @@ function updateUnit(g, u, foes, dt) {
     u.moving = true; return;
   }
   if (side.hush) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // v2.81: a Test Range side told not to fight back stands still (never set in a match)
-  if (g.meteor && g.meteor.at && side.persona && !g.sides[u.side].bot && !d.air && !u.siege) { const p = meteorDodge(g, u); if (p) { u.tgt = 0; u.chT = 0; moveToward(u, d, p[0], p[1], dt, sp); return; } } // v2.72: an AI's unit steps out of a meteor's circle
+  if (d.bore && rwB2a(g) && boreStep(g, u, d, st, cs, foes, dt)) return; // v2.82: a Gorebore underground on its way, or erupting
+  if (u.type === 'artillery' && rwDep(g)) { // v2.82: the Artillery deploys before firing and packs up before moving
+    const tb = cs && cs.want ? cs.want : cs && cs.go && best && best.side === NEUTRAL ? null : best;
+    if (artDeploy(g, u, d, tb, close, st === 'retreat' || st === 'move' || !!(cs && cs.run) || u.aiBack > g.t, st === 'hold')) return;
+  }
+  if (g.meteor && g.meteor.at && side.persona && !g.sides[u.side].bot && !d.air && !u.siege && !u.dep && !u.bur) { const p = meteorDodge(g, u); if (p) { u.tgt = 0; u.chT = 0; moveToward(u, d, p[0], p[1], dt, sp); return; } } // v2.72: an AI's unit steps out of a meteor's circle
+  if (g.mk && g.mk.length && side.persona && !side.bot && !d.air && !u.siege && !u.dep && !u.bur) { const p = markDodge(g, u); if (p) { u.tgt = 0; u.chT = 0; moveToward(u, d, p[0], p[1], dt, sp); return; } } // v2.82: an AI's unit steps out of an enemy shell's marker
   if (u.aiBack > g.t && !u.siege) { u.tgt = 0; u.chT = 0; { const bu = side.backU != null ? side.backU : home; moveToward(u, d, bu, laneTv(u, bu), dt, sp); } return; } // v2.38: a Default AI pulls it back for a moment (unit timing)
   if (d.siege && titanSiege(g, u, d, st, foes, cs && cs.chase)) return; // P8 (v2.37): planting, planted or unplanting
   if (u.phT > g.t) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // P13 (v2.37): a phased Wraithwing holds still and can't fire
@@ -265,7 +272,8 @@ function updateUnit(g, u, foes, dt) {
     return;
   }
   if (u.aiWait > g.t && !best && !(MECH7C.on && d.chase && A.prey && Math.hypot(A.prey.u - u.u, A.prey.v - u.v) <= MECH7C.holdR + d.range)) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // v2.43: a holding melee unit still engages within holdR (falls through to the chase below) // v2.40: a Default AI holds a front-runner until its army catches up (fights only what is in reach, never chases)
-  const act = !(u.phT > g.t) && !d.siege; // v2.37: a phased Wraithwing can't fire (P13); a Titan fires only when planted (P8)
+  if (d.exile && rwB2a(g) && sevStep(g, u, foes, st)) { u.moving = false; return; } // v2.82: a Severance's rift orb, when a group is worth it
+  const act = !(u.phT > g.t) && !d.siege && !u.bur; // v2.82: a burrowed Gorebore doesn't fight // v2.37: a phased Wraithwing can't fire (P13); a Titan fires only when planted (P8)
   u.tgt = best && act ? best.id : 0;
   if (!best || best.id !== u.chTgt || !act) u.chT = 0; // the Astral Marksman's charge starts over on a new target (v2.27)
   if (best && act) {
@@ -286,8 +294,8 @@ function updateUnit(g, u, foes, dt) {
     }
     return;
   }
-  if (close) { u.moving = false; return; } // artillery: enemy is inside minimum range
-  if (d.chase && st !== 'move' && !(st === 'hold' && u.holdU !== undefined) && !(cs && cs.chase)) { // melee (v2.17): close on the nearest enemy it can see and hurt (v2.76: not when it has a target to close on)
+  if (close && !u.bur) { u.moving = false; return; } // artillery: enemy is inside minimum range
+  if (d.chase && !u.bur && st !== 'move' && !(st === 'hold' && u.holdU !== undefined) && !(cs && cs.chase)) { // melee (v2.17): close on the nearest enemy it can see and hurt (v2.76: not when it has a target to close on)
     const prey = A.prey !== undefined ? A.prey : acquire(g, u, { ...d, range: d.chase }, foes).best;
     if (prey && d.leap && g.t >= u.leapCd && !(u.snT > g.t) && !(u.aiHold > g.t)) { // v2.38: a Default AI holds a Riftstalker's leap while its shields recharge // snared: no leap either (v2.33) // the Leaper jumps the last stretch (v2.19), never further than leap.range
       const dist = effDist(u, prey);
@@ -298,7 +306,7 @@ function updateUnit(g, u, foes, dt) {
         return; }
     }
     if (prey && !(cs && cs.go && prey.side === NEUTRAL)) { moveToward(u, d, prey.u, prey.v, dt, sp); return; }
-  } else if (d.chase && MECH7C.on && (st === 'move' || (st === 'hold' && u.holdU !== undefined))) { // v2.43: on Hold or a Regroup flag a melee unit engages
+  } else if (d.chase && !u.bur && MECH7C.on && (st === 'move' || (st === 'hold' && u.holdU !== undefined))) { // v2.43: on Hold or a Regroup flag a melee unit engages
     // enemies within holdR of the spot it holds, and never chases further; with none, it walks back to its spot (below)
     const [hu, hv] = st === 'move' ? slotOf(u, ord) : [u.holdU, u.holdV];
     const prey = A.prey !== undefined ? A.prey : acquire(g, u, { ...d, range: d.chase }, foes).best;
@@ -388,7 +396,7 @@ function updateMedics(g, dt) {
   const D = UDEF.medic;
   let any = false;
   for (const m of g.ents) {
-    if (m.kind !== 'u' || m.type !== 'medic' || m.hp <= 0) continue;
+    if (m.kind !== 'u' || m.type !== 'medic' || m.hp <= 0 || m.gone) continue;
     for (const e of g.ents) if (e.kind === 'u' && e.side === m.side && e.hp > 0 && GROUP_OF[e.type] === 'inf' && e.medAt !== g.t && Math.hypot(e.u - m.u, e.v - m.v) <= D.healR) { e.medAt = g.t; any = true; }
   }
   if (!any) return;

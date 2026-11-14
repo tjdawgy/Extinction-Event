@@ -56,7 +56,7 @@ function updateGuards(g, foes, dt) {
     const d = UDEF[x.type], n = g.nodes[x.node];
     let best = null, bd = 1e9;
     for (const e of g.ents) {
-      if (e.kind !== 'u' || e.hp <= 0 || e.phT > g.t) continue;
+      if (e.kind !== 'u' || e.hp <= 0 || e.phT > g.t || e.gone) continue;
       const air = !!UDEF[e.type].air; if (air ? !d.hitsAir : d.hitsGround === false) continue;
       if (Math.hypot(e.u - n.u, e.v - n.v) > RELIC.aggro) continue;
       const dist = effDist(x, e); if (dist <= d.range && dist < bd) { bd = dist; best = e; }

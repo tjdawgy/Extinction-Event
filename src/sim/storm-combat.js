@@ -126,6 +126,7 @@ function pierceLine(g, p, hit) {
 
 function impact1(g, p, hit) {
   const w = P(p.u, p.v, p.z);
+  if (p.weapon === 'exile') { exileBurst(g, p); return; } // v2.82: a Severance's rift orb
   if (p.weapon === 'shell' || p.weapon === 'lob' || p.weapon === 'rift') { splashHit(g, p, null, 1, 0.5); fxBoom(g, w.x, w.y, 30); return; }
   if (p.weapon === 'bomb' || p.weapon === 'crush' || p.weapon === 'sovereign') { splashHit(g, p, null, 1, 0.5); fxBoom(g, w.x, w.y, p.weapon === 'bomb' ? 40 : 48); return; } // the Astral Sovereign too (v2.29) // full damage at the centre, half at the edge (the Worldrender too, v2.21)
   if (hit && hit.hp > 0) { damage(g, hit, p.dmg, p.weapon, p.side); if (p.corr) corrode(g, hit, p.corr); }
@@ -155,7 +156,7 @@ function shieldLink(g, e, a) {
 // amount was kept and the latest end time extended it, so a strong short hit plus a weak long one stayed strong and long.
 const corrNow = (e, t) => e.corrT > t ? e.corr : e.corr2T > t ? e.corr2 : 0;
 function corrode(g, e, c) {
-  if (e.kind !== 'u' || e.hp <= 0) return;
+  if (e.kind !== 'u' || e.hp <= 0 || e.gone) return;
   if (REDESIGN.on) {
     const fx = [[e.corr || 0, e.corrT || 0], [e.corr2 || 0, e.corr2T || 0], [Math.min(CORR.cap, c.amt), g.t + c.dur]].filter(x => x[1] > g.t && x[0] > 0);
     fx.sort((a, b) => b[0] - a[0] || b[1] - a[1]);
@@ -185,6 +186,7 @@ function updateAcid(g, dt) {
 // so it can never set off more retaliation
 function damage(g, e, amt, weapon, fromSide, src) {
   if (e.shielded) return;
+  if (e.gone) return; // v2.82: a burrowed Gorebore or an exiled unit can't be hurt
   if (e.phT > g.t) return; // P13 (v2.37): a phased Wraithwing can't be hurt
   if (DEV.on && e.kind === 'b') { const h0 = e.hp + (e.shp || 0); damage1(g, e, amt, weapon, fromSide, src); DEV.sum += h0 - Math.max(0, e.hp) - (e.shp || 0); return; }
   damage1(g, e, amt, weapon, fromSide, src);

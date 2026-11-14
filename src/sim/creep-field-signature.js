@@ -169,11 +169,11 @@ function startWarp(g, s, type, extra) { // extra: an echo's flags (v2.34)
 const pullOk = (g, u, v) => u >= 0 && u <= L && Math.abs(v) <= LANE_V && !g.ents.some(b => b.kind === 'b' && b.hp > 0 && Math.hypot(b.u - u, b.v - v) < b.half + 8);
 function updateAuras(g) {
   for (const a of g.ents) {
-    if (a.kind !== 'u' || a.hp <= 0 || g.sides[a.side].hush) continue; // hush (v2.81): a Test Range side told not to fight back (never set in a match)
+    if (a.kind !== 'u' || a.hp <= 0 || g.sides[a.side].hush || a.gone) continue; // v2.82: an exiled unit's aura stops // hush (v2.81): a Test Range side told not to fight back (never set in a match)
     const d = UDEF[a.type];
     if (d.aura) for (const e of g.ents) if (e.kind === 'u' && e.side !== a.side && e.hp > 0 && !UDEF[e.type].air && Math.hypot(e.u - a.u, (e.v - a.v) * 0.6) <= d.aura.r) slowU(g, e, d.aura.slow, SLOW.dur);
     if (d.pulse && g.t >= a.pulseCd) {
-      const near = g.ents.filter(e => e.kind === 'u' && e.side !== a.side && e.hp > 0 && !UDEF[e.type].air && !e.leaping && !e.siege && Math.hypot(e.u - a.u, e.v - a.v) <= d.pulse.r);
+      const near = g.ents.filter(e => e.kind === 'u' && e.side !== a.side && e.hp > 0 && !UDEF[e.type].air && !e.leaping && !e.siege && !e.gone && Math.hypot(e.u - a.u, e.v - a.v) <= d.pulse.r);
       if (!near.length) continue;
       a.pulseCd = g.t + d.pulse.cd;
       for (const e of near) { // inward by up to pull, never closer than 24, never into a building or off the lane (half the pull, else none)
@@ -263,13 +263,13 @@ function aimZ(e) {
 // Disrupted (v2.27, the Parallax): a unit deals less damage for a short time; the strongest wins, never past DISRUPT.cap
 const outMul = (g, src) => src.kind !== 'u' ? powMul(g) /* v2.69 (b): defences failing near the storm */ : (src.disT > g.t ? 1 - src.dis : 1) * (src.bkT > g.t ? 1 + BEACON.dmg : 1); // disrupted (v2.27); a Beacon T3 warp-in (v2.34)
 function disrupt(g, e, c) {
-  if (e.kind !== 'u' || e.hp <= 0) return;
+  if (e.kind !== 'u' || e.hp <= 0 || e.gone) return;
   const live = e.disT > g.t;
   e.dis = Math.min(DISRUPT.cap, Math.max(live ? e.dis : 0, c.amt)); e.disT = Math.max(live ? e.disT : 0, g.t + c.dur);
 }
 // Slowed (v2.27, the Gravemantle): the same rule; slows never stack, the strongest applies, never past SLOW.cap
 function slowU(g, e, amt, dur, kind) { // kind: 'creep' for a Rootheart's (v2.33; drawn differently)
-  if (e.kind !== 'u' || e.hp <= 0 || UDEF[e.type].air) return;
+  if (e.kind !== 'u' || e.hp <= 0 || UDEF[e.type].air || e.gone) return;
   const live = e.slowT > g.t;
   if (kind || e.slowK) { if (!live || amt >= e.slow) e.slowK = kind || null; } // which slow is the one that applies
   e.slow = Math.min(SLOW.cap, Math.max(live ? e.slow : 0, amt)); e.slowT = Math.max(live ? e.slowT : 0, g.t + dur);
@@ -318,6 +318,7 @@ function fire(g, src, t, def) {
     if (def.precise) { p.tu = t.u; p.tv = t.v; p.precise = 1; } else { p.tu = t.u + rand(-14, 14); p.tv = t.v + rand(-12, 12); } p.tz = 0; // P3: the Rift Mortar lands exactly
     const dd = Math.hypot(p.tu - p.su, p.tv - p.sv);
     p.T = 0.7 + dd / 520; p.arc = 60 + dd * 0.3; p.target = null;
+    if (src.type === 'artillery' && rwTel(g)) telegraph(g, p); // v2.82: a marked spot, at least ART.fly s away
   } else p.speed = PSPEED[def.weapon];
   g.projs.push(p);
   const w = P(m.u, m.v, m.z);
@@ -335,6 +336,7 @@ function volley(g, src, t, def, m) {
     if (def.salvo) {
       p.su = m.u; p.sv = m.v; p.sz = m.z; p.tu = t.u + rand(-V.spread, V.spread); p.tv = t.v + rand(-V.spread, V.spread) * 0.8;
       const dd = Math.hypot(p.tu - p.su, p.tv - p.sv); p.T = 0.7 + dd / 520 + i * V.gap; p.arc = 60 + dd * 0.3; p.salvo = 1;
+      if (src.type === 'artillery' && rwTel(g)) telegraph(g, p); // v2.82: each shell's spot marked until it lands
     } else { p.tu = t.u + dir * (i - (V.n - 1) / 2) * V.gap + rand(-4, 4); p.tv = t.v + rand(-5, 5); p.speed = PSPEED[def.weapon]; p.carpet = 1; }
     g.projs.push(p);
   }

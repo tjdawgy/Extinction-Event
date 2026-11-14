@@ -168,7 +168,7 @@ function ctlEnt(g, id) {
 }
 const ctlSees = (g, s, T) => T.side === NEUTRAL || visibleTo(g, s, T);
 function ctlCanHit(g, u, d, T) { // u could fire at T now (in range, a weapon that hurts it)
-  if (!d.weapon || T.hp <= 0 || T.shielded || T.phT > g.t) return false;
+  if (!d.weapon || T.hp <= 0 || T.shielded || T.phT > g.t || T.gone) return false; // v2.82: burrowed or exiled
   const air = T.kind === 'u' && !!UDEF[T.type].air;
   if (air ? !d.hitsAir : d.hitsGround === false) return false;
   if (!DMG[d.weapon][T.kind === 'b' ? 'building' : UDEF[T.type].armor]) return false;
@@ -195,7 +195,7 @@ function command(g, s, ids, o, a, b) {
     for (const e of us) { const p = P_.get(e.id); e.po = { o: 'go', u: p[0], v: p[1] }; e.holdU = undefined; e.holdV = undefined; if (lane != null) e.lane = lane; }
   } else if (o === 'target') {
     T = ctlEnt(g, a);
-    if (!T || T.hp <= 0 || T.side === s || !ctlSees(g, s, T)) return { ok: false, msg: 'Pick an enemy you can see' };
+    if (!T || T.hp <= 0 || T.side === s || T.gone || !ctlSees(g, s, T)) return { ok: false, msg: 'Pick an enemy you can see' };
     const lane = laneAt(T.u, T.v);
     for (const e of us) { e.po = { o: 'target', id: T.id, u: T.u, v: T.v }; e.holdU = undefined; e.holdV = undefined; if (lane != null && !UDEF[e.type].air) e.lane = lane; }
   } else if (o === 'attack') {

@@ -119,7 +119,7 @@ function refreshUI(force) {
       html = have ? '<span class="lock">Already built</span>' : padBy ? '<span class="lock">Pad in use</span>' : locked ? `<span class="lock">Requires ${BD(pFac(), d.req).name}</span>` : costHTML(d.cost, s.res);
     } else {
       const d = UDEF[type];
-      const prods = alive(game, 0, d.from).filter(b => canMake(b, type));
+      const prods = alive(game, 0, d.from).filter(b => canMake(b, type, game));
       if (type === 'rifle') setHTML(el.querySelector('.pr'), prods.some(b => pathMod(b, 'pairs')) ? 'MASS ×2' : '');
       const mx = el.querySelector('.mx'); if (mx) { const n = unitCount(game, 0, type); setHTML(mx, `${n}/${d.max}`); mx.classList.toggle('full', n >= d.max); }
       locked = !prods.length;

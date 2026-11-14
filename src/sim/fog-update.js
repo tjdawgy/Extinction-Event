@@ -103,7 +103,7 @@ function update(g, dt) {
   for (const e of g.ents) {
     if (e.hp <= 0) continue;
     foes[1 - e.side].push(e);
-    if (e.kind === 'u' && e.type !== 'interceptor' && !UDEF[e.type].support) { // escorts and support units don't set the front
+    if (e.kind === 'u' && e.type !== 'interceptor' && !UDEF[e.type].support && !e.gone) { // v2.82: not a burrowed or exiled unit // escorts and support units don't set the front
       const f = g.front[e.side];
       if (f === null || (e.side === 0 ? e.u > f : e.u < f)) g.front[e.side] = e.u;
     }
@@ -117,6 +117,7 @@ function update(g, dt) {
     if (e.kind === 'b') updateBuilding(g, e, foes[e.side], dt); else { updateUnit(g, e, foes[e.side], dt); if (NAV.on && e.hp > 0 && !UDEF[e.type].air && !e.leaping && navShut(e.u, e.v)) navEject(e); } // v2.65: never inside a wall
   }
   updateProjs(g, dt);
+  if (g.mk) updateMarks(g); // v2.82: telegraphed shells' markers
   updateMedics(g, dt);
   bunkerHeal(g, dt);
   updateRepair(g, dt); // v2.71: repair depots
@@ -146,7 +147,7 @@ function updateNodes(g, dt) {
     if (n.type === 'relic' && (!SPECIAL.on || !SPECIAL.relic || n.spent || relicGuarded(g, n))) { n.c = [0, 0]; n.prog = 0; continue; } // v2.71: guarded or spent: nothing to capture
     let c0 = 0, c1 = 0;
     let w0 = 0, w1 = 0; // capture weight: a Drilled Rifleman counts 1.5
-    for (const e of g.ents) if (e.kind === 'u' && e.hp > 0 && !UDEF[e.type].air && !UDEF[e.type].noCap && (MAP_2D ? Math.hypot(e.u - n.u, e.v - n.v) : Math.abs(e.u - n.u)) <= (n.r || NODE_R)) { const w = e.vet ? DRILL.capture : 1; if (e.side === 0) { c0++; w0 += w; } else { c1++; w1 += w; } }
+    for (const e of g.ents) if (e.kind === 'u' && e.hp > 0 && !UDEF[e.type].air && !UDEF[e.type].noCap && !e.gone && (MAP_2D ? Math.hypot(e.u - n.u, e.v - n.v) : Math.abs(e.u - n.u)) <= (n.r || NODE_R)) { const w = e.vet ? DRILL.capture : 1; if (e.side === 0) { c0++; w0 += w; } else { c1++; w1 += w; } }
     n.c = [c0, c1];
     if (c0 && !c1) n.prog = Math.min(100, n.prog + 8 * Math.sqrt(w0) * dt);
     else if (c1 && !c0) n.prog = Math.max(-100, n.prog - 8 * Math.sqrt(w1) * dt);
@@ -291,7 +292,7 @@ function updateBuilding(g, b, foes, dt) {
 function extraTargets(g, src, def, foes, first, n) {
   const out = [];
   for (const e of foes) {
-    if (e === first || e.hp <= 0 || e.shielded || !visibleTo(g, src.side, e)) continue;
+    if (e === first || e.hp <= 0 || e.shielded || e.gone || !visibleTo(g, src.side, e)) continue;
     const air = e.kind === 'u' && !!UDEF[e.type].air;
     if (air ? !def.hitsAir : def.hitsGround === false) continue;
     if (!DMG[def.weapon][e.kind === 'b' ? 'building' : UDEF[e.type].armor]) continue;
@@ -318,7 +319,7 @@ function chainBeam(g, src, first, def) {
 // Axiarch shields (v2.25) recharge after SHIELD.delay seconds without damage; they never restore HP
 function updateShields(g, dt) {
   for (const e of g.ents) {
-    if (!e.maxShp || e.hp <= 0 || e.shp >= e.maxShp || !(e.kind === 'u' || e.built)) continue;
+    if (!e.maxShp || e.hp <= 0 || e.shp >= e.maxShp || !(e.kind === 'u' || e.built) || e.exT) continue; // v2.82: an exiled unit's shields wait
     if (e.surgeT > g.t) { e.shp = Math.min(e.maxShp, e.shp + e.maxShp * UDEF[e.type].surge.rate * dt); continue; } // P6 (v2.37): a Bastion's shield surge, even under fire
     if (e.ovT > g.t) { const s0 = e.shp; e.shp = Math.min(e.maxShp, e.shp + e.maxShp * ABIL.overcharge.regen * dt); logEffect(g, e.side, 'overcharge', 0, e.shp - s0); continue; } // Shield Overcharge (v2.28): fast regen even under fire; shields only, never HP
     if (g.t - e.shpT >= SHIELD.delay) e.shp = Math.min(e.maxShp, e.shp + e.maxShp * (onField(g, e.side, e.u, e.v) ? FIELD.regen : SHIELD.rate) * dt); // faster inside the field (v2.26)
@@ -353,7 +354,7 @@ function ixScan(g, src, def, foes, R, AR, minR) {
   const bbf = src.kind === 'u' && !!g.sides[side] && g.sides[side].bbOn; // v2.69 (a): an AI base attack aims at what holds the shield up
   const check = idx => {
     const e = foes[idx];
-    if (e.hp <= 0 || e.shielded || e.phT > g.t) return; // a phased Wraithwing can't be targeted (P13, v2.37)
+    if (e.hp <= 0 || e.shielded || e.phT > g.t || e.gone) return; // v2.82: burrowed or exiled; a phased Wraithwing can't be targeted (P13, v2.37)
     const bh = e.kind === 'b' ? e.half : 0, du = Math.abs(e.u - su);
     if (du - bh > maxR) return; // effDist ≥ |du| − half
     const dv = (e.v - sv) * DV_W, lim = maxR + bh + 1;
@@ -386,7 +387,7 @@ function acquire(g, src, def, foes, chase) {
   let best = null, bs = 1e9, close = false;
   const minR = def.minRange || 0;
   for (const e of foes) {
-    if (e.hp <= 0 || e.shielded || e.phT > g.t) continue; // don't waste shots on a shielded HQ (or a phased Wraithwing, v2.37)
+    if (e.hp <= 0 || e.shielded || e.phT > g.t || e.gone) continue; // don't waste shots on a shielded HQ (or a phased Wraithwing, v2.37)
     if (!visibleTo(g, src.side, e)) continue; // auto-target only what your side can see (spotters needed beyond sight)
     const air = e.kind === 'u' && !!UDEF[e.type].air;
     if (air ? !def.hitsAir : def.hitsGround === false) continue;

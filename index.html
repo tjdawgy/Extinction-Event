@@ -994,8 +994,8 @@ const UNIT_PATH = {}; // unit type → { b: building type, p: path, path: the pa
 for (const fac in TREE_SETS) { const S = TREE_SETS[fac]; for (const bt in S) for (const p in S[bt]) for (const st of S[bt][p].steps) if (st && st.unlock) for (const u of st.unlock) UNIT_PATH[u] = { b: bt, p, path: S[bt][p] }; }
 const pathMod = (b, mod) => { const T = treeOf(b.fac, b.type); if (!T || !b.path || !b.built) return false; const st = T[b.path].steps; for (let t = 2; t <= b.tier; t++) if (st[t] && st[t].mod === mod) return true; return false; };
 // Can this building train this unit now? (type, finished, tier, and the path that unlocks it)
-const canMake = (b, type) => { const d = UDEF[type], q = UNIT_PATH[type]; return !d.noTrain && b.kind === 'b' && b.type === d.from && facOf(b.fac) === (d.fac || DEFAULT_FACTION) && b.built && b.hp > 0 && b.tier >= d.tier && (!q || b.path === q.p); };
-const canTrain = (g, s, type) => g.ents.some(e => e.side === s && canMake(e, type));
+const canMake = (b, type, g) => { const d = UDEF[type], q = UNIT_PATH[type]; return !d.noTrain && rwHas(g, type) && b.kind === 'b' && b.type === d.from && facOf(b.fac) === (d.fac || DEFAULT_FACTION) && b.built && b.hp > 0 && b.tier >= d.tier && (!q || b.path === q.p); };
+const canTrain = (g, s, type) => g.ents.some(e => e.side === s && canMake(e, type, g)); // v2.82: g decides which units its trees unlock (rwHas)
 
 const UDEF = {
   rifle:     { name: 'Rifleman', desc: 'Cheap all-round infantry that shoots ground and air. Strong in numbers early; melts to splash, Snipers and Flame Tanks.',  from: 'barracks', tier: 1, cost: { c: 50, e: 0 },    pop: 1, hp: 70,   dmg: 7,  cd: 0.7,  range: 120, speed: 38, hitsAir: true,  armor: 'light',   weapon: 'rifle',  time: 4,  h: 20 },
@@ -1829,6 +1829,7 @@ function newGame(diffKey, opts = {}) {
     diff: DIFF[diffKey] || DIFF.normal, diffKey, events: [], auto: !!opts.autoPlayer, autoDiff: opts.autoDiff || 'normal', shake: 0, front: [null, null], countdown: opts.countdown || 0,
     nodes: NODE_U.map((u, i) => nodeOf(i, u)), map: MAP, log: null, forcePath: opts.forcePath || null,
     creep: [[], []], acid: [], field: [[], []], warps: [] }; // creep patches per side (v2.18; Bloomhost only); acid: Ruinmaw pools (v2.19); field: Axiarch power field patches, warps: units mid-warp (v2.26)
+  g.rw = rwInit(opts.rework); // v2.82: the faction rework's switches for this game (REWORK; a Test Range row picks its own)
   seedGame(g, opts.seed); // v2.50: the match's random streams (opts.seed, else a fresh one)
   for (let s = 0; s < 2; s++) {
     g.sides.push({ faction: (opts.factions && opts.factions[s]) || DEFAULT_FACTION, res: { c: START_RES.c, e: START_RES.e }, stance: s === 0 && !(opts.autoPlayer && AUTO_STANCE.retreat) ? 'hold' : 'retreat', stanceAt: 0, pushTo: null, slots: new Array(SLOT_COUNT).fill(null),
@@ -1974,7 +1975,7 @@ function tryTrain(g, s, type) {
   const d = UDEF[type], side = g.sides[s];
   if (g.over) return { ok: false, msg: 'The match is over' };
   if (g.countdown > 0) return WAIT_GO;
-  const prods = g.ents.filter(e => e.side === s && canMake(e, type));
+  const prods = g.ents.filter(e => e.side === s && canMake(e, type, g));
   if (!prods.length) return { ok: false, msg: unitLockMsg(d) };
   if (d.max && unitCount(g, s, type) >= d.max)
     return { ok: false, msg: `At most ${d.max} ${PLURAL[type]} at a time` }; // the Recon Drone (v2.15), counting those in training; Skitterlings (S1, v2.37)
@@ -2174,7 +2175,7 @@ function update(g, dt) {
   for (const e of g.ents) {
     if (e.hp <= 0) continue;
     foes[1 - e.side].push(e);
-    if (e.kind === 'u' && e.type !== 'interceptor' && !UDEF[e.type].support) { // escorts and support units don't set the front
+    if (e.kind === 'u' && e.type !== 'interceptor' && !UDEF[e.type].support && !e.gone) { // v2.82: not a burrowed or exiled unit // escorts and support units don't set the front
       const f = g.front[e.side];
       if (f === null || (e.side === 0 ? e.u > f : e.u < f)) g.front[e.side] = e.u;
     }
@@ -2188,6 +2189,7 @@ function update(g, dt) {
     if (e.kind === 'b') updateBuilding(g, e, foes[e.side], dt); else { updateUnit(g, e, foes[e.side], dt); if (NAV.on && e.hp > 0 && !UDEF[e.type].air && !e.leaping && navShut(e.u, e.v)) navEject(e); } // v2.65: never inside a wall
   }
   updateProjs(g, dt);
+  if (g.mk) updateMarks(g); // v2.82: telegraphed shells' markers
   updateMedics(g, dt);
   bunkerHeal(g, dt);
   updateRepair(g, dt); // v2.71: repair depots
@@ -2217,7 +2219,7 @@ function updateNodes(g, dt) {
     if (n.type === 'relic' && (!SPECIAL.on || !SPECIAL.relic || n.spent || relicGuarded(g, n))) { n.c = [0, 0]; n.prog = 0; continue; } // v2.71: guarded or spent: nothing to capture
     let c0 = 0, c1 = 0;
     let w0 = 0, w1 = 0; // capture weight: a Drilled Rifleman counts 1.5
-    for (const e of g.ents) if (e.kind === 'u' && e.hp > 0 && !UDEF[e.type].air && !UDEF[e.type].noCap && (MAP_2D ? Math.hypot(e.u - n.u, e.v - n.v) : Math.abs(e.u - n.u)) <= (n.r || NODE_R)) { const w = e.vet ? DRILL.capture : 1; if (e.side === 0) { c0++; w0 += w; } else { c1++; w1 += w; } }
+    for (const e of g.ents) if (e.kind === 'u' && e.hp > 0 && !UDEF[e.type].air && !UDEF[e.type].noCap && !e.gone && (MAP_2D ? Math.hypot(e.u - n.u, e.v - n.v) : Math.abs(e.u - n.u)) <= (n.r || NODE_R)) { const w = e.vet ? DRILL.capture : 1; if (e.side === 0) { c0++; w0 += w; } else { c1++; w1 += w; } }
     n.c = [c0, c1];
     if (c0 && !c1) n.prog = Math.min(100, n.prog + 8 * Math.sqrt(w0) * dt);
     else if (c1 && !c0) n.prog = Math.max(-100, n.prog - 8 * Math.sqrt(w1) * dt);
@@ -2362,7 +2364,7 @@ function updateBuilding(g, b, foes, dt) {
 function extraTargets(g, src, def, foes, first, n) {
   const out = [];
   for (const e of foes) {
-    if (e === first || e.hp <= 0 || e.shielded || !visibleTo(g, src.side, e)) continue;
+    if (e === first || e.hp <= 0 || e.shielded || e.gone || !visibleTo(g, src.side, e)) continue;
     const air = e.kind === 'u' && !!UDEF[e.type].air;
     if (air ? !def.hitsAir : def.hitsGround === false) continue;
     if (!DMG[def.weapon][e.kind === 'b' ? 'building' : UDEF[e.type].armor]) continue;
@@ -2389,7 +2391,7 @@ function chainBeam(g, src, first, def) {
 // Axiarch shields (v2.25) recharge after SHIELD.delay seconds without damage; they never restore HP
 function updateShields(g, dt) {
   for (const e of g.ents) {
-    if (!e.maxShp || e.hp <= 0 || e.shp >= e.maxShp || !(e.kind === 'u' || e.built)) continue;
+    if (!e.maxShp || e.hp <= 0 || e.shp >= e.maxShp || !(e.kind === 'u' || e.built) || e.exT) continue; // v2.82: an exiled unit's shields wait
     if (e.surgeT > g.t) { e.shp = Math.min(e.maxShp, e.shp + e.maxShp * UDEF[e.type].surge.rate * dt); continue; } // P6 (v2.37): a Bastion's shield surge, even under fire
     if (e.ovT > g.t) { const s0 = e.shp; e.shp = Math.min(e.maxShp, e.shp + e.maxShp * ABIL.overcharge.regen * dt); logEffect(g, e.side, 'overcharge', 0, e.shp - s0); continue; } // Shield Overcharge (v2.28): fast regen even under fire; shields only, never HP
     if (g.t - e.shpT >= SHIELD.delay) e.shp = Math.min(e.maxShp, e.shp + e.maxShp * (onField(g, e.side, e.u, e.v) ? FIELD.regen : SHIELD.rate) * dt); // faster inside the field (v2.26)
@@ -2424,7 +2426,7 @@ function ixScan(g, src, def, foes, R, AR, minR) {
   const bbf = src.kind === 'u' && !!g.sides[side] && g.sides[side].bbOn; // v2.69 (a): an AI base attack aims at what holds the shield up
   const check = idx => {
     const e = foes[idx];
-    if (e.hp <= 0 || e.shielded || e.phT > g.t) return; // a phased Wraithwing can't be targeted (P13, v2.37)
+    if (e.hp <= 0 || e.shielded || e.phT > g.t || e.gone) return; // v2.82: burrowed or exiled; a phased Wraithwing can't be targeted (P13, v2.37)
     const bh = e.kind === 'b' ? e.half : 0, du = Math.abs(e.u - su);
     if (du - bh > maxR) return; // effDist ≥ |du| − half
     const dv = (e.v - sv) * DV_W, lim = maxR + bh + 1;
@@ -2457,7 +2459,7 @@ function acquire(g, src, def, foes, chase) {
   let best = null, bs = 1e9, close = false;
   const minR = def.minRange || 0;
   for (const e of foes) {
-    if (e.hp <= 0 || e.shielded || e.phT > g.t) continue; // don't waste shots on a shielded HQ (or a phased Wraithwing, v2.37)
+    if (e.hp <= 0 || e.shielded || e.phT > g.t || e.gone) continue; // don't waste shots on a shielded HQ (or a phased Wraithwing, v2.37)
     if (!visibleTo(g, src.side, e)) continue; // auto-target only what your side can see (spotters needed beyond sight)
     const air = e.kind === 'u' && !!UDEF[e.type].air;
     if (air ? !def.hitsAir : def.hitsGround === false) continue;
@@ -2701,6 +2703,7 @@ const HOLD_PO = { o: 'hold' }; // v2.73: a direct side's unit without an order h
 const RETREAT = { fire: false }; // v2.35 (audit): retreating units hold their fire; fire true restores the v2.34 rule (firing on the move)
 function updateUnit(g, u, foes, dt) {
   const d = UDEF[u.type];
+  if (u.exT) { if (g.t < u.exT) { u.moving = false; u.tgt = 0; return; } exileEnd(g, u); } // v2.82: exiled by a Severance: frozen until it snaps back
   u.anim += dt;
   const frz = u.frzT > g.t; // Frenzy Bloom (v2.20): faster attacks and movement
   if (u.cd > 0) u.cd -= dt * (frz ? ABIL.frenzy.rate : 1);
@@ -2716,7 +2719,7 @@ function updateUnit(g, u, foes, dt) {
   const A = d.weapon ? acquire(g, u, d, foes, d.chase) : NO_TARGET; let { best, close } = A; // Medicopters and Recon Drones carry no weapon; melee: the chase search in the same pass (v2.37)
   const cs = po && po.o !== 'hold' && (po.o !== 'attack' || po.ju != null) ? ctlStep(g, u, d) : null; // v2.76: heading somewhere (go, target), or retreating
   if (po) st = cs && cs.go ? 'adv' : cs && cs.run ? 'retreat' : (u.po || HOLD_PO).o; // 'adv': on the way, stopping to fight what it meets (a Titan plants for it)
-  const sp = (d.fac === 'bloomhost' && !d.air && onCreep(g, u.side, u.u, u.v) ? CREEP.speed : 1) * (frz ? ABIL.frenzy.speed : 1) * (u.slowT > g.t ? 1 - u.slow : 1) * (u.snT > g.t ? 0 : 1); // creep (v2.18), Frenzy Bloom (v2.20), a Gravemantle's slow (v2.27), a Rootheart's snare (v2.33)
+  const sp = u.bur ? BORE.speed / d.speed : (d.fac === 'bloomhost' && !d.air && onCreep(g, u.side, u.u, u.v) ? CREEP.speed : 1) * (frz ? ABIL.frenzy.speed : 1) * (u.slowT > g.t ? 1 - u.slow : 1) * (u.snT > g.t ? 0 : 1); // creep (v2.18), Frenzy Bloom (v2.20), a Gravemantle's slow (v2.27), a Rootheart's snare (v2.33)
   if (u.leaping) { // mid-leap (v2.19): fly to the landing spot, nothing else
     const du = u.lu - u.u, dv = u.lv - u.v, dd = Math.hypot(du, dv), st = d.leap.speed * dt;
     if (dd <= st) { u.u = u.lu; u.v = u.lv; u.z = 0; u.leaping = 0; u.leapCd = g.t + d.leap.cd; }
@@ -2724,7 +2727,13 @@ function updateUnit(g, u, foes, dt) {
     u.moving = true; return;
   }
   if (side.hush) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // v2.81: a Test Range side told not to fight back stands still (never set in a match)
-  if (g.meteor && g.meteor.at && side.persona && !g.sides[u.side].bot && !d.air && !u.siege) { const p = meteorDodge(g, u); if (p) { u.tgt = 0; u.chT = 0; moveToward(u, d, p[0], p[1], dt, sp); return; } } // v2.72: an AI's unit steps out of a meteor's circle
+  if (d.bore && rwB2a(g) && boreStep(g, u, d, st, cs, foes, dt)) return; // v2.82: a Gorebore underground on its way, or erupting
+  if (u.type === 'artillery' && rwDep(g)) { // v2.82: the Artillery deploys before firing and packs up before moving
+    const tb = cs && cs.want ? cs.want : cs && cs.go && best && best.side === NEUTRAL ? null : best;
+    if (artDeploy(g, u, d, tb, close, st === 'retreat' || st === 'move' || !!(cs && cs.run) || u.aiBack > g.t, st === 'hold')) return;
+  }
+  if (g.meteor && g.meteor.at && side.persona && !g.sides[u.side].bot && !d.air && !u.siege && !u.dep && !u.bur) { const p = meteorDodge(g, u); if (p) { u.tgt = 0; u.chT = 0; moveToward(u, d, p[0], p[1], dt, sp); return; } } // v2.72: an AI's unit steps out of a meteor's circle
+  if (g.mk && g.mk.length && side.persona && !side.bot && !d.air && !u.siege && !u.dep && !u.bur) { const p = markDodge(g, u); if (p) { u.tgt = 0; u.chT = 0; moveToward(u, d, p[0], p[1], dt, sp); return; } } // v2.82: an AI's unit steps out of an enemy shell's marker
   if (u.aiBack > g.t && !u.siege) { u.tgt = 0; u.chT = 0; { const bu = side.backU != null ? side.backU : home; moveToward(u, d, bu, laneTv(u, bu), dt, sp); } return; } // v2.38: a Default AI pulls it back for a moment (unit timing)
   if (d.siege && titanSiege(g, u, d, st, foes, cs && cs.chase)) return; // P8 (v2.37): planting, planted or unplanting
   if (u.phT > g.t) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // P13 (v2.37): a phased Wraithwing holds still and can't fire
@@ -2740,7 +2749,8 @@ function updateUnit(g, u, foes, dt) {
     return;
   }
   if (u.aiWait > g.t && !best && !(MECH7C.on && d.chase && A.prey && Math.hypot(A.prey.u - u.u, A.prey.v - u.v) <= MECH7C.holdR + d.range)) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // v2.43: a holding melee unit still engages within holdR (falls through to the chase below) // v2.40: a Default AI holds a front-runner until its army catches up (fights only what is in reach, never chases)
-  const act = !(u.phT > g.t) && !d.siege; // v2.37: a phased Wraithwing can't fire (P13); a Titan fires only when planted (P8)
+  if (d.exile && rwB2a(g) && sevStep(g, u, foes, st)) { u.moving = false; return; } // v2.82: a Severance's rift orb, when a group is worth it
+  const act = !(u.phT > g.t) && !d.siege && !u.bur; // v2.82: a burrowed Gorebore doesn't fight // v2.37: a phased Wraithwing can't fire (P13); a Titan fires only when planted (P8)
   u.tgt = best && act ? best.id : 0;
   if (!best || best.id !== u.chTgt || !act) u.chT = 0; // the Astral Marksman's charge starts over on a new target (v2.27)
   if (best && act) {
@@ -2761,8 +2771,8 @@ function updateUnit(g, u, foes, dt) {
     }
     return;
   }
-  if (close) { u.moving = false; return; } // artillery: enemy is inside minimum range
-  if (d.chase && st !== 'move' && !(st === 'hold' && u.holdU !== undefined) && !(cs && cs.chase)) { // melee (v2.17): close on the nearest enemy it can see and hurt (v2.76: not when it has a target to close on)
+  if (close && !u.bur) { u.moving = false; return; } // artillery: enemy is inside minimum range
+  if (d.chase && !u.bur && st !== 'move' && !(st === 'hold' && u.holdU !== undefined) && !(cs && cs.chase)) { // melee (v2.17): close on the nearest enemy it can see and hurt (v2.76: not when it has a target to close on)
     const prey = A.prey !== undefined ? A.prey : acquire(g, u, { ...d, range: d.chase }, foes).best;
     if (prey && d.leap && g.t >= u.leapCd && !(u.snT > g.t) && !(u.aiHold > g.t)) { // v2.38: a Default AI holds a Riftstalker's leap while its shields recharge // snared: no leap either (v2.33) // the Leaper jumps the last stretch (v2.19), never further than leap.range
       const dist = effDist(u, prey);
@@ -2773,7 +2783,7 @@ function updateUnit(g, u, foes, dt) {
         return; }
     }
     if (prey && !(cs && cs.go && prey.side === NEUTRAL)) { moveToward(u, d, prey.u, prey.v, dt, sp); return; }
-  } else if (d.chase && MECH7C.on && (st === 'move' || (st === 'hold' && u.holdU !== undefined))) { // v2.43: on Hold or a Regroup flag a melee unit engages
+  } else if (d.chase && !u.bur && MECH7C.on && (st === 'move' || (st === 'hold' && u.holdU !== undefined))) { // v2.43: on Hold or a Regroup flag a melee unit engages
     // enemies within holdR of the spot it holds, and never chases further; with none, it walks back to its spot (below)
     const [hu, hv] = st === 'move' ? slotOf(u, ord) : [u.holdU, u.holdV];
     const prey = A.prey !== undefined ? A.prey : acquire(g, u, { ...d, range: d.chase }, foes).best;
@@ -2863,7 +2873,7 @@ function updateMedics(g, dt) {
   const D = UDEF.medic;
   let any = false;
   for (const m of g.ents) {
-    if (m.kind !== 'u' || m.type !== 'medic' || m.hp <= 0) continue;
+    if (m.kind !== 'u' || m.type !== 'medic' || m.hp <= 0 || m.gone) continue;
     for (const e of g.ents) if (e.kind === 'u' && e.side === m.side && e.hp > 0 && GROUP_OF[e.type] === 'inf' && e.medAt !== g.t && Math.hypot(e.u - m.u, e.v - m.v) <= D.healR) { e.medAt = g.t; any = true; }
   }
   if (!any) return;
@@ -3042,7 +3052,7 @@ function ctlEnt(g, id) {
 }
 const ctlSees = (g, s, T) => T.side === NEUTRAL || visibleTo(g, s, T);
 function ctlCanHit(g, u, d, T) { // u could fire at T now (in range, a weapon that hurts it)
-  if (!d.weapon || T.hp <= 0 || T.shielded || T.phT > g.t) return false;
+  if (!d.weapon || T.hp <= 0 || T.shielded || T.phT > g.t || T.gone) return false; // v2.82: burrowed or exiled
   const air = T.kind === 'u' && !!UDEF[T.type].air;
   if (air ? !d.hitsAir : d.hitsGround === false) return false;
   if (!DMG[d.weapon][T.kind === 'b' ? 'building' : UDEF[T.type].armor]) return false;
@@ -3069,7 +3079,7 @@ function command(g, s, ids, o, a, b) {
     for (const e of us) { const p = P_.get(e.id); e.po = { o: 'go', u: p[0], v: p[1] }; e.holdU = undefined; e.holdV = undefined; if (lane != null) e.lane = lane; }
   } else if (o === 'target') {
     T = ctlEnt(g, a);
-    if (!T || T.hp <= 0 || T.side === s || !ctlSees(g, s, T)) return { ok: false, msg: 'Pick an enemy you can see' };
+    if (!T || T.hp <= 0 || T.side === s || T.gone || !ctlSees(g, s, T)) return { ok: false, msg: 'Pick an enemy you can see' };
     const lane = laneAt(T.u, T.v);
     for (const e of us) { e.po = { o: 'target', id: T.id, u: T.u, v: T.v }; e.holdU = undefined; e.holdV = undefined; if (lane != null && !UDEF[e.type].air) e.lane = lane; }
   } else if (o === 'attack') {
@@ -3313,11 +3323,11 @@ function startWarp(g, s, type, extra) { // extra: an echo's flags (v2.34)
 const pullOk = (g, u, v) => u >= 0 && u <= L && Math.abs(v) <= LANE_V && !g.ents.some(b => b.kind === 'b' && b.hp > 0 && Math.hypot(b.u - u, b.v - v) < b.half + 8);
 function updateAuras(g) {
   for (const a of g.ents) {
-    if (a.kind !== 'u' || a.hp <= 0 || g.sides[a.side].hush) continue; // hush (v2.81): a Test Range side told not to fight back (never set in a match)
+    if (a.kind !== 'u' || a.hp <= 0 || g.sides[a.side].hush || a.gone) continue; // v2.82: an exiled unit's aura stops // hush (v2.81): a Test Range side told not to fight back (never set in a match)
     const d = UDEF[a.type];
     if (d.aura) for (const e of g.ents) if (e.kind === 'u' && e.side !== a.side && e.hp > 0 && !UDEF[e.type].air && Math.hypot(e.u - a.u, (e.v - a.v) * 0.6) <= d.aura.r) slowU(g, e, d.aura.slow, SLOW.dur);
     if (d.pulse && g.t >= a.pulseCd) {
-      const near = g.ents.filter(e => e.kind === 'u' && e.side !== a.side && e.hp > 0 && !UDEF[e.type].air && !e.leaping && !e.siege && Math.hypot(e.u - a.u, e.v - a.v) <= d.pulse.r);
+      const near = g.ents.filter(e => e.kind === 'u' && e.side !== a.side && e.hp > 0 && !UDEF[e.type].air && !e.leaping && !e.siege && !e.gone && Math.hypot(e.u - a.u, e.v - a.v) <= d.pulse.r);
       if (!near.length) continue;
       a.pulseCd = g.t + d.pulse.cd;
       for (const e of near) { // inward by up to pull, never closer than 24, never into a building or off the lane (half the pull, else none)
@@ -3407,13 +3417,13 @@ function aimZ(e) {
 // Disrupted (v2.27, the Parallax): a unit deals less damage for a short time; the strongest wins, never past DISRUPT.cap
 const outMul = (g, src) => src.kind !== 'u' ? powMul(g) /* v2.69 (b): defences failing near the storm */ : (src.disT > g.t ? 1 - src.dis : 1) * (src.bkT > g.t ? 1 + BEACON.dmg : 1); // disrupted (v2.27); a Beacon T3 warp-in (v2.34)
 function disrupt(g, e, c) {
-  if (e.kind !== 'u' || e.hp <= 0) return;
+  if (e.kind !== 'u' || e.hp <= 0 || e.gone) return;
   const live = e.disT > g.t;
   e.dis = Math.min(DISRUPT.cap, Math.max(live ? e.dis : 0, c.amt)); e.disT = Math.max(live ? e.disT : 0, g.t + c.dur);
 }
 // Slowed (v2.27, the Gravemantle): the same rule; slows never stack, the strongest applies, never past SLOW.cap
 function slowU(g, e, amt, dur, kind) { // kind: 'creep' for a Rootheart's (v2.33; drawn differently)
-  if (e.kind !== 'u' || e.hp <= 0 || UDEF[e.type].air) return;
+  if (e.kind !== 'u' || e.hp <= 0 || UDEF[e.type].air || e.gone) return;
   const live = e.slowT > g.t;
   if (kind || e.slowK) { if (!live || amt >= e.slow) e.slowK = kind || null; } // which slow is the one that applies
   e.slow = Math.min(SLOW.cap, Math.max(live ? e.slow : 0, amt)); e.slowT = Math.max(live ? e.slowT : 0, g.t + dur);
@@ -3462,6 +3472,7 @@ function fire(g, src, t, def) {
     if (def.precise) { p.tu = t.u; p.tv = t.v; p.precise = 1; } else { p.tu = t.u + rand(-14, 14); p.tv = t.v + rand(-12, 12); } p.tz = 0; // P3: the Rift Mortar lands exactly
     const dd = Math.hypot(p.tu - p.su, p.tv - p.sv);
     p.T = 0.7 + dd / 520; p.arc = 60 + dd * 0.3; p.target = null;
+    if (src.type === 'artillery' && rwTel(g)) telegraph(g, p); // v2.82: a marked spot, at least ART.fly s away
   } else p.speed = PSPEED[def.weapon];
   g.projs.push(p);
   const w = P(m.u, m.v, m.z);
@@ -3479,6 +3490,7 @@ function volley(g, src, t, def, m) {
     if (def.salvo) {
       p.su = m.u; p.sv = m.v; p.sz = m.z; p.tu = t.u + rand(-V.spread, V.spread); p.tv = t.v + rand(-V.spread, V.spread) * 0.8;
       const dd = Math.hypot(p.tu - p.su, p.tv - p.sv); p.T = 0.7 + dd / 520 + i * V.gap; p.arc = 60 + dd * 0.3; p.salvo = 1;
+      if (src.type === 'artillery' && rwTel(g)) telegraph(g, p); // v2.82: each shell's spot marked until it lands
     } else { p.tu = t.u + dir * (i - (V.n - 1) / 2) * V.gap + rand(-4, 4); p.tv = t.v + rand(-5, 5); p.speed = PSPEED[def.weapon]; p.carpet = 1; }
     g.projs.push(p);
   }
@@ -3862,6 +3874,7 @@ function pierceLine(g, p, hit) {
 
 function impact1(g, p, hit) {
   const w = P(p.u, p.v, p.z);
+  if (p.weapon === 'exile') { exileBurst(g, p); return; } // v2.82: a Severance's rift orb
   if (p.weapon === 'shell' || p.weapon === 'lob' || p.weapon === 'rift') { splashHit(g, p, null, 1, 0.5); fxBoom(g, w.x, w.y, 30); return; }
   if (p.weapon === 'bomb' || p.weapon === 'crush' || p.weapon === 'sovereign') { splashHit(g, p, null, 1, 0.5); fxBoom(g, w.x, w.y, p.weapon === 'bomb' ? 40 : 48); return; } // the Astral Sovereign too (v2.29) // full damage at the centre, half at the edge (the Worldrender too, v2.21)
   if (hit && hit.hp > 0) { damage(g, hit, p.dmg, p.weapon, p.side); if (p.corr) corrode(g, hit, p.corr); }
@@ -3891,7 +3904,7 @@ function shieldLink(g, e, a) {
 // amount was kept and the latest end time extended it, so a strong short hit plus a weak long one stayed strong and long.
 const corrNow = (e, t) => e.corrT > t ? e.corr : e.corr2T > t ? e.corr2 : 0;
 function corrode(g, e, c) {
-  if (e.kind !== 'u' || e.hp <= 0) return;
+  if (e.kind !== 'u' || e.hp <= 0 || e.gone) return;
   if (REDESIGN.on) {
     const fx = [[e.corr || 0, e.corrT || 0], [e.corr2 || 0, e.corr2T || 0], [Math.min(CORR.cap, c.amt), g.t + c.dur]].filter(x => x[1] > g.t && x[0] > 0);
     fx.sort((a, b) => b[0] - a[0] || b[1] - a[1]);
@@ -3921,6 +3934,7 @@ function updateAcid(g, dt) {
 // so it can never set off more retaliation
 function damage(g, e, amt, weapon, fromSide, src) {
   if (e.shielded) return;
+  if (e.gone) return; // v2.82: a burrowed Gorebore or an exiled unit can't be hurt
   if (e.phT > g.t) return; // P13 (v2.37): a phased Wraithwing can't be hurt
   if (DEV.on && e.kind === 'b') { const h0 = e.hp + (e.shp || 0); damage1(g, e, amt, weapon, fromSide, src); DEV.sum += h0 - Math.max(0, e.hp) - (e.shp || 0); return; }
   damage1(g, e, amt, weapon, fromSide, src);
@@ -4129,7 +4143,7 @@ function updateGuards(g, foes, dt) {
     const d = UDEF[x.type], n = g.nodes[x.node];
     let best = null, bd = 1e9;
     for (const e of g.ents) {
-      if (e.kind !== 'u' || e.hp <= 0 || e.phT > g.t) continue;
+      if (e.kind !== 'u' || e.hp <= 0 || e.phT > g.t || e.gone) continue;
       const air = !!UDEF[e.type].air; if (air ? !d.hitsAir : d.hitsGround === false) continue;
       if (Math.hypot(e.u - n.u, e.v - n.v) > RELIC.aggro) continue;
       const dist = effDist(x, e); if (dist <= d.range && dist < bd) { bd = dist; best = e; }
@@ -4197,6 +4211,233 @@ function meteorDodge(g, u) {
   const dx = u.u - A.u, dv = u.v - A.v, d = Math.hypot(dx, dv), R = COND.meteors.r + 25; if (d >= R) return null;
   const k = d > 1 ? R / d : 1; return d > 1 ? [clamp(A.u + dx * k, 0, L), A.v + dv * k] : [clamp(A.u + R * dirOf(u.side) * -1, 0, L), A.v];
 }
+/* ---------- Faction rework, batch 2a (v2.82, docs/FACTION_REWORK.md "Batch 2"): Artillery, Gorebore, Severance ----------
+   One switch block, stored per game (g.rw), so Test Range rows can run old and new side by side. REWORK holds the values a
+   new game takes; newGame(…, { rework: { … } }) overrides them for that game. With b2a off a game plays exactly as v2.81:
+   the Bile Lobber and Rift Mortar are trained, the Artillery fires as before, and nothing below runs or is saved.
+   - artDeploy (Artillery): it deploys (ART.deploy s) before it can fire and packs up (ART.pack s) before it can move.
+     Automatic: it deploys when something is in reach, packs when ordered away or after ART.idle s with nothing to shoot
+     (never on Hold). Its own states (u.dep: 0 mobile, 1 deploying, 2 deployed, 3 packing; u.dpT when the change ends),
+     modelled on the Titan's siege lock (titanSiege).
+   - artTelegraph (Artillery): every shell lands where it was aimed when fired (no tracking) after at least ART.fly s, and
+     its spot is marked on the ground from firing to impact (g.mk, the shells' own list). Units out of the marker when it
+     lands take nothing. AI units step out of markers as they step out of meteor circles (markDodge).
+   - Gorebore (Bloomhost, replaces the Bile Lobber; internal id 'gorebore'): burrows whenever it moves and burrow is ready,
+     travels underground at BORE.speed, untargetable and unhurt (u.gone 1), and erupts under its target (BORE.dmg within
+     BORE.r), then stays up BORE.expose s with a melee bite; burrow is ready again BORE.cd s after the eruption.
+   - Severance (Axiarchs, replaces the Rift Mortar; internal id 'severance'): every SEVER.cd s a slow rift orb at a spot
+     within SEVER.range; on arrival every enemy unit within SEVER.r takes SEVER.dmg, then is exiled for SEVER.dur s (u.gone
+     2, u.exT): frozen, untargetable, unhurt, its timed effects paused; back, it can't be exiled for SEVER.imm s. Between
+     exiles a weak bolt (its UDEF weapon).
+   New internal ids rather than renamed ones: a game with b2a off still has Bile Lobbers and Rift Mortars, and saves, match
+   history and tests keep naming them. */
+const REWORK = { b2a: true, artDeploy: true, artTelegraph: true };
+const RW_KEYS = ['b2a', 'artDeploy', 'artTelegraph'];
+const rwInit = o => { const r = Object.assign({}, REWORK, o || {}), out = {}; for (const k of RW_KEYS) out[k] = !!r[k]; return out; };
+const rwB2a = g => !!(g && g.rw && g.rw.b2a);
+const rwDep = g => rwB2a(g) && !!g.rw.artDeploy;
+const rwTel = g => rwB2a(g) && !!g.rw.artTelegraph;
+const RW_SWAP = { bilelobber: 'gorebore', riftmortar: 'severance' }, RW_BACK = { gorebore: 'bilelobber', severance: 'riftmortar' };
+const rwType = (g, t) => rwB2a(g) ? (RW_SWAP[t] || t) : (RW_BACK[t] || t); // the unit that fills this slot in game g
+const rwHas = (g, t) => rwType(g, t) === t; // game g has this unit type
+const rwShown = t => rwType({ rw: REWORK }, t) === t; // the UI's Codex and lists, which follow the new-game default
+
+const ART = { deploy: 2.0, pack: 1.5, idle: 2, fly: 1.6, step: 18 };
+const BORE = { speed: 40, dmg: 70, r: 45, expose: 4, cd: 10, seek: 300, near: 12, hold: 160, adv: 170, pick: 0.25, trail: 3 };
+const SEVER = { range: 300, speed: 120, r: 45, dmg: 20, dur: 4, imm: 6, cd: 12, every: 0.5, minPop: 4, fight: 220 };
+
+Object.assign(UDEF, {
+  gorebore: { name: 'Gorebore', desc: 'Digging beast that burrows under the fight and erupts beneath ranged units and artillery. Untouchable underground, but its dirt trail shows, and it is exposed after each eruption.', fac: 'bloomhost', from: 'factory', tier: 2, cost: { c: 170, e: 60 }, pop: 3, hp: 300, dmg: 18, cd: 0.8, range: 24, speed: 22, hitsAir: false, armor: 'heavy', weapon: 'gorebite', time: 12, h: 18, melee: true, chase: 150, bore: true },
+  severance: { name: 'Severance', desc: 'Floating monolith that fires a slow rift orb: enemy units where it lands are exiled from the fight for a few seconds. Long cooldown, a weak bolt in between; spread out and punish it.', fac: 'axiarchs', from: 'factory', tier: 2, cost: { c: 220, e: 90 }, pop: 4, hp: 200, shp: 140, dmg: 8, cd: 1.2, range: 150, speed: 21, hitsAir: false, armor: 'vehicle', weapon: 'sever', time: 13, h: 26, exile: true },
+});
+const BORE_D = Object.assign({}, UDEF.gorebore, { speed: BORE.speed }); // how it moves underground
+Object.assign(DMG, {
+  gorebite: { light: 1.1, heavy: 1.0, vehicle: 0.8, air: 0, building: 0.6 }, // the Gorebore's bite
+  erupt:    { light: 1.0, heavy: 1.0, vehicle: 1.0, air: 0, building: 0.5 }, // its eruption: ground units and buildings
+  sever:    { light: 1.0, heavy: 1.0, vehicle: 1.0, air: 0, building: 0.5 }, // the Severance's bolt
+  exile:    { light: 1.0, heavy: 1.0, vehicle: 1.0, air: 1.0, building: 0 },  // the rift orb's hit: units only
+});
+PSPEED.sever = 700;
+Object.assign(MUZ, { gorebore: [14, 8], severance: [6, 30] });
+Object.assign(SIGHT, { gorebore: 200, severance: 240 });
+Object.assign(PLURAL, { gorebore: 'Gorebores', severance: 'Severances' });
+UGROUPS.arm.push('gorebore', 'severance'); GROUP_OF.gorebore = 'arm'; GROUP_OF.severance = 'arm';
+UNIT_ORDER.splice(UNIT_ORDER.indexOf('bilelobber') + 1, 0, 'gorebore');
+UNIT_ORDER.splice(UNIT_ORDER.indexOf('riftmortar') + 1, 0, 'severance');
+UNIT_PATH.gorebore = UNIT_PATH.bilelobber; UNIT_PATH.severance = UNIT_PATH.riftmortar;
+// The path and step texts the player sees follow the new-game default (the unlock lists keep the old ids; rwType maps them)
+const rwText = (o, k, on, off) => Object.defineProperty(o, k, { get: () => REWORK.b2a ? on : off, enumerable: true, configurable: true });
+rwText(TREES_BH.factory.A, 'name', 'Burrowing Evolution', 'Siege Evolution'); rwText(TREES_BH.factory.A, 'short', 'BURROW', 'SIEGE');
+rwText(TREES_BH.factory.A.steps[2], 'short', 'Gorebores', 'Bile Lobbers');
+rwText(TREES_BH.factory.A.steps[2], 'txt', 'Unlocks Gorebores: burrow under the fight and erupt beneath ranged units', 'Unlocks Bile Lobbers: long-range bile that corrodes an area');
+rwText(TREES_AX.factory.A.steps[2], 'short', 'Severances', 'Rift Mortars');
+rwText(TREES_AX.factory.A.steps[2], 'txt', 'Unlocks Severances: rift orbs that exile enemy units for a few seconds', 'Unlocks Rift Mortars: precise long-range strikes');
+
+/* ---- Artillery: deploy (artDeploy) ---- */
+// Returns true when it handled the tick (deploying, packing, deployed: nothing else moves it). best/close: what the usual
+// search found (a direct side's target first); go: it is ordered away (retreat, regroup, a retreat-style move, an AI pull-back)
+function artDeploy(g, u, d, best, close, go, hold) {
+  if (u.dep === 1 || u.dep === 3) { // mid-change: nothing else happens
+    u.moving = false; u.tgt = 0;
+    if (g.t >= u.dpT) { u.dep = u.dep === 1 ? 2 : 0; u.dpIdle = g.t; }
+    return true;
+  }
+  if (u.dep === 2) {
+    if (best || close) u.dpIdle = g.t;
+    if (go || (!best && !close && !hold && g.t - u.dpIdle >= ART.idle)) { u.dep = 3; u.dpT = g.t + ART.pack; u.tgt = 0; u.moving = false; return true; }
+    u.moving = false; u.tgt = best ? best.id : 0;
+    if (best) { if (Math.abs(best.u - u.u) > 1) u.face = best.u >= u.u ? 1 : -1; if (u.cd <= 0) { fire(g, u, best, d); u.cd = d.cd * rand(0.9, 1.1); } }
+    return true;
+  }
+  if (go || !best) return false; // mobile: moves as usual (enemies only inside its minimum range: it stands, as before)
+  u.dep = 1; u.dpT = g.t + ART.deploy; u.moving = false; u.tgt = 0; if (Math.abs(best.u - u.u) > 1) u.face = best.u >= u.u ? 1 : -1;
+  return true;
+}
+/* ---- Artillery: telegraphed shells (artTelegraph) ---- */
+// A shell keeps the spot it was aimed at, flies at least ART.fly s and is marked on the ground (g.mk) until it lands
+function telegraph(g, p) {
+  p.T = Math.max(p.T, ART.fly + (p.T - (0.7 + Math.hypot(p.tu - p.su, p.tv - p.sv) / 520))); // a salvo's later shells stay later
+  p.mk = 1;
+  (g.mk || (g.mk = [])).push({ u: p.tu, v: p.tv, r: p.splash, side: p.side, t0: g.t, t1: g.t + p.T });
+}
+function updateMarks(g) { if (g.mk && g.mk.length) g.mk = g.mk.filter(m => m.t1 > g.t); }
+// an AI's ground unit inside an enemy shell marker: where it steps to (just outside, away from the centre), else null
+function markDodge(g, u) {
+  let best = null, bt = 1e9;
+  for (const m of g.mk) {
+    if (m.side === u.side) continue;
+    const du = u.u - m.u, dv = (u.v - m.v) * 0.6, dd = Math.hypot(du, dv), R = m.r + ART.step;
+    if (dd >= R || m.t1 >= bt) continue;
+    const k = dd > 1 ? R / dd : 1;
+    best = dd > 1 ? [clamp(m.u + du * k, 0, L), m.v + (u.v - m.v) * k] : [clamp(m.u - R * dirOf(u.side), 0, L), m.v]; bt = m.t1;
+  }
+  return best;
+}
+
+/* ---- Gorebore ---- */
+const BORE_FAR = ['sniper', 'marksman'];
+function boreRank(e) { // 0: ranged backline, 1: other ranged, 2: any other unit, 3: a building
+  if (e.kind === 'b') return 3;
+  const d = UDEF[e.type];
+  if (!d.weapon || d.melee) return 2;
+  if (d.minRange || BORE_FAR.includes(e.type) || d.range >= 200) return 0;
+  return d.range > 40 ? 1 : 2;
+}
+const boreOk = (g, u, e) => e.hp > 0 && !e.gone && !e.shielded && !(e.phT > g.t) && e.side !== u.side && e.side !== NEUTRAL && !(e.kind === 'u' && UDEF[e.type].air) && visibleTo(g, u.side, e);
+function borePick(g, u, foes, cu, cv, R) { // the best target within R of (cu, cv): backline first, then ranged, then nearest
+  let best = null, br = 9, bd = 1e9;
+  for (const e of foes) {
+    if (e.side === NEUTRAL || !boreOk(g, u, e)) continue;
+    const dd = Math.hypot(e.u - cu, e.v - cv) - (e.kind === 'b' ? e.half : 0); if (dd > R) continue;
+    const r = boreRank(e);
+    if (r < br || (r === br && (dd < bd || (dd === bd && best && e.id < best.id)))) { best = e; br = r; bd = dd; }
+  }
+  return best;
+}
+function boreTarget(g, u, st, cs, foes) {
+  if (cs && cs.chase) return cs.chase.side !== NEUTRAL && boreOk(g, u, cs.chase) ? cs.chase : null; // a direct target order
+  if (st === 'retreat' || st === 'move' || (cs && cs.run)) return null;
+  if (u.btg && g.t < u.bPick) { const T = ctlEnt(g, u.btg); if (T && boreOk(g, u, T)) return T; }
+  u.bPick = g.t + BORE.pick;
+  const T = st === 'hold' && u.holdU !== undefined ? borePick(g, u, foes, u.holdU, u.holdV, BORE.hold) : borePick(g, u, foes, u.u, u.v, st === 'adv' || st === 'hold' ? BORE.adv : BORE.seek);
+  u.btg = T ? T.id : 0;
+  return T;
+}
+function boreDig(g, u) { if (u.bur) return; u.bur = 1; u.gone = 1; u.tgt = 0; u.chT = 0; ev(g, { type: 'burrow', u: u.u, v: u.v, side: u.side }); }
+function boreUp(u) { u.bur = 0; u.gone = 0; }
+function boreErupt(g, u, T) {
+  boreUp(u);
+  if (T && T.kind === 'u') { u.u = T.u - u.face * 6; u.v = T.v; } // up right under it
+  u.surfT = g.t + BORE.expose; u.burCd = g.t + BORE.cd; u.btg = 0; u.lastAct = g.t;
+  const dmg = BORE.dmg * (sideBuff(g, u.side) ? NANO.dmg : 1) * outMul(g, u);
+  for (const e of g.ents.slice()) {
+    if (e.side === u.side || e.hp <= 0 || e.gone || (e.kind === 'u' && UDEF[e.type].air)) continue;
+    if (Math.max(0, Math.hypot(e.u - u.u, (e.v - u.v) * 0.6) - (e.kind === 'b' ? e.half : 0)) <= BORE.r) damage(g, e, dmg, 'erupt', u.side);
+  }
+  const w = P(u.u, u.v, 0); g.fx.push({ k: 'erupt', side: u.side, u: u.u, x: w.x, y: w.y, t: 0, life: 0.9, r: BORE.r });
+  fxBoom(g, w.x, w.y - 4, 16); g.shake = Math.max(g.shake || 0, 2.5);
+  ev(g, { type: 'erupt', u: u.u, v: u.v, side: u.side });
+}
+// The Gorebore's part of its tick. True: handled (underground on its way to a target, or erupting). False: the usual code
+// runs (surfaced: it walks and bites; underground with no target: it travels where its orders send it, holding fire)
+function boreStep(g, u, d, st, cs, foes, dt) {
+  const T = g.t >= (u.surfT || 0) && (u.bur || g.t >= (u.burCd || 0)) ? boreTarget(g, u, st, cs, foes) : null;
+  if (u.bur) {
+    if (T) {
+      if (Math.max(0, Math.hypot(T.u - u.u, T.v - u.v) - (T.kind === 'b' ? T.half : 0)) <= BORE.near) { boreErupt(g, u, T); return true; }
+      if (T.kind === 'b') { const dd = Math.max(1, Math.hypot(T.u - u.u, T.v - u.v)), k = Math.max(0, dd - T.half + 4) / dd; moveToward(u, BORE_D, u.u + (T.u - u.u) * k, u.v + (T.v - u.v) * k, dt, 1); }
+      else moveToward(u, BORE_D, T.u, T.v, dt, 1);
+      u.moving = true; return true;
+    }
+    if (!u.moving) boreUp(u); // stopped with nothing to hit: up again (quietly; burrow stays ready)
+    return false;
+  }
+  if (T) { boreDig(g, u); boreStep(g, u, d, st, cs, foes, dt); return true; }
+  if (u.moving && g.t >= (u.surfT || 0) && g.t >= (u.burCd || 0)) boreDig(g, u); // on the move with burrow ready: under it goes
+  return false;
+}
+
+/* ---- Severance ---- */
+const sevOk = (g, s, e) => e.kind === 'u' && e.side !== s && e.side !== NEUTRAL && e.hp > 0 && !e.gone && !(e.phT > g.t) && !e.leaping;
+// Where to send the orb: the densest group of enemy units within reach (each eligible unit's neighbours within SEVER.r,
+// by supply), weighted up when the group is near its own army (about to fight it) or around a building its army is
+// attacking. Never a lone unit under SEVER.minPop supply. Null: nothing worth it.
+function sevSpot(g, u, foes) {
+  const s = u.side, cand = [], vis = e => visibleTo(g, s, e);
+  for (const e of foes) if (sevOk(g, s, e) && !(e.exImm > g.t) && effDist(u, e) <= SEVER.range && vis(e)) cand.push(e);
+  if (!cand.length) return null;
+  const mine = g.ents.filter(e => e.kind === 'u' && e.side === s && e.hp > 0 && e !== u && !e.gone && UDEF[e.type].weapon);
+  const hit = new Set(); for (const m of mine) if (m.tgt) hit.add(m.tgt);
+  const sieged = g.ents.filter(b => b.kind === 'b' && b.side !== s && b.hp > 0 && hit.has(b.id));
+  let best = null, bs = 0;
+  for (const c of cand) {
+    let n = 0, pop = 0, su = 0, sv = 0, big = 0;
+    for (const e of cand) if (Math.hypot(e.u - c.u, (e.v - c.v) * 0.6) <= SEVER.r) { n++; const p = UDEF[e.type].pop; pop += Math.max(0.5, p); su += e.u; sv += e.v; if (p >= SEVER.minPop) big = 1; }
+    if (n < 2 && !big) continue;
+    const cu = su / n, cv = sv / n;
+    const fight = mine.some(m => Math.hypot(m.u - cu, m.v - cv) <= SEVER.fight) ? 1 : 0;
+    const guard = sieged.some(b => Math.hypot(b.u - cu, b.v - cv) <= SEVER.fight + b.half) ? 1 : 0;
+    const sc = pop * (1 + 0.5 * fight + 0.5 * guard);
+    if (sc > bs || (sc === bs && best && c.id < best.id)) { bs = sc; best = { u: cu, v: cv }; }
+  }
+  return best;
+}
+function sevFire(g, u, at) {
+  const m = muzzle(u);
+  g.projs.push({ u: m.u, v: m.v, z: m.z, pu: m.u, pv: m.v, pz: m.z, su: m.u, sv: m.v, tu: at.u, tv: at.v, tz: 10, target: null, side: u.side, weapon: 'exile', dmg: SEVER.dmg * outMul(g, u), splash: SEVER.r, t: 0, speed: SEVER.speed, orb: 1 });
+  u.exCd = g.t + SEVER.cd; u.recoil = 1; u.lastAct = g.t; u.face = at.u >= u.u ? 1 : -1;
+  const w = P(m.u, m.v, m.z); g.fx.push({ k: 'flash', x: w.x, y: w.y, t: 0, life: 0.12, r: 10 });
+  ev(g, { type: 'exileShot', u: u.u, side: u.side });
+}
+// true: it fired its orb this tick
+function sevStep(g, u, foes, st) {
+  if (g.t < (u.exCd || 0) || g.t < (u.exChk || 0) || st === 'retreat' || st === 'move') return false;
+  u.exChk = g.t + SEVER.every;
+  const at = sevSpot(g, u, foes); if (!at) return false;
+  sevFire(g, u, at); return true;
+}
+const EX_TIMERS = ['corrT', 'corr2T', 'slowT', 'disT', 'snT', 'frzT', 'shT', 'ovT', 'oshT', 'bkT', 'phT', 'braceT', 'surgeT', 'leapCd', 'temp', 'sgT', 'dpT', 'surfT', 'burCd', 'exCd', 'spawnT', 'pulseCd', 'phCd', 'burstCd', 'braceCd', 'surgeCd', 'chT', 'shpT'];
+function exileBurst(g, p) {
+  const w = P(p.u, p.v, 0); g.fx.push({ k: 'rift', side: p.side, u: p.u, x: w.x, y: w.y, t: 0, life: 0.7, r: SEVER.r });
+  for (const e of g.ents.slice()) {
+    if (!sevOk(g, p.side, e) || Math.hypot(e.u - p.u, (e.v - p.v) * 0.6) > SEVER.r) continue;
+    damage(g, e, p.dmg, 'exile', p.side);
+    if (e.hp <= 0 || e.exImm > g.t) continue;
+    e.exS = g.t; e.exT = g.t + SEVER.dur; e.gone = 2; e.tgt = 0; e.moving = false;
+  }
+  ev(g, { type: 'exile', u: p.u, v: p.v, side: p.side });
+}
+function exileEnd(g, u) { // back: every timed effect resumes where it stopped
+  const k = u.exT - u.exS;
+  for (const f of EX_TIMERS) if (u[f] > u.exS) u[f] += k;
+  u.exT = 0; u.gone = 0; u.exImm = g.t + SEVER.imm;
+  const w = P(u.u, u.v, 0); g.fx.push({ k: 'unexile', side: u.side, u: u.u, x: w.x, y: w.y, t: 0, life: 0.45 });
+}
+// The AI's reads for the Gorebore's score (v2.82): the share of the enemy army it knows of that shoots from far back
+// (minimum range, Snipers, Marksmen, range 200+), and that shoots at all from range
+const aiFar = t => { const d = UDEF[t]; return !!(d.weapon && !d.melee && (d.minRange || BORE_FAR.includes(t) || d.range >= 200)); };
+const aiFarShare = th => th.length ? th.filter(u => aiFar(u.type)).length / th.length : 0;
+const aiRangedShare = th => th.length ? th.filter(u => { const d = UDEF[u.type]; return d.weapon && !d.melee && !d.air && d.range > 40; }).length / th.length : 0;
 /* ---------- Enemy AI: same economy, same rules, same upgrades as the player ---------- */
 // Known base defenses: the enemy HQ gun plus remembered Turrets, each at its last-seen tier
 const HQ_VAL = 400, TURRET_VAL = 300;
@@ -4225,7 +4466,7 @@ function aiPickPath(g, s, b, P, theirs) {
 }
 const aiLightShare = theirs => { let a = 0, t = 0; for (const u of theirs) { const d = UDEF[u.type], v = (d.cost.c + d.cost.e) * u.w; t += v; if (d.armor === 'light') a += v; } return t ? a / t : 0; };
 const aiArmorShare = theirs => { let a = 0, t = 0; for (const u of theirs) { const d = UDEF[u.type], v = (d.cost.c + d.cost.e) * u.w; t += v; if (d.armor === 'vehicle' || (d.air && d.hitsGround !== false)) a += v; } return t ? a / t : 0; };
-function freeProducer(g, s, unit) { return g.ents.some(e => e.side === s && canMake(e, unit) && e.queue.length < 1); }
+function freeProducer(g, s, unit) { return g.ents.some(e => e.side === s && canMake(e, unit, g) && e.queue.length < 1); }
 
 function aiUpdate(g, s, dt) {
   const side = g.sides[s];
@@ -4473,6 +4714,10 @@ function aiUpdate(g, s, dt) {
       lancer: 1.0 + comp.air * 2.0 + comp.heavy * 0.5 + comp.vehicle * 0.3,
       marksman: 0.8 + comp.light * 1.4 + comp.heavy * 1.0 - comp.vehicle * 1.0 - comp.air * 0.6,
       riftmortar: (nFront >= 3 && nArt < Math.max(2, nFront / 2.5)) ? 1.1 + comp.light * 0.5 + (turtle ? 0.8 : 0) + (oppTier - 1) * 0.3 : 0.1,
+      // v2.82 (rework batch 2a): the Gorebore hunts ranged backlines (worth more the more of the enemy army shoots from
+      // range, artillery and snipers most); the Severance splits armies (worth more against many units; a few per army)
+      gorebore: 1.0 + aiFarShare(theirs) * 1.6 + aiRangedShare(theirs) * 0.6 + (turtle ? 0.3 : 0) - comp.air * 0.6,
+      severance: nFront >= 3 && mine.filter(u => u.type === 'severance').length < Math.max(1, nFront / 4) ? 1.1 + comp.light * 0.6 + Math.min(1, theirs.length / 20) * 0.6 - comp.air * 0.4 : 0.1,
       worldbreaker: 1.2 + comp.vehicle * 0.8 + comp.heavy * 0.8 + comp.light * 0.4 - comp.air * 1.2 + (turtle ? 0.4 : 0),
       gravemantle: 1.3 + comp.light * 1.6 + comp.heavy * 0.6 - comp.vehicle * 0.6 - comp.air * 0.8,
       eventide: 1.4 + comp.light * 1.2 + comp.heavy * 0.6 - comp.air * 0.9,
@@ -4499,7 +4744,7 @@ function aiUpdate(g, s, dt) {
       else if (comp.light >= (dl.flood || 0.55) && theirs.length >= 5) { /* v2.42: the flood share is a dial (flood; v2.41 0.55) */ if (d.splash || d.weapon === 'flame' || t === 'thornback' || t === 'gravemantle') sc[t] *= 1.4; else if (t === 'rifle' || t === 'skitterling' || t === 'shardling') sc[t] *= 0.7; }
     }
     const spend = aiFix(P, 'spend'), noAA = aiFix(P, 'counter') && comp.air <= 0.12;
-    const fits = t => used + UDEF[t].pop <= cap * fillNow && (freeProducer(g, s, t) || (spend && side.res.c > 900 && g.ents.some(e => e.side === s && canMake(e, t) && e.queue.length < 3))); // v2.38 (Default): rich, it queues up to 3
+    const fits = t => used + UDEF[t].pop <= cap * fillNow && (freeProducer(g, s, t) || (spend && side.res.c > 900 && g.ents.some(e => e.side === s && canMake(e, t, g) && e.queue.length < 3))); // v2.38 (Default): rich, it queues up to 3
     const top = types.filter(fits).sort((a, b) => sc[b] - sc[a])[0];
     // v2.38 (Default): a big unit it has never trained, which its army is too full to fit, gets room: it stops training
     // smaller units for up to 75 s while losses free supply (never while threatened)
@@ -5034,7 +5279,7 @@ function aiSmartArmy(g, s, mine, dl, P) {
   // v2.40 (mass): an attacking army moves as one. Ground fighters more than 120 ahead of the army's median hold (they fight
   // what is in reach, never chase) until the rest is with them; stragglers far behind the front don't hold the push back
   if (aiFix(P, 'mass') && side.stance === 'attack' && fr !== null) {
-    const grp = ground.filter(u => !UDEF[u.type].support && !UDEF[u.type].siege && u.id !== side.spotter && u.id !== side.scoutId && dir * (fr - u.u) < 600);
+    const grp = ground.filter(u => !UDEF[u.type].support && !UDEF[u.type].siege && !UDEF[u.type].bore && u.id !== side.spotter && u.id !== side.scoutId && dir * (fr - u.u) < 600);
     if (grp.length >= 3) {
       const xs = grp.map(u => dir * u.u).sort((a, b) => a - b), med = xs[xs.length >> 1];
       for (const u of grp) if (dir * u.u > med + 120) u.aiWait = g.t + 1.5;
@@ -5249,7 +5494,7 @@ function serialize(g, extra) {
   const projs = g.projs.map(p => Object.assign({}, p, { target: p.target ? p.target.id : null }));
   const sides = g.sides.map(sd => Object.assign({}, sd, { hq: sd.hq.id, slots: sd.slots.map(b => b ? b.id : null), res: Object.assign({}, sd.res), stats: Object.assign({}, sd.stats), salv: Object.assign({}, sd.salv) }));
   const fog = g.fog.map(f => ({ exp: Array.from(f.exp).join(''), seen: Array.from(f.seen).join(''), ghosts: f.ghosts, creep: f.creep, field: f.field, intel: f.intel, lastHQ: f.lastHQ, lastSpot: f.lastSpot, seenUnits: f.seenUnits }));
-  return JSON.stringify({ v: SAVE_VER, map: { id: MAP.id, v: MAP.v }, t: g.t, nid: g.nid, diffKey: g.diffKey, ents, projs, sides, nodes: g.nodes, fog, abil: g.abil, endHold: g.endHold || null, log: g.log, creep: g.creep, field: g.field, warps: g.warps, acid: g.acid, stats: g.stats, ...(g.guards && g.guards.length ? { guards: g.guards } : {}), ...(g.cond && Object.keys(g.cond).length ? { cond: g.cond, meteor: g.meteor || null } : {}), seed: g.seed, rs: g.rs, fs: g.fs, extra }); // seed/rs/fs (v2.50): the random streams, so a resumed match rolls on where it stopped
+  return JSON.stringify({ v: SAVE_VER, map: { id: MAP.id, v: MAP.v }, t: g.t, nid: g.nid, diffKey: g.diffKey, ents, projs, sides, nodes: g.nodes, fog, abil: g.abil, endHold: g.endHold || null, log: g.log, creep: g.creep, field: g.field, warps: g.warps, acid: g.acid, stats: g.stats, ...(g.guards && g.guards.length ? { guards: g.guards } : {}), ...(g.cond && Object.keys(g.cond).length ? { cond: g.cond, meteor: g.meteor || null } : {}), ...(rwB2a(g) ? { rw: g.rw, mk: g.mk || [] } : {}), seed: g.seed, rs: g.rs, fs: g.fs, extra }); // rw, mk (v2.82): the rework's switches and shell markers, only when batch 2a is on (older saves and b2a-off games stay as they were) // seed/rs/fs (v2.50): the random streams, so a resumed match rolls on where it stopped
 }
 function deserialize(str) {
   const o = JSON.parse(str);
@@ -5260,6 +5505,7 @@ function deserialize(str) {
   const g = newGame(o.diffKey);
   if (o.rs !== undefined && !RNG.legacy) { g.seed = o.seed >>> 0; g.rs = o.rs | 0; g.fs = o.fs | 0; } // v2.50: an older save keeps the fresh seed newGame drew
   g.t = o.t; g.nid = o.nid; g.ents = o.ents; g.nodes = o.nodes; g.guards = o.guards || []; g.cond = o.cond || {}; g.meteor = o.meteor || null; // v2.72: battlefield conditions // v2.71: relic guards (a save from before has none)
+  g.rw = rwInit(o.rw || { b2a: false, artDeploy: false, artTelegraph: false }); if (o.mk) g.mk = o.mk; // v2.82: a save without the rework's switches plays as before it
   g.stats = o.stats && o.stats.v === 1 ? o.stats : newStats(o.t); // v2.51: an older save starts its record now
   const byId = new Map(g.ents.map(e => [e.id, e]));
   g.projs = o.projs.map(p => Object.assign(p, { target: p.target != null ? byId.get(p.target) || null : null }));
@@ -5359,10 +5605,10 @@ function deserialize(str) {
    never set in a match: matches play exactly as before. */
 const RANGE = { map: 'classic', seed: 20261113, every: 30, away: -4000, spot: [640, 1060], follow: 70 };
 const rangeFac = t => UDEF[t].fac || DEFAULT_FACTION; // the faction a unit type belongs to
-const rangeTypes = fac => Object.keys(UDEF).filter(t => rangeFac(t) === fac); // every unit of a faction, read at run time
+const rangeTypes = fac => Object.keys(UDEF).filter(t => rangeFac(t) === fac && rwShown(t)); // every unit of a faction, read at run time
 const RANGE_B = ['turret', 'refinery']; // the target buildings: each faction's defence and its economy building
-function rangeGame(o = {}) { // o: { seed, factions: [blue, red] }
-  const g = newGame('normal', { map: RANGE.map, seed: o.seed ?? RANGE.seed, factions: o.factions, countdown: 0 });
+function rangeGame(o = {}) { // o: { seed, factions: [blue, red], rework: this row's switches (v2.82; REWORK's when left out) }
+  const g = newGame('normal', { map: RANGE.map, seed: o.seed ?? RANGE.seed, factions: o.factions, countdown: 0, rework: o.rework });
   g.range = true; g.noStorm = true; g.nodes = []; g.rk = 0; g.wipe = null; g.had = [false, false];
   for (let s = 0; s < 2; s++) {
     const sd = g.sides[s];
@@ -5377,7 +5623,7 @@ function rangeGame(o = {}) { // o: { seed, factions: [blue, red] }
 }
 // n units of type for side s, spread around (u, v) as units gather in a match (ctlPack: each its own spot), holding there
 function rangeUnits(g, s, type, u, v, n = 1) {
-  RNG.g = g;
+  RNG.g = g; type = rwType(g, type); // v2.82: the unit that fills this slot in this row (a Bile Lobber or a Gorebore, …)
   const us = [];
   for (let i = 0; i < n; i++) us.push(spawnUnit(g, s, type, u, v));
   const P_ = ctlPack(g, s, us, u, v, false);
@@ -5385,7 +5631,7 @@ function rangeUnits(g, s, type, u, v, n = 1) {
   return us;
 }
 // One unit exactly at (u, v), holding there (a Reset places each recorded unit this way)
-function rangeUnit(g, s, type, u, v) { RNG.g = g; const e = spawnUnit(g, s, type, u, v); ctlHold(e, u, v); return e; }
+function rangeUnit(g, s, type, u, v) { RNG.g = g; type = rwType(g, type); const e = spawnUnit(g, s, type, u, v); ctlHold(e, u, v); return e; }
 // A finished T1 building of a faction's role for side s at (u, v): no pad, no cost
 function rangeBuilding(g, s, fac, role, u, v) {
   RNG.g = g;
@@ -9617,7 +9863,7 @@ function refreshUI(force) {
       html = have ? '<span class="lock">Already built</span>' : padBy ? '<span class="lock">Pad in use</span>' : locked ? `<span class="lock">Requires ${BD(pFac(), d.req).name}</span>` : costHTML(d.cost, s.res);
     } else {
       const d = UDEF[type];
-      const prods = alive(game, 0, d.from).filter(b => canMake(b, type));
+      const prods = alive(game, 0, d.from).filter(b => canMake(b, type, game));
       if (type === 'rifle') setHTML(el.querySelector('.pr'), prods.some(b => pathMod(b, 'pairs')) ? 'MASS ×2' : '');
       const mx = el.querySelector('.mx'); if (mx) { const n = unitCount(game, 0, type); setHTML(mx, `${n}/${d.max}`); mx.classList.toggle('full', n >= d.max); }
       locked = !prods.length;

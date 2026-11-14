@@ -12,10 +12,10 @@
    never set in a match: matches play exactly as before. */
 const RANGE = { map: 'classic', seed: 20261113, every: 30, away: -4000, spot: [640, 1060], follow: 70 };
 const rangeFac = t => UDEF[t].fac || DEFAULT_FACTION; // the faction a unit type belongs to
-const rangeTypes = fac => Object.keys(UDEF).filter(t => rangeFac(t) === fac); // every unit of a faction, read at run time
+const rangeTypes = fac => Object.keys(UDEF).filter(t => rangeFac(t) === fac && rwShown(t)); // every unit of a faction, read at run time
 const RANGE_B = ['turret', 'refinery']; // the target buildings: each faction's defence and its economy building
-function rangeGame(o = {}) { // o: { seed, factions: [blue, red] }
-  const g = newGame('normal', { map: RANGE.map, seed: o.seed ?? RANGE.seed, factions: o.factions, countdown: 0 });
+function rangeGame(o = {}) { // o: { seed, factions: [blue, red], rework: this row's switches (v2.82; REWORK's when left out) }
+  const g = newGame('normal', { map: RANGE.map, seed: o.seed ?? RANGE.seed, factions: o.factions, countdown: 0, rework: o.rework });
   g.range = true; g.noStorm = true; g.nodes = []; g.rk = 0; g.wipe = null; g.had = [false, false];
   for (let s = 0; s < 2; s++) {
     const sd = g.sides[s];
@@ -30,7 +30,7 @@ function rangeGame(o = {}) { // o: { seed, factions: [blue, red] }
 }
 // n units of type for side s, spread around (u, v) as units gather in a match (ctlPack: each its own spot), holding there
 function rangeUnits(g, s, type, u, v, n = 1) {
-  RNG.g = g;
+  RNG.g = g; type = rwType(g, type); // v2.82: the unit that fills this slot in this row (a Bile Lobber or a Gorebore, …)
   const us = [];
   for (let i = 0; i < n; i++) us.push(spawnUnit(g, s, type, u, v));
   const P_ = ctlPack(g, s, us, u, v, false);
@@ -38,7 +38,7 @@ function rangeUnits(g, s, type, u, v, n = 1) {
   return us;
 }
 // One unit exactly at (u, v), holding there (a Reset places each recorded unit this way)
-function rangeUnit(g, s, type, u, v) { RNG.g = g; const e = spawnUnit(g, s, type, u, v); ctlHold(e, u, v); return e; }
+function rangeUnit(g, s, type, u, v) { RNG.g = g; type = rwType(g, type); const e = spawnUnit(g, s, type, u, v); ctlHold(e, u, v); return e; }
 // A finished T1 building of a faction's role for side s at (u, v): no pad, no cost
 function rangeBuilding(g, s, fac, role, u, v) {
   RNG.g = g;

@@ -26,7 +26,7 @@ function aiPickPath(g, s, b, P, theirs) {
 }
 const aiLightShare = theirs => { let a = 0, t = 0; for (const u of theirs) { const d = UDEF[u.type], v = (d.cost.c + d.cost.e) * u.w; t += v; if (d.armor === 'light') a += v; } return t ? a / t : 0; };
 const aiArmorShare = theirs => { let a = 0, t = 0; for (const u of theirs) { const d = UDEF[u.type], v = (d.cost.c + d.cost.e) * u.w; t += v; if (d.armor === 'vehicle' || (d.air && d.hitsGround !== false)) a += v; } return t ? a / t : 0; };
-function freeProducer(g, s, unit) { return g.ents.some(e => e.side === s && canMake(e, unit) && e.queue.length < 1); }
+function freeProducer(g, s, unit) { return g.ents.some(e => e.side === s && canMake(e, unit, g) && e.queue.length < 1); }
 
 function aiUpdate(g, s, dt) {
   const side = g.sides[s];
@@ -274,6 +274,10 @@ function aiUpdate(g, s, dt) {
       lancer: 1.0 + comp.air * 2.0 + comp.heavy * 0.5 + comp.vehicle * 0.3,
       marksman: 0.8 + comp.light * 1.4 + comp.heavy * 1.0 - comp.vehicle * 1.0 - comp.air * 0.6,
       riftmortar: (nFront >= 3 && nArt < Math.max(2, nFront / 2.5)) ? 1.1 + comp.light * 0.5 + (turtle ? 0.8 : 0) + (oppTier - 1) * 0.3 : 0.1,
+      // v2.82 (rework batch 2a): the Gorebore hunts ranged backlines (worth more the more of the enemy army shoots from
+      // range, artillery and snipers most); the Severance splits armies (worth more against many units; a few per army)
+      gorebore: 1.0 + aiFarShare(theirs) * 1.6 + aiRangedShare(theirs) * 0.6 + (turtle ? 0.3 : 0) - comp.air * 0.6,
+      severance: nFront >= 3 && mine.filter(u => u.type === 'severance').length < Math.max(1, nFront / 4) ? 1.1 + comp.light * 0.6 + Math.min(1, theirs.length / 20) * 0.6 - comp.air * 0.4 : 0.1,
       worldbreaker: 1.2 + comp.vehicle * 0.8 + comp.heavy * 0.8 + comp.light * 0.4 - comp.air * 1.2 + (turtle ? 0.4 : 0),
       gravemantle: 1.3 + comp.light * 1.6 + comp.heavy * 0.6 - comp.vehicle * 0.6 - comp.air * 0.8,
       eventide: 1.4 + comp.light * 1.2 + comp.heavy * 0.6 - comp.air * 0.9,
@@ -300,7 +304,7 @@ function aiUpdate(g, s, dt) {
       else if (comp.light >= (dl.flood || 0.55) && theirs.length >= 5) { /* v2.42: the flood share is a dial (flood; v2.41 0.55) */ if (d.splash || d.weapon === 'flame' || t === 'thornback' || t === 'gravemantle') sc[t] *= 1.4; else if (t === 'rifle' || t === 'skitterling' || t === 'shardling') sc[t] *= 0.7; }
     }
     const spend = aiFix(P, 'spend'), noAA = aiFix(P, 'counter') && comp.air <= 0.12;
-    const fits = t => used + UDEF[t].pop <= cap * fillNow && (freeProducer(g, s, t) || (spend && side.res.c > 900 && g.ents.some(e => e.side === s && canMake(e, t) && e.queue.length < 3))); // v2.38 (Default): rich, it queues up to 3
+    const fits = t => used + UDEF[t].pop <= cap * fillNow && (freeProducer(g, s, t) || (spend && side.res.c > 900 && g.ents.some(e => e.side === s && canMake(e, t, g) && e.queue.length < 3))); // v2.38 (Default): rich, it queues up to 3
     const top = types.filter(fits).sort((a, b) => sc[b] - sc[a])[0];
     // v2.38 (Default): a big unit it has never trained, which its army is too full to fit, gets room: it stops training
     // smaller units for up to 75 s while losses free supply (never while threatened)
@@ -835,7 +839,7 @@ function aiSmartArmy(g, s, mine, dl, P) {
   // v2.40 (mass): an attacking army moves as one. Ground fighters more than 120 ahead of the army's median hold (they fight
   // what is in reach, never chase) until the rest is with them; stragglers far behind the front don't hold the push back
   if (aiFix(P, 'mass') && side.stance === 'attack' && fr !== null) {
-    const grp = ground.filter(u => !UDEF[u.type].support && !UDEF[u.type].siege && u.id !== side.spotter && u.id !== side.scoutId && dir * (fr - u.u) < 600);
+    const grp = ground.filter(u => !UDEF[u.type].support && !UDEF[u.type].siege && !UDEF[u.type].bore && u.id !== side.spotter && u.id !== side.scoutId && dir * (fr - u.u) < 600);
     if (grp.length >= 3) {
       const xs = grp.map(u => dir * u.u).sort((a, b) => a - b), med = xs[xs.length >> 1];
       for (const u of grp) if (dir * u.u > med + 120) u.aiWait = g.t + 1.5;
