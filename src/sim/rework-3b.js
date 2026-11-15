@@ -67,10 +67,11 @@ function trampleLine(g, u, T, foes) {
   return { du, dv, len, sup };
 }
 // Start a charge (true: it charged). Automatic: the enemy ground unit TRAMPLE.min-max away whose line tramples the most supply;
-// a target order: that unit, from TRAMPLE.tmin. Not on Retreat or a move, not snared or held back; on Hold only at enemies
+// a target order: that unit, from TRAMPLE.tmin. Not on Retreat or a move, not snared or held back (an AI's waiting for its
+// army: aiWait, aiHold); on Hold only at enemies
 // near its spot. Checked every TRAMPLE.every s.
 function trampleGo(g, u, d, st, cs, foes, best, side) {
-  if (g.t < (u.crCd || 0) || g.t < (u.crChk || 0) || u.snT > g.t || u.aiHold > g.t || st === 'retreat' || st === 'move' || (cs && cs.run)) return false;
+  if (g.t < (u.crCd || 0) || g.t < (u.crChk || 0) || u.snT > g.t || u.aiHold > g.t || u.aiWait > g.t || st === 'retreat' || st === 'move' || (cs && cs.run)) return false;
   u.crChk = g.t + TRAMPLE.every;
   const O = cs && cs.chase;
   let pick = null;

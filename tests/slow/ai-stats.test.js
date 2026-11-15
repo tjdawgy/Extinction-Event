@@ -69,8 +69,9 @@ test('Axiarch AI with each personality: economy, base units, nodes and attacks; 
   const P = ['aggressor', 'economist', 'trickster', 'turtle'], per = Math.max(2, Math.ceil(N / 4)), rows = [];
   P.forEach((persona, k) => rows.push(...playN(per, 400 + 50 * k, { persona: 'turtle', autoPersona: persona, factions: ['axiarchs', 'lastfist'] }, 600,
     (g, S, st) => { for (const e of g.events) if (e.type === 'node' && e.side === 0 && !e.lost) st.nodes = (st.nodes || 0) + 1; },
-    (g, S, st) => ({ persona, T: g.log.tot[0], tr: g.sides[0].aiLog.trained, nodes: st.nodes || 0, att: g.sides[0].aiLog.attacks, U: S.UDEF }))));
-  check('Axiarch AI', rows, [['economy and production', r => r.T.bBuilt.refinery > 0 && r.T.bBuilt.barracks > 0, 1], ['Shardlings and more', r => r.tr.shardling > 0 && Object.keys(r.tr).length >= 2, 0.9],
+    (g, S, st) => ({ persona, T: g.log.tot[0], tr: g.sides[0].aiLog.trained, nodes: st.nodes || 0, att: g.sides[0].aiLog.attacks, U: S.UDEF, won: g.over && g.winner === 0 }))));
+  // v2.85: a match the Axiarchs win on Shardlings alone (the Aggressor's rush, stronger with the batch 3b parry: it ends near 5:00 in 2 of the 3 Aggressor seeds, 1 of 3 with b3b off) counts too
+  check('Axiarch AI', rows, [['economy and production', r => r.T.bBuilt.refinery > 0 && r.T.bBuilt.barracks > 0, 1], ['Shardlings and more (or a win on Shardlings)', r => r.tr.shardling > 0 && (Object.keys(r.tr).length >= 2 || r.won), 0.9],
     ['only its own units', r => !Object.keys(r.tr).some(t => r.U[t].fac !== 'axiarchs'), 1], ['nodes taken', r => r.nodes > 0, 0.7], ['an attack', r => r.att > 0, 0.8], // 95%, 100%
     ['a Null Lance', r => (r.T.bBuilt.turret || 0) > 0, 0.1]]); // 25%
   for (const p of P) assert.ok(rows.filter(r => r.persona === p).every(r => r.tr.shardling > 0), `${p}: trains Shardlings`);
