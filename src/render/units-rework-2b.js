@@ -144,7 +144,7 @@ function dWB2(c, T, u) {
 }
 
 DRAW_U.titan = dTitan2; DRAW_U.ruinmaw = dRuin2; DRAW_U.worldbreaker = dWB2;
-Object.assign(SPR_BOX, { titan: [-34, -66, 80, 72], ruinmaw: [-54, -72, 112, 78], worldbreaker: [-28, -70, 56, 74] });
+Object.assign(SPR_BOX, { titan: [-42, -84, 94, 90], ruinmaw: [-54, -72, 112, 78], worldbreaker: [-28, -70, 56, 74] });
 Object.assign(UVIS, { titan: { h: 52, w: 19 }, ruinmaw: { h: 50, w: 28 }, worldbreaker: { h: 58, w: 20 } });
 // the Titan's plant share (0 mobile, 1 planted) at time t (batch 2b's times; the v2.37 siege lock's in a b2b-off game)
 function titanK(u, t) {
