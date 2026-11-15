@@ -1051,6 +1051,7 @@ function render(c, g, time, sel, selPad) {
     } else { c.globalAlpha = k; c.fillStyle = p.color; c.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size); }
   }
   c.globalAlpha = 1;
+  if (rwB3b(g)) drawBarriers(c, g, lit, time); // v2.85: Bastion barriers, over the units they screen
   for (const f of g.fx) { // the SIM's blasts (its muzzle flashes are replaced by the per-weapon ones in drawVfx)
     if (f.k === 'beam') { if (lit(f.x, f.y / DY) || lit(f.x2, (f.y2 ?? f.y) / DY)) drawBeam(c, f); continue; } // Null Lance beams (v2.25), only where the player can see
     if (f.k === 'pull') { if (lit(f.x, f.y / DY)) drawPull(c, f); continue; } // Eventide pulses (v2.27)
@@ -1060,6 +1061,7 @@ function render(c, g, time, sel, selPad) {
     if (f.k === 'pierce') { if (lit(f.u, f.v)) drawPierce(c, f); continue; } // P4 (v2.37)
     if (f.k === 'blink') { if (lit(f.u, f.v)) drawBlink(c, f); continue; } // P5 (v2.37)
     if (f.k === 'latch' || f.k === 'hatch' || f.k === 'rsblink' || f.k === 'swap' || f.k === 'devour3') { if (lit(f.u, f.y / DY) || (f.x2 != null && lit(f.u, f.y2 / DY))) (f.k === 'latch' ? drawLatchFx : f.k === 'hatch' ? drawHatchFx : f.k === 'rsblink' ? drawRsBlink : f.k === 'swap' ? drawSwapFx : drawDevour3)(c, f); continue; } // v2.84 (batch 3a)
+    if (f.k === 'trample' || f.k === 'chargeEnd' || f.k === 'parry' || f.k === 'bwhit' || f.k === 'bwbreak' || f.k === 'bwup') { if (lit(f.u, f.y / DY)) (f.k === 'trample' ? drawTrampleFx : f.k === 'chargeEnd' ? drawChargeEnd : f.k === 'parry' ? drawParryFx : f.k === 'bwhit' ? drawBwHit : f.k === 'bwbreak' ? drawBwBreak : drawBwUp)(c, f); continue; } // v2.85 (batch 3b)
     if (f.k === 'emerge') { if (f.side === 0 || g.spectate || lit(f.u, f.y / DY)) drawEmerge(c, f); continue; } // v2.83: into or out of a tunnel
     if (f.k === 'erupt' || f.k === 'rift' || f.k === 'unexile') { if (lit(f.u, f.y / DY)) (f.k === 'erupt' ? drawErupt : f.k === 'rift' ? drawRift : drawUnexile)(c, f); continue; } // v2.82
     if (f.k === 'devour') { if (lit(f.u, f.v)) drawDevour(c, f); continue; } // P11 (v2.37)

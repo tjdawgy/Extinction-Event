@@ -78,7 +78,7 @@ test('Leaper: the host dying hatches 2 temporary Skitterlings per Leaper (at mos
   assert.notStrictEqual(m.nodes[0].owner, 0, 'a hatchling alone never captures');
 });
 
-test('Riftstalker: strikes a ranged unit, chain-blinks on a kill (up to 2), fades back; its shields breaking out there blinks it home', () => {
+test('Riftstalker: strikes a ranged unit, chain-blinks on a kill (up to 2), then blinks home with nothing in reach; its shields breaking out there blinks it home', () => {
   const s = loadSim();
   const g = s.rangeGame({ factions: ['axiarchs', 'lastfist'] });
   const R = s.rangeUnit(g, 0, 'riftstalker', 600, 0);
@@ -89,7 +89,7 @@ test('Riftstalker: strikes a ranged unit, chain-blinks on a kill (up to 2), fade
   const ty = seen.map(e => e.type);
   assert.strictEqual(ty[0], 'leap'); assert.strictEqual(ty.filter(t => t === 'chain').length, 2, `two chain blinks (${ty})`);
   assert.ok(a.dead && [b, c, d].filter(e => e.dead).length === 2, 'three kills in one strike');
-  assert.ok(!R.rsH, 'then it fades back');
+  assert.ok(!R.rsH && ty.includes('blinkHome'), `out of chain targets with nothing in reach, it blinks home (v2.85) (${ty})`);
   // shields breaking while out: straight home
   const h = s.rangeGame({ factions: ['axiarchs', 'lastfist'] });
   const Q = s.rangeUnit(h, 0, 'riftstalker', 600, 0), sn = s.rangeUnit(h, 1, 'sniper', 700, 0); sn.hp = sn.maxHp = 1e5;

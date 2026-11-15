@@ -619,6 +619,7 @@ function drawUnit(c, u) {
   const big = u.type === 'leviathan' || u.type === 'worldrender' || u.type === 'sovereign' ? 2.4 : u.type === 'broodtyrant' || u.type === 'voidcarrier' ? 1.6 : u.type === 'drone' || u.type === 'needlewing' || u.type === 'prismwing' ? 0.5 : 1; // a Leviathan's shadow is seen coming
   const lift = u.lt && VFX.g ? latchLift(VFX.g, u) : 0, rk = rvScale(u); // v2.84: a latched Leaper rides on its host's back (no shadow of its own); a Ravager's stacks make it bigger
   if (!lift) { c.beginPath(); c.ellipse(w.x, w.y, (d.air ? 16 * big : UVIS[u.type] ? UVIS[u.type].w * rk : Math.max(8, d.h * 0.7)) * US, (d.air ? 3.5 * big : 2.6) * US, 0, 0, 7); c.fill(); }
+  if (u.crg) drawChargeDust(c, u, VFX.lastT); // v2.85: a Dreadthorn's charge kicks up dust behind it
   if (u.type === 'medic' && VFX.g) drawHealBeams(c, VFX.g, u, w);
   if (u.siege) drawSiegeLock(c, u, w); // P8 (v2.37): a Titan's stabilisers, under it
   c.save(); c.translate(w.x + (lift ? (RIDE.get(u) || 0) * 8 * US : 0), w.y - u.z + bob - lift + (lift ? Math.abs(RIDE.get(u) || 0) * 2 * US : 0)); c.scale(u.face * US * (u.kid ? 0.75 : 1), US * (u.kid ? 0.75 : 1)); // a Cloudwing's offspring is smaller (v2.21)
@@ -631,11 +632,12 @@ function drawUnit(c, u) {
   c.globalCompositeOperation = 'lighter';
   if (u.hitT > 0) { c.globalAlpha = 0.6 * Math.min(1, u.hitT / 0.12); drawUnitArt(c, u, TEAM[u.side]); } // hit: the unit itself flashes
   if (u.type === 'sniper' && u.cd > 0 && u.cd < 0.35) stamp(c, GLOW.cyan, MUZ.sniper[0], -MUZ.sniper[1], 2 + (0.35 - u.cd) * 14, 0.9); // rail charging
-  if (u.braceT > VFX.lastT) { c.globalAlpha = 0.55; c.strokeStyle = TEAM[u.side].light; c.lineWidth = 1.6; c.beginPath(); c.moveTo(-21, -7); c.bezierCurveTo(-19, -30, 12, -32, 19, -13); c.stroke(); } // a bracing Bulwark: its plates lock and glow
+  if (u.braceT > VFX.lastT && u.type !== 'bulwark') { c.globalAlpha = 0.55; c.strokeStyle = TEAM[u.side].light; c.lineWidth = 1.6; c.beginPath(); c.moveTo(-21, -7); c.bezierCurveTo(-19, -30, 12, -32, 19, -13); c.stroke(); } // a bracing Bulwark: its plates lock and glow
   c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
   c.restore();
   if (ex) drawExiled(c, u, w, VFX.lastT);
   if (u.cov && b2b) drawCovered(c, u, w, VFX.lastT); // v2.83: in a Titan's cover
+  if (u.dzT > VFX.lastT) drawDazed(c, u, w, VFX.lastT); // v2.85: a Dreadthorn dazed after its charge
   if (u.shT > VFX.lastT) drawShield(c, u, VFX.lastT);
   if (VFX.g) drawAxFx(c, VFX.g, u, w); // v2.27: a Marksman's charge, a Gravemantle's aura, slowed and disrupted marks
   if (u.ovT > VFX.lastT) drawOvercharge(c, u, w, VFX.lastT); // v2.28

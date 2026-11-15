@@ -761,7 +761,7 @@ MAPS.threelane = (() => {
   };
 })();
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.84'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.85'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -2185,7 +2185,7 @@ function update(g, dt) {
   }
   updateGuards(g, foes, dt); // v2.71: the relic guards fire, and both sides may target them
   indexFoes(foes[0], dt); indexFoes(foes[1], dt); // v2.37: lane-sorted, so target searches look only near the searcher
-  RDG.list = null; if (rwB2b(g)) update2b(g); if (rwB3a(g)) update3a(g); /* v2.84: remains */ // v2.83: Titan cover, Worldbreaker cracks and ridges (RDG.list: this game's ridges, while its units move)
+  RDG.list = null; if (rwB2b(g)) update2b(g); if (rwB3a(g)) update3a(g); /* v2.84: remains */ if (rwB3b(g)) update3b(g, dt); /* v2.85: barriers, knocks, Bulwark regen */ // v2.83: Titan cover, Worldbreaker cracks and ridges (RDG.list: this game's ridges, while its units move)
   const n = g.ents.length; NAV.now = g.t; // v2.65: the clock the navigation paths age by
   for (let i = 0; i < n; i++) {
     const e = g.ents[i];
@@ -2719,10 +2719,13 @@ function updateUnit(g, u, foes, dt) {
   if (u.cd > 0) u.cd -= dt * (frz ? ABIL.frenzy.rate : 1);
   if (u.recoil > 0) u.recoil = Math.max(0, u.recoil - dt * 5);
   if (u.hitT > 0) u.hitT -= dt;
+  if (u.crg) { trampleStep(g, u, d, dt); return; } // v2.85: a batch 3b Dreadthorn charging
+  if (u.dzT > g.t) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // v2.85: dazed after its charge
   if (u.fwdHome && g.nodes[u.fwdHome.n].owner !== u.side) u.fwdHome = undefined; // v2.68: its forward post lost: home is the base again
   const side = g.sides[u.side], dir = dirOf(u.side); let home = (side.defU != null ? side.defU : u.fwdHome ? u.fwdHome.u : rallyU(u.side, g)) + u.rallyOff * dir * (u.fwdHome ? 0.3 : 1); // defU (v2.40): a Default AI under attack rallies inside its HQ's cover; v2.62: a damaged unit sent home goes to the base flag
   const po = side.direct ? u.po || HOLD_PO : null; // v2.73: a direct side's unit follows its own order
   if (po) home = ctlBase(u.side).u; // v2.76: the base rally point
+  else if (u.bkG) home = u.bkG[0]; // v2.85: an AI's Bulwark defending holds on its creep
   const ord = po ? null : unitOrder(side, u.type, u.lane);
   const runs = side.persona && aiFix(side.persona, 'scoutGo') && ((u.id === side.scoutId && side.scoutU != null) || (side.raid && side.raid.ids.includes(u.id)) || capBusy(side, u.id)); // v2.60: a Hard scout or raider; v2.67: a capture group (lane maps)
   let st = po ? po.o : runs ? 'run' : ord ? ord.o : side.stance; // a group or type order overrides the global stance (v2.75: Send damaged home is gone)
@@ -2766,7 +2769,10 @@ function updateUnit(g, u, foes, dt) {
   if (u.aiWait > g.t && !best && !(MECH7C.on && d.chase && A.prey && Math.hypot(A.prey.u - u.u, A.prey.v - u.v) <= MECH7C.holdR + d.range)) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // v2.43: a holding melee unit still engages within holdR (falls through to the chase below) // v2.40: a Default AI holds a front-runner until its army catches up (fights only what is in reach, never chases)
   if (d.exile && rwB2a(g) && sevStep(g, u, foes, st)) { u.moving = false; return; } // v2.82: a Severance's rift orb, when a group is worth it
   if (d.latch && latchJump(g, u, d, st, cs, foes, best, dt, sp, side)) return; // v2.84: a batch 3a Leaper leaps onto a host
+  if (d.rsChain && u.rsH && !u.leaping && rsOut(g, u, best, st, cs)) return; // v2.85: out on a strike with nothing left in reach: home
   if (d.rsChain && rsJump(g, u, d, st, cs, foes, best, dt, sp, side)) return; // v2.84: a batch 3a Riftstalker's strike onto a ranged unit
+  if (d.trample && trampleGo(g, u, d, st, cs, foes, best, side)) return; // v2.85: a batch 3b Dreadthorn's charge
+  if (d.barrier && !side.direct && u.bsG && !best && st !== 'retreat' && !(cs && cs.run) && bastionGuard(g, u, d, dt, sp)) return; // v2.85: an AI's Bastion screening its ranged units
   if (d.swap && !side.direct && u.pxG && !best && !A.prey && st !== 'retreat' && !(cs && cs.run) && pxGuard(g, u, d, dt, sp)) return; // v2.84: an AI's Parallax beside the unit it guards
   const act = !(u.phT > g.t) && !d.siege && !u.bur; // v2.82: a burrowed Gorebore doesn't fight // v2.37: a phased Wraithwing can't fire (P13); a Titan fires only when planted (P8)
   u.tgt = best && act ? best.id : 0;
@@ -2782,7 +2788,7 @@ function updateUnit(g, u, foes, dt) {
     }
     if (u.cd <= 0) {
       fire(g, u, best, d); u.cd = d.cd * rand(0.9, 1.1);
-      if (d.rsChain && u.fadeArm) rsAfter(g, u, d, best, foes); // v2.84: a kill chains to the next ranged unit; otherwise it fades back
+      if (d.rsChain && u.rsH) rsAfter(g, u, d, best, foes); // v2.84: a kill chains to the next ranged unit (v2.85: otherwise it stays, or blinks home with nothing left in reach)
       else if (d.fade && u.fadeArm) { // P5 (v2.37): the Riftstalker's strike landed: phase-step back to where it leapt from
         u.fadeArm = 0; u.lu = u.fu; u.lv = u.fv; u.ld = Math.max(1, Math.hypot(u.lu - u.u, u.lv - u.v)); u.leaping = 1;
         const w = P(u.u, u.v, 10); g.fx.push({ k: 'blink', side: u.side, u: u.u, x: w.x, y: w.y, t: 0, life: 0.4 });
@@ -2792,7 +2798,8 @@ function updateUnit(g, u, foes, dt) {
   }
   if (close && !u.bur) { u.moving = false; return; } // artillery: enemy is inside minimum range
   if (d.chase && !u.bur && st !== 'move' && !(st === 'hold' && u.holdU !== undefined) && !(cs && cs.chase)) { // melee (v2.17): close on the nearest enemy it can see and hurt (v2.76: not when it has a target to close on)
-    const prey = A.prey !== undefined ? A.prey : acquire(g, u, { ...d, range: d.chase }, foes).best;
+    let prey = A.prey !== undefined ? A.prey : acquire(g, u, { ...d, range: d.chase }, foes).best;
+    if (prey && u.bkG && d.creepHold && !bulkPreyOk(g, u, prey)) prey = null; // v2.85: an AI's Bulwark defending chases nothing off its creep
     if (prey && d.leap && !d.latch && g.t >= u.leapCd && !(u.snT > g.t) && !(u.aiHold > g.t)) { // v2.38: a Default AI holds a Riftstalker's leap while its shields recharge // snared: no leap either (v2.33) // the Leaper jumps the last stretch (v2.19), never further than leap.range
       const dist = effDist(u, prey);
       if (dist <= d.leap.range && dist >= d.leap.min) { const k = Math.max(0, (Math.hypot(prey.u - u.u, prey.v - u.v) - d.range * 0.7) / Math.max(1, Math.hypot(prey.u - u.u, prey.v - u.v))); u.lu = u.u + (prey.u - u.u) * k; u.lv = u.v + (prey.v - u.v) * k;
@@ -2833,6 +2840,7 @@ function updateUnit(g, u, foes, dt) {
     if (side.leash != null && !d.siege && !d.air) tu = dir > 0 ? Math.min(tu, side.leash) : Math.max(tu, side.leash); // v2.38: a Default AI's army stays within reach of its Titans while they plant
   }
   if (u.rmF) { const R = g.t < u.rmF.t ? ctlEnt(g, u.rmF.r) : null; if (R && ruinGate(R)) { tu = u.rmF.u; tv = u.rmF.v; } else u.rmF = undefined; } // v2.83: an AI's unit out of a Ruinmaw's mouth fights around it
+  if (u.bkG && d.creepHold && st !== 'attack' && tu === home) tv = u.bkG[1]; // v2.85: its spot on the creep
   if (MAP_LANED && tv === u.laneV) tv = laneTv(u, tu); // v2.63: the lane's depth there (Classic: unchanged)
   if (!moveToward(u, d, tu, tv, dt, sp)) u.face = dir;
 }
@@ -3414,7 +3422,7 @@ function updateCreep(g, dt) {
   }
   // Out-of-combat regeneration on creep; never stacks: with a faster heal running (a Medicopter), that one applies
   for (const e of g.ents) {
-    if (e.kind !== 'u' || e.hp <= 0 || e.hp >= e.maxHp || UDEF[e.type].fac !== 'bloomhost' || UDEF[e.type].air) continue;
+    if (e.kind !== 'u' || e.hp <= 0 || e.hp >= e.maxHp || UDEF[e.type].fac !== 'bloomhost' || UDEF[e.type].air || (e.type === 'bulwark' && rwB3b(g))) continue; // v2.85: a batch 3b Bulwark has its own (bulkRegen)
     if (g.t - e.lastHurt < CREEP.calm || g.t - e.lastAct < CREEP.calm || !onCreep(g, e.side, e.u, e.v)) continue;
     const other = e.medAt === g.t ? UDEF.medic.heal : 0, rg = creepRegen(g, e.side);
     e.creepAt = g.t;
@@ -3482,6 +3490,7 @@ function fire(g, src, t, def) {
   if (def.rupture) { ruptureFire(g, src, t); return; } // v2.83: a Worldbreaker's crack (batch 2b)
   if (def.beam) { // the Null Lance (v2.25): the beam lands at once; the SIM leaves a short beam mark for the renderer
     const m = muzzle(src), a = P(m.u, m.v, m.z), b = P(t.u, t.v, aimZ(t));
+    if (BW.g === g && BW.list && bwBeam(g, src, t, def, m)) return; // v2.85: it strikes an enemy Bastion's barrier
     damage(g, t, def.dmg * (sideBuff(g, src.side) ? NANO.dmg : 1) * outMul(g, src), def.weapon, src.side, src);
     const hq = def.weapon === 'hqbeam' || def.weapon === 'sovereign'; // the Axis lance (v2.36), the Sovereign's judgement (v2.37): heavier, violet and cyan
     g.fx.push({ k: 'beam', x: a.x, y: a.y, x2: b.x, y2: b.y, t: 0, life: hq ? 0.34 : def.weapon === 'horizon' ? 0.32 : 0.2, w: def.weapon === 'sovereign' ? 5 : hq ? 3.6 : def.weapon === 'horizon' ? 3.2 : def.split ? 1.5 : 2.2, hq });
@@ -3559,7 +3568,7 @@ for (const [k, f] of Object.entries({
   brood: A => `A brood pod lands after a ${txN(A.delay)} s warning and releases ${A.n} Skitterlings that live for ${txN(A.life)} s and use no supply (at most ${TEMP.max} such creatures at once). Target ground you can see, clear of enemies.`,
   corrosive: A => `A spore cloud for ${txN(A.dur)} s: enemy ground units inside take ${txN(A.dps)} damage per second and are corroded (${txP(A.corr)} more damage taken; the ${txP(CORR.cap)} corrosion cap still applies). Not aircraft or buildings; they can walk out. Target any explored ground.`,
   mwarp: A => `Up to ${A.n} of your units inside the circle (the most damaged first) channel for ${txN(A.ch)} s, then warp to your warp point. It moves units; it never creates any. Target ground you can see with your units on it.`,
-  overcharge: A => `Your units inside the circle regain ${txP(A.regen)} of their shields per second, even under fire, and take ${txP(A.cut)} less damage for ${txN(A.dur)} s (with a Bastion's brace, never more than ${txP(A.cap)} less). Shields only: no health, no invulnerability.`,
+  overcharge: A => `Your units inside the circle regain ${txP(A.regen)} of their shields per second, even under fire, and take ${txP(A.cut)} less damage for ${txN(A.dur)} s (with ${REWORK.b3b ? 'a brace' : 'a Bastion\'s brace'}, never more than ${txP(A.cap)} less). Shields only: no health, no invulnerability.`,
   beam: A => `After a ${txN(A.delay)} s warning, a beam sweeps ${txN(A.len)} along the lane over ${txN(A.sweep)} s: ${txN(A.dmg)} damage to every enemy ground unit and building it passes. Not aircraft, not a shielded HQ. Target explored ground on the lane.`,
 })) liveStr(ABIL[k], 'tip', () => f(ABIL[k]));
 const abList = side => FACTIONS[facOf(side.faction)].abil; // the abilities this side can use (one shared cooldown)
@@ -3853,6 +3862,7 @@ function updateProjs(g, dt) {
     if (p.target && p.target.hp > 0) { p.tu = p.target.u; p.tv = p.target.v; p.tz = aimZ(p.target); }
     else p.target = null;
     const du = p.tu - p.u, dv = p.tv - p.v, dz = p.tz - p.z, dist = Math.hypot(du, dv, dz), step = p.speed * dt;
+    if (BW.g === g && BW.list) { const fin = dist <= step + 2, k = fin ? 1 : step / dist; if (bwStop(g, p, p.u + du * k, p.v + dv * k, p.z + dz * k)) { p.done = true; continue; } } // v2.85: an enemy Bastion's barrier in the way
     if (dist <= step + 2) { p.u = p.tu; p.v = p.tv; p.z = p.tz; impact(g, p, p.target); p.done = true; continue; }
     p.u += du / dist * step; p.v += dv / dist * step; p.z += dz / dist * step;
     if ((p.weapon === 'rocket' || p.weapon === 'hqgun' || p.weapon === 'missile') && fxRnd() < 0.7) {
@@ -3978,14 +3988,16 @@ function damage1(g, e, amt, weapon, fromSide, src) {
   const armor = e.kind === 'b' ? 'building' : e.arm || UDEF[e.type].armor; // e.arm (v2.83): a unit's own armour (a batch 2b Ruinmaw's)
   const mult = DMG[weapon][armor];
   if (!mult) return;
+  const b3 = e.kind === 'u' && rwB3b(g), ud3 = b3 ? rwD(g, e.type) : null; // v2.85: a batch 3b unit plays by its own definition
+  if (b3 && ud3.parry && amt > 0 && parryHit(g, e, weapon, src)) return; // v2.85: a Shardling's parry negates the hit
   let dmg = amt * mult * (sideBuff(g, e.side) ? NANO.cut : 1) * (1 + corrNow(e, g.t)); // corroded: takes more (v2.19; v2.37 the second slot)
   if (e.cov && !noCover(weapon)) dmg *= 1 - TITAN.cover; // v2.83: Last Fist infantry in a Titan's cover take less from ranged attacks
-  const br = e.kind === 'u' && UDEF[e.type].brace, pre = dmg;
+  const br = e.kind === 'u' && (b3 ? ud3 : UDEF[e.type]).brace, pre = dmg; // v2.85: a batch 3b Bastion has none
   if (br) { // the Bulwark braces on the first hit after its cooldown (v2.17)
     if (!(e.braceT > g.t) && g.t >= e.braceCd) { e.braceT = g.t + br.dur; e.braceCd = g.t + br.cd; }
     if (e.braceT > g.t) dmg *= 1 - br.cut;
   }
-  const sg = e.kind === 'u' && UDEF[e.type].surge; // P6 (v2.37): a Bastion's shield surge starts on the first hit after its cooldown
+  const sg = e.kind === 'u' && (b3 ? ud3 : UDEF[e.type]).surge; // v2.85: nor its surge // P6 (v2.37): a Bastion's shield surge starts on the first hit after its cooldown
   if (sg && g.t >= (e.surgeCd || 0)) { e.surgeT = g.t + sg.dur; e.surgeCd = g.t + sg.cd; }
   if (e.ovT > g.t) { // Shield Overcharge (v2.28): less damage, with the brace together never more than OV cap
     const A = ABIL.overcharge, nd = Math.max(dmg * (1 - A.cut), pre * (1 - A.cap));
@@ -4006,7 +4018,7 @@ function damage1(g, e, amt, weapon, fromSide, src) {
   e.hitT = 0.12;
   if (e.kind === 'u') {
     e.lastHurt = g.t;
-    const ud = UDEF[e.type];
+    const ud = b3 ? ud3 : UDEF[e.type]; // v2.85: a batch 3b Dreadthorn has no spine burst
     if (ud.thorns && src && src.kind === 'u' && src.hp > 0 && effDist(src, e) <= ud.thorns.range) damage(g, src, dmg * ud.thorns.frac, 'thorns', e.side); // Thornback: no src, so no loop
     if (ud.burst && dmg >= ud.burst.trigger && weapon !== 'spines' && g.t >= e.burstCd && e.hp > 0) { // Dreadthorn: a spine burst on a big hit
       e.burstCd = g.t + ud.burst.cd; const bw = P(e.u, e.v, 12); fxBoom(g, bw.x, bw.y, 22);
@@ -4271,8 +4283,8 @@ function meteorDodge(g, u) {
      exiles a weak bolt (its UDEF weapon).
    New internal ids rather than renamed ones: a game with b2a off still has Bile Lobbers and Rift Mortars, and saves, match
    history and tests keep naming them. */
-const REWORK = { b2a: true, artDeploy: true, artTelegraph: true, b2b: true, b3a: true }; // b2b (v2.83): batch 2b, src/sim/rework-2b.js; b3a (v2.84): batch 3a, src/sim/rework-3a.js
-const RW_KEYS = ['b2a', 'artDeploy', 'artTelegraph', 'b2b', 'b3a'];
+const REWORK = { b2a: true, artDeploy: true, artTelegraph: true, b2b: true, b3a: true, b3b: true }; // b2b (v2.83): batch 2b, src/sim/rework-2b.js; b3a (v2.84): batch 3a, src/sim/rework-3a.js; b3b (v2.85): batch 3b, src/sim/rework-3b.js
+const RW_KEYS = ['b2a', 'artDeploy', 'artTelegraph', 'b2b', 'b3a', 'b3b'];
 const rwInit = o => { const r = Object.assign({}, REWORK, o || {}), out = {}; for (const k of RW_KEYS) out[k] = !!r[k]; return out; };
 const rwB2a = g => !!(g && g.rw && g.rw.b2a);
 const rwDep = g => rwB2a(g) && !!g.rw.artDeploy;
@@ -4506,7 +4518,7 @@ const RW2B_D = {
 };
 const RWD_C = { g: null, t: -1, m: {} };
 function rwD(g, t) { // the definition a unit of type t plays by in game g
-  const f = (rwB2b(g) && RW2B_D[t]) || (rwB3a(g) && RW3A_D[t]); if (!f) return UDEF[t]; // v2.84: batch 3a's four too
+  const f = (rwB2b(g) && RW2B_D[t]) || (rwB3a(g) && RW3A_D[t]) || (rwB3b(g) && RW3B_D[t]); if (!f) return UDEF[t]; // v2.84: batch 3a's four too; v2.85: 3b's
   if (RWD_C.g !== g || RWD_C.t !== g.t) { RWD_C.g = g; RWD_C.t = g.t; RWD_C.m = {}; }
   return RWD_C.m[t] || (RWD_C.m[t] = f());
 }
@@ -4514,6 +4526,7 @@ function rwD(g, t) { // the definition a unit of type t plays by in game g
 // Ruinmaw's bite counts as its weapon there
 function rwShow(g, t) {
   if (RW3A_D[t]) return (g ? rwB3a(g) : REWORK.b3a) ? RW3A_D[t]() : UDEF[t]; // v2.84: batch 3a's four
+  if (RW3B_D[t]) return (g ? rwB3b(g) : REWORK.b3b) ? RW3B_D[t]() : UDEF[t]; // v2.85: batch 3b's four
   if (!(g ? rwB2b(g) : REWORK.b2b) || !RW2B_D[t]) return UDEF[t];
   const d = RW2B_D[t](); if (t === 'ruinmaw') Object.assign(d, { weapon: 'ruinbite', dmg: RUIN.bite, cd: RUIN.biteCd, melee: true }); return d;
 }
@@ -4872,10 +4885,11 @@ const RW2B_TASTE = { ruinmaw: { aggressor: 1.2, trickster: 1.3, turtle: 0.8, eco
      At most LATCH.max Leapers per host. It can be hit like any unit (it stands where the host stands, so splash at the host
      reaches it). The host dying hatches LATCH.hatch temporary Skitterlings per Leaper (LATCH.life s, no supply, can't
      capture nodes: u.noCap), at most LATCH.hatchMax per host; the Leaper drops off and carries on.
-   - Riftstalker (Axiarchs): its phase-step strike prefers ranged units in reach (the longest range first) and it still
-     fades back after striking. Out on a strike (u.rsH), its shields breaking blinks it straight back to where it stepped
-     from (u.rsBrk, set by damage1). A strike that kills chain-blinks it to another ranged enemy within RS.r (up to RS.chain
-     per strike), no cooldown; a strike that doesn't kill, or a kill with nothing in reach, fades it back.
+   - Riftstalker (Axiarchs): its phase-step strike prefers ranged units in reach (the longest range first). v2.85 (Part 0
+     of batch 3b): it no longer fades back after striking; it stays and fights. Out on a strike (u.rsH), its shields
+     breaking blinks it straight back to where it stepped from (u.rsBrk, set by damage1). A strike that kills
+     chain-blinks it to another ranged enemy within RS.r (up to RS.chain per strike), no cooldown; a kill with no chain
+     target and nothing else in reach, or nothing in reach for RS.idle s, blinks it home too (rsHome).
    - Parallax (Axiarchs): no leap. Every SWAP.every s it looks for an Axiarch ground ally within SWAP.r under SWAP.low
      health (the most expensive first) and swaps places with it (SWAP.cd cooldown); never while its own health is under
      SWAP.self, never with an exiled, burrowed or tunnelling unit. Its blows still disrupt.
@@ -4885,7 +4899,7 @@ const RW2B_TASTE = { ruinmaw: { aggressor: 1.2, trickster: 1.3, turtle: 0.8, eco
      max health back and a stack (u.rvS, up to RAV.max): +RAV.dmg damage and +RAV.hp max health each, kept until it dies. */
 const rwB3a = g => !!(g && g.rw && g.rw.b3a);
 const LATCH = { dps: 10, tick: 0.5, slow: 0.3, max: 3, big: 4, hatch: 2, hatchMax: 6, life: 20, land: 40, aim: 320 };
-const RS = { chain: 2, r: 130, aim: 320, guard: 70 };
+const RS = { chain: 2, r: 130, aim: 320, guard: 70, idle: 0.5, aiShp: 0.5 }; // idle, aiShp (v2.85): see rsOut; an AI's strike needs half its shields (the v2.37 timing rule asks 75%)
 const SWAP = { r: 160, low: 0.3, self: 0.4, cd: 10, every: 0.25, back: 3, guard: 40 };
 const RAV = { jaw: 14, life: 6, r: 60, eat: 1.5, heal: 0.3, dmg: 0.1, hp: 0.1, max: 3, low: 0.6, calm: 2, seek: 220, safe: 150 };
 const LATCH_WALK = ['titan', 'hydra', 'bastion', 'gravemantle', 'eventide', 'worldbreaker'];
@@ -4901,7 +4915,7 @@ EX_TIMERS.push('dvT', 'swCd', 'swChk', 'ltN'); // v2.84: exiled mid-devour, mid-
 
 // Texts the player sees follow the new-game default (numbers in UNIT_TIPS, read live)
 for (const [t, on] of [['leaper', 'Parasite that leaps onto vehicles, walkers and other big ground units and latches on, eating its host and slowing it. Shoot it off; if the host dies with Leapers on it, Skitterlings hatch.'],
-  ['riftstalker', 'Backline assassin that phase-steps onto ranged units, strikes and fades back. A kill chains it to the next ranged target; breaking its shields sends it straight home.'],
+  ['riftstalker', 'Backline assassin that phase-steps onto ranged units and stays to fight. A kill chains it to the next ranged target; breaking its shields, or running out of targets, blinks it straight home.'],
   ['parallax', 'Armored guardian that swaps places with a badly wounded ally nearby, taking its place in the fight. Its blows weaken enemy fire. Spread your damage or kill it first.'],
   ['ravager', 'Hulking devourer that eats the remains of fallen units to heal and grow bigger and stronger, up to three times. Kill it early, before it feeds.']]) {
   const d0 = UDEF[t].desc; Object.defineProperty(UDEF[t], 'desc', { get: () => REWORK.b3a ? on : d0, enumerable: true, configurable: true });
@@ -4909,7 +4923,7 @@ for (const [t, on] of [['leaper', 'Parasite that leaps onto vehicles, walkers an
 function rw3aText(o, k, on) { const x = Object.getOwnPropertyDescriptor(o, k), off = x.get ? x.get() : x.value; Object.defineProperty(o, k, { get: () => REWORK.b3a ? on : off, enumerable: true, configurable: true }); }
 rw3aText(TREES_BH.barracks.A.steps[2], 'txt', 'Unlocks Leapers: parasites that latch onto big ground units and eat them');
 rw3aText(TREES_BH.barracks.A.steps[3], 'txt', 'Unlocks Ravagers: devourers that eat the fallen to heal and grow');
-rw3aText(TREES_AX.barracks.A.steps[2], 'txt', 'Unlocks Riftstalkers: backline assassins that chain kills and blink home');
+rw3aText(TREES_AX.barracks.A.steps[2], 'txt', 'Unlocks Riftstalkers: backline assassins that stay to fight, chain kills and blink home');
 rw3aText(TREES_AX.barracks.A.steps[3], 'txt', 'Unlocks Parallaxes: guardians that swap places with wounded allies');
 
 /* ---- Leaper: latching ---- */
@@ -5028,26 +5042,37 @@ function rsJump(g, u, d, st, cs, foes, best, dt, sp, side) {
   }
   return false;
 }
-// After a strike out on a leap: a kill chains to the next ranged enemy within RS.r (no cooldown); otherwise it fades back
+// After a blow out on a strike (v2.85, Part 0 of batch 3b: it no longer fades back after every blow, so its shields can
+// break out there and blink it home): a kill chains to the next ranged enemy within RS.r (no cooldown, up to RS.chain per
+// strike); a kill with no chain target and nothing else in reach blinks it home; otherwise it stays and fights
 function rsAfter(g, u, d, T, foes) {
-  if (T.hp <= 0 && (u.rsC || 0) < RS.chain) {
+  if (T.hp > 0) return; // it stays on its target
+  if ((u.rsC || 0) < RS.chain) {
     const N = rsPick(g, u, foes, u.u, u.v, 0, RS.r);
     if (N) {
       const dd = Math.max(1, Math.hypot(N.u - u.u, N.v - u.v)), k = Math.max(0, (dd - d.range * 0.7) / dd), a = P(u.u, u.v, 12);
       u.u += (N.u - u.u) * k; u.v += (N.v - u.v) * k; if (Math.abs(N.u - u.u) > 1) u.face = N.u >= u.u ? 1 : -1;
-      u.rsC = (u.rsC || 0) + 1; u.cd = Math.min(u.cd, 0.15); u.tgt = N.id; u.nav = undefined;
+      u.rsC = (u.rsC || 0) + 1; u.cd = Math.min(u.cd, 0.15); u.tgt = N.id; u.nav = undefined; u.rsIdle = 0;
       const b = P(u.u, u.v, 12); g.fx.push({ k: 'rsblink', side: u.side, x: a.x, y: a.y, x2: b.x, y2: b.y, u: u.u, t: 0, life: 0.45 });
       ev(g, { type: 'chain', u: u.u, side: u.side });
       return;
     }
   }
-  u.fadeArm = 0; u.rsH = 0; u.lu = u.fu; u.lv = u.fv; u.ld = Math.max(1, Math.hypot(u.lu - u.u, u.lv - u.v)); u.leaping = 1;
-  const w = P(u.u, u.v, 10); g.fx.push({ k: 'blink', side: u.side, u: u.u, x: w.x, y: w.y, t: 0, life: 0.4 });
+  if (!acquire(g, u, d, foes).best) rsHome(g, u); // out of chain targets, nothing in reach: home
+}
+// Out on a strike between blows (v2.85): ordered away, it is no longer out there; nothing in reach for RS.idle s (its
+// target walked off or died to someone else), it blinks home. True: it blinked
+function rsOut(g, u, best, st, cs) {
+  if (st === 'retreat' || st === 'move' || (cs && cs.run)) { u.rsH = 0; u.fadeArm = 0; u.rsIdle = 0; return false; }
+  if (best) { u.rsIdle = 0; return false; }
+  if (!u.rsIdle) { u.rsIdle = g.t; return false; }
+  if (g.t - u.rsIdle < RS.idle) return false;
+  rsHome(g, u); return true;
 }
 // Its shields broke while out on a strike: straight back to where it stepped from
 function rsHome(g, u) {
   const a = P(u.u, u.v, 12 + (u.z || 0));
-  u.rsBrk = 0; u.rsH = 0; u.fadeArm = 0; u.leaping = 0; u.z = 0; u.u = u.fu; u.v = u.fv; u.tgt = 0; u.chT = 0; u.nav = undefined; u.moving = false;
+  u.rsBrk = 0; u.rsH = 0; u.fadeArm = 0; u.rsIdle = 0; u.leaping = 0; u.z = 0; u.u = u.fu; u.v = u.fv; u.tgt = 0; u.chT = 0; u.nav = undefined; u.moving = false;
   const b = P(u.u, u.v, 12); g.fx.push({ k: 'rsblink', side: u.side, x: a.x, y: a.y, x2: b.x, y2: b.y, u: u.u, t: 0, life: 0.55, home: 1 });
   if (MAP_LANED) u.lane = laneAt(u.u, u.v);
   ev(g, { type: 'blinkHome', u: u.u, side: u.side });
@@ -5180,6 +5205,292 @@ function aiRework3a(g, s, mine) {
 const aiBigShare = th => th.length ? th.filter(u => !UDEF[u.type].air && latchBig(u)).length / th.length : 0;
 // Persona tastes for the four (in batch 3a none plays like its old Last Fist counterpart in AI_TWIN)
 const RW3A_TASTE = { leaper: { aggressor: 1.2, trickster: 1.2, turtle: 0.9, economist: 1.0 }, ravager: { aggressor: 1.3, trickster: 1.0, turtle: 1.0, economist: 0.9 }, riftstalker: { trickster: 1.3, aggressor: 1.1, turtle: 0.8, economist: 1.0 }, parallax: { turtle: 1.2, economist: 1.1, aggressor: 1.0, trickster: 0.9 } };
+/* ---------- Faction rework, batch 3b (v2.85, docs/FACTION_REWORK.md "Batch 3"): Dreadthorn, Bastion, Shardling, Bulwark ----------
+   REWORK.b3b, stored per game in g.rw like the earlier batches (rwB3b). Off: the four units play exactly as in v2.84 and
+   nothing below runs or is saved (every unit field here is set only by this code, so a b3b-off game never carries one). On
+   (the new-game default) each keeps its internal id and plays through its own definition for that game (rwD, RW3B_D).
+   - Dreadthorn (Bloomhost): no spine burst. A charge (trampleGo, trampleStep): with an enemy ground unit TRAMPLE.min to
+     TRAMPLE.max away (a target order: that unit, from TRAMPLE.tmin), it charges in a straight line at TRAMPLE.speed for up
+     to TRAMPLE.len (u.crg; u.crU/u.crV its heading, u.crL what is left, u.crHit the ids it has hit). Every enemy ground unit
+     within TRAMPLE.w of its path takes TRAMPLE.dmg once and is knocked TRAMPLE.knock to the side (g.kn, a short slide). It
+     stops early at a building, a Worldbreaker ridge, a wall or the edge of the field. Then it is dazed TRAMPLE.daze s (u.dzT:
+     no moves, no attacks). Ready again TRAMPLE.cd s after the charge starts (u.crCd). It picks the line that tramples the
+     most enemy supply; an AI's needs TRAMPLE.aiMin supply on the line (no charge at one small unit).
+   - Bastion (Axiarchs): no shield surge (and no brace). A barrier (u.bwHp): a curved wall BAR.off in front of it, BAR.half
+     each way across the lane's depth, facing the nearest enemy it can see within BAR.face (u.bwF; none: toward the enemy
+     base). Enemy shots that cross it (bullets, missiles, bolts, beams, building guns: everything but lobbed shells, bombs
+     and the ground attacks) hit it instead (bwStop, bwBeam). Friendly shots pass out. BAR.hp health, BAR.regen a second
+     after BAR.calm s unhit; broken, it is down BAR.down s (u.bwDn) and comes back at full health. Its pulse is unchanged.
+   - Shardling (Axiarchs): a parry (u.prT: ready again). Ready, the next damaging hit (splash too; not acid pools' steady
+     burn) is negated in full; an attacker in melee with it (within its reach, or a melee attacker within its own) takes
+     PARRY.mul × the Shardling's damage at once. Ready again PARRY.cd s later.
+   - Bulwark (Bloomhost): its brace unchanged. On its own creep it regenerates BULK.fight health a second even in combat,
+     and BULK.calm × the usual creep regeneration out of combat (bulkRegen, in place of updateCreep's for the Bulwark). */
+const rwB3b = g => !!(g && g.rw && g.rw.b3b);
+const TRAMPLE = { min: 80, max: 200, tmin: 40, speed: 140, len: 220, dmg: 50, knock: 30, kT: 0.25, w: 18, daze: 2, cd: 14, aiMin: 3, every: 0.25, bld: 8, step: 6 };
+const BAR = { off: 70, half: 45, bow: 10, hp: 600, regen: 30, calm: 3, down: 8, h: 44, face: 260, lead: 40, wait: 20 };
+const PARRY = { cd: 4, mul: 2, skip: ['acidpool'] };
+const BULK = { fight: 8, calm: 3, leash: 50 };
+const BW_PASS = ['bomb', 'crush', 'sovereign']; // dropped from above: over the wall
+Object.assign(DMG, { trample: { light: 1.0, heavy: 1.0, vehicle: 1.0, air: 0, building: 0 } }); // a Dreadthorn's charge (ground units)
+const RW3B_D = {
+  dreadthorn: () => Object.assign({}, UDEF.dreadthorn, { burst: undefined, trample: true }),
+  bastion: () => Object.assign({}, UDEF.bastion, { surge: undefined, brace: undefined, barrier: true }),
+  shardling: () => Object.assign({}, UDEF.shardling, { parry: true }),
+  bulwark: () => Object.assign({}, UDEF.bulwark, { creepHold: true }),
+};
+EX_TIMERS.push('dzT', 'crCd', 'bwDn', 'bwHit', 'prT'); // v2.85: dazed, charge cooldown, barrier down, barrier unhit, parry: resumed on return
+
+// Texts the player sees follow the new-game default (numbers in UNIT_TIPS, read live)
+for (const [t, on] of [['dreadthorn', 'Massive charging beast. With enemies a short way off it charges in a straight line, trampling and knocking aside every ground unit in its path, then stands dazed for a moment. Spread out and punish the recovery.'],
+  ['bastion', 'Heavy walker that projects a curved shield wall in front of it: enemy shots that would pass through hit the wall instead. Shells lobbed over it, melee and flanking get past; broken, the wall drops for a while.'],
+  ['shardling', 'Shielded duelist with a light blade. Every few seconds it parries the next hit completely, and strikes back hard if the attacker is in reach. Pricey, and it can\'t hit aircraft.'],
+  ['bulwark', 'Hulking melee frontliner that braces to take less damage when hit. On its own creep it regenerates even in combat, and much faster out of it. Slow, and it can\'t hit aircraft.']]) {
+  const d0 = UDEF[t].desc; Object.defineProperty(UDEF[t], 'desc', { get: () => REWORK.b3b ? on : d0, enumerable: true, configurable: true });
+}
+function rw3bText(o, k, on) { const x = Object.getOwnPropertyDescriptor(o, k), off = x.get ? x.get() : x.value; Object.defineProperty(o, k, { get: () => REWORK.b3b ? on : off, enumerable: true, configurable: true }); }
+rw3bText(TREES_BH.factory.B.steps[3], 'txt', 'Unlocks Dreadthorns: chargers that trample through the enemy line');
+
+/* ---- Dreadthorn: the charge ---- */
+const trampleFoe = (g, u, e) => e.kind === 'u' && e.side === 1 - u.side && e.hp > 0 && !e.dead && !e.gone && !e.bur && !e.leaping && !e.tn && !(e.phT > g.t) && !UDEF[e.type].air;
+// Where a charge along (du, dv) from (u0, v0) stops: a building, a ridge of the other side, a wall or the field's edge
+function trampleStop(g, u, u0, v0, du, dv, len) {
+  const bl = g.ents.filter(b => b.kind === 'b' && b.hp > 0), R = g.rdg && g.rdg.length ? g.rdg.filter(r => r.side !== u.side) : null;
+  let a = 0;
+  while (a < len) {
+    const s = Math.min(TRAMPLE.step, len - a), pu = u0 + du * a, pv = v0 + dv * a, nu = pu + du * s, nv = pv + dv * s;
+    if (nu < 0 || nu > L || (MAP_2D ? Math.abs(nv) > MAP.size.h / 2 || (NAV.on && navShut(nu, nv)) : Math.abs(nv) > LANE_V)) break;
+    if (bl.some(b => Math.hypot(b.u - nu, b.v - nv) < b.half + TRAMPLE.bld)) break;
+    if (R && R.some(r => rdgCross(r, pu, pv, nu, nv, 2))) break;
+    a += s;
+  }
+  return a;
+}
+const segDist = (e, u0, v0, du, dv, len) => { const t = clamp((e.u - u0) * du + (e.v - v0) * dv, 0, len); return Math.hypot(e.u - (u0 + du * t), e.v - (v0 + dv * t)); };
+// A charge at T: [its heading, the stop, the enemy supply on the line]
+function trampleLine(g, u, T, foes) {
+  const dd = Math.max(1, Math.hypot(T.u - u.u, T.v - u.v)), du = (T.u - u.u) / dd, dv = (T.v - u.v) / dd, len = trampleStop(g, u, u.u, u.v, du, dv, TRAMPLE.len);
+  let sup = 0; for (const e of foes) if (trampleFoe(g, u, e) && segDist(e, u.u, u.v, du, dv, len) <= TRAMPLE.w) sup += UDEF[e.type].pop;
+  return { du, dv, len, sup };
+}
+// Start a charge (true: it charged). Automatic: the enemy ground unit TRAMPLE.min-max away whose line tramples the most supply;
+// a target order: that unit, from TRAMPLE.tmin. Not on Retreat or a move, not snared or held back; on Hold only at enemies
+// near its spot. Checked every TRAMPLE.every s.
+function trampleGo(g, u, d, st, cs, foes, best, side) {
+  if (g.t < (u.crCd || 0) || g.t < (u.crChk || 0) || u.snT > g.t || u.aiHold > g.t || st === 'retreat' || st === 'move' || (cs && cs.run)) return false;
+  u.crChk = g.t + TRAMPLE.every;
+  const O = cs && cs.chase;
+  let pick = null;
+  if (O) { // a target order: at that unit, once it is within reach of a charge
+    if (O.kind !== 'u' || !trampleFoe(g, u, O) || !visibleTo(g, u.side, O)) return false;
+    const k = effDist(u, O); if (k < TRAMPLE.tmin || k > TRAMPLE.max) return false;
+    pick = trampleLine(g, u, O, foes);
+  } else {
+    if (best) return false; // something already in reach: it fights
+    const hold = st === 'hold' && u.holdU !== undefined;
+    let bs = -1, bd = 1e9;
+    for (const e of foes) {
+      if (!trampleFoe(g, u, e) || !visibleTo(g, u.side, e)) continue;
+      const k = effDist(u, e); if (k < TRAMPLE.min || k > TRAMPLE.max) continue;
+      if (hold && Math.hypot(e.u - u.holdU, e.v - u.holdV) > MECH7C.holdR + d.range) continue;
+      const L_ = trampleLine(g, u, e, foes);
+      if (L_.len < TRAMPLE.min * 0.5) continue; // a wall right ahead
+      if (L_.sup > bs || (L_.sup === bs && k < bd)) { bs = L_.sup; bd = k; pick = L_; }
+    }
+    if (!pick || (!side.direct && pick.sup < TRAMPLE.aiMin)) return false; // an AI's charge needs a group (or one big unit) on the line
+  }
+  Object.assign(u, { crg: 1, crU: pick.du, crV: pick.dv, crL: TRAMPLE.len, crHit: [], crCd: g.t + TRAMPLE.cd, crU0: u.u, crV0: u.v, crS: g.t, tgt: 0, chT: 0, nav: undefined });
+  if (Math.abs(pick.du) > 0.05) u.face = pick.du > 0 ? 1 : -1;
+  ev(g, { type: 'charge', u: u.u, side: u.side, sup: pick.sup });
+  return true;
+}
+// One tick of a charge: on along its line, trampling what it passes; it ends at its length or where its way is blocked
+function trampleStep(g, u, d, dt) {
+  const st = Math.min(u.crL, TRAMPLE.speed * dt), ok = st > 0 ? trampleStop(g, u, u.u, u.v, u.crU, u.crV, st) : 0;
+  const u0 = u.u, v0 = u.v;
+  if (ok > 0) { u.u += u.crU * ok; u.v += u.crV * ok; u.crL -= ok; }
+  u.moving = true; u.tgt = 0; u.chT = 0; u.lastAct = g.t;
+  const nd = (sideBuff(g, u.side) ? NANO.dmg : 1) * outMul(g, u), pn = -u.crV, pv = u.crU;
+  for (const e of g.ents.slice()) {
+    if (!trampleFoe(g, u, e) || u.crHit.includes(e.id) || segDist(e, u0, v0, u.crU, u.crV, ok) > TRAMPLE.w) continue;
+    u.crHit.push(e.id);
+    const sd = (e.u - u0) * pn + (e.v - v0) * pv, sg = sd > 0 || (sd === 0 && e.id % 2) ? 1 : -1;
+    damage(g, e, TRAMPLE.dmg * nd, 'trample', u.side, u);
+    if (e.hp > 0 && !e.lt && !e.gone) (g.kn || (g.kn = [])).push({ id: e.id, du: pn * sg, dv: pv * sg, left: TRAMPLE.knock });
+    const w = P(e.u, e.v, 8); g.fx.push({ k: 'trample', side: u.side, u: e.u, x: w.x, y: w.y, t: 0, life: 0.45, dx: pn * sg });
+  }
+  if (u.hp <= 0) return;
+  if (u.crL <= 0.01 || ok < st - 1e-6) trampleEnd(g, u);
+}
+function trampleEnd(g, u) {
+  const n = u.crHit.length; u.crg = 0; u.crL = 0; u.crHit = []; u.dzT = g.t + TRAMPLE.daze; u.moving = false;
+  if (MAP_LANED) u.lane = laneAt(u.u, u.v);
+  const w = P(u.u, u.v, 0); g.fx.push({ k: 'chargeEnd', side: u.side, u: u.u, x: w.x, y: w.y, t: 0, life: 0.6 });
+  ev(g, { type: 'chargeEnd', u: u.u, side: u.side, hit: n });
+}
+// Knocked aside: a short slide (never through a wall or off the field)
+function updateKnocks(g, dt) {
+  if (!g.kn || !g.kn.length) return;
+  const sp = TRAMPLE.knock / TRAMPLE.kT;
+  g.kn = g.kn.filter(k => {
+    const e = ctlEnt(g, k.id);
+    if (!e || e.hp <= 0 || e.gone || e.lt) return false;
+    const st = Math.min(sp * dt, k.left), nu = clamp(e.u + k.du * st, 0, L), nv = MAP_2D ? e.v + k.dv * st : clamp(e.v + k.dv * st, -LANE_V, LANE_V);
+    if (!(NAV.on && navShut(nu, nv))) { e.u = nu; e.v = nv; e.nav = undefined; }
+    k.left -= st;
+    return k.left > 1e-6;
+  });
+}
+
+/* ---- Bastion: the barrier ---- */
+const BW = { g: null, list: null }; // the barriers of the game being updated (rebuilt each tick)
+function updateBarriers(g, dt) {
+  BW.g = g; BW.list = null;
+  for (const u of g.ents) {
+    if (u.kind !== 'u' || u.type !== 'bastion' || u.hp <= 0 || u.dead) continue;
+    if (u.bwHp === undefined) { u.bwHp = BAR.hp; u.bwHit = -99; u.bwDn = 0; u.bwF = dirOf(u.side); }
+    if (u.gone) continue; // exiled: down while away
+    if (u.bwDn) { if (g.t < u.bwDn) continue; u.bwDn = 0; u.bwHp = BAR.hp; const w = P(u.u + u.bwF * BAR.off, u.v, 0); g.fx.push({ k: 'bwup', side: u.side, u: u.u, x: w.x, y: w.y, t: 0, life: 0.5, F: u.bwF }); }
+    else if (u.bwHp < BAR.hp && g.t - u.bwHit >= BAR.calm) u.bwHp = Math.min(BAR.hp, u.bwHp + BAR.regen * dt);
+    let F = 0, bd = BAR.face;
+    for (const e of g.ents) { // it faces the nearest enemy it can see
+      if (e.side !== 1 - u.side || e.hp <= 0 || e.gone || (e.kind === 'u' && UDEF[e.type].air)) continue;
+      const k = Math.abs(e.u - u.u) + Math.abs(e.v - u.v) * 0.5; if (k >= bd || Math.abs(e.u - u.u) < 4 || !visibleTo(g, u.side, e)) continue;
+      bd = k; F = e.u > u.u ? 1 : -1;
+    }
+    u.bwF = F || dirOf(u.side);
+    (BW.list || (BW.list = [])).push(u);
+  }
+}
+const bwF = (B, u, v) => (u - B.u) * B.bwF - (BAR.off - BAR.bow * Math.min(1, ((v - B.v) / BAR.half) ** 2)); // > 0 beyond the wall
+// The first enemy barrier the move (u0, v0, z0) → (u1, v1, z1) of side s's shot crosses below its top: [B, k] or null
+function bwCross(g, s, u0, v0, z0, u1, v1, z1) {
+  if (BW.g !== g || !BW.list) return null;
+  let hit = null, hk = 2;
+  for (const B of BW.list) {
+    if (B.side === s || B.hp <= 0 || B.bwDn) continue;
+    const f0 = bwF(B, u0, v0), f1 = bwF(B, u1, v1);
+    if ((f0 > 0) === (f1 > 0) || f0 === f1) continue;
+    const k = f0 / (f0 - f1), cv = v0 + (v1 - v0) * k, cz = z0 + (z1 - z0) * k;
+    if (Math.abs(cv - B.v) > BAR.half || cz > BAR.h || k >= hk) continue;
+    hk = k; hit = B;
+  }
+  return hit ? [hit, hk] : null;
+}
+function bwDamage(g, B, amt, u, v, z) {
+  B.bwHp -= amt; B.bwHit = g.t;
+  if (g.log) g.log.tot[B.side].bwBlk = (g.log.tot[B.side].bwBlk || 0) + amt;
+  const w = P(u, v, z); g.fx.push({ k: 'bwhit', side: B.side, u, x: w.x, y: w.y, t: 0, life: 0.3, id: B.id });
+  if (B.bwHp <= 0) {
+    B.bwHp = 0; B.bwDn = g.t + BAR.down;
+    const c = P(B.u + B.bwF * BAR.off, B.v, 0); g.fx.push({ k: 'bwbreak', side: B.side, u: B.u + B.bwF * BAR.off, x: c.x, y: c.y, t: 0, life: 0.9, F: B.bwF });
+    ev(g, { type: 'barrierBreak', u: B.u, side: B.side });
+  }
+}
+// A projectile's step (updateProjs): blocked by an enemy barrier? True: it hit the wall (and is spent)
+function bwStop(g, p, nu, nv, nz) {
+  if (p.side < 0 || BW_PASS.includes(p.weapon) || p.carpet) return false;
+  const h = bwCross(g, p.side, p.u, p.v, p.z, nu, nv, nz); if (!h) return false;
+  const [B, k] = h; bwDamage(g, B, p.dmg, p.u + (nu - p.u) * k, p.v + (nv - p.v) * k, p.z + (nz - p.z) * k);
+  return true;
+}
+// A beam (fire): blocked by an enemy barrier? True: it struck the wall
+function bwBeam(g, src, t, def, m) {
+  const h = bwCross(g, src.side, m.u, m.v, m.z, t.u, t.v, aimZ(t)); if (!h) return false;
+  const [B, k] = h, cu = m.u + (t.u - m.u) * k, cv = m.v + (t.v - m.v) * k, cz = m.z + (aimZ(t) - m.z) * k;
+  bwDamage(g, B, def.dmg * (sideBuff(g, src.side) ? NANO.dmg : 1) * outMul(g, src), cu, cv, cz);
+  const a = P(m.u, m.v, m.z), b = P(cu, cv, cz), hq = def.weapon === 'hqbeam' || def.weapon === 'sovereign';
+  g.fx.push({ k: 'beam', x: a.x, y: a.y, x2: b.x, y2: b.y, t: 0, life: hq ? 0.34 : 0.2, w: hq ? 3.6 : 2.2, hq });
+  if (src.kind === 'u') src.recoil = 1;
+  return true;
+}
+// An AI's Bastion with nothing in reach keeps BAR.lead ahead of the ranged units it screens (true: it moved)
+function bastionGuard(g, u, d, dt, sp) {
+  const R = (u.bsG || []).map(id => ctlEnt(g, id)).filter(e => e && e.hp > 0 && e.side === u.side && !e.gone);
+  if (!R.length) { u.bsG = undefined; return false; }
+  const dir = dirOf(u.side), cu = R.reduce((a, e) => a + e.u, 0) / R.length, cv = R.reduce((a, e) => a + e.v, 0) / R.length, front = dir > 0 ? Math.max(...R.map(e => e.u)) : Math.min(...R.map(e => e.u));
+  const tu = clamp(front + dir * BAR.lead, 0, L), tv = cv;
+  if (Math.hypot(tu - u.u, tv - u.v) <= 14 || dir * (u.u - cu) > BAR.lead + 60) return false;
+  moveToward(u, d, tu, tv, dt, sp); return true;
+}
+
+/* ---- Shardling: the parry ---- */
+// damage1, b3b on, a Shardling whose parry is ready: the hit is negated; a melee attacker takes the counter. True: parried
+function parryHit(g, e, weapon, src) {
+  if (g.t < (e.prT || 0) || PARRY.skip.includes(weapon)) return false;
+  e.prT = g.t + PARRY.cd;
+  const d = rwD(g, 'shardling'), w = P(e.u, e.v, 12); let ctr = false;
+  if (src && src.kind === 'u' && src.hp > 0 && !src.gone && src.side !== e.side) {
+    const k = effDist(e, src), sd = rwD(g, src.type);
+    if (k <= d.range || (sd.melee && k <= sd.range + 4)) { // in melee with it: the counter-slash
+      ctr = true; if (Math.abs(src.u - e.u) > 1) e.face = src.u >= e.u ? 1 : -1; e.recoil = 1; e.lastAct = g.t;
+      damage(g, src, d.dmg * PARRY.mul * (sideBuff(g, e.side) ? NANO.dmg : 1) * outMul(g, e), d.weapon, e.side);
+    }
+  }
+  g.fx.push({ k: 'parry', side: e.side, u: e.u, x: w.x, y: w.y, t: 0, life: 0.45, ctr, face: e.face });
+  ev(g, { type: 'parry', u: e.u, side: e.side, ctr });
+  return true;
+}
+
+/* ---- Bulwark: creep regeneration ---- */
+function bulkRegen(g, dt) {
+  for (const e of g.ents) {
+    if (e.kind !== 'u' || e.type !== 'bulwark' || e.hp <= 0 || e.hp >= e.maxHp || e.gone || !onCreep(g, e.side, e.u, e.v)) continue;
+    const h0 = e.hp;
+    if (g.t - e.lastHurt < CREEP.calm || g.t - e.lastAct < CREEP.calm) { e.hp = Math.min(e.maxHp, e.hp + BULK.fight * dt); e.bkRg = g.t; } // in combat: a steady trickle
+    else { // out of combat: three times the usual creep regeneration (a Medicopter's faster heal never stacks with it)
+      const other = e.medAt === g.t ? UDEF.medic.heal : 0, rg = creepRegen(g, e.side) * BULK.calm;
+      e.creepAt = g.t; e.bkRg = g.t;
+      if (rg > other) e.hp = Math.min(e.maxHp, e.hp + e.maxHp * (rg - other) * dt);
+    }
+    if (g.log) g.log.tot[e.side].healed = (g.log.tot[e.side].healed || 0) + e.hp - h0;
+  }
+}
+// An AI's Bulwark defending holds on its creep (u.bkG, its spot there, set by the AI; it stands in for its home): it chases
+// only enemies on its own creep or within BULK.leash of its spot
+const bulkPreyOk = (g, u, e) => onCreep(g, u.side, e.u, e.v) || Math.hypot(e.u - u.bkG[0], e.v - u.bkG[1]) <= BULK.leash;
+
+/* ---- each tick (update), b3b on ---- */
+function update3b(g, dt) { updateBarriers(g, dt); updateKnocks(g, dt); bulkRegen(g, dt); }
+
+/* ---- the AI ---- */
+const bwRanged = t => { const d = UDEF[t]; return !!d.weapon && !d.melee && !d.air && d.range > 40 && t !== 'bastion'; };
+// Bastions screen the side's ranged ground units (its own ranged units on the attack wait behind the nearest Bastion);
+// Bulwarks defending hold on their creep. Every difficulty, each decision.
+function aiRework3b(g, s, mine) {
+  const side = g.sides[s], dir = dirOf(s), atk = side.stance === 'attack';
+  const bs = mine.filter(u => u.type === 'bastion' && !u.gone).sort((a, b) => a.id - b.id);
+  if (bs.length) {
+    const rg = mine.filter(u => bwRanged(u.type) && !u.gone && u.id !== side.scoutId && !capBusy(side, u.id));
+    bs.forEach((B, i) => { // each Bastion: the ranged units nearest it (shared out)
+      const near = rg.filter((e, j) => j % bs.length === i || bs.length === 1).sort((a, b) => Math.hypot(a.u - B.u, a.v - B.v) - Math.hypot(b.u - B.u, b.v - B.v) || a.id - b.id).slice(0, 6);
+      B.bsG = near.length ? near.map(e => e.id) : undefined;
+    });
+    if (atk) for (const e of rg) { // on the attack, a ranged unit well ahead of the nearest Bastion waits for it
+      let nb = null, nd = 1e9; for (const B of bs) { const k = Math.abs(B.u - e.u) + Math.abs(B.v - e.v) * 0.5; if (k < nd) { nd = k; nb = B; } }
+      if (nb && nd < 360 && dir * (e.u - nb.u) > -BAR.wait) e.aiWait = g.t + 1.5;
+    }
+  }
+  const bk = mine.filter(u => u.type === 'bulwark');
+  if (bk.length) { // defending: each Bulwark's spot is the front of its creep nearest the rally point
+    const ru = rallyU(s, g), rv = MAP.bases[s].rally ? MAP.bases[s].rally[1] : 0;
+    let spot = null, bd = 1e9;
+    if (!atk) for (const p of g.creep[s]) {
+      if (p.r < 24) continue;
+      const fu = clamp(p.u + dir * p.r * 0.6, 0, L), k = Math.abs(fu - ru) + Math.abs(p.v - rv);
+      if (k < bd) { bd = k; spot = [fu, p.v]; }
+    }
+    for (const u of bk) {
+      const at = spot && u.id !== side.scoutId && !capBusy(side, u.id) ? [spot[0], spot[1] + ((u.id * 37) % 5 - 2) * 9] : null;
+      u.bkG = at && onCreep(g, s, at[0], at[1]) ? at : undefined;
+    }
+  }
+}
+// The AI's reads for its scores (v2.85)
+const aiLobShare = th => th.length ? th.filter(u => { const d = UDEF[u.type]; return d.weapon === 'shell' || d.lob; }).length / th.length : 0;
+const aiPack = th => Math.min(1, th.filter(u => !UDEF[u.type].air).length / 20);
+// Persona tastes for the four (in batch 3b none plays like its old Last Fist counterpart in AI_TWIN)
+const RW3B_TASTE = { dreadthorn: { aggressor: 1.3, trickster: 1.1, turtle: 0.9, economist: 1.0 }, bastion: { turtle: 1.3, economist: 1.1, aggressor: 0.9, trickster: 1.0 }, shardling: { aggressor: 1.1, trickster: 1.2, turtle: 0.9, economist: 1.0 }, bulwark: { turtle: 1.3, economist: 1.0, aggressor: 1.0, trickster: 0.9 } };
 /* ---------- Enemy AI: same economy, same rules, same upgrades as the player ---------- */
 // Known base defenses: the enemy HQ gun plus remembered Turrets, each at its last-seen tier
 const HQ_VAL = 400, TURRET_VAL = 300;
@@ -5482,7 +5793,14 @@ function aiUpdate(g, s, dt) {
       sc.parallax = nPx >= Math.max(1, nVal / 2) ? 0.3 : 1.0 + Math.min(1, nVal / 4) * 0.8 + comp.heavy * 0.3 - comp.air * 0.5;
       sc.ravager = 1.2 + comp.light * 0.8 + comp.heavy * 0.3 - comp.vehicle * 0.4 - comp.air * 0.5;
     }
-    if (!threat) for (const t of types) { const b = P.bias[t] || (rwB3a(g) && RW3A_TASTE[t] ? RW3A_TASTE[t][P.kind] : rwB2b(g) && RW2B_TASTE[t] ? RW2B_TASTE[t][P.kind] : P.bias[AI_TWIN[t]]); if (b && sc[t] > 0) sc[t] *= b; } // v2.84: batch 3a's four have tastes of their own; // v2.83: the Ruinmaw and Worldbreaker have tastes of their own in batch 2b // the personality's taste in units (threats are answered on merit)
+    if (rwB3b(g)) { // v2.85 (rework batch 3b): the Dreadthorn tramples packed armies, the Bastion screens ranged fire (shells and melee get past), the Shardling duels melee, the Bulwark holds the creep
+      const myR = mine.length ? mine.filter(u => bwRanged(u.type)).length / mine.length : 0;
+      sc.dreadthorn = 1.2 + comp.light * 1.0 + comp.heavy * 0.6 + aiPack(theirs) * 0.6 - comp.air * 0.9;
+      sc.bastion = 1.0 + aiRangedShare(theirs) * 1.4 + myR * 0.6 - aiMeleeShare(theirs) * 0.6 - aiLobShare(theirs) * 0.8 - comp.air * 0.9;
+      sc.shardling = 0.9 + aiMeleeShare(theirs) * 0.8 + comp.light * 0.3 - comp.vehicle * 0.5 - comp.air * 0.4 - (types.length > 2 ? 0.3 : 0);
+      sc.bulwark = 1.3 + comp.light * 1.0 + comp.heavy * 0.7 + (turtle ? 0.3 : 0) - comp.air * 0.9;
+    }
+    if (!threat) for (const t of types) { const b = P.bias[t] || (rwB3b(g) && RW3B_TASTE[t] ? RW3B_TASTE[t][P.kind] : rwB3a(g) && RW3A_TASTE[t] ? RW3A_TASTE[t][P.kind] : rwB2b(g) && RW2B_TASTE[t] ? RW2B_TASTE[t][P.kind] : P.bias[AI_TWIN[t]]); if (b && sc[t] > 0) sc[t] *= b; } // v2.84: batch 3a's four have tastes of their own; // v2.83: the Ruinmaw and Worldbreaker have tastes of their own in batch 2b // the personality's taste in units (threats are answered on merit)
     for (const t of types) if (dl.comp[t] !== undefined) sc[t] *= dl.comp[t]; // the composition dial (v2.38; legacy has none)
     if (smart) aiSmartScores(g, s, sc, types, { comp, antiAir, theirs, mine, nFront, turtle, log, threat, P }); // v2.38: the Default AI values v2.37 roles
     if (holdEarly) for (const t of types) { if (t === 'tank' || t === 'bulwark' || t === 'bastion') sc[t] *= 1.6; if (t === 'shardling' || t === 'skitterling') sc[t] *= 0.6; } // v2.40 (hold)
@@ -5651,6 +5969,7 @@ function aiUpdate(g, s, dt) {
   if (smart) aiSmartArmy(g, s, mine, dl, P); // v2.38: the Default AI's unit handling
   if (rwB2b(g)) aiRework2b(g, s, mine); // v2.83: Titan escorts, Ruinmaw spots and tunnels (every difficulty)
   if (rwB3a(g)) aiRework3a(g, s, mine); // v2.84: Leaper and Riftstalker aims, Parallax guards (every difficulty)
+  if (rwB3b(g)) aiRework3b(g, s, mine); // v2.85: Bastions screen ranged units, Bulwarks hold the creep when defending
 }
 // Spotters: siege guns can't fire at what their side can't see, so while sieging, one unit walks up until
 // its sight reaches the front of the enemy base (as far as this side knows where that is). Seeing the base
@@ -6067,7 +6386,7 @@ function aiSmartArmy(g, s, mine, dl, P) {
   // a Sovereign under anti-air with its shields down backs off until they recharge
   if (aiFix(P, 'timing')) for (const u of mine) {
     const d = UDEF[u.type];
-    if (d.fade && u.maxShp && u.shp < u.maxShp * 0.75) u.aiHold = g.t + 1.5;
+    if (d.fade && u.maxShp && u.shp < u.maxShp * (u.type === 'riftstalker' && rwB3a(g) ? RS.aiShp : 0.75)) u.aiHold = g.t + 1.5; // v2.85: half its shields with batch 3a on
     if (d.phase && u.phCd > g.t && u.hp + u.shp < (u.maxHp + u.maxShp) * 0.45) u.aiBack = g.t + 2.5;
     if (u.type === 'sovereign' && u.maxShp && u.shp < u.maxShp * 0.25) {
       const aa = g.ents.some(e => e.side === opp && e.hp > 0 && e.kind === 'u' && UDEF[e.type].hitsAir && Math.abs(e.u - u.u) < 240 && visibleTo(g, s, e));
@@ -6251,7 +6570,7 @@ function serialize(g, extra) {
   const projs = g.projs.map(p => Object.assign({}, p, { target: p.target ? p.target.id : null }));
   const sides = g.sides.map(sd => Object.assign({}, sd, { hq: sd.hq.id, slots: sd.slots.map(b => b ? b.id : null), res: Object.assign({}, sd.res), stats: Object.assign({}, sd.stats), salv: Object.assign({}, sd.salv) }));
   const fog = g.fog.map(f => ({ exp: Array.from(f.exp).join(''), seen: Array.from(f.seen).join(''), ghosts: f.ghosts, creep: f.creep, field: f.field, intel: f.intel, lastHQ: f.lastHQ, lastSpot: f.lastSpot, seenUnits: f.seenUnits }));
-  return JSON.stringify({ v: SAVE_VER, map: { id: MAP.id, v: MAP.v }, t: g.t, nid: g.nid, diffKey: g.diffKey, ents, projs, sides, nodes: g.nodes, fog, abil: g.abil, endHold: g.endHold || null, log: g.log, creep: g.creep, field: g.field, warps: g.warps, acid: g.acid, stats: g.stats, ...(g.guards && g.guards.length ? { guards: g.guards } : {}), ...(g.cond && Object.keys(g.cond).length ? { cond: g.cond, meteor: g.meteor || null } : {}), ...(rwB2a(g) || rwB2b(g) || rwB3a(g) ? { rw: rwB3a(g) ? g.rw : Object.fromEntries(Object.entries(g.rw).filter(([k]) => k !== 'b3a')), mk: g.mk || [] } : {}), /* v2.84: b3a saved only when on (a b3a-off save is a v2.83 save) */ ...(rwB3a(g) && g.rem && g.rem.length ? { rem: g.rem } : {}), ...(rwB2b(g) && ((g.rup && g.rup.length) || (g.rdg && g.rdg.length)) ? { rup: g.rup || [], rdg: g.rdg || [] } : {}), seed: g.seed, rs: g.rs, fs: g.fs, extra }); // rw, mk (v2.82): the rework's switches and shell markers, only when batch 2a is on (older saves and b2a-off games stay as they were) // seed/rs/fs (v2.50): the random streams, so a resumed match rolls on where it stopped
+  return JSON.stringify({ v: SAVE_VER, map: { id: MAP.id, v: MAP.v }, t: g.t, nid: g.nid, diffKey: g.diffKey, ents, projs, sides, nodes: g.nodes, fog, abil: g.abil, endHold: g.endHold || null, log: g.log, creep: g.creep, field: g.field, warps: g.warps, acid: g.acid, stats: g.stats, ...(g.guards && g.guards.length ? { guards: g.guards } : {}), ...(g.cond && Object.keys(g.cond).length ? { cond: g.cond, meteor: g.meteor || null } : {}), ...(rwB2a(g) || rwB2b(g) || rwB3a(g) || rwB3b(g) ? { rw: Object.fromEntries(Object.entries(g.rw).filter(([k]) => (k !== 'b3a' || rwB3a(g)) && (k !== 'b3b' || rwB3b(g)))), mk: g.mk || [] } : {}), /* v2.84: b3a saved only when on (a b3a-off save is a v2.83 save); v2.85: b3b the same way (a b3b-off save is a v2.84 save) */ ...(rwB3a(g) && g.rem && g.rem.length ? { rem: g.rem } : {}), ...(rwB3b(g) && g.kn && g.kn.length ? { kn: g.kn } : {}), ...(rwB2b(g) && ((g.rup && g.rup.length) || (g.rdg && g.rdg.length)) ? { rup: g.rup || [], rdg: g.rdg || [] } : {}), seed: g.seed, rs: g.rs, fs: g.fs, extra }); // rw, mk (v2.82): the rework's switches and shell markers, only when batch 2a is on (older saves and b2a-off games stay as they were) // seed/rs/fs (v2.50): the random streams, so a resumed match rolls on where it stopped
 }
 function deserialize(str) {
   const o = JSON.parse(str);
@@ -6262,7 +6581,7 @@ function deserialize(str) {
   const g = newGame(o.diffKey);
   if (o.rs !== undefined && !RNG.legacy) { g.seed = o.seed >>> 0; g.rs = o.rs | 0; g.fs = o.fs | 0; } // v2.50: an older save keeps the fresh seed newGame drew
   g.t = o.t; g.nid = o.nid; g.ents = o.ents; g.nodes = o.nodes; g.guards = o.guards || []; g.cond = o.cond || {}; g.meteor = o.meteor || null; // v2.72: battlefield conditions // v2.71: relic guards (a save from before has none)
-  g.rw = rwInit(o.rw ? Object.assign({ b2b: false, b3a: false }, o.rw) : { b2a: false, artDeploy: false, artTelegraph: false, b2b: false, b3a: false }); if (o.rem) g.rem = o.rem; /* v2.84: a v2.83 save resumes with batch 3a off; remains */ if (o.mk) g.mk = o.mk; // v2.82: a save without the rework's switches plays as before it (v2.83: a v2.82 save without b2b too)
+  g.rw = rwInit(o.rw ? Object.assign({ b2b: false, b3a: false, b3b: false }, o.rw) : { b2a: false, artDeploy: false, artTelegraph: false, b2b: false, b3a: false, b3b: false }); if (o.rem) g.rem = o.rem; if (o.kn) g.kn = o.kn; /* v2.85: a v2.84 save resumes with batch 3b off; knocks */ /* v2.84: a v2.83 save resumes with batch 3a off; remains */ if (o.mk) g.mk = o.mk; // v2.82: a save without the rework's switches plays as before it (v2.83: a v2.82 save without b2b too)
   if (o.rup) g.rup = o.rup; if (o.rdg) g.rdg = o.rdg; // v2.83: Worldbreaker cracks and ridges
   g.stats = o.stats && o.stats.v === 1 ? o.stats : newStats(o.t); // v2.51: an older save starts its record now
   const byId = new Map(g.ents.map(e => [e.id, e]));
@@ -8240,7 +8559,11 @@ function sprPose(u) { // a stand-in unit snapped to one of the cached poses, wit
   let rvS = 0, dvT = 0, lt = 0, ltF = 0; // v2.84 (batch 3a): a Ravager's stacks and its devour, a Leaper latched and how much it has fed
   if (u.type === 'ravager') { rvS = Math.min(3, u.rvS || 0); dvT = u.dvT ? 1 : 0; if (rvS) k += 'r' + rvS; if (dvT) k += 'v'; }
   if (u.type === 'leaper' && u.lt) { lt = 1; ltF = Math.min(2, (u.ltF || 0) >> 1); k += 'l' + ltF; }
-  return { key: u.type + u.side + '.' + q + (u.aimAir ? 'a' : '') + k, box, u: { anim, moving: !spin && q > 0, recoil: 0, aimAir: u.aimAir, dpk, sk, gk, rvS, dvT, lt, ltF } }; // a Hydra's guns up or level
+  let crg = 0, dz = 0, pr = 0, br = 0, hl = 0; // v2.85 (batch 3b): a Dreadthorn charging or dazed (five sway steps), a Shardling's parry ready, a Bulwark bracing or regenerating (three pulse steps)
+  if (u.type === 'dreadthorn') { if (u.crg) { crg = 1; k += 'c'; } else if (u.dzT > VFX.lastT) { dz = Math.round(Math.sin(VFX.lastT * 5 + u.id) * 2) / 2 || 0.01; k += 'z' + dz; } }
+  else if (u.type === 'shardling' && VFX.g && rwB3b(VFX.g) && VFX.lastT >= (u.prT || 0)) { pr = 1; k += 'p'; }
+  else if (u.type === 'bulwark') { if (u.braceT > VFX.lastT) { br = 1; k += 'b'; } if (VFX.lastT - (u.bkRg ?? -9) < 0.3) { hl = 1 + (Math.floor(VFX.lastT * 4) % 3); k += 'h' + hl; } }
+  return { key: u.type + u.side + '.' + q + (u.aimAir ? 'a' : '') + k, box, u: { anim, moving: !spin && q > 0, recoil: 0, aimAir: u.aimAir, dpk, sk, gk, rvS, dvT, lt, ltF, crg, dz, pr, br, hl } }; // a Hydra's guns up or level
 }
 function drawUnitArt(c, u, T) {
   const p = sprPose(u);
@@ -9005,6 +9328,282 @@ function drawDevour3(c, f) {
   for (let i = 0; i < 3; i++) { const x = f.x - 7 + i * 7, y = f.y - 30 - k * 10; c.beginPath(); c.arc(x, y, 2.3, 0, 7); if (i < f.n) c.fill(); c.stroke(); }
   c.globalAlpha = 1;
 }
+/* ---------- Faction rework art, batch 3b (v2.85; docs/FACTION_REWORK.md "Art direction") ----------
+   Dreadthorn (a massive Bloomhost charger: a lowered armoured head with forward horns, heavy team carapace plates along its
+   back, four thick legs; charging, its head drops and it gallops; dazed, it sways), Bastion (a heavy Axiarch walker of
+   floating obsidian slabs around a glowing core, a projector crest), Shardling (a sleek Axiarch duelist of floating shards
+   with a light blade; a glint on the blade when its parry is ready) and Bulwark (a hulking Bloomhost wall: a broad team
+   shell, thick legs, a low head; bracing it hunkers down with its plates closed; regenerating on creep its glow sacs
+   pulse). All cached as poses (the charge, five sway steps, the parry glint, the brace and three pulse steps are poses).
+   Effects: the charge's dust trail and the dazed spores (live, over the pose), the barrier (a translucent curved wall of
+   team light with glyph lines that flickers when hit, cracks as it weakens and collapses into shards when it breaks), the
+   trample hits, the parry flash and counter-slash. */
+const DT_FLESH = ['#86606f', '#573a49', '#2f1d28'], DT_BONE = '#efe2c6', BK_FLESH = ['#7d6a58', '#4f4135', '#2c241d'];
+// Dreadthorn. u.crg: charging (head down, gallop); u.dz -1…1: dazed sway
+function dDread3(c, T, u) {
+  const cg = !!u.crg, dz = u.dz || 0, ph = u.moving ? (u.anim || 0) * (cg ? 11 : 6) : 0, pulse = 0.8 + 0.2 * Math.sin((u.anim || 0) * 3), bite = u.recoil || 0;
+  c.save();
+  if (dz) { c.translate(0, -2); c.rotate(dz * 0.07); c.translate(dz * 1.5, 2); }
+  if (cg) { c.translate(10, 0); c.rotate(0.06); c.translate(-10, 0); } // pitched forward into the charge
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  const leg = (x, o, near) => { // a thick column leg with a knee and a bone-clawed foot
+    const sw = Math.sin(ph + o) * (cg ? 5 : 3), lift = Math.max(0, Math.sin(ph + o + 1.4)) * (cg ? 3 : 1.5);
+    c.strokeStyle = OUTL; c.lineWidth = near ? 8 : 7; c.beginPath(); c.moveTo(x, -16); c.lineTo(x - 2 + sw * 0.4, -8 - lift * 0.5); c.lineTo(x + sw, -lift); c.stroke();
+    c.strokeStyle = near ? DT_FLESH[1] : DT_FLESH[2]; c.lineWidth = near ? 6.2 : 5.2; c.stroke();
+    c.strokeStyle = near ? T.main : T.hull; c.lineWidth = 3; c.beginPath(); c.moveTo(x, -16); c.lineTo(x - 1 + sw * 0.2, -11); c.stroke(); // a team plate on the thigh
+    c.strokeStyle = DT_BONE; c.lineWidth = 1.3; for (const k of [-1.6, 0, 1.6]) { c.beginPath(); c.moveTo(x + sw + k, -lift); c.lineTo(x + sw + k + 1.8, -lift + 0.6); c.stroke(); }
+  };
+  leg(-15, Math.PI, false); leg(7, 0.3, false);
+  // the great body: a deep belly
+  c.fillStyle = lgrad(c, 0, -34, 0, -8, [DT_FLESH[0], DT_FLESH[1], DT_FLESH[2]]); c.beginPath(); c.ellipse(-3, -19, 21, 11, -0.05, 0, 7); c.fill(); outline(c, 1.2);
+  // glow sacs along the flank
+  c.globalCompositeOperation = 'lighter';
+  for (const [x, y, r] of [[-16, -15, 2.4], [-9, -12.5, 2.8], [-2, -12, 2.3], [5, -13, 2]]) { c.fillStyle = `rgba(${T.glow},${0.25 * pulse})`; c.beginPath(); c.arc(x, y, r * 2, 0, 7); c.fill(); c.fillStyle = `rgba(${T.glow},${0.8 * pulse})`; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); }
+  c.globalCompositeOperation = 'source-over';
+  // heavy team carapace plates along the back, overlapping front over back
+  for (let i = 0; i < 5; i++) {
+    const x = -24 + i * 8.6, w = 12.5, top = -36 - Math.sin(i * 0.75 + 0.4) * 4 + (cg ? i * 0.6 : 0);
+    c.fillStyle = lgrad(c, 0, top - 2, 0, -18, [T.light, T.main, T.hull]);
+    c.beginPath(); c.moveTo(x - 1, -18); c.quadraticCurveTo(x - 1.5, top, x + w * 0.5, top - 1.5); c.quadraticCurveTo(x + w + 1.5, top + 1, x + w, -19); c.closePath(); c.fill(); outline(c, 1.1);
+    c.strokeStyle = 'rgba(255,255,255,0.4)'; c.lineWidth = 0.9; c.beginPath(); c.moveTo(x + 1.5, top + 0.8); c.quadraticCurveTo(x + w * 0.5, top - 0.6, x + w - 1.5, top + 1.2); c.stroke();
+    c.strokeStyle = 'rgba(0,0,0,0.3)'; c.lineWidth = 0.7; c.beginPath(); c.moveTo(x + w * 0.5, top + 2); c.lineTo(x + w * 0.45, -20); c.stroke(); // a plate seam
+    c.fillStyle = lgrad(c, 0, top - 6, 0, top, [DT_BONE, '#a8957a']); poly(c, [[x + w * 0.35, top + 0.5], [x + w * 0.2 - 1, top - 5.5], [x + w * 0.6, top]]); c.fill(); outline(c, 0.6); // a back spine
+  }
+  // the head: low and armoured, horns forward (lower still when charging)
+  const hy = cg ? -11 : -16 + dz * 1.5 + (dz ? 2 : 0), hx = 18;
+  c.fillStyle = lgrad(c, hx, hy - 7, hx, hy + 6, [DT_FLESH[0], DT_FLESH[2]]); c.beginPath(); c.ellipse(hx, hy, 9, 7, cg ? 0.25 : 0.12, 0, 7); c.fill(); outline(c, 1.1);
+  c.fillStyle = lgrad(c, hx - 6, hy - 9, hx + 6, hy - 1, [T.light, T.main, T.hull]); // the brow plate
+  c.beginPath(); c.moveTo(hx - 8, hy - 1); c.quadraticCurveTo(hx - 6, hy - 9.5, hx + 3, hy - 8.5); c.quadraticCurveTo(hx + 9, hy - 6, hx + 9.5, hy - 1); c.quadraticCurveTo(hx + 1, hy - 3, hx - 8, hy - 1); c.fill(); outline(c, 0.9);
+  rim(c, hx - 5, hy - 8.3, hx + 3, 'rgba(255,255,255,0.45)');
+  for (const [ox, oy, l, a] of [[2, -6, 15, cg ? -0.05 : -0.35], [-1, -4, 11, cg ? 0.1 : -0.15]]) { // two forward horns
+    const bx = hx + ox, by = hy + oy, tx = bx + Math.cos(a) * l, ty = by + Math.sin(a) * l;
+    c.fillStyle = lgrad(c, bx, by, tx, ty, [DT_BONE, '#b8a684', '#7d6c52']); c.beginPath(); c.moveTo(bx, by - 2.2); c.quadraticCurveTo((bx + tx) / 2, (by + ty) / 2 - 3, tx, ty); c.quadraticCurveTo((bx + tx) / 2, (by + ty) / 2 + 1.5, bx, by + 2); c.closePath(); c.fill(); outline(c, 0.8);
+  }
+  c.fillStyle = '#2a0d18'; c.beginPath(); c.ellipse(hx + 6, hy + 3.5, 3.6, 1.2 + bite * 1.2, 0.15, 0, 7); c.fill(); // the jaw
+  c.fillStyle = `rgba(${T.glow},1)`; c.beginPath(); c.arc(hx + 4.5, hy - 2.5, 1.2, 0, 7); c.arc(hx + 1.5, hy - 2, 0.9, 0, 7); c.fill();
+  c.globalCompositeOperation = 'lighter'; c.fillStyle = `rgba(${T.glow},0.35)`; c.beginPath(); c.arc(hx + 3.5, hy - 2.4, 3.4, 0, 7); c.fill(); c.globalCompositeOperation = 'source-over';
+  leg(-10, 0.2, true); leg(11, Math.PI + 0.4, true);
+  c.lineCap = 'butt'; c.restore();
+}
+
+// Bastion: floating obsidian slabs around a glowing core, two slab legs, a projector crest that throws its barrier
+function dBast3(c, T, u) {
+  const t = u.anim || 0, y0 = -8 + hov(u, u.moving ? 4 : 1.6), ph = u.moving ? t * 5 : 0, rec = u.recoil || 0;
+  const slab = (pts, lit) => { c.fillStyle = lgrad(c, pts[0][0], pts[0][1], pts[2][0], pts[2][1], lit ? [T.light, T.main, T.hull] : [OBS[0], OBS[1], OBS[2]]); poly(c, pts); c.fill(); outline(c, 1); };
+  c.fillStyle = `rgba(${T.glow},0.2)`; c.beginPath(); c.ellipse(0, -0.5, 16, 3.2, 0, 0, 7); c.fill(); // its light on the ground
+  // legs: two heavy slabs that step
+  const s1 = Math.sin(ph) * 2.5, s2 = -s1;
+  slab([[-10 + s1, y0 - 10], [-3 + s1, y0 - 10], [-4 + s1, y0 + 1 + Math.max(0, -s1) * 0.4], [-11 + s1, y0 + 1]], false);
+  slab([[3 + s2, y0 - 10], [10 + s2, y0 - 10], [11 + s2, y0 + 1], [4 + s2, y0 + 1 + Math.max(0, -s2) * 0.4]], false);
+  // lines of light holding it together
+  c.strokeStyle = `rgba(${T.glow},0.8)`; c.lineWidth = 0.9; c.beginPath();
+  for (const [a, b, x, y] of [[-6, y0 - 11, -6, y0 - 15], [6, y0 - 11, 6, y0 - 15], [-14, y0 - 27, -10, y0 - 27], [14, y0 - 27, 10, y0 - 27], [0, y0 - 43, 0, y0 - 39]]) { c.moveTo(a, b); c.lineTo(x, y); }
+  c.stroke();
+  // the body: a wide obsidian block, a great team slab across the chest, side slabs
+  slab([[-13, y0 - 38], [13, y0 - 38], [11, y0 - 15], [-11, y0 - 15]], false);
+  slab([[-17, y0 - 35], [-12, y0 - 37], [-12, y0 - 17], [-18, y0 - 19]], true); slab([[12, y0 - 37], [18, y0 - 35], [19, y0 - 19], [12, y0 - 17]], true);
+  slab([[-9, y0 - 36], [10, y0 - 36], [8.5, y0 - 19], [-7.5, y0 - 19]], true);
+  rim(c, -12, y0 - 38, 12, 'rgba(230,220,255,0.55)');
+  // the core: a glowing rhombus in the chest
+  c.globalCompositeOperation = 'lighter';
+  c.fillStyle = `rgba(${T.glow},0.35)`; c.beginPath(); c.arc(0.5, y0 - 27, 7, 0, 7); c.fill();
+  c.fillStyle = `rgba(${T.glow},${0.85 + 0.15 * Math.sin(t * 3)})`; poly(c, [[0.5, y0 - 32], [4.5, y0 - 27], [0.5, y0 - 22], [-3.5, y0 - 27]]); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.9)'; poly(c, [[0.5, y0 - 29.5], [2, y0 - 27], [0.5, y0 - 24.5], [-1, y0 - 27]]); c.fill();
+  c.globalCompositeOperation = 'source-over';
+  // glyph lines on the chest slab
+  c.strokeStyle = `rgba(${T.glow},0.7)`; c.lineWidth = 0.7; c.beginPath(); c.moveTo(-6, y0 - 33); c.lineTo(-3, y0 - 33); c.moveTo(4, y0 - 33); c.lineTo(7, y0 - 33); c.moveTo(-6, y0 - 21); c.lineTo(7, y0 - 21); c.stroke();
+  // the projector crest: a floating wedge with a light fin facing forward
+  const cy = y0 - 47 + Math.sin(t * 2) * 0.7;
+  slab([[-6, cy + 2], [5, cy - 1], [9, cy + 4], [-4, cy + 6]], false);
+  c.globalCompositeOperation = 'lighter';
+  c.strokeStyle = `rgba(${T.glow},${0.55 + 0.35 * rec})`; c.lineWidth = 2.4; c.beginPath(); c.moveTo(9, cy + 4); c.quadraticCurveTo(15, cy - 2, 13, cy - 9); c.stroke();
+  c.strokeStyle = 'rgba(255,255,255,0.85)'; c.lineWidth = 0.8; c.stroke();
+  if (rec > 0.2) { c.fillStyle = `rgba(${T.glow},${rec * 0.6})`; c.beginPath(); c.arc(16, cy - 2, 5 * rec, 0, 7); c.fill(); } // its pulse leaving
+  c.globalCompositeOperation = 'source-over';
+}
+
+// Shardling: floating shards (head, torso, hips, two legs) held by thin light; a light blade; u.pr: its parry is ready (a glint)
+function dShard3(c, T, u) {
+  const t = u.anim || 0, y0 = -5 + hov(u, u.moving ? 9 : 3), sw = u.recoil || 0, lean = u.moving ? 2.5 : 0.5;
+  const shard = (pts, lit) => { c.fillStyle = lgrad(c, pts[0][0], pts[0][1], pts[2][0], pts[2][1], lit ? [T.light, T.main, T.hull] : [OBS[0], OBS[1], OBS[2]]); poly(c, pts); c.fill(); outline(c, 0.75); };
+  c.fillStyle = `rgba(${T.glow},0.2)`; c.beginPath(); c.ellipse(0, -0.5, 7, 1.7, 0, 0, 7); c.fill();
+  // lines of light
+  c.strokeStyle = `rgba(${T.glow},0.8)`; c.lineWidth = 0.6; c.beginPath(); c.moveTo(lean + 1, y0 - 26); c.lineTo(lean, y0 - 23); c.moveTo(0, y0 - 14); c.lineTo(-0.5, y0 - 11); c.moveTo(-1.5, y0 - 8); c.lineTo(-2.5, y0 - 4); c.moveTo(1.5, y0 - 8); c.lineTo(2.5, y0 - 4); c.stroke();
+  // legs: two thin shards that scissor
+  const k = u.moving ? Math.sin(t * 9) * 2 : 0;
+  shard([[-3 + k, y0 - 7], [-0.5 + k, y0 - 7], [-2 + k * 1.4, y0 + 1]], false); shard([[1 - k, y0 - 7], [3.5 - k, y0 - 7], [2.5 - k * 1.4, y0 + 1]], false);
+  shard([[-3, y0 - 11.5], [3.5, y0 - 12], [2, y0 - 8], [-2, y0 - 8]], false); // hips
+  // the back blade arm (a short shard)
+  shard([[lean - 4, y0 - 21], [lean - 2, y0 - 22], [lean - 5, y0 - 13]], false);
+  // torso: a dark shard with a team shard across it
+  shard([[-3 + lean, y0 - 23], [3.5 + lean, y0 - 23.5], [2.5, y0 - 13.5], [-2.5, y0 - 13]], false);
+  shard([[0 + lean, y0 - 22.5], [4 + lean, y0 - 21.5], [3, y0 - 15], [0.5, y0 - 14]], true);
+  rim(c, -2.5 + lean, y0 - 23, 3 + lean, 'rgba(230,220,255,0.6)');
+  // head: a narrow shard with a visor slit, and a tiny crown shard
+  shard([[0.5 + lean, y0 - 30.5], [4.5 + lean, y0 - 28.5], [3.5 + lean, y0 - 25], [0 + lean, y0 - 25.5]], false);
+  shard([[1 + lean, y0 - 34 + Math.sin(t * 2.4) * 0.5], [2.5 + lean, y0 - 32], [1 + lean, y0 - 31.5]], true);
+  c.fillStyle = `rgba(${T.glow},1)`; c.fillRect(2.6 + lean, y0 - 28.6, 1.8, 0.9);
+  // the light blade: held low and forward, it lunges on a blow
+  const bx = 4 + lean + sw * 3, by = y0 - 18, tx = bx + 11 + sw * 5, ty = by + 4 - sw * 6;
+  c.globalCompositeOperation = 'lighter'; c.lineCap = 'round';
+  c.strokeStyle = `rgba(${T.glow},0.5)`; c.lineWidth = 3; c.beginPath(); c.moveTo(bx, by); c.lineTo(tx, ty); c.stroke();
+  c.strokeStyle = 'rgba(250,250,255,0.95)'; c.lineWidth = 1; c.stroke();
+  c.fillStyle = `rgba(${T.glow},0.9)`; c.beginPath(); c.arc(bx, by, 1.2, 0, 7); c.fill();
+  if (u.pr) { // parry ready: a glint near the blade's tip
+    const gx = tx - 2.5, gy = ty - 1;
+    c.fillStyle = 'rgba(255,255,255,0.5)'; c.beginPath(); c.arc(gx, gy, 2.6, 0, 7); c.fill();
+    c.strokeStyle = 'rgba(255,255,255,0.95)'; c.lineWidth = 0.7; c.beginPath(); c.moveTo(gx - 4, gy); c.lineTo(gx + 4, gy); c.moveTo(gx, gy - 4); c.lineTo(gx, gy + 4); c.stroke();
+  }
+  if (sw > 0.3) { c.strokeStyle = `rgba(${T.glow},${sw * 0.7})`; c.lineWidth = 1.6; c.beginPath(); c.arc(bx, by + 1, 13, -0.9, 0.7); c.stroke(); } // the swing's arc
+  c.globalCompositeOperation = 'source-over'; c.lineCap = 'butt';
+}
+
+// Bulwark. u.br: bracing (it hunkers down, its front plate closed over the head); u.hl 1-3: regenerating on creep (the glow sacs pulse)
+function dBulk3(c, T, u) {
+  const br = !!u.br, hl = u.hl || 0, ph = u.moving && !br ? (u.anim || 0) * 6 : 0, low = br ? 4 : 0, bite = u.recoil || 0;
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  const leg = (x, o, near) => {
+    const sw = Math.sin(ph + o) * 2.5, sx = br ? (x < 0 ? -2.5 : 2.5) : 0; // braced: legs splayed out
+    c.strokeStyle = OUTL; c.lineWidth = near ? 7.5 : 6.5; c.beginPath(); c.moveTo(x, -10 + low); c.lineTo(x + sx + sw * 0.4, -5 + low * 0.5); c.lineTo(x + sx * 1.6 + sw, 0); c.stroke();
+    c.strokeStyle = near ? BK_FLESH[1] : BK_FLESH[2]; c.lineWidth = near ? 5.8 : 4.8; c.stroke();
+    c.strokeStyle = DT_BONE; c.lineWidth = 1.1; c.beginPath(); c.moveTo(x + sx * 1.6 + sw - 1.5, 0); c.lineTo(x + sx * 1.6 + sw + 2.2, 0.4); c.stroke();
+  };
+  leg(-12, Math.PI, false); leg(5, 0.4, false);
+  // belly
+  c.fillStyle = lgrad(c, 0, -22 + low, 0, -4 + low, [BK_FLESH[0], BK_FLESH[1], BK_FLESH[2]]); c.beginPath(); c.ellipse(-2, -10 + low, 17, 7, 0, 0, 7); c.fill(); outline(c);
+  // glow sacs low on the flank (they pulse while it regenerates on creep)
+  const gl = hl ? 0.55 + 0.45 * [0, 1, 0.55, 0.15][hl] : 0.35;
+  c.globalCompositeOperation = 'lighter';
+  for (const [x, y, r] of [[-13, -8, 2.2], [-6, -6.5, 2.6], [1, -6.5, 2.4], [7.5, -8, 1.9]]) { c.fillStyle = `rgba(${T.glow},${0.3 * gl})`; c.beginPath(); c.arc(x, y + low, r * (2 + gl), 0, 7); c.fill(); c.fillStyle = `rgba(${hl ? '180,255,170' : T.glow},${Math.min(1, 0.5 + gl * 0.6)})`; c.beginPath(); c.arc(x, y + low, r, 0, 7); c.fill(); }
+  c.globalCompositeOperation = 'source-over';
+  // the broad shell: a dome of three overlapping team plates, a heavy rim
+  c.fillStyle = lgrad(c, 0, -32 + low, 0, -9 + low, [T.light, T.main, T.hull]);
+  c.beginPath(); c.moveTo(-22, -9 + low); c.quadraticCurveTo(-22, -31 + low, -3, -31.5 + low); c.quadraticCurveTo(17, -31 + low, 19, -10 + low); c.closePath(); c.fill(); outline(c, 1.2);
+  c.strokeStyle = 'rgba(0,0,0,0.32)'; c.lineWidth = 0.9; c.beginPath();
+  c.moveTo(-11, -10 + low); c.quadraticCurveTo(-12, -24 + low, -5, -30 + low); c.moveTo(6, -10 + low); c.quadraticCurveTo(7, -24 + low, 2, -30.5 + low); c.stroke(); // plate seams
+  c.strokeStyle = 'rgba(255,255,255,0.4)'; c.lineWidth = 1; c.beginPath(); c.moveTo(-17, -22 + low); c.quadraticCurveTo(-10, -30.5 + low, 0, -30.5 + low); c.stroke(); // the light rim
+  c.fillStyle = lgrad(c, 0, -12 + low, 0, -7 + low, [T.hull, '#1d1915']); c.beginPath(); c.moveTo(-23, -8 + low); c.quadraticCurveTo(-2, -13 + low, 20, -8.5 + low); c.quadraticCurveTo(-2, -6 + low, -23, -8 + low); c.fill(); outline(c, 0.8); // the heavy lower rim
+  for (const x of [-15, -6, 3, 11]) { c.fillStyle = DT_BONE; poly(c, [[x - 1.4, -29 + low + Math.abs(x) * 0.08], [x + 0.2, -33.5 + low + Math.abs(x) * 0.1], [x + 1.6, -29 + low + Math.abs(x) * 0.08]]); c.fill(); outline(c, 0.5); } // knobs
+  // the low head under the shell's front (closed over by the front plate when braced)
+  const hx = 19, hy = -9 + low;
+  if (!br) {
+    c.fillStyle = lgrad(c, hx, hy - 6, hx, hy + 4, [BK_FLESH[0], BK_FLESH[2]]); c.beginPath(); c.ellipse(hx, hy, 6.5, 5, 0.1, 0, 7); c.fill(); outline(c, 0.9);
+    c.fillStyle = '#251a14'; c.beginPath(); c.ellipse(hx + 4, hy + 2, 2.6, 0.8 + bite, 0.2, 0, 7); c.fill();
+    c.fillStyle = `rgba(${T.glow},1)`; c.beginPath(); c.arc(hx + 2.5, hy - 1.8, 1, 0, 7); c.fill();
+  }
+  c.fillStyle = lgrad(c, hx - 4, hy - 9, hx + 4, hy + 2, [T.light, T.main, T.hull]); // the front plate: a visor over the head, closed down when braced
+  c.beginPath(); c.moveTo(hx - 7, hy - 6.5); c.quadraticCurveTo(hx + 2, hy - (br ? 10 : 11), hx + (br ? 8.5 : 7), hy - (br ? 1 : 5)); c.quadraticCurveTo(hx + (br ? 6 : 3), hy + (br ? 3 : -3), hx - 2, hy + (br ? 3.5 : -2.5)); c.closePath(); c.fill(); outline(c, 0.9);
+  if (br) { c.globalCompositeOperation = 'lighter'; c.strokeStyle = `rgba(${T.glow},0.75)`; c.lineWidth = 1.2; c.beginPath(); c.moveTo(-21, -9 + low); c.quadraticCurveTo(-22, -31 + low, -3, -31.5 + low); c.quadraticCurveTo(17, -31 + low, hx + 8, hy - 1); c.stroke(); c.globalCompositeOperation = 'source-over'; } // its plates locked, edges glowing
+  leg(-8, 0.2, true); leg(10, Math.PI + 0.4, true);
+  c.lineCap = 'butt';
+}
+
+DRAW_U.dreadthorn = dDread3; DRAW_U.bastion = dBast3; DRAW_U.shardling = dShard3; DRAW_U.bulwark = dBulk3;
+Object.assign(SPR_BOX, { dreadthorn: [-34, -52, 78, 60], bastion: [-24, -70, 52, 72], shardling: [-12, -44, 36, 48], bulwark: [-30, -38, 66, 42] });
+Object.assign(UVIS, { dreadthorn: { h: 36, w: 23 }, bastion: { h: 46, w: 15 }, shardling: { h: 30, w: 8 }, bulwark: { h: 30, w: 21 } });
+
+/* ---- overlays on a unit (drawUnit) ---- */
+// A charging Dreadthorn's dust: puffs along the way it has come, thinning out behind it
+function drawChargeDust(c, u, t) {
+  const du = u.u - u.crU0, dv = u.v - u.crV0, len = Math.hypot(du, dv);
+  if (len < 2) return;
+  const n = Math.min(12, Math.ceil(len / 12));
+  for (let i = 0; i < n; i++) {
+    const k = i / n, d = k * Math.min(len, 140), pu = u.u - u.crU * d, pv = u.v - u.crV * d, w = P(pu, pv, 0), r = (6 + k * 10) * US, a = 0.4 * (1 - k);
+    const wob = Math.sin(t * 9 + i * 1.7) * 2;
+    c.fillStyle = `rgba(150,128,98,${a})`; c.beginPath(); c.ellipse(w.x + wob, w.y - r * 0.35, r, r * 0.55, 0, 0, 7); c.fill();
+  }
+}
+// Dazed: spores and little stars circling over its head
+function drawDazed(c, u, w, t) {
+  const h = visH(u.type) * US, y = w.y - h - 4, left = clamp((u.dzT - t) / TRAMPLE.daze, 0, 1);
+  for (let i = 0; i < 4; i++) {
+    const a = t * 5 + i * Math.PI / 2, x = w.x + Math.cos(a) * 13, yy = y + Math.sin(a) * 4;
+    c.globalAlpha = (0.55 + 0.45 * Math.sin(a)) * Math.min(1, left * 3);
+    if (i % 2) { c.fillStyle = '#fff1a8'; c.beginPath(); for (let k = 0; k < 4; k++) { const b = k * Math.PI / 2 + t * 3; c.lineTo(x + Math.cos(b) * 4.5, yy + Math.sin(b) * 4.5); c.lineTo(x + Math.cos(b + 0.785) * 1.6, yy + Math.sin(b + 0.785) * 1.6); } c.closePath(); c.fill(); }
+    else { c.fillStyle = 'rgba(190,240,140,0.95)'; c.beginPath(); c.arc(x, yy, 2.5, 0, 7); c.fill(); }
+  }
+  c.globalAlpha = 1;
+}
+
+/* ---- the barrier ---- */
+const BWV = { n: 9 }; // samples across the wall
+function drawBarriers(c, g, lit, t) {
+  for (const B of g.ents) {
+    if (B.kind !== 'u' || B.type !== 'bastion' || B.hp <= 0 || B.bwHp === undefined || B.bwDn || B.gone) continue;
+    const cu = B.u + B.bwF * BAR.off; if (!lit(cu, B.v)) continue;
+    const frac = clamp(B.bwHp / BAR.hp, 0, 1), hit = clamp(1 - (g.t - B.bwHit) / 0.18, 0, 1), T = TEAM[B.side], H = BAR.h;
+    const fl = frac < 0.3 ? 0.75 + 0.25 * Math.sin(t * 30 + B.id) : 1; // weak: it flickers
+    const bot = [], top = [];
+    for (let i = 0; i < BWV.n; i++) { const q = -1 + 2 * i / (BWV.n - 1), dv = q * BAR.half, u = B.u + B.bwF * (BAR.off - BAR.bow * q * q); bot.push(P(u, B.v + dv, 0)); top.push(P(u, B.v + dv, H * (1 - 0.18 * q * q))); }
+    c.save(); c.globalCompositeOperation = 'lighter';
+    // the wall of light
+    const gr = c.createLinearGradient(0, top[4].y, 0, bot[4].y); gr.addColorStop(0, `rgba(${T.glow},${(0.42 + 0.4 * hit) * fl})`); gr.addColorStop(1, `rgba(${T.glow},${(0.16 + 0.25 * hit) * fl})`);
+    c.fillStyle = gr; c.beginPath(); bot.forEach((p, i) => i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)); for (let i = top.length - 1; i >= 0; i--) c.lineTo(top[i].x, top[i].y); c.closePath(); c.fill();
+    // glyph lines: two bands across and a mark between every other pair of samples
+    c.strokeStyle = `rgba(${T.glow},${0.6 * fl})`; c.lineWidth = 0.9;
+    for (const k of [0.33, 0.66]) { c.beginPath(); for (let i = 0; i < bot.length; i++) { const x = bot[i].x + (top[i].x - bot[i].x) * k, y = bot[i].y + (top[i].y - bot[i].y) * k; i ? c.lineTo(x, y) : c.moveTo(x, y); } c.stroke(); }
+    c.beginPath(); for (let i = 1; i < bot.length - 1; i += 2) { const x = (bot[i].x + top[i].x) / 2, y = (bot[i].y + top[i].y) / 2; c.moveTo(x - 1.5, y - 3); c.lineTo(x + 1.5, y); c.lineTo(x - 1.5, y + 3); } c.stroke();
+    // its bright top edge and footing
+    c.strokeStyle = hit > 0 ? `rgba(255,255,255,${0.6 + 0.4 * hit})` : `rgba(${T.glow},${0.95 * fl})`; c.lineWidth = 1.8; c.beginPath(); top.forEach((p, i) => i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)); c.stroke();
+    c.strokeStyle = `rgba(${T.glow},${0.22 * fl})`; c.lineWidth = 7; c.beginPath(); bot.forEach((p, i) => i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)); c.stroke(); // its glow on the ground
+    c.strokeStyle = `rgba(${T.glow},${0.6 * fl})`; c.lineWidth = 1.4; c.stroke();
+    c.globalCompositeOperation = 'source-over';
+    // cracks as it weakens (fixed per Bastion), dark with a white core
+    const nc = frac < 0.25 ? 4 : frac < 0.5 ? 3 : frac < 0.8 ? 1 : 0;
+    for (let k = 0; k < nc; k++) {
+      const i0 = 1 + ((B.id * 3 + k * 5) % (BWV.n - 2)), p0 = top[i0], p1 = bot[i0], s = Math.sin(B.id * 1.7 + k * 2.3);
+      const a = { x: p0.x + (p1.x - p0.x) * 0.15, y: p0.y + (p1.y - p0.y) * 0.15 }, pts = [a];
+      for (let j = 1; j <= 3; j++) pts.push({ x: a.x + s * 4 * j + (j % 2 ? 3 : -2), y: a.y + (p1.y - p0.y) * 0.22 * j });
+      c.strokeStyle = 'rgba(20,10,40,0.7)'; c.lineWidth = 1.6; c.beginPath(); pts.forEach((p, i) => i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)); c.stroke();
+      c.strokeStyle = 'rgba(255,255,255,0.8)'; c.lineWidth = 0.6; c.stroke();
+    }
+    c.restore();
+  }
+}
+// The wall breaking: it cracks white, then falls apart into shards that drop and fade
+function drawBwBreak(c, f) {
+  const k = f.t / f.life, T = TEAM[f.side], H = BAR.h * 0.8, dy = BAR.half * DY;
+  c.save(); c.globalCompositeOperation = 'lighter';
+  if (k < 0.25) { const q = 1 - k / 0.25; c.strokeStyle = `rgba(255,255,255,${q})`; c.lineWidth = 2; c.beginPath(); c.moveTo(f.x - 3, f.y - dy); c.lineTo(f.x + 4, f.y - H * 0.5); c.lineTo(f.x - 2, f.y + dy * 0.2); c.lineTo(f.x + 3, f.y + dy); c.stroke(); stamp(c, GLOW.white, f.x, f.y - H * 0.4, 30, 0.6 * q); }
+  for (let i = 0; i < 14; i++) {
+    const s = Math.sin(i * 12.9898) * 43758.5453, r = s - Math.floor(s), y0 = f.y - dy + (2 * dy) * (i / 13) - r * H * 0.8, x0 = f.x + (r - 0.5) * 6;
+    const x = x0 + f.F * k * (6 + r * 10), y = y0 + k * k * (H * 0.9 + r * 10), a = (1 - k) * 0.9, z = 2.5 + r * 2.5;
+    c.fillStyle = `rgba(${T.glow},${a})`; c.beginPath(); c.moveTo(x, y - z); c.lineTo(x + z * 0.6, y); c.lineTo(x, y + z * 0.8); c.lineTo(x - z * 0.5, y); c.closePath(); c.fill();
+  }
+  c.restore();
+}
+function drawBwUp(c, f) { // back up at full health: a quick bright rise
+  const k = f.t / f.life, T = TEAM[f.side], dy = BAR.half * DY, H = BAR.h * 0.8 * k;
+  c.save(); c.globalCompositeOperation = 'lighter'; c.strokeStyle = `rgba(${T.glow},${1 - k})`; c.lineWidth = 2;
+  c.beginPath(); c.moveTo(f.x, f.y - dy); c.lineTo(f.x, f.y + dy); c.moveTo(f.x, f.y - dy - H); c.lineTo(f.x, f.y + dy - H); c.stroke(); c.restore();
+}
+// A shot striking the wall: a ring of light where it hit
+function drawBwHit(c, f) {
+  const k = f.t / f.life, T = TEAM[f.side];
+  c.save(); c.globalCompositeOperation = 'lighter';
+  stamp(c, GLOW.white, f.x, f.y, 6 + k * 4, 0.7 * (1 - k));
+  c.strokeStyle = `rgba(${T.glow},${1 - k})`; c.lineWidth = 1.4; c.beginPath(); c.ellipse(f.x, f.y, 3 + k * 7, (3 + k * 7) * 1.4, 0, 0, 7); c.stroke();
+  c.restore();
+}
+// A Dreadthorn trampling a unit: a burst of dust and a white impact star, pushed the way the unit is knocked
+function drawTrampleFx(c, f) {
+  const k = f.t / f.life, a = 1 - k;
+  c.fillStyle = `rgba(150,128,98,${0.5 * a})`; c.beginPath(); c.ellipse(f.x + f.dx * k * 8, f.y + 6, 8 + k * 12, (8 + k * 12) * 0.4, 0, 0, 7); c.fill();
+  if (k < 0.4) { const q = 1 - k / 0.4; c.save(); c.globalCompositeOperation = 'lighter'; c.strokeStyle = `rgba(255,240,200,${q})`; c.lineWidth = 1.6; c.beginPath(); for (let i = 0; i < 6; i++) { const b = i * 1.047; c.moveTo(f.x + Math.cos(b) * 2, f.y + Math.sin(b) * 2); c.lineTo(f.x + Math.cos(b) * (5 + 6 * (1 - q)), f.y + Math.sin(b) * (5 + 6 * (1 - q))); } c.stroke(); c.restore(); }
+}
+function drawChargeEnd(c, f) { // a cloud of dust where the charge stopped
+  const k = f.t / f.life, a = (1 - k) * 0.45;
+  for (let i = 0; i < 5; i++) { const b = i * 1.256, r = 8 + k * 18; c.fillStyle = `rgba(150,128,98,${a})`; c.beginPath(); c.ellipse(f.x + Math.cos(b) * r, f.y - 3 + Math.sin(b) * r * 0.35, 7 + k * 6, 4 + k * 3, 0, 0, 7); c.fill(); }
+}
+// A parry: a bright flash on the blade; with a counter, a quick crescent slash toward the attacker
+function drawParryFx(c, f) {
+  const k = f.t / f.life, T = TEAM[f.side];
+  c.save(); c.globalCompositeOperation = 'lighter';
+  if (k < 0.5) { const q = 1 - k / 0.5, x = f.x + f.face * 8, y = f.y - 4; stamp(c, GLOW.white, x, y, 18 + 10 * (1 - q), q); stamp(c, GLOW.cyan, x, y, 26, 0.6 * q); c.strokeStyle = `rgba(255,255,255,${q})`; c.lineWidth = 1.8; c.beginPath(); for (let i = 0; i < 4; i++) { const b = i * Math.PI / 2 + 0.4, r = (i % 2 ? 9 : 16) * (0.4 + 0.6 * q); c.moveTo(x, y); c.lineTo(x + Math.cos(b) * r, y + Math.sin(b) * r); } c.stroke(); }
+  if (f.ctr) { const q = clamp(k * 2.2, 0, 1), a = 1 - k; c.strokeStyle = `rgba(${T.glow},${a})`; c.lineWidth = 6 * (1 - k * 0.5); c.lineCap = 'round'; c.beginPath(); const s0 = -1.3, s1 = s0 + 2.4 * q; if (f.face > 0) c.arc(f.x + 6, f.y, 22, s0, s1); else c.arc(f.x - 6, f.y, 22, Math.PI - s1, Math.PI - s0); c.stroke(); c.strokeStyle = `rgba(255,255,255,${a})`; c.lineWidth = 2; c.stroke(); c.lineCap = 'butt'; }
+  c.restore();
+}
 /* ---------- Backdrop: sky, mountains and the ground plane ---------- */
 function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 let BG; const mapBackdrop = () => { BG = (() => {
@@ -9626,6 +10225,7 @@ function drawUnit(c, u) {
   const big = u.type === 'leviathan' || u.type === 'worldrender' || u.type === 'sovereign' ? 2.4 : u.type === 'broodtyrant' || u.type === 'voidcarrier' ? 1.6 : u.type === 'drone' || u.type === 'needlewing' || u.type === 'prismwing' ? 0.5 : 1; // a Leviathan's shadow is seen coming
   const lift = u.lt && VFX.g ? latchLift(VFX.g, u) : 0, rk = rvScale(u); // v2.84: a latched Leaper rides on its host's back (no shadow of its own); a Ravager's stacks make it bigger
   if (!lift) { c.beginPath(); c.ellipse(w.x, w.y, (d.air ? 16 * big : UVIS[u.type] ? UVIS[u.type].w * rk : Math.max(8, d.h * 0.7)) * US, (d.air ? 3.5 * big : 2.6) * US, 0, 0, 7); c.fill(); }
+  if (u.crg) drawChargeDust(c, u, VFX.lastT); // v2.85: a Dreadthorn's charge kicks up dust behind it
   if (u.type === 'medic' && VFX.g) drawHealBeams(c, VFX.g, u, w);
   if (u.siege) drawSiegeLock(c, u, w); // P8 (v2.37): a Titan's stabilisers, under it
   c.save(); c.translate(w.x + (lift ? (RIDE.get(u) || 0) * 8 * US : 0), w.y - u.z + bob - lift + (lift ? Math.abs(RIDE.get(u) || 0) * 2 * US : 0)); c.scale(u.face * US * (u.kid ? 0.75 : 1), US * (u.kid ? 0.75 : 1)); // a Cloudwing's offspring is smaller (v2.21)
@@ -9638,11 +10238,12 @@ function drawUnit(c, u) {
   c.globalCompositeOperation = 'lighter';
   if (u.hitT > 0) { c.globalAlpha = 0.6 * Math.min(1, u.hitT / 0.12); drawUnitArt(c, u, TEAM[u.side]); } // hit: the unit itself flashes
   if (u.type === 'sniper' && u.cd > 0 && u.cd < 0.35) stamp(c, GLOW.cyan, MUZ.sniper[0], -MUZ.sniper[1], 2 + (0.35 - u.cd) * 14, 0.9); // rail charging
-  if (u.braceT > VFX.lastT) { c.globalAlpha = 0.55; c.strokeStyle = TEAM[u.side].light; c.lineWidth = 1.6; c.beginPath(); c.moveTo(-21, -7); c.bezierCurveTo(-19, -30, 12, -32, 19, -13); c.stroke(); } // a bracing Bulwark: its plates lock and glow
+  if (u.braceT > VFX.lastT && u.type !== 'bulwark') { c.globalAlpha = 0.55; c.strokeStyle = TEAM[u.side].light; c.lineWidth = 1.6; c.beginPath(); c.moveTo(-21, -7); c.bezierCurveTo(-19, -30, 12, -32, 19, -13); c.stroke(); } // a bracing Bulwark: its plates lock and glow
   c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
   c.restore();
   if (ex) drawExiled(c, u, w, VFX.lastT);
   if (u.cov && b2b) drawCovered(c, u, w, VFX.lastT); // v2.83: in a Titan's cover
+  if (u.dzT > VFX.lastT) drawDazed(c, u, w, VFX.lastT); // v2.85: a Dreadthorn dazed after its charge
   if (u.shT > VFX.lastT) drawShield(c, u, VFX.lastT);
   if (VFX.g) drawAxFx(c, VFX.g, u, w); // v2.27: a Marksman's charge, a Gravemantle's aura, slowed and disrupted marks
   if (u.ovT > VFX.lastT) drawOvercharge(c, u, w, VFX.lastT); // v2.28
@@ -10782,6 +11383,7 @@ function render(c, g, time, sel, selPad) {
     } else { c.globalAlpha = k; c.fillStyle = p.color; c.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size); }
   }
   c.globalAlpha = 1;
+  if (rwB3b(g)) drawBarriers(c, g, lit, time); // v2.85: Bastion barriers, over the units they screen
   for (const f of g.fx) { // the SIM's blasts (its muzzle flashes are replaced by the per-weapon ones in drawVfx)
     if (f.k === 'beam') { if (lit(f.x, f.y / DY) || lit(f.x2, (f.y2 ?? f.y) / DY)) drawBeam(c, f); continue; } // Null Lance beams (v2.25), only where the player can see
     if (f.k === 'pull') { if (lit(f.x, f.y / DY)) drawPull(c, f); continue; } // Eventide pulses (v2.27)
@@ -10791,6 +11393,7 @@ function render(c, g, time, sel, selPad) {
     if (f.k === 'pierce') { if (lit(f.u, f.v)) drawPierce(c, f); continue; } // P4 (v2.37)
     if (f.k === 'blink') { if (lit(f.u, f.v)) drawBlink(c, f); continue; } // P5 (v2.37)
     if (f.k === 'latch' || f.k === 'hatch' || f.k === 'rsblink' || f.k === 'swap' || f.k === 'devour3') { if (lit(f.u, f.y / DY) || (f.x2 != null && lit(f.u, f.y2 / DY))) (f.k === 'latch' ? drawLatchFx : f.k === 'hatch' ? drawHatchFx : f.k === 'rsblink' ? drawRsBlink : f.k === 'swap' ? drawSwapFx : drawDevour3)(c, f); continue; } // v2.84 (batch 3a)
+    if (f.k === 'trample' || f.k === 'chargeEnd' || f.k === 'parry' || f.k === 'bwhit' || f.k === 'bwbreak' || f.k === 'bwup') { if (lit(f.u, f.y / DY)) (f.k === 'trample' ? drawTrampleFx : f.k === 'chargeEnd' ? drawChargeEnd : f.k === 'parry' ? drawParryFx : f.k === 'bwhit' ? drawBwHit : f.k === 'bwbreak' ? drawBwBreak : drawBwUp)(c, f); continue; } // v2.85 (batch 3b)
     if (f.k === 'emerge') { if (f.side === 0 || g.spectate || lit(f.u, f.y / DY)) drawEmerge(c, f); continue; } // v2.83: into or out of a tunnel
     if (f.k === 'erupt' || f.k === 'rift' || f.k === 'unexile') { if (lit(f.u, f.y / DY)) (f.k === 'erupt' ? drawErupt : f.k === 'rift' ? drawRift : drawUnexile)(c, f); continue; } // v2.82
     if (f.k === 'devour') { if (lit(f.u, f.v)) drawDevour(c, f); continue; } // P11 (v2.37)
@@ -11080,7 +11683,7 @@ const UNIT_TIPS = {
   hydra: ['Aircraft first, then infantry swarms; slowly chips buildings', 'Tanks, Titans, Artillery'],
   get skitterling() { const u = UDEF.skitterling; return [`Lone ranged units and nodes; hits harder when several bite the same target (up to +${txP(u.swarm.max)}). ${txN(u.pop)} supply each, at most ${u.max} alive`, "Splash damage, Flame Tanks, Turrets; it can't hit aircraft"]; }, // v2.37
   get mite() { const u = UDEF.mite; return [`Swarming lone units and buildings for free: a clutch every ${txN(MOUND.every)} s from the Brood Mound; at T3 a killed Mite bursts into acid`, "Anything at all: very little HP; it can't hit aircraft or capture nodes"]; },
-  get bulwark() { const u = UDEF.bulwark; return [`Soaking up fire at the front; braces when hit (${txP(u.brace.cut)} less damage for ${txN(u.brace.dur)} s, every ${txN(u.brace.cd)} s)`, 'Heavies, Tanks; being surrounded']; },
+  get bulwark() { const u = UDEF.bulwark; if (REWORK.b3b) return [`Holding the line on its creep: braces when hit (${txP(u.brace.cut)} less damage for ${txN(u.brace.dur)} s, every ${txN(u.brace.cd)} s); on its own creep it regenerates ${txN(BULK.fight)} health a second even in combat and ${txN(BULK.calm)}× the usual creep regeneration out of it`, 'Heavies, Tanks; drawing it off its creep, being surrounded']; return [`Soaking up fire at the front; braces when hit (${txP(u.brace.cut)} less damage for ${txN(u.brace.dur)} s, every ${txN(u.brace.cd)} s)`, 'Heavies, Tanks; being surrounded']; },
   razorwing: ['Exposed ground units and aircraft; dives from the air', 'Anything that hits air, Turrets'],
   get leaper() { const u = UDEF.leaper; if (REWORK.b3a) return [`Vehicles, walkers and big ground units: it leaps up to ${txN(u.leap.range)} (every ${txN(u.leap.cd)} s) and latches on, eating ${txN(LATCH.dps)} health a second and slowing its host ${txP(LATCH.slow)} (up to ${txN(LATCH.max)} on one host; the slow doesn't add up). If the host dies, each Leaper on it hatches ${txN(LATCH.hatch)} Skitterlings for ${txN(LATCH.life)} s (at most ${txN(LATCH.hatchMax)})`, 'Shoot it off its host (it can be hit, splash too), Flame Tanks, focused fire']; return [`Snipers, Artillery and other ranged units: it leaps up to ${txN(u.leap.range)} onto them (every ${txN(u.leap.cd)} s)`, 'Splash, Flame Tanks, focused fire']; },
   get ravager() { const u = UDEF.ravager; if (REWORK.b3a) return [`Long fights: every ground unit that dies leaves remains for ${txN(RAV.life)} s; within ${txN(RAV.r)} of them, out of combat or under ${txP(RAV.low)} health, it devours them over ${txN(RAV.eat)} s: ${txP(RAV.heal)} of its health back and +${txP(RAV.dmg)} damage and +${txP(RAV.hp)} health, up to ${txN(RAV.max)} times`, 'Kill it early, before it feeds; Tanks, Turrets']; return [`Light armor (its maul does ${txX(DMG[u.weapon].light)}); every kill sends it into a ${txN(u.bloodfrenzy?.dur)} s frenzy (faster attacks and movement), refreshed by the next kill`, 'Tanks, Turrets, focused fire']; }, // v2.37
@@ -11090,11 +11693,11 @@ const UNIT_TIPS = {
   get gorebore() { return [`Artillery, Snipers and other ranged backlines: it burrows (speed ${txN(BORE.speed)}, can't be hit) and erupts under them for ${txN(BORE.dmg)} damage around it (radius ${txN(BORE.r)}), then fights up close; it can burrow again ${txN(BORE.cd)} s after each eruption`, `Watching for its dirt trail, guards beside the backline, focus fire while it is up (${txN(BORE.expose)} s exposed after each eruption); it can't hit aircraft`]; }, // v2.82
   get ruinmaw() { if (!REWORK.b2b) return ['Buildings above all; every hit leaves a short acid pool', 'Fast attackers, aircraft, Heavies']; return [`Getting your army behind the enemy: it tunnels unseen (speed ${txN(RUIN.speed)}, can't be hit) and surfaces where you send it; surfaced it is a gate: Bloomhost ground units you send into the Tunnel (at your Hive) come out of its mouth ${txN(RUIN.transit)} s later, one every ${txN(RUIN.every)} s. It bites units beside it for ${txN(RUIN.bite)} and chews a building beside it for ${txN(RUIN.chew)} every ${txN(RUIN.chewCd)} s`, 'Watching for its trail, killing it fast once it surfaces (everyone inside its tunnel dies with it); Heavies, aircraft']; }, // v2.83
   get thornback() { const u = UDEF.thornback; return [`The front line; anyone who hits it up close takes ${txP(u.thorns.frac)} of the damage back`, 'Ranged focus, Tanks, aircraft']; },
-  get dreadthorn() { const u = UDEF.dreadthorn; return [`Packed infantry: a hit of ${txN(u.burst.trigger)}+ releases a spine burst around it (every ${txN(u.burst.cd)} s)`, 'Ranged focus, Tanks, aircraft']; },
-  shardling: ['Lone ranged units and nodes: fast light blades, ground and buildings', 'Focus fire, splash, Flame Tanks; it can\'t hit aircraft'],
-  get bastion() { const u = UDEF.bastion; return [`Holding the front: when hit after its ${txN(u.surge?.cd)} s cooldown its shields surge back (${txP(u.surge?.rate)} per second for ${txN(u.surge?.dur)} s, even under fire)`, 'Burst that breaks through to its health, corrosion; aircraft']; }, // v2.37
+  get dreadthorn() { if (REWORK.b3b) return [`Packed lines: with enemies ${txN(TRAMPLE.min)}-${txN(TRAMPLE.max)} away it charges (speed ${txN(TRAMPLE.speed)}, up to ${txN(TRAMPLE.len)}, every ${txN(TRAMPLE.cd)} s), dealing ${txN(TRAMPLE.dmg)} to every ground unit in its path and knocking it ${txN(TRAMPLE.knock)} aside; buildings and ridges stop it; then it is dazed for ${txN(TRAMPLE.daze)} s. Tap an enemy within ${txN(TRAMPLE.max)} to aim the next charge`, 'Spread out; punish the daze with focused fire, Tanks, aircraft']; const u = UDEF.dreadthorn; return [`Packed infantry: a hit of ${txN(u.burst.trigger)}+ releases a spine burst around it (every ${txN(u.burst.cd)} s)`, 'Ranged focus, Tanks, aircraft']; },
+  get shardling() { if (REWORK.b3b) return [`Duels: every ${txN(PARRY.cd)} s it parries the next hit completely (splash too) and, if the attacker is in melee with it, strikes back for ${txN(PARRY.mul)}× its damage at once`, 'Ranged fire and splash from outside its reach; small hits to spend the parry first']; return ['Lone ranged units and nodes: fast light blades, ground and buildings', 'Focus fire, splash, Flame Tanks; it can\'t hit aircraft']; }, // v2.85: the parry (batch 3b)
+  get bastion() { if (REWORK.b3b) return [`Ranged fire: a curved shield wall ${txN(BAR.off)} in front of it, ${txN(BAR.half * 2)} wide, takes every enemy shot that would pass through (${txN(BAR.hp)} health, back ${txN(BAR.regen)} a second after ${txN(BAR.calm)} s unhit; broken, it is down ${txN(BAR.down)} s); its pulse reaches ${txN(rwShow(null, 'bastion').range)}`, 'Melee, lobbed shells (Artillery) that arc over, flanking around the wall']; const u = UDEF.bastion; return [`Holding the front: when hit after its ${txN(u.surge?.cd)} s cooldown its shields surge back (${txP(u.surge?.rate)} per second for ${txN(u.surge?.dur)} s, even under fire)`, 'Burst that breaks through to its health, corrosion; aircraft']; }, // v2.37
   get wraithwing() { const u = UDEF.wraithwing; return [`A fast flyer that phases out for ${txN(u.phase?.dur)} s when hit (it can't be touched or fire), then can't phase again for ${txN(u.phase?.cd)} s`, 'Rapid-fire anti-air: Interceptors, Hydras, Turrets']; }, // v2.37
-  get riftstalker() { const u = UDEF.riftstalker; if (REWORK.b3a) return [`Exposed ranged units: it phase-steps onto them (up to ${txN(u.leap.range)}, every ${txN(u.leap.cd)} s), strikes and fades back; a kill chain-blinks it to the next ranged unit within ${txN(RS.r)} (up to ${txN(RS.chain)} per strike, no cooldown); breaking its shields blinks it straight home`, 'Burst it before it fades; something sturdy beside the backline']; return [`Lone ranged units: it phase-steps onto them (up to ${txN(u.leap.range)}, every ${txN(u.leap.cd)} s), strikes once and steps back to where it leapt from`, 'A guarded backline; burst when it lands']; }, // v2.37
+  get riftstalker() { const u = UDEF.riftstalker; if (REWORK.b3a) return [`Exposed ranged units: it phase-steps onto them (up to ${txN(u.leap.range)}, every ${txN(u.leap.cd)} s) and stays to fight; a kill chain-blinks it to the next ranged unit within ${txN(RS.r)} (up to ${txN(RS.chain)} per strike, no cooldown); breaking its shields, or running out of targets, blinks it straight home`, 'Break its shields fast; something sturdy beside the backline']; return [`Lone ranged units: it phase-steps onto them (up to ${txN(u.leap.range)}, every ${txN(u.leap.cd)} s), strikes once and steps back to where it leapt from`, 'A guarded backline; burst when it lands']; }, // v2.37
   get parallax() { const u = UDEF.parallax; if (REWORK.b3a) return [`Saving expensive units: when an Axiarch ground ally within ${txN(SWAP.r)} drops under ${txP(SWAP.low)} health, it swaps places with it (every ${txN(SWAP.cd)} s, not while itself under ${txP(SWAP.self)}); its blows disrupt (${txP(u.disrupt.amt)} less damage for ${txN(u.disrupt.dur)} s)`, 'Spread damage instead of focusing one unit, or kill it first']; return [`Ranged units: it phase-steps behind them; its blows disrupt (${txP(u.disrupt.amt)} less damage for ${txN(u.disrupt.dur)} s)`, 'Focus fire, heavy frontline units, Turrets']; },
   get lancer() { const u = UDEF.lancer; return [`Tanky single targets and aircraft: every hit on the same target does ${txP(u.focus?.per)} more, up to +${txP(u.focus?.per * u.focus?.max)}`, 'Swarms (it starts over on a new target); melee units that reach it']; }, // v2.37
   marksman: ['Infantry from very long range, after a visible charge-up on its target', 'Fast attackers, aircraft (it can\'t hit them); weak against buildings'],
@@ -12882,9 +13485,9 @@ function trVfxUse(k) {
 }
 
 // v2.82: a row's rework switches (REWORK's for a setup saved before them)
-const TR_RW = [['b2a', 'Batch 2a'], ['artDeploy', 'Deploy'], ['artTelegraph', 'Telegraph'], ['b2b', 'Batch 2b'], ['b3a', 'Batch 3a']]; // b2b (v2.83), b3a (v2.84)
+const TR_RW = [['b2a', 'Batch 2a'], ['artDeploy', 'Deploy'], ['artTelegraph', 'Telegraph'], ['b2b', 'Batch 2b'], ['b3a', 'Batch 3a'], ['b3b', 'Batch 3b']]; // b2b (v2.83), b3a (v2.84), b3b (v2.85)
 function trRw(k) { const S = TR.set; if (!Array.isArray(S.rw)) S.rw = []; return S.rw[k] || (S.rw[k] = rwInit()); }
-const trRwTag = k => { const r = trRw(k), a = !r.b2a ? 'pre-2a' : r.artDeploy && r.artTelegraph ? '2a' : `2a${r.artDeploy ? ' deploy' : ''}${r.artTelegraph ? ' telegraph' : ''}${!r.artDeploy && !r.artTelegraph ? ' (no Artillery switches)' : ''}`; return `${a}, ${r.b2b ? '2b' : 'pre-2b'}, ${r.b3a ? '3a' : 'pre-3a'}`; }; // v2.83: and batch 2b; v2.84: and 3a
+const trRwTag = k => { const r = trRw(k), a = !r.b2a ? 'pre-2a' : r.artDeploy && r.artTelegraph ? '2a' : `2a${r.artDeploy ? ' deploy' : ''}${r.artTelegraph ? ' telegraph' : ''}${!r.artDeploy && !r.artTelegraph ? ' (no Artillery switches)' : ''}`; return `${a}, ${r.b2b ? '2b' : 'pre-2b'}, ${r.b3a ? '3a' : 'pre-3a'}, ${r.b3b ? '3b' : 'pre-3b'}`; }; // v2.83: and batch 2b; v2.84: and 3a; v2.85: and 3b
 // Rows: each row's factions (the first thing placed on each side), building every row from the items
 const trFacs = k => [0, 1].map(s => { const it = TR.set.items.find(i => i.row === k && i.side === s); return it ? (it.kind === 'u' ? rangeFac(it.type) : it.fac) : DEFAULT_FACTION; });
 function trBuild() {
@@ -13008,6 +13611,12 @@ function trState(g, e) {
   if (e.snT > g.t) out.push('snared');
   if (e.frzT > g.t) out.push('frenzied');
   if (e.braceT > g.t) out.push('braced');
+  if (rwB3b(g)) { // v2.85 (batch 3b)
+    if (e.crg) out.push('charging'); else if (e.dzT > g.t) out.push('dazed'); else if (e.type === 'dreadthorn') out.push(g.t >= (e.crCd || 0) ? 'charge ready' : `charge in ${Math.ceil(e.crCd - g.t)} s`);
+    if (e.type === 'bastion' && e.bwHp !== undefined) out.push(e.bwDn ? `barrier down (${Math.ceil(e.bwDn - g.t)} s)` : `barrier ${Math.round(e.bwHp)}/${BAR.hp}`);
+    if (e.type === 'shardling') out.push(g.t >= (e.prT || 0) ? 'parry ready' : `parry in ${Math.ceil(e.prT - g.t)} s`);
+    if (e.type === 'bulwark' && g.t - (e.bkRg ?? -9) < 0.3) out.push('regenerating on creep');
+  }
   if (e.corrT > g.t) out.push('corroded');
   if (e.temp) out.push(`temporary (${Math.max(0, Math.ceil(e.tLife - g.t))} s)`);
   if (d && !d.weapon) out.push('no weapon');
@@ -13156,7 +13765,7 @@ function trUI() { // every UI refresh: the readouts, the clock, the info card, t
     const R = rangeRead(g), T = trView(k), el = box.children[k];
     const who = s => { const c = {}; for (const e of g.ents) if (e.side === s && e.hp > 0) { const nm = e.kind === 'u' ? UDEF[e.type].name : bdOf(e).name; c[nm] = (c[nm] || 0) + 1; } const a = Object.entries(c).sort((x, y) => y[1] - x[1]); return a.length ? a.slice(0, 2).map(([nm, m]) => `${cxEsc(nm)} ×${m}`).join(', ') + (a.length > 2 ? ' …' : '') : 'none'; };
     const w = R.wipe ? ` · <b class="w">${TR_SIDE[R.wipe.side]} wiped out at ${fmtTime(R.wipe.t)}</b>` : '';
-    setHTML(el, `${n > 1 ? `<b>Row ${k + 1}</b> <i class="rw">${cxEsc(trRwTag(k))}</i> ` : trRw(0).b2a && trRw(0).artDeploy && trRw(0).artTelegraph && trRw(0).b2b && trRw(0).b3a ? '' : `<i class="rw">${cxEsc(trRwTag(0))}</i> `}<span class="b">${who(0)}</span> vs <span class="r">${who(1)}</span> · damage <span class="b">${txN(Math.round(R.dmg[0]))}</span> / <span class="r">${txN(Math.round(R.dmg[1]))}</span> · kills <span class="b">${R.kills[0]}</span> / <span class="r">${R.kills[1]}</span>${w}`);
+    setHTML(el, `${n > 1 ? `<b>Row ${k + 1}</b> <i class="rw">${cxEsc(trRwTag(k))}</i> ` : trRw(0).b2a && trRw(0).artDeploy && trRw(0).artTelegraph && trRw(0).b2b && trRw(0).b3a && trRw(0).b3b ? '' : `<i class="rw">${cxEsc(trRwTag(0))}</i> `}<span class="b">${who(0)}</span> vs <span class="r">${who(1)}</span> · damage <span class="b">${txN(Math.round(R.dmg[0]))}</span> / <span class="r">${txN(Math.round(R.dmg[1]))}</span> · kills <span class="b">${R.kills[0]}</span> / <span class="r">${R.kills[1]}</span>${w}`);
     el.style.left = (T.F.l + 6) + 'px'; el.style.top = (n > 1 ? T.y0 + 2 : T.y1 - 20) + 'px'; // one row: the bottom (toasts show at the top); Compare: each strip's top, above its units el.style.maxWidth = (T.F.r - T.F.l - 12) + 'px';
   });
 }

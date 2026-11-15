@@ -193,6 +193,49 @@ Departures and choices the design left open:
   scores (Leaper: the share of big enemy ground units; Riftstalker: the enemy's ranged and far share; Parallax: how many
   expensive units it has, at most one Parallax per two; Ravager: light and heavy armies). Codex counters come from UNIT_TIPS.
 
+**Batch 3b (Dreadthorn, Bastion, Shardling, Bulwark): done in v2.85**, with a fix to 3a first (Part 0, below). Code:
+src/sim/rework-3b.js (`REWORK.b3b` → `g.rw.b3b`; on by default; each Test Range row has its own "Batch 3b" switch), art in
+src/render/units-rework-3b.js. Starting values as asked (`TRAMPLE`, `BAR`, `PARRY`, `BULK`). As in 3a the units keep their ids
+and play through per-game definitions (`rwD`, `RW3B_D`); UDEF is untouched, so a b3b-off game plays v2.84 exactly (the pinned
+fingerprints match, a seeded Test Range skirmish hashes as on v2.84's build, and a b3b-off save leaves the key out).
+- **Part 0 (the 3a Riftstalker, v2.85):** self-play showed its blink home never triggered, because the fade after every
+  strike brought it back before its shields could break. With b3a on it no longer fades back: it stays and fights its
+  target, and blinks home (`rsHome`) when its shields break, or when it has no chain target and nothing in reach (after a
+  kill at once; otherwise after 0.5 s with nothing in reach, `RS.idle`, so a target stepping just out of reach is followed).
+  Ordered to retreat or move, it is no longer out on a strike. The AI strikes with half its shields or more (`RS.aiShp`; was
+  75%). Chain blinks unchanged. The three pinned 3a matches (FP_V284C*) contain no Riftstalker strike, so they are
+  unchanged; a seeded Test Range skirmish with Riftstalkers pins the new behaviour (tests/rework-3b.test.js).
+Departures and choices the design left open:
+- Dreadthorn: the cooldown runs from the charge's start. It picks, among enemy ground units 80-200 away, the one whose line
+  tramples the most enemy supply (within 18 of its path); an AI's charge needs 3 supply on the line (three Riflemen, or one
+  unit of 3+ supply such as a Tank), a player's takes any. It doesn't start a charge while something is already in its melee
+  reach (it fights), nor on Hold at enemies further than the usual hold reach from its spot. A target order (a tap on an
+  enemy) charges at that unit from 40 to 200 (40: not from point-blank). It stops at any building, an enemy Worldbreaker
+  ridge, a wall or the field's edge. The knock is a 0.25 s slide sideways, away from its path (never into a wall).
+  Aircraft, burrowed, tunnelling and exiled units are not hit; a latched Leaper is hit but not knocked. Slows don't slow a
+  charge already running; a snare stops one starting. The charge's blows come from the Dreadthorn, so a Thornback's thorns
+  and a Shardling's parry answer it.
+- Bastion: it loses the surge and the brace (it had the brace with the unit redesign off). "Shots" are every projectile that
+  flies straight (bullets, rockets, missiles, bolts, the Severance's orb, building guns) and every beam. Lobbed shells (the
+  Artillery's salvo, the Bile Lobber's and Rift Mortar's in b2a-off games), bombs dropped from above, flame, cracks,
+  eruptions, meteors, acid and melee pass. The wall stands 44 high: a shot crossing above it (aircraft firing from height at
+  something far behind it, fire at aircraft overhead) passes. A blocked shot does its full damage to the wall (no armour
+  multiplier, no splash). It faces the nearest enemy it can see within 260 that is not an aircraft (none: toward the enemy
+  base). While its Bastion is exiled the wall is down.
+- Shardling: "the attacker is in its melee reach" means in melee with it: within the Shardling's own reach (22), or a melee
+  attacker within that attacker's own reach (most melee units reach further than 22). A ranged hit from further away is
+  parried without a counter. An acid pool's steady burn doesn't spend the parry (it would every tick). Ready when it spawns.
+- Bulwark: "in combat" is the existing creep rule (hurt, or attacking, within the last 5 s). Out of combat 3× the creep
+  regeneration (a Rootheart T2's faster regeneration included), never stacking with a Medicopter's heal.
+- AI: Bastions: each screens up to six of the side's nearest ranged ground units, standing 40 ahead of their front when it
+  has nothing in reach; on the attack, a ranged unit not at least 20 behind its nearest Bastion waits for it (it fights what
+  is in reach). Bulwarks: while the side is not attacking, each holds a spot at the front of the creep patch nearest the
+  rally point and chases only enemies on its creep or within 50 of its spot. Dreadthorns: the 3-supply rule above. All four
+  have their own scores and persona tastes (`RW3B_TASTE`; AI_TWIN unchanged for b3b-off games). The Bloomhost AI still takes
+  Burrowing Evolution on its one Evolution Chamber (its path choice is unchanged), so its Dreadthorns are rare (see
+  KNOWN_ISSUES.md).
+- Art is drawn the new way in b3b-off games too, as in earlier batches.
+
 ### Leaper (Bloomhost, Larva Pit Predatory T2)
 
 Parasite. Springs onto a target and latches on, preferring big targets (vehicles, walkers). While latched it eats the
@@ -202,10 +245,11 @@ target over time and slows it. If the host dies with a Leaper on it, two tempora
 
 ### Riftstalker (Axiarchs, Genesis Gate Riftwalk T2)
 
-The game's only backline assassin. Keeps its teleport strike onto ranged units; blinks back home when its shields break;
-on a kill it can chain-blink to another target in range.
+The game's only backline assassin. Keeps its teleport strike onto ranged units and stays to fight there (v2.85: no fade
+back after each strike); blinks back home when its shields break or it runs out of targets; on a kill it can chain-blink to
+another target in range.
 
-**Counter:** burst it before it fades; keep something sturdy beside the backline.
+**Counter:** break its shields fast; keep something sturdy beside the backline.
 
 ### Parallax (Axiarchs, Genesis Gate Riftwalk T3)
 
@@ -339,7 +383,8 @@ visual references. A final art batch after batch 4 redraws the unchanged units a
 
 1. Test Range and this doc.
 2. Artillery and siege: Artillery, Gorebore, Severance (2a, done v2.82), Titan, Ruinmaw, Worldbreaker (2b, done v2.83).
-3. Divers and melee: Leaper, Riftstalker, Parallax, Ravager (3a, done v2.84), Dreadthorn, Bastion, Shardling, Bulwark.
+3. Divers and melee: Leaper, Riftstalker, Parallax, Ravager (3a, done v2.84), Dreadthorn, Bastion, Shardling, Bulwark (3b, done
+   v2.85).
 4. Ranged and air: Sniper, Astral Marksman, Bilecaster, Gunship, Wraithwing, Leviathan, Brood Tyrant, Worldrender,
    Voidcarrier, Astral Sovereign.
 5. Art batch: unchanged units and buildings in the new style.

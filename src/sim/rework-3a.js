@@ -9,10 +9,11 @@
      At most LATCH.max Leapers per host. It can be hit like any unit (it stands where the host stands, so splash at the host
      reaches it). The host dying hatches LATCH.hatch temporary Skitterlings per Leaper (LATCH.life s, no supply, can't
      capture nodes: u.noCap), at most LATCH.hatchMax per host; the Leaper drops off and carries on.
-   - Riftstalker (Axiarchs): its phase-step strike prefers ranged units in reach (the longest range first) and it still
-     fades back after striking. Out on a strike (u.rsH), its shields breaking blinks it straight back to where it stepped
-     from (u.rsBrk, set by damage1). A strike that kills chain-blinks it to another ranged enemy within RS.r (up to RS.chain
-     per strike), no cooldown; a strike that doesn't kill, or a kill with nothing in reach, fades it back.
+   - Riftstalker (Axiarchs): its phase-step strike prefers ranged units in reach (the longest range first). v2.85 (Part 0
+     of batch 3b): it no longer fades back after striking; it stays and fights. Out on a strike (u.rsH), its shields
+     breaking blinks it straight back to where it stepped from (u.rsBrk, set by damage1). A strike that kills
+     chain-blinks it to another ranged enemy within RS.r (up to RS.chain per strike), no cooldown; a kill with no chain
+     target and nothing else in reach, or nothing in reach for RS.idle s, blinks it home too (rsHome).
    - Parallax (Axiarchs): no leap. Every SWAP.every s it looks for an Axiarch ground ally within SWAP.r under SWAP.low
      health (the most expensive first) and swaps places with it (SWAP.cd cooldown); never while its own health is under
      SWAP.self, never with an exiled, burrowed or tunnelling unit. Its blows still disrupt.
@@ -22,7 +23,7 @@
      max health back and a stack (u.rvS, up to RAV.max): +RAV.dmg damage and +RAV.hp max health each, kept until it dies. */
 const rwB3a = g => !!(g && g.rw && g.rw.b3a);
 const LATCH = { dps: 10, tick: 0.5, slow: 0.3, max: 3, big: 4, hatch: 2, hatchMax: 6, life: 20, land: 40, aim: 320 };
-const RS = { chain: 2, r: 130, aim: 320, guard: 70 };
+const RS = { chain: 2, r: 130, aim: 320, guard: 70, idle: 0.5, aiShp: 0.5 }; // idle, aiShp (v2.85): see rsOut; an AI's strike needs half its shields (the v2.37 timing rule asks 75%)
 const SWAP = { r: 160, low: 0.3, self: 0.4, cd: 10, every: 0.25, back: 3, guard: 40 };
 const RAV = { jaw: 14, life: 6, r: 60, eat: 1.5, heal: 0.3, dmg: 0.1, hp: 0.1, max: 3, low: 0.6, calm: 2, seek: 220, safe: 150 };
 const LATCH_WALK = ['titan', 'hydra', 'bastion', 'gravemantle', 'eventide', 'worldbreaker'];
@@ -38,7 +39,7 @@ EX_TIMERS.push('dvT', 'swCd', 'swChk', 'ltN'); // v2.84: exiled mid-devour, mid-
 
 // Texts the player sees follow the new-game default (numbers in UNIT_TIPS, read live)
 for (const [t, on] of [['leaper', 'Parasite that leaps onto vehicles, walkers and other big ground units and latches on, eating its host and slowing it. Shoot it off; if the host dies with Leapers on it, Skitterlings hatch.'],
-  ['riftstalker', 'Backline assassin that phase-steps onto ranged units, strikes and fades back. A kill chains it to the next ranged target; breaking its shields sends it straight home.'],
+  ['riftstalker', 'Backline assassin that phase-steps onto ranged units and stays to fight. A kill chains it to the next ranged target; breaking its shields, or running out of targets, blinks it straight home.'],
   ['parallax', 'Armored guardian that swaps places with a badly wounded ally nearby, taking its place in the fight. Its blows weaken enemy fire. Spread your damage or kill it first.'],
   ['ravager', 'Hulking devourer that eats the remains of fallen units to heal and grow bigger and stronger, up to three times. Kill it early, before it feeds.']]) {
   const d0 = UDEF[t].desc; Object.defineProperty(UDEF[t], 'desc', { get: () => REWORK.b3a ? on : d0, enumerable: true, configurable: true });
@@ -46,7 +47,7 @@ for (const [t, on] of [['leaper', 'Parasite that leaps onto vehicles, walkers an
 function rw3aText(o, k, on) { const x = Object.getOwnPropertyDescriptor(o, k), off = x.get ? x.get() : x.value; Object.defineProperty(o, k, { get: () => REWORK.b3a ? on : off, enumerable: true, configurable: true }); }
 rw3aText(TREES_BH.barracks.A.steps[2], 'txt', 'Unlocks Leapers: parasites that latch onto big ground units and eat them');
 rw3aText(TREES_BH.barracks.A.steps[3], 'txt', 'Unlocks Ravagers: devourers that eat the fallen to heal and grow');
-rw3aText(TREES_AX.barracks.A.steps[2], 'txt', 'Unlocks Riftstalkers: backline assassins that chain kills and blink home');
+rw3aText(TREES_AX.barracks.A.steps[2], 'txt', 'Unlocks Riftstalkers: backline assassins that stay to fight, chain kills and blink home');
 rw3aText(TREES_AX.barracks.A.steps[3], 'txt', 'Unlocks Parallaxes: guardians that swap places with wounded allies');
 
 /* ---- Leaper: latching ---- */
@@ -165,26 +166,37 @@ function rsJump(g, u, d, st, cs, foes, best, dt, sp, side) {
   }
   return false;
 }
-// After a strike out on a leap: a kill chains to the next ranged enemy within RS.r (no cooldown); otherwise it fades back
+// After a blow out on a strike (v2.85, Part 0 of batch 3b: it no longer fades back after every blow, so its shields can
+// break out there and blink it home): a kill chains to the next ranged enemy within RS.r (no cooldown, up to RS.chain per
+// strike); a kill with no chain target and nothing else in reach blinks it home; otherwise it stays and fights
 function rsAfter(g, u, d, T, foes) {
-  if (T.hp <= 0 && (u.rsC || 0) < RS.chain) {
+  if (T.hp > 0) return; // it stays on its target
+  if ((u.rsC || 0) < RS.chain) {
     const N = rsPick(g, u, foes, u.u, u.v, 0, RS.r);
     if (N) {
       const dd = Math.max(1, Math.hypot(N.u - u.u, N.v - u.v)), k = Math.max(0, (dd - d.range * 0.7) / dd), a = P(u.u, u.v, 12);
       u.u += (N.u - u.u) * k; u.v += (N.v - u.v) * k; if (Math.abs(N.u - u.u) > 1) u.face = N.u >= u.u ? 1 : -1;
-      u.rsC = (u.rsC || 0) + 1; u.cd = Math.min(u.cd, 0.15); u.tgt = N.id; u.nav = undefined;
+      u.rsC = (u.rsC || 0) + 1; u.cd = Math.min(u.cd, 0.15); u.tgt = N.id; u.nav = undefined; u.rsIdle = 0;
       const b = P(u.u, u.v, 12); g.fx.push({ k: 'rsblink', side: u.side, x: a.x, y: a.y, x2: b.x, y2: b.y, u: u.u, t: 0, life: 0.45 });
       ev(g, { type: 'chain', u: u.u, side: u.side });
       return;
     }
   }
-  u.fadeArm = 0; u.rsH = 0; u.lu = u.fu; u.lv = u.fv; u.ld = Math.max(1, Math.hypot(u.lu - u.u, u.lv - u.v)); u.leaping = 1;
-  const w = P(u.u, u.v, 10); g.fx.push({ k: 'blink', side: u.side, u: u.u, x: w.x, y: w.y, t: 0, life: 0.4 });
+  if (!acquire(g, u, d, foes).best) rsHome(g, u); // out of chain targets, nothing in reach: home
+}
+// Out on a strike between blows (v2.85): ordered away, it is no longer out there; nothing in reach for RS.idle s (its
+// target walked off or died to someone else), it blinks home. True: it blinked
+function rsOut(g, u, best, st, cs) {
+  if (st === 'retreat' || st === 'move' || (cs && cs.run)) { u.rsH = 0; u.fadeArm = 0; u.rsIdle = 0; return false; }
+  if (best) { u.rsIdle = 0; return false; }
+  if (!u.rsIdle) { u.rsIdle = g.t; return false; }
+  if (g.t - u.rsIdle < RS.idle) return false;
+  rsHome(g, u); return true;
 }
 // Its shields broke while out on a strike: straight back to where it stepped from
 function rsHome(g, u) {
   const a = P(u.u, u.v, 12 + (u.z || 0));
-  u.rsBrk = 0; u.rsH = 0; u.fadeArm = 0; u.leaping = 0; u.z = 0; u.u = u.fu; u.v = u.fv; u.tgt = 0; u.chT = 0; u.nav = undefined; u.moving = false;
+  u.rsBrk = 0; u.rsH = 0; u.fadeArm = 0; u.rsIdle = 0; u.leaping = 0; u.z = 0; u.u = u.fu; u.v = u.fv; u.tgt = 0; u.chT = 0; u.nav = undefined; u.moving = false;
   const b = P(u.u, u.v, 12); g.fx.push({ k: 'rsblink', side: u.side, x: a.x, y: a.y, x2: b.x, y2: b.y, u: u.u, t: 0, life: 0.55, home: 1 });
   if (MAP_LANED) u.lane = laneAt(u.u, u.v);
   ev(g, { type: 'blinkHome', u: u.u, side: u.side });

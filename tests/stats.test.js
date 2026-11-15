@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { loadSim } = require('./load-sim');
 
-const sim = loadSim();
+const sim = loadSim(); sim.REWORK.b3b = false; // v2.85: these tests pin the v2.84 Shardling, Bastion, Bulwark and Dreadthorn (rework batch 3b off; tests/rework-3b.test.js covers it on)
 const sum = o => Object.values(o).reduce((a, b) => a + b, 0);
 function play(seed, factions, maxT = 1700) {
   const g = sim.newGame('hard', { seed, autoPlayer: true, autoDiff: 'hard', factions });

@@ -1,0 +1,29 @@
+{"map":"classic","f":["bloomhost","axiarchs"],"t":325,"over":true,"winner":0,"n":{"parry":47,"brace":13,"regen5s":9},"tr":{"bulwark":7,"shardling":22},"err":null}
+{"map":"classic","f":["lastfist","axiarchs"],"t":403,"over":true,"winner":1,"n":{"parry":25,"barrierBreak":2,"brace":0,"regen5s":0,"blocked":2306},"tr":{"bastion":4,"shardling":11},"err":null}
+{"map":"classic","f":["axiarchs","bloomhost"],"t":439,"over":true,"winner":0,"n":{"parry":36,"barrierBreak":8,"brace":25,"regen5s":28,"blocked":9196},"tr":{"bastion":5,"shardling":24,"bulwark":9},"err":null}
+{"map":"classic","f":["axiarchs","lastfist"],"t":738,"over":true,"winner":0,"n":{"parry":35,"barrierBreak":15,"brace":0,"regen5s":0,"blocked":15481},"tr":{"bastion":14,"shardling":27},"err":null}
+{"map":"classic","f":["bloomhost","lastfist"],"t":1122,"over":true,"winner":1,"n":{"brace":67,"regen5s":126},"tr":{"bulwark":23},"err":null}
+{"map":"classic","f":["lastfist","bloomhost"],"t":1224,"over":true,"winner":0,"n":{"brace":42,"regen5s":78},"tr":{"bulwark":13},"err":null}
+{"map":"twolane","f":["lastfist","axiarchs"],"t":511,"over":true,"winner":1,"n":{"parry":29,"brace":0,"regen5s":0,"blocked":480},"tr":{"bastion":3,"shardling":12},"err":null}
+{"map":"twolane","f":["lastfist","bloomhost"],"t":585,"over":true,"winner":1,"n":{"leap":5,"brace":41,"regen5s":0},"tr":{"bulwark":14},"err":null}
+{"map":"twolane","f":["bloomhost","axiarchs"],"t":567,"over":true,"winner":1,"n":{"parry":89,"barrierBreak":4,"brace":34,"regen5s":40,"blocked":3997},"tr":{"bulwark":10,"bastion":5,"shardling":35},"err":null}
+{"map":"twolane","f":["axiarchs","bloomhost"],"t":497,"over":true,"winner":0,"n":{"parry":72,"barrierBreak":3,"brace":41,"regen5s":54,"blocked":3993},"tr":{"bastion":4,"shardling":21,"bulwark":8},"err":null}
+{"map":"twolane","f":["bloomhost","lastfist"],"t":1111,"over":true,"winner":0,"n":{"leap":6,"brace":40,"regen5s":41},"tr":{"bulwark":19},"err":null}
+{"map":"twolane","f":["axiarchs","lastfist"],"t":1184,"over":true,"winner":0,"n":{"parry":174,"barrierBreak":6,"leap":2,"blinkHome":8,"brace":0,"regen5s":0,"blocked":10876},"tr":{"bastion":22,"shardling":85,"riftstalker":10},"err":null}
+{"map":"threelane","f":["lastfist","axiarchs"],"t":529,"over":true,"winner":1,"n":{"parry":37,"barrierBreak":1,"brace":0,"regen5s":0,"blocked":2724},"tr":{"bastion":10,"shardling":15},"err":null}
+{"map":"threelane","f":["bloomhost","lastfist"],"t":711,"over":true,"winner":0,"n":{"leap":4,"brace":48,"regen5s":44},"tr":{"bulwark":15},"err":null}
+{"map":"threelane","f":["bloomhost","axiarchs"],"t":568,"over":true,"winner":0,"n":{"parry":79,"leap":10,"brace":22,"regen5s":11},"tr":{"bulwark":18,"shardling":38},"err":null}
+{"map":"threelane","f":["lastfist","bloomhost"],"t":1305,"over":true,"winner":-1,"n":{"leap":72,"brace":69,"regen5s":96},"tr":{"bulwark":30},"err":null}
+{"map":"threelane","f":["axiarchs","lastfist"],"t":1117,"over":true,"winner":1,"n":{"parry":96,"barrierBreak":6,"brace":0,"regen5s":0,"blocked":6981},"tr":{"bastion":13,"shardling":53},"err":null}
+{"map":"threelane","f":["axiarchs","bloomhost"],"t":873,"over":true,"winner":0,"n":{"parry":61,"barrierBreak":4,"brace":90,"regen5s":152,"blocked":3722},"tr":{"bastion":5,"shardling":31,"bulwark":27},"err":null}
+errors: 0 of 18 | events: {"parry":780,"brace":532,"regen5s":679,"barrierBreak":49,"blocked":59756,"leap":99,"blinkHome":8} | trained: {"bulwark":193,"shardling":374,"bastion":85,"riftstalker":10}
+charge in 0 matches
+chargeEnd in 0 matches
+barrierBreak in 9 matches
+parry in 12 matches
+blinkHome in 1 matches
+chain in 0 matches
+leap in 6 matches
+brace in 12 matches
+regen5s in 11 matches
+blocked in 10 matches

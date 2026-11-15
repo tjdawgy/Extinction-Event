@@ -886,7 +886,11 @@ function sprPose(u) { // a stand-in unit snapped to one of the cached poses, wit
   let rvS = 0, dvT = 0, lt = 0, ltF = 0; // v2.84 (batch 3a): a Ravager's stacks and its devour, a Leaper latched and how much it has fed
   if (u.type === 'ravager') { rvS = Math.min(3, u.rvS || 0); dvT = u.dvT ? 1 : 0; if (rvS) k += 'r' + rvS; if (dvT) k += 'v'; }
   if (u.type === 'leaper' && u.lt) { lt = 1; ltF = Math.min(2, (u.ltF || 0) >> 1); k += 'l' + ltF; }
-  return { key: u.type + u.side + '.' + q + (u.aimAir ? 'a' : '') + k, box, u: { anim, moving: !spin && q > 0, recoil: 0, aimAir: u.aimAir, dpk, sk, gk, rvS, dvT, lt, ltF } }; // a Hydra's guns up or level
+  let crg = 0, dz = 0, pr = 0, br = 0, hl = 0; // v2.85 (batch 3b): a Dreadthorn charging or dazed (five sway steps), a Shardling's parry ready, a Bulwark bracing or regenerating (three pulse steps)
+  if (u.type === 'dreadthorn') { if (u.crg) { crg = 1; k += 'c'; } else if (u.dzT > VFX.lastT) { dz = Math.round(Math.sin(VFX.lastT * 5 + u.id) * 2) / 2 || 0.01; k += 'z' + dz; } }
+  else if (u.type === 'shardling' && VFX.g && rwB3b(VFX.g) && VFX.lastT >= (u.prT || 0)) { pr = 1; k += 'p'; }
+  else if (u.type === 'bulwark') { if (u.braceT > VFX.lastT) { br = 1; k += 'b'; } if (VFX.lastT - (u.bkRg ?? -9) < 0.3) { hl = 1 + (Math.floor(VFX.lastT * 4) % 3); k += 'h' + hl; } }
+  return { key: u.type + u.side + '.' + q + (u.aimAir ? 'a' : '') + k, box, u: { anim, moving: !spin && q > 0, recoil: 0, aimAir: u.aimAir, dpk, sk, gk, rvS, dvT, lt, ltF, crg, dz, pr, br, hl } }; // a Hydra's guns up or level
 }
 function drawUnitArt(c, u, T) {
   const p = sprPose(u);

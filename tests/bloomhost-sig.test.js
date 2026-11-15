@@ -8,6 +8,7 @@ const assert = require('node:assert');
 const { loadSim } = require('./load-sim');
 
 const sim = loadSim(); sim.setMech7c(false); // v2.43: these tests pin the v2.32-v2.34 signature rules (regular pads, both at once) and v2.42 nodes; tests/polish.test.js covers the signature pad (MECH7C)
+sim.REWORK.b3b = false; // v2.85: these tests pin the v2.84 Bulwark's creep regeneration (rework batch 3b off; tests/rework-3b.test.js covers it on)
  sim.setBalance7b(false); // v2.42: these tests pin the mechanics at v2.41's numbers (the phase 7b layer off; tests/strategy.test.js covers it)
 const U = sim.UDEF, M = sim.MOUND, R = sim.ROOT, C = sim.CREEP, MID = sim.L / 2;
 const step = (g, secs) => { for (let i = 0; i < Math.round(secs * 30); i++) sim.update(g, 1 / 30); };

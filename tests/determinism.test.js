@@ -37,7 +37,7 @@ const saveV30 = o => { delete o.map; if (o.v === 31) o.v = 30; };
 function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 
 function fingerprint(salvageOff, aimOff, redesign, balance, rw) {
-  const sim = loadSim({ random: mulberry(2024) }); sim.REWORK.b2a = !!rw; sim.REWORK.b2b = rw === 'b' || rw === 'c'; sim.REWORK.b3a = rw === 'c'; /* v2.83: batch 2b only with rw 'b' (v2.84: batch 3a with rw 'c', 2b too) */ /* v2.82: the pinned replays play with faction rework batch 2a off (rw: on) */ sim.RNG.legacy = true; sim.setBreak(false); /* v2.69: the pinned replays play v2.68's rules */ sim.AUTO_STANCE.retreat = false; /* v2.55: and side 0 on Hold */ /* v2.50: the pinned replays draw every random number from Math.random, as before the seeded streams */ sim.setMech7c(false); /* v2.43: the pinned replays play the v2.42 mechanics (MECH7C off) */ sim.setRedesign(!!redesign); sim.setBalance(!!balance); if (balance) sim.setBalance7b(false); // v2.42: FP_V239_BA pins the v2.39-v2.41 numbers (the phase 7b layer off) // v2.37: the unit redesign off unless asked for (the pinned replays are v2.36's); v2.39: the balance pass too
+  const sim = loadSim({ random: mulberry(2024) }); sim.REWORK.b2a = !!rw; sim.REWORK.b2b = rw === 'b' || rw === 'c'; sim.REWORK.b3a = rw === 'c' || rw === 'd'; sim.REWORK.b3b = rw === 'd'; /* v2.85: batch 3b with rw 'd' (3a too) */ /* v2.83: batch 2b only with rw 'b' (v2.84: batch 3a with rw 'c', 2b too) */ /* v2.82: the pinned replays play with faction rework batch 2a off (rw: on) */ sim.RNG.legacy = true; sim.setBreak(false); /* v2.69: the pinned replays play v2.68's rules */ sim.AUTO_STANCE.retreat = false; /* v2.55: and side 0 on Hold */ /* v2.50: the pinned replays draw every random number from Math.random, as before the seeded streams */ sim.setMech7c(false); /* v2.43: the pinned replays play the v2.42 mechanics (MECH7C off) */ sim.setRedesign(!!redesign); sim.setBalance(!!balance); if (balance) sim.setBalance7b(false); // v2.42: FP_V239_BA pins the v2.39-v2.41 numbers (the phase 7b layer off) // v2.37: the unit redesign off unless asked for (the pinned replays are v2.36's); v2.39: the balance pass too
   if (salvageOff || aimOff) sim.FLAME.aim = false;
   if (salvageOff) { sim.SALVAGE.pct = 0; sim.SIG.on = false; sim.RETREAT.fire = true; }
   const g = sim.newGame('hard', { autoPlayer: true, autoDiff: 'hard', ai: 'legacy', autoAi: 'legacy', persona: 'trickster', autoPersona: 'turtle' });
@@ -49,7 +49,7 @@ function fingerprint(salvageOff, aimOff, redesign, balance, rw) {
 }
 
 function lfBh(rw) { // Last Fist (autoplayer, Turtle) vs Bloomhost (Aggressor), Hard, to the end of the match
-  const sim = loadSim({ random: mulberry(2024) }); sim.REWORK.b2a = !!rw; sim.REWORK.b2b = rw === 'b' || rw === 'c'; sim.REWORK.b3a = rw === 'c'; /* v2.83: batch 2b only with rw 'b' (v2.84: batch 3a with rw 'c', 2b too) */ sim.RNG.legacy = true; sim.setBreak(false); sim.AUTO_STANCE.retreat = false; /* v2.55: and side 0 on Hold */ /* v2.50: the pinned replays draw every random number from Math.random, as before the seeded streams */ sim.setMech7c(false); /* v2.43: the pinned replays play the v2.42 mechanics (MECH7C off) */ sim.setRedesign(false); sim.setBalance(false); sim.RETREAT.fire = true; sim.FLAME.aim = false; // v2.35: the v2.34 retreat rule; v2.36: the v2.35 Flame Tank; v2.39: no balance pass
+  const sim = loadSim({ random: mulberry(2024) }); sim.REWORK.b2a = !!rw; sim.REWORK.b2b = rw === 'b' || rw === 'c'; sim.REWORK.b3a = rw === 'c' || rw === 'd'; sim.REWORK.b3b = rw === 'd'; /* v2.85: batch 3b with rw 'd' (3a too) */ /* v2.83: batch 2b only with rw 'b' (v2.84: batch 3a with rw 'c', 2b too) */ sim.RNG.legacy = true; sim.setBreak(false); sim.AUTO_STANCE.retreat = false; /* v2.55: and side 0 on Hold */ /* v2.50: the pinned replays draw every random number from Math.random, as before the seeded streams */ sim.setMech7c(false); /* v2.43: the pinned replays play the v2.42 mechanics (MECH7C off) */ sim.setRedesign(false); sim.setBalance(false); sim.RETREAT.fire = true; sim.FLAME.aim = false; // v2.35: the v2.34 retreat rule; v2.36: the v2.35 Flame Tank; v2.39: no balance pass
   const g = sim.newGame('hard', { autoPlayer: true, autoDiff: 'hard', ai: 'legacy', autoAi: 'legacy', persona: 'aggressor', autoPersona: 'turtle', factions: ['lastfist', 'bloomhost'] });
   for (let i = 0; i < 30 * 1700 && !g.over; i++) sim.update(g, 1 / 30);
   const o = JSON.parse(sim.serialize(g, {})); delete o.log; delete o.stats; stripPreset(o); delete o.v; // the save version
@@ -62,7 +62,7 @@ test('a fixed Last Fist vs Bloomhost match plays exactly as v2.33 did, apart fro
 });
 
 function bhAx(redesign, balance, rw) { // Bloomhost (Aggressor) vs Axiarchs (Economist autoplayer), Hard, to the end or 12 minutes
-  const sim = loadSim({ random: mulberry(2024) }); sim.REWORK.b2a = !!rw; sim.REWORK.b2b = rw === 'b' || rw === 'c'; sim.REWORK.b3a = rw === 'c'; /* v2.83: batch 2b only with rw 'b' (v2.84: batch 3a with rw 'c', 2b too) */ sim.RNG.legacy = true; sim.setBreak(false); sim.AUTO_STANCE.retreat = false; /* v2.55: and side 0 on Hold */ /* v2.50: the pinned replays draw every random number from Math.random, as before the seeded streams */ sim.setMech7c(false); /* v2.43: the pinned replays play the v2.42 mechanics (MECH7C off) */ sim.setRedesign(redesign); sim.setBalance(!!balance); if (balance) sim.setBalance7b(false); // v2.42: the v2.39-v2.41 numbers
+  const sim = loadSim({ random: mulberry(2024) }); sim.REWORK.b2a = !!rw; sim.REWORK.b2b = rw === 'b' || rw === 'c'; sim.REWORK.b3a = rw === 'c' || rw === 'd'; sim.REWORK.b3b = rw === 'd'; /* v2.85: batch 3b with rw 'd' (3a too) */ /* v2.83: batch 2b only with rw 'b' (v2.84: batch 3a with rw 'c', 2b too) */ sim.RNG.legacy = true; sim.setBreak(false); sim.AUTO_STANCE.retreat = false; /* v2.55: and side 0 on Hold */ /* v2.50: the pinned replays draw every random number from Math.random, as before the seeded streams */ sim.setMech7c(false); /* v2.43: the pinned replays play the v2.42 mechanics (MECH7C off) */ sim.setRedesign(redesign); sim.setBalance(!!balance); if (balance) sim.setBalance7b(false); // v2.42: the v2.39-v2.41 numbers
   const g = sim.newGame('hard', { autoPlayer: true, autoDiff: 'hard', ai: 'legacy', autoAi: 'legacy', persona: 'aggressor', autoPersona: 'economist', factions: ['bloomhost', 'axiarchs'] });
   for (let i = 0; i < 30 * 720 && !g.over; i++) sim.update(g, 1 / 30);
   const o = JSON.parse(sim.serialize(g, {})); delete o.log; delete o.stats; stripPreset(o);
@@ -142,6 +142,18 @@ test('v2.84: with rework batches 2a, 2b and 3a on, the same matches match their 
   assert.strictEqual(bhAx(true, true, 'c'), FP_V284C_BA);
   assert.strictEqual(lfBh('c'), LF_BH_V284C);
 });
+// v2.85 (faction rework batch 3b: Dreadthorn charges, Bastion barriers, Shardling parries, Bulwark creep regeneration; and Part 0,
+// the batch 3a Riftstalker no longer fading back after a strike): every replay above runs with REWORK.b3b false and is
+// unchanged (a b3b-off save leaves the key out). The v2.84 matches with 3a on (FP_V284C) are unchanged by Part 0: no
+// Riftstalker strikes in them (tests/rework-3b.test.js pins a seeded skirmish that has them). With 2a, 2b, 3a and 3b on (the
+// new default) the same three matches are recorded here.
+const FP_V285D = '9d82f4a0ebde01715099255f2f7e094b08f10b6af606687558ea0ed70135cc2c', FP_V285D_BA = 'e3d714aad27221b738775a0fdb34ba6a2fcd2b3b34240789f954025528491c65', LF_BH_V285D = '4f259e5c7cb3bd4bbe28894e193f5a3838ddf262e44616886d191002e0dc16be'; // recorded at v2.85 (batches 2a, 2b, 3a and 3b on)
+test('v2.85: with rework batches 2a, 2b, 3a and 3b on, the same matches match their recorded fingerprints', () => {
+  assert.strictEqual(fingerprint(false, false, true, true, 'd'), FP_V285D);
+  assert.strictEqual(bhAx(true, true, 'd'), FP_V285D_BA);
+  assert.strictEqual(lfBh('d'), LF_BH_V285D);
+});
+if (require.main === module && process.argv[2] === '--print3b') console.log(fingerprint(false, false, true, true, 'd'), bhAx(true, true, 'd'), lfBh('d'));
 if (require.main === module && process.argv[2] === '--print3a') console.log(fingerprint(false, false, true, true, 'c'), bhAx(true, true, 'c'), lfBh('c'));
 if (require.main === module && process.argv[2] === '--print2a') console.log(fingerprint(false, false, true, true, true), bhAx(true, true, true), lfBh(true));
 if (require.main === module && process.argv[2] === '--print2b') console.log(fingerprint(false, false, true, true, 'b'), bhAx(true, true, 'b'), lfBh('b'));

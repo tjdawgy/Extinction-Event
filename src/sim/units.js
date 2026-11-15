@@ -237,10 +237,13 @@ function updateUnit(g, u, foes, dt) {
   if (u.cd > 0) u.cd -= dt * (frz ? ABIL.frenzy.rate : 1);
   if (u.recoil > 0) u.recoil = Math.max(0, u.recoil - dt * 5);
   if (u.hitT > 0) u.hitT -= dt;
+  if (u.crg) { trampleStep(g, u, d, dt); return; } // v2.85: a batch 3b Dreadthorn charging
+  if (u.dzT > g.t) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // v2.85: dazed after its charge
   if (u.fwdHome && g.nodes[u.fwdHome.n].owner !== u.side) u.fwdHome = undefined; // v2.68: its forward post lost: home is the base again
   const side = g.sides[u.side], dir = dirOf(u.side); let home = (side.defU != null ? side.defU : u.fwdHome ? u.fwdHome.u : rallyU(u.side, g)) + u.rallyOff * dir * (u.fwdHome ? 0.3 : 1); // defU (v2.40): a Default AI under attack rallies inside its HQ's cover; v2.62: a damaged unit sent home goes to the base flag
   const po = side.direct ? u.po || HOLD_PO : null; // v2.73: a direct side's unit follows its own order
   if (po) home = ctlBase(u.side).u; // v2.76: the base rally point
+  else if (u.bkG) home = u.bkG[0]; // v2.85: an AI's Bulwark defending holds on its creep
   const ord = po ? null : unitOrder(side, u.type, u.lane);
   const runs = side.persona && aiFix(side.persona, 'scoutGo') && ((u.id === side.scoutId && side.scoutU != null) || (side.raid && side.raid.ids.includes(u.id)) || capBusy(side, u.id)); // v2.60: a Hard scout or raider; v2.67: a capture group (lane maps)
   let st = po ? po.o : runs ? 'run' : ord ? ord.o : side.stance; // a group or type order overrides the global stance (v2.75: Send damaged home is gone)
@@ -284,7 +287,10 @@ function updateUnit(g, u, foes, dt) {
   if (u.aiWait > g.t && !best && !(MECH7C.on && d.chase && A.prey && Math.hypot(A.prey.u - u.u, A.prey.v - u.v) <= MECH7C.holdR + d.range)) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // v2.43: a holding melee unit still engages within holdR (falls through to the chase below) // v2.40: a Default AI holds a front-runner until its army catches up (fights only what is in reach, never chases)
   if (d.exile && rwB2a(g) && sevStep(g, u, foes, st)) { u.moving = false; return; } // v2.82: a Severance's rift orb, when a group is worth it
   if (d.latch && latchJump(g, u, d, st, cs, foes, best, dt, sp, side)) return; // v2.84: a batch 3a Leaper leaps onto a host
+  if (d.rsChain && u.rsH && !u.leaping && rsOut(g, u, best, st, cs)) return; // v2.85: out on a strike with nothing left in reach: home
   if (d.rsChain && rsJump(g, u, d, st, cs, foes, best, dt, sp, side)) return; // v2.84: a batch 3a Riftstalker's strike onto a ranged unit
+  if (d.trample && trampleGo(g, u, d, st, cs, foes, best, side)) return; // v2.85: a batch 3b Dreadthorn's charge
+  if (d.barrier && !side.direct && u.bsG && !best && st !== 'retreat' && !(cs && cs.run) && bastionGuard(g, u, d, dt, sp)) return; // v2.85: an AI's Bastion screening its ranged units
   if (d.swap && !side.direct && u.pxG && !best && !A.prey && st !== 'retreat' && !(cs && cs.run) && pxGuard(g, u, d, dt, sp)) return; // v2.84: an AI's Parallax beside the unit it guards
   const act = !(u.phT > g.t) && !d.siege && !u.bur; // v2.82: a burrowed Gorebore doesn't fight // v2.37: a phased Wraithwing can't fire (P13); a Titan fires only when planted (P8)
   u.tgt = best && act ? best.id : 0;
@@ -300,7 +306,7 @@ function updateUnit(g, u, foes, dt) {
     }
     if (u.cd <= 0) {
       fire(g, u, best, d); u.cd = d.cd * rand(0.9, 1.1);
-      if (d.rsChain && u.fadeArm) rsAfter(g, u, d, best, foes); // v2.84: a kill chains to the next ranged unit; otherwise it fades back
+      if (d.rsChain && u.rsH) rsAfter(g, u, d, best, foes); // v2.84: a kill chains to the next ranged unit (v2.85: otherwise it stays, or blinks home with nothing left in reach)
       else if (d.fade && u.fadeArm) { // P5 (v2.37): the Riftstalker's strike landed: phase-step back to where it leapt from
         u.fadeArm = 0; u.lu = u.fu; u.lv = u.fv; u.ld = Math.max(1, Math.hypot(u.lu - u.u, u.lv - u.v)); u.leaping = 1;
         const w = P(u.u, u.v, 10); g.fx.push({ k: 'blink', side: u.side, u: u.u, x: w.x, y: w.y, t: 0, life: 0.4 });
@@ -310,7 +316,8 @@ function updateUnit(g, u, foes, dt) {
   }
   if (close && !u.bur) { u.moving = false; return; } // artillery: enemy is inside minimum range
   if (d.chase && !u.bur && st !== 'move' && !(st === 'hold' && u.holdU !== undefined) && !(cs && cs.chase)) { // melee (v2.17): close on the nearest enemy it can see and hurt (v2.76: not when it has a target to close on)
-    const prey = A.prey !== undefined ? A.prey : acquire(g, u, { ...d, range: d.chase }, foes).best;
+    let prey = A.prey !== undefined ? A.prey : acquire(g, u, { ...d, range: d.chase }, foes).best;
+    if (prey && u.bkG && d.creepHold && !bulkPreyOk(g, u, prey)) prey = null; // v2.85: an AI's Bulwark defending chases nothing off its creep
     if (prey && d.leap && !d.latch && g.t >= u.leapCd && !(u.snT > g.t) && !(u.aiHold > g.t)) { // v2.38: a Default AI holds a Riftstalker's leap while its shields recharge // snared: no leap either (v2.33) // the Leaper jumps the last stretch (v2.19), never further than leap.range
       const dist = effDist(u, prey);
       if (dist <= d.leap.range && dist >= d.leap.min) { const k = Math.max(0, (Math.hypot(prey.u - u.u, prey.v - u.v) - d.range * 0.7) / Math.max(1, Math.hypot(prey.u - u.u, prey.v - u.v))); u.lu = u.u + (prey.u - u.u) * k; u.lv = u.v + (prey.v - u.v) * k;
@@ -351,6 +358,7 @@ function updateUnit(g, u, foes, dt) {
     if (side.leash != null && !d.siege && !d.air) tu = dir > 0 ? Math.min(tu, side.leash) : Math.max(tu, side.leash); // v2.38: a Default AI's army stays within reach of its Titans while they plant
   }
   if (u.rmF) { const R = g.t < u.rmF.t ? ctlEnt(g, u.rmF.r) : null; if (R && ruinGate(R)) { tu = u.rmF.u; tv = u.rmF.v; } else u.rmF = undefined; } // v2.83: an AI's unit out of a Ruinmaw's mouth fights around it
+  if (u.bkG && d.creepHold && st !== 'attack' && tu === home) tv = u.bkG[1]; // v2.85: its spot on the creep
   if (MAP_LANED && tv === u.laneV) tv = laneTv(u, tu); // v2.63: the lane's depth there (Classic: unchanged)
   if (!moveToward(u, d, tu, tv, dt, sp)) u.face = dir;
 }

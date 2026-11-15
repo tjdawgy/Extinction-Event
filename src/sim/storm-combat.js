@@ -70,6 +70,7 @@ function updateProjs(g, dt) {
     if (p.target && p.target.hp > 0) { p.tu = p.target.u; p.tv = p.target.v; p.tz = aimZ(p.target); }
     else p.target = null;
     const du = p.tu - p.u, dv = p.tv - p.v, dz = p.tz - p.z, dist = Math.hypot(du, dv, dz), step = p.speed * dt;
+    if (BW.g === g && BW.list) { const fin = dist <= step + 2, k = fin ? 1 : step / dist; if (bwStop(g, p, p.u + du * k, p.v + dv * k, p.z + dz * k)) { p.done = true; continue; } } // v2.85: an enemy Bastion's barrier in the way
     if (dist <= step + 2) { p.u = p.tu; p.v = p.tv; p.z = p.tz; impact(g, p, p.target); p.done = true; continue; }
     p.u += du / dist * step; p.v += dv / dist * step; p.z += dz / dist * step;
     if ((p.weapon === 'rocket' || p.weapon === 'hqgun' || p.weapon === 'missile') && fxRnd() < 0.7) {
@@ -195,14 +196,16 @@ function damage1(g, e, amt, weapon, fromSide, src) {
   const armor = e.kind === 'b' ? 'building' : e.arm || UDEF[e.type].armor; // e.arm (v2.83): a unit's own armour (a batch 2b Ruinmaw's)
   const mult = DMG[weapon][armor];
   if (!mult) return;
+  const b3 = e.kind === 'u' && rwB3b(g), ud3 = b3 ? rwD(g, e.type) : null; // v2.85: a batch 3b unit plays by its own definition
+  if (b3 && ud3.parry && amt > 0 && parryHit(g, e, weapon, src)) return; // v2.85: a Shardling's parry negates the hit
   let dmg = amt * mult * (sideBuff(g, e.side) ? NANO.cut : 1) * (1 + corrNow(e, g.t)); // corroded: takes more (v2.19; v2.37 the second slot)
   if (e.cov && !noCover(weapon)) dmg *= 1 - TITAN.cover; // v2.83: Last Fist infantry in a Titan's cover take less from ranged attacks
-  const br = e.kind === 'u' && UDEF[e.type].brace, pre = dmg;
+  const br = e.kind === 'u' && (b3 ? ud3 : UDEF[e.type]).brace, pre = dmg; // v2.85: a batch 3b Bastion has none
   if (br) { // the Bulwark braces on the first hit after its cooldown (v2.17)
     if (!(e.braceT > g.t) && g.t >= e.braceCd) { e.braceT = g.t + br.dur; e.braceCd = g.t + br.cd; }
     if (e.braceT > g.t) dmg *= 1 - br.cut;
   }
-  const sg = e.kind === 'u' && UDEF[e.type].surge; // P6 (v2.37): a Bastion's shield surge starts on the first hit after its cooldown
+  const sg = e.kind === 'u' && (b3 ? ud3 : UDEF[e.type]).surge; // v2.85: nor its surge // P6 (v2.37): a Bastion's shield surge starts on the first hit after its cooldown
   if (sg && g.t >= (e.surgeCd || 0)) { e.surgeT = g.t + sg.dur; e.surgeCd = g.t + sg.cd; }
   if (e.ovT > g.t) { // Shield Overcharge (v2.28): less damage, with the brace together never more than OV cap
     const A = ABIL.overcharge, nd = Math.max(dmg * (1 - A.cut), pre * (1 - A.cap));
@@ -223,7 +226,7 @@ function damage1(g, e, amt, weapon, fromSide, src) {
   e.hitT = 0.12;
   if (e.kind === 'u') {
     e.lastHurt = g.t;
-    const ud = UDEF[e.type];
+    const ud = b3 ? ud3 : UDEF[e.type]; // v2.85: a batch 3b Dreadthorn has no spine burst
     if (ud.thorns && src && src.kind === 'u' && src.hp > 0 && effDist(src, e) <= ud.thorns.range) damage(g, src, dmg * ud.thorns.frac, 'thorns', e.side); // Thornback: no src, so no loop
     if (ud.burst && dmg >= ud.burst.trigger && weapon !== 'spines' && g.t >= e.burstCd && e.hp > 0) { // Dreadthorn: a spine burst on a big hit
       e.burstCd = g.t + ud.burst.cd; const bw = P(e.u, e.v, 12); fxBoom(g, bw.x, bw.y, 22);

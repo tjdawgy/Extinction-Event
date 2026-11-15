@@ -300,7 +300,14 @@ function aiUpdate(g, s, dt) {
       sc.parallax = nPx >= Math.max(1, nVal / 2) ? 0.3 : 1.0 + Math.min(1, nVal / 4) * 0.8 + comp.heavy * 0.3 - comp.air * 0.5;
       sc.ravager = 1.2 + comp.light * 0.8 + comp.heavy * 0.3 - comp.vehicle * 0.4 - comp.air * 0.5;
     }
-    if (!threat) for (const t of types) { const b = P.bias[t] || (rwB3a(g) && RW3A_TASTE[t] ? RW3A_TASTE[t][P.kind] : rwB2b(g) && RW2B_TASTE[t] ? RW2B_TASTE[t][P.kind] : P.bias[AI_TWIN[t]]); if (b && sc[t] > 0) sc[t] *= b; } // v2.84: batch 3a's four have tastes of their own; // v2.83: the Ruinmaw and Worldbreaker have tastes of their own in batch 2b // the personality's taste in units (threats are answered on merit)
+    if (rwB3b(g)) { // v2.85 (rework batch 3b): the Dreadthorn tramples packed armies, the Bastion screens ranged fire (shells and melee get past), the Shardling duels melee, the Bulwark holds the creep
+      const myR = mine.length ? mine.filter(u => bwRanged(u.type)).length / mine.length : 0;
+      sc.dreadthorn = 1.2 + comp.light * 1.0 + comp.heavy * 0.6 + aiPack(theirs) * 0.6 - comp.air * 0.9;
+      sc.bastion = 1.0 + aiRangedShare(theirs) * 1.4 + myR * 0.6 - aiMeleeShare(theirs) * 0.6 - aiLobShare(theirs) * 0.8 - comp.air * 0.9;
+      sc.shardling = 0.9 + aiMeleeShare(theirs) * 0.8 + comp.light * 0.3 - comp.vehicle * 0.5 - comp.air * 0.4 - (types.length > 2 ? 0.3 : 0);
+      sc.bulwark = 1.3 + comp.light * 1.0 + comp.heavy * 0.7 + (turtle ? 0.3 : 0) - comp.air * 0.9;
+    }
+    if (!threat) for (const t of types) { const b = P.bias[t] || (rwB3b(g) && RW3B_TASTE[t] ? RW3B_TASTE[t][P.kind] : rwB3a(g) && RW3A_TASTE[t] ? RW3A_TASTE[t][P.kind] : rwB2b(g) && RW2B_TASTE[t] ? RW2B_TASTE[t][P.kind] : P.bias[AI_TWIN[t]]); if (b && sc[t] > 0) sc[t] *= b; } // v2.84: batch 3a's four have tastes of their own; // v2.83: the Ruinmaw and Worldbreaker have tastes of their own in batch 2b // the personality's taste in units (threats are answered on merit)
     for (const t of types) if (dl.comp[t] !== undefined) sc[t] *= dl.comp[t]; // the composition dial (v2.38; legacy has none)
     if (smart) aiSmartScores(g, s, sc, types, { comp, antiAir, theirs, mine, nFront, turtle, log, threat, P }); // v2.38: the Default AI values v2.37 roles
     if (holdEarly) for (const t of types) { if (t === 'tank' || t === 'bulwark' || t === 'bastion') sc[t] *= 1.6; if (t === 'shardling' || t === 'skitterling') sc[t] *= 0.6; } // v2.40 (hold)
@@ -469,6 +476,7 @@ function aiUpdate(g, s, dt) {
   if (smart) aiSmartArmy(g, s, mine, dl, P); // v2.38: the Default AI's unit handling
   if (rwB2b(g)) aiRework2b(g, s, mine); // v2.83: Titan escorts, Ruinmaw spots and tunnels (every difficulty)
   if (rwB3a(g)) aiRework3a(g, s, mine); // v2.84: Leaper and Riftstalker aims, Parallax guards (every difficulty)
+  if (rwB3b(g)) aiRework3b(g, s, mine); // v2.85: Bastions screen ranged units, Bulwarks hold the creep when defending
 }
 // Spotters: siege guns can't fire at what their side can't see, so while sieging, one unit walks up until
 // its sight reaches the front of the enemy base (as far as this side knows where that is). Seeing the base
@@ -885,7 +893,7 @@ function aiSmartArmy(g, s, mine, dl, P) {
   // a Sovereign under anti-air with its shields down backs off until they recharge
   if (aiFix(P, 'timing')) for (const u of mine) {
     const d = UDEF[u.type];
-    if (d.fade && u.maxShp && u.shp < u.maxShp * 0.75) u.aiHold = g.t + 1.5;
+    if (d.fade && u.maxShp && u.shp < u.maxShp * (u.type === 'riftstalker' && rwB3a(g) ? RS.aiShp : 0.75)) u.aiHold = g.t + 1.5; // v2.85: half its shields with batch 3a on
     if (d.phase && u.phCd > g.t && u.hp + u.shp < (u.maxHp + u.maxShp) * 0.45) u.aiBack = g.t + 2.5;
     if (u.type === 'sovereign' && u.maxShp && u.shp < u.maxShp * 0.25) {
       const aa = g.ents.some(e => e.side === opp && e.hp > 0 && e.kind === 'u' && UDEF[e.type].hitsAir && Math.abs(e.u - u.u) < 240 && visibleTo(g, s, e));

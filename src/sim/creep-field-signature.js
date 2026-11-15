@@ -227,7 +227,7 @@ function updateCreep(g, dt) {
   }
   // Out-of-combat regeneration on creep; never stacks: with a faster heal running (a Medicopter), that one applies
   for (const e of g.ents) {
-    if (e.kind !== 'u' || e.hp <= 0 || e.hp >= e.maxHp || UDEF[e.type].fac !== 'bloomhost' || UDEF[e.type].air) continue;
+    if (e.kind !== 'u' || e.hp <= 0 || e.hp >= e.maxHp || UDEF[e.type].fac !== 'bloomhost' || UDEF[e.type].air || (e.type === 'bulwark' && rwB3b(g))) continue; // v2.85: a batch 3b Bulwark has its own (bulkRegen)
     if (g.t - e.lastHurt < CREEP.calm || g.t - e.lastAct < CREEP.calm || !onCreep(g, e.side, e.u, e.v)) continue;
     const other = e.medAt === g.t ? UDEF.medic.heal : 0, rg = creepRegen(g, e.side);
     e.creepAt = g.t;
@@ -295,6 +295,7 @@ function fire(g, src, t, def) {
   if (def.rupture) { ruptureFire(g, src, t); return; } // v2.83: a Worldbreaker's crack (batch 2b)
   if (def.beam) { // the Null Lance (v2.25): the beam lands at once; the SIM leaves a short beam mark for the renderer
     const m = muzzle(src), a = P(m.u, m.v, m.z), b = P(t.u, t.v, aimZ(t));
+    if (BW.g === g && BW.list && bwBeam(g, src, t, def, m)) return; // v2.85: it strikes an enemy Bastion's barrier
     damage(g, t, def.dmg * (sideBuff(g, src.side) ? NANO.dmg : 1) * outMul(g, src), def.weapon, src.side, src);
     const hq = def.weapon === 'hqbeam' || def.weapon === 'sovereign'; // the Axis lance (v2.36), the Sovereign's judgement (v2.37): heavier, violet and cyan
     g.fx.push({ k: 'beam', x: a.x, y: a.y, x2: b.x, y2: b.y, t: 0, life: hq ? 0.34 : def.weapon === 'horizon' ? 0.32 : 0.2, w: def.weapon === 'sovereign' ? 5 : hq ? 3.6 : def.weapon === 'horizon' ? 3.2 : def.split ? 1.5 : 2.2, hq });

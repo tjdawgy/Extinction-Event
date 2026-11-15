@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { loadSim } = require('./load-sim');
 
-const sim = loadSim();
+const sim = loadSim(); sim.REWORK.b3b = false; // v2.85: these tests pin the v2.84 Shardling, Bastion, Bulwark and Dreadthorn (rework batch 3b off; tests/rework-3b.test.js covers it on)
 const U = sim.UDEF;
 const step = (g, secs) => { for (let i = 0; i < Math.round(secs * 30); i++) sim.update(g, 1 / 30); };
 const quiet = (f0 = 'lastfist', f1 = 'lastfist') => { const g = sim.newGame('normal', { factions: [f0, f1] }); g.countdown = 0; g.t = 200; for (const s of g.sides) { s.aiT = 1e9; s.res.c = s.res.e = 9000; } sim.setStance(g, 0, 'hold'); sim.setStance(g, 1, 'hold'); return g; };
@@ -75,7 +75,7 @@ test('P4 Sniper: the round pierces up to 3 more units in a line behind its targe
 });
 
 test('P5 Riftstalker: phase-steps onto its prey, strikes once, then steps back to where it leapt from', () => {
-  const g = quiet('axiarchs', 'lastfist'); seeAll(g); sim.setStance(g, 0, 'attack');
+  sim.REWORK.b3a = false; const g = quiet('axiarchs', 'lastfist'); sim.REWORK.b3a = true; // v2.85: the v2.37 fade, as it plays with rework batch 3a off (3a no longer fades back) seeAll(g); sim.setStance(g, 0, 'attack');
   const r = sim.spawnUnit(g, 0, 'riftstalker', MID - 100, 0), t = put(g, 1, 'sniper', MID, 0); t.hp = t.maxHp = 1e4; t.cd = 1e6;
   let leapt = null, struck = false, back = false;
   for (let i = 0; i < 30 * 4; i++) {
