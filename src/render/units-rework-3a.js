@@ -176,7 +176,7 @@ function dRav3(c, T, u) {
 }
 
 DRAW_U.leaper = dLeaper3; DRAW_U.riftstalker = dRift3; DRAW_U.parallax = dPara3; DRAW_U.ravager = dRav3;
-Object.assign(SPR_BOX, { leaper: [-22, -26, 42, 34], riftstalker: [-20, -44, 42, 48], parallax: [-18, -54, 40, 58], ravager: [-36, -56, 72, 60] });
+Object.assign(SPR_BOX, { leaper: [-22, -26, 42, 34], riftstalker: [-20, -44, 42, 48], parallax: [-18, -62, 42, 66], ravager: [-28, -62, 68, 74] });
 Object.assign(UVIS, { leaper: { h: 18, w: 11 }, riftstalker: { h: 34, w: 9 }, parallax: { h: 44, w: 12 }, ravager: { h: 32, w: 17 } });
 // The Ravager's drawn height with its stacks (health bar, shadow)
 const rvScale = u => u.type === 'ravager' && u.rvS ? 1 + 0.13 * Math.min(3, u.rvS) : 1;

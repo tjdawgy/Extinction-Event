@@ -1318,7 +1318,7 @@ const UNIT_ORDER = ['rifle', 'heavy', 'sniper', 'tank', 'artillery', 'titan', 'f
 // Credits first (Refineries before tech); Reactors are skipped while energy is plentiful
 const AI_PLAN = ['barracks', 'refinery', 'refinery', 'reactor', 'habitat', 'factory', 'reactor', 'techlab']; // roles: the same plan builds either faction's base
 // Bloomhost units read the personalities' Last Fist tastes (bias) through their counterpart (v2.17)
-const AI_TWIN = { skitterling: 'rifle', bulwark: 'tank', razorwing: 'aircraft', leaper: 'rifle', ravager: 'sniper', spitter: 'heavy', bilecaster: 'sniper', bilelobber: 'artillery', ruinmaw: 'titan', thornback: 'flame', dreadthorn: 'hydra', needlewing: 'aircraft', cloudwing: 'aircraft', broodtyrant: 'leviathan', worldrender: 'leviathan', shardling: 'rifle', bastion: 'tank', wraithwing: 'aircraft', riftstalker: 'rifle', parallax: 'sniper', lancer: 'heavy', marksman: 'sniper', riftmortar: 'artillery', worldbreaker: 'titan', gravemantle: 'flame', eventide: 'hydra', prismwing: 'aircraft', shardstorm: 'aircraft', voidcarrier: 'leviathan', sovereign: 'leviathan' }; // v2.25, v2.27: Axiarchs too
+const AI_TWIN = { skitterling: 'rifle', bulwark: 'tank', razorwing: 'aircraft', leaper: 'rifle', ravager: 'sniper', spitter: 'heavy', bilecaster: 'sniper', bilelobber: 'artillery', ruinmaw: 'titan', thornback: 'flame', dreadthorn: 'hydra', needlewing: 'aircraft', cloudwing: 'aircraft', broodtyrant: 'leviathan', worldrender: 'leviathan', shardling: 'rifle', bastion: 'tank', wraithwing: 'aircraft', riftstalker: 'rifle', parallax: 'sniper', lancer: 'heavy', marksman: 'sniper', riftmortar: 'artillery', worldbreaker: 'titan', gravemantle: 'flame', eventide: 'hydra', prismwing: 'aircraft', shardstorm: 'aircraft', voidcarrier: 'leviathan', sovereign: 'leviathan' }; // v2.25, v2.27: Axiarchs too (v2.84: with rework batch 3a on, the Leaper, Ravager, Riftstalker and Parallax read RW3A_TASTE instead, src/sim/rework-3a.js)
 // The AI's path choice is made in Last Fist terms and translated (v2.19): Specialists → Acidic, Mass Deployment → Predatory;
 // Siege → Siege Evolution, Assault → Predator Evolution; Tech Lab (v2.21): Air Power → Apex Bloom (heavy bombers, like the
 // Leviathan), Support → Swarm Bloom
@@ -8912,7 +8912,7 @@ function dRav3(c, T, u) {
 }
 
 DRAW_U.leaper = dLeaper3; DRAW_U.riftstalker = dRift3; DRAW_U.parallax = dPara3; DRAW_U.ravager = dRav3;
-Object.assign(SPR_BOX, { leaper: [-22, -26, 42, 34], riftstalker: [-20, -44, 42, 48], parallax: [-18, -54, 40, 58], ravager: [-36, -56, 72, 60] });
+Object.assign(SPR_BOX, { leaper: [-22, -26, 42, 34], riftstalker: [-20, -44, 42, 48], parallax: [-18, -62, 42, 66], ravager: [-28, -62, 68, 74] });
 Object.assign(UVIS, { leaper: { h: 18, w: 11 }, riftstalker: { h: 34, w: 9 }, parallax: { h: 44, w: 12 }, ravager: { h: 32, w: 17 } });
 // The Ravager's drawn height with its stacks (health bar, shadow)
 const rvScale = u => u.type === 'ravager' && u.rvS ? 1 + 0.13 * Math.min(3, u.rvS) : 1;

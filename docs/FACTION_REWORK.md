@@ -170,6 +170,29 @@ the fight happens.
 
 ## Batch 3: Divers and melee
 
+**Batch 3a (Leaper, Riftstalker, Parallax, Ravager): done in v2.84.** Code: src/sim/rework-3a.js (`REWORK.b3a` → `g.rw.b3a`;
+on by default; each Test Range row has its own "Batch 3a" switch), art in src/render/units-rework-3a.js. Starting values as
+asked (`LATCH`, `RS`, `SWAP`, `RAV`). The units keep their ids and play through per-game definitions (`rwD`); UDEF is
+untouched, so a b3a-off game plays v2.83 exactly (a b3a-off save leaves the key out: byte for byte a v2.83 save).
+Departures and choices the design left open:
+- Target orders: a Leaper or Riftstalker given a direct target (a tap on an enemy; also the Test Range's Attack, which
+  targets each unit at the nearest enemy) leaps onto that target rather than its preferred one. Before, no unit leapt at
+  all under a target order.
+- Leaper: no minimum leap distance for a latch (the old leap needed 45). With three Leapers on the best host, others pick
+  the next host or bite as before. It feeds in bites every 0.5 s (5 each), not every frame, so the host doesn't flash
+  constantly. Hatched Skitterlings count toward the Skitterling limit (60) like Emergency Brood's.
+- Riftstalker: the strike takes the ranged unit with the longest range in reach (45-130), then the nearest; with none, it
+  still steps onto other prey as before. After a chain blink it strikes at once (attack cooldown cut to 0.15 s). "Out on a
+  strike" runs from the step until it starts fading back; only then do breaking shields blink it home (shields already
+  at 0 when it stepped don't count).
+- Parallax: "health" is HP (not shields) for both the ally's 30% and its own 40%. Another Parallax can be saved. After a
+  swap an AI's wounded unit falls back for 3 s; a player's unit on Hold holds at its new spot.
+- Ravager: "out of combat" is nothing in weapon or chase range and unhurt for 2 s. It walks in until its jaw is over the
+  pile (14 in front of it); one Ravager claims a pile; a pile being eaten doesn't expire mid-feed.
+- AI: AI_TWIN is unchanged (b3a-off games read it); with b3a on the four use their own persona tastes (`RW3A_TASTE`) and
+  scores (Leaper: the share of big enemy ground units; Riftstalker: the enemy's ranged and far share; Parallax: how many
+  expensive units it has, at most one Parallax per two; Ravager: light and heavy armies). Codex counters come from UNIT_TIPS.
+
 ### Leaper (Bloomhost, Larva Pit Predatory T2)
 
 Parasite. Springs onto a target and latches on, preferring big targets (vehicles, walkers). While latched it eats the
@@ -316,7 +339,7 @@ visual references. A final art batch after batch 4 redraws the unchanged units a
 
 1. Test Range and this doc.
 2. Artillery and siege: Artillery, Gorebore, Severance (2a, done v2.82), Titan, Ruinmaw, Worldbreaker (2b, done v2.83).
-3. Divers and melee: Leaper, Riftstalker, Parallax, Ravager, Dreadthorn, Bastion, Shardling, Bulwark.
+3. Divers and melee: Leaper, Riftstalker, Parallax, Ravager (3a, done v2.84), Dreadthorn, Bastion, Shardling, Bulwark.
 4. Ranged and air: Sniper, Astral Marksman, Bilecaster, Gunship, Wraithwing, Leviathan, Brood Tyrant, Worldrender,
    Voidcarrier, Astral Sovereign.
 5. Art batch: unchanged units and buildings in the new style.

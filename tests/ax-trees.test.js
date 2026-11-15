@@ -32,7 +32,7 @@ test('Genesis Gate and Architectum: a path at T2 locks the building; T3 deepens 
 });
 
 test('phase-step: the Riftstalker steps onto a target 45-130 away, never further, then waits out its cooldown; the Parallax lands behind it', () => {
-  const g = quiet(); seeAll(g); sim.setStance(g, 0, 'attack');
+  sim.REWORK.b3a = false; const g = quiet(); sim.REWORK.b3a = true; seeAll(g); sim.setStance(g, 0, 'attack'); // v2.84: the v2.27 phase-step, as it plays with rework batch 3a off (tests/rework-3a.test.js has the new one)
   const rs = put(g, 0, 'riftstalker', 600, 0); rs.holdU = undefined; rs.laneV = 0;
   const far = put(g, 1, 'sniper', 900, 0); far.cd = 1e6; far.hp = far.maxHp = 1e5;
   step(g, 0.1); assert.ok(!rs.leaping, 'too far (300): it walks');

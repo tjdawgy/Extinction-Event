@@ -176,7 +176,7 @@ test('P14 Lancer: +15% per consecutive hit on the same target, up to +60%; a new
 });
 
 test('P15 Ravager: a kill frenzies it for 4 s; the next kill refreshes it, never stacks', () => {
-  const g = quiet('bloomhost', 'lastfist'); const r = put(g, 0, 'ravager', MID);
+  sim.REWORK.b3a = false; const g = quiet('bloomhost', 'lastfist'); sim.REWORK.b3a = true; const r = put(g, 0, 'ravager', MID); // v2.84: the v2.37 frenzy, as it plays with rework batch 3a off
   const a = put(g, 1, 'rifle', MID + 10); a.hp = 1; sim.damage(g, a, 50, 'maul', 0, r);
   assert.ok(Math.abs(r.frzT - (g.t + 4)) < 1e-9);
   step(g, 1); const b = put(g, 1, 'rifle', MID + 10); b.hp = 1; sim.damage(g, b, 50, 'maul', 0, r);
