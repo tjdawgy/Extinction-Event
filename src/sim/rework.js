@@ -19,8 +19,8 @@
      exiles a weak bolt (its UDEF weapon).
    New internal ids rather than renamed ones: a game with b2a off still has Bile Lobbers and Rift Mortars, and saves, match
    history and tests keep naming them. */
-const REWORK = { b2a: true, artDeploy: true, artTelegraph: true, b2b: true }; // b2b (v2.83): batch 2b, src/sim/rework-2b.js
-const RW_KEYS = ['b2a', 'artDeploy', 'artTelegraph', 'b2b'];
+const REWORK = { b2a: true, artDeploy: true, artTelegraph: true, b2b: true, b3a: true }; // b2b (v2.83): batch 2b, src/sim/rework-2b.js; b3a (v2.84): batch 3a, src/sim/rework-3a.js
+const RW_KEYS = ['b2a', 'artDeploy', 'artTelegraph', 'b2b', 'b3a'];
 const rwInit = o => { const r = Object.assign({}, REWORK, o || {}), out = {}; for (const k of RW_KEYS) out[k] = !!r[k]; return out; };
 const rwB2a = g => !!(g && g.rw && g.rw.b2a);
 const rwDep = g => rwB2a(g) && !!g.rw.artDeploy;

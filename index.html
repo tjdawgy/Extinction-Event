@@ -761,7 +761,7 @@ MAPS.threelane = (() => {
   };
 })();
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.83'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.84'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -2185,7 +2185,7 @@ function update(g, dt) {
   }
   updateGuards(g, foes, dt); // v2.71: the relic guards fire, and both sides may target them
   indexFoes(foes[0], dt); indexFoes(foes[1], dt); // v2.37: lane-sorted, so target searches look only near the searcher
-  RDG.list = null; if (rwB2b(g)) update2b(g); // v2.83: Titan cover, Worldbreaker cracks and ridges (RDG.list: this game's ridges, while its units move)
+  RDG.list = null; if (rwB2b(g)) update2b(g); if (rwB3a(g)) update3a(g); /* v2.84: remains */ // v2.83: Titan cover, Worldbreaker cracks and ridges (RDG.list: this game's ridges, while its units move)
   const n = g.ents.length; NAV.now = g.t; // v2.65: the clock the navigation paths age by
   for (let i = 0; i < n; i++) {
     const e = g.ents[i];
@@ -2224,7 +2224,7 @@ function updateNodes(g, dt) {
     if (n.type === 'relic' && (!SPECIAL.on || !SPECIAL.relic || n.spent || relicGuarded(g, n))) { n.c = [0, 0]; n.prog = 0; continue; } // v2.71: guarded or spent: nothing to capture
     let c0 = 0, c1 = 0;
     let w0 = 0, w1 = 0; // capture weight: a Drilled Rifleman counts 1.5
-    for (const e of g.ents) if (e.kind === 'u' && e.hp > 0 && !UDEF[e.type].air && !UDEF[e.type].noCap && !e.gone && (MAP_2D ? Math.hypot(e.u - n.u, e.v - n.v) : Math.abs(e.u - n.u)) <= (n.r || NODE_R)) { const w = e.vet ? DRILL.capture : 1; if (e.side === 0) { c0++; w0 += w; } else { c1++; w1 += w; } }
+    for (const e of g.ents) if (e.kind === 'u' && e.hp > 0 && !UDEF[e.type].air && !UDEF[e.type].noCap && !e.noCap && !e.gone && (MAP_2D ? Math.hypot(e.u - n.u, e.v - n.v) : Math.abs(e.u - n.u)) <= (n.r || NODE_R)) { const w = e.vet ? DRILL.capture : 1; if (e.side === 0) { c0++; w0 += w; } else { c1++; w1 += w; } }
     n.c = [c0, c1];
     if (c0 && !c1) n.prog = Math.min(100, n.prog + 8 * Math.sqrt(w0) * dt);
     else if (c1 && !c0) n.prog = Math.max(-100, n.prog - 8 * Math.sqrt(w1) * dt);
@@ -2713,6 +2713,7 @@ const RETREAT = { fire: false }; // v2.35 (audit): retreating units hold their f
 function updateUnit(g, u, foes, dt) {
   const d = rwD(g, u.type); // v2.83: a batch 2b unit plays by its own definition in a game with b2b on (else UDEF's)
   if (u.exT) { if (g.t < u.exT) { u.moving = false; u.tgt = 0; return; } exileEnd(g, u); } // v2.82: exiled by a Severance: frozen until it snaps back
+  if (u.rsBrk) { rsHome(g, u); return; } // v2.84: a batch 3a Riftstalker's shields broke out on a strike: straight home
   u.anim += dt;
   const frz = u.frzT > g.t; // Frenzy Bloom (v2.20): faster attacks and movement
   if (u.cd > 0) u.cd -= dt * (frz ? ABIL.frenzy.rate : 1);
@@ -2728,7 +2729,8 @@ function updateUnit(g, u, foes, dt) {
   const A = d.weapon ? acquire(g, u, d, foes, d.chase) : NO_TARGET; let { best, close } = A; // Medicopters and Recon Drones carry no weapon; melee: the chase search in the same pass (v2.37)
   const cs = po && po.o !== 'hold' && (po.o !== 'attack' || po.ju != null) ? ctlStep(g, u, d) : null; // v2.76: heading somewhere (go, target), or retreating
   if (po) st = cs && cs.go ? 'adv' : cs && cs.run ? 'retreat' : (u.po || HOLD_PO).o; // 'adv': on the way, stopping to fight what it meets (a Titan plants for it)
-  const sp = u.bur ? (d.bore ? BORE.speed / d.speed : 1) : (d.fac === 'bloomhost' && !d.air && onCreep(g, u.side, u.u, u.v) ? CREEP.speed : 1) * (frz ? ABIL.frenzy.speed : 1) * (u.slowT > g.t ? 1 - u.slow : 1) * (u.snT > g.t ? 0 : 1); // creep (v2.18), Frenzy Bloom (v2.20), a Gravemantle's slow (v2.27), a Rootheart's snare (v2.33)
+  const sp = u.bur ? (d.bore ? BORE.speed / d.speed : 1) : (d.fac === 'bloomhost' && !d.air && onCreep(g, u.side, u.u, u.v) ? CREEP.speed : 1) * (frz ? ABIL.frenzy.speed : 1) * (u.slowT > g.t ? 1 - u.slow : 1) * (u.snT > g.t ? 0 : 1) * (u.ltT > g.t ? 1 - LATCH.slow : 1); // v2.84: Leapers latched on it // creep (v2.18), Frenzy Bloom (v2.20), a Gravemantle's slow (v2.27), a Rootheart's snare (v2.33)
+  if (d.latch && (u.ltH || u.lt) && latchRide(g, u, d, side, dt)) return; // v2.84: a batch 3a Leaper in flight onto its host, or riding it
   if (u.leaping) { // mid-leap (v2.19): fly to the landing spot, nothing else
     const du = u.lu - u.u, dv = u.lv - u.v, dd = Math.hypot(du, dv), st = d.leap.speed * dt;
     if (dd <= st) { u.u = u.lu; u.v = u.lv; u.z = 0; u.leaping = 0; u.leapCd = g.t + d.leap.cd; }
@@ -2737,6 +2739,8 @@ function updateUnit(g, u, foes, dt) {
   }
   if (u.tn && tunnelStep(g, u, d, side, dt, sp)) return; // v2.83: walking to the tunnel entrance, or inside it
   if (side.hush) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // v2.81: a Test Range side told not to fight back stands still (never set in a match)
+  if (d.swap && pxStep(g, u, side)) return; // v2.84: a batch 3a Parallax swapped places with a wounded ally
+  if (d.devour3 && ravStep(g, u, d, side, st, cs, best, A.prey, dt, sp)) return; // v2.84: a batch 3a Ravager devouring remains (or an AI's going to feed)
   if (d.bore && rwB2a(g) && boreStep(g, u, d, st, cs, foes, dt)) return;
   if (d.tunnel && ruinStep(g, u, d, side, dt, st, cs)) return; // v2.83: an AI's Ruinmaw on its way to, or at, its spot // v2.82: a Gorebore underground on its way, or erupting
   if (u.type === 'artillery' && rwDep(g)) { // v2.82: the Artillery deploys before firing and packs up before moving
@@ -2761,6 +2765,9 @@ function updateUnit(g, u, foes, dt) {
   }
   if (u.aiWait > g.t && !best && !(MECH7C.on && d.chase && A.prey && Math.hypot(A.prey.u - u.u, A.prey.v - u.v) <= MECH7C.holdR + d.range)) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // v2.43: a holding melee unit still engages within holdR (falls through to the chase below) // v2.40: a Default AI holds a front-runner until its army catches up (fights only what is in reach, never chases)
   if (d.exile && rwB2a(g) && sevStep(g, u, foes, st)) { u.moving = false; return; } // v2.82: a Severance's rift orb, when a group is worth it
+  if (d.latch && latchJump(g, u, d, st, cs, foes, best, dt, sp, side)) return; // v2.84: a batch 3a Leaper leaps onto a host
+  if (d.rsChain && rsJump(g, u, d, st, cs, foes, best, dt, sp, side)) return; // v2.84: a batch 3a Riftstalker's strike onto a ranged unit
+  if (d.swap && !side.direct && u.pxG && !best && !A.prey && st !== 'retreat' && !(cs && cs.run) && pxGuard(g, u, d, dt, sp)) return; // v2.84: an AI's Parallax beside the unit it guards
   const act = !(u.phT > g.t) && !d.siege && !u.bur; // v2.82: a burrowed Gorebore doesn't fight // v2.37: a phased Wraithwing can't fire (P13); a Titan fires only when planted (P8)
   u.tgt = best && act ? best.id : 0;
   if (!best || best.id !== u.chTgt || !act) u.chT = 0; // the Astral Marksman's charge starts over on a new target (v2.27)
@@ -2775,7 +2782,8 @@ function updateUnit(g, u, foes, dt) {
     }
     if (u.cd <= 0) {
       fire(g, u, best, d); u.cd = d.cd * rand(0.9, 1.1);
-      if (d.fade && u.fadeArm) { // P5 (v2.37): the Riftstalker's strike landed: phase-step back to where it leapt from
+      if (d.rsChain && u.fadeArm) rsAfter(g, u, d, best, foes); // v2.84: a kill chains to the next ranged unit; otherwise it fades back
+      else if (d.fade && u.fadeArm) { // P5 (v2.37): the Riftstalker's strike landed: phase-step back to where it leapt from
         u.fadeArm = 0; u.lu = u.fu; u.lv = u.fv; u.ld = Math.max(1, Math.hypot(u.lu - u.u, u.lv - u.v)); u.leaping = 1;
         const w = P(u.u, u.v, 10); g.fx.push({ k: 'blink', side: u.side, u: u.u, x: w.x, y: w.y, t: 0, life: 0.4 });
       }
@@ -2785,12 +2793,12 @@ function updateUnit(g, u, foes, dt) {
   if (close && !u.bur) { u.moving = false; return; } // artillery: enemy is inside minimum range
   if (d.chase && !u.bur && st !== 'move' && !(st === 'hold' && u.holdU !== undefined) && !(cs && cs.chase)) { // melee (v2.17): close on the nearest enemy it can see and hurt (v2.76: not when it has a target to close on)
     const prey = A.prey !== undefined ? A.prey : acquire(g, u, { ...d, range: d.chase }, foes).best;
-    if (prey && d.leap && g.t >= u.leapCd && !(u.snT > g.t) && !(u.aiHold > g.t)) { // v2.38: a Default AI holds a Riftstalker's leap while its shields recharge // snared: no leap either (v2.33) // the Leaper jumps the last stretch (v2.19), never further than leap.range
+    if (prey && d.leap && !d.latch && g.t >= u.leapCd && !(u.snT > g.t) && !(u.aiHold > g.t)) { // v2.38: a Default AI holds a Riftstalker's leap while its shields recharge // snared: no leap either (v2.33) // the Leaper jumps the last stretch (v2.19), never further than leap.range
       const dist = effDist(u, prey);
       if (dist <= d.leap.range && dist >= d.leap.min) { const k = Math.max(0, (Math.hypot(prey.u - u.u, prey.v - u.v) - d.range * 0.7) / Math.max(1, Math.hypot(prey.u - u.u, prey.v - u.v))); u.lu = u.u + (prey.u - u.u) * k; u.lv = u.v + (prey.v - u.v) * k;
         if (d.leap.behind) { const pd = Math.max(1, Math.hypot(prey.u - u.u, prey.v - u.v)); u.lu = clamp(prey.u + (prey.u - u.u) / pd * d.range * 0.7, 0, L); u.lv = clamp(prey.v + (prey.v - u.v) / pd * d.range * 0.7, -LANE_V, LANE_V); } // the Parallax lands just behind its target (v2.27)
         u.ld = Math.max(1, Math.hypot(u.lu - u.u, u.lv - u.v)); u.leaping = 1;
-        if (d.fade) { u.fu = u.u; u.fv = u.v; u.fadeArm = 1; } // P5: remember where it leapt from
+        if (d.fade) { u.fu = u.u; u.fv = u.v; u.fadeArm = 1; if (d.rsChain) { u.rsH = 1; u.rsC = 0; } } // P5: remember where it leapt from (v2.84: out on a strike)
         return; }
     }
     if (prey && !(cs && cs.go && prey.side === NEUTRAL)) { moveToward(u, d, prey.u, prey.v, dt, sp); return; }
@@ -3440,7 +3448,7 @@ function aimZ(e) {
 
 // Melee (v2.17): the blow lands at once. A Skitterling hits harder for every other Skitterling on the same target.
 // Disrupted (v2.27, the Parallax): a unit deals less damage for a short time; the strongest wins, never past DISRUPT.cap
-const outMul = (g, src) => src.kind !== 'u' ? powMul(g) /* v2.69 (b): defences failing near the storm */ : (src.disT > g.t ? 1 - src.dis : 1) * (src.bkT > g.t ? 1 + BEACON.dmg : 1); // disrupted (v2.27); a Beacon T3 warp-in (v2.34)
+const outMul = (g, src) => src.kind !== 'u' ? powMul(g) /* v2.69 (b): defences failing near the storm */ : (src.disT > g.t ? 1 - src.dis : 1) * (src.bkT > g.t ? 1 + BEACON.dmg : 1) * (src.rvS ? 1 + RAV.dmg * src.rvS : 1); // disrupted (v2.27); a Beacon T3 warp-in (v2.34); a batch 3a Ravager's stacks (v2.84)
 function disrupt(g, e, c) {
   if (e.kind !== 'u' || e.hp <= 0 || e.gone) return;
   const live = e.disT > g.t;
@@ -3656,7 +3664,7 @@ function beamStep(g, a) {
 // The brood pod lands: up to A.n temporary Skitterlings around it, never past TEMP.max for the side and never on an enemy
 function broodLand(g, a) {
   const A = ABIL.brood, w = P(a.u, a.v, 6); fxBoom(g, w.x, w.y, 16);
-  let room = TEMP.max - g.ents.filter(e => e.kind === 'u' && e.side === a.side && e.temp && e.tSrc !== 'cloud' && e.tSrc !== 'mite' && e.hp > 0).length, n = 0; // v2.21: Cloudwing offspring have their own cap; v2.33: Mites too
+  let room = TEMP.max - g.ents.filter(e => e.kind === 'u' && e.side === a.side && e.temp && e.tSrc !== 'cloud' && e.tSrc !== 'mite' && e.tSrc !== 'hatch' && e.hp > 0).length, n = 0; // v2.21: Cloudwing offspring have their own cap; v2.33: Mites too
   for (let i = 0; i < A.n && room > 0; i++) {
     const an = i / A.n * Math.PI * 2, pu = clamp(a.u + Math.cos(an) * 22, 0, L), pv = a.v + Math.sin(an) * 22;
     if (g.ents.some(e => e.kind === 'u' && e.side !== a.side && e.hp > 0 && !UDEF[e.type].air && Math.hypot(e.u - pu, e.v - pv) < 22)) continue; // never on top of an enemy
@@ -3991,6 +3999,7 @@ function damage1(g, e, amt, weapon, fromSide, src) {
     e.shpT = g.t;
     if (e.shp > 0 && e.kind === 'u' && UDEF[e.type].link) hit -= shieldLink(g, e, Math.min(e.shp, hit)); // a Prismwing's shield link (v2.29)
     if (e.shp > 0) { const a = Math.min(e.shp, hit); e.shp -= a; hit -= a; e.shpHit = g.t; }
+    if (e.rsH && e.shp <= 0 && sh0 > 0) e.rsBrk = 1; // v2.84: a batch 3a Riftstalker out on a strike: its shields broke, home it goes
   }
   statsDamage(g, e, sh0 - (e.shp || 0) - (e.osh || 0) + Math.min(hit, Math.max(0, e.hp)), fromSide); // v2.51: what came off shields and HP
   e.hp -= hit;
@@ -4012,7 +4021,7 @@ function damage1(g, e, amt, weapon, fromSide, src) {
   if (e.kind === 'u' && e.hp > 0 && UDEF[e.type].phase && g.t >= (e.phCd || 0)) { const F = UDEF[e.type].phase; e.phT = g.t + F.dur; e.phCd = g.t + F.dur + F.cd; } // P13: phase out after the hit
   if (e.hp <= 0) {
     kill(g, e, fromSide, weapon);
-    if (src && src.kind === 'u' && src.hp > 0 && UDEF[src.type].bloodfrenzy) src.frzT = Math.max(src.frzT || 0, g.t + UDEF[src.type].bloodfrenzy.dur); // P15: refreshed, never stacked
+    if (src && src.kind === 'u' && src.hp > 0 && UDEF[src.type].bloodfrenzy && !rwB3a(g)) src.frzT = Math.max(src.frzT || 0, g.t + UDEF[src.type].bloodfrenzy.dur); // P15: refreshed, never stacked
   }
 }
 
@@ -4036,6 +4045,7 @@ function kill(g, e, by, weapon) {
     if (e.tSrc === 'mite') miteBurst(g, e); // v2.33: killed, never expired (expiry doesn't come through kill)
     echoStore(g, e); // v2.34: an Axiarch T2/T3 unit's echo
     if (e.type === 'ruinmaw' && rwB2b(g)) ruinCollapse(g, e, by); // v2.83: its tunnel collapses on whoever is inside
+    if (rwB3a(g)) kill3a(g, e); // v2.84: Leapers on it hatch Skitterlings; it leaves remains
     fxBoom(g, w.x, w.y, e.type === 'sovereign' ? 44 : e.type === 'voidcarrier' ? 28 : e.type === 'prismwing' ? 10 : e.type === 'shardstorm' ? 14 : e.type === 'riftstalker' || e.type === 'lancer' || e.type === 'marksman' ? 10 : e.type === 'parallax' ? 12 : e.type === 'shardling' ? 8 : e.type === 'bastion' ? 20 : e.type === 'wraithwing' ? 14 : e.type === 'skitterling' ? 6 : e.type === 'bulwark' || e.type === 'ruinmaw' || e.type === 'dreadthorn' || e.type === 'thornback' ? 18 : d.fac === 'bloomhost' && !d.air ? 10 : d.air ? (e.type === 'razorwing' || e.type === 'cloudwing' ? 12 : e.type === 'needlewing' ? 8 : e.type === 'worldrender' ? 44 : 28) : e.type === 'rifle' || e.type === 'sniper' ? 9 : e.type === 'heavy' ? 15 : e.type === 'titan' ? 46 : 30);
     return;
   }
@@ -4261,8 +4271,8 @@ function meteorDodge(g, u) {
      exiles a weak bolt (its UDEF weapon).
    New internal ids rather than renamed ones: a game with b2a off still has Bile Lobbers and Rift Mortars, and saves, match
    history and tests keep naming them. */
-const REWORK = { b2a: true, artDeploy: true, artTelegraph: true, b2b: true }; // b2b (v2.83): batch 2b, src/sim/rework-2b.js
-const RW_KEYS = ['b2a', 'artDeploy', 'artTelegraph', 'b2b'];
+const REWORK = { b2a: true, artDeploy: true, artTelegraph: true, b2b: true, b3a: true }; // b2b (v2.83): batch 2b, src/sim/rework-2b.js; b3a (v2.84): batch 3a, src/sim/rework-3a.js
+const RW_KEYS = ['b2a', 'artDeploy', 'artTelegraph', 'b2b', 'b3a'];
 const rwInit = o => { const r = Object.assign({}, REWORK, o || {}), out = {}; for (const k of RW_KEYS) out[k] = !!r[k]; return out; };
 const rwB2a = g => !!(g && g.rw && g.rw.b2a);
 const rwDep = g => rwB2a(g) && !!g.rw.artDeploy;
@@ -4496,13 +4506,14 @@ const RW2B_D = {
 };
 const RWD_C = { g: null, t: -1, m: {} };
 function rwD(g, t) { // the definition a unit of type t plays by in game g
-  const f = rwB2b(g) && RW2B_D[t]; if (!f) return UDEF[t];
+  const f = (rwB2b(g) && RW2B_D[t]) || (rwB3a(g) && RW3A_D[t]); if (!f) return UDEF[t]; // v2.84: batch 3a's four too
   if (RWD_C.g !== g || RWD_C.t !== g.t) { RWD_C.g = g; RWD_C.t = g.t; RWD_C.m = {}; }
   return RWD_C.m[t] || (RWD_C.m[t] = f());
 }
 // What the UI shows for a type (Codex, the info card): game g's definition, or the new-game default without a game; the
 // Ruinmaw's bite counts as its weapon there
 function rwShow(g, t) {
+  if (RW3A_D[t]) return (g ? rwB3a(g) : REWORK.b3a) ? RW3A_D[t]() : UDEF[t]; // v2.84: batch 3a's four
   if (!(g ? rwB2b(g) : REWORK.b2b) || !RW2B_D[t]) return UDEF[t];
   const d = RW2B_D[t](); if (t === 'ruinmaw') Object.assign(d, { weapon: 'ruinbite', dmg: RUIN.bite, cd: RUIN.biteCd, melee: true }); return d;
 }
@@ -4850,6 +4861,325 @@ const aiMeleeShare = th => th.length ? th.filter(u => UDEF[u.type].melee && !UDE
 const aiSiegeT = (g, t) => AI_SIEGE.includes(t) && !(t === 'ruinmaw' && rwB2b(g)); // a Ruinmaw is no siege gun in batch 2b
 // Persona tastes for the two units with no Last Fist counterpart in batch 2b (AI_TWIN maps them to the Titan otherwise)
 const RW2B_TASTE = { ruinmaw: { aggressor: 1.2, trickster: 1.3, turtle: 0.8, economist: 1.0 }, worldbreaker: { turtle: 1.3, economist: 1.1, aggressor: 0.9, trickster: 1.0 } };
+/* ---------- Faction rework, batch 3a (v2.84, docs/FACTION_REWORK.md "Batch 3"): Leaper, Riftstalker, Parallax, Ravager ----------
+   REWORK.b3a, stored per game in g.rw like b2a and b2b (rwB3a). Off: the four units play exactly as in v2.83 and nothing below
+   runs or is saved. On (the new-game default) each keeps its internal id and plays through its own definition for that game
+   (rwD, RW3A_D: a copy of its UDEF entry; UDEF itself never changes).
+   - Leaper (Bloomhost): a parasite. Its leap (range and cooldown as before) now latches it onto a host (latchJump): vehicles,
+     walkers and ground units of LATCH.big supply or more first, otherwise the heaviest ground unit in reach; never aircraft
+     or buildings. Latched (u.lt = the host's id) it rides on the host (same spot), eats LATCH.dps per second (every
+     LATCH.tick s) and the host moves LATCH.slow slower (host.ltT, refreshed every tick; several Leapers don't slow more).
+     At most LATCH.max Leapers per host. It can be hit like any unit (it stands where the host stands, so splash at the host
+     reaches it). The host dying hatches LATCH.hatch temporary Skitterlings per Leaper (LATCH.life s, no supply, can't
+     capture nodes: u.noCap), at most LATCH.hatchMax per host; the Leaper drops off and carries on.
+   - Riftstalker (Axiarchs): its phase-step strike prefers ranged units in reach (the longest range first) and it still
+     fades back after striking. Out on a strike (u.rsH), its shields breaking blinks it straight back to where it stepped
+     from (u.rsBrk, set by damage1). A strike that kills chain-blinks it to another ranged enemy within RS.r (up to RS.chain
+     per strike), no cooldown; a strike that doesn't kill, or a kill with nothing in reach, fades it back.
+   - Parallax (Axiarchs): no leap. Every SWAP.every s it looks for an Axiarch ground ally within SWAP.r under SWAP.low
+     health (the most expensive first) and swaps places with it (SWAP.cd cooldown); never while its own health is under
+     SWAP.self, never with an exiled, burrowed or tunnelling unit. Its blows still disrupt.
+   - Ravager (Bloomhost): no kill frenzy. Every ground unit that dies (either side; not Mites or temporary Skitterlings)
+     leaves remains for RAV.life s (g.rem). A Ravager within RAV.r of remains, out of combat (nothing in reach or chase
+     range, unhurt RAV.calm s) or under RAV.low health, devours them over RAV.eat s without attacking: then RAV.heal of its
+     max health back and a stack (u.rvS, up to RAV.max): +RAV.dmg damage and +RAV.hp max health each, kept until it dies. */
+const rwB3a = g => !!(g && g.rw && g.rw.b3a);
+const LATCH = { dps: 10, tick: 0.5, slow: 0.3, max: 3, big: 4, hatch: 2, hatchMax: 6, life: 20, land: 40, aim: 320 };
+const RS = { chain: 2, r: 130, aim: 320, guard: 70 };
+const SWAP = { r: 160, low: 0.3, self: 0.4, cd: 10, every: 0.25, back: 3, guard: 40 };
+const RAV = { jaw: 14, life: 6, r: 60, eat: 1.5, heal: 0.3, dmg: 0.1, hp: 0.1, max: 3, low: 0.6, calm: 2, seek: 220, safe: 150 };
+const LATCH_WALK = ['titan', 'hydra', 'bastion', 'gravemantle', 'eventide', 'worldbreaker'];
+Object.assign(DMG, { latch: { light: 1.0, heavy: 1.0, vehicle: 1.0, air: 0, building: 0 } }); // a latched Leaper feeding (ground units)
+// The batch's own definitions (built from the current UDEF entry, so setBalance / setRedesign still apply underneath)
+const RW3A_D = {
+  leaper: () => Object.assign({}, UDEF.leaper, { latch: true }),
+  riftstalker: () => Object.assign({}, UDEF.riftstalker, { chain: undefined, rsChain: true }),
+  parallax: () => { const d = Object.assign({}, UDEF.parallax, { swap: true }); delete d.leap; return d; },
+  ravager: () => { const d = Object.assign({}, UDEF.ravager, { devour3: true }); delete d.bloodfrenzy; return d; },
+};
+EX_TIMERS.push('dvT', 'swCd', 'swChk', 'ltN'); // v2.84: exiled mid-devour, mid-swap cooldown, mid-feed: resumed on return
+
+// Texts the player sees follow the new-game default (numbers in UNIT_TIPS, read live)
+for (const [t, on] of [['leaper', 'Parasite that leaps onto vehicles, walkers and other big ground units and latches on, eating its host and slowing it. Shoot it off; if the host dies with Leapers on it, Skitterlings hatch.'],
+  ['riftstalker', 'Backline assassin that phase-steps onto ranged units, strikes and fades back. A kill chains it to the next ranged target; breaking its shields sends it straight home.'],
+  ['parallax', 'Armored guardian that swaps places with a badly wounded ally nearby, taking its place in the fight. Its blows weaken enemy fire. Spread your damage or kill it first.'],
+  ['ravager', 'Hulking devourer that eats the remains of fallen units to heal and grow bigger and stronger, up to three times. Kill it early, before it feeds.']]) {
+  const d0 = UDEF[t].desc; Object.defineProperty(UDEF[t], 'desc', { get: () => REWORK.b3a ? on : d0, enumerable: true, configurable: true });
+}
+function rw3aText(o, k, on) { const x = Object.getOwnPropertyDescriptor(o, k), off = x.get ? x.get() : x.value; Object.defineProperty(o, k, { get: () => REWORK.b3a ? on : off, enumerable: true, configurable: true }); }
+rw3aText(TREES_BH.barracks.A.steps[2], 'txt', 'Unlocks Leapers: parasites that latch onto big ground units and eat them');
+rw3aText(TREES_BH.barracks.A.steps[3], 'txt', 'Unlocks Ravagers: devourers that eat the fallen to heal and grow');
+rw3aText(TREES_AX.barracks.A.steps[2], 'txt', 'Unlocks Riftstalkers: backline assassins that chain kills and blink home');
+rw3aText(TREES_AX.barracks.A.steps[3], 'txt', 'Unlocks Parallaxes: guardians that swap places with wounded allies');
+
+/* ---- Leaper: latching ---- */
+const latchBig = e => { const d = UDEF[e.type]; return (e.arm || d.armor) === 'vehicle' || LATCH_WALK.includes(e.type) || d.pop >= LATCH.big; };
+const latchW = e => e.maxHp + (e.maxShp || 0); // "heaviest": the most health and shields
+const hostOk = (g, u, H) => !!H && H.kind === 'u' && H.side !== u.side && H.side !== NEUTRAL && H.hp > 0 && !H.dead && !H.gone && !H.bur && !H.leaping && !H.lt && !H.ltH && !UDEF[H.type].air && !(H.phT > g.t) && !H.tn && visibleTo(g, u.side, H);
+const latchN = (g, H) => { let n = 0; for (const e of g.ents) if (e.kind === 'u' && e.hp > 0 && !e.gone && (e.lt === H.id || e.ltH === H.id)) n++; return n; };
+function latchRank(g, u, H, R) { // [tier, -weight, distance] or null (not a host in reach)
+  if (!hostOk(g, u, H)) return null;
+  const k = effDist(u, H); if (k > R) return null;
+  return [latchBig(H) ? 0 : 1, -latchW(H), k];
+}
+const rankLess = (a, b, ea, eb) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2] || ea.id - eb.id;
+function latchPick(g, u, foes, R, only) {
+  let best = null, br = null;
+  for (const H of only ? [only] : foes) {
+    if (H.kind !== 'u') continue;
+    const r = latchRank(g, u, H, R); if (!r || latchN(g, H) >= LATCH.max) continue;
+    if (!best || rankLess(r, br, H, best) < 0) { best = H; br = r; }
+  }
+  return best;
+}
+// Start a leap onto a host (true: it jumped, or an AI's Leaper walked toward its chosen host). Same rules as the old leap:
+// cooldown, not snared, not on Retreat or a move, a holding Leaper only within holdR of its spot
+function latchJump(g, u, d, st, cs, foes, best, dt, sp, side) {
+  if (g.t < u.leapCd || u.snT > g.t || u.aiHold > g.t || st === 'retreat' || st === 'move' || (cs && cs.run) || best) return false;
+  let H = latchPick(g, u, foes, d.leap.range, cs && cs.chase && cs.chase.kind === 'u' ? cs.chase : null);
+  if (H && st === 'hold' && u.holdU !== undefined && Math.hypot(H.u - u.holdU, H.v - u.holdV) > MECH7C.holdR + d.range) H = null;
+  if (H) {
+    u.ltH = H.id; u.lu = H.u; u.lv = H.v; u.ld = Math.max(1, Math.hypot(H.u - u.u, H.v - u.v)); u.leaping = 1; u.tgt = 0; u.chT = 0;
+    ev(g, { type: 'leap', u: u.u, side: u.side });
+    return true;
+  }
+  if (!side.direct && u.ltAim && !(cs && (cs.chase || cs.go))) { // an AI's Leaper heads for the big unit it was aimed at
+    const A = ctlEnt(g, u.ltAim);
+    if (A && hostOk(g, u, A) && effDist(u, A) <= LATCH.aim) { moveToward(u, d, A.u, A.v, dt, sp); return true; }
+    u.ltAim = 0;
+  }
+  return false;
+}
+// In flight onto a host, or riding one. True: handled (nothing else this tick)
+function latchRide(g, u, d, side, dt) {
+  if (u.ltH) {
+    const H = ctlEnt(g, u.ltH), ok = hostOk(g, u, H);
+    if (ok) { u.lu = H.u; u.lv = H.v; } // it homes in on the host
+    const du = u.lu - u.u, dv = u.lv - u.v, dd = Math.hypot(du, dv), st = d.leap.speed * dt;
+    if (dd <= st) {
+      u.u = u.lu; u.v = u.lv; u.z = 0; u.leaping = 0; u.leapCd = g.t + d.leap.cd; u.ltH = 0;
+      if (ok && latchN(g, H) < LATCH.max) {
+        u.lt = H.id; u.ltN = g.t + LATCH.tick; u.ltF = 0; H.ltT = g.t + 0.1;
+        const w = P(u.u, u.v, UDEF[H.type].h * 0.6 * US); g.fx.push({ k: 'latch', side: u.side, u: u.u, x: w.x, y: w.y, t: 0, life: 0.5 });
+        ev(g, { type: 'latch', u: u.u, side: u.side, host: H.type });
+      }
+    } else { u.u += du / dd * st; u.v += dv / dd * st; u.z = Math.sin(Math.PI * clamp(1 - dd / u.ld, 0, 1)) * Math.min(26, u.ld * 0.18); u.face = du >= 0 ? 1 : -1; }
+    u.moving = true; return true;
+  }
+  if (!u.lt) return false;
+  const H = ctlEnt(g, u.lt);
+  if (!H || H.hp <= 0 || H.dead || H.gone || H.bur || H.tn || Math.hypot(H.u - u.u, H.v - u.v) > LATCH.land) { latchOff(u); return false; }
+  u.u = H.u; u.v = H.v; u.face = H.face; u.moving = H.moving; u.tgt = H.id; u.chT = 0; u.z = 0;
+  H.ltT = g.t + 0.1;
+  if (g.t >= u.ltN) {
+    u.ltN += LATCH.tick;
+    if (!side.hush) { damage(g, H, LATCH.dps * LATCH.tick * (sideBuff(g, u.side) ? NANO.dmg : 1) * outMul(g, u), 'latch', u.side, u); u.lastAct = g.t; u.ltF = Math.min(8, (u.ltF || 0) + 1); }
+  }
+  return true;
+}
+function latchOff(u) { u.lt = 0; u.z = 0; u.ltF = 0; }
+// A host died (kill): each Leaper on it drops off and hatches LATCH.hatch Skitterlings, at most LATCH.hatchMax per host
+function latchHatch(g, H) {
+  let n = 0;
+  for (const e of g.ents.slice()) {
+    if (e.kind !== 'u' || e.lt !== H.id) continue;
+    latchOff(e); if (e.hp <= 0) continue;
+    for (let i = 0; i < LATCH.hatch && n < LATCH.hatchMax; i++, n++) {
+      const a = n * 2.39996, pu = clamp(H.u + Math.cos(a) * 14, 0, L), pv = H.v + Math.sin(a) * 9;
+      const k = spawnUnit(g, e.side, 'skitterling', pu, pv);
+      Object.assign(k, { temp: g.t + LATCH.life, tLife: LATCH.life, tSrc: 'hatch', noCap: 1 }); k.laneV = clamp(pv, -LANE_V, LANE_V); arriveOrders(g, k);
+    }
+    const w = P(H.u, H.v, 6); g.fx.push({ k: 'hatch', side: e.side, u: H.u, x: w.x, y: w.y, t: 0, life: 0.8 });
+  }
+  if (n) ev(g, { type: 'hatch', u: H.u, v: H.v, n });
+}
+
+/* ---- Riftstalker: backline strikes, chain blinks, blinking home ---- */
+function rsRanged(g, s, e) {
+  if (e.kind !== 'u' || e.side === s || e.side === NEUTRAL || e.hp <= 0 || e.gone || e.leaping || e.phT > g.t || UDEF[e.type].air) return false;
+  const d = rwD(g, e.type); return !!d.weapon && !d.melee && d.range > 40;
+}
+function rsPick(g, u, foes, cu, cv, lo, hi) { // the ranged enemy to strike: within [lo, hi] of (cu, cv), the longest range first, then nearest
+  let best = null, br = -1, bd = 1e9;
+  for (const e of foes) {
+    if (!rsRanged(g, u.side, e) || !visibleTo(g, u.side, e)) continue;
+    const k = Math.hypot(e.u - cu, e.v - cv); if (k > hi || k < lo) continue;
+    const r = rwD(g, e.type).range;
+    if (r > br || (r === br && (k < bd || (k === bd && e.id < best.id)))) { best = e; br = r; bd = k; }
+  }
+  return best;
+}
+// The strike: the old phase-step, onto a ranged unit first. True: it stepped (or an AI's walked toward its target)
+function rsJump(g, u, d, st, cs, foes, best, dt, sp, side) {
+  if (best || g.t < u.leapCd || u.snT > g.t || u.aiHold > g.t || st === 'retreat' || st === 'move' || (cs && cs.run)) return false;
+  if (st === 'hold' && u.holdU !== undefined) return false; // holding: the usual hold rules (and the old leap)
+  const O = cs && cs.chase, T = O ? (O.kind === 'u' && O.hp > 0 && !O.gone && !UDEF[O.type].air && effDist(u, O) >= d.leap.min && effDist(u, O) <= d.leap.range && visibleTo(g, u.side, O) ? O : null) : rsPick(g, u, foes, u.u, u.v, d.leap.min, d.leap.range); // a target order: that unit
+  if (T) {
+    const dd = Math.max(1, Math.hypot(T.u - u.u, T.v - u.v)), k = Math.max(0, (dd - d.range * 0.7) / dd);
+    u.fu = u.u; u.fv = u.v; u.fadeArm = 1; u.rsH = 1; u.rsC = 0;
+    u.lu = u.u + (T.u - u.u) * k; u.lv = u.v + (T.v - u.v) * k; u.ld = Math.max(1, Math.hypot(u.lu - u.u, u.lv - u.v)); u.leaping = 1; u.tgt = 0;
+    ev(g, { type: 'leap', u: u.u, side: u.side });
+    return true;
+  }
+  if (!O && !side.direct && u.rsAim && !(cs && cs.go)) { // an AI's Riftstalker closes on the exposed backline unit it was aimed at
+    const A = ctlEnt(g, u.rsAim);
+    if (A && rsRanged(g, u.side, A) && visibleTo(g, u.side, A) && effDist(u, A) <= RS.aim) { moveToward(u, d, A.u, A.v, dt, sp); return true; }
+    u.rsAim = 0;
+  }
+  return false;
+}
+// After a strike out on a leap: a kill chains to the next ranged enemy within RS.r (no cooldown); otherwise it fades back
+function rsAfter(g, u, d, T, foes) {
+  if (T.hp <= 0 && (u.rsC || 0) < RS.chain) {
+    const N = rsPick(g, u, foes, u.u, u.v, 0, RS.r);
+    if (N) {
+      const dd = Math.max(1, Math.hypot(N.u - u.u, N.v - u.v)), k = Math.max(0, (dd - d.range * 0.7) / dd), a = P(u.u, u.v, 12);
+      u.u += (N.u - u.u) * k; u.v += (N.v - u.v) * k; if (Math.abs(N.u - u.u) > 1) u.face = N.u >= u.u ? 1 : -1;
+      u.rsC = (u.rsC || 0) + 1; u.cd = Math.min(u.cd, 0.15); u.tgt = N.id; u.nav = undefined;
+      const b = P(u.u, u.v, 12); g.fx.push({ k: 'rsblink', side: u.side, x: a.x, y: a.y, x2: b.x, y2: b.y, u: u.u, t: 0, life: 0.45 });
+      ev(g, { type: 'chain', u: u.u, side: u.side });
+      return;
+    }
+  }
+  u.fadeArm = 0; u.rsH = 0; u.lu = u.fu; u.lv = u.fv; u.ld = Math.max(1, Math.hypot(u.lu - u.u, u.lv - u.v)); u.leaping = 1;
+  const w = P(u.u, u.v, 10); g.fx.push({ k: 'blink', side: u.side, u: u.u, x: w.x, y: w.y, t: 0, life: 0.4 });
+}
+// Its shields broke while out on a strike: straight back to where it stepped from
+function rsHome(g, u) {
+  const a = P(u.u, u.v, 12 + (u.z || 0));
+  u.rsBrk = 0; u.rsH = 0; u.fadeArm = 0; u.leaping = 0; u.z = 0; u.u = u.fu; u.v = u.fv; u.tgt = 0; u.chT = 0; u.nav = undefined; u.moving = false;
+  const b = P(u.u, u.v, 12); g.fx.push({ k: 'rsblink', side: u.side, x: a.x, y: a.y, x2: b.x, y2: b.y, u: u.u, t: 0, life: 0.55, home: 1 });
+  if (MAP_LANED) u.lane = laneAt(u.u, u.v);
+  ev(g, { type: 'blinkHome', u: u.u, side: u.side });
+}
+
+/* ---- Parallax: the guardian swap ---- */
+function pxStep(g, u, side) { // true: it swapped this tick
+  if (g.t < (u.swCd || 0) || g.t < (u.swChk || 0)) return false;
+  u.swChk = g.t + SWAP.every;
+  if (u.hp < u.maxHp * SWAP.self || u.gone || u.lt) return false;
+  let A = null, ac = -1;
+  for (const e of g.ents) {
+    if (e === u || e.kind !== 'u' || e.side !== u.side || e.hp <= 0 || e.dead || e.gone || e.bur || e.leaping || e.lt || e.ltH || e.tn) continue;
+    const ed = UDEF[e.type]; if (ed.air || ed.fac !== 'axiarchs' || e.hp >= e.maxHp * SWAP.low) continue;
+    if (Math.hypot(e.u - u.u, e.v - u.v) > SWAP.r) continue;
+    const c = ed.cost.c + ed.cost.e;
+    if (c > ac || (c === ac && (e.hp / e.maxHp < A.hp / A.maxHp || (e.hp / e.maxHp === A.hp / A.maxHp && e.id < A.id)))) { A = e; ac = c; }
+  }
+  if (!A) return false;
+  const a = P(u.u, u.v, 0), b = P(A.u, A.v, 0);
+  [u.u, A.u] = [A.u, u.u]; [u.v, A.v] = [A.v, u.v];
+  for (const e of [u, A]) {
+    e.nav = undefined; e.moving = false; e.chT = 0; if (MAP_LANED) e.lane = laneAt(e.u, e.v);
+    if (side.direct) { if (e.po && e.po.o === 'hold') ctlHold(e, e.u, e.v); }
+    else if (e.holdU !== undefined) { e.holdU = e.u; e.holdV = e.v; }
+  }
+  A.tgt = 0; u.swCd = g.t + SWAP.cd;
+  if (!side.direct) A.aiBack = g.t + SWAP.back; // an AI's wounded unit gets a moment to fall back
+  g.fx.push({ k: 'swap', side: u.side, u: u.u, x: a.x, y: a.y, x2: b.x, y2: b.y, t: 0, life: 0.6 });
+  ev(g, { type: 'swap', u: u.u, side: u.side, ally: A.type });
+  return true;
+}
+// An AI's Parallax with nothing to fight walks beside the unit it guards (true: it moved)
+function pxGuard(g, u, d, dt, sp) {
+  const G = ctlEnt(g, u.pxG);
+  if (!G || G.hp <= 0 || G.side !== u.side) { u.pxG = 0; return false; }
+  const dir = dirOf(u.side), tu = clamp(G.u - dir * 22, 0, L), tv = G.v + (u.id % 2 ? 12 : -12);
+  if (Math.hypot(tu - u.u, tv - u.v) <= SWAP.guard) return false;
+  moveToward(u, d, tu, tv, dt, sp); return true;
+}
+
+/* ---- Ravager: remains and devouring ---- */
+function remainsAt(g, e) { // kill: a ground unit's remains (not Mites, not temporary Skitterlings)
+  const d = UDEF[e.type];
+  if (d.air || e.tSrc === 'mite' || (e.temp && e.type === 'skitterling') || e.gone === 3) return;
+  (g.rem || (g.rem = [])).push({ id: e.id, u: e.u, v: e.v, side: e.side, type: e.type, fac: d.fac || DEFAULT_FACTION, sz: Math.min(3, Math.max(1, Math.round(d.pop))), t0: g.t, t1: g.t + RAV.life, by: 0 });
+}
+function updateRemains(g) {
+  if (!g.rem || !g.rem.length) return;
+  g.rem = g.rem.filter(r => {
+    if (r.by) { const R = ctlEnt(g, r.by); if (R && R.hp > 0 && R.dvR === r.id && R.dvT) return true; r.by = 0; }
+    return r.t1 > g.t;
+  });
+}
+const remNear = (g, u, R, free) => { let best = null, bd = 1e9; for (const r of g.rem || []) { if (free && r.by) continue; const k = Math.hypot(r.u - u.u, r.v - u.v); if (k <= R && (k < bd || (k === bd && r.id < best.id))) { best = r; bd = k; } } return best; };
+// True: handled (devouring, or an AI's Ravager walking to remains after a fight)
+function ravStep(g, u, d, side, st, cs, best, prey, dt, sp) {
+  if (u.dvT) {
+    const R = (g.rem || []).find(r => r.id === u.dvR);
+    u.tgt = 0; u.chT = 0;
+    if (g.t >= u.dvT) { ravFeed(g, u, R); return true; }
+    const fu = R ? clamp(R.u - u.face * RAV.jaw, 0, L) : u.u; // it lunges in until its jaw is over the pile
+    if (R && Math.hypot(fu - u.u, R.v - u.v) > 2) { moveToward(u, d, fu, R.v, dt, sp * 1.6); u.face = R.u >= u.u ? 1 : -1; } else u.moving = false;
+    return true;
+  }
+  if (!g.rem || !g.rem.length || st === 'retreat' || st === 'move' || (cs && cs.run)) return false;
+  const hurt = u.hp < u.maxHp * RAV.low, calm = !best && !prey && g.t - u.lastHurt >= RAV.calm;
+  if (!hurt && !calm) return false;
+  const R = remNear(g, u, RAV.r, true);
+  if (R) {
+    R.by = u.id; u.dvR = R.id; u.dvT = g.t + RAV.eat; u.dvS = g.t; u.tgt = 0; u.face = R.u >= u.u ? 1 : -1;
+    ev(g, { type: 'devourStart', u: u.u, side: u.side });
+    return true;
+  }
+  if (calm && !side.direct && !(cs && (cs.go || cs.chase))) { // an AI's Ravager goes to feed after a fight
+    const F = remNear(g, u, RAV.seek, true);
+    if (F && !g.ents.some(e => e.kind === 'u' && e.side !== u.side && e.side !== NEUTRAL && e.hp > 0 && !e.gone && Math.hypot(e.u - F.u, e.v - F.v) < RAV.safe && visibleTo(g, u.side, e))) { moveToward(u, d, F.u, F.v, dt, sp); return true; }
+  }
+  return false;
+}
+function ravFeed(g, u, R) {
+  u.dvT = 0; u.dvR = 0;
+  if (R) g.rem = g.rem.filter(r => r !== R);
+  if ((u.rvS || 0) < RAV.max) {
+    if (!u.rvB) u.rvB = u.maxHp;
+    u.rvS = (u.rvS || 0) + 1;
+    const m = u.rvB * (1 + RAV.hp * u.rvS); u.hp += m - u.maxHp; u.maxHp = m;
+  }
+  const h0 = u.hp; u.hp = Math.min(u.maxHp, u.hp + u.maxHp * RAV.heal);
+  if (g.log) g.log.tot[u.side].healed = (g.log.tot[u.side].healed || 0) + u.hp - h0;
+  const w = P(u.u, u.v, 10); g.fx.push({ k: 'devour3', side: u.side, u: u.u, x: w.x, y: w.y, t: 0, life: 0.9, n: u.rvS });
+  ev(g, { type: 'devour', u: u.u, side: u.side, stacks: u.rvS });
+}
+const ravMul = u => u.rvS ? 1 + RAV.dmg * u.rvS : 1; // a Ravager's stacks (outMul)
+
+/* ---- each tick (update), b3a on ---- */
+function update3a(g) { updateRemains(g); }
+// kill(), b3a on: a host's Leapers hatch; remains
+function kill3a(g, e) { latchHatch(g, e); remainsAt(g, e); }
+
+/* ---- the AI ---- */
+// An AI side's Leapers aim at the biggest enemy ground unit near them, Riftstalkers at an exposed ranged unit (the fewest
+// guards around it), Parallaxes walk beside the side's most expensive units (the devouring is the Ravager's own logic,
+// plus walking to remains after a fight). Every difficulty, each decision.
+function aiRework3a(g, s, mine) {
+  const opp = 1 - s, foes = g.ents.filter(e => e.kind === 'u' && e.side === opp && e.hp > 0 && !e.gone && !UDEF[e.type].air && visibleTo(g, s, e));
+  for (const u of mine) {
+    if (u.type === 'leaper' && !u.lt && !u.ltH) {
+      let best = null, br = null;
+      for (const H of foes) { const r = latchRank(g, u, H, LATCH.aim); if (r && r[0] === 0 && latchN(g, H) < LATCH.max && (!best || rankLess(r, br, H, best) < 0)) { best = H; br = r; } }
+      u.ltAim = best ? best.id : 0;
+    } else if (u.type === 'riftstalker' && !u.rsH) {
+      let best = null, bs = 1e9;
+      for (const e of foes) {
+        if (!rsRanged(g, s, e) || Math.hypot(e.u - u.u, e.v - u.v) > RS.aim) continue;
+        const guards = foes.filter(f => f !== e && Math.hypot(f.u - e.u, f.v - e.v) <= RS.guard && !rsRanged(g, s, f)).length;
+        const sc = guards * 200 - rwD(g, e.type).range + Math.hypot(e.u - u.u, e.v - u.v) * 0.3;
+        if (sc < bs || (sc === bs && e.id < best.id)) { bs = sc; best = e; }
+      }
+      u.rsAim = best ? best.id : 0;
+    }
+  }
+  const px = mine.filter(u => u.type === 'parallax').sort((a, b) => a.id - b.id);
+  if (px.length) {
+    const val = mine.filter(u => u.type !== 'parallax' && !UDEF[u.type].air && UDEF[u.type].fac === 'axiarchs' && u.id !== g.sides[s].scoutId).sort((a, b) => (UDEF[b.type].cost.c + UDEF[b.type].cost.e) - (UDEF[a.type].cost.c + UDEF[a.type].cost.e) || a.id - b.id);
+    px.forEach((u, i) => { u.pxG = val.length ? val[i % Math.min(val.length, 3)].id : 0; });
+  }
+}
+// The AI's reads for its scores (v2.84)
+const aiBigShare = th => th.length ? th.filter(u => !UDEF[u.type].air && latchBig(u)).length / th.length : 0;
+// Persona tastes for the four (in batch 3a none plays like its old Last Fist counterpart in AI_TWIN)
+const RW3A_TASTE = { leaper: { aggressor: 1.2, trickster: 1.2, turtle: 0.9, economist: 1.0 }, ravager: { aggressor: 1.3, trickster: 1.0, turtle: 1.0, economist: 0.9 }, riftstalker: { trickster: 1.3, aggressor: 1.1, turtle: 0.8, economist: 1.0 }, parallax: { turtle: 1.2, economist: 1.1, aggressor: 1.0, trickster: 0.9 } };
 /* ---------- Enemy AI: same economy, same rules, same upgrades as the player ---------- */
 // Known base defenses: the enemy HQ gun plus remembered Turrets, each at its last-seen tier
 const HQ_VAL = 400, TURRET_VAL = 300;
@@ -5145,7 +5475,14 @@ function aiUpdate(g, s, dt) {
       sc.ruinmaw = nR >= 2 ? 0.1 : 1.0 + Math.min(1, nGround / 12) * 0.8 + (turtle ? 0.5 : 0) + comp.light * 0.2 - comp.air * 1.0;
       sc.worldbreaker = 1.1 + aiMeleeShare(theirs) * 1.0 + comp.light * 0.5 + comp.heavy * 0.4 + (turtle ? 0.4 : 0) - comp.air * 1.2;
     }
-    if (!threat) for (const t of types) { const b = P.bias[t] || (rwB2b(g) && RW2B_TASTE[t] ? RW2B_TASTE[t][P.kind] : P.bias[AI_TWIN[t]]); if (b && sc[t] > 0) sc[t] *= b; } // v2.83: the Ruinmaw and Worldbreaker have tastes of their own in batch 2b // the personality's taste in units (threats are answered on merit)
+    if (rwB3a(g)) { // v2.84 (rework batch 3a): the Leaper hunts big ground units, the Riftstalker ranged backlines, the Parallax guards expensive units, the Ravager feeds on fights
+      const nVal = mine.filter(u => UDEF[u.type].cost.c + UDEF[u.type].cost.e >= 250 && u.type !== 'parallax').length, nPx = mine.filter(u => u.type === 'parallax').length;
+      sc.leaper = 1.0 + aiBigShare(theirs) * 1.4 + comp.vehicle * 0.6 - comp.air * 0.6;
+      sc.riftstalker = 1.0 + aiRangedShare(theirs) * 1.2 + aiFarShare(theirs) * 0.8 - comp.air * 0.5;
+      sc.parallax = nPx >= Math.max(1, nVal / 2) ? 0.3 : 1.0 + Math.min(1, nVal / 4) * 0.8 + comp.heavy * 0.3 - comp.air * 0.5;
+      sc.ravager = 1.2 + comp.light * 0.8 + comp.heavy * 0.3 - comp.vehicle * 0.4 - comp.air * 0.5;
+    }
+    if (!threat) for (const t of types) { const b = P.bias[t] || (rwB3a(g) && RW3A_TASTE[t] ? RW3A_TASTE[t][P.kind] : rwB2b(g) && RW2B_TASTE[t] ? RW2B_TASTE[t][P.kind] : P.bias[AI_TWIN[t]]); if (b && sc[t] > 0) sc[t] *= b; } // v2.84: batch 3a's four have tastes of their own; // v2.83: the Ruinmaw and Worldbreaker have tastes of their own in batch 2b // the personality's taste in units (threats are answered on merit)
     for (const t of types) if (dl.comp[t] !== undefined) sc[t] *= dl.comp[t]; // the composition dial (v2.38; legacy has none)
     if (smart) aiSmartScores(g, s, sc, types, { comp, antiAir, theirs, mine, nFront, turtle, log, threat, P }); // v2.38: the Default AI values v2.37 roles
     if (holdEarly) for (const t of types) { if (t === 'tank' || t === 'bulwark' || t === 'bastion') sc[t] *= 1.6; if (t === 'shardling' || t === 'skitterling') sc[t] *= 0.6; } // v2.40 (hold)
@@ -5313,6 +5650,7 @@ function aiUpdate(g, s, dt) {
   aiMicro(g, s, D, mine);
   if (smart) aiSmartArmy(g, s, mine, dl, P); // v2.38: the Default AI's unit handling
   if (rwB2b(g)) aiRework2b(g, s, mine); // v2.83: Titan escorts, Ruinmaw spots and tunnels (every difficulty)
+  if (rwB3a(g)) aiRework3a(g, s, mine); // v2.84: Leaper and Riftstalker aims, Parallax guards (every difficulty)
 }
 // Spotters: siege guns can't fire at what their side can't see, so while sieging, one unit walks up until
 // its sight reaches the front of the enemy base (as far as this side knows where that is). Seeing the base
@@ -5353,7 +5691,7 @@ function aiSmartScores(g, s, sc, types, c) {
   set('sniper', 0.8 + comp.light * 1.6 + comp.heavy * 0.9 - comp.vehicle * 1.0 - comp.air * 0.6); // pierce: infantry in lines
   set('lancer', 1.0 + comp.air * 1.8 + comp.vehicle * 0.9 + comp.heavy * 0.7 - comp.light * 0.3); // focus: tough single targets and air
   set('wraithwing', 1.2 + comp.vehicle * 1.0 + comp.light * 0.4 + (1 - aaRapid) * 0.6 + (antiAir < 0.45 ? 0.6 : 0)); // phase: strong against slow anti-air
-  set('ravager', 1.2 + comp.light * 1.6 + comp.heavy * 0.2 - comp.vehicle * 0.7 - comp.air * 0.5); // frenzy on kills: light swarms
+  if (!rwB3a(g)) set('ravager', 1.2 + comp.light * 1.6 + comp.heavy * 0.2 - comp.vehicle * 0.7 - comp.air * 0.5); // frenzy on kills: light swarms
   if (has('voidcarrier')) sc.voidcarrier = 1.5 + (n('voidcarrier') ? -0.8 : 0.4) + (turtle ? 0.4 : 0) - antiAir * 0.8; // one field carrier for the push
   if (has('sovereign')) sc.sovereign = 1.6 + (turtle ? 1.0 : 0.3) - antiAir * 1.0; // judgement: one building at a time
   if (has('leviathan')) sc.leviathan = 1.6 + (turtle ? 1.0 : 0.3) - antiAir * 1.0; // carpet: buildings in a row
@@ -5553,7 +5891,7 @@ function aiCapture(g, s, mine, theirs, easy, key = 'capT', atKey = 'capAt', othe
   if (!cand.length) return;
   cand.sort((a, b) => near(g.nodes[a]) - near(g.nodes[b]) || a - b);
   const i = cand[0], n = g.nodes[i], need = near(n) * 1.3 + 150;
-  const pool = mine.filter(u => !UDEF[u.type].air && !UDEF[u.type].support && !UDEF[u.type].noCap && !UDEF[u.type].siege && u.id !== side.scoutId && !(side.raid && side.raid.ids.includes(u.id)) && !(other && other.ids.includes(u.id)) && u.hp >= u.maxHp * 0.7)
+  const pool = mine.filter(u => !UDEF[u.type].air && !UDEF[u.type].support && !UDEF[u.type].noCap && !u.noCap && !UDEF[u.type].siege && u.id !== side.scoutId && !(side.raid && side.raid.ids.includes(u.id)) && !(other && other.ids.includes(u.id)) && u.hp >= u.maxHp * 0.7)
     .sort((a, b) => UDEF[b.type].speed - UDEF[a.type].speed || Math.hypot(a.u - n.u, a.v - n.v) - Math.hypot(b.u - n.u, b.v - n.v) || a.id - b.id);
   const ids = []; let v = 0;
   for (const u of pool) { if (ids.length >= C.n || v >= need) break; ids.push(u.id); v += armyValue([u]); }
@@ -5588,7 +5926,7 @@ function aiRelic(g, s, mine, theirs, threat, easy) {
     if (n.type !== 'relic' || n.spent || !relicGuarded(g, n)) continue;
     const gv = guardValue(g, n);
     if (myV < gv * R.edge || theirs.some(e => e.fresh && e.v !== undefined && Math.hypot(e.u - n.u, e.v - n.v) < R.near)) continue;
-    const pool = mine.filter(u => !UDEF[u.type].support && !UDEF[u.type].noCap && !UDEF[u.type].air && u.id !== side.scoutId && !capBusy(side, u.id) && !(side.raid && side.raid.ids.includes(u.id)) && u.hp >= u.maxHp * 0.7)
+    const pool = mine.filter(u => !UDEF[u.type].support && !UDEF[u.type].noCap && !u.noCap && !UDEF[u.type].air && u.id !== side.scoutId && !capBusy(side, u.id) && !(side.raid && side.raid.ids.includes(u.id)) && u.hp >= u.maxHp * 0.7)
       .sort((a, b) => Math.hypot(a.u - n.u, a.v - n.v) - Math.hypot(b.u - n.u, b.v - n.v) || a.id - b.id);
     const ids = []; let v = 0; for (const u of pool) { if (v >= gv * R.group) break; ids.push(u.id); v += armyValue([u]); }
     if (v < gv * R.group) continue;
@@ -5913,7 +6251,7 @@ function serialize(g, extra) {
   const projs = g.projs.map(p => Object.assign({}, p, { target: p.target ? p.target.id : null }));
   const sides = g.sides.map(sd => Object.assign({}, sd, { hq: sd.hq.id, slots: sd.slots.map(b => b ? b.id : null), res: Object.assign({}, sd.res), stats: Object.assign({}, sd.stats), salv: Object.assign({}, sd.salv) }));
   const fog = g.fog.map(f => ({ exp: Array.from(f.exp).join(''), seen: Array.from(f.seen).join(''), ghosts: f.ghosts, creep: f.creep, field: f.field, intel: f.intel, lastHQ: f.lastHQ, lastSpot: f.lastSpot, seenUnits: f.seenUnits }));
-  return JSON.stringify({ v: SAVE_VER, map: { id: MAP.id, v: MAP.v }, t: g.t, nid: g.nid, diffKey: g.diffKey, ents, projs, sides, nodes: g.nodes, fog, abil: g.abil, endHold: g.endHold || null, log: g.log, creep: g.creep, field: g.field, warps: g.warps, acid: g.acid, stats: g.stats, ...(g.guards && g.guards.length ? { guards: g.guards } : {}), ...(g.cond && Object.keys(g.cond).length ? { cond: g.cond, meteor: g.meteor || null } : {}), ...(rwB2a(g) || rwB2b(g) ? { rw: g.rw, mk: g.mk || [] } : {}), ...(rwB2b(g) && ((g.rup && g.rup.length) || (g.rdg && g.rdg.length)) ? { rup: g.rup || [], rdg: g.rdg || [] } : {}), seed: g.seed, rs: g.rs, fs: g.fs, extra }); // rw, mk (v2.82): the rework's switches and shell markers, only when batch 2a is on (older saves and b2a-off games stay as they were) // seed/rs/fs (v2.50): the random streams, so a resumed match rolls on where it stopped
+  return JSON.stringify({ v: SAVE_VER, map: { id: MAP.id, v: MAP.v }, t: g.t, nid: g.nid, diffKey: g.diffKey, ents, projs, sides, nodes: g.nodes, fog, abil: g.abil, endHold: g.endHold || null, log: g.log, creep: g.creep, field: g.field, warps: g.warps, acid: g.acid, stats: g.stats, ...(g.guards && g.guards.length ? { guards: g.guards } : {}), ...(g.cond && Object.keys(g.cond).length ? { cond: g.cond, meteor: g.meteor || null } : {}), ...(rwB2a(g) || rwB2b(g) || rwB3a(g) ? { rw: rwB3a(g) ? g.rw : Object.fromEntries(Object.entries(g.rw).filter(([k]) => k !== 'b3a')), mk: g.mk || [] } : {}), /* v2.84: b3a saved only when on (a b3a-off save is a v2.83 save) */ ...(rwB3a(g) && g.rem && g.rem.length ? { rem: g.rem } : {}), ...(rwB2b(g) && ((g.rup && g.rup.length) || (g.rdg && g.rdg.length)) ? { rup: g.rup || [], rdg: g.rdg || [] } : {}), seed: g.seed, rs: g.rs, fs: g.fs, extra }); // rw, mk (v2.82): the rework's switches and shell markers, only when batch 2a is on (older saves and b2a-off games stay as they were) // seed/rs/fs (v2.50): the random streams, so a resumed match rolls on where it stopped
 }
 function deserialize(str) {
   const o = JSON.parse(str);
@@ -5924,7 +6262,7 @@ function deserialize(str) {
   const g = newGame(o.diffKey);
   if (o.rs !== undefined && !RNG.legacy) { g.seed = o.seed >>> 0; g.rs = o.rs | 0; g.fs = o.fs | 0; } // v2.50: an older save keeps the fresh seed newGame drew
   g.t = o.t; g.nid = o.nid; g.ents = o.ents; g.nodes = o.nodes; g.guards = o.guards || []; g.cond = o.cond || {}; g.meteor = o.meteor || null; // v2.72: battlefield conditions // v2.71: relic guards (a save from before has none)
-  g.rw = rwInit(o.rw ? Object.assign({ b2b: false }, o.rw) : { b2a: false, artDeploy: false, artTelegraph: false, b2b: false }); if (o.mk) g.mk = o.mk; // v2.82: a save without the rework's switches plays as before it (v2.83: a v2.82 save without b2b too)
+  g.rw = rwInit(o.rw ? Object.assign({ b2b: false, b3a: false }, o.rw) : { b2a: false, artDeploy: false, artTelegraph: false, b2b: false, b3a: false }); if (o.rem) g.rem = o.rem; /* v2.84: a v2.83 save resumes with batch 3a off; remains */ if (o.mk) g.mk = o.mk; // v2.82: a save without the rework's switches plays as before it (v2.83: a v2.82 save without b2b too)
   if (o.rup) g.rup = o.rup; if (o.rdg) g.rdg = o.rdg; // v2.83: Worldbreaker cracks and ridges
   g.stats = o.stats && o.stats.v === 1 ? o.stats : newStats(o.t); // v2.51: an older save starts its record now
   const byId = new Map(g.ents.map(e => [e.id, e]));
@@ -7899,7 +8237,10 @@ function sprPose(u) { // a stand-in unit snapped to one of the cached poses, wit
   if (u.type === 'titan' && u.siege && VFX.g) { sk = Math.round(titanK(u, VFX.lastT) * 6) / 6; if (sk) k += 's' + sk.toFixed(2); } // v2.83: claws and plate, in seven steps
   if (u.type === 'ruinmaw' && VFX.g) { gk = Math.round(ruinGk(u, VFX.lastT) * 4) / 4; if (gk) k += 'g' + gk; } // v2.83: its maw opening as a gate
   if (u.exT > VFX.lastT) k += 'x'; // v2.82: exiled: the washed-out colours
-  return { key: u.type + u.side + '.' + q + (u.aimAir ? 'a' : '') + k, box, u: { anim, moving: !spin && q > 0, recoil: 0, aimAir: u.aimAir, dpk, sk, gk } }; // a Hydra's guns up or level
+  let rvS = 0, dvT = 0, lt = 0, ltF = 0; // v2.84 (batch 3a): a Ravager's stacks and its devour, a Leaper latched and how much it has fed
+  if (u.type === 'ravager') { rvS = Math.min(3, u.rvS || 0); dvT = u.dvT ? 1 : 0; if (rvS) k += 'r' + rvS; if (dvT) k += 'v'; }
+  if (u.type === 'leaper' && u.lt) { lt = 1; ltF = Math.min(2, (u.ltF || 0) >> 1); k += 'l' + ltF; }
+  return { key: u.type + u.side + '.' + q + (u.aimAir ? 'a' : '') + k, box, u: { anim, moving: !spin && q > 0, recoil: 0, aimAir: u.aimAir, dpk, sk, gk, rvS, dvT, lt, ltF } }; // a Hydra's guns up or level
 }
 function drawUnitArt(c, u, T) {
   const p = sprPose(u);
@@ -8392,6 +8733,277 @@ function drawSlab(c, g, e) {
   c.beginPath(); c.moveTo(w.x - 2 + tilt * 0.4, y0 - h * 0.62); c.lineTo(w.x + 1.5 + tilt * 0.4, y0 - h * 0.5); c.lineTo(w.x - 1.5 + tilt * 0.3, y0 - h * 0.36); c.moveTo(w.x + tilt * 0.2, y0 - h * 0.25); c.lineTo(w.x + tilt * 0.2, y0 - h * 0.12); c.stroke();
   c.fillStyle = `rgba(${T.glow},${0.25 * k})`; c.beginPath(); c.ellipse(w.x, w.y - 0.5, wd, 1.6, 0, 0, 7); c.fill(); // the light holding it up
   c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
+}
+/* ---------- Faction rework art, batch 3a (v2.84; docs/FACTION_REWORK.md "Art direction") ----------
+   Leaper (a lean Bloomhost parasite: long spring-loaded hind legs, hooked forelimbs, a sucker mouth ringed with teeth, a
+   translucent sac abdomen that glows brighter in team colour as it feeds; latched it wraps onto its host's back, drawn on
+   top of it), Riftstalker (a slim Axiarch assassin of floating obsidian segments, light-blade arms, shard wings),
+   Parallax (a heavy duelist of thick floating obsidian plates, a halo crown, glyph-lit gauntlets) and Ravager (a hulking
+   hunched brute, heavy team carapace, a huge jaw; each stack bigger, more spines, brighter glow; devouring it lunges head
+   down onto the remains). All cached as poses (the Leaper's latch and feed level, the Ravager's stacks and its devour are
+   poses too). Effects: the latch splat, hatching, the Riftstalker's blink streak with its fading afterimage, the swap's
+   two mirrored rift flashes joined by a line of light, the Ravager's feeding motes and the remains piles. */
+const LP_FLESH = ['#9c6b8a', '#6b3f5e', '#3c2236'], LP_BONE = '#f1e4cc';
+const OBS = ['#3b3157', '#17131f', '#09080d']; // obsidian
+// Leaper. u.lt: latched (wrapped, legs hooked down around the host's back); u.ltF 0-2: how much it has fed (the sac's glow)
+function dLeaper3(c, T, u) {
+  const lt = !!u.lt, f = Math.min(2, u.ltF || 0), ph = u.moving && !lt ? (u.anim || 0) * 12 : 0, s = Math.sin(ph) * 2, bite = (u.recoil || 0);
+  const pulse = 0.7 + 0.3 * Math.sin((u.anim || 0) * (lt ? 9 : 3)), y0 = lt ? -3 : 0;
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  const leg = (near, sw) => { // a spring-loaded hind leg: hip, high knee, ankle, long foot (coiled; latched: hooked down)
+    const hx = -5, hy = y0 - 9, kx = lt ? -13 : -14 + sw, ky = lt ? y0 - 6 : -19, ax = lt ? -10 : -9 - sw * 0.5, ay = lt ? y0 + 3 : -5, fx = lt ? -4 : -16 + sw, fy = lt ? y0 + 5 : 0;
+    c.strokeStyle = OUTL; c.lineWidth = near ? 4 : 3.4; c.beginPath(); c.moveTo(hx, hy); c.lineTo(kx, ky); c.lineTo(ax, ay); c.lineTo(fx, fy); c.stroke();
+    c.strokeStyle = near ? LP_FLESH[1] : LP_FLESH[2]; c.lineWidth = near ? 2.6 : 2.1; c.stroke();
+    c.strokeStyle = near ? T.main : T.hull; c.lineWidth = 1.6; c.beginPath(); c.moveTo(hx, hy); c.lineTo(hx + (kx - hx) * 0.7, hy + (ky - hy) * 0.7); c.stroke(); // team plate on the thigh
+    c.strokeStyle = LP_BONE; c.lineWidth = 0.9; c.beginPath(); c.moveTo(fx, fy); c.lineTo(fx + (lt ? 2 : -2.5), fy + (lt ? 1.5 : 0)); c.stroke(); // claw
+  };
+  const arm = (near, sw) => { // a hooked forelimb
+    const sx = 5, sy = y0 - 11, ex = lt ? 10 : 11 + sw, ey = lt ? y0 - 3 : -7, hx = lt ? 8 : 14 + sw, hy = lt ? y0 + 4 : -12 - bite * 2;
+    c.strokeStyle = OUTL; c.lineWidth = near ? 3.2 : 2.8; c.beginPath(); c.moveTo(sx, sy); c.lineTo(ex, ey); c.lineTo(hx, hy); c.stroke();
+    c.strokeStyle = near ? LP_FLESH[1] : LP_FLESH[2]; c.lineWidth = near ? 2 : 1.7; c.stroke();
+    c.strokeStyle = LP_BONE; c.lineWidth = 1.1; c.beginPath(); c.moveTo(hx, hy); c.quadraticCurveTo(hx + 3, hy - (lt ? -1 : 1), hx + 1.5, hy + (lt ? 3 : 2.5)); c.stroke(); // the hook
+  };
+  leg(false, -s); arm(false, s);
+  // the sac abdomen: translucent, glowing in team colour (brighter as it feeds)
+  const sa = 0.3 + 0.22 * f;
+  c.fillStyle = `rgba(${T.glow},${sa})`; c.beginPath(); c.ellipse(-11, y0 - 11, 8, 6.4, -0.25, 0, 7); c.fill(); outline(c, 0.9);
+  c.globalCompositeOperation = 'lighter';
+  c.fillStyle = `rgba(${T.glow},${(0.35 + 0.25 * f) * pulse})`; c.beginPath(); c.ellipse(-11.5, y0 - 10.5, 4.5 + f, 3.4 + f * 0.6, -0.25, 0, 7); c.fill();
+  c.fillStyle = `rgba(255,255,255,${0.25 + 0.2 * f})`; c.beginPath(); c.arc(-13, y0 - 13, 1.4, 0, 7); c.fill();
+  c.globalCompositeOperation = 'source-over';
+  c.strokeStyle = 'rgba(40,10,30,0.45)'; c.lineWidth = 0.6; c.beginPath(); c.moveTo(-17, y0 - 10); c.quadraticCurveTo(-11, y0 - 14, -5, y0 - 11); c.stroke(); // veins
+  // thorax: lean, overlapping team carapace plates
+  c.fillStyle = lgrad(c, 0, y0 - 16, 0, y0 - 6, [LP_FLESH[0], LP_FLESH[2]]); c.beginPath(); c.ellipse(1, y0 - 10.5, 7.5, 4.2, -0.1, 0, 7); c.fill(); outline(c, 0.9);
+  for (let i = 0; i < 3; i++) {
+    const x = -5 + i * 4.3, top = y0 - 15.2 + Math.abs(i - 1) * 0.6;
+    c.fillStyle = lgrad(c, 0, top, 0, y0 - 9, [T.light, T.main, T.hull]);
+    c.beginPath(); c.moveTo(x - 0.5, y0 - 9.5); c.quadraticCurveTo(x, top - 0.8, x + 3, top - 0.6); c.quadraticCurveTo(x + 5.5, top + 0.5, x + 5, y0 - 10); c.closePath(); c.fill(); outline(c, 0.7);
+  }
+  rim(c, -4, y0 - 15.6, 6, 'rgba(255,255,255,0.4)');
+  // head: a sucker mouth ringed with teeth, two glowing eyes
+  const hx = 10, hy = y0 - 12;
+  c.fillStyle = lgrad(c, hx, hy - 4, hx, hy + 4, [LP_FLESH[0], LP_FLESH[2]]); c.beginPath(); c.ellipse(hx, hy, 4.4, 3.6, 0, 0, 7); c.fill(); outline(c, 0.8);
+  const mx = hx + 4.2, open = 1.7 + bite * 0.8 + (lt ? 0.6 * pulse : 0);
+  c.fillStyle = '#2a0c1c'; c.beginPath(); c.ellipse(mx, hy + 0.5, 1.4, open, 0, 0, 7); c.fill();
+  c.fillStyle = LP_BONE; for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2, r0 = open + 0.2; c.beginPath(); c.moveTo(mx + Math.cos(a) * 1.4, hy + 0.5 + Math.sin(a) * r0); c.lineTo(mx + Math.cos(a + 0.22) * 2.7, hy + 0.5 + Math.sin(a + 0.22) * (r0 + 1.3)); c.lineTo(mx + Math.cos(a + 0.45) * 1.4, hy + 0.5 + Math.sin(a + 0.45) * r0); c.fill(); }
+  c.fillStyle = `rgba(${T.glow},1)`; c.beginPath(); c.arc(hx + 1, hy - 1.8, 0.95, 0, 7); c.arc(hx - 1.4, hy - 1.4, 0.75, 0, 7); c.fill();
+  if (lt) { c.fillStyle = 'rgba(190,40,60,0.75)'; for (const [x, y] of [[mx + 1, hy + 3], [mx - 0.5, hy + 4.5]]) { c.beginPath(); c.arc(x, y, 0.8, 0, 7); c.fill(); } } // feeding: drool
+  leg(true, s); arm(true, -s);
+  c.lineCap = 'butt';
+}
+
+// Riftstalker: floating obsidian segments held by thin lines of light; two light-blade arms; shard wings
+function dRift3(c, T, u) {
+  const t = u.anim || 0, y0 = -6 + hov(u, u.moving ? 8 : 2.5), sl = (u.recoil || 0) * 5, lean = u.moving ? 2 : 0;
+  const seg = (pts, lit) => { c.fillStyle = lgrad(c, pts[0][0], pts[0][1], pts[2][0], pts[2][1], lit ? [T.light, T.main, T.hull] : [OBS[0], OBS[1], OBS[2]]); poly(c, pts); c.fill(); outline(c, 0.8); };
+  // shard wings behind (team glow along their edges)
+  for (const [a, l] of [[-2.2, 15], [-2.6, 13], [-1.85, 11]]) {
+    const bx = -3, by = y0 - 24, tx = bx + Math.cos(a) * l, ty = by + Math.sin(a) * l * 0.9 + Math.sin(t * 3 + a) * 0.8;
+    c.fillStyle = lgrad(c, bx, by, tx, ty, ['#2b2442', '#0c0a12']); poly(c, [[bx, by], [tx, ty], [bx + Math.cos(a + 0.35) * l * 0.55, by + Math.sin(a + 0.35) * l * 0.5]]); c.fill(); outline(c, 0.6);
+    c.strokeStyle = `rgba(${T.glow},0.75)`; c.lineWidth = 0.8; c.beginPath(); c.moveTo(bx, by); c.lineTo(tx, ty); c.stroke();
+  }
+  // the back blade
+  c.globalCompositeOperation = 'lighter';
+  c.strokeStyle = `rgba(${RIFTA},0.45)`; c.lineWidth = 3; c.lineCap = 'round'; c.beginPath(); c.moveTo(-2, y0 - 20); c.lineTo(-7 + sl * 0.3, y0 - 8); c.stroke();
+  c.strokeStyle = 'rgba(240,230,255,0.8)'; c.lineWidth = 1; c.stroke();
+  c.globalCompositeOperation = 'source-over';
+  // lines of light between the segments
+  c.strokeStyle = `rgba(${T.glow},0.8)`; c.lineWidth = 0.7;
+  c.beginPath(); c.moveTo(lean + 3, y0 - 29); c.lineTo(lean + 1, y0 - 25); c.moveTo(1, y0 - 17); c.lineTo(0, y0 - 13); c.moveTo(-1, y0 - 9); c.lineTo(-2, y0 - 4); c.moveTo(1, y0 - 9); c.lineTo(3, y0 - 4); c.stroke();
+  // legs: two tapering floating shards
+  seg([[-3.5, y0 - 8], [-1, y0 - 8], [-2.4, y0 + 1]], false); seg([[1.5, y0 - 8], [4.5, y0 - 8], [3.6, y0 + 1]], false);
+  // pelvis, torso (two plates, the front one in team colour), head
+  seg([[-3, y0 - 13], [3.5, y0 - 13.5], [2, y0 - 9], [-2, y0 - 9]], false);
+  seg([[-4 + lean, y0 - 25], [2 + lean, y0 - 26], [3, y0 - 17], [-3, y0 - 16]], false);
+  seg([[0 + lean, y0 - 25.5], [5 + lean, y0 - 24], [4, y0 - 18], [0.5, y0 - 17]], true);
+  rim(c, -3.5 + lean, y0 - 25.4, 2 + lean, 'rgba(230,220,255,0.6)');
+  seg([[1.5 + lean, y0 - 34], [6 + lean, y0 - 31], [4.5 + lean, y0 - 28], [1 + lean, y0 - 29]], false);
+  c.fillStyle = `rgba(${T.glow},1)`; c.fillRect(4 + lean, y0 - 31.5, 2.2, 1); // visor slit
+  c.globalCompositeOperation = 'lighter'; c.fillStyle = `rgba(${T.glow},0.35)`; c.beginPath(); c.arc(5 + lean, y0 - 31, 2.6, 0, 7); c.fill();
+  // the front light blade (strikes forward on recoil)
+  c.strokeStyle = `rgba(${RIFTA},0.55)`; c.lineWidth = 3.4; c.beginPath(); c.moveTo(3 + lean, y0 - 22); c.lineTo(15 + sl, y0 - 12 - sl * 0.4); c.stroke();
+  c.strokeStyle = 'rgba(250,245,255,0.95)'; c.lineWidth = 1.1; c.stroke();
+  c.fillStyle = `rgba(${T.glow},0.9)`; c.beginPath(); c.arc(3 + lean, y0 - 22, 1.3, 0, 7); c.fill();
+  c.globalCompositeOperation = 'source-over'; c.lineCap = 'butt';
+  c.fillStyle = `rgba(${RIFTA},0.22)`; c.beginPath(); c.ellipse(0, -0.5, 7, 1.8, 0, 0, 7); c.fill(); // its light on the ground
+}
+
+// Parallax: thick floating obsidian plates, a halo crown, glyph-lit gauntlets (the front one swings on recoil)
+function dPara3(c, T, u) {
+  const t = u.anim || 0, y0 = -7 + hov(u, u.moving ? 6 : 2), sw = (u.recoil || 0);
+  const plate = (pts, lit) => { c.fillStyle = lgrad(c, pts[0][0], pts[0][1], pts[2][0], pts[2][1], lit ? [T.light, T.main, T.hull] : [OBS[0], OBS[1], OBS[2]]); poly(c, pts); c.fill(); outline(c, 0.9); };
+  const glyph = (x, y, k) => { c.globalCompositeOperation = 'lighter'; c.fillStyle = `rgba(${T.glow},${0.3 + 0.2 * k})`; c.beginPath(); c.arc(x, y, 4.2, 0, 7); c.fill(); c.strokeStyle = `rgba(${T.glow},0.95)`; c.lineWidth = 0.9; c.beginPath(); c.moveTo(x - 1.6, y - 1.6); c.lineTo(x + 1.6, y); c.lineTo(x - 1.6, y + 1.6); c.moveTo(x + 0.4, y - 2.2); c.lineTo(x + 0.4, y + 2.2); c.stroke(); c.globalCompositeOperation = 'source-over'; };
+  c.fillStyle = `rgba(${RIFTA},0.25)`; c.beginPath(); c.ellipse(0, -0.5, 13, 2.8, 0, 0, 7); c.fill();
+  // back gauntlet
+  plate([[-13, y0 - 22], [-7, y0 - 23], [-6, y0 - 15], [-12, y0 - 14]], false); glyph(-9.5, y0 - 18.5, 0.5);
+  // lines of light
+  c.strokeStyle = `rgba(${T.glow},0.75)`; c.lineWidth = 0.8;
+  c.beginPath(); c.moveTo(-7, y0 - 20); c.lineTo(-5, y0 - 24); c.moveTo(0, y0 - 37); c.lineTo(0, y0 - 34); c.moveTo(-3, y0 - 11); c.lineTo(-4, y0 - 6); c.moveTo(3, y0 - 11); c.lineTo(4, y0 - 6); c.moveTo(7, y0 - 23); c.lineTo(9, y0 - 20); c.stroke();
+  // legs: two thick floating plates
+  plate([[-7, y0 - 7], [-1, y0 - 7], [-2, y0 + 1], [-7.5, y0 + 1]], false); plate([[1, y0 - 7], [7, y0 - 7], [7.5, y0 + 1], [2, y0 + 1]], false);
+  // waist, chest (a great team plate over obsidian), pauldrons
+  plate([[-6, y0 - 13], [6, y0 - 13], [5, y0 - 8], [-5, y0 - 8]], false);
+  plate([[-9, y0 - 32], [9, y0 - 32], [7, y0 - 15], [-7, y0 - 15]], false);
+  plate([[-6, y0 - 31], [7.5, y0 - 31], [5.5, y0 - 17], [-4.5, y0 - 17]], true);
+  c.strokeStyle = 'rgba(0,0,0,0.35)'; c.lineWidth = 0.7; c.beginPath(); c.moveTo(0.5, y0 - 31); c.lineTo(0.5, y0 - 17); c.stroke();
+  rim(c, -8.5, y0 - 32, 8.5, 'rgba(230,220,255,0.55)');
+  plate([[-11, y0 - 34], [-5, y0 - 35], [-4, y0 - 29], [-10, y0 - 28]], false); plate([[5, y0 - 35], [11, y0 - 34], [10, y0 - 28], [4, y0 - 29]], false);
+  // head and its halo crown
+  plate([[-3, y0 - 41], [3.5, y0 - 41], [3, y0 - 35.5], [-2.5, y0 - 35.5]], false);
+  c.fillStyle = `rgba(${T.glow},1)`; c.fillRect(0.5, y0 - 39, 2.8, 1.1);
+  const hy = y0 - 46 + Math.sin(t * 2) * 0.6;
+  c.strokeStyle = `rgba(${T.glow},0.35)`; c.lineWidth = 2.6; c.beginPath(); c.ellipse(0, hy, 7.5, 2.2, 0, 0, 7); c.stroke();
+  c.strokeStyle = `rgba(255,248,220,0.9)`; c.lineWidth = 1; c.stroke();
+  c.fillStyle = T.light; for (let i = 0; i < 5; i++) { const a = Math.PI + i * Math.PI / 4, x = Math.cos(a) * 7.5, y = hy + Math.sin(a) * 2.2; c.beginPath(); c.moveTo(x - 0.9, y); c.lineTo(x, y - 3); c.lineTo(x + 0.9, y); c.fill(); }
+  // front gauntlet: a heavy fist with a glowing glyph, swung forward on a blow
+  const gx = 10 + sw * 5, gy = y0 - 19 - sw * 2;
+  plate([[gx - 4, gy - 5], [gx + 4, gy - 5.5], [gx + 5, gy + 4], [gx - 3, gy + 4.5]], false); glyph(gx + 0.5, gy - 0.5, 1);
+  if (sw > 0.3) { c.globalCompositeOperation = 'lighter'; c.strokeStyle = `rgba(${RIFTA},${sw * 0.8})`; c.lineWidth = 2; c.beginPath(); c.arc(gx - 6, gy, 12, -0.9, 0.9); c.stroke(); c.globalCompositeOperation = 'source-over'; }
+}
+
+// Ravager. u.rvS 0-3: its stacks (bigger, more spines, brighter glow); u.dvT: devouring (it lunges head down, jaw wide)
+const RV_FLESH = ['#8a5560', '#5a313b', '#331a21'], RV_BONE = '#ecdfc4';
+function dRav3(c, T, u) {
+  const n = Math.min(3, u.rvS || 0), sc = 1 + 0.13 * n, dv = !!u.dvT, ph = u.moving && !dv ? (u.anim || 0) * 8 : 0, s = Math.sin(ph) * 2.2, bite = (u.recoil || 0);
+  const glow = 0.45 + 0.18 * n, pulse = 0.8 + 0.2 * Math.sin((u.anim || 0) * 4);
+  c.save(); c.scale(sc, sc);
+  if (dv) { c.translate(4, 0); c.rotate(0.32); c.translate(-4, 0); } // the lunge: pitched forward over the pile
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  const leg = (x, o, near) => { const sw = Math.sin(ph + o) * 3; c.strokeStyle = OUTL; c.lineWidth = near ? 6 : 5; c.beginPath(); c.moveTo(x, -12); c.lineTo(x - 3 + sw * 0.5, -6); c.lineTo(x + sw, 0); c.stroke(); c.strokeStyle = near ? RV_FLESH[1] : RV_FLESH[2]; c.lineWidth = near ? 4.4 : 3.6; c.stroke();
+    c.strokeStyle = RV_BONE; c.lineWidth = 1; c.beginPath(); c.moveTo(x + sw, 0); c.lineTo(x + sw + 3, 0.3); c.stroke(); };
+  const arm = (near, o) => { const sw = dv ? 2 : Math.sin(ph + o) * 2 - bite * 3; c.strokeStyle = OUTL; c.lineWidth = near ? 6 : 5; c.beginPath(); c.moveTo(6, -20); c.lineTo(12 + sw, -11); c.lineTo(17 + sw, -3); c.stroke(); c.strokeStyle = near ? RV_FLESH[0] : RV_FLESH[2]; c.lineWidth = near ? 4.2 : 3.4; c.stroke();
+    c.strokeStyle = RV_BONE; c.lineWidth = 1.4; for (const d of [-2, 0, 2]) { c.beginPath(); c.moveTo(17 + sw, -3); c.quadraticCurveTo(20 + sw, -3 + d, 19 + sw, 0 + d * 0.5); c.stroke(); } };
+  leg(-8, Math.PI, false); leg(3, 0, false); arm(false, Math.PI);
+  // belly and flank
+  c.fillStyle = lgrad(c, 0, -26, 0, -6, [RV_FLESH[0], RV_FLESH[1], RV_FLESH[2]]); c.beginPath(); c.ellipse(-2, -15, 14, 9, -0.15, 0, 7); c.fill(); outline(c);
+  // glow sacs (brighter with stacks)
+  c.globalCompositeOperation = 'lighter';
+  for (const [x, y, r] of [[-11, -12, 2.2], [-5, -10, 2.6], [1, -10, 2.1]]) { c.fillStyle = `rgba(${T.glow},${glow * 0.45 * pulse})`; c.beginPath(); c.arc(x, y, r * 2, 0, 7); c.fill(); c.fillStyle = `rgba(${T.glow},${Math.min(1, glow + 0.2) * pulse})`; c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); }
+  c.globalCompositeOperation = 'source-over';
+  // the hunched carapace: four heavy overlapping team plates
+  for (let i = 0; i < 4; i++) {
+    const x = -16 + i * 6.5, w = 10 + i * 0.4, top = -27 - Math.sin(i * 0.95 + 0.3) * 5;
+    c.fillStyle = lgrad(c, 0, top - 2, 0, -14, [T.light, T.main, T.hull]);
+    c.beginPath(); c.moveTo(x - 1, -14); c.quadraticCurveTo(x - 1, top, x + w * 0.5, top - 1.2); c.quadraticCurveTo(x + w + 1, top + 1, x + w, -15); c.closePath(); c.fill(); outline(c, 1);
+    c.strokeStyle = 'rgba(255,255,255,0.35)'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(x + 1, top + 1); c.quadraticCurveTo(x + w * 0.5, top - 0.6, x + w - 1, top + 1.2); c.stroke();
+  }
+  // spines along the back: 3, then 2 more per stack
+  const ns = 3 + 2 * n;
+  for (let i = 0; i < ns; i++) {
+    const q = (i + 0.5) / ns, x = -15 + q * 24, top = -27 - Math.sin(q * 3.2) * 5.5, h = 4 + Math.sin(q * 3.2) * 3 + n * 0.6;
+    c.fillStyle = lgrad(c, x, top - h, x, top, [RV_BONE, '#a8957a']); poly(c, [[x - 1.3, top + 1], [x - 0.6 - h * 0.25, top - h], [x + 1.3, top + 0.6]]); c.fill(); outline(c, 0.6);
+  }
+  // head: a heavy skull with a huge jaw (wide open when it bites or devours)
+  const jaw = dv ? 0.55 : 0.12 + bite * 0.35;
+  c.fillStyle = lgrad(c, 0, -26, 0, -12, [RV_FLESH[0], RV_FLESH[2]]); c.beginPath(); c.ellipse(13, -19, 8, 6.5, 0.1, 0, 7); c.fill(); outline(c);
+  c.fillStyle = lgrad(c, 0, -26, 0, -18, [T.light, T.main]); c.beginPath(); c.ellipse(12, -23, 6.5, 3, 0.1, Math.PI, 0); c.fill(); outline(c, 0.8); // brow plate
+  c.save(); c.translate(10, -16); c.rotate(jaw);
+  c.fillStyle = lgrad(c, 0, 0, 0, 7, [RV_FLESH[1], RV_FLESH[2]]); poly(c, [[-2, -1], [14, 0], [13, 4.5], [0, 6]]); c.fill(); outline(c, 0.9); // the lower jaw
+  c.fillStyle = RV_BONE; for (let i = 0; i < 5; i++) { const x = 2 + i * 2.6; c.beginPath(); c.moveTo(x, 0); c.lineTo(x + 0.9, -2.6); c.lineTo(x + 1.8, 0); c.fill(); }
+  c.restore();
+  c.fillStyle = '#2a0d14'; poly(c, [[11, -16.5], [22, -17], [20, -14.5]]); c.fill();
+  c.fillStyle = RV_BONE; for (let i = 0; i < 5; i++) { const x = 12 + i * 2.2; c.beginPath(); c.moveTo(x, -17); c.lineTo(x + 0.8, -14.6); c.lineTo(x + 1.6, -17); c.fill(); } // upper teeth
+  c.fillStyle = `rgba(${T.glow},1)`; c.beginPath(); c.arc(15.5, -21, 1.1, 0, 7); c.arc(12.5, -21.4, 0.9, 0, 7); c.fill();
+  c.globalCompositeOperation = 'lighter'; c.fillStyle = `rgba(${T.glow},${0.25 + 0.1 * n})`; c.beginPath(); c.arc(14.5, -21, 3.2, 0, 7); c.fill(); c.globalCompositeOperation = 'source-over';
+  if (dv) { c.fillStyle = 'rgba(170,30,45,0.8)'; for (const [x, y] of [[20, -12], [18, -9], [21.5, -8]]) { c.beginPath(); c.arc(x, y, 1, 0, 7); c.fill(); } }
+  leg(-4, 0.5, true); leg(6, Math.PI + 0.5, true); arm(true, 0);
+  c.lineCap = 'butt';
+  c.restore();
+}
+
+DRAW_U.leaper = dLeaper3; DRAW_U.riftstalker = dRift3; DRAW_U.parallax = dPara3; DRAW_U.ravager = dRav3;
+Object.assign(SPR_BOX, { leaper: [-22, -26, 42, 34], riftstalker: [-20, -44, 42, 48], parallax: [-18, -54, 40, 58], ravager: [-36, -56, 72, 60] });
+Object.assign(UVIS, { leaper: { h: 18, w: 11 }, riftstalker: { h: 34, w: 9 }, parallax: { h: 44, w: 12 }, ravager: { h: 32, w: 17 } });
+// The Ravager's drawn height with its stacks (health bar, shadow)
+const rvScale = u => u.type === 'ravager' && u.rvS ? 1 + 0.13 * Math.min(3, u.rvS) : 1;
+// A latched Leaper is drawn on its host's back: how high (art units on screen)
+const RIDE = new WeakMap(); // render only: each latched Leaper's place along its host's back (-1 … 1)
+function latchLift(g, u) { const H = u.lt && ctlEnt(g, u.lt); return H ? visH(H.type) * US * (H.type === 'tank' || H.type === 'flame' ? 0.62 : 0.55) : 0; }
+
+/* ---- effects ---- */
+// Remains: a small pile that fades over its life (organic for Bloomhost, wreckage for Last Fist, shards for Axiarchs);
+// one being devoured shrinks as it is eaten
+function drawRemains(c, g, lit) {
+  if (!g.rem || !g.rem.length) return;
+  const t = g.t;
+  for (const r of g.rem) {
+    if (!lit(r.u, r.v)) continue;
+    const w = P(r.u, r.v, 0), age = t - r.t0, left = r.t1 - t, a = clamp(Math.min(age / 0.3, left / 2, 1), 0, 1) * 0.95;
+    let k = r.sz === 3 ? 2 : r.sz === 2 ? 1.65 : 1.35;
+    if (r.by) { const R = ctlEnt(g, r.by); if (R && R.dvT) k *= clamp((R.dvT - t) / RAV.eat, 0.15, 1); }
+    if (a <= 0.02) continue;
+    c.save(); c.globalAlpha = a; c.translate(w.x, w.y); c.scale(US * k, US * k);
+    const seed = r.id * 7.13;
+    c.fillStyle = 'rgba(0,0,0,0.3)'; c.beginPath(); c.ellipse(0, 0.5, 10, 2.6, 0, 0, 7); c.fill();
+    if (r.fac === 'bloomhost') { // flesh and carapace, a pool of ichor
+      c.fillStyle = 'rgba(120,170,60,0.45)'; c.beginPath(); c.ellipse(1, 0.5, 9, 2.4, 0, 0, 7); c.fill();
+      for (let i = 0; i < 4; i++) { const x = Math.sin(seed + i * 2.1) * 5, y = -1.5 - (i % 2) * 1.5; c.fillStyle = lgrad(c, x, y - 3, x, y + 2, [RV_FLESH[0], RV_FLESH[2]]); c.beginPath(); c.ellipse(x, y, 3.2 - i * 0.3, 2.2, Math.sin(seed + i), 0, 7); c.fill(); outline(c, 0.6); }
+      c.fillStyle = TEAM[r.side].main; c.beginPath(); c.ellipse(-2, -3.2, 3, 1.4, -0.4, Math.PI, 0); c.fill(); outline(c, 0.5);
+      c.strokeStyle = RV_BONE; c.lineWidth = 0.9; c.beginPath(); c.moveTo(2, -2); c.lineTo(5, -4.5); c.moveTo(-4, -1); c.lineTo(-6.5, -3); c.stroke();
+    } else if (r.fac === 'axiarchs') { // shattered obsidian shards, a fading glyph light
+      for (let i = 0; i < 5; i++) { const x = Math.sin(seed + i * 1.7) * 6, h = 2.5 + (i % 3) * 1.3; c.fillStyle = lgrad(c, x, -h, x, 0, [OBS[0], OBS[2]]); poly(c, [[x - 1.5, 0], [x + Math.sin(seed + i) * 1.2, -h], [x + 1.5, 0]]); c.fill(); outline(c, 0.5); }
+      c.globalCompositeOperation = 'lighter'; c.fillStyle = `rgba(${TEAM[r.side].glow},${0.35 * clamp(left / RAV.life, 0, 1)})`; c.beginPath(); c.ellipse(0, -0.5, 5, 1.6, 0, 0, 7); c.fill(); c.globalCompositeOperation = 'source-over';
+    } else { // wreckage: twisted plates, a wheel, a smoking scrap heap
+      c.fillStyle = OLIVE[2]; poly(c, [[-7, 0], [-4, -3.5], [2, -2.5], [6, 0]]); c.fill(); outline(c, 0.6);
+      c.fillStyle = TEAM[r.side].hull; poly(c, [[-3, -2.5], [1, -5.5], [4, -3], [1, -1.5]]); c.fill(); outline(c, 0.5);
+      c.fillStyle = STEEL[2]; c.beginPath(); c.arc(4.5, -1.6, 1.8, 0, 7); c.fill(); outline(c, 0.5);
+      c.fillStyle = `rgba(80,80,88,${0.4 * clamp(left / RAV.life, 0, 1)})`; c.beginPath(); c.arc(-1 + Math.sin(t * 2 + seed) * 0.8, -8 - (age * 3) % 4, 2.4, 0, 7); c.fill();
+    }
+    c.restore();
+  }
+}
+// A Leaper latching on: a splash of its colour and grip marks
+function drawLatchFx(c, f) {
+  const k = f.t / f.life, T = TEAM[f.side];
+  c.globalAlpha = 1 - k; c.strokeStyle = T.main; c.lineWidth = 2;
+  c.beginPath(); c.ellipse(f.x, f.y, 6 + k * 14, (6 + k * 14) * 0.5, 0, 0, 7); c.stroke();
+  c.fillStyle = 'rgba(200,60,80,0.9)'; for (let i = 0; i < 5; i++) { const a = i * 1.26, r = 4 + k * 12; c.beginPath(); c.arc(f.x + Math.cos(a) * r, f.y + Math.sin(a) * r * 0.5 - k * 4, 1.4 * (1 - k), 0, 7); c.fill(); }
+  c.globalAlpha = 1;
+}
+// Skitterlings hatching from a dead host: a burst of goo
+function drawHatchFx(c, f) {
+  const k = f.t / f.life;
+  c.globalAlpha = 1 - k;
+  c.fillStyle = `rgba(${TEAM[f.side].glow},0.35)`; c.beginPath(); c.ellipse(f.x, f.y, 10 + k * 16, (10 + k * 16) * 0.45, 0, 0, 7); c.fill();
+  c.fillStyle = 'rgba(150,210,80,0.95)'; for (let i = 0; i < 8; i++) { const a = i * 0.785 + 0.3, r = 3 + k * 18; c.beginPath(); c.arc(f.x + Math.cos(a) * r, f.y - Math.abs(Math.sin(a)) * r * 0.7 - (1 - (1 - k) * (1 - k)) * 6, 1.8 * (1 - k * 0.6), 0, 7); c.fill(); }
+  c.globalAlpha = 1;
+}
+// A Riftstalker's blink: a violet-white streak from where it was to where it is, and a fading afterimage where it was
+function drawRsBlink(c, f) {
+  const k = f.t / f.life, T = TEAM[f.side];
+  c.globalCompositeOperation = 'lighter'; c.lineCap = 'round';
+  const g = c.createLinearGradient(f.x, f.y, f.x2, f.y2); g.addColorStop(0, `rgba(${RIFTA},0)`); g.addColorStop(0.6, `rgba(${RIFTA},${0.7 * (1 - k)})`); g.addColorStop(1, `rgba(255,250,255,${1 - k})`);
+  c.strokeStyle = g; c.lineWidth = 5 * (1 - k * 0.6); c.beginPath(); c.moveTo(f.x, f.y); c.lineTo(f.x2, f.y2); c.stroke();
+  c.strokeStyle = `rgba(255,255,255,${0.9 * (1 - k)})`; c.lineWidth = 1.4; c.stroke();
+  stamp(c, GLOW.violet, f.x2, f.y2, 12 * (1 - k * 0.5), 0.8 * (1 - k));
+  c.globalCompositeOperation = 'source-over'; c.lineCap = 'butt';
+  // the afterimage: its silhouette in violet, fading and drifting up
+  c.save(); c.globalAlpha = 0.6 * (1 - k); c.translate(f.x, f.y + 12 * US - k * 4); c.scale(US * (f.x2 >= f.x ? 1 : -1), US);
+  dRift3(c, { main: RIFT, light: '#efe6ff', hull: '#5b3f99', glow: RIFTA }, { anim: 0, moving: false, recoil: 0 });
+  c.restore(); c.globalAlpha = 1;
+  if (f.home) { c.strokeStyle = `rgba(${T.glow},${1 - k})`; c.lineWidth = 1.6; c.beginPath(); c.ellipse(f.x2, f.y2 + 12 * US, 10 + k * 10, (10 + k * 10) * 0.4, 0, 0, 7); c.stroke(); } // arrived home: a ring
+}
+// The Parallax swap: two mirrored rift flashes, joined for a moment by a line of light
+function drawSwapFx(c, f) {
+  const k = f.t / f.life, a = 1 - k, T = TEAM[f.side];
+  c.globalCompositeOperation = 'lighter';
+  for (const [x, y] of [[f.x, f.y], [f.x2, f.y2]]) {
+    stamp(c, GLOW.violet, x, y - 16, 22 * (0.6 + k * 0.6), 0.8 * a);
+    c.strokeStyle = `rgba(${RIFTA},${0.9 * a})`; c.lineWidth = 2; c.beginPath(); c.ellipse(x, y - 16, 6 + k * 5, 18 * (1 - k * 0.4), 0, 0, 7); c.stroke();
+    c.strokeStyle = `rgba(${T.glow},${0.8 * a})`; c.lineWidth = 1.2; c.beginPath(); c.ellipse(x, y, 12 + k * 8, (12 + k * 8) * 0.38, 0, 0, 7); c.stroke();
+  }
+  if (k < 0.55) { const q = 1 - k / 0.55; c.lineCap = 'round'; c.strokeStyle = `rgba(${RIFTA},${0.6 * q})`; c.lineWidth = 4; c.beginPath(); c.moveTo(f.x, f.y - 16); c.lineTo(f.x2, f.y2 - 16); c.stroke(); c.strokeStyle = `rgba(255,250,255,${q})`; c.lineWidth = 1.3; c.stroke(); c.lineCap = 'butt'; }
+  c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
+}
+// A Ravager's feed done: motes streaming in and its stack pips
+function drawDevour3(c, f) {
+  const k = f.t / f.life;
+  c.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 7; i++) { const q = clamp(k * 1.5 - i * 0.07, 0, 1), a = i * 0.9, r = 18 * (1 - q); stamp(c, GLOW.acid, f.x + Math.cos(a) * r, f.y + 4 - Math.sin(a) * r * 0.4 - q * 10, 4, (1 - q) * 0.9); }
+  c.globalCompositeOperation = 'source-over';
+  c.globalAlpha = 1 - k; c.fillStyle = TEAM[f.side].main; c.strokeStyle = OUTL; c.lineWidth = 0.8;
+  for (let i = 0; i < 3; i++) { const x = f.x - 7 + i * 7, y = f.y - 30 - k * 10; c.beginPath(); c.arc(x, y, 2.3, 0, 7); if (i < f.n) c.fill(); c.stroke(); }
+  c.globalAlpha = 1;
 }
 /* ---------- Backdrop: sky, mountains and the ground plane ---------- */
 function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -9012,10 +9624,11 @@ function drawUnit(c, u) {
   const ex = u.exT > VFX.lastT; // v2.82: exiled: faded, washed out, a violet shimmer and a ring for the time left
   c.fillStyle = d.air ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.32)';
   const big = u.type === 'leviathan' || u.type === 'worldrender' || u.type === 'sovereign' ? 2.4 : u.type === 'broodtyrant' || u.type === 'voidcarrier' ? 1.6 : u.type === 'drone' || u.type === 'needlewing' || u.type === 'prismwing' ? 0.5 : 1; // a Leviathan's shadow is seen coming
-  c.beginPath(); c.ellipse(w.x, w.y, (d.air ? 16 * big : UVIS[u.type] ? UVIS[u.type].w : Math.max(8, d.h * 0.7)) * US, (d.air ? 3.5 * big : 2.6) * US, 0, 0, 7); c.fill();
+  const lift = u.lt && VFX.g ? latchLift(VFX.g, u) : 0, rk = rvScale(u); // v2.84: a latched Leaper rides on its host's back (no shadow of its own); a Ravager's stacks make it bigger
+  if (!lift) { c.beginPath(); c.ellipse(w.x, w.y, (d.air ? 16 * big : UVIS[u.type] ? UVIS[u.type].w * rk : Math.max(8, d.h * 0.7)) * US, (d.air ? 3.5 * big : 2.6) * US, 0, 0, 7); c.fill(); }
   if (u.type === 'medic' && VFX.g) drawHealBeams(c, VFX.g, u, w);
   if (u.siege) drawSiegeLock(c, u, w); // P8 (v2.37): a Titan's stabilisers, under it
-  c.save(); c.translate(w.x, w.y - u.z + bob); c.scale(u.face * US * (u.kid ? 0.75 : 1), US * (u.kid ? 0.75 : 1)); // a Cloudwing's offspring is smaller (v2.21)
+  c.save(); c.translate(w.x + (lift ? (RIDE.get(u) || 0) * 8 * US : 0), w.y - u.z + bob - lift + (lift ? Math.abs(RIDE.get(u) || 0) * 2 * US : 0)); c.scale(u.face * US * (u.kid ? 0.75 : 1), US * (u.kid ? 0.75 : 1)); // a Cloudwing's offspring is smaller (v2.21)
   const ph = u.phT > VFX.lastT; // P13 (v2.37): a phased Wraithwing is a faint violet ghost
   if (ph) c.globalAlpha = 0.25 + 0.1 * Math.sin(VFX.lastT * 40);
   if (ex) c.globalAlpha = 0.45 + 0.08 * Math.sin(VFX.lastT * 12 + u.id);
@@ -10061,6 +10674,7 @@ function render(c, g, time, sel, selPad) {
   drawMeteor(c, g, time); // v2.72: a meteor's warning circle, then its fall
   drawMarks(c, g, lit); drawTrails(c, g, lit); // v2.82: telegraphed shells' markers, Gorebore burrow trails
   if (rwB2b(g)) { drawRuptures(c, g, lit); drawTunnelMouths(c, g, time); } // v2.83: Worldbreaker cracks, tunnel entrances
+  if (rwB3a(g)) drawRemains(c, g, lit); // v2.84: remains of the fallen
   if (g.sides[0].direct && !g.over && !g.range) { const B = ctlBase(0), w = P(B.u, B.v); c.save(); c.globalAlpha = 0.22; c.strokeStyle = TEAM[0].main; c.lineWidth = 1.5; c.setLineDash([6, 6]); c.beginPath(); c.ellipse(w.x, w.y, CTRL.healR, CTRL.healR, 0, 0, 7); c.stroke(); c.restore(); } // v2.76: where the base rally point heals
   if (g) { drawSelection(c, g, time); drawBuildingSel(c, g, time, false); }
   drawWrecks(c, time);
@@ -10073,11 +10687,12 @@ function render(c, g, time, sel, selPad) {
   else if (!g.range && !g.sides[0].direct && g.sides[0].stance !== 'attack') list.push({ kind: 'flag', u: rallyU(0, g) + 30, v: -20, on: true }); // spectating: the rally point
   ridgeSlabs(g, list, lit); // v2.83: a Worldbreaker's ridges, slab by slab among the units
   list.sort((a, b) => (a.v - b.v) || (a.u - b.u));
+  const ride = new Map(); for (const e of list) if (e.kind === 'u' && e.lt && e.hp > 0) { const a = ride.get(e.lt); if (a) a.push(e); else ride.set(e.lt, [e]); } // v2.84: latched Leapers, drawn on their host
   for (const e of list) {
     if (e.kind === 'b') drawBuilding(c, e, time);
     else if (e.kind === 'slab') drawSlab(c, g, e);
     else if (e.kind === 'ghost') drawGhost(c, e.gh);
-    else if (e.kind === 'u') drawUnit(c, e);
+    else if (e.kind === 'u') { if (e.lt && ride.size && g.ents.some(h => h.id === e.lt && seen(h))) continue; drawUnit(c, e); const R = ride.get(e.id); if (R) R.forEach((r, i) => { RIDE.set(r, i - (R.length - 1) / 2); drawUnit(c, r); }); }
     else if (e.kind === 'node') drawNode(c, e.n, time);
     else {
       const w = P(e.u, e.v);
@@ -10175,6 +10790,7 @@ function render(c, g, time, sel, selPad) {
     if (f.k === 'shatter') { if (lit(f.u, f.v)) drawShatter(c, f); continue; } // a Phase Beacon bubble collapsing (v2.34) // a killed Mite (v2.33)
     if (f.k === 'pierce') { if (lit(f.u, f.v)) drawPierce(c, f); continue; } // P4 (v2.37)
     if (f.k === 'blink') { if (lit(f.u, f.v)) drawBlink(c, f); continue; } // P5 (v2.37)
+    if (f.k === 'latch' || f.k === 'hatch' || f.k === 'rsblink' || f.k === 'swap' || f.k === 'devour3') { if (lit(f.u, f.y / DY) || (f.x2 != null && lit(f.u, f.y2 / DY))) (f.k === 'latch' ? drawLatchFx : f.k === 'hatch' ? drawHatchFx : f.k === 'rsblink' ? drawRsBlink : f.k === 'swap' ? drawSwapFx : drawDevour3)(c, f); continue; } // v2.84 (batch 3a)
     if (f.k === 'emerge') { if (f.side === 0 || g.spectate || lit(f.u, f.y / DY)) drawEmerge(c, f); continue; } // v2.83: into or out of a tunnel
     if (f.k === 'erupt' || f.k === 'rift' || f.k === 'unexile') { if (lit(f.u, f.y / DY)) (f.k === 'erupt' ? drawErupt : f.k === 'rift' ? drawRift : drawUnexile)(c, f); continue; } // v2.82
     if (f.k === 'devour') { if (lit(f.u, f.v)) drawDevour(c, f); continue; } // P11 (v2.37)
@@ -10207,7 +10823,7 @@ function render(c, g, time, sel, selPad) {
         c.fillStyle = TEAM[e.side].main; c.fillRect(w.x - 22, y, 44 * e.prodT / UDEF[e.queue[0]].time, 3.5);
       }
     } else if (e.shT > g.t || e.hp < e.maxHp || e.temp || e.shp < e.maxShp || e.ovT > g.t || e.oshT > g.t || e.bkT > g.t) {
-      const d = UDEF[e.type], w = P(e.u, e.v), y = w.y - e.z - visH(e.type) * US - 9, bw = d.air ? 28 : Math.max(18, d.h * 0.9 + 6);
+      const d = UDEF[e.type], w = P(e.u, e.v), y = w.y - e.z - visH(e.type) * rvScale(e) * US - (e.lt ? latchLift(g, e) : 0) - 9, bw = d.air ? 28 : Math.max(18, d.h * 0.9 + 6);
       if (e.shT > g.t) { // shield timer: a ring that empties as the shield runs out
         c.strokeStyle = TEAM[e.side].light; c.lineWidth = 1.6; c.beginPath(); c.arc(w.x - bw / 2 - 5, y + 1, 3.2, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * clamp((e.shT - g.t) / ABIL.shield.dur, 0, 1)); c.stroke();
       }
@@ -10221,7 +10837,7 @@ function render(c, g, time, sel, selPad) {
       }
       if (e.maxShp) { bar(c, w.x, y, bw, e.hp / e.maxHp, 2.4, lostF(e)); shpBar(c, w.x, y - 4, bw, e.shp / e.maxShp, 2); continue; } // Axiarch: both bars while either is down (v2.25)
       if (e.hp >= e.maxHp) continue;
-      bar(c, w.x, w.y - e.z - visH(e.type) * US - 9, d.air ? 28 : Math.max(18, d.h * 0.9 + 6), e.hp / e.maxHp, 2.4, lostF(e));
+      bar(c, w.x, y, d.air ? 28 : Math.max(18, d.h * 0.9 + 6), e.hp / e.maxHp, 2.4, lostF(e));
     }
   }
   c.setTransform(V.dpr, 0, 0, V.dpr, 0, 0); // screen space
@@ -10466,8 +11082,8 @@ const UNIT_TIPS = {
   get mite() { const u = UDEF.mite; return [`Swarming lone units and buildings for free: a clutch every ${txN(MOUND.every)} s from the Brood Mound; at T3 a killed Mite bursts into acid`, "Anything at all: very little HP; it can't hit aircraft or capture nodes"]; },
   get bulwark() { const u = UDEF.bulwark; return [`Soaking up fire at the front; braces when hit (${txP(u.brace.cut)} less damage for ${txN(u.brace.dur)} s, every ${txN(u.brace.cd)} s)`, 'Heavies, Tanks; being surrounded']; },
   razorwing: ['Exposed ground units and aircraft; dives from the air', 'Anything that hits air, Turrets'],
-  get leaper() { const u = UDEF.leaper; return [`Snipers, Artillery and other ranged units: it leaps up to ${txN(u.leap.range)} onto them (every ${txN(u.leap.cd)} s)`, 'Splash, Flame Tanks, focused fire']; },
-  get ravager() { const u = UDEF.ravager; return [`Light armor (its maul does ${txX(DMG[u.weapon].light)}); every kill sends it into a ${txN(u.bloodfrenzy?.dur)} s frenzy (faster attacks and movement), refreshed by the next kill`, 'Tanks, Turrets, focused fire']; }, // v2.37
+  get leaper() { const u = UDEF.leaper; if (REWORK.b3a) return [`Vehicles, walkers and big ground units: it leaps up to ${txN(u.leap.range)} (every ${txN(u.leap.cd)} s) and latches on, eating ${txN(LATCH.dps)} health a second and slowing its host ${txP(LATCH.slow)} (up to ${txN(LATCH.max)} on one host; the slow doesn't add up). If the host dies, each Leaper on it hatches ${txN(LATCH.hatch)} Skitterlings for ${txN(LATCH.life)} s (at most ${txN(LATCH.hatchMax)})`, 'Shoot it off its host (it can be hit, splash too), Flame Tanks, focused fire']; return [`Snipers, Artillery and other ranged units: it leaps up to ${txN(u.leap.range)} onto them (every ${txN(u.leap.cd)} s)`, 'Splash, Flame Tanks, focused fire']; },
+  get ravager() { const u = UDEF.ravager; if (REWORK.b3a) return [`Long fights: every ground unit that dies leaves remains for ${txN(RAV.life)} s; within ${txN(RAV.r)} of them, out of combat or under ${txP(RAV.low)} health, it devours them over ${txN(RAV.eat)} s: ${txP(RAV.heal)} of its health back and +${txP(RAV.dmg)} damage and +${txP(RAV.hp)} health, up to ${txN(RAV.max)} times`, 'Kill it early, before it feeds; Tanks, Turrets']; return [`Light armor (its maul does ${txX(DMG[u.weapon].light)}); every kill sends it into a ${txN(u.bloodfrenzy?.dur)} s frenzy (faster attacks and movement), refreshed by the next kill`, 'Tanks, Turrets, focused fire']; }, // v2.37
   spitter: ['Aircraft and ground from range; its acid makes targets take more damage (corrosion)', 'Anything that reaches it, splash'],
   get bilecaster() { const u = UDEF.bilecaster; return [`Marking targets from ${txN(u.range)} range: a single bile dart whose corrosion lasts ${txN(u.corrode.dur)} s (+${txP(u.corrode.amt)} damage taken)`, "Swarms (one target at a time), anything that reaches it; it can't hit aircraft"]; }, // v2.37
   get bilelobber() { const u = UDEF.bilelobber; return [`Softening an army from ${txN(u.range)} range: its splash corrodes everything it hits for ${txN(u.corrode?.dur)} s (minimum range ${txN(u.minRange)})`, 'Anything that gets close, aircraft; weak against buildings on its own']; }, // v2.37
@@ -10478,8 +11094,8 @@ const UNIT_TIPS = {
   shardling: ['Lone ranged units and nodes: fast light blades, ground and buildings', 'Focus fire, splash, Flame Tanks; it can\'t hit aircraft'],
   get bastion() { const u = UDEF.bastion; return [`Holding the front: when hit after its ${txN(u.surge?.cd)} s cooldown its shields surge back (${txP(u.surge?.rate)} per second for ${txN(u.surge?.dur)} s, even under fire)`, 'Burst that breaks through to its health, corrosion; aircraft']; }, // v2.37
   get wraithwing() { const u = UDEF.wraithwing; return [`A fast flyer that phases out for ${txN(u.phase?.dur)} s when hit (it can't be touched or fire), then can't phase again for ${txN(u.phase?.cd)} s`, 'Rapid-fire anti-air: Interceptors, Hydras, Turrets']; }, // v2.37
-  get riftstalker() { const u = UDEF.riftstalker; return [`Lone ranged units: it phase-steps onto them (up to ${txN(u.leap.range)}, every ${txN(u.leap.cd)} s), strikes once and steps back to where it leapt from`, 'A guarded backline; burst when it lands']; }, // v2.37
-  get parallax() { const u = UDEF.parallax; return [`Ranged units: it phase-steps behind them; its blows disrupt (${txP(u.disrupt.amt)} less damage for ${txN(u.disrupt.dur)} s)`, 'Focus fire, heavy frontline units, Turrets']; },
+  get riftstalker() { const u = UDEF.riftstalker; if (REWORK.b3a) return [`Exposed ranged units: it phase-steps onto them (up to ${txN(u.leap.range)}, every ${txN(u.leap.cd)} s), strikes and fades back; a kill chain-blinks it to the next ranged unit within ${txN(RS.r)} (up to ${txN(RS.chain)} per strike, no cooldown); breaking its shields blinks it straight home`, 'Burst it before it fades; something sturdy beside the backline']; return [`Lone ranged units: it phase-steps onto them (up to ${txN(u.leap.range)}, every ${txN(u.leap.cd)} s), strikes once and steps back to where it leapt from`, 'A guarded backline; burst when it lands']; }, // v2.37
+  get parallax() { const u = UDEF.parallax; if (REWORK.b3a) return [`Saving expensive units: when an Axiarch ground ally within ${txN(SWAP.r)} drops under ${txP(SWAP.low)} health, it swaps places with it (every ${txN(SWAP.cd)} s, not while itself under ${txP(SWAP.self)}); its blows disrupt (${txP(u.disrupt.amt)} less damage for ${txN(u.disrupt.dur)} s)`, 'Spread damage instead of focusing one unit, or kill it first']; return [`Ranged units: it phase-steps behind them; its blows disrupt (${txP(u.disrupt.amt)} less damage for ${txN(u.disrupt.dur)} s)`, 'Focus fire, heavy frontline units, Turrets']; },
   get lancer() { const u = UDEF.lancer; return [`Tanky single targets and aircraft: every hit on the same target does ${txP(u.focus?.per)} more, up to +${txP(u.focus?.per * u.focus?.max)}`, 'Swarms (it starts over on a new target); melee units that reach it']; }, // v2.37
   marksman: ['Infantry from very long range, after a visible charge-up on its target', 'Fast attackers, aircraft (it can\'t hit them); weak against buildings'],
   get riftmortar() { const u = UDEF.riftmortar; return [`Single high-value targets and buildings from ${txN(u.range)} range: a precise, heavy strike with a tight blast (minimum range ${txN(u.minRange)})`, 'Swarms (little splash), anything that gets close, aircraft']; }, // v2.37
@@ -12266,9 +12882,9 @@ function trVfxUse(k) {
 }
 
 // v2.82: a row's rework switches (REWORK's for a setup saved before them)
-const TR_RW = [['b2a', 'Batch 2a'], ['artDeploy', 'Deploy'], ['artTelegraph', 'Telegraph'], ['b2b', 'Batch 2b']]; // b2b (v2.83)
+const TR_RW = [['b2a', 'Batch 2a'], ['artDeploy', 'Deploy'], ['artTelegraph', 'Telegraph'], ['b2b', 'Batch 2b'], ['b3a', 'Batch 3a']]; // b2b (v2.83), b3a (v2.84)
 function trRw(k) { const S = TR.set; if (!Array.isArray(S.rw)) S.rw = []; return S.rw[k] || (S.rw[k] = rwInit()); }
-const trRwTag = k => { const r = trRw(k), a = !r.b2a ? 'pre-2a' : r.artDeploy && r.artTelegraph ? '2a' : `2a${r.artDeploy ? ' deploy' : ''}${r.artTelegraph ? ' telegraph' : ''}${!r.artDeploy && !r.artTelegraph ? ' (no Artillery switches)' : ''}`; return `${a}, ${r.b2b ? '2b' : 'pre-2b'}`; }; // v2.83: and batch 2b
+const trRwTag = k => { const r = trRw(k), a = !r.b2a ? 'pre-2a' : r.artDeploy && r.artTelegraph ? '2a' : `2a${r.artDeploy ? ' deploy' : ''}${r.artTelegraph ? ' telegraph' : ''}${!r.artDeploy && !r.artTelegraph ? ' (no Artillery switches)' : ''}`; return `${a}, ${r.b2b ? '2b' : 'pre-2b'}, ${r.b3a ? '3a' : 'pre-3a'}`; }; // v2.83: and batch 2b; v2.84: and 3a
 // Rows: each row's factions (the first thing placed on each side), building every row from the items
 const trFacs = k => [0, 1].map(s => { const it = TR.set.items.find(i => i.row === k && i.side === s); return it ? (it.kind === 'u' ? rangeFac(it.type) : it.fac) : DEFAULT_FACTION; });
 function trBuild() {
@@ -12540,7 +13156,7 @@ function trUI() { // every UI refresh: the readouts, the clock, the info card, t
     const R = rangeRead(g), T = trView(k), el = box.children[k];
     const who = s => { const c = {}; for (const e of g.ents) if (e.side === s && e.hp > 0) { const nm = e.kind === 'u' ? UDEF[e.type].name : bdOf(e).name; c[nm] = (c[nm] || 0) + 1; } const a = Object.entries(c).sort((x, y) => y[1] - x[1]); return a.length ? a.slice(0, 2).map(([nm, m]) => `${cxEsc(nm)} ×${m}`).join(', ') + (a.length > 2 ? ' …' : '') : 'none'; };
     const w = R.wipe ? ` · <b class="w">${TR_SIDE[R.wipe.side]} wiped out at ${fmtTime(R.wipe.t)}</b>` : '';
-    setHTML(el, `${n > 1 ? `<b>Row ${k + 1}</b> <i class="rw">${cxEsc(trRwTag(k))}</i> ` : trRw(0).b2a && trRw(0).artDeploy && trRw(0).artTelegraph && trRw(0).b2b ? '' : `<i class="rw">${cxEsc(trRwTag(0))}</i> `}<span class="b">${who(0)}</span> vs <span class="r">${who(1)}</span> · damage <span class="b">${txN(Math.round(R.dmg[0]))}</span> / <span class="r">${txN(Math.round(R.dmg[1]))}</span> · kills <span class="b">${R.kills[0]}</span> / <span class="r">${R.kills[1]}</span>${w}`);
+    setHTML(el, `${n > 1 ? `<b>Row ${k + 1}</b> <i class="rw">${cxEsc(trRwTag(k))}</i> ` : trRw(0).b2a && trRw(0).artDeploy && trRw(0).artTelegraph && trRw(0).b2b && trRw(0).b3a ? '' : `<i class="rw">${cxEsc(trRwTag(0))}</i> `}<span class="b">${who(0)}</span> vs <span class="r">${who(1)}</span> · damage <span class="b">${txN(Math.round(R.dmg[0]))}</span> / <span class="r">${txN(Math.round(R.dmg[1]))}</span> · kills <span class="b">${R.kills[0]}</span> / <span class="r">${R.kills[1]}</span>${w}`);
     el.style.left = (T.F.l + 6) + 'px'; el.style.top = (n > 1 ? T.y0 + 2 : T.y1 - 20) + 'px'; // one row: the bottom (toasts show at the top); Compare: each strip's top, above its units el.style.maxWidth = (T.F.r - T.F.l - 12) + 'px';
   });
 }

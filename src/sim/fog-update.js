@@ -110,7 +110,7 @@ function update(g, dt) {
   }
   updateGuards(g, foes, dt); // v2.71: the relic guards fire, and both sides may target them
   indexFoes(foes[0], dt); indexFoes(foes[1], dt); // v2.37: lane-sorted, so target searches look only near the searcher
-  RDG.list = null; if (rwB2b(g)) update2b(g); // v2.83: Titan cover, Worldbreaker cracks and ridges (RDG.list: this game's ridges, while its units move)
+  RDG.list = null; if (rwB2b(g)) update2b(g); if (rwB3a(g)) update3a(g); /* v2.84: remains */ // v2.83: Titan cover, Worldbreaker cracks and ridges (RDG.list: this game's ridges, while its units move)
   const n = g.ents.length; NAV.now = g.t; // v2.65: the clock the navigation paths age by
   for (let i = 0; i < n; i++) {
     const e = g.ents[i];
@@ -149,7 +149,7 @@ function updateNodes(g, dt) {
     if (n.type === 'relic' && (!SPECIAL.on || !SPECIAL.relic || n.spent || relicGuarded(g, n))) { n.c = [0, 0]; n.prog = 0; continue; } // v2.71: guarded or spent: nothing to capture
     let c0 = 0, c1 = 0;
     let w0 = 0, w1 = 0; // capture weight: a Drilled Rifleman counts 1.5
-    for (const e of g.ents) if (e.kind === 'u' && e.hp > 0 && !UDEF[e.type].air && !UDEF[e.type].noCap && !e.gone && (MAP_2D ? Math.hypot(e.u - n.u, e.v - n.v) : Math.abs(e.u - n.u)) <= (n.r || NODE_R)) { const w = e.vet ? DRILL.capture : 1; if (e.side === 0) { c0++; w0 += w; } else { c1++; w1 += w; } }
+    for (const e of g.ents) if (e.kind === 'u' && e.hp > 0 && !UDEF[e.type].air && !UDEF[e.type].noCap && !e.noCap && !e.gone && (MAP_2D ? Math.hypot(e.u - n.u, e.v - n.v) : Math.abs(e.u - n.u)) <= (n.r || NODE_R)) { const w = e.vet ? DRILL.capture : 1; if (e.side === 0) { c0++; w0 += w; } else { c1++; w1 += w; } }
     n.c = [c0, c1];
     if (c0 && !c1) n.prog = Math.min(100, n.prog + 8 * Math.sqrt(w0) * dt);
     else if (c1 && !c0) n.prog = Math.max(-100, n.prog - 8 * Math.sqrt(w1) * dt);

@@ -216,6 +216,7 @@ function damage1(g, e, amt, weapon, fromSide, src) {
     e.shpT = g.t;
     if (e.shp > 0 && e.kind === 'u' && UDEF[e.type].link) hit -= shieldLink(g, e, Math.min(e.shp, hit)); // a Prismwing's shield link (v2.29)
     if (e.shp > 0) { const a = Math.min(e.shp, hit); e.shp -= a; hit -= a; e.shpHit = g.t; }
+    if (e.rsH && e.shp <= 0 && sh0 > 0) e.rsBrk = 1; // v2.84: a batch 3a Riftstalker out on a strike: its shields broke, home it goes
   }
   statsDamage(g, e, sh0 - (e.shp || 0) - (e.osh || 0) + Math.min(hit, Math.max(0, e.hp)), fromSide); // v2.51: what came off shields and HP
   e.hp -= hit;
@@ -237,7 +238,7 @@ function damage1(g, e, amt, weapon, fromSide, src) {
   if (e.kind === 'u' && e.hp > 0 && UDEF[e.type].phase && g.t >= (e.phCd || 0)) { const F = UDEF[e.type].phase; e.phT = g.t + F.dur; e.phCd = g.t + F.dur + F.cd; } // P13: phase out after the hit
   if (e.hp <= 0) {
     kill(g, e, fromSide, weapon);
-    if (src && src.kind === 'u' && src.hp > 0 && UDEF[src.type].bloodfrenzy) src.frzT = Math.max(src.frzT || 0, g.t + UDEF[src.type].bloodfrenzy.dur); // P15: refreshed, never stacked
+    if (src && src.kind === 'u' && src.hp > 0 && UDEF[src.type].bloodfrenzy && !rwB3a(g)) src.frzT = Math.max(src.frzT || 0, g.t + UDEF[src.type].bloodfrenzy.dur); // P15: refreshed, never stacked
   }
 }
 
@@ -261,6 +262,7 @@ function kill(g, e, by, weapon) {
     if (e.tSrc === 'mite') miteBurst(g, e); // v2.33: killed, never expired (expiry doesn't come through kill)
     echoStore(g, e); // v2.34: an Axiarch T2/T3 unit's echo
     if (e.type === 'ruinmaw' && rwB2b(g)) ruinCollapse(g, e, by); // v2.83: its tunnel collapses on whoever is inside
+    if (rwB3a(g)) kill3a(g, e); // v2.84: Leapers on it hatch Skitterlings; it leaves remains
     fxBoom(g, w.x, w.y, e.type === 'sovereign' ? 44 : e.type === 'voidcarrier' ? 28 : e.type === 'prismwing' ? 10 : e.type === 'shardstorm' ? 14 : e.type === 'riftstalker' || e.type === 'lancer' || e.type === 'marksman' ? 10 : e.type === 'parallax' ? 12 : e.type === 'shardling' ? 8 : e.type === 'bastion' ? 20 : e.type === 'wraithwing' ? 14 : e.type === 'skitterling' ? 6 : e.type === 'bulwark' || e.type === 'ruinmaw' || e.type === 'dreadthorn' || e.type === 'thornback' ? 18 : d.fac === 'bloomhost' && !d.air ? 10 : d.air ? (e.type === 'razorwing' || e.type === 'cloudwing' ? 12 : e.type === 'needlewing' ? 8 : e.type === 'worldrender' ? 44 : 28) : e.type === 'rifle' || e.type === 'sniper' ? 9 : e.type === 'heavy' ? 15 : e.type === 'titan' ? 46 : 30);
     return;
   }

@@ -130,7 +130,7 @@ function beamStep(g, a) {
 // The brood pod lands: up to A.n temporary Skitterlings around it, never past TEMP.max for the side and never on an enemy
 function broodLand(g, a) {
   const A = ABIL.brood, w = P(a.u, a.v, 6); fxBoom(g, w.x, w.y, 16);
-  let room = TEMP.max - g.ents.filter(e => e.kind === 'u' && e.side === a.side && e.temp && e.tSrc !== 'cloud' && e.tSrc !== 'mite' && e.hp > 0).length, n = 0; // v2.21: Cloudwing offspring have their own cap; v2.33: Mites too
+  let room = TEMP.max - g.ents.filter(e => e.kind === 'u' && e.side === a.side && e.temp && e.tSrc !== 'cloud' && e.tSrc !== 'mite' && e.tSrc !== 'hatch' && e.hp > 0).length, n = 0; // v2.21: Cloudwing offspring have their own cap; v2.33: Mites too
   for (let i = 0; i < A.n && room > 0; i++) {
     const an = i / A.n * Math.PI * 2, pu = clamp(a.u + Math.cos(an) * 22, 0, L), pv = a.v + Math.sin(an) * 22;
     if (g.ents.some(e => e.kind === 'u' && e.side !== a.side && e.hp > 0 && !UDEF[e.type].air && Math.hypot(e.u - pu, e.v - pv) < 22)) continue; // never on top of an enemy

@@ -943,6 +943,7 @@ function render(c, g, time, sel, selPad) {
   drawMeteor(c, g, time); // v2.72: a meteor's warning circle, then its fall
   drawMarks(c, g, lit); drawTrails(c, g, lit); // v2.82: telegraphed shells' markers, Gorebore burrow trails
   if (rwB2b(g)) { drawRuptures(c, g, lit); drawTunnelMouths(c, g, time); } // v2.83: Worldbreaker cracks, tunnel entrances
+  if (rwB3a(g)) drawRemains(c, g, lit); // v2.84: remains of the fallen
   if (g.sides[0].direct && !g.over && !g.range) { const B = ctlBase(0), w = P(B.u, B.v); c.save(); c.globalAlpha = 0.22; c.strokeStyle = TEAM[0].main; c.lineWidth = 1.5; c.setLineDash([6, 6]); c.beginPath(); c.ellipse(w.x, w.y, CTRL.healR, CTRL.healR, 0, 0, 7); c.stroke(); c.restore(); } // v2.76: where the base rally point heals
   if (g) { drawSelection(c, g, time); drawBuildingSel(c, g, time, false); }
   drawWrecks(c, time);
@@ -955,11 +956,12 @@ function render(c, g, time, sel, selPad) {
   else if (!g.range && !g.sides[0].direct && g.sides[0].stance !== 'attack') list.push({ kind: 'flag', u: rallyU(0, g) + 30, v: -20, on: true }); // spectating: the rally point
   ridgeSlabs(g, list, lit); // v2.83: a Worldbreaker's ridges, slab by slab among the units
   list.sort((a, b) => (a.v - b.v) || (a.u - b.u));
+  const ride = new Map(); for (const e of list) if (e.kind === 'u' && e.lt && e.hp > 0) { const a = ride.get(e.lt); if (a) a.push(e); else ride.set(e.lt, [e]); } // v2.84: latched Leapers, drawn on their host
   for (const e of list) {
     if (e.kind === 'b') drawBuilding(c, e, time);
     else if (e.kind === 'slab') drawSlab(c, g, e);
     else if (e.kind === 'ghost') drawGhost(c, e.gh);
-    else if (e.kind === 'u') drawUnit(c, e);
+    else if (e.kind === 'u') { if (e.lt && ride.size && g.ents.some(h => h.id === e.lt && seen(h))) continue; drawUnit(c, e); const R = ride.get(e.id); if (R) R.forEach((r, i) => { RIDE.set(r, i - (R.length - 1) / 2); drawUnit(c, r); }); }
     else if (e.kind === 'node') drawNode(c, e.n, time);
     else {
       const w = P(e.u, e.v);
@@ -1057,6 +1059,7 @@ function render(c, g, time, sel, selPad) {
     if (f.k === 'shatter') { if (lit(f.u, f.v)) drawShatter(c, f); continue; } // a Phase Beacon bubble collapsing (v2.34) // a killed Mite (v2.33)
     if (f.k === 'pierce') { if (lit(f.u, f.v)) drawPierce(c, f); continue; } // P4 (v2.37)
     if (f.k === 'blink') { if (lit(f.u, f.v)) drawBlink(c, f); continue; } // P5 (v2.37)
+    if (f.k === 'latch' || f.k === 'hatch' || f.k === 'rsblink' || f.k === 'swap' || f.k === 'devour3') { if (lit(f.u, f.y / DY) || (f.x2 != null && lit(f.u, f.y2 / DY))) (f.k === 'latch' ? drawLatchFx : f.k === 'hatch' ? drawHatchFx : f.k === 'rsblink' ? drawRsBlink : f.k === 'swap' ? drawSwapFx : drawDevour3)(c, f); continue; } // v2.84 (batch 3a)
     if (f.k === 'emerge') { if (f.side === 0 || g.spectate || lit(f.u, f.y / DY)) drawEmerge(c, f); continue; } // v2.83: into or out of a tunnel
     if (f.k === 'erupt' || f.k === 'rift' || f.k === 'unexile') { if (lit(f.u, f.y / DY)) (f.k === 'erupt' ? drawErupt : f.k === 'rift' ? drawRift : drawUnexile)(c, f); continue; } // v2.82
     if (f.k === 'devour') { if (lit(f.u, f.v)) drawDevour(c, f); continue; } // P11 (v2.37)
@@ -1089,7 +1092,7 @@ function render(c, g, time, sel, selPad) {
         c.fillStyle = TEAM[e.side].main; c.fillRect(w.x - 22, y, 44 * e.prodT / UDEF[e.queue[0]].time, 3.5);
       }
     } else if (e.shT > g.t || e.hp < e.maxHp || e.temp || e.shp < e.maxShp || e.ovT > g.t || e.oshT > g.t || e.bkT > g.t) {
-      const d = UDEF[e.type], w = P(e.u, e.v), y = w.y - e.z - visH(e.type) * US - 9, bw = d.air ? 28 : Math.max(18, d.h * 0.9 + 6);
+      const d = UDEF[e.type], w = P(e.u, e.v), y = w.y - e.z - visH(e.type) * rvScale(e) * US - (e.lt ? latchLift(g, e) : 0) - 9, bw = d.air ? 28 : Math.max(18, d.h * 0.9 + 6);
       if (e.shT > g.t) { // shield timer: a ring that empties as the shield runs out
         c.strokeStyle = TEAM[e.side].light; c.lineWidth = 1.6; c.beginPath(); c.arc(w.x - bw / 2 - 5, y + 1, 3.2, -Math.PI / 2, -Math.PI / 2 + 2 * Math.PI * clamp((e.shT - g.t) / ABIL.shield.dur, 0, 1)); c.stroke();
       }
@@ -1103,7 +1106,7 @@ function render(c, g, time, sel, selPad) {
       }
       if (e.maxShp) { bar(c, w.x, y, bw, e.hp / e.maxHp, 2.4, lostF(e)); shpBar(c, w.x, y - 4, bw, e.shp / e.maxShp, 2); continue; } // Axiarch: both bars while either is down (v2.25)
       if (e.hp >= e.maxHp) continue;
-      bar(c, w.x, w.y - e.z - visH(e.type) * US - 9, d.air ? 28 : Math.max(18, d.h * 0.9 + 6), e.hp / e.maxHp, 2.4, lostF(e));
+      bar(c, w.x, y, d.air ? 28 : Math.max(18, d.h * 0.9 + 6), e.hp / e.maxHp, 2.4, lostF(e));
     }
   }
   c.setTransform(V.dpr, 0, 0, V.dpr, 0, 0); // screen space

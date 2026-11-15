@@ -617,10 +617,11 @@ function drawUnit(c, u) {
   const ex = u.exT > VFX.lastT; // v2.82: exiled: faded, washed out, a violet shimmer and a ring for the time left
   c.fillStyle = d.air ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.32)';
   const big = u.type === 'leviathan' || u.type === 'worldrender' || u.type === 'sovereign' ? 2.4 : u.type === 'broodtyrant' || u.type === 'voidcarrier' ? 1.6 : u.type === 'drone' || u.type === 'needlewing' || u.type === 'prismwing' ? 0.5 : 1; // a Leviathan's shadow is seen coming
-  c.beginPath(); c.ellipse(w.x, w.y, (d.air ? 16 * big : UVIS[u.type] ? UVIS[u.type].w : Math.max(8, d.h * 0.7)) * US, (d.air ? 3.5 * big : 2.6) * US, 0, 0, 7); c.fill();
+  const lift = u.lt && VFX.g ? latchLift(VFX.g, u) : 0, rk = rvScale(u); // v2.84: a latched Leaper rides on its host's back (no shadow of its own); a Ravager's stacks make it bigger
+  if (!lift) { c.beginPath(); c.ellipse(w.x, w.y, (d.air ? 16 * big : UVIS[u.type] ? UVIS[u.type].w * rk : Math.max(8, d.h * 0.7)) * US, (d.air ? 3.5 * big : 2.6) * US, 0, 0, 7); c.fill(); }
   if (u.type === 'medic' && VFX.g) drawHealBeams(c, VFX.g, u, w);
   if (u.siege) drawSiegeLock(c, u, w); // P8 (v2.37): a Titan's stabilisers, under it
-  c.save(); c.translate(w.x, w.y - u.z + bob); c.scale(u.face * US * (u.kid ? 0.75 : 1), US * (u.kid ? 0.75 : 1)); // a Cloudwing's offspring is smaller (v2.21)
+  c.save(); c.translate(w.x + (lift ? (RIDE.get(u) || 0) * 8 * US : 0), w.y - u.z + bob - lift + (lift ? Math.abs(RIDE.get(u) || 0) * 2 * US : 0)); c.scale(u.face * US * (u.kid ? 0.75 : 1), US * (u.kid ? 0.75 : 1)); // a Cloudwing's offspring is smaller (v2.21)
   const ph = u.phT > VFX.lastT; // P13 (v2.37): a phased Wraithwing is a faint violet ghost
   if (ph) c.globalAlpha = 0.25 + 0.1 * Math.sin(VFX.lastT * 40);
   if (ex) c.globalAlpha = 0.45 + 0.08 * Math.sin(VFX.lastT * 12 + u.id);

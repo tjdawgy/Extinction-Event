@@ -37,13 +37,14 @@ const RW2B_D = {
 };
 const RWD_C = { g: null, t: -1, m: {} };
 function rwD(g, t) { // the definition a unit of type t plays by in game g
-  const f = rwB2b(g) && RW2B_D[t]; if (!f) return UDEF[t];
+  const f = (rwB2b(g) && RW2B_D[t]) || (rwB3a(g) && RW3A_D[t]); if (!f) return UDEF[t]; // v2.84: batch 3a's four too
   if (RWD_C.g !== g || RWD_C.t !== g.t) { RWD_C.g = g; RWD_C.t = g.t; RWD_C.m = {}; }
   return RWD_C.m[t] || (RWD_C.m[t] = f());
 }
 // What the UI shows for a type (Codex, the info card): game g's definition, or the new-game default without a game; the
 // Ruinmaw's bite counts as its weapon there
 function rwShow(g, t) {
+  if (RW3A_D[t]) return (g ? rwB3a(g) : REWORK.b3a) ? RW3A_D[t]() : UDEF[t]; // v2.84: batch 3a's four
   if (!(g ? rwB2b(g) : REWORK.b2b) || !RW2B_D[t]) return UDEF[t];
   const d = RW2B_D[t](); if (t === 'ruinmaw') Object.assign(d, { weapon: 'ruinbite', dmg: RUIN.bite, cd: RUIN.biteCd, melee: true }); return d;
 }

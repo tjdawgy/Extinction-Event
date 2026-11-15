@@ -293,7 +293,14 @@ function aiUpdate(g, s, dt) {
       sc.ruinmaw = nR >= 2 ? 0.1 : 1.0 + Math.min(1, nGround / 12) * 0.8 + (turtle ? 0.5 : 0) + comp.light * 0.2 - comp.air * 1.0;
       sc.worldbreaker = 1.1 + aiMeleeShare(theirs) * 1.0 + comp.light * 0.5 + comp.heavy * 0.4 + (turtle ? 0.4 : 0) - comp.air * 1.2;
     }
-    if (!threat) for (const t of types) { const b = P.bias[t] || (rwB2b(g) && RW2B_TASTE[t] ? RW2B_TASTE[t][P.kind] : P.bias[AI_TWIN[t]]); if (b && sc[t] > 0) sc[t] *= b; } // v2.83: the Ruinmaw and Worldbreaker have tastes of their own in batch 2b // the personality's taste in units (threats are answered on merit)
+    if (rwB3a(g)) { // v2.84 (rework batch 3a): the Leaper hunts big ground units, the Riftstalker ranged backlines, the Parallax guards expensive units, the Ravager feeds on fights
+      const nVal = mine.filter(u => UDEF[u.type].cost.c + UDEF[u.type].cost.e >= 250 && u.type !== 'parallax').length, nPx = mine.filter(u => u.type === 'parallax').length;
+      sc.leaper = 1.0 + aiBigShare(theirs) * 1.4 + comp.vehicle * 0.6 - comp.air * 0.6;
+      sc.riftstalker = 1.0 + aiRangedShare(theirs) * 1.2 + aiFarShare(theirs) * 0.8 - comp.air * 0.5;
+      sc.parallax = nPx >= Math.max(1, nVal / 2) ? 0.3 : 1.0 + Math.min(1, nVal / 4) * 0.8 + comp.heavy * 0.3 - comp.air * 0.5;
+      sc.ravager = 1.2 + comp.light * 0.8 + comp.heavy * 0.3 - comp.vehicle * 0.4 - comp.air * 0.5;
+    }
+    if (!threat) for (const t of types) { const b = P.bias[t] || (rwB3a(g) && RW3A_TASTE[t] ? RW3A_TASTE[t][P.kind] : rwB2b(g) && RW2B_TASTE[t] ? RW2B_TASTE[t][P.kind] : P.bias[AI_TWIN[t]]); if (b && sc[t] > 0) sc[t] *= b; } // v2.84: batch 3a's four have tastes of their own; // v2.83: the Ruinmaw and Worldbreaker have tastes of their own in batch 2b // the personality's taste in units (threats are answered on merit)
     for (const t of types) if (dl.comp[t] !== undefined) sc[t] *= dl.comp[t]; // the composition dial (v2.38; legacy has none)
     if (smart) aiSmartScores(g, s, sc, types, { comp, antiAir, theirs, mine, nFront, turtle, log, threat, P }); // v2.38: the Default AI values v2.37 roles
     if (holdEarly) for (const t of types) { if (t === 'tank' || t === 'bulwark' || t === 'bastion') sc[t] *= 1.6; if (t === 'shardling' || t === 'skitterling') sc[t] *= 0.6; } // v2.40 (hold)
@@ -461,6 +468,7 @@ function aiUpdate(g, s, dt) {
   aiMicro(g, s, D, mine);
   if (smart) aiSmartArmy(g, s, mine, dl, P); // v2.38: the Default AI's unit handling
   if (rwB2b(g)) aiRework2b(g, s, mine); // v2.83: Titan escorts, Ruinmaw spots and tunnels (every difficulty)
+  if (rwB3a(g)) aiRework3a(g, s, mine); // v2.84: Leaper and Riftstalker aims, Parallax guards (every difficulty)
 }
 // Spotters: siege guns can't fire at what their side can't see, so while sieging, one unit walks up until
 // its sight reaches the front of the enemy base (as far as this side knows where that is). Seeing the base
@@ -501,7 +509,7 @@ function aiSmartScores(g, s, sc, types, c) {
   set('sniper', 0.8 + comp.light * 1.6 + comp.heavy * 0.9 - comp.vehicle * 1.0 - comp.air * 0.6); // pierce: infantry in lines
   set('lancer', 1.0 + comp.air * 1.8 + comp.vehicle * 0.9 + comp.heavy * 0.7 - comp.light * 0.3); // focus: tough single targets and air
   set('wraithwing', 1.2 + comp.vehicle * 1.0 + comp.light * 0.4 + (1 - aaRapid) * 0.6 + (antiAir < 0.45 ? 0.6 : 0)); // phase: strong against slow anti-air
-  set('ravager', 1.2 + comp.light * 1.6 + comp.heavy * 0.2 - comp.vehicle * 0.7 - comp.air * 0.5); // frenzy on kills: light swarms
+  if (!rwB3a(g)) set('ravager', 1.2 + comp.light * 1.6 + comp.heavy * 0.2 - comp.vehicle * 0.7 - comp.air * 0.5); // frenzy on kills: light swarms
   if (has('voidcarrier')) sc.voidcarrier = 1.5 + (n('voidcarrier') ? -0.8 : 0.4) + (turtle ? 0.4 : 0) - antiAir * 0.8; // one field carrier for the push
   if (has('sovereign')) sc.sovereign = 1.6 + (turtle ? 1.0 : 0.3) - antiAir * 1.0; // judgement: one building at a time
   if (has('leviathan')) sc.leviathan = 1.6 + (turtle ? 1.0 : 0.3) - antiAir * 1.0; // carpet: buildings in a row
@@ -701,7 +709,7 @@ function aiCapture(g, s, mine, theirs, easy, key = 'capT', atKey = 'capAt', othe
   if (!cand.length) return;
   cand.sort((a, b) => near(g.nodes[a]) - near(g.nodes[b]) || a - b);
   const i = cand[0], n = g.nodes[i], need = near(n) * 1.3 + 150;
-  const pool = mine.filter(u => !UDEF[u.type].air && !UDEF[u.type].support && !UDEF[u.type].noCap && !UDEF[u.type].siege && u.id !== side.scoutId && !(side.raid && side.raid.ids.includes(u.id)) && !(other && other.ids.includes(u.id)) && u.hp >= u.maxHp * 0.7)
+  const pool = mine.filter(u => !UDEF[u.type].air && !UDEF[u.type].support && !UDEF[u.type].noCap && !u.noCap && !UDEF[u.type].siege && u.id !== side.scoutId && !(side.raid && side.raid.ids.includes(u.id)) && !(other && other.ids.includes(u.id)) && u.hp >= u.maxHp * 0.7)
     .sort((a, b) => UDEF[b.type].speed - UDEF[a.type].speed || Math.hypot(a.u - n.u, a.v - n.v) - Math.hypot(b.u - n.u, b.v - n.v) || a.id - b.id);
   const ids = []; let v = 0;
   for (const u of pool) { if (ids.length >= C.n || v >= need) break; ids.push(u.id); v += armyValue([u]); }
@@ -736,7 +744,7 @@ function aiRelic(g, s, mine, theirs, threat, easy) {
     if (n.type !== 'relic' || n.spent || !relicGuarded(g, n)) continue;
     const gv = guardValue(g, n);
     if (myV < gv * R.edge || theirs.some(e => e.fresh && e.v !== undefined && Math.hypot(e.u - n.u, e.v - n.v) < R.near)) continue;
-    const pool = mine.filter(u => !UDEF[u.type].support && !UDEF[u.type].noCap && !UDEF[u.type].air && u.id !== side.scoutId && !capBusy(side, u.id) && !(side.raid && side.raid.ids.includes(u.id)) && u.hp >= u.maxHp * 0.7)
+    const pool = mine.filter(u => !UDEF[u.type].support && !UDEF[u.type].noCap && !u.noCap && !UDEF[u.type].air && u.id !== side.scoutId && !capBusy(side, u.id) && !(side.raid && side.raid.ids.includes(u.id)) && u.hp >= u.maxHp * 0.7)
       .sort((a, b) => Math.hypot(a.u - n.u, a.v - n.v) - Math.hypot(b.u - n.u, b.v - n.v) || a.id - b.id);
     const ids = []; let v = 0; for (const u of pool) { if (v >= gv * R.group) break; ids.push(u.id); v += armyValue([u]); }
     if (v < gv * R.group) continue;

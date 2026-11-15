@@ -883,7 +883,10 @@ function sprPose(u) { // a stand-in unit snapped to one of the cached poses, wit
   if (u.type === 'titan' && u.siege && VFX.g) { sk = Math.round(titanK(u, VFX.lastT) * 6) / 6; if (sk) k += 's' + sk.toFixed(2); } // v2.83: claws and plate, in seven steps
   if (u.type === 'ruinmaw' && VFX.g) { gk = Math.round(ruinGk(u, VFX.lastT) * 4) / 4; if (gk) k += 'g' + gk; } // v2.83: its maw opening as a gate
   if (u.exT > VFX.lastT) k += 'x'; // v2.82: exiled: the washed-out colours
-  return { key: u.type + u.side + '.' + q + (u.aimAir ? 'a' : '') + k, box, u: { anim, moving: !spin && q > 0, recoil: 0, aimAir: u.aimAir, dpk, sk, gk } }; // a Hydra's guns up or level
+  let rvS = 0, dvT = 0, lt = 0, ltF = 0; // v2.84 (batch 3a): a Ravager's stacks and its devour, a Leaper latched and how much it has fed
+  if (u.type === 'ravager') { rvS = Math.min(3, u.rvS || 0); dvT = u.dvT ? 1 : 0; if (rvS) k += 'r' + rvS; if (dvT) k += 'v'; }
+  if (u.type === 'leaper' && u.lt) { lt = 1; ltF = Math.min(2, (u.ltF || 0) >> 1); k += 'l' + ltF; }
+  return { key: u.type + u.side + '.' + q + (u.aimAir ? 'a' : '') + k, box, u: { anim, moving: !spin && q > 0, recoil: 0, aimAir: u.aimAir, dpk, sk, gk, rvS, dvT, lt, ltF } }; // a Hydra's guns up or level
 }
 function drawUnitArt(c, u, T) {
   const p = sprPose(u);
