@@ -110,7 +110,7 @@ function update(g, dt) {
   }
   updateGuards(g, foes, dt); // v2.71: the relic guards fire, and both sides may target them
   indexFoes(foes[0], dt); indexFoes(foes[1], dt); // v2.37: lane-sorted, so target searches look only near the searcher
-  RDG.list = null; if (rwB2b(g)) update2b(g); if (rwB3a(g)) update3a(g); /* v2.84: remains */ if (rwB3b(g)) update3b(g, dt); /* v2.85: barriers, knocks, Bulwark regen */ // v2.83: Titan cover, Worldbreaker cracks and ridges (RDG.list: this game's ridges, while its units move)
+  RDG.list = null; if (rwB2b(g)) update2b(g); if (rwB3a(g)) update3a(g); /* v2.84: remains */ if (rwB3b(g)) update3b(g, dt); /* v2.85: barriers, knocks, Bulwark regen */ if (rwB4a(g)) update4a(g); /* v2.86: marked targets */ // v2.83: Titan cover, Worldbreaker cracks and ridges (RDG.list: this game's ridges, while its units move)
   const n = g.ents.length; NAV.now = g.t; // v2.65: the clock the navigation paths age by
   for (let i = 0; i < n; i++) {
     const e = g.ents[i];
@@ -356,7 +356,7 @@ function ixScan(g, src, def, foes, R, AR, minR) {
   const bbf = src.kind === 'u' && !!g.sides[side] && g.sides[side].bbOn; // v2.69 (a): an AI base attack aims at what holds the shield up
   const check = idx => {
     const e = foes[idx];
-    if (e.hp <= 0 || e.shielded || e.phT > g.t || e.gone) return; // v2.82: burrowed or exiled; a phased Wraithwing can't be targeted (P13, v2.37)
+    if (e.hp <= 0 || e.shielded || e.phT > g.t || e.gone || e.wwT > g.t) return; // v2.86: a batch 4a Wraithwing just after a hop; v2.82: burrowed or exiled; a phased Wraithwing can't be targeted (P13, v2.37)
     const bh = e.kind === 'b' ? e.half : 0, du = Math.abs(e.u - su);
     if (du - bh > maxR) return; // effDist ≥ |du| − half
     const dv = (e.v - sv) * DV_W, lim = maxR + bh + 1;
@@ -389,7 +389,7 @@ function acquire(g, src, def, foes, chase) {
   let best = null, bs = 1e9, close = false;
   const minR = def.minRange || 0;
   for (const e of foes) {
-    if (e.hp <= 0 || e.shielded || e.phT > g.t || e.gone) continue; // don't waste shots on a shielded HQ (or a phased Wraithwing, v2.37)
+    if (e.hp <= 0 || e.shielded || e.phT > g.t || e.gone || e.wwT > g.t) continue; // v2.86: a Wraithwing just after a hop; don't waste shots on a shielded HQ (or a phased Wraithwing, v2.37)
     if (!visibleTo(g, src.side, e)) continue; // auto-target only what your side can see (spotters needed beyond sight)
     const air = e.kind === 'u' && !!UDEF[e.type].air;
     if (air ? !def.hitsAir : def.hitsGround === false) continue;

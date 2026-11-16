@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { loadSim } = require('./load-sim');
 
-const sim = loadSim(); sim.setBalance7b(false); // v2.42: these tests pin the mechanics at v2.41's numbers (the phase 7b layer off; tests/strategy.test.js covers it)
+const sim = loadSim(); sim.REWORK.b4a = false; /* v2.86: v2.85's path choice and units (rework batch 4a off; tests/rework-4a.test.js covers it on) */ sim.setBalance7b(false); // v2.42: these tests pin the mechanics at v2.41's numbers (the phase 7b layer off; tests/strategy.test.js covers it)
 const step = (g, secs) => { for (let i = 0; i < Math.round(secs * 30); i++) sim.update(g, 1 / 30); };
 function base(nBarracks = 2) {
   const g = sim.newGame('normal');

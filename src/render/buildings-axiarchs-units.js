@@ -890,7 +890,8 @@ function sprPose(u) { // a stand-in unit snapped to one of the cached poses, wit
   if (u.type === 'dreadthorn') { if (u.crg) { crg = 1; k += 'c'; } else if (u.dzT > VFX.lastT) { dz = Math.round(Math.sin(VFX.lastT * 5 + u.id) * 2) / 2 || 0.01; k += 'z' + dz; } }
   else if (u.type === 'shardling' && VFX.g && rwB3b(VFX.g) && VFX.lastT >= (u.prT || 0)) { pr = 1; k += 'p'; }
   else if (u.type === 'bulwark') { if (u.braceT > VFX.lastT) { br = 1; k += 'b'; } if (VFX.lastT - (u.bkRg ?? -9) < 0.3) { hl = 1 + (Math.floor(VFX.lastT * 4) % 3); k += 'h' + hl; } }
-  return { key: u.type + u.side + '.' + q + (u.aimAir ? 'a' : '') + k, box, u: { anim, moving: !spin && q > 0, recoil: 0, aimAir: u.aimAir, dpk, sk, gk, rvS, dvT, lt, ltF, crg, dz, pr, br, hl } }; // a Hydra's guns up or level
+  let ch = 0; if (u.type === 'marksman' && VFX.g && u.chT > VFX.lastT) { ch = 1; k += 'c'; } // v2.86 (batch 4a): a Marksman charging, its lance alight
+  return { key: u.type + u.side + '.' + q + (u.aimAir ? 'a' : '') + k, box, u: { anim, moving: !spin && q > 0, recoil: 0, aimAir: u.aimAir, dpk, sk, gk, rvS, dvT, lt, ltF, crg, dz, pr, br, hl, ch } }; // a Hydra's guns up or level
 }
 function drawUnitArt(c, u, T) {
   const p = sprPose(u);

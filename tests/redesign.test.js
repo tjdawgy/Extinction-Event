@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { loadSim } = require('./load-sim');
 
-const sim = loadSim(); sim.REWORK.b3b = false; // v2.85: these tests pin the v2.84 Shardling, Bastion, Bulwark and Dreadthorn (rework batch 3b off; tests/rework-3b.test.js covers it on)
+const sim = loadSim(); sim.REWORK.b3b = false; sim.REWORK.b4a = false; /* v2.86: v2.85's path choice and units (rework batch 4a off; tests/rework-4a.test.js covers it on) */  // v2.85: these tests pin the v2.84 Shardling, Bastion, Bulwark and Dreadthorn (rework batch 3b off; tests/rework-3b.test.js covers it on)
 const U = sim.UDEF;
 const step = (g, secs) => { for (let i = 0; i < Math.round(secs * 30); i++) sim.update(g, 1 / 30); };
 const quiet = (f0 = 'lastfist', f1 = 'lastfist') => { const g = sim.newGame('normal', { factions: [f0, f1] }); g.countdown = 0; g.t = 200; for (const s of g.sides) { s.aiT = 1e9; s.res.c = s.res.e = 9000; } sim.setStance(g, 0, 'hold'); sim.setStance(g, 1, 'hold'); return g; };

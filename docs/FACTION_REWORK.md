@@ -293,6 +293,45 @@ Unchanged (thorns). It holds the line; the Dreadthorn breaks it.
 
 ## Batch 4: Ranged and air
 
+**Batch 4a (Sniper, Astral Marksman, Bilecaster, Gunship, Wraithwing): done in v2.86**, with a fix to the AI's path choice
+first (Part 0, below). Code: src/sim/rework-4a.js (`REWORK.b4a` → `g.rw.b4a`; on by default; each Test Range row has its own
+"Batch 4a" switch), art in src/render/units-rework-4a.js. Starting values as asked (`PIN`, `MARK`, `BILE`, `SALVO`, `HOP`). As in
+3a and 3b the units keep their ids (the Gunship's is `aircraft`) and play through per-game definitions (`rwD`, `RW4A_D`); UDEF is
+untouched, so a b4a-off game plays v2.85 exactly (the pinned fingerprints match, seeded Test Range skirmishes hash as on v2.85's
+build, and a b4a-off save leaves the key out).
+- **Part 0 (the AI's paths, v2.86):** with b4a on a Normal or Hard AI rolls each production building's T2 path once per match
+  (`aiPathRoll`, `side.pRoll`, drawn from the match's seeded stream the first time that building type goes to T2): the
+  persona's path `PATHROLL.keep` (60%) of the time, the other otherwise. The roll replaces the persona's default inside
+  `aiPickPath`, so the counter rules (armoured enemies: Specialists; an infantry flood: Assault) still come first and a second
+  copy still takes the path the first lacks. Easy is unchanged.
+Departures and choices the design left open:
+- Sniper: "infantry" is light armour on the ground (the Leaper, Skitterling, Spitter, Shardling and the rest; a latched Leaper
+  too). Pinned, a unit can't walk, leap, latch, strike (Riftstalker), charge (Dreadthorn) or swap (Parallax); a Dreadthorn's
+  knock still slides it. A parried hit still pins.
+- Marksman: the +25% is on all damage the marking side deals to the marked target while that side is Axiarch, building guns and
+  abilities included (damage is applied by side, not by source). The Marksmen themselves don't switch to marks (they place
+  them); other Axiarch units switch to the nearest target their side has marked that is already in their weapon's reach (no
+  chasing; melee only within melee reach). A target order (a tap on an enemy) still wins.
+- Bilecaster: the glob is lobbed on an arc like a shell (it passes over a Bastion's barrier), lands where the target stood
+  (no lead, no scatter), and does its 20 to every enemy within 30 (buildings ×0.5, no aircraft). The pools are units-only
+  (not buildings or aircraft), burn as `acidpool` (a Shardling's parry ignores it, as with the Ruinmaw's pools), and corrode by
+  the existing rule (the strongest corrosion applies, at most +25%). They don't count toward the Ruinmaw pools' cap of 6.
+- Gunship: the missiles leave its two pods in turn; a salvo cut short (its target dies) continues with the missiles left on the
+  next target; the reload has the usual ±10% spread. The info card's damage per second uses the average cadence.
+- Wraithwing: it hops only when it has somewhere to go; in a fight it hops every 0.9 s to a spot about 84 from its target
+  (seeded), firing on each landing: the landing bolt is its only attack. Speed changes (slows, Frenzy) don't change its
+  hops. "Can't re-acquire" also covers target orders. Instant beams still hit it.
+- AI (sides it plays; the player's units target as usual): Snipers aim at the light unit with the most infantry in the line
+  behind it; Marksmen at the most expensive unit in reach (one their side already marked counts less; mid-charge they keep
+  their target); Gunships open each salvo on the most expensive vehicle in reach and keep it through the salvo; Bilecasters at
+  the spot with the most enemy ground units within 40 (those fighting count 1.5×; less where a pool of theirs already is);
+  Wraithwings with half their health and shields or more raid the known economy building (Refinery, Reactor, Habitat) with
+  the fewest known defences within 260, unless enemies are within 520 of their HQ. All five have their own scores; the
+  Marksman, Bilecaster and Wraithwing have persona tastes (`RW4A_TASTE`; the Sniper and Gunship keep the Last Fist personas'
+  own). AI_TWIN is unchanged for b4a-off games.
+- Text: the Gunship and Wraithwing are base units, so they have no path step text; the other three's steps are updated.
+- Art is drawn the new way in b4a-off games too, as in earlier batches.
+
 ### Sniper (Last Fist, Barracks Specialists T3)
 
 Suppressing fire. Keeps its piercing shot; hits pin infantry in place briefly.
@@ -385,7 +424,7 @@ visual references. A final art batch after batch 4 redraws the unchanged units a
 2. Artillery and siege: Artillery, Gorebore, Severance (2a, done v2.82), Titan, Ruinmaw, Worldbreaker (2b, done v2.83).
 3. Divers and melee: Leaper, Riftstalker, Parallax, Ravager (3a, done v2.84), Dreadthorn, Bastion, Shardling, Bulwark (3b, done
    v2.85).
-4. Ranged and air: Sniper, Astral Marksman, Bilecaster, Gunship, Wraithwing, Leviathan, Brood Tyrant, Worldrender,
+4. Ranged and air: Sniper, Astral Marksman, Bilecaster, Gunship, Wraithwing (4a, done v2.86), Leviathan, Brood Tyrant, Worldrender,
    Voidcarrier, Astral Sovereign.
 5. Art batch: unchanged units and buildings in the new style.
 

@@ -16,8 +16,9 @@ function attackBar(g, s) {
 function aiPickPath(g, s, b, P, theirs) {
   if (g.forcePath && g.forcePath[s] && g.forcePath[s][b.type]) return g.forcePath[s][b.type]; // test hook (forced-path matrix)
   const fac = g.sides[s].faction, to = p => aiPathTo(fac, b.type, p); // decided in Last Fist terms, then translated (Bloomhost, v2.19)
-  const D = aiDiff(g, s), def = (P.paths && P.paths[b.type]) || 'A';
+  const D = aiDiff(g, s); let def = (P.paths && P.paths[b.type]) || 'A';
   if (D.label === 'Easy') return to(def);
+  if (rwB4a(g)) def = aiPathRoll(g, s, b.type, def); // v2.86 (batch 4a, Part 0): its path rolled once per match, the persona's 60% of the time
   const have = g.ents.filter(e => e !== b && e.side === s && e.type === b.type && e.hp > 0).map(e => aiPathFrom(fac, b.type, e.path || e.upPath)).filter(Boolean);
   if (b.type === 'barracks' && aiArmorShare(theirs) > 0.35 && !have.includes('A')) return to('A');
   if (b.type === 'factory' && aiFix(P, 'counter') && theirs.length >= 5 && aiLightShare(theirs) >= (aiDials(P).flood || 0.55) && !have.includes('B')) return to('B'); // v2.41 (counter): an infantry flood, the Assault path (Flame Tanks)
@@ -307,7 +308,15 @@ function aiUpdate(g, s, dt) {
       sc.shardling = 0.9 + aiMeleeShare(theirs) * 0.8 + comp.light * 0.3 - comp.vehicle * 0.5 - comp.air * 0.4 - (types.length > 2 ? 0.3 : 0);
       sc.bulwark = 1.3 + comp.light * 1.0 + comp.heavy * 0.7 + (turtle ? 0.3 : 0) - comp.air * 0.9;
     }
-    if (!threat) for (const t of types) { const b = P.bias[t] || (rwB3b(g) && RW3B_TASTE[t] ? RW3B_TASTE[t][P.kind] : rwB3a(g) && RW3A_TASTE[t] ? RW3A_TASTE[t][P.kind] : rwB2b(g) && RW2B_TASTE[t] ? RW2B_TASTE[t][P.kind] : P.bias[AI_TWIN[t]]); if (b && sc[t] > 0) sc[t] *= b; } // v2.84: batch 3a's four have tastes of their own; // v2.83: the Ruinmaw and Worldbreaker have tastes of their own in batch 2b // the personality's taste in units (threats are answered on merit)
+    if (rwB4a(g)) { // v2.86 (rework batch 4a): the Sniper pins infantry lines, the Marksman marks for its army, the Bilecaster pools on packed fights, the Gunship bursts vehicles, the Wraithwing raids (splash and chaining anti-air catch it)
+      const nAx = mine.filter(u => UDEF[u.type].fac === 'axiarchs' && UDEF[u.type].weapon).length;
+      sc.sniper = 0.8 + comp.light * 1.8 + aiPack(theirs) * 0.4 - comp.vehicle * 1.0 - comp.air * 0.6;
+      sc.marksman = 0.9 + comp.light * 0.8 + comp.heavy * 0.8 + comp.vehicle * 0.2 + Math.min(1, nAx / 8) * 0.6 - comp.air * 0.6;
+      sc.bilecaster = 1.0 + comp.light * 0.9 + comp.heavy * 0.5 + aiPack(theirs) * 0.6 - comp.air * 0.6;
+      sc.aircraft = 1.2 + comp.vehicle * 1.5 + comp.heavy * 0.3 - comp.air * 0.3 + (antiAir < 0.45 ? 0.9 : 0);
+      sc.wraithwing = 1.3 + comp.vehicle * 0.5 + comp.light * 0.4 + (antiAir < 0.45 ? 0.6 : 0) - aiSplashAA(theirs) * 1.2;
+    }
+    if (!threat) for (const t of types) { const b = P.bias[t] || (rwB4a(g) && RW4A_TASTE[t] ? RW4A_TASTE[t][P.kind] : rwB3b(g) && RW3B_TASTE[t] ? RW3B_TASTE[t][P.kind] : rwB3a(g) && RW3A_TASTE[t] ? RW3A_TASTE[t][P.kind] : rwB2b(g) && RW2B_TASTE[t] ? RW2B_TASTE[t][P.kind] : P.bias[AI_TWIN[t]]); if (b && sc[t] > 0) sc[t] *= b; } // v2.84: batch 3a's four have tastes of their own; // v2.83: the Ruinmaw and Worldbreaker have tastes of their own in batch 2b // the personality's taste in units (threats are answered on merit)
     for (const t of types) if (dl.comp[t] !== undefined) sc[t] *= dl.comp[t]; // the composition dial (v2.38; legacy has none)
     if (smart) aiSmartScores(g, s, sc, types, { comp, antiAir, theirs, mine, nFront, turtle, log, threat, P }); // v2.38: the Default AI values v2.37 roles
     if (holdEarly) for (const t of types) { if (t === 'tank' || t === 'bulwark' || t === 'bastion') sc[t] *= 1.6; if (t === 'shardling' || t === 'skitterling') sc[t] *= 0.6; } // v2.40 (hold)
@@ -477,6 +486,7 @@ function aiUpdate(g, s, dt) {
   if (rwB2b(g)) aiRework2b(g, s, mine); // v2.83: Titan escorts, Ruinmaw spots and tunnels (every difficulty)
   if (rwB3a(g)) aiRework3a(g, s, mine); // v2.84: Leaper and Riftstalker aims, Parallax guards (every difficulty)
   if (rwB3b(g)) aiRework3b(g, s, mine); // v2.85: Bastions screen ranged units, Bulwarks hold the creep when defending
+  if (rwB4a(g)) aiRework4a(g, s, mine); // v2.86: Wraithwings raid economy buildings
 }
 // Spotters: siege guns can't fire at what their side can't see, so while sieging, one unit walks up until
 // its sight reaches the front of the enemy base (as far as this side knows where that is). Seeing the base
@@ -513,10 +523,10 @@ function aiSmartScores(g, s, sc, types, c) {
   set('artillery', nFront >= 3 && n('artillery') < Math.max(2, nFront / 3) ? 1.1 + comp.light * 0.8 + comp.heavy * 0.3 + (turtle ? 0.8 : 0) : 0.1); // salvo: clumps and bases
   set('riftmortar', nFront >= 3 && n('riftmortar') < Math.max(2, nFront / 3) ? 1.1 + comp.vehicle * 0.9 + comp.heavy * 0.5 - comp.light * 0.4 + (turtle ? 0.6 : 0) : 0.1); // precision: single high-value targets
   set('bilelobber', nFront >= 4 && n('bilelobber') < Math.max(2, nFront / 4) ? 1.0 + comp.heavy * 0.6 + comp.vehicle * 0.5 + (turtle ? 0.5 : 0) : 0.1); // softening: with a front to exploit it
-  set('bilecaster', 0.9 + comp.heavy * 1.0 + comp.vehicle * 0.8 + (nFront >= 4 ? 0.3 : 0) - comp.air * 0.6 - comp.light * 0.3); // a single-target marker: tough targets
-  set('sniper', 0.8 + comp.light * 1.6 + comp.heavy * 0.9 - comp.vehicle * 1.0 - comp.air * 0.6); // pierce: infantry in lines
+  if (!rwB4a(g)) set('bilecaster', 0.9 + comp.heavy * 1.0 + comp.vehicle * 0.8 + (nFront >= 4 ? 0.3 : 0) - comp.air * 0.6 - comp.light * 0.3); // a single-target marker: tough targets
+  if (!rwB4a(g)) set('sniper', 0.8 + comp.light * 1.6 + comp.heavy * 0.9 - comp.vehicle * 1.0 - comp.air * 0.6); // pierce: infantry in lines
   set('lancer', 1.0 + comp.air * 1.8 + comp.vehicle * 0.9 + comp.heavy * 0.7 - comp.light * 0.3); // focus: tough single targets and air
-  set('wraithwing', 1.2 + comp.vehicle * 1.0 + comp.light * 0.4 + (1 - aaRapid) * 0.6 + (antiAir < 0.45 ? 0.6 : 0)); // phase: strong against slow anti-air
+  if (!rwB4a(g)) set('wraithwing', 1.2 + comp.vehicle * 1.0 + comp.light * 0.4 + (1 - aaRapid) * 0.6 + (antiAir < 0.45 ? 0.6 : 0)); // phase: strong against slow anti-air
   if (!rwB3a(g)) set('ravager', 1.2 + comp.light * 1.6 + comp.heavy * 0.2 - comp.vehicle * 0.7 - comp.air * 0.5); // frenzy on kills: light swarms
   if (has('voidcarrier')) sc.voidcarrier = 1.5 + (n('voidcarrier') ? -0.8 : 0.4) + (turtle ? 0.4 : 0) - antiAir * 0.8; // one field carrier for the push
   if (has('sovereign')) sc.sovereign = 1.6 + (turtle ? 1.0 : 0.3) - antiAir * 1.0; // judgement: one building at a time

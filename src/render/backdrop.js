@@ -620,6 +620,7 @@ function drawUnit(c, u) {
   const lift = u.lt && VFX.g ? latchLift(VFX.g, u) : 0, rk = rvScale(u); // v2.84: a latched Leaper rides on its host's back (no shadow of its own); a Ravager's stacks make it bigger
   if (!lift) { c.beginPath(); c.ellipse(w.x, w.y, (d.air ? 16 * big : UVIS[u.type] ? UVIS[u.type].w * rk : Math.max(8, d.h * 0.7)) * US, (d.air ? 3.5 * big : 2.6) * US, 0, 0, 7); c.fill(); }
   if (u.crg) drawChargeDust(c, u, VFX.lastT); // v2.85: a Dreadthorn's charge kicks up dust behind it
+  if (u.hopS !== undefined && VFX.lastT - u.hopS < 0.35) drawHopTrail(c, u, VFX.lastT); // v2.86: a Wraithwing's afterimages just after a hop
   if (u.type === 'medic' && VFX.g) drawHealBeams(c, VFX.g, u, w);
   if (u.siege) drawSiegeLock(c, u, w); // P8 (v2.37): a Titan's stabilisers, under it
   c.save(); c.translate(w.x + (lift ? (RIDE.get(u) || 0) * 8 * US : 0), w.y - u.z + bob - lift + (lift ? Math.abs(RIDE.get(u) || 0) * 2 * US : 0)); c.scale(u.face * US * (u.kid ? 0.75 : 1), US * (u.kid ? 0.75 : 1)); // a Cloudwing's offspring is smaller (v2.21)
@@ -638,6 +639,7 @@ function drawUnit(c, u) {
   if (ex) drawExiled(c, u, w, VFX.lastT);
   if (u.cov && b2b) drawCovered(c, u, w, VFX.lastT); // v2.83: in a Titan's cover
   if (u.dzT > VFX.lastT) drawDazed(c, u, w, VFX.lastT); // v2.85: a Dreadthorn dazed after its charge
+  if (u.pinT > VFX.lastT) drawPinned(c, u, w, VFX.lastT); // v2.86: pinned by a Sniper
   if (u.shT > VFX.lastT) drawShield(c, u, VFX.lastT);
   if (VFX.g) drawAxFx(c, VFX.g, u, w); // v2.27: a Marksman's charge, a Gravemantle's aura, slowed and disrupted marks
   if (u.ovT > VFX.lastT) drawOvercharge(c, u, w, VFX.lastT); // v2.28
@@ -702,6 +704,7 @@ function drawCorrosion(c, u, w) {
 }
 // Ruinmaw acid pools (v2.19): a bubbling green puddle that fades in its last second
 function drawAcidPool(c, a, t) {
+  if (a.kind === 'bile') { drawBilePool(c, a, t); return; } // v2.86: a Bilecaster's pool
   const w = P(a.u, a.v), left = a.end - t, al = clamp(left, 0, 1);
   if (a.kind === 'dist') { // a Worldbreaker's distortion zone (v2.27): a warped violet ripple instead of acid
     c.fillStyle = `rgba(110,80,180,${0.3 * al})`; c.beginPath(); c.ellipse(w.x, w.y, ACID.r, ACID.r * DY * 0.6, 0, 0, 7); c.fill();

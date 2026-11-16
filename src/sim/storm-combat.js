@@ -59,7 +59,7 @@ function updateProjs(g, dt) {
   for (const p of g.projs) {
     p.t += dt;
     p.pu = p.u; p.pv = p.v; p.pz = p.z;
-    if (p.weapon === 'shell' || p.weapon === 'lob' || p.weapon === 'rift') { // the Rift Mortar's shot arcs like a shell (v2.27)
+    if (p.weapon === 'shell' || p.weapon === 'lob' || p.weapon === 'rift' || p.weapon === 'bileglob') { // the Rift Mortar's shot arcs like a shell (v2.27); a batch 4a Bilecaster's glob too (v2.86)
       const k = Math.min(1, p.t / p.T);
       p.u = lerp(p.su, p.tu, k); p.v = lerp(p.sv, p.tv, k);
       p.z = lerp(p.sz, 0, k) + p.arc * 4 * k * (1 - k);
@@ -94,6 +94,7 @@ function impact(g, p, hit) {
   if (p.dev) { DEV.on = true; DEV.sum = 0; impact1(g, p, hit); DEV.on = false; devour(g, p, DEV.sum); return; } // P11
   impact1(g, p, hit);
   if (p.pierce && hit) pierceLine(g, p, hit); // P4
+  if (p.miss && !hit) { const w = P(p.u, p.v, p.z); g.fx.push({ k: 'whiff', u: p.u, x: w.x, y: w.y, t: 0, life: 0.4 }); } // v2.86: a shot that lost its hopping Wraithwing
 }
 // P11 (v2.37): the Worldrender heals frac of the damage its drop did to buildings, at most cap HP per second (a running
 // budget that refills at cap per second up to one second's worth)
@@ -120,7 +121,7 @@ function pierceLine(g, p, hit) {
   }
   list.sort((a, b) => a[0] - b[0] || a[1].id - b[1].id);
   let dmg = p.dmg;
-  for (const [, e] of list.slice(0, K.n)) { dmg *= K.fall; damage(g, e, dmg, p.weapon, p.side); }
+  for (const [, e] of list.slice(0, K.n)) { dmg *= K.fall; damage(g, e, dmg, p.weapon, p.side); if (p.pin) pinHit(g, e, p.side); } // v2.86: each one it goes through is pinned too
   const a = P(hit.u, hit.v, aimZ(hit)), b = P(hit.u + ux * K.len, hit.v + vy * K.len, aimZ(hit));
   g.fx.push({ k: 'pierce', u: hit.u, x: a.x, y: a.y, x2: b.x, y2: b.y, t: 0, life: 0.25 });
 }
@@ -128,9 +129,10 @@ function pierceLine(g, p, hit) {
 function impact1(g, p, hit) {
   const w = P(p.u, p.v, p.z);
   if (p.weapon === 'exile') { exileBurst(g, p); return; } // v2.82: a Severance's rift orb
+  if (p.weapon === 'bileglob') { bileImpact(g, p); return; } // v2.86: a batch 4a Bilecaster's glob and its pool
   if (p.weapon === 'shell' || p.weapon === 'lob' || p.weapon === 'rift') { splashHit(g, p, null, 1, 0.5); fxBoom(g, w.x, w.y, 30); return; }
   if (p.weapon === 'bomb' || p.weapon === 'crush' || p.weapon === 'sovereign') { splashHit(g, p, null, 1, 0.5); fxBoom(g, w.x, w.y, p.weapon === 'bomb' ? 40 : 48); return; } // the Astral Sovereign too (v2.29) // full damage at the centre, half at the edge (the Worldrender too, v2.21)
-  if (hit && hit.hp > 0) { damage(g, hit, p.dmg, p.weapon, p.side); if (p.corr) corrode(g, hit, p.corr); }
+  if (hit && hit.hp > 0) { damage(g, hit, p.dmg, p.weapon, p.side); if (p.corr) corrode(g, hit, p.corr); if (p.pin) pinHit(g, hit, p.side); if (p.mark) markHit(g, hit, p.side); } // v2.86: pinned, marked (batch 4a)
   if (p.splash > 0) splashHit(g, p, hit, 0.5, 1);
   if (p.acid) addAcid(g, p.side, p.u, p.v, p.acid === 'dist' ? 'dist' : undefined);
   if (p.weapon === 'rifle' || p.weapon === 'rail' || p.weapon === 'gatling') {
@@ -170,7 +172,7 @@ function corrode(g, e, c) {
 }
 // Ruinmaw acid pools (v2.19): at most ACID.max at once; a new one replaces the oldest
 function addAcid(g, side, u, v, kind) { // kind 'dist': a Worldbreaker's distortion zone (v2.27), same damage, cap and life
-  if (g.acid.length >= ACID.max) g.acid.shift();
+  const nb = g.acid.filter(a => a.kind !== 'bile'); if (nb.length >= ACID.max) g.acid.splice(g.acid.indexOf(nb[0]), 1); // v2.86: a batch 4a Bilecaster's pools don't count (with none, the oldest as before)
   g.acid.push(kind ? { side, u, v, end: g.t + ACID.dur, kind } : { side, u, v, end: g.t + ACID.dur });
 }
 function updateAcid(g, dt) {
@@ -178,6 +180,7 @@ function updateAcid(g, dt) {
   g.acid = g.acid.filter(a => a.end > g.t);
   for (const a of g.acid) for (const e of g.ents) {
     if (e.kind !== 'u' || e.side === a.side || e.hp <= 0 || UDEF[e.type].air) continue;
+    if (a.kind === 'bile') { if (Math.hypot(e.u - a.u, (e.v - a.v) * 0.6) > BILE.r || e.gone) continue; damage(g, e, BILE.dps * dt, 'acidpool', a.side); corrode(g, e, { amt: BILE.corr, dur: BILE.after }); continue; } // v2.86: a batch 4a Bilecaster's pool burns and corrodes
     if (Math.hypot(e.u - a.u, (e.v - a.v) * 0.6) > ACID.r) continue;
     if (a.kind === 'dist' && REDESIGN.on) disrupt(g, e, DIST); // P7 (v2.37): a distortion zone disrupts instead of burning
     else damage(g, e, ACID.dps * dt, 'acidpool', a.side);
@@ -199,6 +202,7 @@ function damage1(g, e, amt, weapon, fromSide, src) {
   const b3 = e.kind === 'u' && rwB3b(g), ud3 = b3 ? rwD(g, e.type) : null; // v2.85: a batch 3b unit plays by its own definition
   if (b3 && ud3.parry && amt > 0 && parryHit(g, e, weapon, src)) return; // v2.85: a Shardling's parry negates the hit
   let dmg = amt * mult * (sideBuff(g, e.side) ? NANO.cut : 1) * (1 + corrNow(e, g.t)); // corroded: takes more (v2.19; v2.37 the second slot)
+  if (e.mkT > g.t) dmg *= markBonus(g, e, fromSide); // v2.86: marked by a batch 4a Astral Marksman
   if (e.cov && !noCover(weapon)) dmg *= 1 - TITAN.cover; // v2.83: Last Fist infantry in a Titan's cover take less from ranged attacks
   const br = e.kind === 'u' && (b3 ? ud3 : UDEF[e.type]).brace, pre = dmg; // v2.85: a batch 3b Bastion has none
   if (br) { // the Bulwark braces on the first hit after its cooldown (v2.17)
@@ -238,7 +242,7 @@ function damage1(g, e, amt, weapon, fromSide, src) {
     const side = g.sides[e.side];
     if (g.t - side.lastAlert > 10) { side.lastAlert = g.t; ev(g, { type: 'alert', side: e.side, hq: e.type === 'hq' }); }
   }
-  if (e.kind === 'u' && e.hp > 0 && UDEF[e.type].phase && g.t >= (e.phCd || 0)) { const F = UDEF[e.type].phase; e.phT = g.t + F.dur; e.phCd = g.t + F.dur + F.cd; } // P13: phase out after the hit
+  if (e.kind === 'u' && e.hp > 0 && UDEF[e.type].phase && g.t >= (e.phCd || 0) && !(e.type === 'wraithwing' && rwB4a(g))) /* v2.86: a batch 4a Wraithwing hops instead */ { const F = UDEF[e.type].phase; e.phT = g.t + F.dur; e.phCd = g.t + F.dur + F.cd; } // P13: phase out after the hit
   if (e.hp <= 0) {
     kill(g, e, fromSide, weapon);
     if (src && src.kind === 'u' && src.hp > 0 && UDEF[src.type].bloodfrenzy && !rwB3a(g)) src.frzT = Math.max(src.frzT || 0, g.t + UDEF[src.type].bloodfrenzy.dur); // P15: refreshed, never stacked

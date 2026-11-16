@@ -102,6 +102,7 @@ function setStance(g, s, v) {
 }
 
 function moveToward(u, d, tu, tv, dt, mul = 1) { // mul: speed multiplier (creep, v2.18)
+  if (d.blink) return hopMove(u, d, tu, tv); // v2.86: a batch 4a Wraithwing hops instead of flying
   if (RDG.list && !RDG.busy && !d.air && !u.bur) return ridgeMove(u, d, tu, tv, dt, mul); // v2.83: a Worldbreaker's ridge in the way (only while one stands)
   return moveToward0(u, d, tu, tv, dt, mul);
 }
@@ -239,6 +240,8 @@ function updateUnit(g, u, foes, dt) {
   if (u.hitT > 0) u.hitT -= dt;
   if (u.crg) { trampleStep(g, u, d, dt); return; } // v2.85: a batch 3b Dreadthorn charging
   if (u.dzT > g.t) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // v2.85: dazed after its charge
+  if (d.blink) { HOPG.g = g; HOPG.foes = foes; } // v2.86: a batch 4a Wraithwing's hops land and fire in this game
+  const pin = u.pinT > g.t; // v2.86: pinned by a batch 4a Sniper: no moving (it still fights)
   if (u.fwdHome && g.nodes[u.fwdHome.n].owner !== u.side) u.fwdHome = undefined; // v2.68: its forward post lost: home is the base again
   const side = g.sides[u.side], dir = dirOf(u.side); let home = (side.defU != null ? side.defU : u.fwdHome ? u.fwdHome.u : rallyU(u.side, g)) + u.rallyOff * dir * (u.fwdHome ? 0.3 : 1); // defU (v2.40): a Default AI under attack rallies inside its HQ's cover; v2.62: a damaged unit sent home goes to the base flag
   const po = side.direct ? u.po || HOLD_PO : null; // v2.73: a direct side's unit follows its own order
@@ -250,7 +253,7 @@ function updateUnit(g, u, foes, dt) {
   const A = d.weapon ? acquire(g, u, d, foes, d.chase) : NO_TARGET; let { best, close } = A; // Medicopters and Recon Drones carry no weapon; melee: the chase search in the same pass (v2.37)
   const cs = po && po.o !== 'hold' && (po.o !== 'attack' || po.ju != null) ? ctlStep(g, u, d) : null; // v2.76: heading somewhere (go, target), or retreating
   if (po) st = cs && cs.go ? 'adv' : cs && cs.run ? 'retreat' : (u.po || HOLD_PO).o; // 'adv': on the way, stopping to fight what it meets (a Titan plants for it)
-  const sp = u.bur ? (d.bore ? BORE.speed / d.speed : 1) : (d.fac === 'bloomhost' && !d.air && onCreep(g, u.side, u.u, u.v) ? CREEP.speed : 1) * (frz ? ABIL.frenzy.speed : 1) * (u.slowT > g.t ? 1 - u.slow : 1) * (u.snT > g.t ? 0 : 1) * (u.ltT > g.t ? 1 - LATCH.slow : 1); // v2.84: Leapers latched on it // creep (v2.18), Frenzy Bloom (v2.20), a Gravemantle's slow (v2.27), a Rootheart's snare (v2.33)
+  const sp = u.bur ? (d.bore ? BORE.speed / d.speed : 1) : (d.fac === 'bloomhost' && !d.air && onCreep(g, u.side, u.u, u.v) ? CREEP.speed : 1) * (frz ? ABIL.frenzy.speed : 1) * (u.slowT > g.t ? 1 - u.slow : 1) * (u.snT > g.t ? 0 : 1) * (u.ltT > g.t ? 1 - LATCH.slow : 1) * (pin ? 0 : 1); // v2.86: pinned; v2.84: Leapers latched on it // creep (v2.18), Frenzy Bloom (v2.20), a Gravemantle's slow (v2.27), a Rootheart's snare (v2.33)
   if (d.latch && (u.ltH || u.lt) && latchRide(g, u, d, side, dt)) return; // v2.84: a batch 3a Leaper in flight onto its host, or riding it
   if (u.leaping) { // mid-leap (v2.19): fly to the landing spot, nothing else
     const du = u.lu - u.u, dv = u.lv - u.v, dd = Math.hypot(du, dv), st = d.leap.speed * dt;
@@ -260,7 +263,7 @@ function updateUnit(g, u, foes, dt) {
   }
   if (u.tn && tunnelStep(g, u, d, side, dt, sp)) return; // v2.83: walking to the tunnel entrance, or inside it
   if (side.hush) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // v2.81: a Test Range side told not to fight back stands still (never set in a match)
-  if (d.swap && pxStep(g, u, side)) return; // v2.84: a batch 3a Parallax swapped places with a wounded ally
+  if (d.swap && !pin && pxStep(g, u, side)) return; // v2.84: a batch 3a Parallax swapped places with a wounded ally
   if (d.devour3 && ravStep(g, u, d, side, st, cs, best, A.prey, dt, sp)) return; // v2.84: a batch 3a Ravager devouring remains (or an AI's going to feed)
   if (d.bore && rwB2a(g) && boreStep(g, u, d, st, cs, foes, dt)) return;
   if (d.tunnel && ruinStep(g, u, d, side, dt, st, cs)) return; // v2.83: an AI's Ruinmaw on its way to, or at, its spot // v2.82: a Gorebore underground on its way, or erupting
@@ -278,6 +281,11 @@ function updateUnit(g, u, foes, dt) {
   if (cs && cs.run) { u.tgt = 0; u.chT = 0; moveToward(u, d, cs.run[0], cs.run[1], dt, sp); return; } // v2.73: retreating to the base rally point, holding fire and ignoring enemies
   if (cs && cs.want) { best = cs.want; close = false; } // v2.76: a target order's target in reach comes first
   else if (cs && cs.go && best && best.side === NEUTRAL) best = null; // v2.77: on the move, relic guards are passed by (unless targeted)
+  if (rwB4a(g) && !(cs && cs.want)) { // v2.86 (batch 4a): an AI's aims for its Snipers, Marksmen, Bilecasters and Gunships; Axiarch units switch to a marked target in reach
+    if (best && !side.direct) best = aim4(g, u, d, best, foes);
+    best = markSwitch(g, u, d, best);
+    if (d.blink && u.wwR && !side.direct && !best && st !== 'retreat' && !(cs && cs.run)) { moveToward(u, d, u.wwR[0], u.wwR[1], dt, sp); return; } // an AI's Wraithwing raiding
+  }
   if (st === 'retreat' && Math.abs(home - u.u) > 12) {
     if (!RETREAT.fire) { u.tgt = 0; u.chT = 0; }
     else if (best && u.cd <= 0) { fire(g, u, best, d); u.cd = d.cd * rand(0.9, 1.1); } // the v2.34 rule, for the tests' fixed replays
@@ -286,10 +294,10 @@ function updateUnit(g, u, foes, dt) {
   }
   if (u.aiWait > g.t && !best && !(MECH7C.on && d.chase && A.prey && Math.hypot(A.prey.u - u.u, A.prey.v - u.v) <= MECH7C.holdR + d.range)) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // v2.43: a holding melee unit still engages within holdR (falls through to the chase below) // v2.40: a Default AI holds a front-runner until its army catches up (fights only what is in reach, never chases)
   if (d.exile && rwB2a(g) && sevStep(g, u, foes, st)) { u.moving = false; return; } // v2.82: a Severance's rift orb, when a group is worth it
-  if (d.latch && latchJump(g, u, d, st, cs, foes, best, dt, sp, side)) return; // v2.84: a batch 3a Leaper leaps onto a host
+  if (d.latch && !pin && latchJump(g, u, d, st, cs, foes, best, dt, sp, side)) return; // v2.84: a batch 3a Leaper leaps onto a host
   if (d.rsChain && u.rsH && !u.leaping && rsOut(g, u, best, st, cs)) return; // v2.85: out on a strike with nothing left in reach: home
-  if (d.rsChain && rsJump(g, u, d, st, cs, foes, best, dt, sp, side)) return; // v2.84: a batch 3a Riftstalker's strike onto a ranged unit
-  if (d.trample && trampleGo(g, u, d, st, cs, foes, best, side)) return; // v2.85: a batch 3b Dreadthorn's charge
+  if (d.rsChain && !pin && rsJump(g, u, d, st, cs, foes, best, dt, sp, side)) return; // v2.84: a batch 3a Riftstalker's strike onto a ranged unit
+  if (d.trample && !pin && trampleGo(g, u, d, st, cs, foes, best, side)) return; // v2.85: a batch 3b Dreadthorn's charge
   if (d.barrier && !side.direct && u.bsG && !best && st !== 'retreat' && !(cs && cs.run) && bastionGuard(g, u, d, dt, sp)) return; // v2.85: an AI's Bastion screening its ranged units
   if (d.swap && !side.direct && u.pxG && !best && !A.prey && st !== 'retreat' && !(cs && cs.run) && pxGuard(g, u, d, dt, sp)) return; // v2.84: an AI's Parallax beside the unit it guards
   const act = !(u.phT > g.t) && !d.siege && !u.bur; // v2.82: a burrowed Gorebore doesn't fight // v2.37: a phased Wraithwing can't fire (P13); a Titan fires only when planted (P8)
@@ -299,13 +307,14 @@ function updateUnit(g, u, foes, dt) {
     u.moving = false;
     if (Math.abs(best.u - u.u) > 1) u.face = best.u >= u.u ? 1 : -1;
     if (d.swing) { const air = best.kind === 'u' && UDEF[best.type].air ? 1 : 0; if (air !== u.aimAir) { u.aimAir = air; u.cd = Math.max(u.cd, d.swing); } } // the Hydra's guns swing between ground and air
+    if (d.blink) { wwFight(g, u, d, best); return; } // v2.86: a batch 4a Wraithwing hops around its target, firing as it lands
     if (u.cd <= 0 && d.charge) { // v2.27: a visible charge-up on the same target before each shot
       if (!u.chT) { u.chT = g.t + d.charge; u.chTgt = best.id; }
       else if (g.t >= u.chT) { fire(g, u, best, d); u.cd = d.cd * rand(0.9, 1.1); u.chT = 0; }
       return;
     }
     if (u.cd <= 0) {
-      fire(g, u, best, d); u.cd = d.cd * rand(0.9, 1.1);
+      fire(g, u, best, d); if (d.gsSalvo) gsAfter(g, u, best); else u.cd = d.cd * rand(0.9, 1.1); // v2.86: a batch 4a Gunship's salvo
       if (d.rsChain && u.rsH) rsAfter(g, u, d, best, foes); // v2.84: a kill chains to the next ranged unit (v2.85: otherwise it stays, or blinks home with nothing left in reach)
       else if (d.fade && u.fadeArm) { // P5 (v2.37): the Riftstalker's strike landed: phase-step back to where it leapt from
         u.fadeArm = 0; u.lu = u.fu; u.lv = u.fv; u.ld = Math.max(1, Math.hypot(u.lu - u.u, u.lv - u.v)); u.leaping = 1;
@@ -318,7 +327,7 @@ function updateUnit(g, u, foes, dt) {
   if (d.chase && !u.bur && st !== 'move' && !(st === 'hold' && u.holdU !== undefined) && !(cs && cs.chase)) { // melee (v2.17): close on the nearest enemy it can see and hurt (v2.76: not when it has a target to close on)
     let prey = A.prey !== undefined ? A.prey : acquire(g, u, { ...d, range: d.chase }, foes).best;
     if (prey && u.bkG && d.creepHold && !bulkPreyOk(g, u, prey)) prey = null; // v2.85: an AI's Bulwark defending chases nothing off its creep
-    if (prey && d.leap && !d.latch && g.t >= u.leapCd && !(u.snT > g.t) && !(u.aiHold > g.t)) { // v2.38: a Default AI holds a Riftstalker's leap while its shields recharge // snared: no leap either (v2.33) // the Leaper jumps the last stretch (v2.19), never further than leap.range
+    if (prey && d.leap && !d.latch && !pin && g.t >= u.leapCd && !(u.snT > g.t) && !(u.aiHold > g.t)) { // v2.38: a Default AI holds a Riftstalker's leap while its shields recharge // snared: no leap either (v2.33) // the Leaper jumps the last stretch (v2.19), never further than leap.range
       const dist = effDist(u, prey);
       if (dist <= d.leap.range && dist >= d.leap.min) { const k = Math.max(0, (Math.hypot(prey.u - u.u, prey.v - u.v) - d.range * 0.7) / Math.max(1, Math.hypot(prey.u - u.u, prey.v - u.v))); u.lu = u.u + (prey.u - u.u) * k; u.lv = u.v + (prey.v - u.v) * k;
         if (d.leap.behind) { const pd = Math.max(1, Math.hypot(prey.u - u.u, prey.v - u.v)); u.lu = clamp(prey.u + (prey.u - u.u) / pd * d.range * 0.7, 0, L); u.lv = clamp(prey.v + (prey.v - u.v) / pd * d.range * 0.7, -LANE_V, LANE_V); } // the Parallax lands just behind its target (v2.27)

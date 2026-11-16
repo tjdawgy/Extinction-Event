@@ -168,7 +168,7 @@ function ctlEnt(g, id) {
 }
 const ctlSees = (g, s, T) => T.side === NEUTRAL || visibleTo(g, s, T);
 function ctlCanHit(g, u, d, T) { // u could fire at T now (in range, a weapon that hurts it)
-  if (!d.weapon || T.hp <= 0 || T.shielded || T.phT > g.t || T.gone) return false; // v2.82: burrowed or exiled
+  if (!d.weapon || T.hp <= 0 || T.shielded || T.phT > g.t || T.gone || T.wwT > g.t) return false; // v2.86: a Wraithwing just after a hop; // v2.82: burrowed or exiled
   const air = T.kind === 'u' && !!UDEF[T.type].air;
   if (air ? !d.hitsAir : d.hitsGround === false) return false;
   if (!DMG[d.weapon][T.kind === 'b' ? 'building' : UDEF[T.type].armor]) return false;

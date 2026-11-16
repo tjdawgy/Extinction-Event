@@ -312,6 +312,8 @@ function fire(g, src, t, def) {
     weapon: def.weapon, dmg: def.dmg * mul * (sideBuff(g, src.side) ? NANO.dmg : 1) * (src.vet ? DRILL.dmg : 1) * outMul(g, src), splash: def.splash || 0, t: 0 }; // disrupted: less damage (v2.27)
   if (def.focus) p.fc = src.fcN; // drawn brighter as it builds (v2.37)
   if (def.pierce) { p.ou = m.u; p.ov = m.v; p.pierce = 1; } // P4: where the line starts
+  if (def.suppress) p.pin = 1; if (def.marker) p.mark = 1; if (def.bilePool) p.own = src.id; // v2.86 (batch 4a): a Sniper's round pins infantry, a Marksman's shot marks, a Bilecaster's glob leaves its pool
+  if (def.gsSalvo) { p.gs = 1; const o = ((src.msl || 0) % 2 ? 1 : -1) * SALVO.pod; p.v += o; p.pv += o; } // v2.86: a Gunship's missiles leave its two pods in turn
   if (def.devour) p.dev = src.id; // P11: who feeds on the damage
   if (def.weapon === 'bomb' || def.drop) { p.target = null; p.tz = 0; p.tu = t.u + rand(-6, 6); p.tv = t.v + rand(-5, 5); } // falls where the target is now
   if (def.corrode) p.corr = def.corrode; // v2.19: acid corrodes what it hits

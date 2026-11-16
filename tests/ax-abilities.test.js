@@ -9,7 +9,7 @@ const assert = require('node:assert');
 const { loadSim } = require('./load-sim');
 
 const sim = loadSim(); sim.setMech7c(false); /* v2.43: the v2.42 mechanics (staged melee units stand on Hold next to enemies; tests/polish.test.js covers MECH7C) */ sim.setBalance7b(false); // v2.42: these tests pin the mechanics at v2.41's numbers (the phase 7b layer off; tests/strategy.test.js covers it)
-sim.REWORK.b3b = false; // v2.85: these tests pin the v2.84 Shardling and Bastion (rework batch 3b off; tests/rework-3b.test.js covers it on)
+sim.REWORK.b3b = false; sim.REWORK.b4a = false; // v2.86: and the v2.85 Wraithwing (batch 4a off; tests/rework-4a.test.js covers it on) // v2.85: these tests pin the v2.84 Shardling and Bastion (rework batch 3b off; tests/rework-3b.test.js covers it on)
 sim.BREAK.prod.on = false; // v2.69: these tests shield an HQ with any finished building (the rule before v2.69); tests/base-break.test.js covers the production rule
 const A = sim.ABIL;
 const step = (g, secs, dt = 1 / 30) => { for (let i = 0; i < Math.round(secs / dt); i++) sim.update(g, dt); };
