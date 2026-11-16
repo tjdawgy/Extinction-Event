@@ -45,8 +45,8 @@ function skirm(s, kind, rw) {
 const SK = {
   c0: '1b2029eb9f8096c02c872d8374a6842146a7f2bea19469b2094dafb872b48139', // Snipers, Gunships vs Bilecasters, b4a off: v2.85's
   d0: '2090472154278eed5d405a05a9a8e15980c183b5513a1c059d46e5b1b28b74ea', // Marksmen, Wraithwings vs a Last Fist army, b4a off: v2.85's
-  c1: 'SKC1', // b4a on
-  d1: 'SKD1', // b4a on
+  c1: 'f98940ca848359d45afa96e8ac96cd764a65b77edc42737ecb383d49d3e440c2', // b4a on
+  d1: 'f8c4e9b2b9bf9069402c3089e55b5d9e22d876704a08aed9484f0da7fbab3a5d', // b4a on
 };
 test('seeded skirmishes: b4a off hashes as on v2.85; on, as recorded at v2.86', () => {
   const s = loadSim();

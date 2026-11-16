@@ -156,7 +156,7 @@ test('v2.85: with rework batches 2a, 2b, 3a and 3b on, the same matches match th
 // v2.86 (faction rework batch 4a: Sniper pins, Marksman marks, Bilecaster pools, Gunship salvos, Wraithwing hops; Part 0, the
 // AI's T2 path rolled per match): every replay above runs with REWORK.b4a false and is unchanged (a b4a-off save leaves the
 // key out). With every batch on (rw 'e': 2a, 2b, 3a, 3b and 4a) the same three matches are recorded here.
-const FP_V286E = 'FPE1', FP_V286E_BA = 'FPE2', LF_BH_V286E = 'FPE3'; // recorded at v2.86 (batches 2a, 2b, 3a, 3b and 4a on)
+const FP_V286E = 'ee3b7377640a60c3ff980669bb5ef4adca88499ac98dd281ce0acc965606421e', FP_V286E_BA = '72c35c199743831dda4cf677cb5ab494c02b316feb86a6733ccff38750e9fc8d', LF_BH_V286E = 'f1aac705b788321d0a0a42daf42e952e37415ac7eb70cb10107a9ceecd981338'; // recorded at v2.86 (batches 2a, 2b, 3a, 3b and 4a on)
 test('v2.86: with rework batches 2a, 2b, 3a, 3b and 4a on, the same matches match their recorded fingerprints', () => {
   assert.strictEqual(fingerprint(false, false, true, true, 'e'), FP_V286E);
   assert.strictEqual(bhAx(true, true, 'e'), FP_V286E_BA);
