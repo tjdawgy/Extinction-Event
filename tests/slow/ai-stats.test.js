@@ -62,7 +62,7 @@ test('Bloomhost AI (Economist): the Bloomspire path through its taste, Brood Tyr
     (g, S, st) => ({ path: st.path || null, tr: g.sides[1].aiLog.trained }));
   const pathed = rows.filter(r => r.path);
   check('Bloomspire', rows, [['a Bloomspire path taken', r => !!r.path, 0.7], ['Brood Tyrants', r => r.tr.broodtyrant > 0, 0.6], ['a Worldrender', r => r.tr.worldrender > 0, 0.2]]); // 100%, 100%, 45% (v2.37's AI: about 2%)
-  if (pathed.length) check('Bloomspire (when pathed)', pathed, [['Apex Bloom (the Economist\'s Air Power taste)', r => r.path === 'B', 0.8]]); // 100%
+  if (pathed.length) check('Bloomspire (when pathed)', pathed, [['Apex Bloom (the Economist\'s Air Power taste)', r => r.path === 'B', 0.45]]); // 100% before v2.86; v2.86 (rework batch 4a, Part 0): a Normal or Hard AI rolls its path per match, the persona's about 60% of the time (70% on these seeds), so the bar is 45% (was 80%)
 });
 
 test('Axiarch AI with each personality: economy, base units, nodes and attacks; a Null Lance in some matches (rates over N matches)', () => {
