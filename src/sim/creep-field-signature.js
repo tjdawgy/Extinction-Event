@@ -241,7 +241,7 @@ const FLAME = { aim: true };
 function flameBurst(g, src, def, t) {
   const dir = src.face || dirOf(src.side), dmg = def.dmg * (sideBuff(g, src.side) ? NANO.dmg : 1) * outMul(g, src), cv = FLAME.aim && t ? t.v : src.v;
   for (const e of g.ents) {
-    if (e.side === src.side || e.hp <= 0 || (e.kind === 'u' && UDEF[e.type].air) || e.shielded) continue;
+    if (e.side === src.side || e.hp <= 0 || (e.kind === 'u' && UDEF[e.type].air && !(e.lnd >= 2)) || e.shielded) continue; // v2.87: a landed Worldrender burns
     const ahead = (e.u - src.u) * dir, reach = def.range + (e.kind === 'b' ? e.half : 0);
     if (ahead < -6 || ahead > reach || Math.abs(e.v - cv) > def.strip + (e.kind === 'b' ? e.half : 0)) continue;
     damage(g, e, dmg, 'flame', src.side, src);
@@ -298,6 +298,7 @@ function fire(g, src, t, def) {
     if (BW.g === g && BW.list && bwBeam(g, src, t, def, m)) return; // v2.85: it strikes an enemy Bastion's barrier
     damage(g, t, def.dmg * (sideBuff(g, src.side) ? NANO.dmg : 1) * outMul(g, src), def.weapon, src.side, src);
     const hq = def.weapon === 'hqbeam' || def.weapon === 'sovereign'; // the Axis lance (v2.36), the Sovereign's judgement (v2.37): heavier, violet and cyan
+    if (def.judge) g.fx.push({ k: 'judge', side: src.side, u: t.u, x: a.x, y: a.y, x2: b.x, y2: b.y, t: 0, life: 0.6 }); else // v2.87: a batch 4b Sovereign's judgement beam
     g.fx.push({ k: 'beam', x: a.x, y: a.y, x2: b.x, y2: b.y, t: 0, life: hq ? 0.34 : def.weapon === 'horizon' ? 0.32 : 0.2, w: def.weapon === 'sovereign' ? 5 : hq ? 3.6 : def.weapon === 'horizon' ? 3.2 : def.split ? 1.5 : 2.2, hq });
     if (def.chain) chainBeam(g, src, t, def); // the Shardstorm (v2.29)
     return;
@@ -314,6 +315,7 @@ function fire(g, src, t, def) {
   if (def.pierce) { p.ou = m.u; p.ov = m.v; p.pierce = 1; } // P4: where the line starts
   if (def.suppress) p.pin = 1; if (def.marker) p.mark = 1; if (def.bilePool) p.own = src.id; // v2.86 (batch 4a): a Sniper's round pins infantry, a Marksman's shot marks, a Bilecaster's glob leaves its pool
   if (def.gsSalvo) { p.gs = 1; const o = ((src.msl || 0) % 2 ? 1 : -1) * SALVO.pod; p.v += o; p.pv += o; } // v2.86: a Gunship's missiles leave its two pods in turn
+  if (def.infest) p.inf = 1; // v2.87: a batch 4b Brood Tyrant's glob infests buildings
   if (def.devour) p.dev = src.id; // P11: who feeds on the damage
   if (def.weapon === 'bomb' || def.drop) { p.target = null; p.tz = 0; p.tu = t.u + rand(-6, 6); p.tv = t.v + rand(-5, 5); } // falls where the target is now
   if (def.corrode) p.corr = def.corrode; // v2.19: acid corrodes what it hits

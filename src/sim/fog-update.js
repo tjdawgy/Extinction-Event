@@ -110,7 +110,7 @@ function update(g, dt) {
   }
   updateGuards(g, foes, dt); // v2.71: the relic guards fire, and both sides may target them
   indexFoes(foes[0], dt); indexFoes(foes[1], dt); // v2.37: lane-sorted, so target searches look only near the searcher
-  RDG.list = null; if (rwB2b(g)) update2b(g); if (rwB3a(g)) update3a(g); /* v2.84: remains */ if (rwB3b(g)) update3b(g, dt); /* v2.85: barriers, knocks, Bulwark regen */ if (rwB4a(g)) update4a(g); /* v2.86: marked targets */ // v2.83: Titan cover, Worldbreaker cracks and ridges (RDG.list: this game's ridges, while its units move)
+  RDG.list = null; if (rwB2b(g)) update2b(g); if (rwB3a(g)) update3a(g); /* v2.84: remains */ if (rwB3b(g)) update3b(g, dt); /* v2.85: barriers, knocks, Bulwark regen */ if (rwB4a(g)) update4a(g); /* v2.86: marked targets */ if (rwB4b(g)) update4b(g, dt); /* v2.87: pustules */ // v2.83: Titan cover, Worldbreaker cracks and ridges (RDG.list: this game's ridges, while its units move)
   const n = g.ents.length; NAV.now = g.t; // v2.65: the clock the navigation paths age by
   for (let i = 0; i < n; i++) {
     const e = g.ents[i];
@@ -295,9 +295,9 @@ function extraTargets(g, src, def, foes, first, n) {
   const out = [];
   for (const e of foes) {
     if (e === first || e.hp <= 0 || e.shielded || e.gone || !visibleTo(g, src.side, e)) continue;
-    const air = e.kind === 'u' && !!UDEF[e.type].air;
+    const air = e.kind === 'u' && !!UDEF[e.type].air && !(e.lnd >= 2); // v2.87: a landed Worldrender
     if (air ? !def.hitsAir : def.hitsGround === false) continue;
-    if (!DMG[def.weapon][e.kind === 'b' ? 'building' : UDEF[e.type].armor]) continue;
+    if (!DMG[def.weapon][e.kind === 'b' ? 'building' : e.lnd >= 2 ? LAND.armor : UDEF[e.type].armor]) continue;
     const d = effDist(src, e); if (d <= def.range) out.push([d, e]);
   }
   return out.sort((a, b) => a[0] - b[0]).slice(0, n).map(x => x[1]);
@@ -354,20 +354,21 @@ function ixScan(g, src, def, foes, R, AR, minR) {
   const X = foes.ix, vis = g.fog[src.side].vis, side = src.side, su = src.u, sv = src.v, maxR = Math.max(R, AR);
   let best = null, bs = 1e9, bi = -1, close = false;
   const bbf = src.kind === 'u' && !!g.sides[side] && g.sides[side].bbOn; // v2.69 (a): an AI base attack aims at what holds the shield up
+  const trk = aaTrack(src, def); // v2.87 (batch 4a, Part 0): anti-air specialists and building guns track a hopping Wraithwing
   const check = idx => {
     const e = foes[idx];
-    if (e.hp <= 0 || e.shielded || e.phT > g.t || e.gone || e.wwT > g.t) return; // v2.86: a batch 4a Wraithwing just after a hop; v2.82: burrowed or exiled; a phased Wraithwing can't be targeted (P13, v2.37)
+    if (e.hp <= 0 || e.shielded || e.phT > g.t || e.gone || (e.wwT > g.t && !trk)) return; // v2.87: unless it tracks it; v2.86: a batch 4a Wraithwing just after a hop; v2.82: burrowed or exiled; a phased Wraithwing can't be targeted (P13, v2.37)
     const bh = e.kind === 'b' ? e.half : 0, du = Math.abs(e.u - su);
     if (du - bh > maxR) return; // effDist ≥ |du| − half
     const dv = (e.v - sv) * DV_W, lim = maxR + bh + 1;
     if (du * du + dv * dv > lim * lim) return; // safely beyond reach (the exact distance is taken below)
     if (e.side !== side) { if (MAP_2D) { if (!cellsLit(vis, e.u, bh, e.v)) return; } else { let lit = false; for (let c = cellOf(e.u - bh), c1 = cellOf(e.u + bh); c <= c1; c++) if (vis[c]) { lit = true; break; } if (!lit) return; } } // visibleTo
-    const ud = e.kind === 'u' ? UDEF[e.type] : null, air = !!(ud && ud.air);
+    const ud = e.kind === 'u' ? UDEF[e.type] : null, air = !!(ud && ud.air) && !(e.lnd >= 2); // v2.87: a landed batch 4b Worldrender is a ground target
     if (air ? !def.hitsAir : def.hitsGround === false) return;
     const dist = effDist(src, e);
     if (dist > (air && AR ? AR : R)) return;
     if (dist < minR) { close = true; return; }
-    const mult = DMG[def.weapon][ud ? ud.armor : 'building'];
+    const mult = DMG[def.weapon][ud ? (e.lnd >= 2 ? LAND.armor : ud.armor) : 'building'];
     if (!mult) return;
     const sc = dist + (e.kind === 'b' ? 80 : 0) - (mult - 1) * 45 - (1 - e.hp / e.maxHp) * 25 - (air && def.preferAir ? 400 : 0) - (e.kind === 'b' && def.preferB ? 280 : 0) - (bbf && e.kind === 'b' ? bbFocus(e) : 0);
     if (sc < bs || (sc === bs && idx < bi)) { bs = sc; best = e; bi = idx; }
@@ -389,15 +390,15 @@ function acquire(g, src, def, foes, chase) {
   let best = null, bs = 1e9, close = false;
   const minR = def.minRange || 0;
   for (const e of foes) {
-    if (e.hp <= 0 || e.shielded || e.phT > g.t || e.gone || e.wwT > g.t) continue; // v2.86: a Wraithwing just after a hop; don't waste shots on a shielded HQ (or a phased Wraithwing, v2.37)
+    if (e.hp <= 0 || e.shielded || e.phT > g.t || e.gone || (e.wwT > g.t && !aaTrack(src, def))) continue; // v2.87: anti-air specialists and building guns track it; v2.86: a Wraithwing just after a hop; don't waste shots on a shielded HQ (or a phased Wraithwing, v2.37)
     if (!visibleTo(g, src.side, e)) continue; // auto-target only what your side can see (spotters needed beyond sight)
-    const air = e.kind === 'u' && !!UDEF[e.type].air;
+    const air = e.kind === 'u' && !!UDEF[e.type].air && !(e.lnd >= 2); // v2.87: a landed Worldrender
     if (air ? !def.hitsAir : def.hitsGround === false) continue;
     const dist = effDist(src, e);
     if (dist > (air && def.airRange ? def.airRange : def.range)) continue;
     if (dist < minR) { close = true; continue; }
     // prefer units over buildings, targets this weapon counters, and wounded targets
-    const mult = DMG[def.weapon][e.kind === 'b' ? 'building' : UDEF[e.type].armor];
+    const mult = DMG[def.weapon][e.kind === 'b' ? 'building' : e.lnd >= 2 ? LAND.armor : UDEF[e.type].armor];
     if (!mult) continue; // this weapon can't hurt it (e.g. Turret gatling vs buildings)
     const sc = dist + (e.kind === 'b' ? 80 : 0) - (mult - 1) * 45 - (1 - e.hp / e.maxHp) * 25 - (air && def.preferAir ? 400 : 0) - (e.kind === 'b' && def.preferB ? 280 : 0) - (src.kind === 'u' && e.kind === 'b' && g.sides[src.side] && g.sides[src.side].bbOn ? bbFocus(e) : 0); // v2.69 (a) // the Hydra goes for aircraft first, the Leviathan for buildings
     if (sc < bs) { bs = sc; best = e; }

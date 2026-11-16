@@ -50,9 +50,9 @@ function rangeBuilding(g, s, fac, role, u, v) {
 function rangeRemove(g, e) { e.hp = 0; e.dead = true; g.ents = g.ents.filter(x => x !== e); } // gone, as if never placed (no kill, no salvage)
 const rangeHurts = (d, e) => { // can a unit of definition d hurt e at all (its weapon, air or ground, the damage table)?
   if (!d.weapon || e.hp <= 0) return false;
-  const air = e.kind === 'u' && !!UDEF[e.type].air;
+  const air = e.kind === 'u' && !!UDEF[e.type].air && !(e.lnd >= 2); // v2.87: a landed Worldrender
   if (air ? !d.hitsAir : d.hitsGround === false) return false;
-  return !!DMG[d.weapon][e.kind === 'b' ? 'building' : UDEF[e.type].armor];
+  return !!DMG[d.weapon][e.kind === 'b' ? 'building' : e.lnd >= 2 ? LAND.armor : UDEF[e.type].armor];
 };
 // Attack for side s: each unit not after a living target goes for the nearest enemy it can hurt (the real target order);
 // a unit with nothing to hurt holds; an unarmed one (Medicopter, Recon Drone) stays with the nearest armed unit of its side

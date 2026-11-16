@@ -609,7 +609,7 @@ function drawFog(c, F) {
 }
 
 function drawUnit(c, u) {
-  const d = UDEF[u.type], w = P(u.u, u.v), bob = d.air ? Math.sin(u.anim * 2.2) * 3 : 0;
+  const d = UDEF[u.type], w = P(u.u, u.v), bob = d.air && !u.lnd ? Math.sin(u.anim * 2.2) * 3 : 0; // v2.87: a landing Worldrender doesn't bob
   if (u.gone === 3) return; // v2.83: inside a Ruinmaw's tunnel: off the field
   if (u.bur) { if (VFX.g) noteBurrow(VFX.g, u); (u.type === 'ruinmaw' ? drawBurrowedBig : drawBurrowed)(c, u, w, VFX.lastT); return; } // v2.82: a burrowed Gorebore is only a moving hump of earth (v2.83: a Ruinmaw a wider one)
   const b2b = VFX.g && rwB2b(VFX.g);
@@ -620,6 +620,8 @@ function drawUnit(c, u) {
   const lift = u.lt && VFX.g ? latchLift(VFX.g, u) : 0, rk = rvScale(u); // v2.84: a latched Leaper rides on its host's back (no shadow of its own); a Ravager's stacks make it bigger
   if (!lift) { c.beginPath(); c.ellipse(w.x, w.y, (d.air ? 16 * big : UVIS[u.type] ? UVIS[u.type].w * rk : Math.max(8, d.h * 0.7)) * US, (d.air ? 3.5 * big : 2.6) * US, 0, 0, 7); c.fill(); }
   if (u.crg) drawChargeDust(c, u, VFX.lastT); // v2.85: a Dreadthorn's charge kicks up dust behind it
+  if (u.type === 'voidcarrier' && VFX.g && rwB4b(VFX.g)) drawVcRing(c, u, w, VFX.lastT); // v2.87: its power field's reach on the ground
+  if (u.lnd) drawLandedDust(c, u, w, VFX.lastT); // v2.87: a landed Worldrender feeding
   if (u.hopS !== undefined && VFX.lastT - u.hopS < 0.35) drawHopTrail(c, u, VFX.lastT); // v2.86: a Wraithwing's afterimages just after a hop
   if (u.type === 'medic' && VFX.g) drawHealBeams(c, VFX.g, u, w);
   if (u.siege) drawSiegeLock(c, u, w); // P8 (v2.37): a Titan's stabilisers, under it

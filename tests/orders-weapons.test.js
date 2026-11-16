@@ -9,7 +9,7 @@ const assert = require('node:assert');
 const { loadSim } = require('./load-sim');
 function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 
-const sim = loadSim(); sim.REWORK.b3b = false; sim.REWORK.b4a = false; /* v2.86: v2.85's path choice and units (rework batch 4a off; tests/rework-4a.test.js covers it on) */  // v2.85: these tests pin the v2.84 Shardling, Bastion, Bulwark and Dreadthorn (rework batch 3b off; tests/rework-3b.test.js covers it on)
+const sim = loadSim(); sim.REWORK.b3b = false; sim.REWORK.b4a = false; sim.REWORK.b4b = false; /* v2.87: batch 4b off too (tests/rework-4b.test.js covers it on) */ /* v2.86: v2.85's path choice and units (rework batch 4a off; tests/rework-4a.test.js covers it on) */  // v2.85: these tests pin the v2.84 Shardling, Bastion, Bulwark and Dreadthorn (rework batch 3b off; tests/rework-3b.test.js covers it on)
 sim.BREAK.prod.on = false; // v2.69: these tests shield an HQ with any finished building (the rule before v2.69); tests/base-break.test.js covers the production rule
 const U = sim.UDEF, A = sim.ABIL;
 const step = (g, secs) => { for (let i = 0; i < Math.round(secs * 30); i++) sim.update(g, 1 / 30); };

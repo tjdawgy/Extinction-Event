@@ -220,7 +220,7 @@ function onFire(g, e, lit) {
     case 'spine': vFx('flash', w.x, w.y, 6, 0.07, GLOW.acid, 1); break; // the Maw spits
     case 'acid': case 'bile': case 'lob': case 'ruin': case 'glob': vFx('flash', w.x, w.y, wpn === 'acid' ? 5 : 9, 0.1, GLOW.acid, 1); break; // a spray of acid (v2.19); the Brood Tyrant's glob (v2.21)
     case 'crush': vFx('flash', w.x, w.y, 10, 0.14, GLOW.acid, 1); break; // the Worldrender's sac opens
-    case 'bolt': case 'astral': case 'prism': case 'storm': case 'pulse': vFx('flash', w.x, w.y, wpn === 'astral' ? 10 : wpn === 'pulse' ? 9 : 6, 0.1, GLOW.cyan, 1); vFx('flash', w.x, w.y, 3, 0.08, GLOW.white, 1); break; // Axiarch shots (v2.27; v2.29 Prismwing, Shardstorm; v2.36 the Bastion's pulse)
+    case 'vbolt': case 'bolt': case 'astral': case 'prism': case 'storm': case 'pulse': vFx('flash', w.x, w.y, wpn === 'astral' ? 10 : wpn === 'pulse' ? 9 : 6, 0.1, GLOW.cyan, 1); vFx('flash', w.x, w.y, 3, 0.08, GLOW.white, 1); break; // Axiarch shots (v2.27; v2.29 Prismwing, Shardstorm; v2.36 the Bastion's pulse)
     case 'breaker': case 'grav': case 'rift': case 'phase': vFx('flash', w.x, w.y, wpn === 'breaker' ? 10 : 7, 0.12, GLOW.violet, 1); vFx('flash', w.x, w.y, 3, 0.08, GLOW.white, 1); break; // rift weapons in violet (v2.36: the Wraithwing's phase bolt too)
     case 'void': case 'sovereign': vFx('flash', w.x, w.y, wpn === 'sovereign' ? 12 : 9, 0.14, GLOW.cyan, 1); vFx('ring', w.x, w.y, 2, 0.25, RIFT, 1, 12, 0, 1.4); break; // a Voidcarrier's orb, a Sovereign's mass released (v2.29)
     case 'riftblade': case 'parallax':
@@ -525,7 +525,8 @@ function drawAxFx(c, g, u, w) {
     c.strokeStyle = `rgba(${RIFTA},${0.18 + 0.08 * Math.sin(VFX.lastT * 2 + u.id)})`; c.lineWidth = 1.2; c.setLineDash([4, 6]);
     c.beginPath(); c.ellipse(w.x, w.y, d.aura.r, d.aura.r * DY, 0, 0, 7); c.stroke(); c.setLineDash([]);
   }
-  if (d.charge && u.chT > g.t) { // the Astral Marksman charging: a thin line to its target and a growing light at the lens
+  if (u.type === 'sovereign' && u.chT > g.t && rwB4b(g)) drawLockOn(c, g, u, rwD(g, u.type)); // v2.87: a batch 4b Sovereign's lock-on line
+  else if (d.charge && u.chT > g.t) { // the Astral Marksman charging: a thin line to its target and a growing light at the lens
     const t = g.ents.find(e => e.id === u.chTgt), k = 1 - (u.chT - g.t) / d.charge;
     if (t) { const m = muzzle(u), a = P(m.u, m.v, m.z), b = P(t.u, t.v, aimZ(t)); c.strokeStyle = `rgba(200,235,255,${0.15 + 0.45 * k})`; c.lineWidth = 0.8 + k; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
       c.globalCompositeOperation = 'lighter'; stamp(c, GLOW.cyan, a.x, a.y, 3 + 7 * k, 0.9); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1; }
@@ -958,7 +959,7 @@ function render(c, g, time, sel, selPad) {
   list.sort((a, b) => (a.v - b.v) || (a.u - b.u));
   const ride = new Map(); for (const e of list) if (e.kind === 'u' && e.lt && e.hp > 0) { const a = ride.get(e.lt); if (a) a.push(e); else ride.set(e.lt, [e]); } // v2.84: latched Leapers, drawn on their host
   for (const e of list) {
-    if (e.kind === 'b') drawBuilding(c, e, time);
+    if (e.kind === 'b') { drawBuilding(c, e, time); if (e.pus) drawPustules(c, e, time); } // v2.87: a Brood Tyrant's pustules on it
     else if (e.kind === 'slab') drawSlab(c, g, e);
     else if (e.kind === 'ghost') drawGhost(c, e.gh);
     else if (e.kind === 'u') { if (e.lt && ride.size && g.ents.some(h => h.id === e.lt && seen(h))) continue; drawUnit(c, e); const R = ride.get(e.id); if (R) R.forEach((r, i) => { RIDE.set(r, i - (R.length - 1) / 2); drawUnit(c, r); }); }
@@ -983,6 +984,7 @@ function render(c, g, time, sel, selPad) {
     const a = P(p.pu, p.pv, p.pz), b = P(p.u, p.v, p.z), wp = p.weapon;
     if (wp === 'exile') { drawOrb(c, g, p, b); continue; } // v2.82: a Severance's rift orb
     if (p.gs) { drawGsMissile(c, p, a, b); continue; } // v2.86: a Gunship's salvo missile
+    if (wp === 'vbolt') { drawVBolt(c, p, a, b); continue; } // v2.87: a Voidcarrier's bolt
     if (wp === 'bileglob') { drawBileGlob(c, g, p, b, lit); continue; } // v2.86: a Bilecaster's glob
     if (wp === 'sever') { c.strokeStyle = `rgba(${RIFTA},0.6)`; c.lineWidth = 1.6; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke(); c.fillStyle = '#e6dcff'; c.beginPath(); c.arc(b.x, b.y, 1.8, 0, 7); c.fill(); continue; } // its bolt
     if (drawFacProj(c, g, p, a, b, wp, time)) continue; // faction weapons (v2.36)
@@ -1066,6 +1068,7 @@ function render(c, g, time, sel, selPad) {
     if (f.k === 'latch' || f.k === 'hatch' || f.k === 'rsblink' || f.k === 'swap' || f.k === 'devour3') { if (lit(f.u, f.y / DY) || (f.x2 != null && lit(f.u, f.y2 / DY))) (f.k === 'latch' ? drawLatchFx : f.k === 'hatch' ? drawHatchFx : f.k === 'rsblink' ? drawRsBlink : f.k === 'swap' ? drawSwapFx : drawDevour3)(c, f); continue; } // v2.84 (batch 3a)
     if (f.k === 'trample' || f.k === 'chargeEnd' || f.k === 'parry' || f.k === 'bwhit' || f.k === 'bwbreak' || f.k === 'bwup') { if (lit(f.u, f.y / DY)) (f.k === 'trample' ? drawTrampleFx : f.k === 'chargeEnd' ? drawChargeEnd : f.k === 'parry' ? drawParryFx : f.k === 'bwhit' ? drawBwHit : f.k === 'bwbreak' ? drawBwBreak : drawBwUp)(c, f); continue; } // v2.85 (batch 3b)
     if (f.k === 'hop' || f.k === 'whiff' || f.k === 'mark' || f.k === 'bilesplat') { if (lit(f.u, f.y / DY) || (f.x2 != null && lit(f.u, f.y2 / DY))) (f.k === 'hop' ? drawHopFx : f.k === 'whiff' ? drawWhiff : f.k === 'mark' ? drawMarkFx : drawBileSplat)(c, f); continue; } // v2.86 (batch 4a)
+    if (f.k === 'judge' || f.k === 'sovfail' || f.k === 'pusadd' || f.k === 'pusburst' || f.k === 'pusclear' || f.k === 'landdust' || f.k === 'chomp') { if (lit(f.u, f.y / DY) || (f.x2 != null && lit(f.u, f.y2 / DY))) (f.k === 'judge' ? drawJudge : f.k === 'sovfail' ? drawSovFail : f.k === 'pusadd' ? drawPusAdd : f.k === 'pusburst' ? drawPusBurst : f.k === 'pusclear' ? drawPusClear : f.k === 'landdust' ? drawLandDust : drawChomp)(c, f); continue; } // v2.87 (batch 4b)
     if (f.k === 'emerge') { if (f.side === 0 || g.spectate || lit(f.u, f.y / DY)) drawEmerge(c, f); continue; } // v2.83: into or out of a tunnel
     if (f.k === 'erupt' || f.k === 'rift' || f.k === 'unexile') { if (lit(f.u, f.y / DY)) (f.k === 'erupt' ? drawErupt : f.k === 'rift' ? drawRift : drawUnexile)(c, f); continue; } // v2.82
     if (f.k === 'devour') { if (lit(f.u, f.v)) drawDevour(c, f); continue; } // P11 (v2.37)

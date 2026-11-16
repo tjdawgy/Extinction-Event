@@ -84,7 +84,7 @@ function updateProjs(g, dt) {
 
 function splashHit(g, p, hit, scale, falloffFloor) {
   for (const e of g.ents) {
-    if (e === hit || e.side === p.side || e.hp <= 0 || (e.kind === 'u' && UDEF[e.type].air)) continue;
+    if (e === hit || e.side === p.side || e.hp <= 0 || (e.kind === 'u' && UDEF[e.type].air && !(e.lnd >= 2))) continue; // v2.87: a landed Worldrender takes splash
     const dx = Math.max(0, Math.hypot(e.u - p.u, (e.v - p.v) * 0.6) - (e.kind === 'b' ? e.half : 0));
     if (dx < p.splash) { damage(g, e, p.dmg * scale * (1 - falloffFloor * dx / p.splash), p.weapon, p.side); if (p.corr) corrode(g, e, p.corr); }
   }
@@ -129,6 +129,7 @@ function pierceLine(g, p, hit) {
 function impact1(g, p, hit) {
   const w = P(p.u, p.v, p.z);
   if (p.weapon === 'exile') { exileBurst(g, p); return; } // v2.82: a Severance's rift orb
+  if (p.inf) { tyrImpact(g, p, hit); return; } // v2.87: a batch 4b Brood Tyrant's glob (pustules on buildings)
   if (p.weapon === 'bileglob') { bileImpact(g, p); return; } // v2.86: a batch 4a Bilecaster's glob and its pool
   if (p.weapon === 'shell' || p.weapon === 'lob' || p.weapon === 'rift') { splashHit(g, p, null, 1, 0.5); fxBoom(g, w.x, w.y, 30); return; }
   if (p.weapon === 'bomb' || p.weapon === 'crush' || p.weapon === 'sovereign') { splashHit(g, p, null, 1, 0.5); fxBoom(g, w.x, w.y, p.weapon === 'bomb' ? 40 : 48); return; } // the Astral Sovereign too (v2.29) // full damage at the centre, half at the edge (the Worldrender too, v2.21)
@@ -223,7 +224,8 @@ function damage1(g, e, amt, weapon, fromSide, src) {
     e.shpT = g.t;
     if (e.shp > 0 && e.kind === 'u' && UDEF[e.type].link) hit -= shieldLink(g, e, Math.min(e.shp, hit)); // a Prismwing's shield link (v2.29)
     if (e.shp > 0) { const a = Math.min(e.shp, hit); e.shp -= a; hit -= a; e.shpHit = g.t; }
-    if (e.rsH && e.shp <= 0 && sh0 > 0) e.rsBrk = 1; // v2.84: a batch 3a Riftstalker out on a strike: its shields broke, home it goes
+    if (e.rsH && e.shp <= 0 && sh0 > 0) e.rsBrk = 1;
+    if (e.chT && e.shp <= 0 && sh0 > 0 && e.kind === 'u' && e.type === 'sovereign' && rwB4b(g)) sovFail(g, e); // v2.87: a batch 4b Sovereign's shields broke mid-charge: the shot fails // v2.84: a batch 3a Riftstalker out on a strike: its shields broke, home it goes
   }
   statsDamage(g, e, sh0 - (e.shp || 0) - (e.osh || 0) + Math.min(hit, Math.max(0, e.hp)), fromSide); // v2.51: what came off shields and HP
   e.hp -= hit;
@@ -274,6 +276,7 @@ function kill(g, e, by, weapon) {
     return;
   }
   if (e.slot >= 0 && side.slots[e.slot] === e) side.slots[e.slot] = null;
+  if (e.pus && rwB4b(g)) pusBurst(g, e); // v2.87: a batch 4b Brood Tyrant's pustules burst into Mites
   if (BREAK.rubble.on && e.type !== 'hq' && e.type !== 'bunker' && e.slot >= 0) (side.rubble || (side.rubble = {}))[e.slot] = g.t + BREAK.rubble.t; // v2.69 (c): its pad is rubble for a while (sold buildings leave none)
   if (e.type === 'bunker') { const dep = depotOf(g, e.side), n = g.nodes[e.node]; if (dep && n && n.owner === e.side) (dep.bk || (dep.bk = {}))[e.node] = g.t + BUNKER.rebuild; } // v2.32: back in 45 s if the node is still held
   for (let i = 0; i < 3; i++) { const w = P(e.u + fxRand(-e.half, e.half) * 0.6, e.v + fxRand(-e.half, e.half) * 0.6, fxRand(10, e.h * 0.7)); fxBoom(g, w.x, w.y, fxRand(36, 56)); }

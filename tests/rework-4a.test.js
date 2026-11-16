@@ -46,14 +46,14 @@ const SK = {
   c0: '1b2029eb9f8096c02c872d8374a6842146a7f2bea19469b2094dafb872b48139', // Snipers, Gunships vs Bilecasters, b4a off: v2.85's
   d0: '2090472154278eed5d405a05a9a8e15980c183b5513a1c059d46e5b1b28b74ea', // Marksmen, Wraithwings vs a Last Fist army, b4a off: v2.85's
   c1: 'f98940ca848359d45afa96e8ac96cd764a65b77edc42737ecb383d49d3e440c2', // b4a on
-  d1: 'f8c4e9b2b9bf9069402c3089e55b5d9e22d876704a08aed9484f0da7fbab3a5d', // b4a on
+  d1: 'fa3d7a4775fd371a1006554f1eb9b95f3af64a38acb09d01dae78e3c92957253', // b4a on (re-recorded at v2.87: Part 0, the Hydra tracks the hopping Wraithwings; v2.86's was f8c4e9b2…)
 };
-test('seeded skirmishes: b4a off hashes as on v2.85; on, as recorded at v2.86', () => {
+test('seeded skirmishes: b4a off hashes as on v2.85; on, as recorded at v2.86 (d re-recorded at v2.87, Part 0); all with batch 4b off', () => {
   const s = loadSim();
-  assert.strictEqual(skirm(s, 'c', { b4a: false }), SK.c0);
-  assert.strictEqual(skirm(s, 'd', { b4a: false }), SK.d0);
-  assert.strictEqual(skirm(s, 'c', {}), SK.c1);
-  assert.strictEqual(skirm(s, 'd', {}), SK.d1);
+  assert.strictEqual(skirm(s, 'c', { b4a: false, b4b: false }), SK.c0);
+  assert.strictEqual(skirm(s, 'd', { b4a: false, b4b: false }), SK.d0);
+  assert.strictEqual(skirm(s, 'c', { b4b: false }), SK.c1);
+  assert.strictEqual(skirm(s, 'd', { b4b: false }), SK.d1);
 });
 
 test('Part 0: a Normal or Hard AI rolls each building\'s T2 path once per match (its persona\'s about 60%); Easy keeps the persona\'s; counters first', () => {

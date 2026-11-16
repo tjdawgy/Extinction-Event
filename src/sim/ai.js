@@ -316,7 +316,16 @@ function aiUpdate(g, s, dt) {
       sc.aircraft = 1.2 + comp.vehicle * 1.5 + comp.heavy * 0.3 - comp.air * 0.3 + (antiAir < 0.45 ? 0.9 : 0);
       sc.wraithwing = 1.3 + comp.vehicle * 0.5 + comp.light * 0.4 + (antiAir < 0.45 ? 0.6 : 0) - aiSplashAA(theirs) * 1.2;
     }
-    if (!threat) for (const t of types) { const b = P.bias[t] || (rwB4a(g) && RW4A_TASTE[t] ? RW4A_TASTE[t][P.kind] : rwB3b(g) && RW3B_TASTE[t] ? RW3B_TASTE[t][P.kind] : rwB3a(g) && RW3A_TASTE[t] ? RW3A_TASTE[t][P.kind] : rwB2b(g) && RW2B_TASTE[t] ? RW2B_TASTE[t][P.kind] : P.bias[AI_TWIN[t]]); if (b && sc[t] > 0) sc[t] *= b; } // v2.84: batch 3a's four have tastes of their own; // v2.83: the Ruinmaw and Worldbreaker have tastes of their own in batch 2b // the personality's taste in units (threats are answered on merit)
+    if (rwB4b(g)) { // v2.87 (rework batch 4b): Leviathans make bombing runs with Interceptor escorts, Brood Tyrants infest buildings, Worldrenders land on them (then any ground gun hits them), Voidcarriers support, the Sovereign judges one target
+      const nLv = mine.filter(u => u.type === 'leviathan').length, nIc = mine.filter(u => u.type === 'interceptor').length, nVc = mine.filter(u => u.type === 'voidcarrier').length, gAA = theirs.length ? theirs.filter(u => UDEF[u.type].hitsGround !== false && !UDEF[u.type].air && UDEF[u.type].weapon).length / theirs.length : 0.5;
+      sc.leviathan = 1.5 + comp.vehicle * 0.4 + (turtle ? 0.9 : 0.2) - antiAir * 1.2 - (nIc < nLv * 2 ? 0.4 : 0);
+      if (nLv) sc.interceptor = Math.max(sc.interceptor || 0, 1.0 + (nIc < nLv * 2 ? 1.0 : 0) + comp.air * 1.2);
+      sc.broodtyrant = 1.4 + (turtle ? 0.8 : 0.3) + comp.vehicle * 0.3 - antiAir * 1.0 - comp.air * 0.5;
+      sc.worldrender = 1.6 + (turtle ? 0.9 : 0.3) - antiAir * 0.8 - gAA * 0.6 - comp.air * 0.5;
+      sc.voidcarrier = 1.0 + (nVc ? -0.7 : 0.6) + Math.min(1, mine.filter(u => UDEF[u.type].fac === 'axiarchs').length / 10) * 0.5 - antiAir * 0.6;
+      sc.sovereign = 1.4 + comp.vehicle * 0.6 + comp.heavy * 0.3 + (turtle ? 0.8 : 0.2) - antiAir * 1.0 - comp.air * 0.6;
+    }
+    if (!threat) for (const t of types) { const b = P.bias[t] || (rwB4b(g) && RW4B_TASTE[t] ? RW4B_TASTE[t][P.kind] : rwB4a(g) && RW4A_TASTE[t] ? RW4A_TASTE[t][P.kind] : rwB3b(g) && RW3B_TASTE[t] ? RW3B_TASTE[t][P.kind] : rwB3a(g) && RW3A_TASTE[t] ? RW3A_TASTE[t][P.kind] : rwB2b(g) && RW2B_TASTE[t] ? RW2B_TASTE[t][P.kind] : P.bias[AI_TWIN[t]]); if (b && sc[t] > 0) sc[t] *= b; } // v2.84: batch 3a's four have tastes of their own; // v2.83: the Ruinmaw and Worldbreaker have tastes of their own in batch 2b // the personality's taste in units (threats are answered on merit)
     for (const t of types) if (dl.comp[t] !== undefined) sc[t] *= dl.comp[t]; // the composition dial (v2.38; legacy has none)
     if (smart) aiSmartScores(g, s, sc, types, { comp, antiAir, theirs, mine, nFront, turtle, log, threat, P }); // v2.38: the Default AI values v2.37 roles
     if (holdEarly) for (const t of types) { if (t === 'tank' || t === 'bulwark' || t === 'bastion') sc[t] *= 1.6; if (t === 'shardling' || t === 'skitterling') sc[t] *= 0.6; } // v2.40 (hold)
@@ -487,6 +496,7 @@ function aiUpdate(g, s, dt) {
   if (rwB3a(g)) aiRework3a(g, s, mine); // v2.84: Leaper and Riftstalker aims, Parallax guards (every difficulty)
   if (rwB3b(g)) aiRework3b(g, s, mine); // v2.85: Bastions screen ranged units, Bulwarks hold the creep when defending
   if (rwB4a(g)) aiRework4a(g, s, mine); // v2.86: Wraithwings raid economy buildings
+  if (rwB4b(g)) aiRework4b(g, s, mine); // v2.87: Voidcarriers over the army near its front
 }
 // Spotters: siege guns can't fire at what their side can't see, so while sieging, one unit walks up until
 // its sight reaches the front of the enemy base (as far as this side knows where that is). Seeing the base
@@ -528,10 +538,10 @@ function aiSmartScores(g, s, sc, types, c) {
   set('lancer', 1.0 + comp.air * 1.8 + comp.vehicle * 0.9 + comp.heavy * 0.7 - comp.light * 0.3); // focus: tough single targets and air
   if (!rwB4a(g)) set('wraithwing', 1.2 + comp.vehicle * 1.0 + comp.light * 0.4 + (1 - aaRapid) * 0.6 + (antiAir < 0.45 ? 0.6 : 0)); // phase: strong against slow anti-air
   if (!rwB3a(g)) set('ravager', 1.2 + comp.light * 1.6 + comp.heavy * 0.2 - comp.vehicle * 0.7 - comp.air * 0.5); // frenzy on kills: light swarms
-  if (has('voidcarrier')) sc.voidcarrier = 1.5 + (n('voidcarrier') ? -0.8 : 0.4) + (turtle ? 0.4 : 0) - antiAir * 0.8; // one field carrier for the push
-  if (has('sovereign')) sc.sovereign = 1.6 + (turtle ? 1.0 : 0.3) - antiAir * 1.0; // judgement: one building at a time
-  if (has('leviathan')) sc.leviathan = 1.6 + (turtle ? 1.0 : 0.3) - antiAir * 1.0; // carpet: buildings in a row
-  if (has('worldrender')) sc.worldrender = 1.6 + (turtle ? 1.0 : 0.3) - antiAir * 1.0; // devour: sustained base attack
+  if (has('voidcarrier') && !rwB4b(g)) sc.voidcarrier = 1.5 + (n('voidcarrier') ? -0.8 : 0.4) + (turtle ? 0.4 : 0) - antiAir * 0.8; // one field carrier for the push
+  if (has('sovereign') && !rwB4b(g)) sc.sovereign = 1.6 + (turtle ? 1.0 : 0.3) - antiAir * 1.0; // judgement: one building at a time
+  if (has('leviathan') && !rwB4b(g)) sc.leviathan = 1.6 + (turtle ? 1.0 : 0.3) - antiAir * 1.0; // carpet: buildings in a row
+  if (has('worldrender') && !rwB4b(g)) sc.worldrender = 1.6 + (turtle ? 1.0 : 0.3) - antiAir * 1.0; // devour: sustained base attack
   // Skitterlings: plan around the limit of 60; Razorwings, its early flyer, always in the mix (anti-air and raids)
   if (has('skitterling') && UDEF.skitterling.max) sc.skitterling *= clamp(1 - unitCount(g, s, 'skitterling') / UDEF.skitterling.max, 0.05, 1);
   if (has('razorwing')) sc.razorwing = Math.max(sc.razorwing, 1.1 + comp.air * 1.2 + (n('razorwing') < 2 + Math.floor(g.t / 180) ? 0.6 : 0));

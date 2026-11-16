@@ -286,6 +286,10 @@ function updateUnit(g, u, foes, dt) {
     best = markSwitch(g, u, d, best);
     if (d.blink && u.wwR && !side.direct && !best && st !== 'retreat' && !(cs && cs.run)) { moveToward(u, d, u.wwR[0], u.wwR[1], dt, sp); return; } // an AI's Wraithwing raiding
   }
+  if (rwB4b(g)) { // v2.87 (batch 4b): the AI's aims for Sovereigns, Brood Tyrants and Worldrenders; Leviathan runs, Worldrender landings, the AI's escorts and Voidcarriers
+    if (!side.direct && !(cs && cs.want) && (best ? !d.lands || best.kind === 'b' : d.lands && !u.lnd && st !== 'retreat')) best = aim4b(g, u, d, best, foes); // an AI's Worldrender fights units in reach from the air, and picks the building it lands on
+    if (rw4bStep(g, u, d, side, st, cs, best, A, dt, sp)) return;
+  }
   if (st === 'retreat' && Math.abs(home - u.u) > 12) {
     if (!RETREAT.fire) { u.tgt = 0; u.chT = 0; }
     else if (best && u.cd <= 0) { fire(g, u, best, d); u.cd = d.cd * rand(0.9, 1.1); } // the v2.34 rule, for the tests' fixed replays

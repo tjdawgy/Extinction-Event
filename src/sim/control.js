@@ -168,10 +168,10 @@ function ctlEnt(g, id) {
 }
 const ctlSees = (g, s, T) => T.side === NEUTRAL || visibleTo(g, s, T);
 function ctlCanHit(g, u, d, T) { // u could fire at T now (in range, a weapon that hurts it)
-  if (!d.weapon || T.hp <= 0 || T.shielded || T.phT > g.t || T.gone || T.wwT > g.t) return false; // v2.86: a Wraithwing just after a hop; // v2.82: burrowed or exiled
-  const air = T.kind === 'u' && !!UDEF[T.type].air;
+  if (!d.weapon || T.hp <= 0 || T.shielded || T.phT > g.t || T.gone || (T.wwT > g.t && !aaTrack(u, d))) return false; // v2.87: anti-air specialists and building guns track it; v2.86: a Wraithwing just after a hop; // v2.82: burrowed or exiled
+  const air = T.kind === 'u' && !!UDEF[T.type].air && !(T.lnd >= 2); // v2.87: a landed batch 4b Worldrender is a ground target
   if (air ? !d.hitsAir : d.hitsGround === false) return false;
-  if (!DMG[d.weapon][T.kind === 'b' ? 'building' : UDEF[T.type].armor]) return false;
+  if (!DMG[d.weapon][T.kind === 'b' ? 'building' : T.lnd >= 2 ? LAND.armor : UDEF[T.type].armor]) return false;
   const dist = effDist(u, T);
   return dist <= (air && d.airRange ? d.airRange : d.range) && dist >= (d.minRange || 0);
 }
