@@ -261,7 +261,7 @@ function dRazor5(c, T, u) {
 
 DRAW_U.dreadthorn = dDread5; DRAW_U.skitterling = dSkit5; DRAW_U.mite = dMite5; DRAW_U.spitter = dSpit5; DRAW_U.thornback = dThorn5;
 DRAW_U.needlewing = dNeedle5; DRAW_U.cloudwing = dCloud5; DRAW_U.razorwing = dRazor5;
-Object.assign(SPR_BOX, { dreadthorn: [-46, -44, 94, 48], skitterling: [-16, -16, 34, 18], mite: [-10, -10, 20, 12], spitter: [-18, -30, 38, 32], thornback: [-24, -40, 50, 42] });
+Object.assign(SPR_BOX, { dreadthorn: [-50, -50, 106, 56], skitterling: [-19, -17, 38, 20], mite: [-10, -10, 20, 12], spitter: [-22, -31, 44, 34], thornback: [-32, -44, 62, 46] });
 Object.assign(SPR_STEP, { skitterling: [16, 6], mite: [18, 6], dreadthorn: [6.5, 8] });
 Object.assign(UVIS, { dreadthorn: { h: 34, w: 26 }, skitterling: { h: 12, w: 9 }, mite: { h: 8, w: 6 }, spitter: { h: 22, w: 11 }, thornback: { h: 34, w: 16 } });
 

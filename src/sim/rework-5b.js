@@ -155,7 +155,7 @@ function aiScores5b(g, s, sc, c) {
 const aiSplashShare = theirs => { let a = 0, t = 0; for (const u of theirs) { const d = UDEF[u.type], v = (d.cost.c + d.cost.e) * (u.w ?? 1); t += v; if (d.splash || d.weapon === 'flame' || d.chain) a += v; } return t ? a / t : 0; };
 
 // Texts the player sees follow the new-game default (numbers in UNIT_TIPS, read live)
-for (const [t, on] of [['skitterling', 'Small, fast biter that hatches in broods of four. It bites harder when several attack one target, and the swarm runs faster in numbers. Dies quickly to splash and can\'t hit aircraft.'],
+for (const [t, on] of [['skitterling', 'Small, fast biter that hatches in broods. It bites harder when several attack one target, and the swarm runs faster in numbers. Dies quickly to splash and can\'t hit aircraft.'],
   ['spitter', 'Hunched gunner that fires volleys of acid quills at air and ground, aircraft first: quills hit aircraft harder and corrode what they hit. Fragile once enemies close in.'],
   ['needlewing', 'Cheap, fast dart of a flyer that stings ground units and aircraft, harder in a pack. Dies quickly to anti-air and splash.']]) {
   const d0 = UDEF[t].desc; Object.defineProperty(UDEF[t], 'desc', { get: () => REWORK.b5b ? on : d0, enumerable: true, configurable: true });
@@ -163,8 +163,8 @@ for (const [t, on] of [['skitterling', 'Small, fast biter that hatches in broods
 function rw5bText(o, k, on) { const x = Object.getOwnPropertyDescriptor(o, k), off = x.get ? x.get() : x.value; Object.defineProperty(o, k, { get: () => REWORK.b5b ? on : off, enumerable: true, configurable: true }); }
 rw5bText(TREES_BH.barracks.B.steps[2], 'txt', 'Unlocks Spitters: volleys of acid quills at air and ground, aircraft first');
 rw5bText(TREES_BH.techlab.A.steps[2], 'txt', 'Unlocks Needlewings: cheap flyers that sting ground units and aircraft, harder in a pack');
-{ const B = BDEFS && BDEFS.bloomhost && BDEFS.bloomhost.barracks; if (B && B.tiers) rw5bText(B.tiers, 1, 'Spawns Skitterlings in broods of four'); }
+{ const B = BDEFS && BDEFS.bloomhost && BDEFS.bloomhost.barracks; if (B && B.tiers) rw5bText(B.tiers, 1, 'Spawns Skitterlings in broods'); }
 // The faction's mechanic, as the Codex, the faction picker and the tutorial explain it (numbers in the Codex's live line)
-{ const m0 = FACTIONS.bloomhost.mech, m5 = { name: 'Creep and the swarm', txt: 'Your Hive, your other buildings and the field nodes you hold spread creep. On their own creep, Bloomhost ground units move faster and heal when out of combat. The swarm: Skitterlings hatch in broods of four from one order; every Bloomhost ground unit runs faster the more of the swarm is around it (swarm surge); and when an enemy unit dies near your organisms, they attack faster for a few seconds (kill frenzy). Strong in numbers and against lone units; weak to splash damage, walls and barriers.' };
+{ const m0 = FACTIONS.bloomhost.mech, m5 = { name: 'Creep and the swarm', txt: 'Creep from your buildings and held nodes speeds and heals Bloomhost ground units. The swarm hatches in broods, runs faster in numbers and attacks faster when enemies die nearby.' };
   Object.defineProperty(FACTIONS.bloomhost, 'mech', { get: () => REWORK.b5b ? m5 : m0, enumerable: true, configurable: true }); }
 const swarmFacts = () => `Broods of ${BROOD.n} for ${BROOD.cost} credits (${txN(BROOD.time)} s, ${BROOD.hp} health each); swarm surge +${txP(SURGE.per)} speed for every other Bloomhost ground unit within ${SURGE.r}, up to +${txP(SURGE.max)}; kill frenzy: an enemy unit dying within ${KFRENZY.r} makes your organisms attack ${txP(KFRENZY.rate - 1)} faster for ${txN(KFRENZY.dur)} s (refreshed, never stacked).`;

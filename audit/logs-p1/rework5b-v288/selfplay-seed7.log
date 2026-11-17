@@ -11,3 +11,21 @@
 {"map":"twolane","f":["axiarchs","bloomhost"],"t":1310,"over":true,"winner":-1,"n":{"broods":18,"hatched":72,"surgeMax":27,"frenzy":22,"frenzyUnits":69,"quill":115,"volleys":38},"tr":{"skitterling":72,"spitter":7,"razorwing":8,"thornback":5},"peak":20,"air":false,"paths":["axiarchs:barracks:B","axiarchs:factory:B","bloomhost:barracks:B","bloomhost:factory:B","bloomhost:techlab:B"],"err":null}
 {"map":"threelane","f":["lastfist","bloomhost"],"t":932,"over":true,"winner":0,"n":{"broods":32,"hatched":128,"surgeMax":267,"frenzy":50,"frenzyUnits":195,"quill":559,"volleys":185},"tr":{"skitterling":128,"spitter":11,"razorwing":17},"peak":40,"air":false,"paths":["lastfist:barracks:A","lastfist:factory:A","bloomhost:barracks:B","bloomhost:factory:A","bloomhost:techlab:B","bloomhost:barracks:A"],"err":null}
 {"map":"threelane","f":["lastfist","axiarchs"],"t":966,"over":true,"winner":0,"n":{},"tr":{},"peak":0,"air":true,"paths":["lastfist:barracks:B","lastfist:factory:A","axiarchs:barracks:B","axiarchs:factory:A","axiarchs:techlab:B"],"err":null}
+{"map":"threelane","f":["bloomhost","lastfist"],"t":1234,"over":true,"winner":1,"n":{"broods":21,"hatched":84,"surgeMax":352,"frenzy":124,"frenzyUnits":445,"quill":1949,"quillAir":559,"volleys":828},"tr":{"skitterling":84,"spitter":82,"thornback":9,"dreadthorn":13},"peak":43,"air":true,"paths":["bloomhost:barracks:B","bloomhost:factory:B","lastfist:barracks:A","lastfist:factory:A","lastfist:techlab:B","bloomhost:barracks:A"],"err":null}
+{"map":"threelane","f":["bloomhost","axiarchs"],"t":994,"over":true,"winner":0,"n":{"broods":46,"hatched":184,"surgeMax":656,"frenzy":78,"frenzyUnits":389,"quill":2174,"quillAir":957,"volleys":1039},"tr":{"skitterling":184,"spitter":60},"peak":52,"air":true,"paths":["bloomhost:barracks:A","bloomhost:factory:A","axiarchs:barracks:A","axiarchs:factory:A","axiarchs:techlab:A","bloomhost:barracks:B","axiarchs:barracks:B"],"err":null}
+{"map":"twolane","f":["axiarchs","lastfist"],"t":1162,"over":true,"winner":0,"n":{},"tr":{},"peak":0,"air":true,"paths":["axiarchs:barracks:B","axiarchs:factory:A","lastfist:barracks:B","lastfist:factory:A","lastfist:techlab:A"],"err":null}
+{"map":"threelane","f":["axiarchs","lastfist"],"t":1271,"over":true,"winner":0,"n":{},"tr":{},"peak":0,"air":true,"paths":["axiarchs:barracks:B","axiarchs:factory:B","lastfist:barracks:A","lastfist:factory:A","lastfist:techlab:B"],"err":null}
+{"map":"threelane","f":["axiarchs","bloomhost"],"t":989,"over":true,"winner":1,"n":{"broods":19,"hatched":76,"surgeMax":224,"frenzy":89,"frenzyUnits":407,"quill":1546,"volleys":512},"tr":{"skitterling":76,"spitter":29,"razorwing":49,"thornback":31,"dreadthorn":2},"peak":41,"air":false,"paths":["axiarchs:barracks:B","axiarchs:factory:A","bloomhost:barracks:B","bloomhost:factory:B","bloomhost:techlab:B"],"err":null}
+errors: 0 of 18 | swarm: {"broods":240,"hatched":960,"surgeMax":3011,"frenzy":866,"frenzyUnits":4926,"quill":9484,"volleys":3648,"quillAir":1516} | Bloomhost trained: {"skitterling":960,"spitter":214,"thornback":47,"razorwing":165,"needlewing":22,"cloudwing":4,"dreadthorn":15}
+broods in 12 matches
+hatched in 12 matches
+refund in 0 matches
+surgeMax in 12 matches
+frenzy in 12 matches
+frenzyUnits in 12 matches
+quill in 9 matches
+quillAir in 2 matches
+volleys in 9 matches
+needleAir in 0 matches
+Bloomhost wins 7 of 12 | draws/unfinished 1 | enemy trained ground-attack aircraft in 4
+paths taken: axiarchs:barracks:A axiarchs:barracks:B axiarchs:factory:A axiarchs:factory:B axiarchs:techlab:A axiarchs:techlab:B bloomhost:barracks:A bloomhost:barracks:B bloomhost:factory:A bloomhost:factory:B bloomhost:techlab:A bloomhost:techlab:B lastfist:barracks:A lastfist:barracks:B lastfist:factory:A lastfist:factory:B lastfist:techlab:A lastfist:techlab:B

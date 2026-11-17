@@ -420,10 +420,64 @@ Judgement beam, as its description promises. Locks onto one target from long ran
 seconds, then fires massive single-target damage at a unit or building. If its shields break while charging, the shot
 fails. Replaces the bomb drop.
 
+## Batch 5b: the Bloomhost swarm pass
+
+**Batch 5b (broods, swarm surge, kill frenzy, Spitter volleys, Needlewing anti-air; eight Bloomhost units redrawn): done in v2.88.**
+Goal: Bloomhost plays as a scary, fast, deadly swarm with a real answer to aircraft. Code: src/sim/rework-5b.js (`REWORK.b5b` →
+`g.rw.b5b`; on by default; each Test Range row has its own "Batch 5b" switch), art in src/render/units-rework-5b.js. Starting values as
+asked (`BROOD`, `SURGE`, `KFRENZY`, `QUILL`); no tuning. The units keep their ids and play through per-game definitions (`rwD`,
+`RW5B_D`: the Skitterling, Spitter and Needlewing); UDEF is untouched, so a b5b-off game plays v2.87 exactly (the pinned fingerprints
+match, seeded Test Range skirmishes hash as on v2.87's build, and a b5b-off save leaves the key out).
+- **Broods (Skitterling):** one order at the Larva Pit is one queue slot, 120 credits, 6 s, and hatches 4 Skitterlings of 50 health.
+- **Swarm surge (every Bloomhost ground unit):** +5% speed for every other Bloomhost ground unit of its side within 80, up to +40%.
+- **Kill frenzy (every Bloomhost unit):** an enemy unit dying within 120 makes them attack 30% faster for 4 s; refreshed, not stacked.
+- **Spitter:** volleys of 3 quills 0.12 s apart, 6 each, a volley every 1.2 s, range 150, air and ground, corrosion kept; 1.5× to
+  aircraft, aircraft first.
+- **Needlewing:** hits aircraft too, swarm bonus kept.
+- **Counters (Codex, from UNIT_TIPS):** the swarm is strong in numbers and against lone units; weak to splash (Tanks, Flame Tanks,
+  Worldbreaker lines, Shardstorm chains) and to walls and barriers.
+
+Departures and choices the brief left open:
+- There is no batch 5a yet: the brief's "v2.88 (or whatever version 5a ended on)" is v2.87, so b5b off plays v2.87 and this batch is v2.88.
+- Broods: the 60-alive limit counts a queued brood as 4 (as the queue counted single Skitterlings before), so a brood may start while 57
+  or fewer are alive or queued. At hatching only the Skitterlings alive count (the brood itself has left the queue): what fits hatches,
+  each missing one refunds 30 credits (a quarter of the brood). Supply counts the brood's 2 (4 × ½) from the moment it is queued, as for
+  any unit. Every Skitterling in a b5b game has 50 health (Emergency Brood's and those hatched by a Leaper's host too). The info card
+  shows 120 credits for a brood of 4 (30 each) and the 6 s; the Codex table lists 30 per Skitterling. The AI orders broods two at a time.
+- Swarm surge: "within 80" is the game's reach distance (depth weighted, as every weapon range); counted once a tick for each side.
+  Burrowed, exiled and tunnelling units neither count nor gain it; latched Leapers don't gain it (a latched Leaper rides its host);
+  charging and dazed Dreadthorns move by their own rules. Temporary units (Mites, hatchlings) count and gain it. Aircraft never.
+- Kill frenzy: any enemy unit's death counts (temporary units and Mites too; buildings don't). It speeds the attack cooldown, so it
+  multiplies with Frenzy Bloom; timers of their own (a landed Worldrender's bites, a Leaper's latch bites, a Cloudwing's offspring,
+  leaps and charges) are unchanged.
+- Spitter: "every 1.2 s" is one volley starting every 1.2 s: 0.96 s after the third quill (with the usual ±10%), so 15 damage a second
+  before armour (the old acid spit was 11). Its weapon is a new 'quill' with the acid table on the ground (air 1.5 instead of 1.1).
+  "Aircraft first" uses the Hydra's rule (`preferAir`), so, like the Hydra and the Interceptor, it also keeps tracking a hopping
+  Wraithwing (batch 4b's Part 0 said no Bloomhost unit had either flag; now the Spitter does). A volley cut short when its target dies
+  goes on at the next target.
+- Needlewing: a new weapon table 'needle5' (the Needlewing's, with air 1.0). The Cloudwing itself stays ground-only; its offspring are
+  Needlewings and hit aircraft too.
+- AI (sides it plays): broods are scored as the swarm's backbone (higher, falling as the 60 fill), lower against splash armies; a
+  Bloomhost attack waits for a bigger wave (×1.25) and moves as a pack: on the attack, its ground units more than 90 ahead of the swarm's
+  median wait, Spitters 20 behind the median (they fight what is in reach); enemy aircraft (12% or more of what it knows of the enemy
+  army) raise Spitters (+3 × that share) and Needlewings (+2.2 ×), and steer a Larva Pit's T2 to Acidic Evolution and a Bloomspire's to
+  Swarm Bloom (the Bloomspire also when it has seen an enemy air production building at T2) unless one already has that path. AI_TWIN
+  and the other scores are unchanged for b5b-off games.
+- Art: the Dreadthorn has a new body (a long, low charger: heavy horns thrust forward, a lean muscular body, a spined back, a whip tail
+  and powerful hind legs; nothing like the Bulwark's shell; its charge dust and daze kept). Skitterling (a small eight-legged biter with
+  a glowing maw under two team carapace plates), Spitter (hunched, a swollen green acid sac, a bony quill launcher on its back that
+  tilts up at aircraft), Mite (a tiny tick with a team shield plate), Thornback (a knuckle-walking brawler bristling with thorns) are
+  cached as poses; Needlewing (a dart with buzzing membrane wings and a long needle tail), Cloudwing (a larger flyer with glowing brood
+  pouches, which open when it releases offspring) and Razorwing (bat wings on bone fingers, bone talons that thrust forward in a dive)
+  draw live, as every aircraft does. Effects: the quills (three quick green streaks), a faint streak in the side's colour behind units
+  at half surge or more, a red pulse (red tinted toward each side's colour) when a unit enters a kill frenzy and a faint red glint while
+  it lasts. The art is drawn the new way in b5b-off games too.
+
 ## Unchanged (already distinct)
 
-Rifleman, Heavy, Tank, Flame Tank, Hydra, Interceptor, Medicopter, Recon Drone, Mite, Skitterling, Spitter, Razorwing,
-Needlewing, Cloudwing, Thornback, Lancer, Gravemantle, Eventide, Prismwing, Shardstorm.
+Rifleman, Heavy, Tank, Flame Tank, Hydra, Interceptor, Medicopter, Recon Drone, Mite, Razorwing, Cloudwing, Thornback, Lancer,
+Gravemantle, Eventide, Prismwing, Shardstorm. (The Skitterling, Spitter and Needlewing changed in batch 5b, the swarm pass; the Mite,
+Razorwing, Cloudwing and Thornback kept their mechanics there but were redrawn, and gained swarm surge and kill frenzy.)
 
 ## Watch list
 
@@ -465,6 +519,8 @@ visual references. A final art batch after batch 4 redraws the unchanged units a
    v2.85).
 4. Ranged and air: Sniper, Astral Marksman, Bilecaster, Gunship, Wraithwing (4a, done v2.86), Leviathan, Brood Tyrant, Worldrender,
    Voidcarrier, Astral Sovereign (4b, done v2.87). Every reworked unit is in.
-5. Art batch: unchanged units and buildings in the new style.
+5. The Bloomhost swarm pass (5b, done v2.88): broods, swarm surge, kill frenzy, Spitter volleys, Needlewing anti-air; eight Bloomhost
+   units redrawn.
+6. Art batch: unchanged units and buildings in the new style.
 
 Then: the paused balance pass, with all three factions reworked.
