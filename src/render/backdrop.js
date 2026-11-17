@@ -619,6 +619,7 @@ function drawUnit(c, u) {
   const big = u.type === 'leviathan' || u.type === 'worldrender' || u.type === 'sovereign' ? 2.4 : u.type === 'broodtyrant' || u.type === 'voidcarrier' ? 1.6 : u.type === 'drone' || u.type === 'needlewing' || u.type === 'prismwing' ? 0.5 : 1; // a Leviathan's shadow is seen coming
   const lift = u.lt && VFX.g ? latchLift(VFX.g, u) : 0, rk = rvScale(u); // v2.84: a latched Leaper rides on its host's back (no shadow of its own); a Ravager's stacks make it bigger
   if (!lift) { c.beginPath(); c.ellipse(w.x, w.y, (d.air ? 16 * big : UVIS[u.type] ? UVIS[u.type].w * rk : Math.max(8, d.h * 0.7)) * US, (d.air ? 3.5 * big : 2.6) * US, 0, 0, 7); c.fill(); }
+  if (u.sgN) drawSurge5(c, u, w, VFX.lastT); // v2.88: a batch 5b swarm's motion streak at high surge
   if (u.crg) drawChargeDust(c, u, VFX.lastT); // v2.85: a Dreadthorn's charge kicks up dust behind it
   if (u.type === 'voidcarrier' && VFX.g && rwB4b(VFX.g)) drawVcRing(c, u, w, VFX.lastT); // v2.87: its power field's reach on the ground
   if (u.lnd) drawLandedDust(c, u, w, VFX.lastT); // v2.87: a landed Worldrender feeding
@@ -648,6 +649,7 @@ function drawUnit(c, u) {
   if (u.surgeT > VFX.lastT) drawSurge(c, u, w, VFX.lastT); // P6 (v2.37)
   if (u.maxShp && VFX.g && VFX.g.t - u.shpHit < 0.3) drawShpHit(c, w.x, w.y - u.z, visH(u.type) * US, (VFX.g.t - u.shpHit) / 0.3); // Axiarch shields hit (v2.25)
   if (corrNow(u, VFX.lastT) > 0) drawCorrosion(c, u, w); // v2.19 (v2.37: either slot)
+  if (u.kfT > VFX.lastT) drawFrenzy5(c, VFX.g, u, w); // v2.88: a batch 5b kill frenzy
   if (u.frzT > VFX.lastT) { // Frenzy Bloom: a pulsing pink glow (v2.20), larger and brighter with a ring at the feet (v2.21)
     const h = visH(u.type) * US, k = 0.5 + 0.5 * Math.sin(VFX.lastT * 12 + u.id), y = w.y - u.z, r = Math.max(9, h * 0.75) * (1 + 0.25 * k);
     c.globalCompositeOperation = 'lighter'; stamp(c, GLOW.frenzy, w.x, y - h * 0.5, Math.max(16, h * 1.3) * (1 + 0.2 * k), 0.75 + 0.25 * k); c.globalCompositeOperation = 'source-over';

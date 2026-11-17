@@ -286,6 +286,7 @@ function onImpact(g, p, lit) {
     case 'rift': case 'breaker': // a violet burst (v2.27)
       vFx('ring', w.x, p.weapon === 'rift' ? ground : w.y, 3, 0.35, RIFT, 1, p.weapon === 'rift' ? 30 : 22, p.weapon === 'rift' ? 1 : 0, 1.6);
       break;
+    case 'quill': vFx('flash', w.x, w.y, 4, 0.08, GLOW.acid, 0); bhSplat(w, ground, 1); break; // v2.88: a quill hits (batch 5b)
     case 'acid': case 'bile': case 'ruin': case 'lob': case 'glob': case 'crush': // a splash of acid (v2.19); v2.36 a wet splat that drips and stains the ground
       vFx('ring', w.x, p.weapon === 'lob' ? ground : w.y, 3, 0.3, '#9be15d', 1, p.weapon === 'acid' ? 10 : 24, p.weapon === 'lob' ? 1 : 0, 1.4);
       bhSplat(w, ground, p.weapon === 'acid' ? 2 : p.weapon === 'crush' ? 5 : 3);
@@ -984,6 +985,7 @@ function render(c, g, time, sel, selPad) {
     const a = P(p.pu, p.pv, p.pz), b = P(p.u, p.v, p.z), wp = p.weapon;
     if (wp === 'exile') { drawOrb(c, g, p, b); continue; } // v2.82: a Severance's rift orb
     if (p.gs) { drawGsMissile(c, p, a, b); continue; } // v2.86: a Gunship's salvo missile
+    if (wp === 'quill') { drawQuill5(c, p, a, b); continue; } // v2.88: a Spitter's quill (batch 5b)
     if (wp === 'vbolt') { drawVBolt(c, p, a, b); continue; } // v2.87: a Voidcarrier's bolt
     if (wp === 'bomb' && p.carpet) { drawLvBomb(c, p, b); continue; } // v2.87: a Leviathan's carpet bomb, drawn larger
     if (wp === 'bileglob') { drawBileGlob(c, g, p, b, lit); continue; } // v2.86: a Bilecaster's glob
