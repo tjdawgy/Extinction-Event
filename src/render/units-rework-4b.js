@@ -114,7 +114,7 @@ function dVoid4(c, T, u) {
   rim(c, -18, y0 - 14.6, 16, 'rgba(255,255,255,0.5)');
   c.globalCompositeOperation = 'lighter';
   c.strokeStyle = `rgba(${T.glow},0.85)`; c.lineWidth = 1; c.beginPath(); c.moveTo(-20, y0 - 2.5); c.lineTo(22, y0 - 2.5); c.stroke(); // glyph band
-  stamp(c, GLOW['t' + u.side], 0, y0 + 13, 12, 0.5 + 0.2 * Math.sin(t * 3)); // the field's core glowing beneath
+  stamp(c, GLOW[u.side === 1 ? 't1' : 't0'], 0, y0 + 13, 12, 0.5 + 0.2 * Math.sin(t * 3)); // the field's core glowing beneath
   c.fillStyle = `rgba(${T.glow},0.95)`; c.beginPath(); c.arc(0, y0 + 13, 2.2, 0, 7); c.fill();
   c.fillStyle = '#eaffff'; c.beginPath(); c.arc(22 - rk, y0 - 12, 1.4 + (u.recoil || 0) * 1.4, 0, 7); c.fill(); // the bolt's emitter
   c.globalCompositeOperation = 'source-over';
@@ -125,7 +125,7 @@ function dVoid4(c, T, u) {
 function dSov4(c, T, u) {
   const t = u.anim || 0, y0 = Math.sin(t * 1.2) * 1.4, ch = u.chT && VFX.g && u.chT > VFX.lastT ? 1 - (u.chT - VFX.lastT) / (rwD(VFX.g, 'sovereign').charge || 2.5) : 0;
   // the halo behind it
-  c.globalCompositeOperation = 'lighter'; stamp(c, GLOW['t' + u.side], -4, y0 - 20, 30, 0.25 + 0.35 * ch);
+  c.globalCompositeOperation = 'lighter'; stamp(c, GLOW[u.side === 1 ? 't1' : 't0'], -4, y0 - 20, 30, 0.25 + 0.35 * ch);
   c.strokeStyle = `rgba(${T.glow},${0.55 + 0.4 * ch})`; c.lineWidth = 1.6; c.beginPath(); c.ellipse(-4, y0 - 20, 9, 22, 0, 0, 7); c.stroke();
   c.strokeStyle = `rgba(${AXC.pale},0.5)`; c.lineWidth = 0.7; c.beginPath(); c.ellipse(-4, y0 - 20, 12, 26, 0, t * 0.6, t * 0.6 + 2); c.stroke();
   c.globalCompositeOperation = 'source-over';
@@ -170,7 +170,7 @@ function drawLockOn(c, g, u, d) {
   c.strokeStyle = `rgba(255,255,255,${0.3 + 0.6 * k})`; c.lineWidth = 0.6 + 0.8 * k; c.stroke();
   const R = 14 - 6 * k, sp = g.t * 3; c.strokeStyle = `rgba(255,255,255,${0.5 + 0.5 * k})`; c.lineWidth = 1.2;
   for (let i = 0; i < 4; i++) { const an = sp + i * Math.PI / 2; c.beginPath(); c.arc(b.x, b.y, R, an, an + 0.9); c.stroke(); }
-  stamp(c, GLOW.white, a.x, a.y, 4 + 10 * k, 0.8); stamp(c, GLOW['t' + u.side], b.x, b.y, 6 + 10 * k, 0.3 + 0.5 * k);
+  stamp(c, GLOW.white, a.x, a.y, 4 + 10 * k, 0.8); stamp(c, GLOW[u.side === 1 ? 't1' : 't0'], b.x, b.y, 6 + 10 * k, 0.3 + 0.5 * k);
   c.restore(); c.globalAlpha = 1;
 }
 // Pustules on a building: up to three glowing growths that pulse, in the infesting side's sickly green
