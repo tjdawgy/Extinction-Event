@@ -6,7 +6,7 @@ Built on the `micro-controls` branch from main at v2.11, tested on the phone, ap
 
 - **Three tabs in the tray.** The old "Army" tab is now **Train**. The new **Army** tab sits beside Build and Train. Build and Train are stacked as before, and Army is one tall button to their right, so the tray is no taller.
 - **The Army tab** shows only what you own:
-  - **Group buttons**, each shown only while you own a unit in it: Infantry (Rifleman, Heavy, Sniper), Armor (Tank, Artillery, Titan) and Air (Gunship, Interceptor).
+  - **Group buttons**, each shown only while you own a unit in it: Infantry (Marine, Heavy, Sniper), Armor (Tank, Artillery, Titan) and Air (Gunship, Interceptor).
   - **A button for each unit type you own.**
   - Every button shows a count and that group's or type's current order.
   - Tap a button to select it, and tap it again to deselect.
@@ -98,16 +98,16 @@ Equal: no memory growth from the micro controls.
 
 ## Screenshots (`docs/screenshots`)
 
-- `micro-sheet-858x396.png`, `micro-sheet-667x375.png`: the whole sequence. Train tab, Army tab, Armor selected, Regroup targeting, Armor on the way with the flag, arrived (flag gone), a Riflemen-only Attack, and ability targeting with the Army tab open.
+- `micro-sheet-858x396.png`, `micro-sheet-667x375.png`: the whole sequence. Train tab, Army tab, Armor selected, Regroup targeting, Armor on the way with the flag, arrived (flag gone), a Marines-only Attack, and ability targeting with the Army tab open.
 - `micro-army-tab-*`, `micro-selected-*`, `micro-regroup-*`, `micro-layout-abilities-*`: single frames at both sizes.
 
 The "37/12" army count in the screenshots comes from the test setup, which spawns units directly. It isn't a game bug.
 
 ## What to try on your phone
 
-1. **Train some Riflemen and a couple of Tanks, then open the Army tab.** Only Infantry, Armor and the two types should appear, with counts.
-2. **Tap Armor:** your Tanks get rings on the battlefield. Tap **Attack**: only the Tanks advance, and the Riflemen keep holding.
-3. **Tap Infantry, then Regroup, then a spot near a field node:** a flag appears, the Riflemen walk there, and the flag vanishes when they've all arrived. They then hold the node.
+1. **Train some Marines and a couple of Tanks, then open the Army tab.** Only Infantry, Armor and the two types should appear, with counts.
+2. **Tap Armor:** your Tanks get rings on the battlefield. Tap **Attack**: only the Tanks advance, and the Marines keep holding.
+3. **Tap Infantry, then Regroup, then a spot near a field node:** a flag appears, the Marines walk there, and the flag vanishes when they've all arrived. They then hold the node.
 4. **Tap Attack in the top bar:** everyone attacks, and every button's order label goes back to the global stance.
 5. **Train a new Tank while Armor has an order:** it follows the Armor order.
 6. **Pause mid-Regroup, close the page, reopen and resume:** the flag and orders are still there.

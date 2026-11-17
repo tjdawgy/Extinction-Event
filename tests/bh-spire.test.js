@@ -52,7 +52,7 @@ test('Brood Tyrant and Worldrender prefer buildings, never shoot a shielded HQ, 
   const ref = finish(g, 1, 'refinery'), r = put(g, 1, 'rifle', ref.u - 30, ref.v); r.cd = 1e6;
   for (const t of ['broodtyrant', 'worldrender']) {
     const e = put(g, 0, t, ref.u - 40, ref.v);
-    assert.strictEqual(sim.acquire(g, e, U[t], [r, ref]).best, ref, `${t} picks the building over a closer Rifleman`);
+    assert.strictEqual(sim.acquire(g, e, U[t], [r, ref]).best, ref, `${t} picks the building over a closer Marine`);
     e.hp = 0; g.ents = g.ents.filter(x => x.hp > 0);
   }
   sim.update(g, 1 / 30); const hq = g.sides[1].hq; assert.ok(hq.shielded);

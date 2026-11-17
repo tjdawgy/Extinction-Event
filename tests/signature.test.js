@@ -105,7 +105,7 @@ test('a bunker appears when a node is captured (and at once on nodes already hel
   d.progress = 1; step(g, 0.1);
   assert.strictEqual(bunkers(g).length, 1, 'the held node gets one at once');
   const b0 = bunkers(g)[0]; assert.strictEqual(b0.node, 0); assert.strictEqual(b0.slot, -1, 'no pad'); assert.strictEqual(b0.maxHp, B.turret.hp / 2);
-  // capture the middle node with Riflemen: the bunker appears the moment it is taken
+  // capture the middle node with Marines: the bunker appears the moment it is taken
   const n = g.nodes[1]; for (let i = 0; i < 3; i++) put(g, 0, 'rifle', n.u + i * 5, i * 10);
   let seen = false; for (let i = 0; i < 30 * 20 && !seen; i++) { sim.update(g, 1 / 30); if (n.owner === 0) { seen = true; assert.ok(bunkers(g).some(b => b.node === 1), 'placed the same tick'); } }
   assert.ok(seen, 'node captured');
@@ -139,11 +139,11 @@ test('bunkers: half a T1 Turret, ground only; Depot T3 doubles damage and hits a
   step(g, 3); assert.strictEqual(air.hp, 1e5, 'T1: aircraft untouched');
   tier(d, 3); step(g, 3); assert.ok(air.hp < 1e5, 'T3: it hits aircraft'); assert.strictEqual(bk.tier, 3, 'the bunker follows the Depot at once');
   air.hp = 0; step(g, 0.1);
-  // heal: a wounded Rifleman and Sniper in range heal 2%/s; a Tank (War Factory) does not; nobody out of range
+  // heal: a wounded Marine and Sniper in range heal 2%/s; a Tank (War Factory) does not; nobody out of range
   tier(d, 2); const r = put(g, 0, 'rifle', bk.u + 100), sn = put(g, 0, 'sniper', bk.u - 50), tk = put(g, 0, 'tank', bk.u + 80), far = put(g, 0, 'rifle', bk.u + 400);
   for (const e of [r, sn, tk, far]) { e.hp = e.maxHp * 0.5; e.lastHurt = g.t; }
   step(g, 1);
-  assert.ok(Math.abs(r.hp - r.maxHp * (0.5 + sim.BUNKER.heal)) < 0.5, `Rifleman healed ${r.hp}`);
+  assert.ok(Math.abs(r.hp - r.maxHp * (0.5 + sim.BUNKER.heal)) < 0.5, `Marine healed ${r.hp}`);
   assert.ok(Math.abs(sn.hp - sn.maxHp * (0.5 + sim.BUNKER.heal)) < 0.5, 'Sniper healed');
   assert.ok(tk.hp <= tk.maxHp * 0.5 + 1e-6, 'a Tank is not a Barracks unit'); assert.ok(far.hp <= far.maxHp * 0.5 + 1e-6, 'out of range');
   tier(d, 1); r.hp = r.maxHp * 0.5; step(g, 1); assert.ok(r.hp <= r.maxHp * 0.5 + 1e-6, 'T1 does not heal');

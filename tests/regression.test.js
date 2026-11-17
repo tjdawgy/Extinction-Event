@@ -28,7 +28,7 @@ test('sell refunds 50% of everything spent, queued units in full; the HQ cannot 
   assert.ok(sim.tryTrain(g, 0, 'rifle').ok && sim.tryTrain(g, 0, 'rifle').ok);
   c0 = side.res.c; const e0 = side.res.e;
   assert.ok(sim.trySell(g, 0, b).ok);
-  assert.strictEqual(side.res.c - c0, 150 + 100, '(150 + 150) / 2 + two queued Riflemen');
+  assert.strictEqual(side.res.c - c0, 150 + 100, '(150 + 150) / 2 + two queued Marines');
   assert.strictEqual(side.res.e - e0, 25);
   assert.strictEqual(side.slots.filter(Boolean).length, 0, 'pad is free again');
   assert.ok(!sim.trySell(g, 0, side.hq).ok);

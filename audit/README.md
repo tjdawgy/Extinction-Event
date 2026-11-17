@@ -81,7 +81,7 @@ node audit/sim/validate.js [--mirror=100] [--vs=40] [--jobs=4]
   ```
   node audit/sim/duel.js --a=rifle:3,tank:2 --b=skitterling:3,bulwark:2 --value=2000
   ```
-- **`rush.js`:** the scripted Rifleman rush (tests/bots.js) against each faction's Default AI.
+- **`rush.js`:** the scripted Marine rush (tests/bots.js) against each faction's Default AI.
   ```
   node audit/sim/rush.js --n=12 --diff=normal
   ```
@@ -174,7 +174,7 @@ On the start screen, tap the version number (top right) for the dev menu:
 - **Bot matches are now repeatable:** `strat.js` draws its threshold jitter from a seeded generator `match.js` passes in (`o.rnd`); before, it used Node's `Math.random`, so the same seed could play differently.
 - **`strat.js` Turtle fix:** a Turtle that stays a turtle (the Tech branch) fights inside its cover all game; it used to chase staging armies into the open after 4:00.
 - **`round7c.sh <tag> "code"`:** one tuning round's screening runs (tri 8 per cell, gvg 20 per pairing, field). **`final7c.sh`:** the final runs (24 per cell).
-- **`validate7c.js`:** Hard vs Greedy, vs Default, Hard vs Hard, vs the strategy bots, Easy and Normal vs Greedy and the Rifleman rush, the Hard signature-building A/B, the openings Hard picks.
+- **`validate7c.js`:** Hard vs Greedy, vs Default, Hard vs Hard, vs the strategy bots, Easy and Normal vs Greedy and the Marine rush, the Hard signature-building A/B, the openings Hard picks.
 - **`speed7c.js`:** game seconds per real second and frame rate in headless Chromium at iPhone size, early game and a large battle, at normal CPU and with CPU throttling (`--html` for another version).
 - **`pace7c.js`:** early-game timings (first Barracks, first unit, third Refinery, credits by 1:00–5:00) on v2.41, v2.42 and v2.43 numbers.
 

@@ -1,5 +1,5 @@
 // Upgrade trees (v2.13, Barracks): a path per building at T2, what each path unlocks, Mass Deployment pairs, Drilled
-// Riflemen, selling resets the path, the AI's choice, saves and migration, ghosts and the match log. SIM only.
+// Marines, selling resets the path, the AI's choice, saves and migration, ghosts and the match log. SIM only.
 const test = require('node:test');
 const assert = require('node:assert');
 const { loadSim } = require('./load-sim');
@@ -47,16 +47,16 @@ test('what each path unlocks: Heavy (A, T2) and Sniper (A, T3); never from a Mas
   assert.ok(a.queue.includes('heavy') && a.queue.includes('sniper') && !b.queue.length, 'queued at the Specialists Barracks');
 });
 
-test('Mass Deployment: a Rifleman order is a pair (double cost and army size), trained together in 1.5× the time; Riflemen go there first', () => {
+test('Mass Deployment: a Marine order is a pair (double cost and army size), trained together in 1.5× the time; Marines go there first', () => {
   const { g, bar: [a, b] } = base();
   sim.tryUpgrade(g, 0, b, 'B'); finishUp(g, b);
   const c0 = g.sides[0].res.c, n0 = g.ents.filter(e => e.type === 'rifle').length;
   const r = sim.tryTrain(g, 0, 'rifle');
-  assert.ok(r.ok); assert.strictEqual(r.msg, 'Riflemen ×2 queued');
+  assert.ok(r.ok); assert.strictEqual(r.msg, 'Marines ×2 queued');
   assert.strictEqual(c0 - g.sides[0].res.c, 100);
   assert.deepStrictEqual([...b.queue], ['rifle', 'rifle'], 'at the Mass Barracks'); assert.strictEqual(a.queue.length, 0);
   step(g, 4.2);
-  assert.strictEqual(g.ents.filter(e => e.type === 'rifle').length - n0, 0, 'a pair takes 1.5× a Rifleman\'s time (6 s)');
+  assert.strictEqual(g.ents.filter(e => e.type === 'rifle').length - n0, 0, 'a pair takes 1.5× a Marine\'s time (6 s)');
   step(g, 2);
   assert.strictEqual(g.ents.filter(e => e.type === 'rifle').length - n0, 2, 'both at once after 6 s');
   // the queue still holds five at most: a pair needs two places
@@ -66,14 +66,14 @@ test('Mass Deployment: a Rifleman order is a pair (double cost and army size), t
   assert.strictEqual(a.queue.length, 1);
 });
 
-test('Drilled Riflemen (Mass Deployment T3): +35% HP, +10% damage, capture nodes 1.5× faster', () => {
+test('Drilled Marines (Mass Deployment T3): +35% HP, +10% damage, capture nodes 1.5× faster', () => {
   const { g, bar: [, b] } = base();
   sim.tryUpgrade(g, 0, b, 'B'); finishUp(g, b); sim.tryUpgrade(g, 0, b); finishUp(g, b);
   sim.tryTrain(g, 0, 'rifle'); step(g, 6.2);
   const vets = g.ents.filter(e => e.type === 'rifle' && e.vet);
   assert.strictEqual(vets.length, 2);
   assert.ok(Math.abs(vets[0].maxHp - 70 * 1.35) < 1e-9 && vets[0].hp === vets[0].maxHp);
-  // capture: 4 Drilled Riflemen fill a node 1.5× faster (sqrt of the weights) than 4 plain ones
+  // capture: 4 Drilled Marines fill a node 1.5× faster (sqrt of the weights) than 4 plain ones
   const rate = vet => { const h = sim.newGame('normal'); h.sides[0].aiT = h.sides[1].aiT = 1e9; const n = h.nodes[1];
     for (let i = 0; i < 4; i++) { const u = sim.spawnUnit(h, 0, 'rifle', n.u + i * 5, 0); u.vet = vet; u.holdU = u.u; u.holdV = 0; }
     sim.setStance(h, 0, 'hold'); step(h, 2); return n.prog; };

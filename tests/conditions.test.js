@@ -60,7 +60,7 @@ test('meteors: an AI\'s units step out of the circle; a player\'s units stay whe
   const ai = sim.spawnUnit(g, 1, 'rifle', A.u + 10, A.v), me = sim.spawnUnit(g, 0, 'rifle', A.u - 10, A.v);
   sim.setStance(g, 0, 'hold'); me.holdU = me.u; me.holdV = me.v; g.sides[1].stance = 'hold'; ai.holdU = ai.u; ai.holdV = ai.v;
   for (let i = 0; i < 60 * 3; i++) { sim.updateUnit(g, ai, [], sim.TICK); sim.updateUnit(g, me, [], sim.TICK); }
-  assert.ok(Math.hypot(ai.u - A.u, ai.v - A.v) > C.meteors.r, 'the AI\'s rifleman got out');
+  assert.ok(Math.hypot(ai.u - A.u, ai.v - A.v) > C.meteors.r, 'the AI\'s marine got out');
   assert.ok(Math.hypot(me.u - A.u, me.v - A.v) < 20, 'the player\'s holds');
 });
 

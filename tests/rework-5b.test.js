@@ -94,7 +94,7 @@ test('Spitter: volleys of 3 quills 0.12 s apart, a volley every 1.2 s, 6 each, 1
   const shots = []; let seen = new Set();
   for (let i = 0; i < 60 * 3.7; i++) { s.rangeStep(g); for (const p of g.projs) if (p.weapon === 'quill' && !seen.has(p)) { seen.add(p); shots.push({ t: g.t, tgt: p.target, dmg: p.dmg }); } }
   assert.ok(shots.length >= 9 && shots.length <= 10, `three volleys (${shots.length})`);
-  assert.ok(shots.every(x => x.tgt === G), 'the aircraft first (a Rifleman nearer)');
+  assert.ok(shots.every(x => x.tgt === G), 'the aircraft first (a Marine nearer)');
   assert.ok(Math.abs(shots[1].t - shots[0].t - 0.12) < 0.02 && Math.abs(shots[2].t - shots[1].t - 0.12) < 0.02, 'quills 0.12 s apart');
   const gap = shots[3].t - shots[0].t; assert.ok(gap > 1.2 * 0.9 - 0.03 && gap < 1.2 * 1.1, `a volley every 1.2 s (${gap.toFixed(2)})`);
   assert.ok(shots.every(x => Math.abs(x.dmg - 6) < 1e-9));
@@ -146,7 +146,7 @@ function skirm(s, kind, rw) {
   return h.digest('hex');
 }
 const SK = {
-  g0: 'a3fe405c2e9fb55943c6dca17522a3734e7cce4473582c4a3333ca008d038729', // a swarm with Spitters and Needlewings vs Riflemen, Gunships, an Interceptor and a Tank, b5b off: v2.87's
+  g0: 'a3fe405c2e9fb55943c6dca17522a3734e7cce4473582c4a3333ca008d038729', // a swarm with Spitters and Needlewings vs Marines, Gunships, an Interceptor and a Tank, b5b off: v2.87's
   h0: '8a52dd88f2617f747ad00302174ce7b142d6a981ce7c184695b7fb4fa2371a40', // Shardlings, Lancers, Wraithwings vs Skitterlings, a Thornback, a Dreadthorn, Razorwings and a Cloudwing, b5b off: v2.87's
   g1: '68de899f6824eb01f7222c1cbcc32042772be424a20d6051d361356377130ce1', // b5b on
   h1: '478663e03751f64d0464c39e81d500ed5cd387add0ac48f8c0217f2e0be51526', // b5b on

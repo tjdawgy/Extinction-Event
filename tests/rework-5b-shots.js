@@ -1,6 +1,6 @@
 // v2.88 (the Bloomhost swarm pass, batch 5b): Test Range screenshots at 667×375 (iPhone landscape in the viewer).
 //   node tests/rework-5b-shots.js   → docs/screenshots/rework5b-<shot>-667x375.png
-// Shots: swarm-surge (a 20-Skitterling swarm surging into Riflemen, motion streaks), swarm-frenzy (the kill frenzy's pulse
+// Shots: swarm-surge (a 20-Skitterling swarm surging into Marines, motion streaks), swarm-frenzy (the kill frenzy's pulse
 // after the first kills), spitters-gunships (Spitters' quill volleys shooting down Gunships), needlewings-interceptor
 // (Needlewings swarming an Interceptor), lineup (the new Dreadthorn beside a Bulwark and a Thornback, zoomed in), gallery
 // (the eight redrawn units), picker (the Test Range's Bloomhost unit picker), and a frame-time check with a big swarm.
@@ -30,7 +30,7 @@ const pause = async page => { await page.evaluate(() => { TR.go = false; trTopUI
   const open = async () => { const r = await openPage(browser, dev); await r.page.click('#bRange'); await r.page.waitForTimeout(300); await r.page.evaluate(() => hideOverlay()); return r; };
   const errs = [], miss = [];
   const ok = (b, n) => { if (!b) miss.push(n); };
-  { // a. A 20-Skitterling swarm surging into Riflemen: streaks at full surge, then the frenzy pulse after the first kills
+  { // a. A 20-Skitterling swarm surging into Marines: streaks at full surge, then the frenzy pulse after the first kills
     const { page, errors } = await open();
     await setup(page, { cam: 700, zoom: 1.5, modes: ['attack', 'hold'], items: [{ side: 0, type: 'skitterling', u: 520, v: -40, n: 20, w: 5, dx: 13, dv: 18 }, { side: 1, type: 'rifle', u: 800, v: -30, n: 8, w: 4, dx: 16, dv: 26 }] });
     ok(await run(page, g => { const S = g.ents.filter(e => e.type === 'skitterling' && e.hp > 0); return S.filter(e => e.moving && e.sgN >= 6).length >= 12 && S.some(e => e.u > 680); }), 'swarm-surge');

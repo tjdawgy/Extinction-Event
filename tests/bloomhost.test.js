@@ -65,12 +65,12 @@ test('Skitterlings: melee, +15% per other Skitterling on the same target (at mos
   assert.ok(Math.abs(hitWith(3) - 6 * mult * 1.3) < 1e-6);
   assert.ok(Math.abs(hitWith(8) - 6 * mult * 1.45) < 1e-6, 'capped at +45%');
   assert.strictEqual(g.projs.length, 0, 'no projectile: the blow lands at once');
-  // a Skitterling on Attack in a far lane still reaches a Rifleman standing in another lane
+  // a Skitterling on Attack in a far lane still reaches a Marine standing in another lane
   const g2 = quiet(); g2.countdown = 0; sim.setStance(g2, 0, 'attack'); g2.sides[1].stance = 'hold';
   const sk = sim.spawnUnit(g2, 0, 'skitterling', 600, 100); sk.laneV = 100;
   const r = hold(sim.spawnUnit(g2, 1, 'rifle', 760, -90), 760, -90); r.cd = 1e6; r.hp = r.maxHp = 1e4;
   step(g2, 12);
-  assert.ok(r.hp < 1e4, 'the Rifleman was bitten');
+  assert.ok(r.hp < 1e4, 'the Marine was bitten');
   assert.ok(Math.abs(sk.v - r.v) < 60, `closed in depth: ${sk.v.toFixed(0)} vs ${r.v}`);
 });
 

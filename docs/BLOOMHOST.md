@@ -614,10 +614,10 @@ G. Required matchup tests
 
 Before finalizing melee stats, test at least:
 
-1. Ten Skitterlings against a comparable investment of Last Fist Riflemen.
-2. Ten Skitterlings attacking Riflemen while standing on creep.
-3. Skitterlings supported by a Bulwark against Riflemen.
-4. Skitterlings attacking a Rifleman-and-Artillery defensive composition.
+1. Ten Skitterlings against a comparable investment of Last Fist Marines.
+2. Ten Skitterlings attacking Marines while standing on creep.
+3. Skitterlings supported by a Bulwark against Marines.
+4. Skitterlings attacking a Marine-and-Artillery defensive composition.
 5. Leapers against Snipers or other ranged specialists.
 6. Thornbacks against clustered infantry.
 7. Bloomhost swarms against Tanks and flame-based counters.
@@ -905,11 +905,11 @@ Units:
 
 | Unit | From | Cost | Supply | HP | Damage / cooldown (dps) | Range | Speed | Armor | Hits | Traits | Last Fist equivalent |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Skitterling | Larva Pit T1 | 40/0 | 1 | 60 | 6 / 0.5 s (12) | 20 (melee) | 52 | light | ground | +15% damage per other Skitterling attacking the same target, up to +45%; closes on enemies it can see within 150; sight 170; trains in 3 s | Rifleman: 50/0, 1 supply, 70 HP, 10 dps, 120 range, speed 38, hits air |
+| Skitterling | Larva Pit T1 | 40/0 | 1 | 60 | 6 / 0.5 s (12) | 20 (melee) | 52 | light | ground | +15% damage per other Skitterling attacking the same target, up to +45%; closes on enemies it can see within 150; sight 170; trains in 3 s | Marine: 50/0, 1 supply, 70 HP, 10 dps, 120 range, speed 38, hits air |
 | Bulwark | Evolution Chamber T1 | 190/40 | 3 | 760 | 26 / 1.6 s (16) | 34 (melee) | 24 | vehicle | ground | Brace: the first hit after its cooldown hardens it, 40% less damage for 3 s, every 12 s; closes within 150; sight 190 | Tank: 200/40, 3 supply, 560 HP, 25 dps with splash, 160 range, speed 31 |
 | Razorwing | Bloomspire T1 | 170/70 | 2 | 170 | 15 / 0.75 s (20) | 50 (diving strikes) | 95 | air | ground only | Closes within 200; sight 250 | Gunship: 225/100, 3 supply, 230 HP, 25 dps, 140 range, speed 72, hits air |
 
-Ratios: credits+energy per supply: Skitterling 40 (Rifleman 50), Bulwark 77 (Tank 80), Razorwing 120 (Gunship 108). Damage per second per 100 credits+energy: Skitterling 30 (Rifleman 20), Bulwark 7 (Tank 10), Razorwing 8.3 (Gunship 7.7). HP per 100: Skitterling 150 (Rifleman 140), Bulwark 330 (Tank 233), Razorwing 71 (Gunship 71).
+Ratios: credits+energy per supply: Skitterling 40 (Marine 50), Bulwark 77 (Tank 80), Razorwing 120 (Gunship 108). Damage per second per 100 credits+energy: Skitterling 30 (Marine 20), Bulwark 7 (Tank 10), Razorwing 8.3 (Gunship 7.7). HP per 100: Skitterling 150 (Marine 140), Bulwark 330 (Tank 233), Razorwing 71 (Gunship 71).
 
 New weapon damage tables (multiplier by target armor: light / heavy / vehicle / air / building): claw (Skitterling) 1.0 / 0.7 / 0.45 / 0 / 0.5; slam (Bulwark) 1.1 / 1.0 / 0.8 / 0 / 0.9; talon (Razorwing) 1.1 / 0.9 / 0.9 / 0 / 0.6; spine (Maw) 1.0 / 0.8 / 0.8 / 1.0 / 0.
 

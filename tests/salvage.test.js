@@ -57,7 +57,7 @@ test('a Last Fist unit lost near other Last Fist forces gives the same 10% (own 
   // the HQ alone: its edge, not its centre, is what counts (effDist)
   const h = quiet(); const hq = h.sides[0].hq, r = put(h, 0, 'rifle', hq.u + hq.half + 190), c1 = credits(h)[0];
   sim.kill(h, r, 1);
-  assert.strictEqual(credits(h)[0], c1 + 5, 'Rifleman 50 → 5, next to the HQ');
+  assert.strictEqual(credits(h)[0], c1 + 5, 'Marine 50 → 5, next to the HQ');
 });
 
 test('a lone unit dying with no other Last Fist forces nearby gives nothing; nor does anything just outside 200', () => {
@@ -126,7 +126,7 @@ test('mirror: each Last Fist side salvages on its own when it has forces in rang
   sim.kill(g, put(g, 1, 'tank', MID), 0);
   sim.kill(g, put(g, 0, 'tank', MID), 1);
   assert.deepStrictEqual(credits(g), [c0[0] + 40, c0[1] + 40], 'both sides take 20 from each Tank');
-  sim.kill(g, put(g, 1, 'tank', MID - 250), 0); // only side 0's Rifleman is in range (150 away; side 1's is 350 away)
+  sim.kill(g, put(g, 1, 'tank', MID - 250), 0); // only side 0's Marine is in range (150 away; side 1's is 350 away)
   assert.deepStrictEqual(credits(g), [c0[0] + 60, c0[1] + 40]);
   assert.deepStrictEqual(Array.from(g.sides, s => s.salv.tot), [60, 40]);
 });

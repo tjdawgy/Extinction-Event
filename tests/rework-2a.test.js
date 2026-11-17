@@ -84,7 +84,7 @@ test('Severance: a slow orb; enemy units hit take its damage, then are frozen, u
   const sv = s.rangeUnit(g, 0, 'severance', 700, 0);
   const lone = s.rangeUnit(g, 1, 'rifle', 900, 0); g.sides[1].hush = true; g.sides[0].hush = false;
   sv.po = { o: 'hold' }; step(s, g, 2);
-  assert.ok(!g.projs.some(p => p.weapon === 'exile'), 'no orb at a lone Rifleman');
+  assert.ok(!g.projs.some(p => p.weapon === 'exile'), 'no orb at a lone Marine');
   s.rangeRemove(g, lone);
   const us = s.rangeUnits(g, 1, 'rifle', 920, 0, 5);
   let n = 0; while (!g.projs.some(p => p.weapon === 'exile') && n++ < 120) s.rangeStep(g);

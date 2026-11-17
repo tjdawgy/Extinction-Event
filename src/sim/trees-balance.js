@@ -4,7 +4,7 @@
    on a named modifier; a later faction is mostly a different TREES table. (The Tech Lab follows.) */
 const TREES = {
   barracks: { A: { name: 'Specialists', short: 'SPEC', steps: [null, null, { unlock: ['heavy'], short: 'Heavy troopers', txt: 'Unlocks Heavy troopers' }, { unlock: ['sniper'], short: 'Snipers', txt: 'Unlocks Snipers: rounds that pierce a line' }] },
-              B: { name: 'Mass Deployment', short: 'MASS', steps: [null, null, { mod: 'pairs', short: 'Riflemen in pairs' }, { mod: 'drill', short: 'Drilled Riflemen' }] } },
+              B: { name: 'Mass Deployment', short: 'MASS', steps: [null, null, { mod: 'pairs', short: 'Marines in pairs' }, { mod: 'drill', short: 'Drilled Marines' }] } },
   factory:  { A: { name: 'Siege', short: 'SIEGE', steps: [null, null, { unlock: ['artillery'], short: 'Artillery' }, { unlock: ['titan'], short: 'Titans', txt: 'Unlocks Titans: walkers that plant for siege range' }] },
               B: { name: 'Assault', short: 'ASSAULT', steps: [null, null, { unlock: ['flame'], short: 'Flame Tanks', txt: 'Unlocks Flame Tanks: burn groups of infantry at close range' }, { unlock: ['hydra'], short: 'Hydras', txt: 'Unlocks Hydras: walkers with rotary guns that prefer aircraft' }] } },
   techlab:  { A: { name: 'Air Power', short: 'AIR', steps: [null, null, { unlock: ['interceptor'], short: 'Interceptors', txt: 'Unlocks Interceptors: hunt aircraft, escort your own' }, { unlock: ['leviathan'], short: 'Leviathans', txt: 'Unlocks Leviathans: carpet bombers that wreck bases' }] },
@@ -31,7 +31,7 @@ const TREES_AX = {
 const TREE_SETS = { lastfist: TREES, bloomhost: TREES_BH, axiarchs: TREES_AX };
 const prodLocked = (fac, type) => !!TREES[type] && !treeOf(fac, type); // a production building with no paths yet (Axiarchs, v2.25)
 const DRILL = { hp: 1.35, dmg: 1.1, capture: 1.5 }, PAIR_TIME = 1.5;
-const NANO = { dmg: 1.2, cut: 0.85 }; // Nanoweave (Support T3): its side deals ×dmg and takes ×cut (v2.45: named, so its description reads it; same values) // a Mass Deployment pair takes 1.5× a Rifleman's training time
+const NANO = { dmg: 1.2, cut: 0.85 }; // Nanoweave (Support T3): its side deals ×dmg and takes ×cut (v2.45: named, so its description reads it; same values) // a Mass Deployment pair takes 1.5× a Marine's training time
 const UNIT_PATH = {}; // unit type → { b: building type, p: path, path: the path's entry } for units a path unlocks (both factions)
 for (const fac in TREE_SETS) { const S = TREE_SETS[fac]; for (const bt in S) for (const p in S[bt]) for (const st of S[bt][p].steps) if (st && st.unlock) for (const u of st.unlock) UNIT_PATH[u] = { b: bt, p, path: S[bt][p] }; }
 const pathMod = (b, mod) => { const T = treeOf(b.fac, b.type); if (!T || !b.path || !b.built) return false; const st = T[b.path].steps; for (let t = 2; t <= b.tier; t++) if (st[t] && st[t].mod === mod) return true; return false; };
@@ -40,7 +40,7 @@ const canMake = (b, type, g) => { const d = UDEF[type], q = UNIT_PATH[type]; ret
 const canTrain = (g, s, type) => g.ents.some(e => e.side === s && canMake(e, type, g)); // v2.82: g decides which units its trees unlock (rwHas)
 
 const UDEF = {
-  rifle:     { name: 'Rifleman', desc: 'Cheap all-round infantry that shoots ground and air. Strong in numbers early; melts to splash, Snipers and Flame Tanks.',  from: 'barracks', tier: 1, cost: { c: 50, e: 0 },    pop: 1, hp: 70,   dmg: 7,  cd: 0.7,  range: 120, speed: 38, hitsAir: true,  armor: 'light',   weapon: 'rifle',  time: 4,  h: 20 },
+  rifle:     { name: 'Marine', desc: 'Cheap powered-armor trooper with a gauss rifle that shoots ground and air. Strong in numbers early; melts to splash, Snipers and Flame Tanks.',  from: 'barracks', tier: 1, cost: { c: 50, e: 0 },    pop: 1, hp: 70,   dmg: 7,  cd: 0.7,  range: 120, speed: 38, hitsAir: true,  armor: 'light',   weapon: 'rifle',  time: 4,  h: 20 },
   heavy:     { name: 'Heavy', desc: 'Rocket trooper built to kill armor and aircraft. Sturdy for infantry, but slow-firing and poor against swarms.',     from: 'barracks', tier: 2, cost: { c: 100, e: 25 },  pop: 2, hp: 240,  dmg: 16, cd: 1.3,  range: 130, speed: 27, hitsAir: true,  armor: 'heavy',   weapon: 'rocket', time: 7,  h: 26 },
   sniper:    { name: 'Sniper', desc: 'Long-range marksman whose rounds pierce a line of infantry. Fragile and slow-firing: keep it behind a front line.',    from: 'barracks', tier: 3, cost: { c: 150, e: 60 },  pop: 2, hp: 110,  dmg: 60, cd: 2.6,  range: 270, speed: 30, hitsAir: true,  armor: 'light',   weapon: 'rail',   time: 9,  h: 20 },
   tank:      { name: 'Tank', desc: 'Armored battle tank with a splash cannon for ground units and buildings. It can\'t shoot aircraft; Heavies and Gunships punish it.',      from: 'factory',  tier: 1, cost: { c: 200, e: 40 },  pop: 3, hp: 560,  dmg: 42, cd: 1.7,  range: 160, speed: 31, hitsAir: false, armor: 'vehicle', weapon: 'cannon', time: 11, h: 20, splash: 26 },
@@ -52,7 +52,7 @@ const UDEF = {
   // (2.5% of max HP per second, the strongest heal applies), the Recon Drone scouts (sight 420, at most 3 per side).
   interceptor: { name: 'Interceptor', desc: 'Fast flak fighter that attacks only aircraft and escorts your bombers. Useless against ground units.', from: 'techlab', tier: 2, cost: { c: 150, e: 60 }, pop: 2, hp: 190, dmg: 16, cd: 0.45, range: 180, speed: 100, hitsAir: true, hitsGround: false, armor: 'air', air: true, weapon: 'flak', time: 10, h: 10 },
   leviathan: { name: 'Leviathan', desc: 'Slow, heavy bomber that carpet-bombs the buildings below it. It can\'t hit aircraft and needs escorts against anti-air.', from: 'techlab', tier: 3, cost: { c: 480, e: 240 }, pop: 7, hp: 1400, dmg: 140, cd: 3.0, range: 40, speed: 24, hitsAir: false, armor: 'air', air: true, weapon: 'bomb', time: 20, h: 16, splash: 60, preferB: true },
-  medic:     { name: 'Medicopter', desc: 'Unarmed helicopter that heals nearby infantry. Keeps an infantry army fighting longer, but must be guarded from anti-air.', from: 'techlab', tier: 2, cost: { c: 160, e: 80 }, pop: 2, hp: 260, dmg: 0, cd: 1, range: 0, speed: 60, hitsAir: false, hitsGround: false, armor: 'air', air: true, weapon: null, time: 10, h: 12, support: true, heal: 0.025, healR: 120 },
+  medic:     { name: 'Medicopter', desc: 'Unarmed thruster medevac craft that heals nearby infantry. Keeps an infantry army fighting longer, but must be guarded from anti-air.', from: 'techlab', tier: 2, cost: { c: 160, e: 80 }, pop: 2, hp: 260, dmg: 0, cd: 1, range: 0, speed: 60, hitsAir: false, hitsGround: false, armor: 'air', air: true, weapon: null, time: 10, h: 12, support: true, heal: 0.025, healR: 120 },
   drone:     { name: 'Recon Drone', desc: 'Fast, unarmed scout with very long sight that spots for Artillery. Fragile, and only a few can fly at once.', from: 'techlab', tier: 2, cost: { c: 70, e: 30 }, pop: 1, hp: 80, dmg: 0, cd: 1, range: 0, speed: 115, hitsAir: false, hitsGround: false, armor: 'air', air: true, weapon: null, time: 5, h: 8, support: true, max: 3 },
   // War Factory, Assault path (v2.14). Flame Tank: every 0.25 s it burns every enemy on the ground in a 95 × 48 strip ahead.
   // Hydra: twin rotary guns, one target at a time, prefers aircraft; swinging between ground and air takes 0.4 s.
@@ -281,7 +281,7 @@ const BALANCE7B = { on: false, orig: null, patches: [
   ['BDEF_BH.turret.gun.2.dmg', 26], ['BDEF_BH.turret.gun.3.dmg', 33], ['BDEF_AX.turret.gun.2.dmg', 24], ['BDEF_AX.turret.gun.3.dmg', 120], // their upgrades stay upgrades
   // field nodes worth fighting for
   ['NODE_INC.c', 4], ['NODE_INC.e', 1.5],
-  // Last Fist: Riflemen cheaper but lighter-hitting (rush with them, don't win every trade), dearer Heavies and Tanks, Flame
+  // Last Fist: Marines cheaper but lighter-hitting (rush with them, don't win every trade), dearer Heavies and Tanks, Flame
   // Tanks a specialist against infantry (weak against vehicles)
   ['UDEF.rifle.cost', { c: 45, e: 0 }], ['UDEF.rifle.dmg', 6.5], ['UDEF.heavy.cost', { c: 135, e: 40 }], ['UDEF.tank.cost', { c: 280, e: 70 }], ['DMG.flame.vehicle', 0.2],
   // Bloomhost: sturdier Skitterlings and Bulwarks, cheaper Spitters with the reach to answer a ranged line
@@ -331,12 +331,12 @@ function b7Texts() {} // v2.45: building texts read the live numbers themselves 
    a match then plays exactly as v2.38 did (the pinned replays in tests/determinism.test.js use it). */
 const BALANCE = { on: false, orig: {}, units: {
   tank:       { cost: { c: 260, e: 60 }, time: 13 },  // was 200/40, 11 s: beat every Bloomhost and Axiarch ground unit but the Bastion at equal value
-  heavy:      { cost: { c: 125, e: 35 } },            // was 100/25: with Riflemen it out-shot every Bloomhost and Axiarch flyer
+  heavy:      { cost: { c: 125, e: 35 } },            // was 100/25: with Marines it out-shot every Bloomhost and Axiarch flyer
   bulwark:    { cost: { c: 150, e: 30 }, time: 10 },  // was 190/40, 11 s: lost to the Tank at equal value and equal supply
-  razorwing:  { cost: { c: 140, e: 50 }, hp: 200 },   // was 170/70, 170 HP: lost to Riflemen and Heavies at equal value
+  razorwing:  { cost: { c: 140, e: 50 }, hp: 200 },   // was 170/70, 170 HP: lost to Marines and Heavies at equal value
   spitter:    { cost: { c: 80, e: 25 } },             // was 90/30
   leaper:     { cost: { c: 80, e: 20 } },             // was 90/20
-  shardling:  { cost: { c: 65, e: 15 }, time: 5, shp: 75 }, // was 80/20, 6 s, 60 shields: lost to Riflemen at equal value and supply; 44% of Axiarch spending
+  shardling:  { cost: { c: 65, e: 15 }, time: 5, shp: 75 }, // was 80/20, 6 s, 60 shields: lost to Marines at equal value and supply; 44% of Axiarch spending
   lancer:     { cost: { c: 120, e: 45 } },            // was 150/60
   prismwing:  { cost: { c: 100, e: 40 } },            // was 120/50
   wraithwing: { cost: { c: 230, e: 100 } },           // was 260/120

@@ -29,7 +29,7 @@ test('the HQ has its own weapon: 0.9x vs light armor; the Heavy trooper\'s rocke
   assert.deepStrictEqual({ ...sim.DMG.hqgun }, { light: 0.9, heavy: 1.0, vehicle: 1.6, air: 1.3, building: 1.0 });
   assert.strictEqual(sim.DMG.rocket.light, 0.6);
   assert.strictEqual(sim.UDEF.heavy.weapon, 'rocket');
-  assert.deepStrictEqual({ ...sim.UDEF.rifle }.hp, 70, 'Riflemen unchanged');
+  assert.deepStrictEqual({ ...sim.UDEF.rifle }.hp, 70, 'Marines unchanged');
 });
 
 const rushAt = (g, n, u) => { for (let i = 0; i < n; i++) { const e = sim.spawnUnit(g, 0, 'rifle', u + i * 4, 0); e.holdU = e.u; e.holdV = e.v; } g.sides[0].stance = 'hold'; };
@@ -45,14 +45,14 @@ test('an AI that spots an infantry rush builds a Turret (on its front pad when f
   const g = sim.newGame('hard'); g.sides[0].aiT = 1e9;
   base(g, 1, ['barracks', 'refinery']);
   g.sides[1].res.c = 2000; g.sides[1].res.e = 500;
-  rushAt(g, 10, 1000); // 10 Riflemen at the AI's doorstep
+  rushAt(g, 10, 1000); // 10 Marines at the AI's doorstep
   ai(g, 6);
   const tur = g.ents.find(e => e.side === 1 && e.type === 'turret');
   assert.ok(tur, 'Turret'); assert.strictEqual(tur.slot, 4, 'front pad');
   assert.ok(g.ents.some(e => e.side === 1 && e.type === 'factory'), 'War Factory');
 });
 
-test('a couple of scouting Riflemen do not trigger the rush response', () => {
+test('a couple of scouting Marines do not trigger the rush response', () => {
   const g = sim.newGame('hard'); g.sides[0].aiT = 1e9;
   base(g, 1, ['barracks', 'refinery']);
   g.sides[1].res.c = 2000; g.sides[1].res.e = 500;

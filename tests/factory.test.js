@@ -55,7 +55,7 @@ test('Flame Tank: no projectile; every enemy on the ground in the strip ahead ta
   sim.flameBurst(g, f, d);
   assert.strictEqual(g.projs.length, nP, 'no projectile');
   const lost = e => hp0.get(e) - e.hp;
-  assert.ok(Math.abs(lost(inA) - d.dmg * sim.DMG.flame.light) < 1e-9 && Math.abs(lost(inB) - d.dmg * sim.DMG.flame.light) < 1e-9, 'every Rifleman in the strip');
+  assert.ok(Math.abs(lost(inA) - d.dmg * sim.DMG.flame.light) < 1e-9 && Math.abs(lost(inB) - d.dmg * sim.DMG.flame.light) < 1e-9, 'every Marine in the strip');
   assert.ok(Math.abs(lost(inC) - d.dmg * sim.DMG.flame.heavy) < 1e-9);
   assert.ok(Math.abs(lost(tank) - d.dmg * sim.DMG.flame.vehicle) < 1e-9, 'weak against vehicles');
   for (const e of [behind, wide, far, air]) assert.strictEqual(lost(e), 0);
@@ -74,7 +74,7 @@ test('Flame Tank: it burns buildings in reach (0.6×) but never a shielded HQ; i
   const h0 = hq.hp; sim.flameBurst(g, f, d); assert.strictEqual(hq.hp, h0);
   bar.u = f.u + 50; bar.v = f.v; const b0 = bar.hp; sim.flameBurst(g, f, d);
   assert.ok(Math.abs(b0 - bar.hp - d.dmg * sim.DMG.flame.building) < 1e-9);
-  // in play: a Flame Tank on Attack burns a Rifleman squad
+  // in play: a Flame Tank on Attack burns a Marine squad
   const g2 = field(); const f2 = sim.spawnUnit(g2, 0, 'flame', 1000, 0);
   const rs = [0, 1, 2].map(i => sim.spawnUnit(g2, 1, 'rifle', 1070 + i * 8, i * 6 - 6));
   for (const r of rs) { r.holdU = r.u; r.holdV = r.v; }

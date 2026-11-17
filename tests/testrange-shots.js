@@ -1,6 +1,6 @@
 // v2.81 (docs/FACTION_REWORK.md batch 1): screenshots of the Test Range at 667×375 (iPhone landscape in the viewer), made
 // with real taps and drags.   node tests/testrange-shots.js   → docs/screenshots/testrange-<shot>-667x375.png
-// Shots: setup (the setup panel), info (a Tank's card mid-fight, with Remove), fight (a running fight: 10 Riflemen and 3 Tanks against Swarm and a Maw), compare (three
+// Shots: setup (the setup panel), info (a Tank's card mid-fight, with Remove), fight (a running fight: 10 Marines and 3 Tanks against Swarm and a Maw), compare (three
 // rows: Artillery, Gorebore and Severance each against the same Infantry blob), control (Control blue myself, a box
 // selection mid-drag).
 const path = require('path');

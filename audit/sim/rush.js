@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Rifleman rush check (Phase 5): the scripted Rifleman rush (tests/bots.js rushBot: two Barracks at once, a third later,
-// Riflemen only, attacks at about 8 alive) as Last Fist on side 0 against the Default AI of each faction (Normal unless --diff; random
+// Marine rush check (Phase 5): the scripted Marine rush (tests/bots.js rushBot: two Barracks at once, a third later,
+// Marines only, attacks at about 8 alive) as Last Fist on side 0 against the Default AI of each faction (Normal unless --diff; random
 // personality), seeded, 30-minute cap. "Viable but not dominant": it should win some, not most.
 //   node audit/sim/rush.js [--n=20] [--diff=normal] [--code="UDEF.tank.cost = ..."]
 const { loadSim } = require('../../tests/load-sim');

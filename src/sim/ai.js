@@ -51,7 +51,7 @@ function aiUpdate(g, s, dt) {
   const danger = near.some(u => Math.abs(u.u - hqU(s)) < 430); // enemies inside the base, not just nearby
   const nearLight = armyValue(near.filter(u => UDEF[u.type].armor === 'light'));
   const lightThreat = threat && nearLight >= armyValue(near) * 0.5;
-  const infantryRush = lightThreat && nearLight >= 400; // a real rush (about 8 Riflemen), not a couple of scouts
+  const infantryRush = lightThreat && nearLight >= 400; // a real rush (about 8 Marines), not a couple of scouts
   const calm = D.calmTech && threat, saving = D.calmSave && threat; // threat-aware: hold tech; save for counters
   // v2.40 (hold): an early push by a mostly light (infantry) army at least 0.8× its strength: stay home under the HQ gun, put
   // up the defence and the vehicle building, save for the counter (Tank, Bulwark, Bastion) instead of feeding the basic unit
@@ -357,7 +357,7 @@ function aiUpdate(g, s, dt) {
       } else side.saveFor = null;
     }
     // Save for the better unit unless the enemy is already in the base (a calm AI keeps saving while merely threatened)
-    const mustSpend = defend || (saving ? danger && !(lightThreat && hasBuilt(g, s, 'factory')) : threat); // vs infantry, Tanks beat trickled Riflemen
+    const mustSpend = defend || (saving ? danger && !(lightThreat && hasBuilt(g, s, 'factory')) : threat); // vs infantry, Tanks beat trickled Marines
     for (let k = 0; k < D.trainPer && !saveRoom; k++) {
       const cand = types.filter(t => { const d = UDEF[t], tc = trainCost(g, t); return fits(t) && side.res.c - tc.c >= reserve.c && side.res.e - tc.e >= reserve.e && !(noAA && d.hitsGround === false && !d.support); }); // v2.41 (counter): not even as a spare buy
       if (!cand.length) break;

@@ -35,7 +35,7 @@ test('Leaper: leaps onto the big unit in reach (never aircraft or buildings), ri
   s.rangeBuilding(g, 1, 'lastfist', 'turret', 700, -110);
   g.sides[1].hush = true;
   for (const e of L) { e.po = { o: 'attack' }; e.holdU = undefined; }
-  assert.strictEqual(s.latchPick(g, L[0], g.ents.filter(e => e.side === 1), 140), tank, 'the Tank first (a vehicle), not the nearer Rifleman');
+  assert.strictEqual(s.latchPick(g, L[0], g.ents.filter(e => e.side === 1), 140), tank, 'the Tank first (a vehicle), not the nearer Marine');
   assert.ok(until(s, g, () => L.filter(e => e.lt === tank.id).length === 3), 'three latch on');
   assert.ok(!L.some(e => e.lt === heli.id), 'never aircraft');
   const four = L.find(e => e.lt !== tank.id); assert.ok(four.lt !== tank.id, 'the fourth finds another host or bites');

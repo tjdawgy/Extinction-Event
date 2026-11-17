@@ -105,7 +105,7 @@ test('Marksman: its hit marks the target 5 s; Axiarch damage to it is 25% higher
   const m = s.rangeGame({ factions: ['axiarchs', 'lastfist'] });
   const mk = s.rangeUnit(m, 0, 'marksman', 500, 0), ln = s.rangeUnit(m, 0, 'lancer', 640, 30), near = s.rangeUnit(m, 1, 'rifle', 700, 30), far = s.rangeUnit(m, 1, 'heavy', 760, 0);
   tough(near, far); m.sides[1].hush = true; mk.po = { o: 'target', id: far.id }; ln.po = undefined;
-  step(s, m, 0.5); assert.strictEqual(ln.tgt, near.id, 'before: the Lancer shoots the nearer Rifleman');
+  step(s, m, 0.5); assert.strictEqual(ln.tgt, near.id, 'before: the Lancer shoots the nearer Marine');
   assert.ok(until(s, m, () => far.mkT > m.t, 6), 'the Marksman\'s hit marks the Heavy');
   assert.ok(Math.abs(far.mkT - m.t - s.MARK.dur) < 0.1 && far.mkS === 0);
   step(s, m, 0.1); assert.strictEqual(ln.tgt, far.id, 'the Lancer switches to the marked Heavy');
@@ -185,7 +185,7 @@ test('AI: Snipers aim at infantry lines, Marksmen at the most valuable target, G
   assert.strictEqual(s.aim4(veh, gs2, s.rwD(veh, 'aircraft'), rf, veh.ents.filter(e => e.side === 1)), tk, 'a salvo opens on the Tank');
   const b = s.rangeGame({ factions: ['bloomhost', 'lastfist'] });
   const bc = s.rangeUnit(b, 0, 'bilecaster', 500, 0), solo = s.rangeUnit(b, 1, 'rifle', 580, -50), pack = [0, 1, 2, 3].map(i => s.rangeUnit(b, 1, 'rifle', 620 + (i % 2) * 10, 30 + (i >> 1) * 10));
-  assert.ok(pack.includes(s.aim4(b, bc, s.rwD(b, 'bilecaster'), solo, b.ents.filter(e => e.side === 1))), 'the bunch, not the lone Rifleman');
+  assert.ok(pack.includes(s.aim4(b, bc, s.rwD(b, 'bilecaster'), solo, b.ents.filter(e => e.side === 1))), 'the bunch, not the lone Marine');
   // Wraithwings raid an economy building it knows of, unless enemies are at its base
   const m = s.newGame('hard', { seed: 4, factions: ['axiarchs', 'lastfist'], autoPlayer: true, autoDiff: 'hard' }); m.countdown = 0;
   const W = s.spawnUnit(m, 0, 'wraithwing', s.hqU(0) + 60, 0); const ref = m.ents.find(e => e.side === 1 && e.type === 'hq');

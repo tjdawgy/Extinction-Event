@@ -1,6 +1,6 @@
 /* ---------- Mechanics (v2.43, audit phase 7c; audit/polish-report.md) ----------
    Four rule changes, one switch: setMech7c(false) plays exactly as v2.42.
-   rally: the rally point (where new and idle units stand) sits `rally` out from the HQ, inside its gun's cover: a Rifleman
+   rally: the rally point (where new and idle units stand) sits `rally` out from the HQ, inside its gun's cover: a Marine
      (120 range) shooting units there stands inside the T1 gun's 390 (was 300: attackers hit them from outside it). 190 was
      tried first and measured worse (Bloomhost 25% in Greedy vs Greedy against 46% at 240). On Attack, new units of a player's side wait
      there until the group is worth batchV or has waited batchT seconds, then walk out together (the AI moves its army by its own rules).
@@ -61,8 +61,8 @@ liveTiers(BDEF_AX.sigA, (d, t) => [null, `A power-field bubble follows your fron
 liveTiers(BDEF_AX.sigB, (d, t) => [null, `Keeps the echoes of your last ${ECHO.n[1]} fallen T2/T3 units: warp one back for ${txP(ECHO.cost)} of its cost`,
   `Keeps ${ECHO.n[2]} echoes`, `Recovered units arrive with a ${txP(ECHO.osh)} overshield for ${txN(ECHO.oshDur)} s`][t]);
 // Upgrade steps that quote numbers
-liveStr(TREES.barracks.B.steps[2], 'txt', () => `Trains Riflemen two at a time (a pair takes ${txN(UDEF.rifle.time * PAIR_TIME)} s)`);
-liveStr(TREES.barracks.B.steps[3], 'txt', () => `Drilled Riflemen: +${txP(DRILL.hp - 1)} HP, +${txP(DRILL.dmg - 1)} damage, capture nodes ${txX(DRILL.capture)} faster`);
+liveStr(TREES.barracks.B.steps[2], 'txt', () => `Trains Marines two at a time (a pair takes ${txN(UDEF.rifle.time * PAIR_TIME)} s)`);
+liveStr(TREES.barracks.B.steps[3], 'txt', () => `Drilled Marines: +${txP(DRILL.hp - 1)} HP, +${txP(DRILL.dmg - 1)} damage, capture nodes ${txX(DRILL.capture)} faster`);
 liveStr(TREES.factory.A.steps[2], 'txt', () => `Unlocks Artillery: ${UDEF.artillery.salvo ? `salvos of ${UDEF.artillery.salvo.n} shells` : 'long-range shells'}`);
 liveStr(TREES.techlab.B.steps[2], 'txt', () => `Unlocks Medicopters (heal infantry) and Recon Drones (scouts, at most ${UDEF.drone.max})`);
 liveStr(TREES.techlab.B.steps[3], 'txt', nanoTxt);
@@ -290,7 +290,7 @@ function tryTrain(g, s, type) {
   if (type === 'skitterling' && rwB5b(g)) return broodTrain(g, s, d, prods); // v2.88 (batch 5b): one order is a brood of four
   if (d.max && unitCount(g, s, type) >= d.max)
     return { ok: false, msg: `At most ${d.max} ${PLURAL[type]} at a time` }; // the Recon Drone (v2.15), counting those in training; Skitterlings (S1, v2.37)
-  // Riflemen go to a Mass Deployment Barracks first, where an order is a pair trained together
+  // Marines go to a Mass Deployment Barracks first, where an order is a pair trained together
   prods.sort((a, b) => (type === 'rifle' ? (pathMod(b, 'pairs') ? 1 : 0) - (pathMod(a, 'pairs') ? 1 : 0) : 0) || a.queue.length - b.queue.length);
   const nOf = b => type === 'rifle' && pathMod(b, 'pairs') ? 2 : 1, p = prods.find(b => b.queue.length + nOf(b) <= 5) || prods[0], n = nOf(p); // the first with room in its queue
   const cap = popCap(g, s);
@@ -301,7 +301,7 @@ function tryTrain(g, s, type) {
   side.res.c -= d.cost.c * n; side.res.e -= d.cost.e * n;
   for (let i = 0; i < n; i++) p.queue.push(type);
   logSpend(g, s, 'u', d.cost.c * n, d.cost.e * n);
-  return { ok: true, msg: n === 2 ? 'Riflemen ×2 queued' : `${d.name} queued` };
+  return { ok: true, msg: n === 2 ? 'Marines ×2 queued' : `${d.name} queued` };
 }
 
 function spawnUnit(g, s, type, u, v) {
@@ -309,7 +309,7 @@ function spawnUnit(g, s, type, u, v) {
   const d = UDEF[type];
   const unit = { id: g.nid++, kind: 'u', type, side: s, u, v, z: d.air ? (type === 'interceptor' ? rand(100, 124) : type === 'leviathan' ? rand(88, 98) : type === 'drone' ? rand(104, 114) : type === 'razorwing' ? rand(56, 72) : type === 'needlewing' ? rand(50, 64) : type === 'cloudwing' ? rand(62, 76) : type === 'broodtyrant' ? rand(78, 88) : type === 'worldrender' ? rand(84, 94) : type === 'wraithwing' ? rand(64, 80) : type === 'prismwing' ? rand(56, 70) : type === 'shardstorm' ? rand(66, 80) : type === 'voidcarrier' ? rand(78, 88) : type === 'sovereign' ? rand(84, 94) : rand(70, 94)) : 0,
     laneV: rand(-LANE_V, LANE_V), hp: d.hp, maxHp: d.hp, cd: simRnd() * 0.5, face: dirOf(s), anim: fxRnd() * 10,
-    moving: false, rallyOff: -simRnd() * 100, recoil: 0, hitT: 0, shT: 0, vet: 0, aimAir: 0, medAt: -1, tgt: 0, braceT: 0, braceCd: 0, lastHurt: -99, lastAct: -99, creepAt: -1, temp: 0, tLife: 0, tSrc: null, kid: 0, spawnT: 0, dis: 0, disT: 0, slow: 0, slowT: 0, chT: 0, chTgt: 0, pulseCd: 0, shp: d.shp || 0, maxShp: d.shp || 0, shpT: -99, shpHit: -99, ovT: 0, frzT: 0, leapCd: 0, leaping: 0, lu: 0, lv: 0, ld: 0, corr: 0, corrT: 0, burstCd: 0 }; // tgt: what it last attacked; braceT/braceCd: the Bulwark's brace (v2.17); lastHurt/lastAct: last damage taken/dealt, creepAt: last creep regen (v2.18); leap*: the Leaper's jump, corr/corrT: corrosion, burstCd: the Dreadthorn's spines (v2.19) // vet: a Drilled Rifleman (v2.13); aimAir: where a Hydra's guns point (v2.14); medAt: last healed by a Medicopter (v2.15) // shT (shield until) set from the start keeps every unit the same shape for the JS engine
+    moving: false, rallyOff: -simRnd() * 100, recoil: 0, hitT: 0, shT: 0, vet: 0, aimAir: 0, medAt: -1, tgt: 0, braceT: 0, braceCd: 0, lastHurt: -99, lastAct: -99, creepAt: -1, temp: 0, tLife: 0, tSrc: null, kid: 0, spawnT: 0, dis: 0, disT: 0, slow: 0, slowT: 0, chT: 0, chTgt: 0, pulseCd: 0, shp: d.shp || 0, maxShp: d.shp || 0, shpT: -99, shpHit: -99, ovT: 0, frzT: 0, leapCd: 0, leaping: 0, lu: 0, lv: 0, ld: 0, corr: 0, corrT: 0, burstCd: 0 }; // tgt: what it last attacked; braceT/braceCd: the Bulwark's brace (v2.17); lastHurt/lastAct: last damage taken/dealt, creepAt: last creep regen (v2.18); leap*: the Leaper's jump, corr/corrT: corrosion, burstCd: the Dreadthorn's spines (v2.19) // vet: a Drilled Marine (v2.13); aimAir: where a Hydra's guns point (v2.14); medAt: last healed by a Medicopter (v2.15) // shT (shield until) set from the start keeps every unit the same shape for the JS engine
   if (rwB5b(g)) rw5bSpawn(g, unit); // v2.88: a batch 5b Skitterling's health
   if (rwB2b(g)) rw2bSpawn(g, unit); // v2.83: a batch 2b Ruinmaw's health and armour
   if (MAP_LANED) unit.lane = laneNew(g.sides[s]); // v2.63: the lane it walks (Classic: no lane key at all)

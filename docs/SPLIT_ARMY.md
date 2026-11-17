@@ -15,7 +15,7 @@ orders (`giveOrder(…, 'lane', …)`, `setLane`) from v2.63.
  On Two-Lane:      [Build/Train][Army][unit chips ....] [ All 24  ] [Hold   ][Attack ] [Rally]
                                                         [N 13][S 11] [Retreat][Regroup] [Send ]
  Long-press a squad chip: "Move North squad to South" · "New units: North / Alternate / South"
- Long-press a unit chip:  "Send all Riflemen to North / South"
+ Long-press a unit chip:  "Send all Marines to North / South"
  Minimap: badges "N 13" / "S 11" on each lane; tap one to select that squad.
 ```
 
@@ -36,7 +36,7 @@ orders (`giveOrder(…, 'lane', …)`, `setLane`) from v2.63.
 - **Moving units between squads (long-press):**
   - A squad chip → "Move North squad to South": that squad walks to the other lane (through the centre crossing or
     its own base, whichever is nearer).
-  - A unit chip → "Send all Riflemen to North / South": every unit of that type.
+  - A unit chip → "Send all Marines to North / South": every unit of that type.
   - A squad chip → "New units: North / Alternate / South": where new units go. Alternate (the default) fills both
     lanes evenly with no input.
 - **Rally and Send damaged home** keep working: Rally switches the selected squad between the Base flag and its lane's

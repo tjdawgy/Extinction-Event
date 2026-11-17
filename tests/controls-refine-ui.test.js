@@ -157,7 +157,7 @@ test('tapping an enemy targets it: unit, building; then Hold where they are; wit
   // nothing selected: tapping the enemy does nothing
   await tapUnit(page, I.foe);
   assert.deepStrictEqual(await selIds(page), []); assert.ok(await page.evaluate(() => myUnits().every(e => e.po.o === 'hold')));
-  // select all, tap the enemy rifleman: they target it
+  // select all, tap the enemy marine: they target it
   await page.click('#lanes [data-k="all"]'); await tapUnit(page, I.foe);
   assert.deepStrictEqual(await selIds(page), [], 'cleared after the order');
   assert.deepStrictEqual(await page.evaluate(f => myUnits().map(e => [e.po.o, e.po.id === f]), I.foe), [['target', true], ['target', true], ['target', true]]);
@@ -218,7 +218,7 @@ test('double-tap a unit: only your units of that type on screen are selected, at
     for (const e of game.ents) if (e.kind === 'u') e.hp = e.maxHp = 1e6; refreshUI(true); return out;
   });
   const off = await page.evaluate(ids => ids.map(i => { const [x] = __scr(i); return x > innerWidth; }), I.off);
-  assert.deepStrictEqual(off, [true, true], 'two Riflemen are off screen');
+  assert.deepStrictEqual(off, [true, true], 'two Marines are off screen');
   const [x, y] = await page.evaluate(i => __scr(i), I.on[1]);
   await page.mouse.dblclick(x, y);
   assert.deepStrictEqual(await selIds(page), [...I.on].sort((a, b) => a - b), 'only the three on screen (not the Tank, not the enemy, not the far two)');

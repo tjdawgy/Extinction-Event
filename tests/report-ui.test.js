@@ -29,7 +29,7 @@ test('no leaks during play: the UI reads the match log only on the end screen, a
     for (let i = 0; i < 30 * 240; i++) update(game, 1 / 30); // four minutes: the log is full of enemy moves by now
     refreshUI(true); render(ctx, game, game.t, null, -1);
     const txt = document.body.innerText;
-    return { events: game.log.ev.filter(e => e[1] === 1).length, pane: !!document.getElementById('repPane'), leak: ['Copy match log', 'Key moments', 'Enemy behavior', 'Rifleman ×'].filter(w => txt.includes(w)) };
+    return { events: game.log.ev.filter(e => e[1] === 1).length, pane: !!document.getElementById('repPane'), leak: ['Copy match log', 'Key moments', 'Enemy behavior', 'Marine ×'].filter(w => txt.includes(w)) };
   });
   assert.ok(r.events > 5, 'the enemy\'s moves are being recorded');
   assert.strictEqual(r.pane, false);

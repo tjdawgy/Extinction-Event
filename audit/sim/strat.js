@@ -60,7 +60,7 @@ UPG.contain = UPG.timing;
 const ATTACK_V = { timing: 2000, contain: 450, tech: 3000, air: 2200 }; // tech: only once it leaves home (army limit, or 12:00)
 const OPEN = {
   greedy:  { build: ['refinery', 'refinery', 'refinery', 'barracks', 'reactor', 'habitat'], upg: [['refinery', 2], ['habitat', 2]], end: 150 },
-  rush:    { build: ['barracks', 'refinery', 'barracks', 'habitat', 'refinery'], upg: [['habitat', 2]], upgLF: [['barracks', 2], ['habitat', 2]], end: 240 }, // Last Fist rushes with Mass Deployment (Riflemen in pairs)
+  rush:    { build: ['barracks', 'refinery', 'barracks', 'habitat', 'refinery'], upg: [['habitat', 2]], upgLF: [['barracks', 2], ['habitat', 2]], end: 240 }, // Last Fist rushes with Mass Deployment (Marines in pairs)
   turtle:  { build: ['barracks', 'refinery', 'turret', 'reactor', 'refinery', 'habitat', 'refinery'], upg: [['hq', 2], ['turret', 2], ['refinery', 2]], end: 240 },
   contain: { build: ['barracks', 'refinery', 'refinery', 'barracks', 'reactor', 'habitat'], upg: [['refinery', 2]], end: 200 },
   standard: { build: ['barracks', 'refinery', 'refinery', 'reactor', 'habitat', 'refinery'], upg: [['refinery', 2]], end: 180 }, // a balanced opening: army from the start, three Refineries by 1:30

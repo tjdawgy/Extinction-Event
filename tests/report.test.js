@@ -77,8 +77,8 @@ test('unit grouping: a group closes after 60 s or 10 units or a 45 s pause, so n
   const T = L.ev.filter(e => e[2] === 'T').map(e => [e[3], e[4], e[0], e[5]]);
   same(T.map(x => [x[0], x[1]]), [['rifle', 10], ['rifle', 10], ['rifle', 5], ['tank', 7], ['tank', 1], ['tank', 1], ['tank', 1]]);
   same(T.slice(0, 2).map(x => [x[2], x[3]]), [[120, 156], [160, 196]]);
-  assert.strictEqual(sim.logEvText(L.ev[0], true), 'Rifleman ×10, 02:00–02:36');
-  assert.strictEqual(sim.logEvText(L.ev[1], true), 'Rifleman ×10, 02:40–03:16');
+  assert.strictEqual(sim.logEvText(L.ev[0], true), 'Marine ×10, 02:00–02:36');
+  assert.strictEqual(sim.logEvText(L.ev[1], true), 'Marine ×10, 02:40–03:16');
 });
 
 test('a build or upgrade and its finish share one line, matched by building (two at once, an unfinished one, an old log without ids)', () => {

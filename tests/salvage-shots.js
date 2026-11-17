@@ -1,7 +1,7 @@
 // Salvage (v2.30): a browser check and a screenshot at 667×375 (858×396 with --wide).
 // 1. Plays as Last Fist against Bloomhost for 2 game minutes in real time at 3× (the autoplayer commands the player's side),
 //    counting console errors and the "+N" scrap pop-ups actually drawn for the player.
-// 2. A staged scene: Last Fist Riflemen and Heavies destroy Bloomhost Bulwarks in view, with the pop-ups rising.
+// 2. A staged scene: Last Fist Marines and Heavies destroy Bloomhost Bulwarks in view, with the pop-ups rising.
 //   node tests/salvage-shots.js [outDir] [--wide] [--tag=salvage] [--minutes=2]
 const fs = require('fs');
 const path = require('path');

@@ -52,7 +52,7 @@ const until = (page, fn, ms = 20000) => page.waitForFunction(fn, null, { timeout
     await page.evaluate(() => { TR.go = false; trTopUI(); }); await page.waitForTimeout(150);
     await shot(page, 'erupt'); errs.push(...errors); await page.close();
   }
-  { // d. Units mid-exile: Severances against Tanks and Riflemen
+  { // d. Units mid-exile: Severances against Tanks and Marines
     const { page, errors } = await open();
     await setup(page, { rows: 1, cam: 900, items: [{ side: 0, type: 'severance', u: 680, v: 0, n: 2, dx: 30 }, { side: 0, type: 'bastion', u: 760, v: 0, n: 2, dx: 30 }, { side: 1, type: 'rifle', u: 1000, v: 0, n: 10, dx: 22 }, { side: 1, type: 'tank', u: 1080, v: 20, n: 2, dx: 30 }] });
     await until(page, () => game.ents.filter(e => e.exT > game.t && e.exT - game.t < 3).length >= 4, 25000).catch(() => {});

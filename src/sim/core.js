@@ -116,7 +116,7 @@ const BDEF = {
     up: [null, null, { c: 100, e: 20, time: 10 }, { c: 160, e: 50, time: 14 }] },
   barracks: { name: 'Barracks', desc: 'Trains infantry. At T2 it picks one of two paths that decide which advanced infantry it unlocks.', cost: { c: 150, e: 0 }, hp: 640, half: 32, h: 56, time: 14,
     up: [null, null, { c: 150, e: 50, time: 14 }, { c: 250, e: 120, time: 20 }],
-    tiers: [null, 'Trains Riflemen', 'Unlocks Heavy troopers', 'Unlocks Snipers'] },
+    tiers: [null, 'Trains Marines', 'Unlocks Heavy troopers', 'Unlocks Snipers'] },
   factory: { name: 'War Factory', desc: 'Builds armored vehicles and walkers. Its path chooses siege weapons or assault vehicles.', cost: { c: 300, e: 50 }, hp: 820, half: 36, h: 50, time: 20, req: 'barracks',
     up: [null, null, { c: 200, e: 100, time: 18 }, { c: 350, e: 200, time: 24 }],
     tiers: [null, 'Builds Tanks', 'Unlocks Artillery', 'Unlocks Titans'] },

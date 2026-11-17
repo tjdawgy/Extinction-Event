@@ -13,7 +13,7 @@ for (const bot of ['rush', 'turtle']) {
     for (const e of r.g.ents) assert.ok(Number.isFinite(e.u) && Number.isFinite(e.hp));
   });
 }
-test('rush bot builds several Barracks, only Riflemen, and attacks', () => {
+test('rush bot builds several Barracks, only Marines, and attacks', () => {
   const { BOTS, STEP } = require('./bots');
   const g = sim.newGame('normal'), bot = BOTS.rush(sim);
   let maxB = 0;

@@ -34,13 +34,13 @@ async function main() {
     await page.evaluate(() => { const b2 = game.ents.filter(e => e.type === 'barracks' && e.side === 0)[1]; tryUpgrade(game, 0, b2, 'B'); b2.upProg = 0.999; __frames(3); openPanel(b2); __frames(1); });
     await snap('Second Barracks on Mass Deployment: next step T3', 'chosen');
     await page.evaluate(() => { closePanel(); document.querySelector('.tabs [data-tab="train"]').click(); });
-    await snap('Train tab: path tags, Riflemen ×2 (Mass)', 'train');
+    await snap('Train tab: path tags, Marines ×2 (Mass)', 'train');
     await page.evaluate(() => { // sell the Specialists Barracks: Heavy and Sniper leave the Train tab (v2.16)
       const a = game.ents.find(e => e.type === 'barracks' && e.side === 0 && e.path === 'A'); trySell(game, 0, a); __frames(2); refreshUI(true);
     });
     await snap('Only a Mass Barracks left: Heavy and Sniper are hidden', 'other-paths');
     await page.evaluate(() => { for (let i = 0; i < 4; i++) tryTrain(game, 0, 'rifle'); __frames(30 * 10); });
-    await snap('Mass Deployment trains Riflemen in pairs');
+    await snap('Mass Deployment trains Marines in pairs');
     await page.evaluate(() => { // the enemy: a Barracks on Specialists, seen once, now a ghost under fog
       const e = game.sides[1]; tryBuild(game, 1, 'barracks', 0); const b = game.ents.find(x => x.side === 1 && x.type === 'barracks'); b.built = true; b.progress = 1; b.tier = 2; b.path = 'A';
       game.fog[0].ghosts[b.id] = ghostOf(b); game.fog[0].exp.fill(1);

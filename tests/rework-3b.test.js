@@ -96,7 +96,7 @@ test('Dreadthorn: charges at an enemy 80-200 away (140/s, up to 220), 50 to ever
   step(s, g, 0.5); assert.ok(Math.abs(Math.hypot(D.u - u0, 0) - s.TRAMPLE.speed * 0.5) < 6, `at ${s.TRAMPLE.speed}/s`);
   assert.ok(until(s, g, () => { seenEv(g, ev, ['charge', 'chargeEnd']); return !D.crg; }, 3));
   assert.ok(Math.hypot(D.u - D.crU0, D.v - D.crV0) <= s.TRAMPLE.len + 1e-6, 'never past 220');
-  for (const r of R) assert.strictEqual(r.maxHp - r.hp, s.TRAMPLE.dmg * s.DMG.trample.light, 'each rifleman took 50 once');
+  for (const r of R) assert.strictEqual(r.maxHp - r.hp, s.TRAMPLE.dmg * s.DMG.trample.light, 'each marine took 50 once');
   assert.strictEqual(far.hp, far.maxHp, 'off the line: untouched');
   step(s, g, 0.4); R.forEach((r, i) => assert.ok(Math.abs(Math.abs(r.v - v0[i]) - s.TRAMPLE.knock) < 1.5, `knocked aside (${(r.v - v0[i]).toFixed(1)})`));
   // dazed 2 s: no moves, no attacks
@@ -110,16 +110,16 @@ test('Dreadthorn: charges at an enemy 80-200 away (140/s, up to 220), 50 to ever
   assert.ok(D2.u < B.u - B.half && D2.u - D2.crU0 < s.TRAMPLE.len - 20, `stopped at the building (${D2.u.toFixed(0)}, building at ${B.u})`);
 });
 
-test('Dreadthorn: an AI\'s charge needs a group or a big unit on the line (a lone Rifleman: no); a player\'s takes any; a target order aims it', () => {
+test('Dreadthorn: an AI\'s charge needs a group or a big unit on the line (a lone Marine: no); a player\'s takes any; a target order aims it', () => {
   const s = loadSim();
   const mk = (direct, n) => { const g = s.rangeGame({ factions: ['bloomhost', 'lastfist'] }); const D = s.rangeUnit(g, 0, 'dreadthorn', 500, 0); for (let i = 0; i < n; i++) s.rangeUnit(g, 1, 'rifle', 650 + i * 10, 0); g.sides[1].hush = true; g.sides[0].direct = direct; if (!direct) { D.po = undefined; g.sides[0].stance = 'attack'; } else { D.po = { o: 'attack' }; } D.holdU = undefined; return { g, D }; };
-  { const { g, D } = mk(false, 1); step(s, g, 1); assert.ok(!D.crCd, 'AI: not at one Rifleman'); }
+  { const { g, D } = mk(false, 1); step(s, g, 1); assert.ok(!D.crCd, 'AI: not at one Marine'); }
   { const { g, D } = mk(false, 3); assert.ok(until(s, g, () => D.crg, 2), 'AI: at three'); }
   { const { g, D } = mk(true, 1); assert.ok(until(s, g, () => D.crg, 2), 'player: at one'); }
   // a target order: at that unit, even at 60 (inside the automatic minimum), and the charge line runs through it
   const g = s.rangeGame({ factions: ['bloomhost', 'lastfist'] }), D = s.rangeUnit(g, 0, 'dreadthorn', 500, 0), a = s.rangeUnit(g, 1, 'rifle', 560, 40), b = s.rangeUnit(g, 1, 'rifle', 650, -40);
   g.sides[1].hush = true; assert.ok(s.command(g, 0, [D.id], 'target', a.id).ok);
-  assert.ok(until(s, g, () => D.crg, 2)); assert.ok(D.crV > 0.3, 'toward the tapped Rifleman (down the lane), not the other');
+  assert.ok(until(s, g, () => D.crg, 2)); assert.ok(D.crV > 0.3, 'toward the tapped Marine (down the lane), not the other');
 });
 
 test('Bastion: its barrier takes enemy shots (shields and units behind untouched); friendly shots, lobbed shells and melee pass; 600, 30/s after 3 s, 8 s down when broken', () => {

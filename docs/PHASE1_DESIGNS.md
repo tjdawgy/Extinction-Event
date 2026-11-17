@@ -31,7 +31,7 @@ Design proposals sent after v2.68. Approved: Proposals D, E and F (each is built
 - **Split Army with three squads (N, C, S):**
   - The squad column keeps its size: All on top, then N, C, S as three small chips side by side below it (about 26 px each, the same 84 px column). If that proves too tight to tap at 667 wide, N/C/S stack vertically and All moves to a long-press on any chip.
   - Long-press a squad: "Move to North / Centre / South" (the other two lanes), "New units: North / Centre / South / Alternate" (Alternate: round-robin).
-  - Long-press a unit chip: "Send all Riflemen to North / Centre / South".
+  - Long-press a unit chip: "Send all Marines to North / Centre / South".
   - Minimap: three badges, one per lane.
   - The orders act on the selected squad exactly as on Two-Lane.
 - **What the AI needs beyond Two-Lane:**

@@ -90,7 +90,7 @@ async function main() {
     await page.evaluate(() => __step(30)); destroy.push(await grab(bclip));
     await page.evaluate(() => __step(60)); destroy.push(await grab(bclip));
 
-    // fog edge: enemy Artillery hidden in the fog shells our Riflemen
+    // fog edge: enemy Artillery hidden in the fog shells our Marines
     const fogShots = [];
     const fclip = await page.evaluate(() => {
       __fresh(true);
@@ -127,7 +127,7 @@ async function main() {
     await sheet.screenshot({ path: unitsFile, fullPage: true }); console.log(unitsFile);
     await sheet.setContent(`<style>body{margin:0;background:#0b0f18;color:#cfd8e6;font:600 14px system-ui}td{padding:4px}img{display:block;max-width:340px}</style>
       <table><tr><td>destroyed</td><td>+0.5 s</td><td>+1.5 s</td><td>+3.5 s</td></tr><tr>${destroy.map(b => `<td>${img(b)}</td>`).join('')}</tr></table>
-      <p>Hidden enemy Artillery (right, in the fog) shelling our Riflemen: when it fires, 0.4 s later, 0.9 s later. Gun visible to the player when firing: ${fogInfo ? fogInfo.gunLit : 'did not fire'}</p>
+      <p>Hidden enemy Artillery (right, in the fog) shelling our Marines: when it fires, 0.4 s later, 0.9 s later. Gun visible to the player when firing: ${fogInfo ? fogInfo.gunLit : 'did not fire'}</p>
       <table><tr>${fogShots.map(b => `<td>${img(b)}</td>`).join('')}</tr></table>`);
     const eventsFile = path.join(outDir, `${tag}-fx-destroy-fog-${res}.png`);
     await sheet.screenshot({ path: eventsFile, fullPage: true }); console.log(eventsFile);

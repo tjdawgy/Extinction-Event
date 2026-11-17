@@ -879,7 +879,7 @@ const BDEF = {
     up: [null, null, { c: 100, e: 20, time: 10 }, { c: 160, e: 50, time: 14 }] },
   barracks: { name: 'Barracks', desc: 'Trains infantry. At T2 it picks one of two paths that decide which advanced infantry it unlocks.', cost: { c: 150, e: 0 }, hp: 640, half: 32, h: 56, time: 14,
     up: [null, null, { c: 150, e: 50, time: 14 }, { c: 250, e: 120, time: 20 }],
-    tiers: [null, 'Trains Riflemen', 'Unlocks Heavy troopers', 'Unlocks Snipers'] },
+    tiers: [null, 'Trains Marines', 'Unlocks Heavy troopers', 'Unlocks Snipers'] },
   factory: { name: 'War Factory', desc: 'Builds armored vehicles and walkers. Its path chooses siege weapons or assault vehicles.', cost: { c: 300, e: 50 }, hp: 820, half: 36, h: 50, time: 20, req: 'barracks',
     up: [null, null, { c: 200, e: 100, time: 18 }, { c: 350, e: 200, time: 24 }],
     tiers: [null, 'Builds Tanks', 'Unlocks Artillery', 'Unlocks Titans'] },
@@ -965,7 +965,7 @@ const hpMul = (d, t) => (d.hpMul || HPMUL)[t];
    on a named modifier; a later faction is mostly a different TREES table. (The Tech Lab follows.) */
 const TREES = {
   barracks: { A: { name: 'Specialists', short: 'SPEC', steps: [null, null, { unlock: ['heavy'], short: 'Heavy troopers', txt: 'Unlocks Heavy troopers' }, { unlock: ['sniper'], short: 'Snipers', txt: 'Unlocks Snipers: rounds that pierce a line' }] },
-              B: { name: 'Mass Deployment', short: 'MASS', steps: [null, null, { mod: 'pairs', short: 'Riflemen in pairs' }, { mod: 'drill', short: 'Drilled Riflemen' }] } },
+              B: { name: 'Mass Deployment', short: 'MASS', steps: [null, null, { mod: 'pairs', short: 'Marines in pairs' }, { mod: 'drill', short: 'Drilled Marines' }] } },
   factory:  { A: { name: 'Siege', short: 'SIEGE', steps: [null, null, { unlock: ['artillery'], short: 'Artillery' }, { unlock: ['titan'], short: 'Titans', txt: 'Unlocks Titans: walkers that plant for siege range' }] },
               B: { name: 'Assault', short: 'ASSAULT', steps: [null, null, { unlock: ['flame'], short: 'Flame Tanks', txt: 'Unlocks Flame Tanks: burn groups of infantry at close range' }, { unlock: ['hydra'], short: 'Hydras', txt: 'Unlocks Hydras: walkers with rotary guns that prefer aircraft' }] } },
   techlab:  { A: { name: 'Air Power', short: 'AIR', steps: [null, null, { unlock: ['interceptor'], short: 'Interceptors', txt: 'Unlocks Interceptors: hunt aircraft, escort your own' }, { unlock: ['leviathan'], short: 'Leviathans', txt: 'Unlocks Leviathans: carpet bombers that wreck bases' }] },
@@ -992,7 +992,7 @@ const TREES_AX = {
 const TREE_SETS = { lastfist: TREES, bloomhost: TREES_BH, axiarchs: TREES_AX };
 const prodLocked = (fac, type) => !!TREES[type] && !treeOf(fac, type); // a production building with no paths yet (Axiarchs, v2.25)
 const DRILL = { hp: 1.35, dmg: 1.1, capture: 1.5 }, PAIR_TIME = 1.5;
-const NANO = { dmg: 1.2, cut: 0.85 }; // Nanoweave (Support T3): its side deals ×dmg and takes ×cut (v2.45: named, so its description reads it; same values) // a Mass Deployment pair takes 1.5× a Rifleman's training time
+const NANO = { dmg: 1.2, cut: 0.85 }; // Nanoweave (Support T3): its side deals ×dmg and takes ×cut (v2.45: named, so its description reads it; same values) // a Mass Deployment pair takes 1.5× a Marine's training time
 const UNIT_PATH = {}; // unit type → { b: building type, p: path, path: the path's entry } for units a path unlocks (both factions)
 for (const fac in TREE_SETS) { const S = TREE_SETS[fac]; for (const bt in S) for (const p in S[bt]) for (const st of S[bt][p].steps) if (st && st.unlock) for (const u of st.unlock) UNIT_PATH[u] = { b: bt, p, path: S[bt][p] }; }
 const pathMod = (b, mod) => { const T = treeOf(b.fac, b.type); if (!T || !b.path || !b.built) return false; const st = T[b.path].steps; for (let t = 2; t <= b.tier; t++) if (st[t] && st[t].mod === mod) return true; return false; };
@@ -1001,7 +1001,7 @@ const canMake = (b, type, g) => { const d = UDEF[type], q = UNIT_PATH[type]; ret
 const canTrain = (g, s, type) => g.ents.some(e => e.side === s && canMake(e, type, g)); // v2.82: g decides which units its trees unlock (rwHas)
 
 const UDEF = {
-  rifle:     { name: 'Rifleman', desc: 'Cheap all-round infantry that shoots ground and air. Strong in numbers early; melts to splash, Snipers and Flame Tanks.',  from: 'barracks', tier: 1, cost: { c: 50, e: 0 },    pop: 1, hp: 70,   dmg: 7,  cd: 0.7,  range: 120, speed: 38, hitsAir: true,  armor: 'light',   weapon: 'rifle',  time: 4,  h: 20 },
+  rifle:     { name: 'Marine', desc: 'Cheap powered-armor trooper with a gauss rifle that shoots ground and air. Strong in numbers early; melts to splash, Snipers and Flame Tanks.',  from: 'barracks', tier: 1, cost: { c: 50, e: 0 },    pop: 1, hp: 70,   dmg: 7,  cd: 0.7,  range: 120, speed: 38, hitsAir: true,  armor: 'light',   weapon: 'rifle',  time: 4,  h: 20 },
   heavy:     { name: 'Heavy', desc: 'Rocket trooper built to kill armor and aircraft. Sturdy for infantry, but slow-firing and poor against swarms.',     from: 'barracks', tier: 2, cost: { c: 100, e: 25 },  pop: 2, hp: 240,  dmg: 16, cd: 1.3,  range: 130, speed: 27, hitsAir: true,  armor: 'heavy',   weapon: 'rocket', time: 7,  h: 26 },
   sniper:    { name: 'Sniper', desc: 'Long-range marksman whose rounds pierce a line of infantry. Fragile and slow-firing: keep it behind a front line.',    from: 'barracks', tier: 3, cost: { c: 150, e: 60 },  pop: 2, hp: 110,  dmg: 60, cd: 2.6,  range: 270, speed: 30, hitsAir: true,  armor: 'light',   weapon: 'rail',   time: 9,  h: 20 },
   tank:      { name: 'Tank', desc: 'Armored battle tank with a splash cannon for ground units and buildings. It can\'t shoot aircraft; Heavies and Gunships punish it.',      from: 'factory',  tier: 1, cost: { c: 200, e: 40 },  pop: 3, hp: 560,  dmg: 42, cd: 1.7,  range: 160, speed: 31, hitsAir: false, armor: 'vehicle', weapon: 'cannon', time: 11, h: 20, splash: 26 },
@@ -1013,7 +1013,7 @@ const UDEF = {
   // (2.5% of max HP per second, the strongest heal applies), the Recon Drone scouts (sight 420, at most 3 per side).
   interceptor: { name: 'Interceptor', desc: 'Fast flak fighter that attacks only aircraft and escorts your bombers. Useless against ground units.', from: 'techlab', tier: 2, cost: { c: 150, e: 60 }, pop: 2, hp: 190, dmg: 16, cd: 0.45, range: 180, speed: 100, hitsAir: true, hitsGround: false, armor: 'air', air: true, weapon: 'flak', time: 10, h: 10 },
   leviathan: { name: 'Leviathan', desc: 'Slow, heavy bomber that carpet-bombs the buildings below it. It can\'t hit aircraft and needs escorts against anti-air.', from: 'techlab', tier: 3, cost: { c: 480, e: 240 }, pop: 7, hp: 1400, dmg: 140, cd: 3.0, range: 40, speed: 24, hitsAir: false, armor: 'air', air: true, weapon: 'bomb', time: 20, h: 16, splash: 60, preferB: true },
-  medic:     { name: 'Medicopter', desc: 'Unarmed helicopter that heals nearby infantry. Keeps an infantry army fighting longer, but must be guarded from anti-air.', from: 'techlab', tier: 2, cost: { c: 160, e: 80 }, pop: 2, hp: 260, dmg: 0, cd: 1, range: 0, speed: 60, hitsAir: false, hitsGround: false, armor: 'air', air: true, weapon: null, time: 10, h: 12, support: true, heal: 0.025, healR: 120 },
+  medic:     { name: 'Medicopter', desc: 'Unarmed thruster medevac craft that heals nearby infantry. Keeps an infantry army fighting longer, but must be guarded from anti-air.', from: 'techlab', tier: 2, cost: { c: 160, e: 80 }, pop: 2, hp: 260, dmg: 0, cd: 1, range: 0, speed: 60, hitsAir: false, hitsGround: false, armor: 'air', air: true, weapon: null, time: 10, h: 12, support: true, heal: 0.025, healR: 120 },
   drone:     { name: 'Recon Drone', desc: 'Fast, unarmed scout with very long sight that spots for Artillery. Fragile, and only a few can fly at once.', from: 'techlab', tier: 2, cost: { c: 70, e: 30 }, pop: 1, hp: 80, dmg: 0, cd: 1, range: 0, speed: 115, hitsAir: false, hitsGround: false, armor: 'air', air: true, weapon: null, time: 5, h: 8, support: true, max: 3 },
   // War Factory, Assault path (v2.14). Flame Tank: every 0.25 s it burns every enemy on the ground in a 95 × 48 strip ahead.
   // Hydra: twin rotary guns, one target at a time, prefers aircraft; swinging between ground and air takes 0.4 s.
@@ -1242,7 +1242,7 @@ const BALANCE7B = { on: false, orig: null, patches: [
   ['BDEF_BH.turret.gun.2.dmg', 26], ['BDEF_BH.turret.gun.3.dmg', 33], ['BDEF_AX.turret.gun.2.dmg', 24], ['BDEF_AX.turret.gun.3.dmg', 120], // their upgrades stay upgrades
   // field nodes worth fighting for
   ['NODE_INC.c', 4], ['NODE_INC.e', 1.5],
-  // Last Fist: Riflemen cheaper but lighter-hitting (rush with them, don't win every trade), dearer Heavies and Tanks, Flame
+  // Last Fist: Marines cheaper but lighter-hitting (rush with them, don't win every trade), dearer Heavies and Tanks, Flame
   // Tanks a specialist against infantry (weak against vehicles)
   ['UDEF.rifle.cost', { c: 45, e: 0 }], ['UDEF.rifle.dmg', 6.5], ['UDEF.heavy.cost', { c: 135, e: 40 }], ['UDEF.tank.cost', { c: 280, e: 70 }], ['DMG.flame.vehicle', 0.2],
   // Bloomhost: sturdier Skitterlings and Bulwarks, cheaper Spitters with the reach to answer a ranged line
@@ -1292,12 +1292,12 @@ function b7Texts() {} // v2.45: building texts read the live numbers themselves 
    a match then plays exactly as v2.38 did (the pinned replays in tests/determinism.test.js use it). */
 const BALANCE = { on: false, orig: {}, units: {
   tank:       { cost: { c: 260, e: 60 }, time: 13 },  // was 200/40, 11 s: beat every Bloomhost and Axiarch ground unit but the Bastion at equal value
-  heavy:      { cost: { c: 125, e: 35 } },            // was 100/25: with Riflemen it out-shot every Bloomhost and Axiarch flyer
+  heavy:      { cost: { c: 125, e: 35 } },            // was 100/25: with Marines it out-shot every Bloomhost and Axiarch flyer
   bulwark:    { cost: { c: 150, e: 30 }, time: 10 },  // was 190/40, 11 s: lost to the Tank at equal value and equal supply
-  razorwing:  { cost: { c: 140, e: 50 }, hp: 200 },   // was 170/70, 170 HP: lost to Riflemen and Heavies at equal value
+  razorwing:  { cost: { c: 140, e: 50 }, hp: 200 },   // was 170/70, 170 HP: lost to Marines and Heavies at equal value
   spitter:    { cost: { c: 80, e: 25 } },             // was 90/30
   leaper:     { cost: { c: 80, e: 20 } },             // was 90/20
-  shardling:  { cost: { c: 65, e: 15 }, time: 5, shp: 75 }, // was 80/20, 6 s, 60 shields: lost to Riflemen at equal value and supply; 44% of Axiarch spending
+  shardling:  { cost: { c: 65, e: 15 }, time: 5, shp: 75 }, // was 80/20, 6 s, 60 shields: lost to Marines at equal value and supply; 44% of Axiarch spending
   lancer:     { cost: { c: 120, e: 45 } },            // was 150/60
   prismwing:  { cost: { c: 100, e: 40 } },            // was 120/50
   wraithwing: { cost: { c: 230, e: 100 } },           // was 260/120
@@ -1693,7 +1693,7 @@ setBalance7b(true); // v2.42 (audit phase 7b): the strategy balance layer, once 
 setBalance7c(true); // v2.43 (audit phase 7c): the retune layer on top
 /* ---------- Mechanics (v2.43, audit phase 7c; audit/polish-report.md) ----------
    Four rule changes, one switch: setMech7c(false) plays exactly as v2.42.
-   rally: the rally point (where new and idle units stand) sits `rally` out from the HQ, inside its gun's cover: a Rifleman
+   rally: the rally point (where new and idle units stand) sits `rally` out from the HQ, inside its gun's cover: a Marine
      (120 range) shooting units there stands inside the T1 gun's 390 (was 300: attackers hit them from outside it). 190 was
      tried first and measured worse (Bloomhost 25% in Greedy vs Greedy against 46% at 240). On Attack, new units of a player's side wait
      there until the group is worth batchV or has waited batchT seconds, then walk out together (the AI moves its army by its own rules).
@@ -1754,8 +1754,8 @@ liveTiers(BDEF_AX.sigA, (d, t) => [null, `A power-field bubble follows your fron
 liveTiers(BDEF_AX.sigB, (d, t) => [null, `Keeps the echoes of your last ${ECHO.n[1]} fallen T2/T3 units: warp one back for ${txP(ECHO.cost)} of its cost`,
   `Keeps ${ECHO.n[2]} echoes`, `Recovered units arrive with a ${txP(ECHO.osh)} overshield for ${txN(ECHO.oshDur)} s`][t]);
 // Upgrade steps that quote numbers
-liveStr(TREES.barracks.B.steps[2], 'txt', () => `Trains Riflemen two at a time (a pair takes ${txN(UDEF.rifle.time * PAIR_TIME)} s)`);
-liveStr(TREES.barracks.B.steps[3], 'txt', () => `Drilled Riflemen: +${txP(DRILL.hp - 1)} HP, +${txP(DRILL.dmg - 1)} damage, capture nodes ${txX(DRILL.capture)} faster`);
+liveStr(TREES.barracks.B.steps[2], 'txt', () => `Trains Marines two at a time (a pair takes ${txN(UDEF.rifle.time * PAIR_TIME)} s)`);
+liveStr(TREES.barracks.B.steps[3], 'txt', () => `Drilled Marines: +${txP(DRILL.hp - 1)} HP, +${txP(DRILL.dmg - 1)} damage, capture nodes ${txX(DRILL.capture)} faster`);
 liveStr(TREES.factory.A.steps[2], 'txt', () => `Unlocks Artillery: ${UDEF.artillery.salvo ? `salvos of ${UDEF.artillery.salvo.n} shells` : 'long-range shells'}`);
 liveStr(TREES.techlab.B.steps[2], 'txt', () => `Unlocks Medicopters (heal infantry) and Recon Drones (scouts, at most ${UDEF.drone.max})`);
 liveStr(TREES.techlab.B.steps[3], 'txt', nanoTxt);
@@ -1983,7 +1983,7 @@ function tryTrain(g, s, type) {
   if (type === 'skitterling' && rwB5b(g)) return broodTrain(g, s, d, prods); // v2.88 (batch 5b): one order is a brood of four
   if (d.max && unitCount(g, s, type) >= d.max)
     return { ok: false, msg: `At most ${d.max} ${PLURAL[type]} at a time` }; // the Recon Drone (v2.15), counting those in training; Skitterlings (S1, v2.37)
-  // Riflemen go to a Mass Deployment Barracks first, where an order is a pair trained together
+  // Marines go to a Mass Deployment Barracks first, where an order is a pair trained together
   prods.sort((a, b) => (type === 'rifle' ? (pathMod(b, 'pairs') ? 1 : 0) - (pathMod(a, 'pairs') ? 1 : 0) : 0) || a.queue.length - b.queue.length);
   const nOf = b => type === 'rifle' && pathMod(b, 'pairs') ? 2 : 1, p = prods.find(b => b.queue.length + nOf(b) <= 5) || prods[0], n = nOf(p); // the first with room in its queue
   const cap = popCap(g, s);
@@ -1994,7 +1994,7 @@ function tryTrain(g, s, type) {
   side.res.c -= d.cost.c * n; side.res.e -= d.cost.e * n;
   for (let i = 0; i < n; i++) p.queue.push(type);
   logSpend(g, s, 'u', d.cost.c * n, d.cost.e * n);
-  return { ok: true, msg: n === 2 ? 'Riflemen ×2 queued' : `${d.name} queued` };
+  return { ok: true, msg: n === 2 ? 'Marines ×2 queued' : `${d.name} queued` };
 }
 
 function spawnUnit(g, s, type, u, v) {
@@ -2002,7 +2002,7 @@ function spawnUnit(g, s, type, u, v) {
   const d = UDEF[type];
   const unit = { id: g.nid++, kind: 'u', type, side: s, u, v, z: d.air ? (type === 'interceptor' ? rand(100, 124) : type === 'leviathan' ? rand(88, 98) : type === 'drone' ? rand(104, 114) : type === 'razorwing' ? rand(56, 72) : type === 'needlewing' ? rand(50, 64) : type === 'cloudwing' ? rand(62, 76) : type === 'broodtyrant' ? rand(78, 88) : type === 'worldrender' ? rand(84, 94) : type === 'wraithwing' ? rand(64, 80) : type === 'prismwing' ? rand(56, 70) : type === 'shardstorm' ? rand(66, 80) : type === 'voidcarrier' ? rand(78, 88) : type === 'sovereign' ? rand(84, 94) : rand(70, 94)) : 0,
     laneV: rand(-LANE_V, LANE_V), hp: d.hp, maxHp: d.hp, cd: simRnd() * 0.5, face: dirOf(s), anim: fxRnd() * 10,
-    moving: false, rallyOff: -simRnd() * 100, recoil: 0, hitT: 0, shT: 0, vet: 0, aimAir: 0, medAt: -1, tgt: 0, braceT: 0, braceCd: 0, lastHurt: -99, lastAct: -99, creepAt: -1, temp: 0, tLife: 0, tSrc: null, kid: 0, spawnT: 0, dis: 0, disT: 0, slow: 0, slowT: 0, chT: 0, chTgt: 0, pulseCd: 0, shp: d.shp || 0, maxShp: d.shp || 0, shpT: -99, shpHit: -99, ovT: 0, frzT: 0, leapCd: 0, leaping: 0, lu: 0, lv: 0, ld: 0, corr: 0, corrT: 0, burstCd: 0 }; // tgt: what it last attacked; braceT/braceCd: the Bulwark's brace (v2.17); lastHurt/lastAct: last damage taken/dealt, creepAt: last creep regen (v2.18); leap*: the Leaper's jump, corr/corrT: corrosion, burstCd: the Dreadthorn's spines (v2.19) // vet: a Drilled Rifleman (v2.13); aimAir: where a Hydra's guns point (v2.14); medAt: last healed by a Medicopter (v2.15) // shT (shield until) set from the start keeps every unit the same shape for the JS engine
+    moving: false, rallyOff: -simRnd() * 100, recoil: 0, hitT: 0, shT: 0, vet: 0, aimAir: 0, medAt: -1, tgt: 0, braceT: 0, braceCd: 0, lastHurt: -99, lastAct: -99, creepAt: -1, temp: 0, tLife: 0, tSrc: null, kid: 0, spawnT: 0, dis: 0, disT: 0, slow: 0, slowT: 0, chT: 0, chTgt: 0, pulseCd: 0, shp: d.shp || 0, maxShp: d.shp || 0, shpT: -99, shpHit: -99, ovT: 0, frzT: 0, leapCd: 0, leaping: 0, lu: 0, lv: 0, ld: 0, corr: 0, corrT: 0, burstCd: 0 }; // tgt: what it last attacked; braceT/braceCd: the Bulwark's brace (v2.17); lastHurt/lastAct: last damage taken/dealt, creepAt: last creep regen (v2.18); leap*: the Leaper's jump, corr/corrT: corrosion, burstCd: the Dreadthorn's spines (v2.19) // vet: a Drilled Marine (v2.13); aimAir: where a Hydra's guns point (v2.14); medAt: last healed by a Medicopter (v2.15) // shT (shield until) set from the start keeps every unit the same shape for the JS engine
   if (rwB5b(g)) rw5bSpawn(g, unit); // v2.88: a batch 5b Skitterling's health
   if (rwB2b(g)) rw2bSpawn(g, unit); // v2.83: a batch 2b Ruinmaw's health and armour
   if (MAP_LANED) unit.lane = laneNew(g.sides[s]); // v2.63: the lane it walks (Classic: no lane key at all)
@@ -2226,7 +2226,7 @@ function updateNodes(g, dt) {
   for (const n of g.nodes) {
     if (n.type === 'relic' && (!SPECIAL.on || !SPECIAL.relic || n.spent || relicGuarded(g, n))) { n.c = [0, 0]; n.prog = 0; continue; } // v2.71: guarded or spent: nothing to capture
     let c0 = 0, c1 = 0;
-    let w0 = 0, w1 = 0; // capture weight: a Drilled Rifleman counts 1.5
+    let w0 = 0, w1 = 0; // capture weight: a Drilled Marine counts 1.5
     for (const e of g.ents) if (e.kind === 'u' && e.hp > 0 && !UDEF[e.type].air && !UDEF[e.type].noCap && !e.noCap && !e.gone && (MAP_2D ? Math.hypot(e.u - n.u, e.v - n.v) : Math.abs(e.u - n.u)) <= (n.r || NODE_R)) { const w = e.vet ? DRILL.capture : 1; if (e.side === 0) { c0++; w0 += w; } else { c1++; w1 += w; } }
     n.c = [c0, c1];
     if (c0 && !c1) n.prog = Math.min(100, n.prog + 8 * Math.sqrt(w0) * dt);
@@ -2337,7 +2337,7 @@ function updateBuilding(g, b, foes, dt) {
     const ut = b.queue[0], pair = ut === 'rifle' && b.queue[1] === 'rifle' && pathMod(b, 'pairs'), br = ut === 'skitterling' && rwB5b(g); // br (v2.88): a batch 5b brood
     if (b.prodT >= (br ? BROOD.time : UDEF[ut].time) * (pair ? PAIR_TIME : 1)) {
       b.prodT = 0; b.queue.shift();
-      const n = pair ? 2 : br ? broodHatch(g, b) : 1; // Mass Deployment: two Riflemen at a time; a brood: what fits under the limit
+      const n = pair ? 2 : br ? broodHatch(g, b) : 1; // Mass Deployment: two Marines at a time; a brood: what fits under the limit
       if (n === 2) b.queue.shift();
       for (let i = 0; i < n; i++) {
         const fr = fwdRally(g, b.side, b); // v2.68: a forward Barracks sends its units to its lane's Forward flag
@@ -2345,7 +2345,7 @@ function updateBuilding(g, b, foes, dt) {
         const nu = fr ? spawnUnit(g, b.side, ut, fr.u + rand(-12, 12), fr.v + rand(-20, 20)) : spawnUnit(g, b.side, ut, b.u + dirOf(b.side) * (b.half + 10), b.v + rand(-12, 12) + (br ? (i - 1.5) * 9 : i * 16));
         if (fr) { nu.lane = fr.lane; nu.fwdHome = { u: fr.u, n: fr.n }; nu.laneV = clamp(nu.v - fr.v, -LANE_V, LANE_V); }
         if (g.sides[b.side].direct) ctlTrained(g, nu, fr); // v2.73: to the base rally point (or beside a forward Barracks), each in its own space (v2.76), then Hold
-        if (ut === 'rifle' && pathMod(b, 'drill')) { nu.vet = 1; nu.maxHp = nu.hp = UDEF.rifle.hp * DRILL.hp; } // Drilled Riflemen
+        if (ut === 'rifle' && pathMod(b, 'drill')) { nu.vet = 1; nu.maxHp = nu.hp = UDEF.rifle.hp * DRILL.hp; } // Drilled Marines
         if (g.log) { logAdd(g.log.tot[b.side].trained, ut); lgUnit(g, b.side, 'T', ut); }
       }
     }
@@ -2493,7 +2493,7 @@ const UGROUPS = { inf: ['rifle', 'heavy', 'sniper', 'skitterling', 'mite', 'leap
 const GROUP_NAME = { inf: 'Infantry', arm: 'Armor', air: 'Air', sup: 'Support' };
 const GROUP_OF = {}; for (const k in UGROUPS) for (const t of UGROUPS[k]) GROUP_OF[t] = k;
 const ORDER_NAME = { hold: 'Hold', attack: 'Attack', retreat: 'Retreat', move: 'Regroup' };
-const PLURAL = { rifle: 'Riflemen', heavy: 'Heavies', sniper: 'Snipers', tank: 'Tanks', artillery: 'Artillery', titan: 'Titans', flame: 'Flame Tanks', hydra: 'Hydras', aircraft: 'Gunships', interceptor: 'Interceptors', leviathan: 'Leviathans', medic: 'Medicopters', drone: 'Recon Drones', skitterling: 'Skitterlings', mite: 'Mites', bulwark: 'Bulwarks', razorwing: 'Razorwings', leaper: 'Leapers', ravager: 'Ravagers', spitter: 'Spitters', bilecaster: 'Bilecasters', bilelobber: 'Bile Lobbers', ruinmaw: 'Ruinmaws', thornback: 'Thornbacks', dreadthorn: 'Dreadthorns', needlewing: 'Needlewings', cloudwing: 'Cloudwings', broodtyrant: 'Brood Tyrants', worldrender: 'Worldrenders', shardling: 'Shardlings', bastion: 'Bastions', wraithwing: 'Wraithwings', riftstalker: 'Riftstalkers', parallax: 'Parallaxes', lancer: 'Lancers', marksman: 'Astral Marksmen', riftmortar: 'Rift Mortars', worldbreaker: 'Worldbreakers', gravemantle: 'Gravemantles', eventide: 'Eventides', prismwing: 'Prismwings', shardstorm: 'Shardstorms', voidcarrier: 'Voidcarriers', sovereign: 'Astral Sovereigns' };
+const PLURAL = { rifle: 'Marines', heavy: 'Heavies', sniper: 'Snipers', tank: 'Tanks', artillery: 'Artillery', titan: 'Titans', flame: 'Flame Tanks', hydra: 'Hydras', aircraft: 'Gunships', interceptor: 'Interceptors', leviathan: 'Leviathans', medic: 'Medicopters', drone: 'Recon Drones', skitterling: 'Skitterlings', mite: 'Mites', bulwark: 'Bulwarks', razorwing: 'Razorwings', leaper: 'Leapers', ravager: 'Ravagers', spitter: 'Spitters', bilecaster: 'Bilecasters', bilelobber: 'Bile Lobbers', ruinmaw: 'Ruinmaws', thornback: 'Thornbacks', dreadthorn: 'Dreadthorns', needlewing: 'Needlewings', cloudwing: 'Cloudwings', broodtyrant: 'Brood Tyrants', worldrender: 'Worldrenders', shardling: 'Shardlings', bastion: 'Bastions', wraithwing: 'Wraithwings', riftstalker: 'Riftstalkers', parallax: 'Parallaxes', lancer: 'Lancers', marksman: 'Astral Marksmen', riftmortar: 'Rift Mortars', worldbreaker: 'Worldbreakers', gravemantle: 'Gravemantles', eventide: 'Eventides', prismwing: 'Prismwings', shardstorm: 'Shardstorms', voidcarrier: 'Voidcarriers', sovereign: 'Astral Sovereigns' };
 const newOrders = () => ({ all: null, groups: {}, types: {}, n: 0 });
 function unitOrder(side, type, lane) { // the order a unit of this type follows, or null for the global stance; lane: its lane (v2.63)
   const O = side.orders; if (!O) return null;
@@ -6236,7 +6236,7 @@ function aiUpdate(g, s, dt) {
   const danger = near.some(u => Math.abs(u.u - hqU(s)) < 430); // enemies inside the base, not just nearby
   const nearLight = armyValue(near.filter(u => UDEF[u.type].armor === 'light'));
   const lightThreat = threat && nearLight >= armyValue(near) * 0.5;
-  const infantryRush = lightThreat && nearLight >= 400; // a real rush (about 8 Riflemen), not a couple of scouts
+  const infantryRush = lightThreat && nearLight >= 400; // a real rush (about 8 Marines), not a couple of scouts
   const calm = D.calmTech && threat, saving = D.calmSave && threat; // threat-aware: hold tech; save for counters
   // v2.40 (hold): an early push by a mostly light (infantry) army at least 0.8× its strength: stay home under the HQ gun, put
   // up the defence and the vehicle building, save for the counter (Tank, Bulwark, Bastion) instead of feeding the basic unit
@@ -6542,7 +6542,7 @@ function aiUpdate(g, s, dt) {
       } else side.saveFor = null;
     }
     // Save for the better unit unless the enemy is already in the base (a calm AI keeps saving while merely threatened)
-    const mustSpend = defend || (saving ? danger && !(lightThreat && hasBuilt(g, s, 'factory')) : threat); // vs infantry, Tanks beat trickled Riflemen
+    const mustSpend = defend || (saving ? danger && !(lightThreat && hasBuilt(g, s, 'factory')) : threat); // vs infantry, Tanks beat trickled Marines
     for (let k = 0; k < D.trainPer && !saveRoom; k++) {
       const cand = types.filter(t => { const d = UDEF[t], tc = trainCost(g, t); return fits(t) && side.res.c - tc.c >= reserve.c && side.res.e - tc.e >= reserve.e && !(noAA && d.hitsGround === false && !d.support); }); // v2.41 (counter): not even as a spare buy
       if (!cand.length) break;
@@ -13217,7 +13217,7 @@ const UNIT_TIPS = {
   get artillery() { const u = UDEF.artillery, rw = REWORK.b2a; return [`Clumps, dug-in units and buildings from ${txN(u.range)} range: every shot is a salvo of ${u.salvo?.n} shells that blankets the area (minimum range ${txN(u.minRange)})${rw && REWORK.artDeploy ? `; it deploys in ${txN(ART.deploy)} s before firing and packs up in ${txN(ART.pack)} s before moving` : ''}${rw && REWORK.artTelegraph ? `; each shell's landing spot is marked on the ground for at least ${txN(ART.fly)} s` : ''}`, rw ? 'Flanks, catching it on the move, Gorebores, Gunships; units that keep moving step out of its markers' : 'Anything that gets close, Gunships; a lone fast unit (the shells land wide)']; }, // v2.37; v2.82: deploy and telegraphed shells
   get titan() { const u = UDEF.titan; if (REWORK.b2b) return [`Holding ground with infantry: Last Fist infantry within ${txN(TITAN.coverR)} of it take ${txP(TITAN.cover)} less damage from ranged attacks (several Titans don't add up); next to an enemy building it plants (${txN(TITAN.plant)} s, rooted until it unplants in ${txN(TITAN.unplant)} s) and hits buildings within ${txN(TITAN.breach)} ${txX(TITAN.bmul)} as hard; its cannon reaches ${txN(TITAN.range)}`, 'Heavies, Gunships; killing or scattering its infantry, and hitting it while it is planted']; return [`Buildings and everything on the ground once planted: siege lock takes ${txN(u.siege?.plant)} s, then +${txN(u.siege?.reach)} range and +${txP((u.siege?.bmul) - 1)} against buildings; it can't move until it unplants (${txN(u.siege?.unplant)} s)`, 'Heavies, Gunships; fast units that arrive while it plants or unplants']; }, // v2.37
   get aircraft() { if (REWORK.b4a) return [`Vehicles and Artillery: a salvo of ${SALVO.n} missiles ${txN(SALVO.gap)} s apart (${txN(SALVO.dmg)} each), then ${txN(SALVO.reload)} s to reload; range ${txN(rwShow(null, 'aircraft').range)}, ground and air`, 'Interceptors, Heavies, Turrets; strike while it reloads']; return ['Vehicles and Artillery', 'Interceptors, Heavies, Turrets']; }, // v2.86: salvos (batch 4a)
-  get interceptor() { return [REWORK.b4b ? 'Aircraft only, Wraithwings included (it tracks them through their hops); escorts your Leviathans and Gunships' : 'Aircraft only; escorts your Leviathans and Gunships', 'Heavies, Riflemen, Turrets']; }, // v2.87
+  get interceptor() { return [REWORK.b4b ? 'Aircraft only, Wraithwings included (it tracks them through their hops); escorts your Leviathans and Gunships' : 'Aircraft only; escorts your Leviathans and Gunships', 'Heavies, Marines, Turrets']; }, // v2.87
   get leviathan() { const u = UDEF.leviathan; if (REWORK.b4b) { const d = rwShow(null, 'leviathan'); return [`Buildings and slow groups: with a target within ${txN(LEV.reach)} it flies a bombing run straight across it, dropping ${d.carpet.n} bombs ${txN(d.carpet.gap)} apart along its path (${txN(d.dmg)} each), carries on ${txN(LEV.over)} beyond and turns (${txN(LEV.turn)} s, no bombs) for the next pass`, 'Interceptors, Heavies, Hydras, Turrets; anything fast that dodges its line; it can\'t hit aircraft and needs Interceptor escorts']; } return [`Buildings in a row: it carpet-bombs a line of ${u.carpet?.n} bombs along its path; it can't hit aircraft`, 'Interceptors, Heavies, Hydras, Turrets; a single hardened target']; }, // v2.37
   get medic() { const u = UDEF.medic; return [`No weapon: heals your infantry nearby (${txP(u.heal)} of HP per second)`, 'Anything that hits air']; },
   get drone() { const u = UDEF.drone; return [`No weapon: sees ${txN(SIGHT.drone)} far, spots for Artillery (at most ${u.max})`, 'Anything that hits air']; },

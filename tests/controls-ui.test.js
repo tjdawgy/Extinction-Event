@@ -56,7 +56,7 @@ test('selecting: tap, tap more, double-tap a type, lasso, All, a lane; never ene
   // an enemy tapped: not selected (and nothing ordered: a tap on an enemy with a selection is a move there, so clear first)
   await page.click('#selX'); assert.deepStrictEqual(await selIds(page), []); assert.ok(await page.isHidden('#cmdbar'), 'the × clears it');
   await tapUnit(page, U.foe[0]); assert.deepStrictEqual(await selIds(page), [], 'an enemy is never selected');
-  // double-tap a Rifleman: every Rifleman
+  // double-tap a Marine: every Marine
   const [rx, ry] = await page.evaluate(i => __scr(i), mine[0]); await page.mouse.dblclick(rx, ry); await page.waitForTimeout(60);
   assert.deepStrictEqual(await selIds(page), U.mine.filter(m => m.t === 'rifle').map(m => m.id));
   await page.click('#selX');

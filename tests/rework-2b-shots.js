@@ -1,7 +1,7 @@
 // v2.83 (docs/FACTION_REWORK.md batch 2b): Test Range screenshots at 667×375 (iPhone landscape in the viewer).
 //   node tests/rework-2b-shots.js   → docs/screenshots/rework2b-<shot>-667x375.png
 // Shots: artillery (Artillery shelling an advancing Infantry blob that walks straight through the markers: no dodging),
-// cover (a Titan with covered Riflemen against enemy ranged units), breach (a Titan planted beside a building), trail (a
+// cover (a Titan with covered Marines against enemy ranged units), breach (a Titan planted beside a building), trail (a
 // Ruinmaw tunnelling), gate (the Ruinmaw surfaced, units pouring out of its mouth), rupture (a Worldbreaker's crack racing
 // out), ridge (a ridge with enemies walking around its end), and a frame-time check with several of each on screen.
 const path = require('path');
@@ -34,7 +34,7 @@ const pause = async page => { await page.evaluate(() => { TR.go = false; trTopUI
     await until(page, () => game.mk && game.mk.length >= 3 && game.mk.some(m => game.ents.some(e => e.side === 1 && e.hp > 0 && Math.hypot(e.u - m.u, (e.v - m.v) * 0.6) < m.r)), 30000).catch(() => {});
     await pause(page); await shot(page, 'artillery'); errs.push(...errors); await page.close();
   }
-  { // b. A Titan with covered Riflemen against enemy ranged units
+  { // b. A Titan with covered Marines against enemy ranged units
     const { page, errors } = await open();
     await setup(page, { cam: 840, modes: ['hold', 'attack'], items: [{ side: 0, type: 'titan', u: 700, v: 0 }, { side: 0, type: 'rifle', u: 712, v: -30, n: 8, dx: 12 }, { side: 0, type: 'rifle', u: 600, v: 70, n: 3, dx: 14 }, { side: 1, type: 'heavy', u: 1040, v: -20, n: 4, dx: 18 }, { side: 1, type: 'rifle', u: 1020, v: 20, n: 6, dx: 16 }] });
     await until(page, () => game.t > 3.5 && game.ents.some(e => e.side === 1 && e.tgt), 25000).catch(() => {});
@@ -77,7 +77,7 @@ const pause = async page => { await page.evaluate(() => { TR.go = false; trTopUI
     await page.waitForTimeout(2500);
     const ft = await page.evaluate(() => new Promise(res => { const t = []; let last = performance.now(), n = 0; const f = now => { t.push(now - last); last = now; if (++n < 180) requestAnimationFrame(f); else res(t); }; requestAnimationFrame(f); }));
     ft.sort((a, b) => a - b);
-    console.log(`frame time with 6 Titans, 6 Ruinmaws, 6 Worldbreakers, 10 Riflemen vs 25 (headless, 2× pixels): median ${ft[90].toFixed(1)} ms, 95th ${ft[171].toFixed(1)} ms`);
+    console.log(`frame time with 6 Titans, 6 Ruinmaws, 6 Worldbreakers, 10 Marines vs 25 (headless, 2× pixels): median ${ft[90].toFixed(1)} ms, 95th ${ft[171].toFixed(1)} ms`);
     errs.push(...errors); await page.close();
   }
   if (errs.length) { console.error('page errors:', errs); process.exitCode = 1; }

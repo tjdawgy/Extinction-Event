@@ -59,7 +59,7 @@ async function main() {
       applyZoom(1.7); cam.x = lead - 40; clampCam(); __frames(1); paused = true; render(ctx, game, game.t, sel, selPad);
     });
     await shot(page, 'mites');
-    // the acid burst: a Mite killed in a clump of enemy Riflemen
+    // the acid burst: a Mite killed in a clump of enemy Marines
     await page.evaluate(() => {
       paused = false; const u0 = L / 2; setStance(game, 0, 'hold'); setStance(game, 1, 'hold');
       for (let i = 0; i < 5; i++) { const e = spawnUnit(game, 1, 'rifle', u0 + 18 + (i % 3) * 12, 40 + (i - 2) * 14); e.holdU = e.u; e.holdV = e.v; e.cd = 1e6; }
@@ -68,7 +68,7 @@ async function main() {
       applyZoom(1.9); cam.x = u0 + 10; clampCam(); __frames(1); paused = true; render(ctx, game, game.t, sel, selPad);
     });
     await shot(page, 'acid');
-    // the T3 root snare: enemy Riflemen walking onto the creep's edge, roots erupting
+    // the T3 root snare: enemy Marines walking onto the creep's edge, roots erupting
     await page.evaluate(() => {
       paused = false; for (const e of game.ents) if (e.kind === 'u') e.hp = 0; __frames(1);
       const p = game.creep[0].reduce((a, q) => (q.u + q.r > a.u + a.r ? q : a)), at = v => p.u + Math.sqrt(Math.max(0, p.r * p.r - (v - p.v) ** 2)) - 6, edge = at(50);

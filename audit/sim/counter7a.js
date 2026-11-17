@@ -8,6 +8,6 @@ const arg = k => { const a = process.argv.find(x => x.startsWith(`--${k}=`)); re
   for (const on of [false, true]) {
     const r = await greedy({ ai: 'hard', persona: arg('persona') || 'boomer', fix: Object.assign({}, fix, { counter: on }) }, { n, seed: 94000, factions: ['lastfist'], bot: { noAir: true }, keep: true });
     const t = {}; for (const m of r.matches) for (const k in m.sides[1].trained) t[k] = (t[k] || 0) + m.sides[1].trained[k];
-    console.log(`counter rule ${on ? 'on' : 'off'}: Interceptors ${t.interceptor || 0}, Flame Tanks ${t.flame || 0}, Tanks ${t.tank || 0}, Artillery ${t.artillery || 0}, Riflemen ${t.rifle || 0} in ${r.matches.length} matches; AI wins ${r.tot.w}-${r.tot.l}`);
+    console.log(`counter rule ${on ? 'on' : 'off'}: Interceptors ${t.interceptor || 0}, Flame Tanks ${t.flame || 0}, Tanks ${t.tank || 0}, Artillery ${t.artillery || 0}, Marines ${t.rifle || 0} in ${r.matches.length} matches; AI wins ${r.tot.w}-${r.tot.l}`);
   }
 })();

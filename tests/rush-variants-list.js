@@ -1,6 +1,6 @@
-// Rifleman-rush variants shared by rush-variants.js (vs the AI) and duel.js (vs the smart defender)
+// Marine-rush variants shared by rush-variants.js (vs the AI) and duel.js (vs the smart defender)
 const B3 = ['barracks', 'barracks', 'barracks'];
-// The rush that beats Hard: 3 Barracks + 3 Refineries, nonstop Riflemen, hold at the far field node
+// The rush that beats Hard: 3 Barracks + 3 Refineries, nonstop Marines, hold at the far field node
 // (just outside the enemy HQ's 390 range: all three nodes pay out), then attack with 24
 const CALIBRATED = { order: ['barracks', 'refinery', 'barracks', 'barracks', 'refinery', 'refinery'], holdU: 1060, attackAt: 24 };
 const VARIANTS = {

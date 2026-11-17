@@ -37,7 +37,7 @@ async function main() {
       setStance(game, 0, 'hold'); applyZoom(1.5); cam.x = u0 + 125; clampCam(); render(ctx, game, game.t, sel, selPad);
     });
     await shot('lineup');
-    await page.evaluate(() => { // a Gravemantle slowing Riflemen in its aura; an Eventide pulling a group in
+    await page.evaluate(() => { // a Gravemantle slowing Marines in its aura; an Eventide pulling a group in
       for (const e of game.ents) if (e.kind === 'u') e.hp = 0; __frames(1); applyZoom(1.5);
       const u0 = L / 2; game.fog[0].vis.fill(1);
       const gm = spawnUnit(game, 0, 'gravemantle', u0 - 120, 80); Object.assign(gm, { holdU: gm.u, holdV: gm.v, face: 1, cd: 1e6 });

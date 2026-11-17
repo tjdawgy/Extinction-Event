@@ -60,10 +60,10 @@ test('newly trained units follow their type order, else their group order, else 
   const fresh = g.ents.filter(e => e.kind === 'u' && !before.has(e));
   const r = fresh.find(e => e.type === 'rifle'), t = fresh.find(e => e.type === 'tank');
   assert.ok(r && t, 'both trained');
-  assert.strictEqual(sim.unitOrder(S, r.type).o, 'retreat', 'Rifleman: its type order');
+  assert.strictEqual(sim.unitOrder(S, r.type).o, 'retreat', 'Marine: its type order');
   assert.strictEqual(sim.unitOrder(S, 'heavy').o, 'attack', 'Heavy: the Infantry order');
   assert.strictEqual(sim.unitOrder(S, t.type), null, 'Tank: the global stance (hold)');
-  assert.ok(Math.abs(r.u - sim.rallyU(0)) < 115, `the new Rifleman goes to the rally flag (retreat): ${(r.u - sim.rallyU(0)).toFixed(0)}`); // each unit has its own spot up to 100 behind the flag
+  assert.ok(Math.abs(r.u - sim.rallyU(0)) < 115, `the new Marine goes to the rally flag (retreat): ${(r.u - sim.rallyU(0)).toFixed(0)}`); // each unit has its own spot up to 100 behind the flag
 });
 
 test('Regroup: units walk to the flag and hold there; the flag is done when all have arrived; a new order replaces it', () => {

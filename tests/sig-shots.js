@@ -2,7 +2,7 @@
 // --play first: a match as Last Fist against Bloomhost (Hard). Both buildings are placed by tapping their Build cards, then the
 //    autoplayer runs the player's side for 3 game minutes at 1× speed (no CPU throttle); prints console errors and what happened.
 // Staged scenes (seeded random): the Salvage Yard and Fortification Depot at T1 and T3, a node bunker, a Depot T2 bunker's
-// heal ring with Riflemen inside it, and the Overdrive icon with its timer. Prints any console errors.
+// heal ring with Marines inside it, and the Overdrive icon with its timer. Prints any console errors.
 //   node tests/sig-shots.js [outDir] [--wide] [--tag=sig] [--play] [--minutes=3]
 const fs = require('fs');
 const path = require('path');
@@ -51,7 +51,7 @@ async function main() {
     await shot(page, 't1');
     await page.evaluate(() => { paused = false; __tier(__yard, 3); __tier(__dep, 3); __frames(20); paused = true; render(ctx, game, game.t, sel, selPad); });
     await shot(page, 't3');
-    // a node bunker at T1: the west node taken by Riflemen, an enemy Skitterling pack walking into its gun
+    // a node bunker at T1: the west node taken by Marines, an enemy Skitterling pack walking into its gun
     await page.evaluate(() => {
       paused = false; __tier(__dep, 1);
       const n = game.nodes[0]; n.owner = 0; n.prog = 100;
@@ -61,7 +61,7 @@ async function main() {
       applyZoom(1.6); cam.x = n.u + 40; clampCam(); __frames(1); paused = true; render(ctx, game, game.t, sel, selPad);
     });
     await shot(page, 'bunker');
-    // Depot T2: the heal ring, wounded Riflemen inside it
+    // Depot T2: the heal ring, wounded Marines inside it
     await page.evaluate(() => {
       paused = false; __tier(__dep, 2);
       for (const e of game.ents) if (e.kind === 'u' && e.side === 1) e.hp = 0;

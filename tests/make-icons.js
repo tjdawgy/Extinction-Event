@@ -1,4 +1,4 @@
-// App icons (v2.54, Phase 0 item 7) drawn with the game's own art: the Last Fist Command HQ with a Tank and a Rifleman in
+// App icons (v2.54, Phase 0 item 7) drawn with the game's own art: the Last Fist Command HQ with a Tank and a Marine in
 // front, on the night sky and planet of the battlefield. Writes icons/ (192, 512, maskable 512, Apple 180).
 //   node tests/make-icons.js [outDir]
 const fs = require('fs');

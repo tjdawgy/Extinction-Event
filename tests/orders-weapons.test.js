@@ -149,7 +149,7 @@ test('every combat unit stops to fight an enemy it can hit instead of walking pa
   step(g, 3); assert.ok(a.hp < a.maxHp, 'an Interceptor shoots an enemy aircraft in range');
   // Medicopters and Recon Drones: no weapon; on Hold, Attack and Retreat they stay with the army, never past it.
   // v2.39: on its own seeded SIM. Unseeded, about 1 run in 60 the Medicopter settled about 60 ahead of the retreated
-  // Rifleman (a steady hover over the infantry, not a lag), past the 40 margin.
+  // Marine (a steady hover over the infantry, not a lag), past the 40 margin.
   const ss = loadSim({ random: mulberry(7) }), sstep = (g, secs) => { for (let i = 0; i < Math.round(secs * 30); i++) ss.update(g, 1 / 30); };
   for (const st of ['hold', 'attack', 'retreat']) {
     const h = ss.newGame('normal', { factions: ['lastfist', 'lastfist'] }); h.countdown = 0; for (const s of h.sides) { s.aiT = 1e9; s.res.c = s.res.e = 9000; } ss.setStance(h, 1, 'hold'); ss.setStance(h, 0, st);

@@ -60,7 +60,7 @@ test('Hold keeps a side where it stands; Attack sends each unit at the nearest e
   const blue = sim.rangeUnits(g, 0, 'rifle', 400, 0, 3), red = sim.rangeUnits(g, 1, 'interceptor', 1300, 0, 1).concat(sim.rangeUnits(g, 1, 'tank', 1300, 40, 1));
   steps(g, 3); for (const e of blue.concat(red)) assert.strictEqual(e.po.o, 'hold');
   sim.rangeMode(g, 1, 'attack');
-  assert.strictEqual(red[1].po.o, 'target'); assert.ok(blue.some(b => b.id === red[1].po.id), 'the Tank goes for a Rifleman');
+  assert.strictEqual(red[1].po.o, 'target'); assert.ok(blue.some(b => b.id === red[1].po.id), 'the Tank goes for a Marine');
   assert.strictEqual(red[0].po.o, 'hold', 'an Interceptor hits only aircraft: nothing here to hurt, so it holds');
   const x0 = red[1].u; steps(g, 4); assert.ok(red[1].u < x0 - 20, 'the Tank advances');
   for (const e of blue) assert.strictEqual(e.po.o, 'hold');

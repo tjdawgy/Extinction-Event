@@ -127,15 +127,15 @@ Units:
 
 | Unit | From | Cost | Supply | HP + shields | Damage / cooldown (dps) | Range | Speed | Armor | Hits | Traits | Last Fist equivalent |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Shardling | Genesis Gate T1 | 80/20 | 2 | 80 + 60 | 11 / 0.6 s (18) | 22 (melee) | 50 | light | ground, buildings | Fast melee; closes on enemies it can see within 150; captures nodes | Rifleman 50/0, 1, 70 HP, 10 dps |
+| Shardling | Genesis Gate T1 | 80/20 | 2 | 80 + 60 | 11 / 0.6 s (18) | 22 (melee) | 50 | light | ground, buildings | Fast melee; closes on enemies it can see within 150; captures nodes | Marine 50/0, 1, 70 HP, 10 dps |
 | Bastion | Architectum T1 | 280/90 | 4 | 620 + 420 | 36 / 1.6 s (22.5) | 100 | 23 | vehicle | ground, buildings | Distortion brace (the Bulwark's): the first hit after its cooldown cuts damage 40% for 3 s, every 12 s | Tank 200/40, 3, 560 HP, 25 dps |
 | Wraithwing | Celestial Array T1 | 260/120 | 3 | 160 + 140 | 20 / 0.8 s (25) | 140 | 86 | air | aircraft, ground, buildings | Fast flyer; the base mobile anti-air | Gunship 225/100, 3, 230 HP, 25 dps |
 
-Ratios: credits+energy per supply: Shardling 50 (Rifleman 50), Bastion 93 (Tank 80), Wraithwing 127 (Gunship 108). HP+shields per 100 credits+energy: Shardling 140 (Rifleman 140), Bastion 281 (Tank 233), Wraithwing 79 (Gunship 71).
+Ratios: credits+energy per supply: Shardling 50 (Marine 50), Bastion 93 (Tank 80), Wraithwing 127 (Gunship 108). HP+shields per 100 credits+energy: Shardling 140 (Marine 140), Bastion 281 (Tank 233), Wraithwing 79 (Gunship 71).
 
 Weapon tables (light / heavy / vehicle / air / building): blade (Shardling) 1.1 / 0.9 / 0.6 / 0 / 0.6; pulse (Bastion) 0.9 / 1.1 / 1.1 / 0 / 1.0; phase (Wraithwing) 1.0 / 0.85 / 1.1 / 1.0 / 0.7; lance (Null Lance T1–T2) 1.0 / 1.0 / 0.9 / 1.1 / 0.3; horizon (Null Lance T3) 1.0 / 1.1 / 1.2 / 1.0 / 0.8.
 
-AI (minimal): the Axiarch units read the personalities' Last Fist tastes through their counterparts (Shardling ↔ Rifleman, Bastion ↔ Tank, Wraithwing ↔ Gunship), with scores in the same style. The AI skips the locked production upgrades and has no abilities to cast. Everything else (build order by role, Null Lances by the Turret rules, nodes, attacks) is the existing logic, unchanged.
+AI (minimal): the Axiarch units read the personalities' Last Fist tastes through their counterparts (Shardling ↔ Marine, Bastion ↔ Tank, Wraithwing ↔ Gunship), with scores in the same style. The AI skips the locked production upgrades and has no abilities to cast. Everything else (build order by role, Null Lances by the Turret rules, nodes, attacks) is the existing logic, unchanged.
 
 Not in v2.25 (per section 10): the power field and warp-in (v2.26; units walk out of their buildings for now), the Genesis Gate and Architectum trees (v2.27), commander abilities (v2.28; shown locked as "Soon"), the Celestial Array tree (v2.29).
 

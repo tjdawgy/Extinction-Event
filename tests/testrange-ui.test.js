@@ -88,7 +88,7 @@ test('Test Range: Control blue myself (box, move, target), Compare with three is
   const box = await page.evaluate(() => { const p = game.ents.filter(e => e.side === 0).map(e => trScreen(trView(0), e)); return [Math.min(...p.map(q => q.x)) - 20, Math.min(...p.map(q => q.y)) - 16, Math.max(...p.map(q => q.x)) + 20, Math.max(...p.map(q => q.fy)) + 8]; });
   await page.mouse.move(box[0], box[1]); await page.mouse.down(); await page.waitForTimeout(380); await page.mouse.move(box[2], box[3], { steps: 8 }); await page.mouse.up();
   await page.waitForTimeout(80);
-  assert.strictEqual(await page.evaluate(() => SELN.size), 5, 'the box selects the five Riflemen');
+  assert.strictEqual(await page.evaluate(() => SELN.size), 5, 'the box selects the five Marines');
   await page.mouse.click(380, y + 10); await page.waitForTimeout(60);
   assert.ok(await page.evaluate(() => game.ents.filter(e => e.side === 0).every(e => e.po.o === 'go')), 'a tap on the ground moves them');
   await page.evaluate(() => selAll());

@@ -148,7 +148,7 @@ function updateNodes(g, dt) {
   for (const n of g.nodes) {
     if (n.type === 'relic' && (!SPECIAL.on || !SPECIAL.relic || n.spent || relicGuarded(g, n))) { n.c = [0, 0]; n.prog = 0; continue; } // v2.71: guarded or spent: nothing to capture
     let c0 = 0, c1 = 0;
-    let w0 = 0, w1 = 0; // capture weight: a Drilled Rifleman counts 1.5
+    let w0 = 0, w1 = 0; // capture weight: a Drilled Marine counts 1.5
     for (const e of g.ents) if (e.kind === 'u' && e.hp > 0 && !UDEF[e.type].air && !UDEF[e.type].noCap && !e.noCap && !e.gone && (MAP_2D ? Math.hypot(e.u - n.u, e.v - n.v) : Math.abs(e.u - n.u)) <= (n.r || NODE_R)) { const w = e.vet ? DRILL.capture : 1; if (e.side === 0) { c0++; w0 += w; } else { c1++; w1 += w; } }
     n.c = [c0, c1];
     if (c0 && !c1) n.prog = Math.min(100, n.prog + 8 * Math.sqrt(w0) * dt);
@@ -259,7 +259,7 @@ function updateBuilding(g, b, foes, dt) {
     const ut = b.queue[0], pair = ut === 'rifle' && b.queue[1] === 'rifle' && pathMod(b, 'pairs'), br = ut === 'skitterling' && rwB5b(g); // br (v2.88): a batch 5b brood
     if (b.prodT >= (br ? BROOD.time : UDEF[ut].time) * (pair ? PAIR_TIME : 1)) {
       b.prodT = 0; b.queue.shift();
-      const n = pair ? 2 : br ? broodHatch(g, b) : 1; // Mass Deployment: two Riflemen at a time; a brood: what fits under the limit
+      const n = pair ? 2 : br ? broodHatch(g, b) : 1; // Mass Deployment: two Marines at a time; a brood: what fits under the limit
       if (n === 2) b.queue.shift();
       for (let i = 0; i < n; i++) {
         const fr = fwdRally(g, b.side, b); // v2.68: a forward Barracks sends its units to its lane's Forward flag
@@ -267,7 +267,7 @@ function updateBuilding(g, b, foes, dt) {
         const nu = fr ? spawnUnit(g, b.side, ut, fr.u + rand(-12, 12), fr.v + rand(-20, 20)) : spawnUnit(g, b.side, ut, b.u + dirOf(b.side) * (b.half + 10), b.v + rand(-12, 12) + (br ? (i - 1.5) * 9 : i * 16));
         if (fr) { nu.lane = fr.lane; nu.fwdHome = { u: fr.u, n: fr.n }; nu.laneV = clamp(nu.v - fr.v, -LANE_V, LANE_V); }
         if (g.sides[b.side].direct) ctlTrained(g, nu, fr); // v2.73: to the base rally point (or beside a forward Barracks), each in its own space (v2.76), then Hold
-        if (ut === 'rifle' && pathMod(b, 'drill')) { nu.vet = 1; nu.maxHp = nu.hp = UDEF.rifle.hp * DRILL.hp; } // Drilled Riflemen
+        if (ut === 'rifle' && pathMod(b, 'drill')) { nu.vet = 1; nu.maxHp = nu.hp = UDEF.rifle.hp * DRILL.hp; } // Drilled Marines
         if (g.log) { logAdd(g.log.tot[b.side].trained, ut); lgUnit(g, b.side, 'T', ut); }
       }
     }

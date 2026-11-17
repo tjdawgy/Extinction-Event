@@ -42,7 +42,7 @@ async function main() {
       for (const e of game.ents) if (e.kind === 'u') e.hp = 0; __frames(1); applyZoom(1);
       const u0 = L / 2; game.fog[0].vis.fill(1);
       for (let i = 0; i < 4; i++) { const r = spawnUnit(game, 1, i ? 'rifle' : 'tank', u0 + (i % 2) * 22, (i - 1.5) * 20); r.holdU = r.u; r.holdV = r.v; r.cd = 1e6; r.corr = i % 2 ? 0.25 : 0.12; r.corrT = game.t + 30; }
-      addAcid(game, 0, u0 + 75, 10); game.acid[0].end = game.t + 30; // a pool beside the group, one Rifleman standing in it
+      addAcid(game, 0, u0 + 75, 10); game.acid[0].end = game.t + 30; // a pool beside the group, one Marine standing in it
       { const r = spawnUnit(game, 1, 'rifle', u0 + 80, 14); r.holdU = r.u; r.holdV = r.v; r.cd = 1e6; }
       const s = spawnUnit(game, 0, 'spitter', u0 - 120, 0); s.holdU = s.u; s.holdV = 0; s.cd = 1e6;
       const rm = spawnUnit(game, 0, 'ruinmaw', u0 - 170, 40); rm.holdU = rm.u; rm.holdV = 40; rm.cd = 1e6;

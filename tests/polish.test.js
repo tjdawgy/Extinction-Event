@@ -31,7 +31,7 @@ test('MECH7C: on by default; off restores the v2.42 rally point (300 out) and no
 
 test('rally point inside the HQ gun\'s T1 reach; every node outside the T1 gun, the third (enemy\'s) node inside its T2/T3 reach', () => {
   const gun = sim.BDEF.hq.gun;
-  assert.ok(M.rally + sim.UDEF.rifle.range <= gun[1].range, 'a Rifleman shooting units at the rally point stands inside the HQ gun');
+  assert.ok(M.rally + sim.UDEF.rifle.range <= gun[1].range, 'a Marine shooting units at the rally point stands inside the HQ gun');
   for (const s of [0, 1]) {
     const d = Math.abs(sim.NODE_U[s === 0 ? 0 : 2] - sim.hqU(s));
     assert.ok(d - sim.NODE_R >= gun[1].range, 'the whole node zone is outside the T1 gun');
@@ -47,7 +47,7 @@ test('melee on Hold: engages an enemy within holdR of its spot, never chases one
       const sk = sim.spawnUnit(g, 0, 'skitterling', u0, 0); sim.setStance(g, 0, 'hold');
       const near = sim.spawnUnit(g, 1, 'rifle', u0 + 60, 0); near.holdU = near.u; near.holdV = 0; near.cd = 1e6;
       step(g, 3);
-      if (on) assert.ok(near.hp < near.maxHp, 'the near Rifleman was attacked'); else assert.strictEqual(near.hp, near.maxHp, 'v2.42: a melee unit on Hold never engages');
+      if (on) assert.ok(near.hp < near.maxHp, 'the near Marine was attacked'); else assert.strictEqual(near.hp, near.maxHp, 'v2.42: a melee unit on Hold never engages');
       near.hp = 0; step(g, 3);
       assert.ok(Math.abs(sk.u - u0) < 6, 'back on its spot');
       const far = sim.spawnUnit(g, 1, 'rifle', u0 + 140, 0); far.holdU = far.u; far.holdV = 0; far.cd = 1e6;
@@ -69,7 +69,7 @@ test('melee on a Regroup flag engages within holdR of its flag spot too', () => 
 });
 
 // v2.45: was flaky (about 1 run in 10 failed). Each unit's rallyOff (where it waits, 0-100 behind the flag) is random; a lone
-// Rifleman that rolled near -100 waited so far back that 6 s after its release it was still short of r + 40. Every unit here
+// Marine that rolled near -100 waited so far back that 6 s after its release it was still short of r + 40. Every unit here
 // now waits at rallyOff -50 (the middle of the range; 0 failures in 300 seeds at -50, 0 and -80), and the run is seeded.
 test('rally on Attack: a player\'s new units wait at the rally point until the group there is worth batchV (or batchT seconds), then go together', () => seeded(11, () => {
   const g = quiet('lastfist', 'lastfist');
@@ -79,7 +79,7 @@ test('rally on Attack: a player\'s new units wait at the rally point until the g
   const r = sim.rallyU(0), a = spawn('rifle', r, 0);
   step(g, 4);
   const atRally = u => u < r + 30 && u > r - 130; // the rally point, spread back by each unit's own offset (rallyOff)
-  assert.ok(atRally(a.u), `one Rifleman (45) waits at the rally point: ${Math.round(a.u)} vs ${r}`);
+  assert.ok(atRally(a.u), `one Marine (45) waits at the rally point: ${Math.round(a.u)} vs ${r}`);
   const more = []; for (let i = 0; i < 6; i++) more.push(spawn('rifle', r - 10, (i - 3) * 10)); // 7 x 45 = 315 >= 300
   const a0 = a.u; step(g, 4);
   assert.ok(a.u > a0 + 60 && more.every(x => x.u > r + 40), 'the group left together');

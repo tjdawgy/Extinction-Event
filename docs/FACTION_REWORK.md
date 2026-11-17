@@ -207,7 +207,7 @@ fingerprints match, a seeded Test Range skirmish hashes as on v2.84's build, and
   unchanged; a seeded Test Range skirmish with Riftstalkers pins the new behaviour (tests/rework-3b.test.js).
 Departures and choices the design left open:
 - Dreadthorn: the cooldown runs from the charge's start. It picks, among enemy ground units 80-200 away, the one whose line
-  tramples the most enemy supply (within 18 of its path); an AI's charge needs 3 supply on the line (three Riflemen, or one
+  tramples the most enemy supply (within 18 of its path); an AI's charge needs 3 supply on the line (three Marines, or one
   unit of 3+ supply such as a Tank), a player's takes any. It doesn't start a charge while something is already in its melee
   reach (it fights), nor on Hold at enemies further than the usual hold reach from its spot. A target order (a tap on an
   enemy) charges at that unit from 40 to 200 (40: not from point-blank). It stops at any building, an enemy Worldbreaker
@@ -475,7 +475,7 @@ Departures and choices the brief left open:
 
 ## Unchanged (already distinct)
 
-Rifleman, Heavy, Tank, Flame Tank, Hydra, Interceptor, Medicopter, Recon Drone, Mite, Razorwing, Cloudwing, Thornback, Lancer,
+Marine, Heavy, Tank, Flame Tank, Hydra, Interceptor, Medicopter, Recon Drone, Mite, Razorwing, Cloudwing, Thornback, Lancer,
 Gravemantle, Eventide, Prismwing, Shardstorm. (The Skitterling, Spitter and Needlewing changed in batch 5b, the swarm pass; the Mite,
 Razorwing, Cloudwing and Thornback kept their mechanics there but were redrawn, and gained swarm surge and kill frenzy.)
 

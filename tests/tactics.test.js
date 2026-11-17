@@ -55,7 +55,7 @@ test('engage: a Default AI does not attack into a known army its strength would 
   const run = engage => {
     const s = loadSim({ random: mulberry(5) }), g = s.newGame('hard', { factions: ['lastfist', 'lastfist'], ai: 'default260', persona: 'aggressor' }); g.countdown = 0; // v2.61: v2.60's Default (the engage rule alone; the press rule now acts before it)
     const side = g.sides[1]; side.persona.dial.fix.engage = engage; side.persona.dial.attackAt = 0; g.sides[0].aiT = 1e9; g.t = 400;
-    // five Gunships: high value (1,875 by the value rule) but little fighting strength, against 15 Riflemen seen at the middle
+    // five Gunships: high value (1,875 by the value rule) but little fighting strength, against 15 Marines seen at the middle
     // node (750): the value rule sends it out, the strength estimate (about 0.9 of theirs) does not
     for (let i = 0; i < 5; i++) s.spawnUnit(g, 1, 'aircraft', 1150 + i * 6, 0);
     for (let i = 0; i < 15; i++) g.fog[1].intel[9000 + i] = { type: 'rifle', u: 860, t: g.t };

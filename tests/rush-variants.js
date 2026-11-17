@@ -1,4 +1,4 @@
-// Rush calibration: Rifleman-rush variants against an AI difficulty.
+// Rush calibration: Marine-rush variants against an AI difficulty.
 //   node tests/rush-variants.js [matches=20] [difficulty=hard] [name filters...]
 const { loadSim } = require('./load-sim');
 const { playMatch } = require('./bots');

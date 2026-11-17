@@ -45,7 +45,7 @@ for (const dev of [PHONE, NARROW]) test(`at ${dev.width}×${dev.height}: HQ aler
     const bTxt = [...document.querySelectorAll('#alerts .alrt')].map(t => t.textContent).at(-1);
     damage(game, b1, 5, 'rifle', 1); alertTick();
     const keys = Object.keys(alerts.last).sort();
-    // a node it owns with an enemy rifleman standing on it, seen by its own rifleman
+    // a node it owns with an enemy marine standing on it, seen by its own marine
     const n = game.nodes[0]; n.owner = 0; n.prog = 100;
     const mine = spawnUnit(game, 0, 'rifle', n.u - 40, 0); mine.holdU = mine.u; mine.holdV = 0;
     const foe = spawnUnit(game, 1, 'rifle', n.u, 0); foe.holdU = foe.u; foe.holdV = 0; foe.cd = 1e9; mine.cd = 1e9;

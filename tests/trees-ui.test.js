@@ -23,7 +23,7 @@ test('the path picker: Upgrade asks for a path, tap a path, then confirm; the pa
   await page.evaluate(() => openPanel(game.ents.find(e => e.type === 'barracks')));
   assert.ok(await page.evaluate(() => !$('bpPick').classList.contains('hide')));
   assert.match(await page.textContent('#bpPick [data-p="A"]'), /Specialists.*Heavy troopers.*Snipers/);
-  assert.match(await page.textContent('#bpPick [data-p="B"]'), /Mass Deployment.*Riflemen in pairs.*Drilled Riflemen/);
+  assert.match(await page.textContent('#bpPick [data-p="B"]'), /Mass Deployment.*Marines in pairs.*Drilled Marines/);
   await page.click('#bpUp');
   assert.ok((await page.evaluate(() => [...$('toasts').children].map(t => t.textContent))).includes('Pick a path first: tap A or B'));
   assert.strictEqual(await page.evaluate(() => sel.upgrading), false, 'nothing paid or started');
@@ -33,8 +33,8 @@ test('the path picker: Upgrade asks for a path, tap a path, then confirm; the pa
   assert.deepStrictEqual(await page.evaluate(() => [sel.upgrading, sel.upPath]), [true, 'B']);
   await page.evaluate(() => { sel.upProg = 0.9999; update(game, 0.2); refreshPanel(); });
   assert.ok(await page.evaluate(() => $('bpPick').classList.contains('hide')), 'no picker once the path is taken');
-  assert.match(await page.textContent('#bpNow'), /T2: Mass Deployment: Riflemen in pairs/);
-  assert.match(await page.textContent('#bpNext'), /Next T3: Drilled Riflemen/);
+  assert.match(await page.textContent('#bpNow'), /T2: Mass Deployment: Marines in pairs/);
+  assert.match(await page.textContent('#bpNext'), /Next T3: Drilled Marines/);
   assert.deepStrictEqual(errors, []);
   await page.close();
 });
@@ -70,7 +70,7 @@ test('Train tab (v2.16): only units you can train now; unaffordable ones stay, g
   await page.evaluate(() => { tryBuild(game, 0, 'barracks'); refreshUI(false); });
   assert.deepStrictEqual(await types(), []); assert.strictEqual(await hint(), 'Units unlock when your Barracks is finished');
   await page.evaluate(() => { for (const b of game.ents) if (b.type === 'barracks') { b.built = true; b.progress = 1; } refreshUI(false); });
-  assert.deepStrictEqual(await types(), ['rifle'], 'T1 Barracks: Riflemen only (no Heavy before a path, no vehicles without a War Factory)');
+  assert.deepStrictEqual(await types(), ['rifle'], 'T1 Barracks: Marines only (no Heavy before a path, no vehicles without a War Factory)');
   assert.strictEqual(await hint(), '');
   await page.evaluate(() => { for (const b of game.ents.filter(e => e.type === 'barracks')) { tryUpgrade(game, 0, b, 'B'); b.upProg = 0.9999; } update(game, 0.2); refreshUI(false); });
   assert.deepStrictEqual(await types(), ['rifle'], 'Mass Deployment: no Heavy or Sniper');

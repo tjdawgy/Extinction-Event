@@ -9,7 +9,7 @@ const constructing = (g, s) => g.ents.filter(e => e.kind === 'b' && e.side === s
 // Run fn every `sec` seconds of game time
 function every(sec, fn) { let t = 0; return (g, s, dt) => { t -= dt; if (t <= 0) { t = sec; fn(g, s); } }; }
 
-// Rifleman rush: two Barracks straight away, a third later, Riflemen only, attack at ~8 alive
+// Marine rush: two Barracks straight away, a third later, Marines only, attack at ~8 alive
 function rushBot(sim, { attackAt = 8, regroupAt = 3 } = {}) {
   let attacking = false;
   const log = { attacks: 0 };
@@ -30,13 +30,13 @@ function rushBot(sim, { attackAt = 8, regroupAt = 3 } = {}) {
   return bot;
 }
 
-// Configurable Rifleman rush, for calibrating against how a human rushes. Uses only the player's controls.
+// Configurable Marine rush, for calibrating against how a human rushes. Uses only the player's controls.
 //   order:     build order, each item built as soon as affordable (credits are saved for it)
-//   attackAt:  attack the enemy base once this many Riflemen are alive (1 = stream from the first one)
+//   attackAt:  attack the enemy base once this many Marines are alive (1 = stream from the first one)
 //   attackT:   ...or once this much time has passed (whichever comes first)
 //   holdU:     before the base attack, push to this point and Hold there (field nodes = income)
 //   regroupAt: fall back below this many (0 = never retreat; reinforcements keep streaming)
-//   habitat:   add Habitats when the army is full; queue: Riflemen kept queued per Barracks
+//   habitat:   add Habitats when the army is full; queue: Marines kept queued per Barracks
 function rushXBot(sim, o = {}) {
   const { order = ['barracks', 'barracks', 'barracks'], attackAt = 1, attackT = 1e9, holdU = null, regroupAt = 0, habitat = true, queue = 2 } = o;
   let phase = holdU === null ? 'build' : 'field', step = 0;
@@ -120,12 +120,12 @@ function turtleBot(sim, { attackFill = 0.85, plan = TURTLE_PLAN } = {}) {
   return bot;
 }
 
-// Smart defender: the best counter to a Rifleman rush we could script, with the player's controls only.
-// Barracks for early Riflemen, a Turret on the front pad, then economy and a War Factory for Tanks
+// Smart defender: the best counter to a Marine rush we could script, with the player's controls only.
+// Barracks for early Marines, a Turret on the front pad, then economy and a War Factory for Tanks
 // (splash, and 1,867 effective HP against rifle fire). Holds under the HQ and Turret, counterattacks with Tanks.
 //   plan: build order; turretPad: pad for the first Turret; holdDist: hold this far out from the HQ
 //   (a node), else at the rally flag; holdMin: only walk out with at least this many units;
-//   riflesFirst: keep this many Riflemen before spending on Tanks
+//   riflesFirst: keep this many Marines before spending on Tanks
 function defenderBot(sim, o = {}) {
   const { plan = ['barracks', 'turret', 'refinery', 'factory', 'refinery', 'habitat', 'reactor'], attackTanks = 5, attackArmy = 1e9, turretPad = 4, holdDist = null, holdMin = 3, riflesFirst = 0 } = o;
   let attacking = false, launched = 0;
@@ -145,7 +145,7 @@ function defenderBot(sim, o = {}) {
     if (used >= cap - 2 && cap < 80 && !constructing(g, s).some(b => b.type === 'habitat')) sim.tryBuild(g, s, 'habitat');
     const hurt = g.ents.find(b => b.kind === 'b' && b.side === s && b.built && b.hp > 0 && !(b.repair > 0) && b.hp < b.maxHp * 0.5);
     if (hurt && !threat) sim.tryRepair(g, s, hurt);
-    // Tanks once possible; Riflemen while waiting or under pressure
+    // Tanks once possible; Marines while waiting or under pressure
     const tanks = sim.hasBuilt(g, s, 'factory'), nRifle = units(g, s, 'rifle').length;
     const can = t => side.res.c - sim.UDEF[t].cost.c >= reserve.c && side.res.e - sim.UDEF[t].cost.e >= reserve.e;
     if (tanks && nRifle >= riflesFirst && can('tank')) sim.tryTrain(g, s, 'tank');
