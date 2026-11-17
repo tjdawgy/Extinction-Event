@@ -1,0 +1,33 @@
+{"map":"classic","f":["bloomhost","axiarchs"],"t":352,"over":true,"winner":0,"n":{},"tr":{},"paths":["bloomhost:barracks:B","bloomhost:factory:A","axiarchs:barracks:B","axiarchs:factory:B"],"err":null}
+{"map":"classic","f":["lastfist","axiarchs"],"t":589,"over":true,"winner":1,"n":{"run":4,"judge":25,"judgeB":19,"vbolt":96},"tr":{},"paths":["axiarchs:barracks:A","axiarchs:factory:B","lastfist:techlab:A","lastfist:barracks:A","lastfist:factory:A"],"err":null}
+{"map":"classic","f":["axiarchs","lastfist"],"t":523,"over":true,"winner":0,"n":{"run":2,"judge":19,"judgeB":16,"vbolt":70},"tr":{},"paths":["axiarchs:barracks:A","axiarchs:factory:A","lastfist:techlab:A","lastfist:barracks:A","lastfist:factory:B"],"err":null}
+{"map":"classic","f":["lastfist","bloomhost"],"t":718,"over":true,"winner":0,"n":{"run":9,"pustule":7,"pusburst":2,"mites":12,"pusclear":1},"tr":{"interceptor":4,"broodtyrant":1},"paths":["lastfist:techlab:A","bloomhost:barracks:A","bloomhost:factory:B","lastfist:barracks:B","bloomhost:techlab:B","lastfist:factory:A"],"err":null}
+{"map":"classic","f":["axiarchs","bloomhost"],"t":665,"over":true,"winner":1,"n":{"vbolt":192,"judge":48,"pustule":24,"pusburst":10,"mites":48,"land":15,"takeoff":14,"landed":13},"tr":{},"paths":["bloomhost:barracks:B","bloomhost:factory:A","axiarchs:barracks:A","axiarchs:factory:B"],"err":null}
+{"map":"classic","f":["bloomhost","lastfist"],"t":1194,"over":true,"winner":1,"n":{"run":7,"pustule":9,"pusburst":3,"mites":18},"tr":{"broodtyrant":1,"worldrender":1,"interceptor":8},"paths":["lastfist:techlab:A","bloomhost:barracks:B","bloomhost:factory:A","lastfist:barracks:B","bloomhost:techlab:B","lastfist:factory:B"],"err":null}
+{"map":"twolane","f":["lastfist","axiarchs"],"t":507,"over":true,"winner":1,"n":{"vbolt":36,"judge":4,"judgeB":3},"tr":{},"paths":["axiarchs:barracks:B","axiarchs:factory:B","lastfist:techlab:A","lastfist:barracks:B","lastfist:factory:B"],"err":null}
+{"map":"twolane","f":["lastfist","bloomhost"],"t":724,"over":true,"winner":1,"n":{"pustule":3,"run":10,"pusburst":1,"mites":6},"tr":{"interceptor":7,"broodtyrant":2,"worldrender":1},"paths":["bloomhost:barracks:A","lastfist:techlab:A","bloomhost:factory:A","bloomhost:techlab:B","lastfist:barracks:A","lastfist:factory:B"],"err":null}
+{"map":"twolane","f":["bloomhost","axiarchs"],"t":583,"over":true,"winner":1,"n":{"hop":442,"vbolt":62,"judge":20,"judgeB":10},"tr":{"voidcarrier":1},"paths":["bloomhost:barracks:B","bloomhost:factory:A","axiarchs:barracks:B","axiarchs:factory:B","axiarchs:techlab:B"],"err":null}
+{"map":"twolane","f":["bloomhost","lastfist"],"t":1226,"over":true,"winner":1,"n":{"pustule":3,"run":27,"pusburst":1,"mites":6},"tr":{},"paths":["bloomhost:barracks:A","bloomhost:factory:A","lastfist:techlab:A","lastfist:barracks:A","lastfist:factory:B","bloomhost:barracks:B"],"err":null}
+{"map":"twolane","f":["axiarchs","bloomhost"],"t":1065,"over":true,"winner":0,"n":{"vbolt":342,"pustule":3,"pusburst":1,"mites":6,"judge":66,"judgeB":7},"tr":{},"paths":["bloomhost:barracks:B","axiarchs:barracks:A","bloomhost:factory:A","axiarchs:factory:A","bloomhost:barracks:A","axiarchs:barracks:B"],"err":null}
+{"map":"twolane","f":["axiarchs","lastfist"],"t":1300,"over":false,"winner":-1,"n":{"judge":19,"vbolt":36,"run":10,"judgeB":12},"tr":{"interceptor":7},"paths":["axiarchs:barracks:A","axiarchs:factory:A","lastfist:techlab:A","lastfist:barracks:A","lastfist:factory:A","axiarchs:barracks:B"],"err":null}
+{"map":"threelane","f":["lastfist","bloomhost"],"t":874,"over":true,"winner":1,"n":{"run":6,"land":1,"landed":1,"takeoff":1},"tr":{"interceptor":4},"paths":["bloomhost:barracks:B","bloomhost:factory:B","lastfist:techlab:A","lastfist:barracks:B","lastfist:factory:B","bloomhost:barracks:A"],"err":null}
+{"map":"threelane","f":["lastfist","axiarchs"],"t":697,"over":true,"winner":1,"n":{"vbolt":30,"judge":17,"judgeB":16},"tr":{"interceptor":1},"paths":["axiarchs:barracks:A","axiarchs:factory:A","lastfist:techlab:A","lastfist:barracks:A","lastfist:factory:A"],"err":null}
+{"map":"threelane","f":["bloomhost","axiarchs"],"t":570,"over":true,"winner":0,"n":{"hop":178,"vbolt":131,"judge":28,"pustule":16,"pusburst":6,"mites":32,"land":8,"landed":8,"takeoff":6},"tr":{},"paths":["bloomhost:barracks:B","bloomhost:factory:A","axiarchs:barracks:A","axiarchs:factory:B","axiarchs:techlab:B","bloomhost:barracks:A"],"err":null}
+{"map":"threelane","f":["axiarchs","bloomhost"],"t":551,"over":true,"winner":0,"n":{"judge":17,"judgeB":11,"vbolt":25},"tr":{},"paths":["axiarchs:barracks:B","axiarchs:factory:B","bloomhost:barracks:A","bloomhost:factory:B","bloomhost:techlab:B"],"err":null}
+{"map":"threelane","f":["bloomhost","lastfist"],"t":788,"over":true,"winner":0,"n":{"run":6,"pustule":6,"pusburst":2,"mites":12},"tr":{"interceptor":7},"paths":["bloomhost:barracks:A","bloomhost:factory:B","lastfist:techlab:A","lastfist:barracks:A","lastfist:factory:A","bloomhost:barracks:B"],"err":null}
+{"map":"threelane","f":["axiarchs","lastfist"],"t":585,"over":true,"winner":0,"n":{"run":4,"judge":22,"judgeB":18,"vbolt":69},"tr":{"interceptor":1},"paths":["axiarchs:barracks:A","axiarchs:factory:A","lastfist:techlab:A","lastfist:barracks:A","lastfist:factory:A"],"err":null}
+errors: 0 of 18 | events: {"run":85,"judge":285,"judgeB":112,"vbolt":1089,"pustule":71,"pusburst":26,"mites":140,"pusclear":1,"land":24,"takeoff":21,"landed":22,"hop":620} | trained: {"interceptor":39,"broodtyrant":4,"worldrender":2,"voidcarrier":1}
+run in 10 matches
+pustule in 8 matches
+pusburst in 8 matches
+pusclear in 1 matches
+land in 3 matches
+landed in 3 matches
+takeoff in 3 matches
+judge in 11 matches
+sovfail in 0 matches
+hop in 2 matches
+judgeB in 9 matches
+mites in 8 matches
+vbolt in 11 matches
+paths taken: axiarchs:barracks:A axiarchs:barracks:B axiarchs:factory:A axiarchs:factory:B axiarchs:techlab:B bloomhost:barracks:A bloomhost:barracks:B bloomhost:factory:A bloomhost:factory:B bloomhost:techlab:B lastfist:barracks:A lastfist:barracks:B lastfist:factory:A lastfist:factory:B lastfist:techlab:A | never: lastfist:techlab:B bloomhost:techlab:A axiarchs:techlab:A

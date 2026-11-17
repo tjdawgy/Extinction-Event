@@ -2,7 +2,8 @@
 // (side order counts), to the end (or maxT). Counts what the AI did with batch 4b's five units (bombing runs and turns,
 // pustules stuck and burst into Mites, Repair clearing them, Worldrender landings and take-offs, Voidcarrier bolts, judgement
 // beams and failed shots), the units trained and the paths taken. --force: every AI side rolls its Tech Lab path toward the
-// batch's units (Last Fist Air Power, Bloomhost Apex Bloom, Axiarch Ascendant Calculus), so all five appear.
+// batch's units (Last Fist Air Power, Bloomhost Apex Bloom, Axiarch Ascendant Calculus; the forcePath hook) and gets two of each of
+// its faction's batch units (with two Interceptors for Last Fist) at 7:00, which the AI then commands, so all five appear.
 // Usage: node audit/sim/selfplay-4b.js [seed] [maxT] [--force]  (runs 4 matches at a time)
 const { fork } = require('child_process');
 const KEYS = ['run', 'pustule', 'pusburst', 'pusclear', 'land', 'landed', 'takeoff', 'judge', 'sovfail', 'hop'], UNITS = ['leviathan', 'interceptor', 'broodtyrant', 'worldrender', 'voidcarrier', 'sovereign'];
@@ -13,10 +14,12 @@ if (process.argv[2] === '--one') {
   let err = null, n = {}, g; const paths = new Set();
   try {
     g = S.newGame('hard', { seed: +seed, map, autoPlayer: true, autoDiff: 'hard', factions: [f0, f1] }); g.countdown = 0;
-    if (force === '1') for (const s of [0, 1]) { const f = g.sides[s].faction; g.sides[s].pRoll = { techlab: f === 'lastfist' ? 'A' : 'B' }; }
+    if (force === '1') g.forcePath = [0, 1].map(s => ({ techlab: g.sides[s].faction === 'lastfist' ? 'A' : 'B' })); // the game's test hook (aiPickPath)
+    const FU = { lastfist: ['leviathan', 'leviathan', 'interceptor', 'interceptor'], bloomhost: ['broodtyrant', 'broodtyrant', 'worldrender', 'worldrender'], axiarchs: ['voidcarrier', 'voidcarrier', 'sovereign', 'sovereign'] }; let seeded = false;
     const vb = new Set();
     let k = 0;
     while (!g.over && g.t < +maxT) {
+      if (force === '1' && !seeded && g.t >= 420) { seeded = true; for (const s of [0, 1]) for (const t of FU[g.sides[s].faction]) S.spawnUnit(g, s, t, S.rallyU(s, g), 0); } // and two of each of its faction's batch units at 7:00, in the AI's hands
       S.update(g, 1 / 30);
       for (const e of g.events) if (KEYS.includes(e.type)) { n[e.type] = (n[e.type] || 0) + 1; if (e.type === 'judge' && e.b) n.judgeB = (n.judgeB || 0) + 1; if (e.type === 'pusburst') n.mites = (n.mites || 0) + e.n; }
       for (const p of g.projs) if (p.weapon === 'vbolt' && !vb.has(p)) { vb.add(p); n.vbolt = (n.vbolt || 0) + 1; }

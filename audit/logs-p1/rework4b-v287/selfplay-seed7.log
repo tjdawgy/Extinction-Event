@@ -1,0 +1,33 @@
+{"map":"classic","f":["lastfist","axiarchs"],"t":634,"over":true,"winner":1,"n":{},"tr":{},"paths":["lastfist:barracks:A","lastfist:factory:B","axiarchs:barracks:A","axiarchs:factory:B"],"err":null}
+{"map":"classic","f":["lastfist","bloomhost"],"t":607,"over":true,"winner":0,"n":{},"tr":{},"paths":["lastfist:barracks:B","lastfist:factory:A","bloomhost:barracks:B","bloomhost:factory:A"],"err":null}
+{"map":"classic","f":["axiarchs","lastfist"],"t":375,"over":true,"winner":0,"n":{},"tr":{},"paths":["axiarchs:barracks:B","axiarchs:factory:B"],"err":null}
+{"map":"classic","f":["bloomhost","lastfist"],"t":893,"over":true,"winner":1,"n":{},"tr":{},"paths":["lastfist:barracks:A","bloomhost:barracks:B","lastfist:factory:B","bloomhost:factory:B","lastfist:techlab:B","bloomhost:techlab:A"],"err":null}
+{"map":"classic","f":["bloomhost","axiarchs"],"t":958,"over":true,"winner":1,"n":{"hop":608},"tr":{},"paths":["bloomhost:barracks:A","bloomhost:factory:A","axiarchs:barracks:B","axiarchs:factory:A","axiarchs:techlab:A"],"err":null}
+{"map":"classic","f":["axiarchs","bloomhost"],"t":554,"over":true,"winner":0,"n":{},"tr":{},"paths":["axiarchs:barracks:B","axiarchs:factory:B","bloomhost:barracks:B","bloomhost:factory:A","bloomhost:techlab:A"],"err":null}
+{"map":"twolane","f":["lastfist","bloomhost"],"t":757,"over":true,"winner":0,"n":{},"tr":{},"paths":["lastfist:barracks:B","lastfist:factory:A","bloomhost:barracks:B","bloomhost:factory:B","bloomhost:techlab:A"],"err":null}
+{"map":"twolane","f":["lastfist","axiarchs"],"t":1047,"over":true,"winner":0,"n":{"hop":505},"tr":{"voidcarrier":1},"paths":["lastfist:barracks:A","lastfist:factory:A","axiarchs:barracks:B","axiarchs:factory:B","axiarchs:techlab:B","lastfist:barracks:B"],"err":null}
+{"map":"twolane","f":["bloomhost","axiarchs"],"t":979,"over":true,"winner":0,"n":{"hop":263},"tr":{},"paths":["bloomhost:barracks:B","bloomhost:factory:A","axiarchs:barracks:B","axiarchs:factory:B","axiarchs:techlab:A","bloomhost:barracks:A"],"err":null}
+{"map":"twolane","f":["bloomhost","lastfist"],"t":1154,"over":true,"winner":1,"n":{},"tr":{},"paths":["bloomhost:barracks:A","bloomhost:factory:B","lastfist:barracks:A","lastfist:factory:B","lastfist:techlab:A","lastfist:barracks:B"],"err":null}
+{"map":"twolane","f":["axiarchs","bloomhost"],"t":1153,"over":true,"winner":0,"n":{},"tr":{"broodtyrant":1},"paths":["axiarchs:barracks:A","axiarchs:factory:B","bloomhost:barracks:B","bloomhost:factory:B","bloomhost:techlab:B","axiarchs:barracks:B"],"err":null}
+{"map":"threelane","f":["lastfist","axiarchs"],"t":966,"over":true,"winner":0,"n":{"hop":27},"tr":{},"paths":["lastfist:barracks:B","lastfist:factory:A","axiarchs:barracks:B","axiarchs:factory:A","axiarchs:techlab:B"],"err":null}
+{"map":"threelane","f":["lastfist","bloomhost"],"t":1033,"over":true,"winner":0,"n":{"run":3},"tr":{"leviathan":1,"interceptor":8,"broodtyrant":1},"paths":["lastfist:barracks:A","bloomhost:barracks:A","lastfist:factory:A","bloomhost:factory:A","lastfist:techlab:A","bloomhost:techlab:B","lastfist:barracks:B","bloomhost:barracks:B"],"err":null}
+{"map":"threelane","f":["bloomhost","lastfist"],"t":924,"over":true,"winner":1,"n":{"run":5},"tr":{"leviathan":1},"paths":["bloomhost:barracks:A","bloomhost:factory:B","lastfist:barracks:B","lastfist:factory:A","lastfist:techlab:A"],"err":null}
+{"map":"threelane","f":["bloomhost","axiarchs"],"t":881,"over":true,"winner":0,"n":{},"tr":{},"paths":["bloomhost:barracks:A","bloomhost:factory:B","axiarchs:barracks:A","axiarchs:factory:A"],"err":null}
+{"map":"threelane","f":["axiarchs","lastfist"],"t":1271,"over":true,"winner":0,"n":{},"tr":{},"paths":["axiarchs:barracks:B","axiarchs:factory:B","lastfist:barracks:A","lastfist:factory:A","lastfist:techlab:B"],"err":null}
+{"map":"twolane","f":["axiarchs","lastfist"],"t":1162,"over":true,"winner":0,"n":{},"tr":{},"paths":["axiarchs:barracks:B","axiarchs:factory:A","lastfist:barracks:B","lastfist:factory:A","lastfist:techlab:A"],"err":null}
+{"map":"threelane","f":["axiarchs","bloomhost"],"t":1080,"over":true,"winner":1,"n":{},"tr":{},"paths":["axiarchs:barracks:B","axiarchs:factory:A","bloomhost:barracks:B","bloomhost:factory:A","bloomhost:techlab:A"],"err":null}
+errors: 0 of 18 | events: {"hop":1403,"run":8} | trained: {"voidcarrier":1,"broodtyrant":2,"leviathan":2,"interceptor":8}
+run in 2 matches
+pustule in 0 matches
+pusburst in 0 matches
+pusclear in 0 matches
+land in 0 matches
+landed in 0 matches
+takeoff in 0 matches
+judge in 0 matches
+sovfail in 0 matches
+hop in 4 matches
+judgeB in 0 matches
+mites in 0 matches
+vbolt in 0 matches
+paths taken: axiarchs:barracks:A axiarchs:barracks:B axiarchs:factory:A axiarchs:factory:B axiarchs:techlab:A axiarchs:techlab:B bloomhost:barracks:A bloomhost:barracks:B bloomhost:factory:A bloomhost:factory:B bloomhost:techlab:A bloomhost:techlab:B lastfist:barracks:A lastfist:barracks:B lastfist:factory:A lastfist:factory:B lastfist:techlab:A lastfist:techlab:B | never: none
