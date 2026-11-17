@@ -7,7 +7,7 @@ const UGROUPS = { inf: ['rifle', 'heavy', 'sniper', 'skitterling', 'mite', 'leap
 const GROUP_NAME = { inf: 'Infantry', arm: 'Armor', air: 'Air', sup: 'Support' };
 const GROUP_OF = {}; for (const k in UGROUPS) for (const t of UGROUPS[k]) GROUP_OF[t] = k;
 const ORDER_NAME = { hold: 'Hold', attack: 'Attack', retreat: 'Retreat', move: 'Regroup' };
-const PLURAL = { rifle: 'Marines', heavy: 'Heavies', sniper: 'Snipers', tank: 'Tanks', artillery: 'Artillery', titan: 'Titans', flame: 'Flame Tanks', hydra: 'Hydras', aircraft: 'Gunships', interceptor: 'Interceptors', leviathan: 'Leviathans', medic: 'Medicopters', drone: 'Recon Drones', skitterling: 'Skitterlings', mite: 'Mites', bulwark: 'Bulwarks', razorwing: 'Razorwings', leaper: 'Leapers', ravager: 'Ravagers', spitter: 'Spitters', bilecaster: 'Bilecasters', bilelobber: 'Bile Lobbers', ruinmaw: 'Ruinmaws', thornback: 'Thornbacks', dreadthorn: 'Dreadthorns', needlewing: 'Needlewings', cloudwing: 'Cloudwings', broodtyrant: 'Brood Tyrants', worldrender: 'Worldrenders', shardling: 'Shardlings', bastion: 'Bastions', wraithwing: 'Wraithwings', riftstalker: 'Riftstalkers', parallax: 'Parallaxes', lancer: 'Lancers', marksman: 'Astral Marksmen', riftmortar: 'Rift Mortars', worldbreaker: 'Worldbreakers', gravemantle: 'Gravemantles', eventide: 'Eventides', prismwing: 'Prismwings', shardstorm: 'Shardstorms', voidcarrier: 'Voidcarriers', sovereign: 'Astral Sovereigns' };
+const PLURAL = { rifle: 'Marines', heavy: 'Heavies', sniper: 'Snipers', tank: 'Tanks', artillery: 'Artillery', titan: 'Titans', flame: 'Flame Tanks', hydra: 'Hydras', aircraft: 'Gunships', interceptor: 'Interceptors', leviathan: 'Leviathans', medic: 'Medevacs', drone: 'Recon Drones', skitterling: 'Skitterlings', mite: 'Mites', bulwark: 'Bulwarks', razorwing: 'Razorwings', leaper: 'Leapers', ravager: 'Ravagers', spitter: 'Spitters', bilecaster: 'Bilecasters', bilelobber: 'Bile Lobbers', ruinmaw: 'Ruinmaws', thornback: 'Thornbacks', dreadthorn: 'Dreadthorns', needlewing: 'Needlewings', cloudwing: 'Cloudwings', broodtyrant: 'Brood Tyrants', worldrender: 'Worldrenders', shardling: 'Shardlings', bastion: 'Bastions', wraithwing: 'Wraithwings', riftstalker: 'Riftstalkers', parallax: 'Parallaxes', lancer: 'Lancers', marksman: 'Astral Marksmen', riftmortar: 'Rift Mortars', worldbreaker: 'Worldbreakers', gravemantle: 'Gravemantles', eventide: 'Eventides', prismwing: 'Prismwings', shardstorm: 'Shardstorms', voidcarrier: 'Voidcarriers', sovereign: 'Astral Sovereigns' };
 const newOrders = () => ({ all: null, groups: {}, types: {}, n: 0 });
 function unitOrder(side, type, lane) { // the order a unit of this type follows, or null for the global stance; lane: its lane (v2.63)
   const O = side.orders; if (!O) return null;
@@ -250,7 +250,7 @@ function updateUnit(g, u, foes, dt) {
   const ord = po ? null : unitOrder(side, u.type, u.lane);
   const runs = side.persona && aiFix(side.persona, 'scoutGo') && ((u.id === side.scoutId && side.scoutU != null) || (side.raid && side.raid.ids.includes(u.id)) || capBusy(side, u.id)); // v2.60: a Hard scout or raider; v2.67: a capture group (lane maps)
   let st = po ? po.o : runs ? 'run' : ord ? ord.o : side.stance; // a group or type order overrides the global stance (v2.75: Send damaged home is gone)
-  const A = d.weapon ? acquire(g, u, d, foes, d.chase) : NO_TARGET; let { best, close } = A; // Medicopters and Recon Drones carry no weapon; melee: the chase search in the same pass (v2.37)
+  const A = d.weapon ? acquire(g, u, d, foes, d.chase) : NO_TARGET; let { best, close } = A; // Medevacs and Recon Drones carry no weapon; melee: the chase search in the same pass (v2.37)
   const cs = po && po.o !== 'hold' && (po.o !== 'attack' || po.ju != null) ? ctlStep(g, u, d) : null; // v2.76: heading somewhere (go, target), or retreating
   if (po) st = cs && cs.go ? 'adv' : cs && cs.run ? 'retreat' : (u.po || HOLD_PO).o; // 'adv': on the way, stopping to fight what it meets (a Titan plants for it)
   const sp = u.bur ? (d.bore ? BORE.speed / d.speed : 1) : (d.fac === 'bloomhost' && !d.air && onCreep(g, u.side, u.u, u.v) ? CREEP.speed : 1) * (frz ? ABIL.frenzy.speed : 1) * (u.slowT > g.t ? 1 - u.slow : 1) * (u.snT > g.t ? 0 : 1) * (u.ltT > g.t ? 1 - LATCH.slow : 1) * (pin ? 0 : 1) * (u.sgN ? surgeMul(u) : 1); // v2.88: batch 5b swarm surge (sgN never set with b5b off) // v2.86: pinned; v2.84: Leapers latched on it // creep (v2.18), Frenzy Bloom (v2.20), a Gravemantle's slow (v2.27), a Rootheart's snare (v2.33)
@@ -404,7 +404,7 @@ function titanSiege(g, u, d, st, foes, want) { // want (v2.76): a direct side's 
   u.siege = 1; u.sgT = g.t + S.plant; u.moving = false; u.tgt = 0; if (Math.abs(best.u - u.u) > 1) u.face = best.u >= u.u ? 1 : -1;
   return true;
 }
-// Where a support unit goes (v2.15). Medicopter: over your biggest group of infantry (none: home). Recon Drone: on Attack,
+// Where a support unit goes (v2.15). Medevac: over your biggest group of infantry (none: home). Recon Drone: on Attack,
 // just behind your front (or on the spotter's mark while sieging); otherwise home.
 function supportSpot(g, u, d, st, home) {
   const side = g.sides[u.side], dir = dirOf(u.side);
@@ -428,7 +428,7 @@ function infantryCentre(g, s) {
   k.t = g.t; k.c = best ? { u: best.u, v: best.v } : null;
   return k.c;
 }
-// Medicopters heal your infantry within 120 at 2.5% of max HP per second; several never stack (v2.15)
+// Medevacs heal your infantry within 120 at 2.5% of max HP per second; several never stack (v2.15)
 function updateMedics(g, dt) {
   const D = UDEF.medic;
   let any = false;

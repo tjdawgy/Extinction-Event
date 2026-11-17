@@ -225,7 +225,7 @@ function updateCreep(g, dt) {
     }
     g.creep[s] = zoneStep(list, want, bh && rootOf(g, s) ? CREEP_ROOT : CREEP, dt);
   }
-  // Out-of-combat regeneration on creep; never stacks: with a faster heal running (a Medicopter), that one applies
+  // Out-of-combat regeneration on creep; never stacks: with a faster heal running (a Medevac), that one applies
   for (const e of g.ents) {
     if (e.kind !== 'u' || e.hp <= 0 || e.hp >= e.maxHp || UDEF[e.type].fac !== 'bloomhost' || UDEF[e.type].air || (e.type === 'bulwark' && rwB3b(g))) continue; // v2.85: a batch 3b Bulwark has its own (bulkRegen)
     if (g.t - e.lastHurt < CREEP.calm || g.t - e.lastAct < CREEP.calm || !onCreep(g, e.side, e.u, e.v)) continue;

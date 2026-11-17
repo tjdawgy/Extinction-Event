@@ -1,5 +1,5 @@
-// Tech Lab tree (v2.15): Air Power (Interceptor, Leviathan) or Support (Medicopter, Recon Drone, Nanoweave); the
-// reworked Interceptor and its escort, the Leviathan's bombs and building preference, Medicopter healing (never stacking
+// Tech Lab tree (v2.15): Air Power (Interceptor, Leviathan) or Support (Medevac, Recon Drone, Nanoweave); the
+// reworked Interceptor and its escort, the Leviathan's bombs and building preference, Medevac healing (never stacking
 // with itself or a Repair Pulse), the Recon Drone's sight, cap and spotting, the AI's default paths, saves and v14 migration.
 const test = require('node:test');
 const assert = require('node:assert');
@@ -78,7 +78,7 @@ test('Leviathan: bombs what is right below it (40 range), four bombs in a line (
   assert.strictEqual(hq.hp, q0, 'a shielded HQ takes nothing');
 });
 
-test('Medicopter: heals your infantry within 120 at 2.5%/s; several never stack; no vehicles; a Repair Pulse gives the faster heal, not both', () => {
+test('Medevac: heals your infantry within 120 at 2.5%/s; several never stack; no vehicles; a Repair Pulse gives the faster heal, not both', () => {
   const g = field(); sim.setStance(g, 0, 'hold');
   const m1 = sim.spawnUnit(g, 0, 'medic', 700, 0), m2 = sim.spawnUnit(g, 0, 'medic', 710, 0);
   for (const m of [m1, m2]) { m.holdU = m.u; m.holdV = m.v; }
@@ -90,11 +90,11 @@ test('Medicopter: heals your infantry within 120 at 2.5%/s; several never stack;
   // a Repair Pulse (6%/s) on top: the faster one applies, so 6%/s in all
   g.sides[0].res.c = g.sides[0].res.e = 1e4; g.sides[0].ab = { shield: 0, strike: 0, repair: 0 }; g.sides[0].abEnd = 0;
   const hp0 = h.hp; assert.ok(sim.useAbility(g, 0, 'repair', h.u, h.v).ok); step(g, 2);
-  assert.ok(Math.abs(h.hp - hp0 - h.maxHp * 0.06 * 2) < 2, `pulse + Medicopter = 6%/s: +${(h.hp - hp0).toFixed(1)} of ${h.maxHp}`);
-  assert.ok(g.log.tot[0].healed > 0, 'the match log counts Medicopter healing');
+  assert.ok(Math.abs(h.hp - hp0 - h.maxHp * 0.06 * 2) < 2, `pulse + Medevac = 6%/s: +${(h.hp - hp0).toFixed(1)} of ${h.maxHp}`);
+  assert.ok(g.log.tot[0].healed > 0, 'the match log counts Medevac healing');
 });
 
-test('Medicopter follows your biggest infantry group; it has no weapon and is never a spotter', () => {
+test('Medevac follows your biggest infantry group; it has no weapon and is never a spotter', () => {
   const g = field(); sim.setStance(g, 0, 'attack');
   for (let i = 0; i < 5; i++) { const r = sim.spawnUnit(g, 0, 'rifle', 1000 + i * 6, 20); r.holdU = r.u; r.holdV = r.v; }
   const lone = sim.spawnUnit(g, 0, 'rifle', 600, 0); lone.holdU = 600; lone.holdV = 0;

@@ -1,5 +1,5 @@
 // Tech Lab tree screenshots (v2.15): the Air Power / Support picker, the Train tab, a Leviathan bombing a base with an
-// Interceptor escort, a Medicopter healing infantry next to a Recon Drone, the Army tab's Support group, an enemy badge.
+// Interceptor escort, a Medevac healing infantry next to a Recon Drone, the Army tab's Support group, an enemy badge.
 //   node tests/techlab-shots.js [outDir] [--narrow] [--tag=techlab]
 const fs = require('fs');
 const path = require('path');
@@ -49,7 +49,7 @@ async function main() {
       cam.x = bar.u - 140; clampCam(); __frames(40);
     });
     await snap('A Leviathan bombs the enemy base, Interceptors on escort', 'leviathan');
-    await page.evaluate(() => { // a Medicopter over wounded infantry, a Recon Drone behind them
+    await page.evaluate(() => { // a Medevac over wounded infantry, a Recon Drone behind them
       for (const e of game.ents) if (e.kind === 'u') e.hp = 0; __frames(2);
       const mid = L / 2 - 200;
       for (let i = 0; i < 6; i++) { const r = spawnUnit(game, 0, i % 3 ? 'rifle' : 'heavy', mid + (i % 3) * 12, (i - 2.5) * 12); r.holdU = r.u; r.holdV = r.v; r.hp = r.maxHp * 0.45; }
@@ -57,7 +57,7 @@ async function main() {
       const d = spawnUnit(game, 0, 'drone', mid - 70, 20); d.holdU = d.u; d.holdV = d.v;
       cam.x = mid - 60; clampCam(); __frames(30);
     });
-    await snap('Medicopter heals the infantry below it; a Recon Drone sees 420 ahead', 'support');
+    await snap('Medevac heals the infantry below it; a Recon Drone sees 420 ahead', 'support');
     await page.evaluate(() => { // the enemy Tech Lab on Support, its badge as seen through fog
       for (const e of game.ents) if (e.kind === 'u') e.hp = 0;
       for (const k of ['barracks', 'factory', 'techlab']) { tryBuild(game, 1, k); for (const x of game.ents) if (x.side === 1 && x.kind === 'b') { x.built = true; x.progress = 1; } }

@@ -135,10 +135,13 @@ function aiRework5b(g, s, mine) {
   }
 }
 // A Bloomhost AI facing aircraft takes the paths with anti-air (Acidic Evolution: Spitters; Swarm Bloom: Needlewings)
+// Enemy air as batch 5b reads it: aircraft at AI5B.air or more of what it knows of the enemy army; for the Bloomspire also any enemy
+// aircraft it knows of, or an enemy air production building it has seen at T2 or more (v2.90: batch 5c's Bloomspire roll reads it too)
+const aiAirGhost5b = (g, s, tier) => Object.values(g.fog[s].ghosts).some(gh => gh.type === 'techlab' && gh.side !== s && gh.tier >= tier);
+const aiAirSignal5b = (g, s, type, theirs) => aiAirShare(theirs) >= AI5B.air || (type === 'techlab' && (aiAirGhost5b(g, s, 2) || aiAirShare(theirs) > 0));
 function aiPath5b(g, s, b, theirs) {
   if (facOf(g.sides[s].faction) !== 'bloomhost') return null;
-  const airB = Object.values(g.fog[s].ghosts).some(gh => gh.type === 'techlab' && gh.side !== s && gh.tier >= 2); // an enemy air production building it has seen at T2 or more
-  if (!(aiAirShare(theirs) >= AI5B.air || (b.type === 'techlab' && (airB || aiAirShare(theirs) > 0)))) return null; // the Bloomspire also reads what it has seen of the enemy's air production
+  if (!aiAirSignal5b(g, s, b.type, theirs)) return null; // the Bloomspire also reads what it has seen of the enemy's air production
   const want = b.type === 'barracks' ? 'B' : b.type === 'techlab' ? 'A' : null;
   if (!want) return null;
   const have = g.ents.some(e => e !== b && e.side === s && e.type === b.type && e.hp > 0 && (e.path || e.upPath) === want);

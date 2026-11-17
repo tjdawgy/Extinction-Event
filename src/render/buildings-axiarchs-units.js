@@ -428,7 +428,7 @@ function dLev(c, T, u) { // Leviathan: a wide flying wing, four engines, an open
   c.fillStyle = u.recoil > 0.02 ? '#ffb347' : M.m; c.fillRect(-5, 5, 3, 3); c.fillRect(0, 5, 3, 3);
   c.fillStyle = T.main; c.fillRect(-20, -1.2, 30, 1.4);
 }
-function dMedic(c, T, u) { // Medicopter: a white helicopter with a green cross
+function dMedic(c, T, u) { // Medevac: a white helicopter with a green cross
   const bl = Math.cos(u.anim * 40) * 18;
   c.fillStyle = 'rgba(200,215,240,0.16)'; c.beginPath(); c.ellipse(0, -12, 19, 2, 0, 0, 7); c.fill(); // rotor disc
   c.strokeStyle = 'rgba(230,240,250,0.6)'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(-bl, -12); c.lineTo(bl, -12); c.stroke();

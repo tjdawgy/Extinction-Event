@@ -1,8 +1,9 @@
 // v2.89 (batch 5a): frame time in two Test Range scenes, for the aircraft pose cache (step 4).
 //   node tests/rework-5a-perf.js [runs]            this build
 //   EE_HTML=other/index.html node tests/rework-5a-perf.js   another build (the before)
+//   node tests/rework-5a-perf.js 3 air air5c         three runs of the named scenes only (v2.90)
 // Scenes: swarm (batch 5b's frame-time scene: 40 Skitterlings, 8 Spitters, 10 Needlewings vs 12 Marines, 3 Tanks and 3
-// more) and air (24 aircraft a side: Gunships, Interceptors, Medicopters, Drones, a Leviathan vs Razorwings, Needlewings,
+// more) and air (24 aircraft a side: Gunships, Interceptors, Medevacs, Drones, a Leviathan vs Razorwings, Needlewings,
 // Brood Tyrants, Wraithwings, Prismwings). Everyone at 2000 HP so the scene holds. Headless Chromium, 667×375 at 2× pixels.
 // Reports per scene the frame interval (requestAnimationFrame, vsync-paced, as batch 5b measured it) and the CPU time spent
 // in render() per frame, each as the median and the 95th percentile over 300 frames.
@@ -13,6 +14,8 @@ const SCENES = {
   air: [{ side: 0, type: 'aircraft', u: 520, v: -60, n: 8, w: 4, dx: 26, dv: 30 }, { side: 0, type: 'interceptor', u: 500, v: 30, n: 8, w: 4, dx: 26, dv: 24 }, { side: 0, type: 'medic', u: 470, v: -20, n: 3, dx: 24 }, { side: 0, type: 'drone', u: 460, v: 60, n: 3, dx: 20 }, { side: 0, type: 'leviathan', u: 440, v: 0, n: 2, dx: 40 },
     { side: 1, type: 'razorwing', u: 860, v: -60, n: 8, w: 4, dx: 24, dv: 30 }, { side: 1, type: 'needlewing', u: 880, v: 30, n: 8, w: 4, dx: 20, dv: 24 }, { side: 1, type: 'broodtyrant', u: 920, v: -10, n: 2, dx: 40 }, { side: 1, type: 'wraithwing', u: 900, v: 60, n: 4, dx: 26 }, { side: 1, type: 'prismwing', u: 940, v: -40, n: 2, dx: 26 }],
 };
+// v2.90 (batch 5c): the air scene with the redrawn Axiarch flyers added (6 more Prismwings and 4 Shardstorms on the right)
+SCENES.air5c = SCENES.air.concat([{ side: 1, type: 'prismwing', u: 960, v: 10, n: 6, w: 3, dx: 22, dv: 26 }, { side: 1, type: 'shardstorm', u: 990, v: -50, n: 4, w: 2, dx: 30, dv: 40 }]);
 async function measure(browser, items) {
   const { page, errors } = await openPage(browser, NARROW);
   await page.click('#bRange'); await page.waitForTimeout(300); await page.evaluate(() => hideOverlay());
@@ -32,8 +35,8 @@ async function measure(browser, items) {
 }
 (async () => {
   const pw = findPlaywright(); if (!pw) { console.error('playwright not installed'); process.exit(1); }
-  const browser = await pw.chromium.launch(), runs = +process.argv[2] || 1;
-  for (const [name, items] of Object.entries(SCENES)) for (let r = 0; r < runs; r++) {
+  const browser = await pw.chromium.launch(), runs = +process.argv[2] || 1, only = process.argv.slice(3);
+  for (const [name, items] of Object.entries(SCENES).filter(([k]) => !only.length || only.includes(k))) for (let r = 0; r < runs; r++) {
     const m = await measure(browser, items);
     console.log(`${name}: ${m.units} units (${m.air} aircraft); frame median ${m.frame[0].toFixed(1)} ms, 95th ${m.frame[1].toFixed(1)} ms; render() median ${m.render[0].toFixed(2)} ms, 95th ${m.render[1].toFixed(2)} ms over ${m.n} frames${m.errors.length ? '; errors ' + m.errors.join(' | ') : ''}`);
   }

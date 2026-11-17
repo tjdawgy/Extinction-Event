@@ -232,7 +232,7 @@ function bulkRegen(g, dt) {
     if (e.kind !== 'u' || e.type !== 'bulwark' || e.hp <= 0 || e.hp >= e.maxHp || e.gone || !onCreep(g, e.side, e.u, e.v)) continue;
     const h0 = e.hp;
     if (g.t - e.lastHurt < CREEP.calm || g.t - e.lastAct < CREEP.calm) { e.hp = Math.min(e.maxHp, e.hp + BULK.fight * dt); e.bkRg = g.t; } // in combat: a steady trickle
-    else { // out of combat: three times the usual creep regeneration (a Medicopter's faster heal never stacks with it)
+    else { // out of combat: three times the usual creep regeneration (a Medevac's faster heal never stacks with it)
       const other = e.medAt === g.t ? UDEF.medic.heal : 0, rg = creepRegen(g, e.side) * BULK.calm;
       e.creepAt = g.t; e.bkRg = g.t;
       if (rg > other) e.hp = Math.min(e.maxHp, e.hp + e.maxHp * (rg - other) * dt);

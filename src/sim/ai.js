@@ -18,8 +18,9 @@ function aiPickPath(g, s, b, P, theirs) {
   const fac = g.sides[s].faction, to = p => aiPathTo(fac, b.type, p); // decided in Last Fist terms, then translated (Bloomhost, v2.19)
   const D = aiDiff(g, s); let def = (P.paths && P.paths[b.type]) || 'A';
   if (D.label === 'Easy') return to(def);
-  if (rwB4a(g)) def = aiPathRoll(g, s, b.type, def);
-  if (rwB5b(g)) { const p5 = aiPath5b(g, s, b, theirs); if (p5) return p5; } // v2.88 (batch 5b): enemy aircraft: the anti-air paths // v2.86 (batch 4a, Part 0): its path rolled once per match, the persona's 60% of the time
+  if (aiBloom5c(g, s, b)) def = aiBloomRoll5c(g, s, def, theirs); // v2.90 (batch 5c): a Bloomhost Bloomspire's roll leans to Swarm Bloom (75%) when enemy air is expected
+  else if (rwB4a(g)) def = aiPathRoll(g, s, b.type, def);
+  if (rwB5b(g) && !aiBloom5c(g, s, b)) { const p5 = aiPath5b(g, s, b, theirs); if (p5) return p5; } // v2.88 (batch 5b): enemy aircraft: the anti-air paths // v2.86 (batch 4a, Part 0): its path rolled once per match, the persona's 60% of the time
   const have = g.ents.filter(e => e !== b && e.side === s && e.type === b.type && e.hp > 0).map(e => aiPathFrom(fac, b.type, e.path || e.upPath)).filter(Boolean);
   if (b.type === 'barracks' && aiArmorShare(theirs) > 0.35 && !have.includes('A')) return to('A');
   if (b.type === 'factory' && aiFix(P, 'counter') && theirs.length >= 5 && aiLightShare(theirs) >= (aiDials(P).flood || 0.55) && !have.includes('B')) return to('B'); // v2.41 (counter): an infantry flood, the Assault path (Flame Tanks)
@@ -42,6 +43,7 @@ function aiUpdate(g, s, dt) {
   for (const e of g.ents) if (e.hp > 0 && e.kind === 'u' && e.side === s) mine.push(e);
   // The enemy army as this side knows it: units it has seen, fading out over INTEL_TTL seconds
   const theirs = Object.values(fog.intel).map(m => ({ type: m.type, u: m.u, v: m.v, w: Math.max(0, 1 - (g.t - m.t) / INTEL_TTL), fresh: g.t - m.t <= THREAT_MEMORY })); // v: depth (a grid map's intel keeps it, v2.63)
+  if (rwB5c(g)) aiNote5c(g, s, theirs); // v2.90 (batch 5c): an enemy aircraft seen is remembered for the Bloomspire's pick
   const myV = armyValue(mine);
   let thV = armyValue(theirs);
   // v2.41 (est): the enemy army it hasn't seen still exists: at least what the economy it has scouted could have paid for

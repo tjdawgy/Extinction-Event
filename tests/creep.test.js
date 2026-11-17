@@ -72,7 +72,7 @@ test('regeneration: on creep, out of combat (no damage taken or dealt for 5 s), 
   assert.ok(Math.abs(gained - a.maxHp * C.regen * 4) < a.maxHp * C.regen * 0.6, `on creep, out of combat: +${gained.toFixed(1)}`);
   assert.strictEqual(b.hp, h0[1], 'off creep: none'); assert.strictEqual(r.hp, h0[2], 'Last Fist on the creep: none');
   a.lastAct = g.t; const h1 = a.hp; step(g, 2); assert.strictEqual(a.hp, h1, 'attacking counts as combat');
-  // never stacks: a Medicopter's faster heal replaces creep regen instead of adding to it
+  // never stacks: a Medevac's faster heal replaces creep regen instead of adding to it
   const sk = at(0, 'skitterling', 40); sk.hp = sk.maxHp * 0.3; sk.lastHurt = sk.lastAct = -99;
   const med = sim.spawnUnit(g, 0, 'medic', sk.u, sk.v); med.holdU = med.u; med.holdV = med.v;
   const s0 = sk.hp; step(g, 2);

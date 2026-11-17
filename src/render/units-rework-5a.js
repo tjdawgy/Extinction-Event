@@ -419,7 +419,7 @@ function dLev5a(c, T, u) {
   // the near pods, on pylons along the flank
   for (const x of [-22, 12]) { c.fillStyle = GM[2]; c.fillRect(x - 1, -2, 3, 4); pod(x, 3.2, true); }
 }
-// Medicopter: a thruster medevac craft. A pale armoured body with a big green cross and team bands, two swivelling lift
+// Medevac: a thruster medevac craft. A pale armoured body with a big green cross and team bands, two swivelling lift
 // thrusters firing down, a glowing heal emitter underneath where its beams start (0, +4)
 function dMedic5(c, T, u) {
   const fl = u.fl ?? airFl(u, 28);

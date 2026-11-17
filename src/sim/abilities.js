@@ -218,7 +218,7 @@ function updateAbilities(g, dt) {
       const A = ABIL.repair;
       for (const e of g.ents) {
         if (e.side !== a.side || e.hp <= 0 || e.hp >= e.maxHp || (e.kind === 'b' && (!e.built || g.t >= EXT.start)) || !inAbil(e, a.u, a.v, A.r)) continue; // in the storm it heals units only
-        const paid = e.kind === 'b' && e.repair > 0 ? 0.06 : e.kind === 'u' ? Math.max(e.medAt === g.t ? UDEF.medic.heal : 0, e.creepAt === g.t ? creepRegen(g, e.side) : 0) : 0; // paid Repair (6%/s), a Medicopter or creep regen: the fastest one applies
+        const paid = e.kind === 'b' && e.repair > 0 ? 0.06 : e.kind === 'u' ? Math.max(e.medAt === g.t ? UDEF.medic.heal : 0, e.creepAt === g.t ? creepRegen(g, e.side) : 0) : 0; // paid Repair (6%/s), a Medevac or creep regen: the fastest one applies
         const rate = Math.max(0, A.rate - paid);
         if (rate > 0) { const h0 = e.hp; e.hp = Math.min(e.maxHp, e.hp + e.maxHp * rate * dt); logEffect(g, a.side, 'repair', e.hp - h0); }
       }

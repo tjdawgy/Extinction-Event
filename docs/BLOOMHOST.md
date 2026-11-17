@@ -931,7 +931,7 @@ All numbers are in the `CREEP` constant in index.html (SIM section, next to `upd
 | regen | 1.5% of max HP per second | on creep, out of combat only |
 | calm | 5 s | out of combat = no damage taken and no attack made for this long |
 
-Model: one circular patch per source, on the existing u/v coordinates (no grid, no pathfinding). A unit is on creep when it stands inside any of its side's patches. Aircraft get nothing (they are not on the ground). Regeneration never stacks: with a faster heal running on the same unit (a Medicopter), only that one applies, and a Repair Pulse uses the faster of its own rate and the creep's. No vision bonus (deferred), no effect on enemy units, no change to the storm.
+Model: one circular patch per source, on the existing u/v coordinates (no grid, no pathfinding). A unit is on creep when it stands inside any of its side's patches. Aircraft get nothing (they are not on the ground). Regeneration never stacks: with a faster heal running on the same unit (a Medevac), only that one applies, and a Repair Pulse uses the faster of its own rate and the creep's. No vision bonus (deferred), no effect on enemy units, no change to the storm.
 
 Fog: the enemy's creep is remembered as last seen (like building ghosts) and drawn only on ground the player has had in view, like enemy pads. Creep grants no vision. Saves v18 store both; older saves start with no creep and grow it.
 

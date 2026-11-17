@@ -55,7 +55,7 @@ const rangeHurts = (d, e) => { // can a unit of definition d hurt e at all (its 
   return !!DMG[d.weapon][e.kind === 'b' ? 'building' : e.lnd >= 2 ? LAND.armor : UDEF[e.type].armor];
 };
 // Attack for side s: each unit not after a living target goes for the nearest enemy it can hurt (the real target order);
-// a unit with nothing to hurt holds; an unarmed one (Medicopter, Recon Drone) stays with the nearest armed unit of its side
+// a unit with nothing to hurt holds; an unarmed one (Medevac, Recon Drone) stays with the nearest armed unit of its side
 function rangeOrders(g, s) {
   const sd = g.sides[s];
   if (sd.hush || sd.manual || sd.mode !== 'attack') return;

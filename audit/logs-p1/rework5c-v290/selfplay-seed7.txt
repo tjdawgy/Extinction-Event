@@ -1,0 +1,39 @@
+{"map":"classic","f":["bloomhost","axiarchs"],"t":327.4,"winner":0,"over":true,"err":null,"b5c":true,"bh":{"roll":{},"paths":[],"needle":0,"cloud":0,"needleAir":0,"quillAir":0,"foeAir":0}}
+{"map":"classic","f":["lastfist","bloomhost"],"t":520.3,"winner":0,"over":true,"err":null,"b5c":true,"bh":{"roll":{},"paths":[],"needle":0,"cloud":0,"needleAir":0,"quillAir":0,"foeAir":0}}
+{"map":"classic","f":["axiarchs","lastfist"],"t":375.37,"winner":0,"over":true,"err":null,"b5c":true,"bh":null}
+{"map":"classic","f":["lastfist","axiarchs"],"t":634.17,"winner":1,"over":true,"err":null,"b5c":true,"bh":null}
+{"map":"classic","f":["bloomhost","lastfist"],"t":959.13,"winner":0,"over":true,"err":null,"b5c":true,"bh":{"roll":{},"paths":[],"needle":0,"cloud":0,"needleAir":0,"quillAir":0,"foeAir":11}}
+{"map":"classic","f":["axiarchs","bloomhost"],"t":1147.53,"winner":1,"over":true,"err":null,"b5c":true,"bh":{"roll":{"swarm":1},"paths":["Swarm Bloom"],"needle":16,"cloud":0,"needleAir":0,"quillAir":0,"foeAir":0}}
+{"map":"twolane","f":["bloomhost","axiarchs"],"t":435.9,"winner":0,"over":true,"err":null,"b5c":true,"bh":{"roll":{},"paths":[],"needle":0,"cloud":0,"needleAir":0,"quillAir":0,"foeAir":0}}
+{"map":"twolane","f":["lastfist","axiarchs"],"t":1046.73,"winner":0,"over":true,"err":null,"b5c":true,"bh":null}
+{"map":"twolane","f":["lastfist","bloomhost"],"t":878.43,"winner":0,"over":true,"err":null,"b5c":true,"bh":{"roll":{"apex":1,"airExp":1},"paths":["Apex Bloom"],"needle":0,"cloud":0,"needleAir":0,"quillAir":0,"foeAir":0}}
+{"map":"twolane","f":["bloomhost","lastfist"],"t":1005.97,"winner":0,"over":true,"err":null,"b5c":true,"bh":{"roll":{},"paths":[],"needle":0,"cloud":0,"needleAir":0,"quillAir":0,"foeAir":2}}
+{"map":"twolane","f":["axiarchs","bloomhost"],"t":1046.4,"winner":0,"over":true,"err":null,"b5c":true,"bh":{"roll":{"swarm":1},"paths":["Swarm Bloom"],"needle":15,"cloud":0,"needleAir":0,"quillAir":0,"foeAir":0}}
+{"map":"threelane","f":["lastfist","bloomhost"],"t":760.07,"winner":0,"over":true,"err":null,"b5c":true,"bh":{"roll":{"swarm":1,"airExp":1},"paths":["Swarm Bloom"],"needle":22,"cloud":1,"needleAir":0,"quillAir":0,"foeAir":0}}
+{"map":"threelane","f":["lastfist","axiarchs"],"t":966.5,"winner":0,"over":true,"err":null,"b5c":true,"bh":null}
+{"map":"threelane","f":["bloomhost","axiarchs"],"t":994,"winner":0,"over":true,"err":null,"b5c":true,"bh":{"roll":{},"paths":[],"needle":0,"cloud":0,"needleAir":0,"quillAir":957,"foeAir":27}}
+{"map":"threelane","f":["bloomhost","lastfist"],"t":1234.4,"winner":1,"over":true,"err":null,"b5c":true,"bh":{"roll":{},"paths":[],"needle":0,"cloud":0,"needleAir":0,"quillAir":559,"foeAir":19}}
+{"map":"threelane","f":["axiarchs","lastfist"],"t":1271.3,"winner":0,"over":true,"err":null,"b5c":true,"bh":null}
+{"map":"twolane","f":["axiarchs","lastfist"],"t":1162.33,"winner":0,"over":true,"err":null,"b5c":true,"bh":null}
+{"map":"threelane","f":["axiarchs","bloomhost"],"t":600.57,"winner":1,"over":true,"err":null,"b5c":true,"bh":{"roll":{"swarm":1},"paths":["Swarm Bloom"],"needle":23,"cloud":1,"needleAir":0,"quillAir":0,"foeAir":0}}
+errors: 0 of 18 | b5c on in every match: true
+map       match                  end (s)  Bloomspire roll (air expected)  built           Needlewings  strikes on aircraft  quills at aircraft  enemy aircraft trained  winner
+classic   axiarchs vs bloomhost  1147.53  Swarm Bloom (no)                Swarm Bloom              16                    0                   0                       0  bloomhost
+classic   bloomhost vs axiarchs    327.4  (no T2 Bloomspire)              -                         0                    0                   0                       0  bloomhost
+classic   bloomhost vs lastfist   959.13  (no T2 Bloomspire)              -                         0                    0                   0                      11  bloomhost
+classic   lastfist vs bloomhost    520.3  (no T2 Bloomspire)              -                         0                    0                   0                       0  lastfist
+threelane axiarchs vs bloomhost   600.57  Swarm Bloom (no)                Swarm Bloom              23                    0                   0                       0  bloomhost
+threelane bloomhost vs axiarchs      994  (no T2 Bloomspire)              -                         0                    0                 957                      27  bloomhost
+threelane bloomhost vs lastfist   1234.4  (no T2 Bloomspire)              -                         0                    0                 559                      19  lastfist
+threelane lastfist vs bloomhost   760.07  Swarm Bloom (yes)               Swarm Bloom              22                    0                   0                       0  lastfist
+twolane   axiarchs vs bloomhost   1046.4  Swarm Bloom (no)                Swarm Bloom              15                    0                   0                       0  axiarchs
+twolane   bloomhost vs axiarchs    435.9  (no T2 Bloomspire)              -                         0                    0                   0                       0  bloomhost
+twolane   bloomhost vs lastfist  1005.97  (no T2 Bloomspire)              -                         0                    0                   0                       2  bloomhost
+twolane   lastfist vs bloomhost   878.43  Apex Bloom (yes)                Apex Bloom                0                    0                   0                       0  lastfist
+Bloomspire rolls: Swarm Bloom 4, Apex Bloom 1, no T2 Bloomspire 7 (air expected at 2 of the rolls) | Needlewings trained 76, strikes on aircraft 0 in 0 matches | Bloomhost won 7, lost 5, draws/unfinished 0 of 12
+classic   axiarchs vs lastfist    375.37  (no Bloomhost)  winner axiarchs
+classic   lastfist vs axiarchs    634.17  (no Bloomhost)  winner axiarchs
+threelane axiarchs vs lastfist    1271.3  (no Bloomhost)  winner axiarchs
+threelane lastfist vs axiarchs     966.5  (no Bloomhost)  winner lastfist
+twolane   axiarchs vs lastfist   1162.33  (no Bloomhost)  winner axiarchs
+twolane   lastfist vs axiarchs   1046.73  (no Bloomhost)  winner lastfist

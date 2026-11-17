@@ -65,7 +65,7 @@ Starting values as asked (ART, BORE, SEVER). Departures and choices the design l
   surfaces quietly when it stops (no damage, no cooldown). The eruption also hits buildings (at 0.5×); buildings are its
   last choice of target. It picks targets it can see within 300 (on Hold or a move order: 160 of its spot / 170).
 - Severance: the orb aims at a group's centre now (no lead on moving units). Aircraft can be exiled too; units still
-  immune take the orb's 20 damage but are not exiled. While exiled, shields don't recharge and an exiled Medicopter or
+  immune take the orb's 20 damage but are not exiled. While exiled, shields don't recharge and an exiled Medevac or
   aura unit does nothing. "About to fight its army" and "defenders around a building its army attacks" weight a group's
   supply ×1.5 each; a lone unit only at 4+ supply.
 - AI: Gorebore and Severance have their own scores (Gorebore: the share of enemy ranged backline; Severance: a few per
@@ -226,7 +226,7 @@ Departures and choices the design left open:
   attacker within that attacker's own reach (most melee units reach further than 22). A ranged hit from further away is
   parried without a counter. An acid pool's steady burn doesn't spend the parry (it would every tick). Ready when it spawns.
 - Bulwark: "in combat" is the existing creep rule (hurt, or attacking, within the last 5 s). Out of combat 3× the creep
-  regeneration (a Rootheart T2's faster regeneration included), never stacking with a Medicopter's heal.
+  regeneration (a Rootheart T2's faster regeneration included), never stacking with a Medevac's heal.
 - AI: Bastions: each screens up to six of the side's nearest ranged ground units, standing 40 ahead of their front when it
   has nothing in reach; on the attack, a ranged unit not at least 20 behind its nearest Bastion waits for it (it fights what
   is in reach). Bulwarks: while the side is not attacking, each holds a spot at the front of the creep patch nearest the
@@ -481,7 +481,7 @@ FP_V288G*) matches; self-play (audit/sim/selfplay-5a.js: Hard vs Hard, all six p
 on this build and on v2.88's gives 18 identical matches, 0 errors, at 4,918 state hashes taken every 100 ticks. Art in src/render/units-rework-5a.js.
 - **Marine:** the Rifleman's player-facing name everywhere (unit and train cards, info card, Codex, UNIT_TIPS, counters, Barracks tier
   and Mass Deployment texts, the queue toast, Test Range labels, the tutorial, which reads the name live). The internal id stays
-  `rifle`, so saves, tests and fingerprints don't move. Its desc reads "powered-armor trooper with a gauss rifle"; the Medicopter's
+  `rifle`, so saves, tests and fingerprints don't move. Its desc reads "powered-armor trooper with a gauss rifle"; the Medevac's
   "thruster medevac craft" (no helicopters).
 - **Art direction (Last Fist):** a future frontier army, replacing "scavenged military" for this faction. Infantry in powered armour
   (angular plates, glowing visor slits in the side's colour, a big team pauldron, backpack power units, gauss rifles with glowing coil
@@ -495,10 +495,10 @@ on this build and on v2.88's gives 18 identical matches, 0 errors, at 4,918 stat
   crawler on six road wheels on piston arms, two glowing fuel tanks, a flared projector), Hydra (a four-legged spider walker, twin
   rotary gauss cannons that tilt up at aircraft), Gunship (a VTOL with two vectored nacelles and pod-mounted missiles), Interceptor (a
   forward-swept dart, twin afterburners), Leviathan (a flying fortress: a thick plated hull, four thruster pods, dorsal and ventral
-  turret blisters, a bomb bay whose doors swing open on a run), Medicopter (a pale medevac hull, a big green cross, lift thrusters and
+  turret blisters, a bomb bay whose doors swing open on a run), Medevac (a pale medevac hull, a big green cross, lift thrusters and
   a glowing heal emitter where its beams start), Recon Drone (a small sensor wedge on two ion pods).
 - **Effects lined up:** every barrel, rack, pod, bay and emitter sits on the SIM's own MUZ point (unchanged), so tracers, rockets,
-  rail rounds, shells, flames, missiles (Gunship salvos), Hydra fire, Leviathan bombs, the Medicopter's heal beams and the Sniper's
+  rail rounds, shells, flames, missiles (Gunship salvos), Hydra fire, Leviathan bombs, the Medevac's heal beams and the Sniper's
   charge glow start at the new art. The Sniper's pin and the Marksman's mark are drawn over the target and are unchanged.
 - **Size fix:** the Leviathan, Worldrender and Sovereign were 103, 125 and 95 art units across against an air shadow 77 across; each is
   now about 85 (Leviathan 83, Worldrender 88, Sovereign 84), each scaled about the point its shots leave, so bombs, the maw and the beam
@@ -523,7 +523,7 @@ Departures and choices the brief left open:
 
 ## Unchanged (already distinct)
 
-Marine, Heavy, Tank, Flame Tank, Hydra, Interceptor, Medicopter, Recon Drone, Mite, Razorwing, Cloudwing, Thornback, Lancer,
+Marine, Heavy, Tank, Flame Tank, Hydra, Interceptor, Medevac, Recon Drone, Mite, Razorwing, Cloudwing, Thornback, Lancer,
 Gravemantle, Eventide, Prismwing, Shardstorm. (The Skitterling, Spitter and Needlewing changed in batch 5b, the swarm pass; the Mite,
 Razorwing, Cloudwing and Thornback kept their mechanics there but were redrawn, and gained swarm surge and kill frenzy.)
 

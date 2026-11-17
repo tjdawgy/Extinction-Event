@@ -722,7 +722,7 @@ function drawAcidPool(c, a, t) {
   for (let i = 0; i < 5; i++) { const a2 = i * 1.26 + a.u, rr = ACID.r * (0.25 + (i % 3) * 0.2), b = (t * 2 + i * 0.3) % 1; c.beginPath(); c.arc(w.x + Math.cos(a2) * rr, w.y + Math.sin(a2) * rr * DY * 0.6, 1 + b * 2, 0, 7); c.fill(); }
 }
 
-// Soft green beams from a Medicopter to the infantry it is healing this tick (render only)
+// Soft green beams from a Medevac to the infantry it is healing this tick (render only)
 function drawHealBeams(c, g, m, w) {
   const R = UDEF.medic.healR, y0 = w.y - m.z + 4 * US;
   c.strokeStyle = 'rgba(80,240,150,0.35)'; c.lineWidth = 1.4 * US;

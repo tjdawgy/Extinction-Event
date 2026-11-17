@@ -724,7 +724,7 @@ Issues found during testing that are deliberately deferred. Each lists the step 
   - **Instant Axis beam:** about +3 Axiarch wins of 40 in both pairings, within noise.
 - **Matches open at 20:00:** 10–27% of Bloomhost and Axiarch matches (v2.38). All of them end by 22:30 through the storm. The causes are AI: finishing a base, army trading.
 - **Tests:**
-  - **Flaky tests fixed:** the Medicopter retreat test is seeded; the Sovereign beam scene waits up to 2 s (it failed 3 runs in 20 at v2.38 too).
+  - **Flaky tests fixed:** the Medevac retreat test is seeded; the Sovereign beam scene waits up to 2 s (it failed 3 runs in 20 at v2.38 too).
   - **Pinned to the mechanic's own numbers:** the Salvage and signature tests run with `setBalance(false)`; a new test pins the v2.39 values.
   - **Determinism:** pinned replays run with the balance off and match unchanged; two new fingerprints record it on.
   - **Re-targeted, with the reason in the test:** the Bloomhost Economist Worldrender test now plays an Axiarch Turtle (it beats the Last Fist Turtle before any Worldrender now); the Axiarch abilities test plays 5 matches instead of 3.
@@ -791,12 +791,12 @@ Issues found during testing that are deliberately deferred. Each lists the step 
 
 ## Signature buildings, batch 2 (v2.33)
 - Bloomhost (docs/SIGNATURE_BUILDINGS.md section 3): the Brood Mound (role `sigA`) spawns Mites (`mite`, the MOUND block) and the Rootheart (`sigB`) strengthens creep (the ROOT block). The Axiarchs can't build either role until v2.34.
-- Spec interpretations made in v2.33: the first clutch comes 20 s after the Mound finishes; when a clutch would pass the cap, only as many as fit hatch (none at the cap); T3 still spawns 3 Mites; Mites lost with the Mound live out their time; Mites have their own cap (Emergency Brood's TEMP.max and Cloudwing offspring don't count them, and they don't count against those); "cannot capture nodes" means they neither take nor contest a node; the acid burst does 50% of a Mite's damage (1.2) to enemy ground units within 40 and uses its own weapon table (`miteacid`: 0 to buildings and aircraft); the Rootheart's 15% slow uses the existing slow rule (the strongest slow applies, never added up), drawn as a green ring instead of the violet one; the snare's "outer strip" is the outer 16 of the creep's union (not inside any patch shrunk by 16), the units nearest the Bloomhost HQ first, and a snared unit can't leap either; the T3 pulse's first eruption is 15 s after the Rootheart reaches T3; Repair Pulse compares against the boosted creep regen, like the Medicopter.
+- Spec interpretations made in v2.33: the first clutch comes 20 s after the Mound finishes; when a clutch would pass the cap, only as many as fit hatch (none at the cap); T3 still spawns 3 Mites; Mites lost with the Mound live out their time; Mites have their own cap (Emergency Brood's TEMP.max and Cloudwing offspring don't count them, and they don't count against those); "cannot capture nodes" means they neither take nor contest a node; the acid burst does 50% of a Mite's damage (1.2) to enemy ground units within 40 and uses its own weapon table (`miteacid`: 0 to buildings and aircraft); the Rootheart's 15% slow uses the existing slow rule (the strongest slow applies, never added up), drawn as a green ring instead of the violet one; the snare's "outer strip" is the outer 16 of the creep's union (not inside any patch shrunk by 16), the units nearest the Bloomhost HQ first, and a snared unit can't leap either; the T3 pulse's first eruption is 15 s after the Rootheart reaches T3; Repair Pulse compares against the boosted creep regen, like the Medevac.
 - Saves v29: a Bloomhost side in an older save couldn't have these roles; any stray one is dropped and its pad freed.
 
 ## Signature buildings, batch 1 (v2.32)
 - Shared rules (docs/SIGNATURE_BUILDINGS.md section 1) and the Last Fist pair (section 2): the Salvage Yard (role `sigA`) and the Fortification Depot (`sigB`) with node bunkers. Bloomhost (v2.33) and Axiarchs (v2.34) can't build either role yet.
-- Spec interpretations made in v2.32: "economy up" for the AI is the difficulty's Refineries finished (2 on Normal and Hard, 1 on Easy), or every Refinery its plan has if that is fewer, and it holds the building while under pressure, like tech; "Salvage over the cap isn't wasted" means it starts Overdrive (no extra credits); Overdrive ends with the Yard; a bunker heal and a Medicopter heal don't add up (the faster one applies, like the other heals); a node going neutral counts as changing owner; bunkers don't keep the HQ shield up and can't be sold, upgraded or repaired (they still self-repair like any building and Repair Pulse heals them).
+- Spec interpretations made in v2.32: "economy up" for the AI is the difficulty's Refineries finished (2 on Normal and Hard, 1 on Easy), or every Refinery its plan has if that is fewer, and it holds the building while under pressure, like tech; "Salvage over the cap isn't wasted" means it starts Overdrive (no extra credits); Overdrive ends with the Yard; a bunker heal and a Medevac heal don't add up (the faster one applies, like the other heals); a node going neutral counts as changing owner; bunkers don't keep the HQ shield up and can't be sold, upgraded or repaired (they still self-repair like any building and Repair Pulse heals them).
 - `SIG.on` false switches signature buildings off for both sides (the AI never builds them); with that and `SALVAGE.pct` 0 a match still plays exactly as v2.29 (tests/determinism.test.js).
 
 ## Resolved in v2.31 (playtest bugs)
@@ -812,7 +812,7 @@ Issues found during testing that are deliberately deferred. Each lists the step 
 - **Cause:** their weapon table (`DMG.grav`) gave buildings 0. Targeting (`acquire`) skips any target its weapon can't hurt, so a building never stopped them, and on Attack a unit with nothing to shoot walks to the lane end. They did shoot enemy units in range (low damage, so easy to miss).
 - **Fix (design change, first-pass numbers):** `grav` building 0.5, so both now target ground units and buildings (G, B), keeping the slow aura and the pull pulse. docs/AXIARCHS.md section 6 and its stats table are updated.
 - **Found by the all-units check:** the **Shardstorm** had the same bug (`DMG.storm` building 0). Fixed the same way: `storm` building 0.4 (A, G, B); its chain still never jumps to a building.
-- **All-units check:** every unit of all three factions now has a weapon targeting can use and stops at enemy units and buildings, except the listed non-combat units (Medicopter, Recon Drone: no weapon, they stay with the army on Hold, Attack and Retreat) and the air-only Interceptor (it escorts its own aircraft or waits behind the front, never walking off alone). Tests: `tests/orders-weapons.test.js`.
+- **All-units check:** every unit of all three factions now has a weapon targeting can use and stops at enemy units and buildings, except the listed non-combat units (Medevac, Recon Drone: no weapon, they stay with the army on Hold, Attack and Retreat) and the air-only Interceptor (it escorts its own aircraft or waits behind the front, never walking off alone). Tests: `tests/orders-weapons.test.js`.
 
 ## Resolved in v2.6
 
@@ -941,10 +941,10 @@ Every Bloomhost item for the audit and AI training, in one place (details in the
 - **Army value samples stop at 120** (30 minutes, `logTick`); a longer match's graph ends early. Matches end by the Extinction Event's limit, so this shouldn't show in practice.
 
 
-### (Resolved in v2.39: that part of the test runs on its own seeded SIM.) Flaky test: a Medicopter on Retreat (seen at v2.38)
-- `every combat unit stops to fight ...` (tests/orders-weapons.test.js) is unseeded. About 1 run in 12, a Medicopter on Retreat ends up 40+ ahead of the retreating Marines it follows (it lags their centre as they run home).
+### (Resolved in v2.39: that part of the test runs on its own seeded SIM.) Flaky test: a Medevac on Retreat (seen at v2.38)
+- `every combat unit stops to fight ...` (tests/orders-weapons.test.js) is unseeded. About 1 run in 12, a Medevac on Retreat ends up 40+ ahead of the retreating Marines it follows (it lags their centre as they run home).
 - No AI code is involved. Fix: seed it, or measure against the infantry's centre.
-- v2.39: 2 of 120 seeds failed: after the retreat the Medicopter settles about 60 ahead of the Marine (a steady hover over the infantry, not a lag). Seeded (mulberry 7).
+- v2.39: 2 of 120 seeds failed: after the retreat the Medevac settles about 60 ahead of the Marine (a steady hover over the infantry, not a lag). Seeded (mulberry 7).
 
 ### (Resolved in v2.38: the statistical tests in tests/ai-stats.test.js replace it.) Flaky test: the Aggressor's defence strike (seen at v2.29)
 - `the AI uses abilities under the same rules ... each personality in its own way` (`tests/abilities.test.js`) is unseeded: it plays 3 random Last Fist matches per personality and needs at least one Aggressor Orbital Strike on defences. It failed once in a v2.29 `npm test` run, then passed 3 of 3 on v2.29 and 3 of 3 on v2.28. Last Fist play is identical between the two versions, so the change didn't cause it. Fix: seed it, or count over more matches.
@@ -966,14 +966,14 @@ v2.15 was implementation only: no tuning, minimal AI. Measured, not tuned:
   - The matrix ran on a build where the Leviathan and Recon Drone flew higher (z 118–130 and 130–145). Only their look changed before the push (z 88–98 and 104–114, so they stay below the top bar), plus shot travel time to them.
 - **Leviathans are almost never trained** (0% of units everywhere). The AI keeps about 100–300 credits and an army near its limit, so a 480/240, 7-pop unit seldom fits; cheaper units win the scoring every time.
 - **Recon Drones are lost and replaced often:** 13–21% of Support units by count (Economist 21%), 11–19% by value. That's despite the cap of 3 and waiting just behind the front, so the AI retrains them as they fall.
-- **Medicopters:** 1–7% by value on Support. The AI trains one per 8 infantry, once it has 6.
+- **Medevacs:** 1–7% by value on Support. The AI trains one per 8 infantry, once it has 6.
 - **Units trained, share by value** (per personality: Aggressor, Economist, Trickster, Turtle):
   - On Air Power: Interceptors 0%, 12%, 10%, 6%; Leviathans 0%.
-  - On Support: Medicopters 0%, 1%, 7%, 2%; Recon Drones 0%, 19%, 11%, 12%.
+  - On Support: Medevacs 0%, 1%, 7%, 2%; Recon Drones 0%, 19%, 11%, 12%.
   - The Aggressor never reached its Tech Lab upgrade before its matches ended.
 - **The AI's Tech Lab defaults were chosen in v2.15 (not decided by design):**
   - Economist and Trickster on Air Power (both favour aircraft);
-  - Aggressor on Support (Medicopters for its infantry);
+  - Aggressor on Support (Medevacs for its infantry);
   - Turtle on Support (keeps Nanoweave, which it had before trees).
 - **Ladder sanity check:**
   - Easy lost 0–20 to Normal and 0–20 to Hard.

@@ -193,7 +193,7 @@ function updateBunkers(g) {
   }
 }
 // T2+: each bunker heals friendly Barracks units within its gun's range; a unit takes one bunker heal, minus any faster heal
-// it already gets this tick (a Medicopter), like the other heals. Runs after updateMedics.
+// it already gets this tick (a Medevac), like the other heals. Runs after updateMedics.
 function bunkerHeal(g, dt) {
   for (const b of g.ents) {
     if (b.type !== 'bunker' || b.hp <= 0 || b.tier < 2) continue;
