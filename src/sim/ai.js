@@ -308,7 +308,7 @@ function aiUpdate(g, s, dt) {
       sc.shardling = 0.9 + aiMeleeShare(theirs) * 0.8 + comp.light * 0.3 - comp.vehicle * 0.5 - comp.air * 0.4 - (types.length > 2 ? 0.3 : 0);
       sc.bulwark = 1.3 + comp.light * 1.0 + comp.heavy * 0.7 + (turtle ? 0.3 : 0) - comp.air * 0.9;
     }
-    if (rwB4a(g)) { // v2.86 (rework batch 4a): the Sniper pins infantry lines, the Marksman marks for its army, the Bilecaster pools on packed fights, the Gunship bursts vehicles, the Wraithwing raids (splash and chaining anti-air catch it)
+    if (rwB4a(g)) { // v2.86 (rework batch 4a): the Sniper pins infantry lines, the Marksman marks for its army, the Bilecaster pools on packed fights, the Gunship bursts vehicles, the Wraithwing raids (v2.87: dedicated anti-air and defences track it)
       const nAx = mine.filter(u => UDEF[u.type].fac === 'axiarchs' && UDEF[u.type].weapon).length;
       sc.sniper = 0.8 + comp.light * 1.8 + aiPack(theirs) * 0.4 - comp.vehicle * 1.0 - comp.air * 0.6;
       sc.marksman = 0.9 + comp.light * 0.8 + comp.heavy * 0.8 + comp.vehicle * 0.2 + Math.min(1, nAx / 8) * 0.6 - comp.air * 0.6;

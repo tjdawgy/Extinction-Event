@@ -162,6 +162,18 @@ test('v2.86: with rework batches 2a, 2b, 3a, 3b and 4a on, the same matches matc
   assert.strictEqual(bhAx(true, true, 'e'), FP_V286E_BA);
   assert.strictEqual(lfBh('e'), LF_BH_V286E);
 });
+// v2.87 (faction rework batch 4b: Leviathan bombing runs, Brood Tyrant pustules, Worldrender landing, Voidcarrier support, the
+// Sovereign's judgement beam; and Part 0, anti-air specialists and building guns tracking a hopping batch 4a Wraithwing): every
+// replay above runs with REWORK.b4b false and is unchanged (a b4b-off save leaves the key out). Part 0 belongs to b4a, and the
+// v2.86 matches with 4a on (FP_V286E) are unchanged by it (no Wraithwing hops into anti-air in them; tests/rework-4a.test.js
+// re-records the seeded skirmish that has them). With every batch on (rw 'f') the same three matches are recorded here.
+const FP_V287F = '90b4b7e01f4eea53996943f770b3279e35e190df7e9aed5e1930df8d665f2eb6', FP_V287F_BA = '00e2c902c0b7cd7c032169b62ca2b2c70c222cdac27b83cb28a2525b884bddda', LF_BH_V287F = 'cf4cd972e39ec4e85c4c8d78cd9365fc3cc1fd7d71ca283fc2c08af6189fdcb1'; // recorded at v2.87 (batches 2a to 4b on)
+test('v2.87: with every rework batch on (2a, 2b, 3a, 3b, 4a and 4b), the same matches match their recorded fingerprints', () => {
+  assert.strictEqual(fingerprint(false, false, true, true, 'f'), FP_V287F);
+  assert.strictEqual(bhAx(true, true, 'f'), FP_V287F_BA);
+  assert.strictEqual(lfBh('f'), LF_BH_V287F);
+});
+if (require.main === module && process.argv[2] === '--print4b') console.log(fingerprint(false, false, true, true, 'f'), bhAx(true, true, 'f'), lfBh('f'));
 if (require.main === module && process.argv[2] === '--print4a') console.log(fingerprint(false, false, true, true, 'e'), bhAx(true, true, 'e'), lfBh('e'));
 if (require.main === module && process.argv[2] === '--print3b') console.log(fingerprint(false, false, true, true, 'd'), bhAx(true, true, 'd'), lfBh('d'));
 if (require.main === module && process.argv[2] === '--print3a') console.log(fingerprint(false, false, true, true, 'c'), bhAx(true, true, 'c'), lfBh('c'));

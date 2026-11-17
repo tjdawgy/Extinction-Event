@@ -47,7 +47,7 @@ for (const [t, on] of [['sniper', 'Long-range marksman whose rail rounds pierce 
   ['marksman', 'Very long-range sniper that charges each shot and marks its target: every Axiarch unit hits a marked target harder, and those in reach switch to it. It can\'t hit aircraft and is weak against buildings.'],
   ['bilecaster', 'Mid-range spitter that lobs globs of bile which leave lasting acid pools: enemies standing in them burn and take more damage. Area denial, not precision; it can\'t hit aircraft.'],
   ['aircraft', 'Rotor gunship that fires its two rocket pods in salvos of missiles, then reloads. Hits ground and air, good at bursting vehicles. Anti-air and Turrets shoot it down.'],
-  ['wraithwing', 'Shielded crescent flyer that moves in short teleport hops instead of flying, firing a bolt each time it lands. Shots in flight lose it when it hops; splash and chaining anti-air catch it.']]) {
+  ['wraithwing', 'Shielded crescent flyer that moves in short teleport hops instead of flying, firing a bolt each time it lands. Shots in flight lose it when it hops; dedicated anti-air and defences track it through its hops.']]) {
   const d0 = UDEF[t].desc; Object.defineProperty(UDEF[t], 'desc', { get: () => REWORK.b4a ? on : d0, enumerable: true, configurable: true });
 }
 function rw4aText(o, k, on) { const x = Object.getOwnPropertyDescriptor(o, k), off = x.get ? x.get() : x.value; Object.defineProperty(o, k, { get: () => REWORK.b4a ? on : off, enumerable: true, configurable: true }); }
