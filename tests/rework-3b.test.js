@@ -55,11 +55,11 @@ const SK = {
 };
 test('seeded skirmishes: b3a and b3b off hash as on v2.84; on, as recorded at v2.85 (Part 0 and batch 3b); all with batch 4a off (v2.86)', () => {
   const s = loadSim();
-  assert.strictEqual(skirm(s, 'a', { b3a: false, b3b: false, b4a: false, b4b: false }), SK.a0);
-  assert.strictEqual(skirm(s, 'b', { b3b: false, b4a: false, b4b: false }), SK.b0);
-  assert.strictEqual(skirm(s, 'a', { b3b: false, b4a: false, b4b: false }), SK.a1);
-  assert.strictEqual(skirm(s, 'a', { b4a: false, b4b: false }), SK.a2);
-  assert.strictEqual(skirm(s, 'b', { b4a: false, b4b: false }), SK.b1);
+  assert.strictEqual(skirm(s, 'a', { b3a: false, b3b: false, b4a: false, b4b: false, b5b: false }), SK.a0);
+  assert.strictEqual(skirm(s, 'b', { b3b: false, b4a: false, b4b: false, b5b: false }), SK.b0);
+  assert.strictEqual(skirm(s, 'a', { b3b: false, b4a: false, b4b: false, b5b: false }), SK.a1);
+  assert.strictEqual(skirm(s, 'a', { b4a: false, b4b: false, b5b: false }), SK.a2);
+  assert.strictEqual(skirm(s, 'b', { b4a: false, b4b: false, b5b: false }), SK.b1);
 });
 
 test('Part 0, Riftstalker: after a strike it stays and fights its target (no fade back); out of targets it blinks home; an AI strikes from half shields', () => {

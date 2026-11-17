@@ -47,10 +47,10 @@ const SK = {
 };
 test('seeded skirmishes: b4b off hashes as on v2.86; on, as recorded at v2.87', () => {
   const s = loadSim();
-  assert.strictEqual(skirm(s, 'e', { b4b: false }), SK.e0);
-  assert.strictEqual(skirm(s, 'f', { b4b: false }), SK.f0);
-  assert.strictEqual(skirm(s, 'e', {}), SK.e1);
-  assert.strictEqual(skirm(s, 'f', {}), SK.f1);
+  assert.strictEqual(skirm(s, 'e', { b4b: false, b5b: false }), SK.e0);
+  assert.strictEqual(skirm(s, 'f', { b4b: false, b5b: false }), SK.f0);
+  assert.strictEqual(skirm(s, 'e', { b5b: false }), SK.e1);
+  assert.strictEqual(skirm(s, 'f', { b5b: false }), SK.f1);
 });
 
 test('Part 0: Hydras, Interceptors and building guns track a hopping Wraithwing (no re-acquire delay); other units still wait it out; shots in flight still miss', () => {

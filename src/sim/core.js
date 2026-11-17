@@ -92,7 +92,7 @@ const factionName = k => (FACTIONS[k] || FACTIONS[DEFAULT_FACTION]).name;
 // One line per faction for the setup menu (v2.30). Salvage's numbers come from SALVAGE, defined further down (read at call time).
 const factionDesc = k => k === 'random' ? 'A random faction, revealed when the match starts.' : {
   lastfist: () => SALVAGE.pct > 0 ? `Last Fist: combined arms. Salvage: any unit destroyed near your forces returns ${Math.round(SALVAGE.pct * 100)}% of its credit cost.` : 'Last Fist: adaptable combined arms, the easiest to learn.',
-  bloomhost: () => 'Bloomhost: swarms that spread creep; on creep they move faster and heal.',
+  bloomhost: () => REWORK.b5b ? 'Bloomhost: a fast, deadly swarm. Skitterlings hatch in broods of four, the swarm runs faster in numbers and frenzies on kills; creep speeds and heals it.' : 'Bloomhost: swarms that spread creep; on creep they move faster and heal.', // v2.88: the swarm pass (batch 5b)
   axiarchs: () => 'Axiarchs: costly elite units with shields that recharge in their power field.',
 }[facOf(k)]();
 const facOf = k => FACTIONS[k] ? k : DEFAULT_FACTION;

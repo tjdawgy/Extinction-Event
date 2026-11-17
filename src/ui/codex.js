@@ -38,7 +38,7 @@ function cxUnlock(fac, t) {
 }
 const cxMechFacts = {
   lastfist: () => SALVAGE.pct > 0 ? `Now: ${cxPct(SALVAGE.pct)} of the credit cost, for kills within ${SALVAGE.r} of your units or buildings, at most ${SALVAGE.cap} credits a minute.` : 'Salvage is switched off.',
-  bloomhost: () => `Now: ${cxPct(CREEP.speed - 1)} faster on creep, and ${cxPct(CREEP.regen)} of max HP healed per second after ${CREEP.calm} s out of combat.`,
+  bloomhost: () => `Now: ${cxPct(CREEP.speed - 1)} faster on creep, and ${cxPct(CREEP.regen)} of max HP healed per second after ${CREEP.calm} s out of combat.${REWORK.b5b ? ' ' + swarmFacts() : ''}`, // v2.88: the swarm (batch 5b)
   axiarchs: () => `Now: shields recharge ${cxPct(SHIELD.rate)} of max per second after ${SHIELD.delay} s without damage, and ${cxPct(FIELD.regen)} per second inside the power field.`,
 };
 function cxOverview(fac) {

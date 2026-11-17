@@ -50,10 +50,10 @@ const SK = {
 };
 test('seeded skirmishes: b4a off hashes as on v2.85; on, as recorded at v2.86 (d re-recorded at v2.87, Part 0); all with batch 4b off', () => {
   const s = loadSim();
-  assert.strictEqual(skirm(s, 'c', { b4a: false, b4b: false }), SK.c0);
-  assert.strictEqual(skirm(s, 'd', { b4a: false, b4b: false }), SK.d0);
-  assert.strictEqual(skirm(s, 'c', { b4b: false }), SK.c1);
-  assert.strictEqual(skirm(s, 'd', { b4b: false }), SK.d1);
+  assert.strictEqual(skirm(s, 'c', { b4a: false, b4b: false, b5b: false }), SK.c0);
+  assert.strictEqual(skirm(s, 'd', { b4a: false, b4b: false, b5b: false }), SK.d0);
+  assert.strictEqual(skirm(s, 'c', { b4b: false, b5b: false }), SK.c1);
+  assert.strictEqual(skirm(s, 'd', { b4b: false, b5b: false }), SK.d1);
 });
 
 test('Part 0: a Normal or Hard AI rolls each building\'s T2 path once per match (its persona\'s about 60%); Easy keeps the persona\'s; counters first', () => {

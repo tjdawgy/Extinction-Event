@@ -194,6 +194,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .card .path.pr:empty{display:none}
 .card .path.sg{color:#ffcf6a} /* v2.43: a signature building's card: it goes on the signature pad */
 .card .path.mx{color:#c8d4e8} .card .path.mx.full{color:#ff8a8a} /* S1 (v2.37): Skitterlings alive / limit */
+.card .path.pr:not(:empty) + .path.mx{top:14px} /* v2.88: under BROOD ×4 (batch 5b) */
 .echoHdr{flex:none;align-self:stretch;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:0 6px;border-radius:10px;background:rgba(159,232,255,.08);border:1px dashed rgba(159,232,255,.35);color:#bfefff;font-size:11px;font-weight:700;line-height:1.2;text-align:center;white-space:nowrap} /* Echoes (v2.34) */
 .echoHdr small{color:var(--muted);font-weight:600;font-size:10px}
 #cards .card.echoc{border-color:rgba(159,232,255,.45)} #cards .card.echoc .path{background:rgba(159,232,255,.2);color:#dff7ff}
@@ -854,7 +855,7 @@ const factionName = k => (FACTIONS[k] || FACTIONS[DEFAULT_FACTION]).name;
 // One line per faction for the setup menu (v2.30). Salvage's numbers come from SALVAGE, defined further down (read at call time).
 const factionDesc = k => k === 'random' ? 'A random faction, revealed when the match starts.' : {
   lastfist: () => SALVAGE.pct > 0 ? `Last Fist: combined arms. Salvage: any unit destroyed near your forces returns ${Math.round(SALVAGE.pct * 100)}% of its credit cost.` : 'Last Fist: adaptable combined arms, the easiest to learn.',
-  bloomhost: () => 'Bloomhost: swarms that spread creep; on creep they move faster and heal.',
+  bloomhost: () => REWORK.b5b ? 'Bloomhost: a fast, deadly swarm. Skitterlings hatch in broods of four, the swarm runs faster in numbers and frenzies on kills; creep speeds and heals it.' : 'Bloomhost: swarms that spread creep; on creep they move faster and heal.', // v2.88: the swarm pass (batch 5b)
   axiarchs: () => 'Axiarchs: costly elite units with shields that recharge in their power field.',
 }[facOf(k)]();
 const facOf = k => FACTIONS[k] ? k : DEFAULT_FACTION;
@@ -6176,6 +6177,10 @@ function rw5bText(o, k, on) { const x = Object.getOwnPropertyDescriptor(o, k), o
 rw5bText(TREES_BH.barracks.B.steps[2], 'txt', 'Unlocks Spitters: volleys of acid quills at air and ground, aircraft first');
 rw5bText(TREES_BH.techlab.A.steps[2], 'txt', 'Unlocks Needlewings: cheap flyers that sting ground units and aircraft, harder in a pack');
 { const B = BDEFS && BDEFS.bloomhost && BDEFS.bloomhost.barracks; if (B && B.tiers) rw5bText(B.tiers, 1, 'Spawns Skitterlings in broods of four'); }
+// The faction's mechanic, as the Codex, the faction picker and the tutorial explain it (numbers in the Codex's live line)
+{ const m0 = FACTIONS.bloomhost.mech, m5 = { name: 'Creep and the swarm', txt: 'Your Hive, your other buildings and the field nodes you hold spread creep. On their own creep, Bloomhost ground units move faster and heal when out of combat. The swarm: Skitterlings hatch in broods of four from one order; every Bloomhost ground unit runs faster the more of the swarm is around it (swarm surge); and when an enemy unit dies near your organisms, they attack faster for a few seconds (kill frenzy). Strong in numbers and against lone units; weak to splash damage, walls and barriers.' };
+  Object.defineProperty(FACTIONS.bloomhost, 'mech', { get: () => REWORK.b5b ? m5 : m0, enumerable: true, configurable: true }); }
+const swarmFacts = () => `Broods of ${BROOD.n} for ${BROOD.cost} credits (${txN(BROOD.time)} s, ${BROOD.hp} health each); swarm surge +${txP(SURGE.per)} speed for every other Bloomhost ground unit within ${SURGE.r}, up to +${txP(SURGE.max)}; kill frenzy: an enemy unit dying within ${KFRENZY.r} makes your organisms attack ${txP(KFRENZY.rate - 1)} faster for ${txN(KFRENZY.dur)} s (refreshed, never stacked).`;
 /* ---------- Enemy AI: same economy, same rules, same upgrades as the player ---------- */
 // Known base defenses: the enemy HQ gun plus remembered Turrets, each at its last-seen tier
 const HQ_VAL = 400, TURRET_VAL = 300;
@@ -10826,7 +10831,6 @@ function drawLvBomb(c, p, b) { // a Leviathan's bomb falling: a fat olive bomb w
   c.fillStyle = STEEL[2]; poly(c, [[b.x - 3.4, b.y - 7], [b.x + 3.4, b.y - 7], [b.x + 1.6, b.y - 4], [b.x - 1.6, b.y - 4]]); c.fill();
 }
 /* ---------- Faction rework, batch 5b art (v2.88) ---------- */
-/* ---------- Faction rework, batch 5b art (v2.88) ---------- */
 /* ---------- Backdrop: sky, mountains and the ground plane ---------- */
 function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 let BG; const mapBackdrop = () => { BG = (() => {
@@ -12917,13 +12921,13 @@ const UNIT_TIPS = {
   get drone() { const u = UDEF.drone; return [`No weapon: sees ${txN(SIGHT.drone)} far, spots for Artillery (at most ${u.max})`, 'Anything that hits air']; },
   flame: ['Massed infantry at close range, anyone on a node', 'Tanks, Artillery, Heavies, Titans'],
   get hydra() { return [REWORK.b4a ? 'Aircraft first (it tracks Wraithwings through their hops), then infantry swarms; slowly chips buildings' : 'Aircraft first, then infantry swarms; slowly chips buildings', 'Tanks, Titans, Artillery']; }, // v2.87
-  get skitterling() { const u = UDEF.skitterling; return [`Lone ranged units and nodes; hits harder when several bite the same target (up to +${txP(u.swarm.max)}). ${txN(u.pop)} supply each, at most ${u.max} alive`, "Splash damage, Flame Tanks, Turrets; it can't hit aircraft"]; }, // v2.37
+  get skitterling() { const u = UDEF.skitterling; if (REWORK.b5b) return [`Lone units, ranged units and nodes, in numbers: one order hatches a brood of ${BROOD.n} (${BROOD.cost} credits, ${txN(BROOD.time)} s, ${BROOD.hp} health each); it bites harder when several attack one target (up to +${txP(u.swarm.max)}), runs up to +${txP(SURGE.max)} faster with the swarm around it and attacks ${txP(KFRENZY.rate - 1)} faster for ${txN(KFRENZY.dur)} s after a kill nearby. ${txN(u.pop)} supply each, at most ${u.max} alive`, "Splash damage: Tanks, Flame Tanks, Worldbreaker lines, Shardstorm chains; walls and barriers; Turrets; it can't hit aircraft"]; return [`Lone ranged units and nodes; hits harder when several bite the same target (up to +${txP(u.swarm.max)}). ${txN(u.pop)} supply each, at most ${u.max} alive`, "Splash damage, Flame Tanks, Turrets; it can't hit aircraft"]; }, // v2.37; v2.88: broods, surge, frenzy (batch 5b)
   get mite() { const u = UDEF.mite; return [`Swarming lone units and buildings for free: a clutch every ${txN(MOUND.every)} s from the Brood Mound; at T3 a killed Mite bursts into acid`, "Anything at all: very little HP; it can't hit aircraft or capture nodes"]; },
   get bulwark() { const u = UDEF.bulwark; if (REWORK.b3b) return [`Holding the line on its creep: braces when hit (${txP(u.brace.cut)} less damage for ${txN(u.brace.dur)} s, every ${txN(u.brace.cd)} s); on its own creep it regenerates ${txN(BULK.fight)} health a second even in combat and ${txN(BULK.calm)}× the usual creep regeneration out of it`, 'Heavies, Tanks; drawing it off its creep, being surrounded']; return [`Soaking up fire at the front; braces when hit (${txP(u.brace.cut)} less damage for ${txN(u.brace.dur)} s, every ${txN(u.brace.cd)} s)`, 'Heavies, Tanks; being surrounded']; },
   razorwing: ['Exposed ground units and aircraft; dives from the air', 'Anything that hits air, Turrets'],
   get leaper() { const u = UDEF.leaper; if (REWORK.b3a) return [`Vehicles, walkers and big ground units: it leaps up to ${txN(u.leap.range)} (every ${txN(u.leap.cd)} s) and latches on, eating ${txN(LATCH.dps)} health a second and slowing its host ${txP(LATCH.slow)} (up to ${txN(LATCH.max)} on one host; the slow doesn't add up). If the host dies, each Leaper on it hatches ${txN(LATCH.hatch)} Skitterlings for ${txN(LATCH.life)} s (at most ${txN(LATCH.hatchMax)})`, 'Shoot it off its host (it can be hit, splash too), Flame Tanks, focused fire']; return [`Snipers, Artillery and other ranged units: it leaps up to ${txN(u.leap.range)} onto them (every ${txN(u.leap.cd)} s)`, 'Splash, Flame Tanks, focused fire']; },
   get ravager() { const u = UDEF.ravager; if (REWORK.b3a) return [`Long fights: every ground unit that dies leaves remains for ${txN(RAV.life)} s; within ${txN(RAV.r)} of them, out of combat or under ${txP(RAV.low)} health, it devours them over ${txN(RAV.eat)} s: ${txP(RAV.heal)} of its health back and +${txP(RAV.dmg)} damage and +${txP(RAV.hp)} health, up to ${txN(RAV.max)} times`, 'Kill it early, before it feeds; Tanks, Turrets']; return [`Light armor (its maul does ${txX(DMG[u.weapon].light)}); every kill sends it into a ${txN(u.bloodfrenzy?.dur)} s frenzy (faster attacks and movement), refreshed by the next kill`, 'Tanks, Turrets, focused fire']; }, // v2.37
-  spitter: ['Aircraft and ground from range; its acid makes targets take more damage (corrosion)', 'Anything that reaches it, splash'],
+  get spitter() { if (REWORK.b5b) return [`Aircraft first, then ground: volleys of ${QUILL.n} acid quills ${txN(QUILL.gap)} s apart (${txN(QUILL.dmg)} each, ${txX(QUILL.air)} against aircraft), a volley every ${txN(QUILL.cycle)} s, range ${txN(QUILL.range)}; its acid makes targets take more damage (corrosion)`, 'Anything that reaches it, splash, barriers that block its quills']; return ['Aircraft and ground from range; its acid makes targets take more damage (corrosion)', 'Anything that reaches it, splash']; }, // v2.88: volleys (batch 5b)
   get bilecaster() { const u = UDEF.bilecaster; if (REWORK.b4a) return [`Packed fights and chokes: every ${txN(BILE.cd)} s it lobs a glob (range ${txN(BILE.range)}, ${txN(BILE.dmg)} damage within ${txN(BILE.splash)}) that leaves an acid pool (radius ${txN(BILE.r)}, ${txN(BILE.life)} s): enemies in it take ${txN(BILE.dps)} a second and ${txP(BILE.corr)} more damage, while inside and for ${txN(BILE.after)} s after; up to ${txN(BILE.max)} pools each`, "Stepping out of the pools, spreading out, units that outrange it; it can't hit aircraft"]; return [`Marking targets from ${txN(u.range)} range: a single bile dart whose corrosion lasts ${txN(u.corrode.dur)} s (+${txP(u.corrode.amt)} damage taken)`, "Swarms (one target at a time), anything that reaches it; it can't hit aircraft"]; }, // v2.37
   get bilelobber() { const u = UDEF.bilelobber; return [`Softening an army from ${txN(u.range)} range: its splash corrodes everything it hits for ${txN(u.corrode?.dur)} s (minimum range ${txN(u.minRange)})`, 'Anything that gets close, aircraft; weak against buildings on its own']; }, // v2.37
   get gorebore() { return [`Artillery, Snipers and other ranged backlines: it burrows (speed ${txN(BORE.speed)}, can't be hit) and erupts under them for ${txN(BORE.dmg)} damage around it (radius ${txN(BORE.r)}), then fights up close; it can burrow again ${txN(BORE.cd)} s after each eruption`, `Watching for its dirt trail, guards beside the backline, focus fire while it is up (${txN(BORE.expose)} s exposed after each eruption); it can't hit aircraft`]; }, // v2.82
@@ -12946,7 +12950,7 @@ const UNIT_TIPS = {
   get shardstorm() { const u = UDEF.shardstorm; return [`Swarms of aircraft and infantry: its beam chains to up to ${u.chain.n} more enemies, weaker each jump`, 'Heavy single targets; weak against buildings']; },
   get voidcarrier() { const u = UDEF.voidcarrier; if (REWORK.b4b) return [`Support: it carries a power field (radius ${txN(u.node?.r || 120)}) where Axiarch shields recharge fast and units warp in; a light defensive bolt (${txN(VC.dmg)} every ${txN(VC.cd)} s, range ${txN(VC.range)}, air and ground)`, 'Interceptors, Heavies, Hydras, defences, anything that can reach it: kill it and the field collapses']; return [`Taking the power field forward: it carries a field (radius ${txN(u.node?.r)}) where Axiarch shields recharge fast and units warp in; slow orbs from ${txN(u.range)} range`, "Interceptors, Lancers, Hydras, defences: kill it and the field collapses; it can't hit aircraft"]; }, // v2.37
   get sovereign() { const u = UDEF.sovereign; if (REWORK.b4b) return [`High-value targets from long range: it locks on (a visible line) and charges ${txN(SOV.charge)} s, then a judgement beam for ${txN(SOV.dmg)} (more against buildings) at a ground unit or building up to ${txN(SOV.range)} away`, 'Break its shields during the charge and the shot fails; anti-air, aircraft (it can\'t hit them), spread-out armies']; return [`One building at a time: a visible ${txN(u.charge)} s charge, then a judgement beam for heavy single-target damage`, 'Anti-air during the charge; units and spread-out bases']; }, // v2.37
-  get needlewing() { const u = UDEF.needlewing; return [`Exposed ground units in a pack: +${txP(u.swarm.per)} damage for each other Needlewing on the target (up to +${txP(u.swarm.max)})`, "Anything that hits air, splash; it can't hit aircraft"]; },
+  get needlewing() { const u = UDEF.needlewing; if (REWORK.b5b) return [`Aircraft and exposed ground units, in a pack: +${txP(u.swarm.per)} damage for each other Needlewing on the target (up to +${txP(u.swarm.max)}); it stings aircraft too`, 'Dedicated anti-air, splash, Shardstorm chains']; return [`Exposed ground units in a pack: +${txP(u.swarm.per)} damage for each other Needlewing on the target (up to +${txP(u.swarm.max)})`, "Anything that hits air, splash; it can't hit aircraft"]; }, // v2.88: hits aircraft (batch 5b)
   get cloudwing() { const u = UDEF.cloudwing; return [`Overwhelming ground targets; while fighting it releases ${u.spawn.n} offspring every ${txN(u.spawn.cd)} s (${txN(u.spawn.life)} s life, at most ${SPAWN.max})`, "Anything that hits air; it can't hit aircraft"]; },
   get broodtyrant() { const u = UDEF.broodtyrant; if (REWORK.b4b) return [`Bases: its glob (range ${txN(TYR.range)}, every ${txN(TYR.cd)} s) does ${txN(TYR.dmg)} to ground units (splash ${txN(TYR.splash)}) or ${txN(TYR.bdmg)} to a building and sticks a pustule on it (up to ${PUS.max}, ${txN(PUS.dps)} damage/s each); a building that falls with pustules bursts into ${PUS.mites} Mites per pustule`, "Paid Repair clears the pustules; Interceptors, Heavies, Hydras, Turrets; it can't hit aircraft"]; return [`Buildings first, then ground units, with heavy globs from ${txN(u.range)} range`, "Interceptors, Heavies, Hydras, Turrets; it can't hit aircraft"]; },
   get worldrender() { const u = UDEF.worldrender; if (REWORK.b4b) return [`Buildings: it lands on one (${txN(LAND.t)} s) and bites it for ${txN(LAND.dmg)} every ${txN(LAND.every)} s, healing ${txP(LAND.frac)} of the damage (at most ${txN(LAND.cap)} HP/s); it takes off when the building falls or it drops below ${txP(LAND.off)} health`, "Landed it is a heavy ground target: Tanks, infantry and every ground gun can hit it (anti-air-only units can't); burst it before it lands"]; return [`Buildings above all, from right above them: it heals for ${txP(u.devour?.frac)} of the damage it does to buildings (at most ${txN(u.devour?.cap)} HP/s)`, "Burst anti-air before it starts feeding; it can't hit aircraft"]; }, // v2.37
@@ -12961,7 +12965,7 @@ function showInfo(kind, type) {
     name = d.name; sub = d.spawned ? `Spawned by the ${BD(d.fac, d.from).name} · free, temporary` : `${BD(d.fac, d.from).name} T${d.tier}`; // v2.33: the Mite
     body = `<div class="istats">${stat('HP', d.hp)}${d.shp ? stat('Shields', d.shp) : ''}${d.weapon ? stat('Damage/s', Math.round(d.dmg / d.cd)) + stat('Range', d.range + (d.minRange ? ` (min ${d.minRange})` : '')) : d.heal ? stat('Heals', `${d.heal * 100}%/s`) + stat('Radius', d.healR) : stat('Sight', SIGHT[type]) + stat('Max', d.max)}${stat('Speed', d.speed)}
       ${stat('Armor', arm)}${stat('Shoots', hits)}${stat('Army size', d.pop)}${d.spawned ? stat('Lifespan', MOUND.life + 's') : stat('Build time', d.time + 's')}</div>
-      <div class="irow"><em>Cost</em> ${d.spawned ? 'None: spawned free' : `${d.cost.c} credits${d.cost.e ? `, ${d.cost.e} energy` : ''}`}${d.splash ? ', splash damage' : ''}</div>
+      <div class="irow"><em>Cost</em> ${d.spawned ? 'None: spawned free' : d.brood ? `${d.brood.c} credits for a brood of ${d.brood.n} (${txN(d.brood.c / d.brood.n)} each)` : `${d.cost.c} credits${d.cost.e ? `, ${d.cost.e} energy` : ''}`}${d.splash ? ', splash damage' : ''}</div>
       <div class="irow"><em>Strong against</em> ${UNIT_TIPS[type][0]}</div>
       <div class="irow"><em>Weak against</em> ${UNIT_TIPS[type][1]}</div>`;
   } else if (kind === 'a') {
@@ -13022,7 +13026,7 @@ function buildCards() {
     el.addEventListener('animationend', () => el.classList.remove('shake'));
     if (tab === 'train' && UNIT_PATH[type]) el.insertAdjacentHTML('beforeend', `<span class="path">${UNIT_PATH[type].path.short}</span>`);
     if (tab === 'build' && d.sig && sigPadOn()) el.insertAdjacentHTML('beforeend', '<span class="path sg">★ SIG PAD</span>'); // v2.43: builds on the signature pad
-    if (tab === 'train' && type === 'rifle') el.insertAdjacentHTML('beforeend', '<span class="path pr"></span>');
+    if (tab === 'train' && (type === 'rifle' || type === 'skitterling')) el.insertAdjacentHTML('beforeend', '<span class="path pr"></span>');
     if (tab === 'train' && d.max) el.insertAdjacentHTML('beforeend', '<span class="path mx"></span>'); // how many of a limited unit you have (v2.37)
     wrap.appendChild(el);
   }
@@ -13238,14 +13242,16 @@ function refreshUI(force) {
       const d = UDEF[type];
       const prods = alive(game, 0, d.from).filter(b => canMake(b, type, game));
       if (type === 'rifle') setHTML(el.querySelector('.pr'), prods.some(b => pathMod(b, 'pairs')) ? 'MASS ×2' : '');
+      if (type === 'skitterling') setHTML(el.querySelector('.pr'), rwB5b(game) ? `BROOD ×${BROOD.n}` : ''); // v2.88: a brood (batch 5b)
       const mx = el.querySelector('.mx'); if (mx) { const n = unitCount(game, 0, type); setHTML(mx, `${n}/${d.max}`); mx.classList.toggle('full', n >= d.max); }
       locked = !prods.length;
-      poor = s.res.c < d.cost.c || s.res.e < d.cost.e || used + d.pop > cap;
+      const tc = trainCost(game, type), tp = trainPop(game, type); // v2.88: a brood's cost and supply (batch 5b)
+      poor = s.res.c < tc.c || s.res.e < tc.e || used + tp > cap;
       for (const p of prods) {
         badge += p.queue.filter(q => q === type).length;
-        if (p.queue[0] === type) prog = Math.max(prog, Math.min(1, p.prodT / (d.time * (type === 'rifle' && p.queue[1] === 'rifle' && pathMod(p, 'pairs') ? PAIR_TIME : 1))));
+        if (p.queue[0] === type) prog = Math.max(prog, Math.min(1, p.prodT / (trainTime(game, type) * (type === 'rifle' && p.queue[1] === 'rifle' && pathMod(p, 'pairs') ? PAIR_TIME : 1))));
       }
-      html = locked ? `<span class="lock">${unitLockMsg(d)}</span>` : costHTML(d.cost, s.res, d.pop);
+      html = locked ? `<span class="lock">${unitLockMsg(d)}</span>` : costHTML(tc, s.res, tp);
     }
     const costEl = el.querySelector('.cost');
     if (force) costEl.innerHTML = html; else setHTML(costEl, html);
@@ -14552,7 +14558,7 @@ function cxUnlock(fac, t) {
 }
 const cxMechFacts = {
   lastfist: () => SALVAGE.pct > 0 ? `Now: ${cxPct(SALVAGE.pct)} of the credit cost, for kills within ${SALVAGE.r} of your units or buildings, at most ${SALVAGE.cap} credits a minute.` : 'Salvage is switched off.',
-  bloomhost: () => `Now: ${cxPct(CREEP.speed - 1)} faster on creep, and ${cxPct(CREEP.regen)} of max HP healed per second after ${CREEP.calm} s out of combat.`,
+  bloomhost: () => `Now: ${cxPct(CREEP.speed - 1)} faster on creep, and ${cxPct(CREEP.regen)} of max HP healed per second after ${CREEP.calm} s out of combat.${REWORK.b5b ? ' ' + swarmFacts() : ''}`, // v2.88: the swarm (batch 5b)
   axiarchs: () => `Now: shields recharge ${cxPct(SHIELD.rate)} of max per second after ${SHIELD.delay} s without damage, and ${cxPct(FIELD.regen)} per second inside the power field.`,
 };
 function cxOverview(fac) {
@@ -14721,9 +14727,9 @@ function trVfxUse(k) {
 }
 
 // v2.82: a row's rework switches (REWORK's for a setup saved before them)
-const TR_RW = [['b2a', 'Batch 2a'], ['artDeploy', 'Deploy'], ['artTelegraph', 'Telegraph'], ['b2b', 'Batch 2b'], ['b3a', 'Batch 3a'], ['b3b', 'Batch 3b'], ['b4a', 'Batch 4a'], ['b4b', 'Batch 4b']]; // b4b (v2.87); b2b (v2.83), b3a (v2.84), b3b (v2.85), b4a (v2.86)
+const TR_RW = [['b2a', 'Batch 2a'], ['artDeploy', 'Deploy'], ['artTelegraph', 'Telegraph'], ['b2b', 'Batch 2b'], ['b3a', 'Batch 3a'], ['b3b', 'Batch 3b'], ['b4a', 'Batch 4a'], ['b4b', 'Batch 4b'], ['b5b', 'Batch 5b']]; // b5b (v2.88); b4b (v2.87); b2b (v2.83), b3a (v2.84), b3b (v2.85), b4a (v2.86)
 function trRw(k) { const S = TR.set; if (!Array.isArray(S.rw)) S.rw = []; return S.rw[k] || (S.rw[k] = rwInit()); }
-const trRwTag = k => { const r = trRw(k), a = !r.b2a ? 'pre-2a' : r.artDeploy && r.artTelegraph ? '2a' : `2a${r.artDeploy ? ' deploy' : ''}${r.artTelegraph ? ' telegraph' : ''}${!r.artDeploy && !r.artTelegraph ? ' (no Artillery switches)' : ''}`; return `${a}, ${r.b2b ? '2b' : 'pre-2b'}, ${r.b3a ? '3a' : 'pre-3a'}, ${r.b3b ? '3b' : 'pre-3b'}, ${r.b4a ? '4a' : 'pre-4a'}, ${r.b4b ? '4b' : 'pre-4b'}`; }; // v2.87: and 4b; // v2.86: and 4a; v2.83: and batch 2b; v2.84: and 3a; v2.85: and 3b
+const trRwTag = k => { const r = trRw(k), a = !r.b2a ? 'pre-2a' : r.artDeploy && r.artTelegraph ? '2a' : `2a${r.artDeploy ? ' deploy' : ''}${r.artTelegraph ? ' telegraph' : ''}${!r.artDeploy && !r.artTelegraph ? ' (no Artillery switches)' : ''}`; return `${a}, ${r.b2b ? '2b' : 'pre-2b'}, ${r.b3a ? '3a' : 'pre-3a'}, ${r.b3b ? '3b' : 'pre-3b'}, ${r.b4a ? '4a' : 'pre-4a'}, ${r.b4b ? '4b' : 'pre-4b'}, ${r.b5b ? '5b' : 'pre-5b'}`; }; // v2.88: and 5b; v2.87: and 4b; // v2.86: and 4a; v2.83: and batch 2b; v2.84: and 3a; v2.85: and 3b
 // Rows: each row's factions (the first thing placed on each side), building every row from the items
 const trFacs = k => [0, 1].map(s => { const it = TR.set.items.find(i => i.row === k && i.side === s); return it ? (it.kind === 'u' ? rangeFac(it.type) : it.fac) : DEFAULT_FACTION; });
 function trBuild() {
@@ -14866,6 +14872,11 @@ function trState(g, e) {
     if (e.type === 'worldrender') out.push(['airborne', 'landing', 'landed: feeding (a ground target)', 'taking off (a ground target)'][e.lnd || 0]);
     if (e.type === 'sovereign' && e.chT > g.t) out.push(`charging (${(e.chT - g.t).toFixed(1)} s)`);
     if (e.kind === 'b' && e.pus) out.push(`${e.pus} pustule${e.pus > 1 ? 's' : ''} (${PUS.dps * e.pus}/s)`);
+  }
+  if (rwB5b(g) && e.kind === 'u') { // v2.88 (batch 5b)
+    if (e.sgN && !UDEF[e.type].air) out.push(`swarm surge +${Math.round(Math.min(SURGE.max, e.sgN * SURGE.per) * 100)}% (${e.sgN} near)`);
+    if (e.kfT > g.t) out.push(`kill frenzy (${(e.kfT - g.t).toFixed(1)} s)`);
+    if (e.type === 'spitter') out.push(e.qn ? `volley: ${QUILL.n - e.qn} quills left` : e.cd > 0 ? `next volley in ${e.cd.toFixed(1)} s` : 'volley ready');
   }
   if (e.corrT > g.t) out.push('corroded');
   if (e.temp) out.push(`temporary (${Math.max(0, Math.ceil(e.tLife - g.t))} s)`);
@@ -15015,7 +15026,7 @@ function trUI() { // every UI refresh: the readouts, the clock, the info card, t
     const R = rangeRead(g), T = trView(k), el = box.children[k];
     const who = s => { const c = {}; for (const e of g.ents) if (e.side === s && e.hp > 0) { const nm = e.kind === 'u' ? UDEF[e.type].name : bdOf(e).name; c[nm] = (c[nm] || 0) + 1; } const a = Object.entries(c).sort((x, y) => y[1] - x[1]); return a.length ? a.slice(0, 2).map(([nm, m]) => `${cxEsc(nm)} ×${m}`).join(', ') + (a.length > 2 ? ' …' : '') : 'none'; };
     const w = R.wipe ? ` · <b class="w">${TR_SIDE[R.wipe.side]} wiped out at ${fmtTime(R.wipe.t)}</b>` : '';
-    setHTML(el, `${n > 1 ? `<b>Row ${k + 1}</b> <i class="rw">${cxEsc(trRwTag(k))}</i> ` : trRw(0).b2a && trRw(0).artDeploy && trRw(0).artTelegraph && trRw(0).b2b && trRw(0).b3a && trRw(0).b3b && trRw(0).b4a && trRw(0).b4b ? '' : `<i class="rw">${cxEsc(trRwTag(0))}</i> `}<span class="b">${who(0)}</span> vs <span class="r">${who(1)}</span> · damage <span class="b">${txN(Math.round(R.dmg[0]))}</span> / <span class="r">${txN(Math.round(R.dmg[1]))}</span> · kills <span class="b">${R.kills[0]}</span> / <span class="r">${R.kills[1]}</span>${w}`);
+    setHTML(el, `${n > 1 ? `<b>Row ${k + 1}</b> <i class="rw">${cxEsc(trRwTag(k))}</i> ` : trRw(0).b2a && trRw(0).artDeploy && trRw(0).artTelegraph && trRw(0).b2b && trRw(0).b3a && trRw(0).b3b && trRw(0).b4a && trRw(0).b4b && trRw(0).b5b ? '' : `<i class="rw">${cxEsc(trRwTag(0))}</i> `}<span class="b">${who(0)}</span> vs <span class="r">${who(1)}</span> · damage <span class="b">${txN(Math.round(R.dmg[0]))}</span> / <span class="r">${txN(Math.round(R.dmg[1]))}</span> · kills <span class="b">${R.kills[0]}</span> / <span class="r">${R.kills[1]}</span>${w}`);
     el.style.left = (T.F.l + 6) + 'px'; el.style.top = (n > 1 ? T.y0 + 2 : T.y1 - 20) + 'px'; // one row: the bottom (toasts show at the top); Compare: each strip's top, above its units el.style.maxWidth = (T.F.r - T.F.l - 12) + 'px';
   });
 }

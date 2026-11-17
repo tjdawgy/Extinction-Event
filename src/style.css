@@ -177,6 +177,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .card .path.pr:empty{display:none}
 .card .path.sg{color:#ffcf6a} /* v2.43: a signature building's card: it goes on the signature pad */
 .card .path.mx{color:#c8d4e8} .card .path.mx.full{color:#ff8a8a} /* S1 (v2.37): Skitterlings alive / limit */
+.card .path.pr:not(:empty) + .path.mx{top:14px} /* v2.88: under BROOD ×4 (batch 5b) */
 .echoHdr{flex:none;align-self:stretch;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:0 6px;border-radius:10px;background:rgba(159,232,255,.08);border:1px dashed rgba(159,232,255,.35);color:#bfefff;font-size:11px;font-weight:700;line-height:1.2;text-align:center;white-space:nowrap} /* Echoes (v2.34) */
 .echoHdr small{color:var(--muted);font-weight:600;font-size:10px}
 #cards .card.echoc{border-color:rgba(159,232,255,.45)} #cards .card.echoc .path{background:rgba(159,232,255,.2);color:#dff7ff}

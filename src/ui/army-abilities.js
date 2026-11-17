@@ -121,14 +121,16 @@ function refreshUI(force) {
       const d = UDEF[type];
       const prods = alive(game, 0, d.from).filter(b => canMake(b, type, game));
       if (type === 'rifle') setHTML(el.querySelector('.pr'), prods.some(b => pathMod(b, 'pairs')) ? 'MASS ×2' : '');
+      if (type === 'skitterling') setHTML(el.querySelector('.pr'), rwB5b(game) ? `BROOD ×${BROOD.n}` : ''); // v2.88: a brood (batch 5b)
       const mx = el.querySelector('.mx'); if (mx) { const n = unitCount(game, 0, type); setHTML(mx, `${n}/${d.max}`); mx.classList.toggle('full', n >= d.max); }
       locked = !prods.length;
-      poor = s.res.c < d.cost.c || s.res.e < d.cost.e || used + d.pop > cap;
+      const tc = trainCost(game, type), tp = trainPop(game, type); // v2.88: a brood's cost and supply (batch 5b)
+      poor = s.res.c < tc.c || s.res.e < tc.e || used + tp > cap;
       for (const p of prods) {
         badge += p.queue.filter(q => q === type).length;
-        if (p.queue[0] === type) prog = Math.max(prog, Math.min(1, p.prodT / (d.time * (type === 'rifle' && p.queue[1] === 'rifle' && pathMod(p, 'pairs') ? PAIR_TIME : 1))));
+        if (p.queue[0] === type) prog = Math.max(prog, Math.min(1, p.prodT / (trainTime(game, type) * (type === 'rifle' && p.queue[1] === 'rifle' && pathMod(p, 'pairs') ? PAIR_TIME : 1))));
       }
-      html = locked ? `<span class="lock">${unitLockMsg(d)}</span>` : costHTML(d.cost, s.res, d.pop);
+      html = locked ? `<span class="lock">${unitLockMsg(d)}</span>` : costHTML(tc, s.res, tp);
     }
     const costEl = el.querySelector('.cost');
     if (force) costEl.innerHTML = html; else setHTML(costEl, html);
