@@ -473,6 +473,54 @@ Departures and choices the brief left open:
   at half surge or more, a red pulse (red tinted toward each side's colour) when a unit enters a kill frenzy and a faint red glint while
   it lasts. The art is drawn the new way in b5b-off games too.
 
+## Batch 5a: Last Fist art and the Marine rename
+
+**Batch 5a (all 13 Last Fist units redrawn, the Rifleman renamed Marine, three oversized flyers resized, aircraft poses cached): done
+in v2.89.** Art and text only: nothing in the SIM changes, so there is no switch block. Every pinned fingerprint (the old sets and
+FP_V288G*) matches; self-play (audit/sim/selfplay-5a.js: Hard vs Hard, all six pairings on Classic, Two-Lane and Three-Lane, seed 7)
+on this build and on v2.88's gives 18 identical matches, 0 errors, at 4,918 state hashes taken every 100 ticks. Art in src/render/units-rework-5a.js.
+- **Marine:** the Rifleman's player-facing name everywhere (unit and train cards, info card, Codex, UNIT_TIPS, counters, Barracks tier
+  and Mass Deployment texts, the queue toast, Test Range labels, the tutorial, which reads the name live). The internal id stays
+  `rifle`, so saves, tests and fingerprints don't move. Its desc reads "powered-armor trooper with a gauss rifle"; the Medicopter's
+  "thruster medevac craft" (no helicopters).
+- **Art direction (Last Fist):** a future frontier army, replacing "scavenged military" for this faction. Infantry in powered armour
+  (angular plates, glowing visor slits in the side's colour, a big team pauldron, backpack power units, gauss rifles with glowing coil
+  rings); vehicles and walkers in gunmetal with the team colour on their largest panels (track skirts, turret tops, carapaces), exposed
+  pistons, sensor masts, stencilled serials, hazard stripes, scorch marks, chipped edges and patched plates; aircraft driven by
+  thrusters (tapered pale-blue jets, nacelles, hard-edged hulls; no rotors anywhere).
+- **The 13 units:** Marine (compact, pauldron and backpack), Heavy (a broad exosuit, a shoulder rocket rack over a sunk helm), Sniper
+  (lean, a stealth cape, one big round optic, a very long four-coil rail), Tank (team track skirts, an angular turret, a long gauss
+  cannon), Artillery (a tracked gauss howitzer, its piston stabilisers and deploy poses kept), Titan (batch 2b's strider legs and plant
+  poses under a new angular hull with a visor-slit head, a sensor mast, a shoulder missile pod and a coil cannon), Flame Tank (a low
+  crawler on six road wheels on piston arms, two glowing fuel tanks, a flared projector), Hydra (a four-legged spider walker, twin
+  rotary gauss cannons that tilt up at aircraft), Gunship (a VTOL with two vectored nacelles and pod-mounted missiles), Interceptor (a
+  forward-swept dart, twin afterburners), Leviathan (a flying fortress: a thick plated hull, four thruster pods, dorsal and ventral
+  turret blisters, a bomb bay whose doors swing open on a run), Medicopter (a pale medevac hull, a big green cross, lift thrusters and
+  a glowing heal emitter where its beams start), Recon Drone (a small sensor wedge on two ion pods).
+- **Effects lined up:** every barrel, rack, pod, bay and emitter sits on the SIM's own MUZ point (unchanged), so tracers, rockets,
+  rail rounds, shells, flames, missiles (Gunship salvos), Hydra fire, Leviathan bombs, the Medicopter's heal beams and the Sniper's
+  charge glow start at the new art. The Sniper's pin and the Marksman's mark are drawn over the target and are unchanged.
+- **Size fix:** the Leviathan, Worldrender and Sovereign were 103, 125 and 95 art units across against an air shadow 77 across; each is
+  now about 85 (Leviathan 83, Worldrender 88, Sovereign 84), each scaled about the point its shots leave, so bombs, the maw and the beam
+  start where the SIM fires them. Hit radius and every SIM value unchanged.
+- **Aircraft pose cache:** aircraft are cut into the poses of their animation cycle and drawn once per pose, side and colours into
+  the sprite cache (`AIR_CYC`, `AIR_BOX`, `airPose`), like ground units. The cache key carries the draw function and the colours
+  (`sprArtKey`, ground units too), so changing either draws fresh poses; a zoom change clears it as before.
+  Air scene (47 aircraft): render() median 2.0 → 1.0 ms, frame interval 95th percentile 33.3 → 16.8 ms
+  (audit/logs-p1/rework5a-v289/perf.txt).
+
+Departures and choices the brief left open:
+- **Leviathan resize:** the Leviathan's art was redrawn in this batch, so its "before" is the new art at batch 4b's 1.25× and its
+  "after" at 1×; the Worldrender and Sovereign keep batch 4b's art, scaled to 0.7 and 0.88 of their old drawn size.
+- **Cached and live aircraft:** only aircraft whose whole animation shares one cycle are cached (every Last Fist aircraft, Razorwing,
+  Needlewing, Brood Tyrant, Wraithwing, Prismwing, Shardstorm), so a loop never jumps. The Cloudwing, Worldrender, Voidcarrier and
+  Sovereign mix slow motions with no common cycle and still draw live, as does any aircraft mid-recoil, a landing Worldrender and a
+  charging Sovereign. The Leviathan's open bay is its own pose.
+- **Dead code kept:** the old draw functions (dRifle and the rest in buildings-axiarchs-units.js, dTitan2, dArt2, dSniper4, dGun4,
+  dLev4) stay in the source, unused, as earlier batches left theirs.
+- **Historical text:** dated audit reports and logs (audit/*.md reports, audit/logs*) keep "Rifleman" as they were written; the living
+  docs, README, KNOWN_ISSUES, CLAUDE.md, tests and the audit scripts say Marine.
+
 ## Unchanged (already distinct)
 
 Marine, Heavy, Tank, Flame Tank, Hydra, Interceptor, Medicopter, Recon Drone, Mite, Razorwing, Cloudwing, Thornback, Lancer,
@@ -496,8 +544,10 @@ Check in the Test Range and playtests; adjust only in the balance pass unless so
 The game adopts a richer art style for units: shading (gradients), dark outlines, a light rim along top edges, glowing
 eyes, cores and visors, and faction-specific anatomy:
 
-- **Last Fist:** scavenged military. Olive and steel, rust-orange fuel tanks, hazard stripes, gas masks, exposed pistons,
-  smoking exhausts.
+- **Last Fist:** a future frontier army (since batch 5a, v2.89; was "scavenged military"). Powered-armour infantry (angular plates,
+  glowing visor slits, pauldrons, backpack power units, gauss rifles with coil rings), heavy angular vehicles and walkers in gunmetal
+  (exposed pistons, sensor masts, stencils, hazard stripes, scorched and patched plates), thruster aircraft (no rotors). No camo,
+  modern helmets, helicopters or present-day vehicles.
 - **Bloomhost:** no straight lines. Overlapping carapace plates, sinewy limbs, pulsing glow sacs, drool, spore vents.
 - **Axiarchs:** nothing touches. Floating obsidian shards held together by thin lines of light; halos, light banners,
   orbiting rings.
@@ -521,6 +571,8 @@ visual references. A final art batch after batch 4 redraws the unchanged units a
    Voidcarrier, Astral Sovereign (4b, done v2.87). Every reworked unit is in.
 5. The Bloomhost swarm pass (5b, done v2.88): broods, swarm surge, kill frenzy, Spitter volleys, Needlewing anti-air; eight Bloomhost
    units redrawn.
+   Last Fist art and the Marine rename (5a, done v2.89, after 5b): all 13 Last Fist units redrawn, the Rifleman renamed Marine, the
+   Leviathan, Worldrender and Sovereign resized, aircraft poses cached.
 6. Art batch: unchanged units and buildings in the new style.
 
 Then: the paused balance pass, with all three factions reworked.

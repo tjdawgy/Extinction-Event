@@ -75,27 +75,30 @@ async function sizeShot(browser, name) {
   { // e. Muzzles: each gunner a moment after it fires (tracers start at the new barrels)
     const { page, errors } = await open();
     await setup(page, { cam: 720, zoom: 1.8, modes: ['hold', 'hold'], items: [
-      { side: 0, type: 'rifle', u: 610, v: -10 }, { side: 0, type: 'tank', u: 590, v: 120 }, { side: 0, type: 'aircraft', u: 560, v: 60 },
-      { side: 1, type: 'heavy', u: 700, v: -10 }, { side: 1, type: 'heavy', u: 700, v: 120 }, { side: 1, type: 'tank', u: 690, v: 60 }] });
+      { side: 0, type: 'rifle', u: 610, v: 50 }, { side: 0, type: 'tank', u: 590, v: 170 }, { side: 0, type: 'aircraft', u: 560, v: 120 },
+      { side: 1, type: 'heavy', u: 700, v: 50 }, { side: 1, type: 'heavy', u: 700, v: 170 }, { side: 1, type: 'tank', u: 690, v: 120 }] });
     await page.evaluate(() => { for (const e of game.ents) e.hp = e.maxHp = 99999; });
     ok(await run(page, g => new Set(g.projs.filter(p => p.side === 0).map(p => p.weapon)).size >= 2, 20), 'muzzles');
     await pause(page); await shot(page, 'muzzles'); errs.push(...errors); await page.close();
   }
   { // d. A real Hard AI match: Last Fist (blue) vs Bloomhost, Marines, a vehicle and aircraft on screen
     const { page, errors } = await openPage(browser, dev);
-    await page.evaluate(() => { devPick.a = { f: 'lastfist', ai: 'default', p: 'random' }; devPick.b = { f: 'bloomhost', ai: 'default', p: 'random' }; devPick.speed = 1; startSpectate(); paused = true; });
-    const found = await page.evaluate(() => {
-      const LFU = () => game.ents.filter(e => e.kind === 'u' && e.side === 0 && e.hp > 0);
-      for (let i = 0; i < 60 * 60 * 22 && !game.over; i++) {
-        update(game, 1 / 60);
-        if (i % 60) continue;
-        for (const a of LFU().filter(e => UDEF[e.type].air)) { // a window around an aircraft with Marines and a vehicle in it
-          const near = LFU().filter(e => Math.abs(e.u - a.u) < 230);
-          if (near.some(e => e.type === 'rifle') && near.some(e => ['tank', 'flame', 'artillery', 'titan', 'hydra'].includes(e.type)) && game.ents.some(e => e.kind === 'u' && e.side === 1 && e.hp > 0 && Math.abs(e.u - a.u) < 300)) { cam.x = P(a.u, a.v).x; clampCam(); return game.t; }
+    let found = 0;
+    for (let tries = 0; tries < 4 && !found; tries++) { // a spectated match is seeded at random: try up to four
+      await page.evaluate(() => { devPick.a = { f: 'lastfist', ai: 'default', p: 'random' }; devPick.b = { f: 'bloomhost', ai: 'default', p: 'random' }; devPick.speed = 1; startSpectate(); paused = true; });
+      found = await page.evaluate(() => {
+        const LFU = () => game.ents.filter(e => e.kind === 'u' && e.side === 0 && e.hp > 0);
+        for (let i = 0; i < 60 * 60 * 22 && !game.over; i++) {
+          update(game, 1 / 60);
+          if (i % 60) continue;
+          for (const a of LFU().filter(e => UDEF[e.type].air)) { // a window around an aircraft with Marines and a vehicle in it, enemies near
+            const near = LFU().filter(e => Math.abs(e.u - a.u) < 260);
+            if (near.some(e => e.type === 'rifle') && near.some(e => ['tank', 'flame', 'artillery', 'titan', 'hydra'].includes(e.type)) && game.ents.some(e => e.kind === 'u' && e.side === 1 && e.hp > 0 && Math.abs(e.u - a.u) < 320)) { cam.x = P(a.u, a.v).x; clampCam(); return game.t; }
+          }
         }
-      }
-      return 0;
-    });
+        return 0;
+      });
+    }
     ok(found, 'match'); await page.waitForTimeout(400); await shot(page, 'match'); errs.push(...errors); await page.close();
   }
   if (miss.length) console.error('moments not reached (shot taken anyway):', miss);
