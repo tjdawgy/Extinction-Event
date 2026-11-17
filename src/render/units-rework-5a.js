@@ -4,7 +4,7 @@
    sensor masts, stencil marks, scorched and patched plates) and thruster aircraft (engine glow, nacelles, hard-edged hulls;
    no rotors). Big armour panels carry the team colour. Art and text only: the SIM is untouched, so every muzzle, bay and
    beam point below sits on the SIM's own MUZ table (src/sim/trees-balance.js) where shots already start.
-   Ground units are cached as poses (the sprite cache), as before; aircraft draw live. */
+   Ground units are cached as poses (the sprite cache), as before; aircraft are cached too (step 4, at the end). */
 const GM = ['#6c7684', '#434b58', '#272d37'], GMD = '#161a21', SCORCH = 'rgba(20,16,12,0.55)', THR = '170,225,255', STEN = 'rgba(235,240,245,0.75)';
 const tgrad = (c, T, y0, y1) => lgrad(c, 0, y0, 0, y1, [T.light, T.main, T.hull]);   // a team armour panel, lit from above
 const ggrad = (c, y0, y1) => lgrad(c, 0, y0, 0, y1, GM);                               // gunmetal frame
@@ -471,3 +471,26 @@ const ART5_WR = 0.7, ART5_SOV = 0.88; // relative to batch 4b's drawn size
   DRAW_U.worldrender = (c, T, u) => { c.save(); c.translate(0, 8); c.scale(ART5_WR, ART5_WR); c.translate(0, -8); w4(c, T, u); c.restore(); };
   DRAW_U.sovereign = (c, T, u) => { c.save(); c.translate(0, 8); c.scale(ART5_SOV, ART5_SOV); c.translate(0, -8); s4(c, T, u); c.restore(); }; }
 
+/* ---------------- aircraft poses (step 4) ----------------
+   Aircraft used to draw live every frame (gradients, glows and all). Now each is cut into the poses of its animation cycle
+   and drawn once per pose, side and colours into the sprite cache, then stamped with one drawImage, as ground units are.
+   AIR_CYC: [k, n] — the art repeats every 2π/k of u.anim; n poses per cycle. Only aircraft whose whole animation shares one
+   cycle are listed, so the loop has no seam; the Cloudwing, Worldrender, Voidcarrier and Sovereign mix slow motions with no
+   common cycle and still draw live, as does any aircraft mid-recoil, a landing Worldrender and a charging Sovereign.
+   The Leviathan's open bay is a pose of its own. The cache key carries the art (sprArtKey: which draw function) and the
+   colours drawn, so changing either draws fresh poses; a zoom change clears it (SPR.scale), as before. */
+const AIR_CYC = { aircraft: [30, 6], interceptor: [34, 6], leviathan: [26, 6], medic: [28, 6], drone: [4, 16], razorwing: [15, 8], needlewing: [42, 4], broodtyrant: [3.5, 16], wraithwing: [3, 16], prismwing: [9, 8], shardstorm: [2.2, 24] };
+const AIR_BOX = { aircraft: [-35, -18, 61, 35], interceptor: [-34, -15, 65, 29], leviathan: [-45, -31, 90, 50], medic: [-24, -14, 45, 28], drone: [-14, -12, 26, 20], razorwing: [-28, -31, 54, 46], needlewing: [-26, -11, 48, 28], broodtyrant: [-30, -45, 63, 68], wraithwing: [-25, -23, 48, 46], prismwing: [-15, -14, 30, 26], shardstorm: [-19, -14, 38, 24] };
+function airPose(u) {
+  const cy = AIR_CYC[u.type], box = AIR_BOX[u.type];
+  if (!cy || !box || (u.recoil || 0) > 0.02) return null;
+  const [k, n] = cy, P = 2 * Math.PI / k, q = ((Math.round((u.anim || 0) / P * n) % n) + n) % n, lvB = u.type === 'leviathan' && u.lvB ? 1 : 0;
+  let s = lvB ? 'b' : '';
+  if (u.exT > VFX.lastT) s += 'x'; // exiled: drawn in its washed-out colours
+  return { key: 'A' + u.type + u.side + '.' + q + s, box, u: { anim: q * P / n, moving: false, recoil: 0, lvB, side: u.side } };
+}
+const ART_ID = new Map();
+function sprArtKey(type, T) { // which art and which colours a cached pose was drawn with
+  const f = DRAW_U[type]; let id = ART_ID.get(f); if (id === undefined) { id = ART_ID.size; ART_ID.set(f, id); }
+  return '|' + id + T.main + T.hull + T.light + T.glow;
+}

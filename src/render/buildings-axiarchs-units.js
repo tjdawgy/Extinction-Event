@@ -870,7 +870,8 @@ const SPR_STEP = { shardling: [9, 6], bastion: [4, 6], riftstalker: [8, 6], para
 const SPR = { scale: 0, map: new Map(), budget: 0 };
 function sprPose(u) { // a stand-in unit snapped to one of the cached poses, with its cache key; null = draw live
   const box = SPR_BOX[u.type];
-  if (!box || u.recoil > 0.02) return null;
+  if (!box) return typeof airPose === 'function' ? airPose(u) : null; // v2.89: aircraft poses (src/render/units-rework-5a.js)
+  if (u.recoil > 0.02) return null;
   if (u.type === 'worldbreaker' && u.slamT != null && VFX.g && VFX.lastT - u.slamT < 0.6) return null; // v2.83: its slam draws live
   let q = 0, anim = 0, dpk = 0, k = '', sk = 0, gk = 0;
   const spin = typeof SPR_SPIN !== 'undefined' && SPR_SPIN[u.type]; // v2.82: always turning (the Severance's ring)
@@ -898,13 +899,14 @@ function drawUnitArt(c, u, T) {
   if (p) {
     const b = 2 ** (Math.ceil(Math.log2(V.dpr * V.S * US) * 4) / 4); // device pixels per art unit, in quarter-octave steps
     if (b !== SPR.scale) { SPR.scale = b; SPR.map.clear(); }
-    let cv = SPR.map.get(p.key);
+    const key = p.key + sprArtKey(u.type, T); // v2.89: the art and the colours drawn are part of the key, so either changing draws fresh poses
+    let cv = SPR.map.get(key);
     if (!cv && SPR.budget > 0) { // a few new poses per frame at most, so a zoom change never stalls a frame
       SPR.budget--;
       cv = document.createElement('canvas'); cv.width = Math.ceil(p.box[2] * b); cv.height = Math.ceil(p.box[3] * b);
       const k = cv.getContext('2d'); k.setTransform(b, 0, 0, b, -p.box[0] * b, -p.box[1] * b);
       DRAW_U[u.type](k, T, p.u);
-      SPR.map.set(p.key, cv);
+      SPR.map.set(key, cv);
     }
     if (cv) { c.drawImage(cv, p.box[0], p.box[1], cv.width / b, cv.height / b); return; }
   }

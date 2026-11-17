@@ -1,0 +1,23 @@
+# v2.89 batch 5a, step 4: frame time, node tests/rework-5a-perf.js 3 (headless Chromium, 667x375, 2x pixels, 300 frames per run,
+# an otherwise idle 4-core machine). before = this batch's art without the aircraft pose cache (commit b45ff2c);
+# after = with it; v2.88 = a965561's index.html (the old art), for reference.
+BEFORE (b45ff2c, new art, aircraft drawn live)
+swarm: 73 units (13 aircraft); frame median 16.7 ms, 95th 33.3 ms; render() median 1.90 ms, 95th 3.80 ms over 300 frames
+swarm: 75 units (13 aircraft); frame median 16.7 ms, 95th 33.2 ms; render() median 1.90 ms, 95th 3.30 ms over 300 frames
+swarm: 75 units (13 aircraft); frame median 16.7 ms, 95th 16.8 ms; render() median 1.90 ms, 95th 3.00 ms over 300 frames
+air: 47 units (47 aircraft); frame median 16.7 ms, 95th 33.3 ms; render() median 2.00 ms, 95th 3.20 ms over 300 frames
+air: 47 units (47 aircraft); frame median 16.7 ms, 95th 33.3 ms; render() median 2.00 ms, 95th 3.20 ms over 300 frames
+air: 47 units (47 aircraft); frame median 16.7 ms, 95th 33.3 ms; render() median 1.90 ms, 95th 3.00 ms over 300 frames
+AFTER (aircraft pose cache)
+swarm: 75 units (13 aircraft); frame median 16.7 ms, 95th 16.7 ms; render() median 1.60 ms, 95th 2.70 ms over 300 frames
+swarm: 75 units (13 aircraft); frame median 16.7 ms, 95th 16.8 ms; render() median 1.80 ms, 95th 2.90 ms over 300 frames
+swarm: 75 units (13 aircraft); frame median 16.7 ms, 95th 16.8 ms; render() median 1.70 ms, 95th 2.90 ms over 300 frames
+air: 47 units (47 aircraft); frame median 16.7 ms, 95th 16.8 ms; render() median 1.00 ms, 95th 2.00 ms over 300 frames
+air: 47 units (47 aircraft); frame median 16.7 ms, 95th 16.7 ms; render() median 1.00 ms, 95th 1.60 ms over 300 frames
+air: 47 units (47 aircraft); frame median 16.7 ms, 95th 16.8 ms; render() median 1.00 ms, 95th 1.90 ms over 300 frames
+v2.88 (reference, old art, aircraft live)
+swarm: 75 units (13 aircraft); frame median 16.7 ms, 95th 33.3 ms; render() median 1.70 ms, 95th 3.60 ms over 300 frames
+swarm: 75 units (13 aircraft); frame median 16.7 ms, 95th 16.8 ms; render() median 1.80 ms, 95th 3.60 ms over 300 frames
+air: 47 units (47 aircraft); frame median 16.7 ms, 95th 16.8 ms; render() median 1.50 ms, 95th 2.50 ms over 300 frames
+air: 47 units (47 aircraft); frame median 16.7 ms, 95th 16.8 ms; render() median 1.60 ms, 95th 2.60 ms over 300 frames
+# Cache check: the same paused air scene (10 aircraft) with the cache on and off differs in 0.23% of pixels (pose snapping).

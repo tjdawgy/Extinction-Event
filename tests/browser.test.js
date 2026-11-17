@@ -261,12 +261,12 @@ test('a resumed match keeps its personality (and still does not show it)', { ski
   await page.close();
 });
 
-test('unit sprite cache: every cached pose fits its box; recoil and aircraft draw live', { skip }, async () => {
+test('unit sprite cache: every cached pose fits its box (aircraft too, v2.89); recoil and mixed-cycle aircraft draw live', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
   const r = await page.evaluate(() => {
     const out = [], b = 2.5, pad = 40;
-    for (const type of Object.keys(SPR_BOX)) for (const side of [0, 1]) for (let i = 0; i < 40; i++) {
-      const u = { type, side, anim: i * 0.137, moving: i > 0, recoil: 0 };
+    for (const type of [...Object.keys(SPR_BOX), ...Object.keys(AIR_CYC)]) for (const side of [0, 1]) for (let i = 0; i < 40; i++) {
+      const u = { type, side, anim: i * 0.137, moving: i > 0, recoil: 0, lvB: i % 2 };
       const p = sprPose(u), box = p.box;
       // live drawing of the snapped pose on a larger canvas: count ink outside the box
       const cv = document.createElement('canvas'); cv.width = Math.ceil((box[2] + 2 * pad) * b); cv.height = Math.ceil((box[3] + 2 * pad) * b);
@@ -277,11 +277,13 @@ test('unit sprite cache: every cached pose fits its box; recoil and aircraft dra
       for (let y = 0; y < cv.height; y++) for (let x = 0; x < cv.width; x++) if (d[(y * cv.width + x) * 4 + 3] > 8 && (x < x0 - 1 || x > x1 + 1 || y < y0 - 1 || y > y1 + 1)) outside++;
       if (outside) out.push(`${type} side ${side} pose ${p.key}: ${outside} px outside`);
     }
-    return { out, live: sprPose({ type: 'rifle', side: 0, anim: 0, moving: false, recoil: 0.5 }), air: sprPose({ type: 'aircraft', side: 0, anim: 0, moving: true, recoil: 0 }) };
+    return { out, live: sprPose({ type: 'rifle', side: 0, anim: 0, moving: false, recoil: 0.5 }), air: sprPose({ type: 'aircraft', side: 0, anim: 0, moving: true, recoil: 0 }), mixed: ['cloudwing', 'worldrender', 'voidcarrier', 'sovereign'].map(type => sprPose({ type, side: 0, anim: 0, moving: true, recoil: 0 })), airRecoil: sprPose({ type: 'aircraft', side: 0, anim: 0, recoil: 0.5 }) };
   });
   assert.deepStrictEqual(r.out, []);
   assert.strictEqual(r.live, null, 'a unit mid-recoil is drawn live');
-  assert.strictEqual(r.air, null, 'aircraft are drawn live');
+  assert.ok(r.air && r.air.key[0] === 'A', 'a Gunship is drawn from the cache (v2.89)');
+  assert.deepStrictEqual(r.mixed, [null, null, null, null], 'the Cloudwing, Worldrender, Voidcarrier and Sovereign draw live');
+  assert.strictEqual(r.airRecoil, null, 'an aircraft mid-recoil is drawn live');
   assert.deepStrictEqual(errors, []);
   await page.close();
 });
