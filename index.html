@@ -11457,12 +11457,139 @@ function dHydra5(c, T, u) {
   c.restore();
 }
 
+/* ---------------- aircraft ---------------- */
+// fl: the engines' flicker (0.2…1); airFl reads it from the unit's animation clock, AIR_POSE snaps it to cached steps
+const airFl = (u, k) => 0.6 + 0.4 * Math.sin((u.anim || 0) * k);
+// Gunship (aircraft): an armoured VTOL with two vectored thruster nacelles and stub-wing missile pods (their mouths at
+// MUZ.aircraft (16, +5))
+function dGun5(c, T, u) {
+  const fl = u.fl ?? airFl(u, 30), rk = (u.recoil || 0) * 2;
+  // the far nacelle (above the hull line), firing down
+  fp(c, [[-10, -13], [0, -13.6], [1, -9], [-10, -8.6]], GM[2], 0.7); thrust(c, -5, -8.4, 2.6 * fl + 1, 2.6, 0.7 * fl, 1);
+  // the main engine at the back
+  thrust(c, -22, -3, 7 * fl + 4, 2.2, fl);
+  // tail: twin canted fins, team-coloured with hazard tips
+  fp(c, [[-14, -6], [-21, -14], [-17.6, -14], [-9, -6.6]], tgrad(c, T, -14, -6), 0.8);
+  c.fillStyle = HAZ; c.fillRect(-21, -14, 3.4, 1.4);
+  // the hull: gunmetal underside, a big team armour shell on top, a faceted canopy
+  fp(c, [[22, 0.6], [17, -5.6], [6, -8.6], [-12, -8.4], [-22, -5], [-22, -0.6], [-12, 3.4], [12, 4]], ggrad(c, -8.6, 4), 1);
+  fp(c, [[17, -5.6], [6, -8.6], [-12, -8.4], [-21.4, -5], [-20, -2.6], [14, -2.6]], tgrad(c, T, -8.6, -2.6), 0.9);
+  fp(c, [[22, 0.6], [17, -5.6], [11, -6.6], [9.6, -1.6]], lgrad(c, 10, -6, 20, 0, ['#d8f4ff', '#5d8aa8', '#1d3346']), 0.7); // canopy
+  c.strokeStyle = 'rgba(0,0,0,0.35)'; c.lineWidth = 0.6; c.beginPath(); c.moveTo(-3, -8.4); c.lineTo(-3.4, -2.8); c.moveTo(6, -8.4); c.lineTo(6, -2.8); c.stroke();
+  rim(c, -11, -8.2, 5); stencil(c, -16, -1.4, 3); scorch(c, 0, 0.6, 2.6, 1.1); chips(c, [[-21, -4.6], [5, -8.4]]);
+  slit(c, T, -9, -5.4, 4, 0.9);
+  // the near nacelle under the hull: a pivoting thruster pod, its jet pointing down
+  fp(c, [[-9, 1], [3, 0.4], [4.4, 6.4], [-8, 6.8]], ggrad(c, 0, 7), 0.9);
+  fp(c, [[-9, 1], [3, 0.4], [3.4, 2.4], [-8.6, 2.8]], T.main, 0.5);
+  thrust(c, -2.4, 6.8, 5 * fl + 2.4, 3.4, fl, 1);
+  // the stub wing and its missile pod, the mouths at the front
+  fp(c, [[2, 2.2], [11, 3], [11, 4.4], [2, 4.6]], GM[1], 0.6);
+  fp(c, [[3 - rk, 3.2], [15 - rk, 3.2], [16.4 - rk, 4.2], [16.4 - rk, 7], [3 - rk, 7.2]], ggrad(c, 3, 7.2), 0.8);
+  c.fillStyle = RUSTO; c.fillRect(6 - rk, 3.3, 1.4, 3.8); c.fillStyle = T.main; c.fillRect(3 - rk, 3.4, 1.6, 3.6);
+  c.fillStyle = '#121418'; for (const y of [4.4, 6]) { c.beginPath(); c.arc(15.4 - rk, y, 0.7, 0, 7); c.fill(); }
+  if ((u.recoil || 0) > 0.3) { c.globalCompositeOperation = 'lighter'; stamp(c, GLOW.fire, 16, 5.2, 5, u.recoil); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1; }
+}
+// Interceptor: a forward-swept dart fighter with canards and twin afterburners; its cannon's tip at MUZ.interceptor (20, 0)
+function dInter5(c, T, u) {
+  const fl = u.fl ?? airFl(u, 34);
+  thrust(c, -21, -2.4, 7 * fl + 3, 1.7, fl); thrust(c, -21, 1.6, 7 * fl + 3, 1.7, fl);
+  fp(c, [[2, -1], [-12, -11], [-16, -11], [-10, -1]], GM[2], 0.7); // far wing
+  // the fuselage: a long dart, team armour on top
+  fp(c, [[27, -0.4], [14, -3.6], [-14, -4.2], [-22, -3.4], [-22, 2.6], [-12, 3.2], [14, 1.8]], ggrad(c, -4.2, 3.2), 0.9);
+  fp(c, [[22, -1.4], [14, -3.6], [-14, -4.2], [-21.4, -3.4], [-20, -1.2], [16, -0.8]], tgrad(c, T, -4.2, -0.8), 0.7);
+  fp(c, [[17, -1.6], [9, -5.6], [3, -4]], lgrad(c, 3, -5, 15, -2, ['#d8f4ff', '#5d8aa8', '#1d3346']), 0.6); // canopy
+  fp(c, [[-14, -4], [-19, -10.6], [-16.4, -10.6], [-10, -4]], tgrad(c, T, -10.6, -4), 0.7); // tail fin
+  fp(c, [[10, 1], [5, 4.6], [3, 4.6], [6, 1]], GM[1], 0.5); // canard
+  // the near wing: forward-swept, a team leading edge
+  fp(c, [[-4, 0.6], [-14, 10], [-10, 10], [6, 1.2]], ggrad(c, 0, 10), 0.8);
+  fp(c, [[-14, 10], [-10, 10], [-9, 8.6], [-13, 8.6]], T.main, 0.4);
+  c.fillStyle = GM[0]; c.fillRect(13, -0.6, 7, 1.2); c.fillStyle = GMD; c.fillRect(19, -0.8, 1.2, 1.6); // cannon
+  rim(c, -13, -4, 12); stencil(c, -8, -2.8, 2);
+}
+// Leviathan: an armoured flying fortress. A thick plated hull, four thruster pods, dorsal and ventral turret blisters, and
+// a bomb bay underneath whose doors swing open on a run (u.lvB); bombs leave it at MUZ.leviathan (0, +10)
+// Drawn at ART5.lev about the bay (0, 10), so bombs still leave the bay at any scale
+const ART5 = { lev: 1.25 };
+function dLev5(c, T, u) { c.save(); c.translate(0, 10); c.scale(ART5.lev, ART5.lev); c.translate(0, -10); dLev5a(c, T, u); c.restore(); }
+function dLev5a(c, T, u) {
+  const fl = u.fl ?? airFl(u, 26), bay = u.lvB ? 1 : 0, rk = (u.recoil || 0) * 1.5;
+  const pod = (x, y, near) => { // a thruster pod on a pylon: an armoured can, a team band, a glowing jet at the back
+    fp(c, [[x + 7, y - 3], [x - 8, y - 3.4], [x - 9.4, y], [x - 8, y + 3.4], [x + 7, y + 3]], near ? ggrad(c, y - 3.4, y + 3.4) : GM[2], 0.8);
+    c.fillStyle = near ? T.main : T.hull; c.fillRect(x - 2, y - 3.2, 2, 6.4);
+    c.fillStyle = GMD; c.beginPath(); c.ellipse(x + 7, y, 1, 2.8, 0, 0, 7); c.fill();
+    thrust(c, x - 9.4, y, 7 * fl + 4, 2.4, near ? fl : 0.7 * fl);
+  };
+  // the far pods, above the hull's back
+  for (const x of [-20, 10]) { c.fillStyle = GM[2]; c.fillRect(x - 1, -18, 3, 4); pod(x, -19.6, false); }
+  // the dorsal turret blister: a dome with twin barrels
+  fp(c, [[2, -16.4], [4, -21], [12, -21.6], [14.6, -16.4]], ggrad(c, -21.6, -16.4), 0.8);
+  c.fillStyle = GM[0]; c.fillRect(12, -20, 8, 1); c.fillRect(12, -18.4, 8, 1); slit(c, T, 6, -19.6, 4, 0.9);
+  // the hull: a thick gunmetal fuselage, big team armour plates over its back, a stepped armoured nose
+  fp(c, [[40, -2], [34, -11], [22, -15.6], [-26, -16], [-38, -11], [-40, -2], [-32, 6], [-14, 9], [16, 9], [32, 5]], ggrad(c, -16, 9), 1.2);
+  fp(c, [[33, -10.4], [22, -15], [-26, -15.4], [-37, -10.6], [-38, -6], [30, -6]], tgrad(c, T, -15.4, -6), 1);
+  c.strokeStyle = 'rgba(0,0,0,0.35)'; c.lineWidth = 0.7; c.beginPath(); for (const x of [-22, -8, 6, 20]) { c.moveTo(x, -15.2); c.lineTo(x - 0.6, -6.2); } c.stroke();
+  c.fillStyle = 'rgba(0,0,0,0.35)'; for (let x = -32; x < 30; x += 5) { c.beginPath(); c.arc(x, -3.4, 0.5, 0, 7); c.fill(); c.beginPath(); c.arc(x + 2.5, 6, 0.5, 0, 7); c.fill(); } // rivets
+  rim(c, -25, -15.6, 21); stencil(c, -30, -8.6, 4); stencil(c, 12, -1.6, 3);
+  scorch(c, -16, -10, 4, 1.6); scorch(c, 24, 2, 3, 1.2); chips(c, [[-37, -9], [21, -15], [-2, -15.2], [33, -9.6]]);
+  c.fillStyle = '#5c6a76'; rr(c, 4, -13.6, 6, 5, 0.6); c.fill(); outline(c, 0.5); // a patched plate
+  // the tail: a tall hazard-striped fin
+  fp(c, [[-28, -15], [-38, -27], [-33, -27], [-20, -15.4]], tgrad(c, T, -27, -15), 0.9);
+  c.save(); c.beginPath(); poly(c, [[-28, -15], [-38, -27], [-33, -27], [-20, -15.4]]); c.clip(); c.strokeStyle = HAZ; c.lineWidth = 1.6; for (let i = -3; i < 6; i++) { c.beginPath(); c.moveTo(-40 + i * 4, -15); c.lineTo(-32 + i * 4, -29); c.stroke(); } c.restore();
+  // the cockpit: a slit across the nose
+  fp(c, [[40, -2], [34, -11], [28, -12], [30, -4]], GM[1], 0.8); slit(c, T, 30.6, -8.4, 6, 1.4);
+  // the bomb bay: armoured doors that swing open on a run, bombs racked inside (the drop point is (0, 10))
+  c.fillStyle = '#0d0f13'; rr(c, -11, 6.4, 22, 3.6 + bay * 1.6, 1); c.fill();
+  if (bay) {
+    c.fillStyle = GM[1]; for (const x of [-8.6, -2.3, 4]) { rr(c, x, 7, 4.6, 3.2, 1.6); c.fill(); } c.fillStyle = HAZ; for (const x of [-8.6, -2.3, 4]) c.fillRect(x + 1.2, 7.1, 0.9, 3);
+    fp(c, [[-11, 8.6], [-15, 15.6], [-11.4, 15.6], [-8.6, 9]], ggrad(c, 8, 16), 0.6); fp(c, [[11, 8.6], [15, 15.6], [11.4, 15.6], [8.6, 9]], ggrad(c, 8, 16), 0.6);
+    c.globalCompositeOperation = 'lighter'; c.fillStyle = 'rgba(255,190,90,0.35)'; c.fillRect(-10, 7, 20, 3); c.globalCompositeOperation = 'source-over';
+  } else { c.fillStyle = GM[2]; c.fillRect(-11, 8.4, 22, 1.6); c.strokeStyle = HAZ; c.lineWidth = 0.8; c.beginPath(); c.moveTo(0, 6.6); c.lineTo(0, 10); c.stroke(); }
+  // the ventral turret blister near the nose
+  fp(c, [[18, 8.6], [20, 12.4], [26, 12.4], [27, 8.4]], ggrad(c, 8.4, 12.4), 0.7);
+  c.fillStyle = GM[0]; c.fillRect(25 - rk, 10, 6, 0.9);
+  // the near pods, on pylons along the flank
+  for (const x of [-22, 12]) { c.fillStyle = GM[2]; c.fillRect(x - 1, -2, 3, 4); pod(x, 3.2, true); }
+}
+// Medicopter: a thruster medevac craft. A pale armoured body with a big green cross and team bands, two swivelling lift
+// thrusters firing down, a glowing heal emitter underneath where its beams start (0, +4)
+function dMedic5(c, T, u) {
+  const fl = u.fl ?? airFl(u, 28);
+  fp(c, [[-12, -10.6], [-6, -10.6], [-6, -7], [-12, -7]], GM[2], 0.6); thrust(c, -9, -7, 2 * fl + 0.8, 2.2, 0.6 * fl, 1); // the far thruster
+  // body: a rounded pale hull, team nose and tail bands
+  fp(c, [[17, 0], [14, -6], [6, -9.4], [-12, -9.4], [-19, -6], [-20, 0], [-14, 3.6], [12, 3.6]], lgrad(c, 0, -9.4, 0, 3.6, ['#f2f5f8', '#c4ccd6', '#7d8794']), 1);
+  fp(c, [[17, 0], [14, -6], [9.6, -7.6], [9, 3.6], [12, 3.6]], tgrad(c, T, -7.6, 3.6), 0.7);
+  fp(c, [[-19, -6], [-20, 0], [-14, 3.6], [-13, -9.2], [-12, -9.4]], tgrad(c, T, -9.4, 3.6), 0.7);
+  fp(c, [[15, -2.6], [12.6, -6], [9.6, -6.4], [9.6, -2.4]], lgrad(c, 10, -6, 15, -2, ['#d8f4ff', '#5d8aa8', '#1d3346']), 0.6); // canopy
+  c.fillStyle = '#2fd17a'; c.fillRect(-5.6, -6.2, 8, 2.6); c.fillRect(-2.9, -8.8, 2.6, 7.8); outline(c, 0.0); // the green cross
+  c.strokeStyle = 'rgba(0,0,0,0.25)'; c.lineWidth = 0.5; c.strokeRect(-5.6, -6.2, 8, 2.6); c.strokeRect(-2.9, -8.8, 2.6, 7.8);
+  rim(c, -11, -9.2, 6); stencil(c, 4, 0.4, 3);
+  c.fillStyle = 'rgba(255,90,70,0.9)'; c.fillRect(-18.4, -5, 1.2, 1.2); // a beacon
+  // the near lift thruster on a pylon, and the tail thruster
+  fp(c, [[3, 1.6], [11, 1.2], [11.6, 5], [3.4, 5.4]], ggrad(c, 1, 5.4), 0.7); thrust(c, 7.2, 5.4, 4 * fl + 2, 2.8, fl, 1);
+  fp(c, [[-17, 1], [-11, 0.8], [-10.6, 4.2], [-16.6, 4.4]], ggrad(c, 1, 4.4), 0.7); thrust(c, -13.8, 4.4, 3.6 * fl + 2, 2.4, fl, 1);
+  // the heal emitter under its belly
+  fp(c, [[-3, 3.4], [3, 3.4], [2, 5], [-2, 5]], GM[1], 0.5);
+  c.globalCompositeOperation = 'lighter'; c.fillStyle = `rgba(80,240,150,${0.5 + 0.4 * fl})`; c.beginPath(); c.ellipse(0, 4.6, 2.4, 1.2, 0, 0, 7); c.fill(); c.globalCompositeOperation = 'source-over';
+}
+// Recon Drone: a small armoured sensor wedge carried by two ion pods, a big sensor eye at the front and an antenna
+function dDrone5(c, T, u) {
+  const fl = u.fl ?? airFl(u, 4), ion = u.fi ?? airFl(u, 40);
+  thrust(c, -7, -1.2, 2.6 * ion + 1, 1, ion);
+  fp(c, [[-8, -3], [-3, -3.4], [-3, -0.4], [-8, -0.4]], GM[2], 0.5); // the far pod
+  fp(c, [[8, 0], [4, -3.6], [-6, -3.4], [-7, 0.4], [-4, 2.6], [5, 2.6]], tgrad(c, T, -3.6, 2.6), 0.8);
+  c.fillStyle = GM[2]; c.fillRect(-6, 0.4, 11, 1.6);
+  c.strokeStyle = GM[0]; c.lineWidth = 0.6; c.beginPath(); c.moveTo(-3, -3.4); c.lineTo(-5, -8); c.stroke();
+  c.fillStyle = '#0a0d12'; c.beginPath(); c.arc(5, -0.6, 1.8, 0, 7); c.fill();
+  c.globalCompositeOperation = 'lighter'; c.fillStyle = `rgba(120,240,255,${0.35 + 0.4 * fl})`; c.beginPath(); c.arc(5, -0.6, 2.4, 0, 7); c.fill(); c.fillStyle = `rgba(200,255,255,${0.6 + 0.4 * fl})`; c.beginPath(); c.arc(5.2, -0.6, 1, 0, 7); c.fill(); c.globalCompositeOperation = 'source-over';
+  fp(c, [[-6, 1.6], [0, 1.2], [0.4, 4.4], [-5.6, 4.6]], ggrad(c, 1, 4.6), 0.6); thrust(c, -5.8, 3, 2.6 * ion + 1.2, 1, ion); // the near ion pod
+}
 
 DRAW_U.rifle = dMarine; DRAW_U.heavy = dHeavy5; DRAW_U.sniper = dSniper5;
 Object.assign(SPR_BOX, { rifle: [-12, -30, 26, 32], heavy: [-13, -33, 28, 35], sniper: [-13, -32, 33, 34] });
 Object.assign(UVIS, { rifle: { h: 25, w: 9 }, heavy: { h: 31, w: 12 } }); // health bars and shadows follow the bulkier armour
 DRAW_U.tank = dTank5; DRAW_U.artillery = dArt5; DRAW_U.flame = dFlame5; DRAW_U.titan = dTitan5; DRAW_U.hydra = dHydra5;
 Object.assign(SPR_BOX, { tank: [-26, -36, 57, 38], artillery: [-32, -40, 68, 44], flame: [-24, -27, 52, 29], titan: [-42, -84, 94, 90], hydra: [-31, -53, 63, 57] });
+DRAW_U.aircraft = dGun5; DRAW_U.interceptor = dInter5; DRAW_U.leviathan = dLev5; DRAW_U.medic = dMedic5; DRAW_U.drone = dDrone5;
 /* ---------- Backdrop: sky, mountains and the ground plane ---------- */
 function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 let BG; const mapBackdrop = () => { BG = (() => {
