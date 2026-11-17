@@ -61,7 +61,7 @@ function rangeOrders(g, s) {
   if (sd.hush || sd.manual || sd.mode !== 'attack') return;
   const foes = g.ents.filter(e => e.side !== s && e.hp > 0), mine = g.ents.filter(e => e.kind === 'u' && e.side === s && e.hp > 0);
   for (const e of mine) {
-    const d = UDEF[e.type];
+    const d = rwB5b(g) && RW5B_D[e.type] ? rwD(g, e.type) : UDEF[e.type]; // v2.88: a batch 5b Needlewing goes for aircraft too
     if (e.po && e.po.o === 'target') { const T = ctlEnt(g, e.po.id); if (T && T.hp > 0) continue; }
     if (!d.weapon) {
       let m = null, md = 1e9;

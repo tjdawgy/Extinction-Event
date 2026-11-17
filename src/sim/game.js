@@ -189,7 +189,7 @@ function popUsed(g, s) {
   for (const e of g.ents) {
     if (e.side !== s || e.hp <= 0) continue;
     if (e.kind === 'u') { if (!e.temp) p += UDEF[e.type].pop; } // temporary units use no supply (v2.20)
-    else for (const q of e.queue) p += UDEF[q].pop;
+    else for (const q of e.queue) p += q === 'skitterling' && rwB5b(g) ? UDEF[q].pop * BROOD.n : UDEF[q].pop; // v2.88: a queued brood (batch 5b)
   }
   for (const w of g.warps) if (w.side === s) p += UDEF[w.type].pop; // paid for, still warping in (v2.26)
   return p;
@@ -280,13 +280,14 @@ function tryUpgrade(g, s, b, path) { // path: 'A' or 'B' when a building with a 
 }
 
 // How many of a unit type side s has: alive (temporary ones included) plus queued in its buildings (the d.max limit)
-const unitCount = (g, s, type) => g.ents.reduce((a, e) => a + (e.side !== s ? 0 : e.kind === 'u' ? (e.type === type && e.hp > 0 ? 1 : 0) : e.queue ? e.queue.filter(q => q === type).length : 0), 0);
+const unitCount = (g, s, type) => g.ents.reduce((a, e) => a + (e.side !== s ? 0 : e.kind === 'u' ? (e.type === type && e.hp > 0 ? 1 : 0) : e.queue ? e.queue.filter(q => q === type).length * (type === 'skitterling' && rwB5b(g) ? BROOD.n : 1) : 0), 0); // v2.88: a queued brood counts its four (batch 5b)
 function tryTrain(g, s, type) {
   const d = UDEF[type], side = g.sides[s];
   if (g.over) return { ok: false, msg: 'The match is over' };
   if (g.countdown > 0) return WAIT_GO;
   const prods = g.ents.filter(e => e.side === s && canMake(e, type, g));
   if (!prods.length) return { ok: false, msg: unitLockMsg(d) };
+  if (type === 'skitterling' && rwB5b(g)) return broodTrain(g, s, d, prods); // v2.88 (batch 5b): one order is a brood of four
   if (d.max && unitCount(g, s, type) >= d.max)
     return { ok: false, msg: `At most ${d.max} ${PLURAL[type]} at a time` }; // the Recon Drone (v2.15), counting those in training; Skitterlings (S1, v2.37)
   // Riflemen go to a Mass Deployment Barracks first, where an order is a pair trained together
@@ -309,6 +310,7 @@ function spawnUnit(g, s, type, u, v) {
   const unit = { id: g.nid++, kind: 'u', type, side: s, u, v, z: d.air ? (type === 'interceptor' ? rand(100, 124) : type === 'leviathan' ? rand(88, 98) : type === 'drone' ? rand(104, 114) : type === 'razorwing' ? rand(56, 72) : type === 'needlewing' ? rand(50, 64) : type === 'cloudwing' ? rand(62, 76) : type === 'broodtyrant' ? rand(78, 88) : type === 'worldrender' ? rand(84, 94) : type === 'wraithwing' ? rand(64, 80) : type === 'prismwing' ? rand(56, 70) : type === 'shardstorm' ? rand(66, 80) : type === 'voidcarrier' ? rand(78, 88) : type === 'sovereign' ? rand(84, 94) : rand(70, 94)) : 0,
     laneV: rand(-LANE_V, LANE_V), hp: d.hp, maxHp: d.hp, cd: simRnd() * 0.5, face: dirOf(s), anim: fxRnd() * 10,
     moving: false, rallyOff: -simRnd() * 100, recoil: 0, hitT: 0, shT: 0, vet: 0, aimAir: 0, medAt: -1, tgt: 0, braceT: 0, braceCd: 0, lastHurt: -99, lastAct: -99, creepAt: -1, temp: 0, tLife: 0, tSrc: null, kid: 0, spawnT: 0, dis: 0, disT: 0, slow: 0, slowT: 0, chT: 0, chTgt: 0, pulseCd: 0, shp: d.shp || 0, maxShp: d.shp || 0, shpT: -99, shpHit: -99, ovT: 0, frzT: 0, leapCd: 0, leaping: 0, lu: 0, lv: 0, ld: 0, corr: 0, corrT: 0, burstCd: 0 }; // tgt: what it last attacked; braceT/braceCd: the Bulwark's brace (v2.17); lastHurt/lastAct: last damage taken/dealt, creepAt: last creep regen (v2.18); leap*: the Leaper's jump, corr/corrT: corrosion, burstCd: the Dreadthorn's spines (v2.19) // vet: a Drilled Rifleman (v2.13); aimAir: where a Hydra's guns point (v2.14); medAt: last healed by a Medicopter (v2.15) // shT (shield until) set from the start keeps every unit the same shape for the JS engine
+  if (rwB5b(g)) rw5bSpawn(g, unit); // v2.88: a batch 5b Skitterling's health
   if (rwB2b(g)) rw2bSpawn(g, unit); // v2.83: a batch 2b Ruinmaw's health and armour
   if (MAP_LANED) unit.lane = laneNew(g.sides[s]); // v2.63: the lane it walks (Classic: no lane key at all)
   if (NAV.on && !d.air && navShut(unit.u, unit.v)) [unit.u, unit.v] = navOpen(unit.u, unit.v); // v2.66: a ground unit never appears on closed ground (a warp-in or brood on the ridge)

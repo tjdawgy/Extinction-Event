@@ -37,7 +37,7 @@ const RW2B_D = {
 };
 const RWD_C = { g: null, t: -1, m: {} };
 function rwD(g, t) { // the definition a unit of type t plays by in game g
-  const f = (rwB2b(g) && RW2B_D[t]) || (rwB3a(g) && RW3A_D[t]) || (rwB3b(g) && RW3B_D[t]) || (rwB4a(g) && RW4A_D[t]) || (rwB4b(g) && RW4B_D[t]); if (!f) return UDEF[t]; // v2.87: batch 4b's five; // v2.84: batch 3a's four too; v2.85: 3b's
+  const f = (rwB2b(g) && RW2B_D[t]) || (rwB3a(g) && RW3A_D[t]) || (rwB3b(g) && RW3B_D[t]) || (rwB4a(g) && RW4A_D[t]) || (rwB4b(g) && RW4B_D[t]) || (rwB5b(g) && RW5B_D[t]); if (!f) return UDEF[t]; // v2.87: batch 4b's five; // v2.84: batch 3a's four too; v2.85: 3b's
   if (RWD_C.g !== g || RWD_C.t !== g.t) { RWD_C.g = g; RWD_C.t = g.t; RWD_C.m = {}; }
   return RWD_C.m[t] || (RWD_C.m[t] = f());
 }
@@ -48,6 +48,7 @@ function rwShow(g, t) {
   if (RW3B_D[t]) return (g ? rwB3b(g) : REWORK.b3b) ? RW3B_D[t]() : UDEF[t]; // v2.85: batch 3b's four
   if (RW4A_D[t]) return (g ? rwB4a(g) : REWORK.b4a) ? RW4A_D[t]() : UDEF[t]; // v2.86: batch 4a's five
   if (RW4B_D[t]) return (g ? rwB4b(g) : REWORK.b4b) ? RW4B_D[t]() : UDEF[t]; // v2.87: batch 4b's five
+  if (RW5B_D[t]) return (g ? rwB5b(g) : REWORK.b5b) ? RW5B_D[t]() : UDEF[t]; // v2.88: batch 5b's three
   if (!(g ? rwB2b(g) : REWORK.b2b) || !RW2B_D[t]) return UDEF[t];
   const d = RW2B_D[t](); if (t === 'ruinmaw') Object.assign(d, { weapon: 'ruinbite', dmg: RUIN.bite, cd: RUIN.biteCd, melee: true }); return d;
 }

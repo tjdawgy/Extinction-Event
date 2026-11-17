@@ -18,7 +18,8 @@ function aiPickPath(g, s, b, P, theirs) {
   const fac = g.sides[s].faction, to = p => aiPathTo(fac, b.type, p); // decided in Last Fist terms, then translated (Bloomhost, v2.19)
   const D = aiDiff(g, s); let def = (P.paths && P.paths[b.type]) || 'A';
   if (D.label === 'Easy') return to(def);
-  if (rwB4a(g)) def = aiPathRoll(g, s, b.type, def); // v2.86 (batch 4a, Part 0): its path rolled once per match, the persona's 60% of the time
+  if (rwB4a(g)) def = aiPathRoll(g, s, b.type, def);
+  if (rwB5b(g)) { const p5 = aiPath5b(g, s, b, theirs); if (p5) return p5; } // v2.88 (batch 5b): enemy aircraft: the anti-air paths // v2.86 (batch 4a, Part 0): its path rolled once per match, the persona's 60% of the time
   const have = g.ents.filter(e => e !== b && e.side === s && e.type === b.type && e.hp > 0).map(e => aiPathFrom(fac, b.type, e.path || e.upPath)).filter(Boolean);
   if (b.type === 'barracks' && aiArmorShare(theirs) > 0.35 && !have.includes('A')) return to('A');
   if (b.type === 'factory' && aiFix(P, 'counter') && theirs.length >= 5 && aiLightShare(theirs) >= (aiDials(P).flood || 0.55) && !have.includes('B')) return to('B'); // v2.41 (counter): an infantry flood, the Assault path (Flame Tanks)
@@ -325,6 +326,7 @@ function aiUpdate(g, s, dt) {
       sc.voidcarrier = 1.0 + (nVc ? -0.7 : 0.6) + Math.min(1, mine.filter(u => UDEF[u.type].fac === 'axiarchs').length / 10) * 0.5 - antiAir * 0.6;
       sc.sovereign = 1.4 + comp.vehicle * 0.6 + comp.heavy * 0.3 + (turtle ? 0.8 : 0.2) - antiAir * 1.0 - comp.air * 0.6;
     }
+    if (rwB5b(g)) aiScores5b(g, s, sc, { comp, theirs, mine }); // v2.88 (rework batch 5b): broods are the swarm's backbone; Spitters and Needlewings answer aircraft
     if (!threat) for (const t of types) { const b = P.bias[t] || (rwB4b(g) && RW4B_TASTE[t] ? RW4B_TASTE[t][P.kind] : rwB4a(g) && RW4A_TASTE[t] ? RW4A_TASTE[t][P.kind] : rwB3b(g) && RW3B_TASTE[t] ? RW3B_TASTE[t][P.kind] : rwB3a(g) && RW3A_TASTE[t] ? RW3A_TASTE[t][P.kind] : rwB2b(g) && RW2B_TASTE[t] ? RW2B_TASTE[t][P.kind] : P.bias[AI_TWIN[t]]); if (b && sc[t] > 0) sc[t] *= b; } // v2.84: batch 3a's four have tastes of their own; // v2.83: the Ruinmaw and Worldbreaker have tastes of their own in batch 2b // the personality's taste in units (threats are answered on merit)
     for (const t of types) if (dl.comp[t] !== undefined) sc[t] *= dl.comp[t]; // the composition dial (v2.38; legacy has none)
     if (smart) aiSmartScores(g, s, sc, types, { comp, antiAir, theirs, mine, nFront, turtle, log, threat, P }); // v2.38: the Default AI values v2.37 roles
@@ -342,7 +344,7 @@ function aiUpdate(g, s, dt) {
       else if (comp.light >= (dl.flood || 0.55) && theirs.length >= 5) { /* v2.42: the flood share is a dial (flood; v2.41 0.55) */ if (d.splash || d.weapon === 'flame' || t === 'thornback' || t === 'gravemantle') sc[t] *= 1.4; else if (t === 'rifle' || t === 'skitterling' || t === 'shardling') sc[t] *= 0.7; }
     }
     const spend = aiFix(P, 'spend'), noAA = aiFix(P, 'counter') && comp.air <= 0.12;
-    const fits = t => used + UDEF[t].pop <= cap * fillNow && (freeProducer(g, s, t) || (spend && side.res.c > 900 && g.ents.some(e => e.side === s && canMake(e, t, g) && e.queue.length < 3))); // v2.38 (Default): rich, it queues up to 3
+    const fits = t => used + trainPop(g, t) <= cap * fillNow && (freeProducer(g, s, t) || (spend && side.res.c > 900 && g.ents.some(e => e.side === s && canMake(e, t, g) && e.queue.length < 3))); // v2.38 (Default): rich, it queues up to 3
     const top = types.filter(fits).sort((a, b) => sc[b] - sc[a])[0];
     // v2.38 (Default): a big unit it has never trained, which its army is too full to fit, gets room: it stops training
     // smaller units for up to 75 s while losses free supply (never while threatened)
@@ -357,7 +359,7 @@ function aiUpdate(g, s, dt) {
     // Save for the better unit unless the enemy is already in the base (a calm AI keeps saving while merely threatened)
     const mustSpend = defend || (saving ? danger && !(lightThreat && hasBuilt(g, s, 'factory')) : threat); // vs infantry, Tanks beat trickled Riflemen
     for (let k = 0; k < D.trainPer && !saveRoom; k++) {
-      const cand = types.filter(t => { const d = UDEF[t]; return fits(t) && side.res.c - d.cost.c >= reserve.c && side.res.e - d.cost.e >= reserve.e && !(noAA && d.hitsGround === false && !d.support); }); // v2.41 (counter): not even as a spare buy
+      const cand = types.filter(t => { const d = UDEF[t], tc = trainCost(g, t); return fits(t) && side.res.c - tc.c >= reserve.c && side.res.e - tc.e >= reserve.e && !(noAA && d.hitsGround === false && !d.support); }); // v2.41 (counter): not even as a spare buy
       if (!cand.length) break;
       const flush = spend && side.res.c > 900; // v2.38 (Default): credits piling up: buy what it can afford now instead of waiting
       if (top && !cand.includes(top) && !mustSpend && !flush && (saving || simRnd() < 0.6)) break;
@@ -372,6 +374,7 @@ function aiUpdate(g, s, dt) {
       }
       if (!tryTrain(g, s, pick).ok) break;
       log.trained[pick] = (log.trained[pick] || 0) + 1;
+      if (pick === 'skitterling' && rwB5b(g) && side.res.c - BROOD.cost >= reserve.c && fits(pick) && tryTrain(g, s, pick).ok) log.trained[pick]++; // v2.88 (batch 5b): broods in bulk, two at a time
       used = popUsed(g, s);
     }
   }
@@ -381,7 +384,7 @@ function aiUpdate(g, s, dt) {
   const rich = side.res.c > dl.bank;
   const nSiege = mine.filter(u => aiSiegeT(g, u.type)).length; // v2.83: not a batch 2b Ruinmaw
   const ae = P.attackEdge * (ecoMood ? 1.2 : 1); // how much of an edge this personality wants before a base attack
-  const wave = Math.min(3600, 400 + g.t * 4) * D.wave * P.wave * (ecoMood ? 1.3 : 1) * (hasCond(g, 'scarce') ? COND.scarce.army : 1); // v2.72: scarce: smaller armies
+  const wave = Math.min(3600, 400 + g.t * 4) * D.wave * P.wave * (ecoMood ? 1.3 : 1) * (hasCond(g, 'scarce') ? COND.scarce.army : 1) * (rwB5b(g) && facOf(side.faction) === 'bloomhost' ? AI5B.wave : 1); // v2.88: a batch 5b swarm waits for a bigger wave; v2.72: scarce: smaller armies
   const full = used >= cap * fill - 2, since = g.t - side.stanceAt; // full by its own army limit
   // A failed base attack raises the bar for the next one, unless the army is maxed out with money banked to refill it
   const late = g.t > dl.late; // after 18 minutes (the late dial, v2.38), stop waiting for a perfect edge
@@ -497,6 +500,7 @@ function aiUpdate(g, s, dt) {
   if (rwB3b(g)) aiRework3b(g, s, mine); // v2.85: Bastions screen ranged units, Bulwarks hold the creep when defending
   if (rwB4a(g)) aiRework4a(g, s, mine); // v2.86: Wraithwings raid economy buildings
   if (rwB4b(g)) aiRework4b(g, s, mine); // v2.87: Voidcarriers over the army near its front
+  if (rwB5b(g)) aiRework5b(g, s, mine); // v2.88: the swarm attacks as a pack, Spitters with it
 }
 // Spotters: siege guns can't fire at what their side can't see, so while sieging, one unit walks up until
 // its sight reaches the front of the enemy base (as far as this side knows where that is). Seeing the base
@@ -543,7 +547,7 @@ function aiSmartScores(g, s, sc, types, c) {
   if (has('leviathan') && !rwB4b(g)) sc.leviathan = 1.6 + (turtle ? 1.0 : 0.3) - antiAir * 1.0; // carpet: buildings in a row
   if (has('worldrender') && !rwB4b(g)) sc.worldrender = 1.6 + (turtle ? 1.0 : 0.3) - antiAir * 1.0; // devour: sustained base attack
   // Skitterlings: plan around the limit of 60; Razorwings, its early flyer, always in the mix (anti-air and raids)
-  if (has('skitterling') && UDEF.skitterling.max) sc.skitterling *= clamp(1 - unitCount(g, s, 'skitterling') / UDEF.skitterling.max, 0.05, 1);
+  if (has('skitterling') && UDEF.skitterling.max && !rwB5b(g)) sc.skitterling *= clamp(1 - unitCount(g, s, 'skitterling') / UDEF.skitterling.max, 0.05, 1);
   if (has('razorwing')) sc.razorwing = Math.max(sc.razorwing, 1.1 + comp.air * 1.2 + (n('razorwing') < 2 + Math.floor(g.t / 180) ? 0.6 : 0));
   if (aiFix(P, 'pathUnits')) aiPathUnitsFirst(sc, types, log, c.threat);
 }
