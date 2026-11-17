@@ -459,3 +459,15 @@ Object.assign(UVIS, { rifle: { h: 25, w: 9 }, heavy: { h: 31, w: 12 } }); // hea
 DRAW_U.tank = dTank5; DRAW_U.artillery = dArt5; DRAW_U.flame = dFlame5; DRAW_U.titan = dTitan5; DRAW_U.hydra = dHydra5;
 Object.assign(SPR_BOX, { tank: [-26, -36, 57, 38], artillery: [-32, -40, 68, 44], flame: [-24, -27, 52, 29], titan: [-42, -84, 94, 90], hydra: [-31, -53, 63, 57] });
 DRAW_U.aircraft = dGun5; DRAW_U.interceptor = dInter5; DRAW_U.leviathan = dLev5; DRAW_U.medic = dMedic5; DRAW_U.drone = dDrone5;
+
+/* ---------------- the size fix (step 3) ----------------
+   The Leviathan, Worldrender and Sovereign were drawn far wider than their footprint (103, 125 and 95 art units across against
+   an aircraft shadow 77 wide), swallowing the units around them. Each is now drawn about 85 across: still the biggest things
+   in the sky, but no longer covering a squad. Art scale only, each scaled about the point its shots leave (MUZ), so bombs,
+   the maw and the beam still start where the SIM fires them. */
+ART5.lev = 1.0;
+const ART5_WR = 0.7, ART5_SOV = 0.88; // relative to batch 4b's drawn size
+{ const w4 = DRAW_U.worldrender, s4 = DRAW_U.sovereign;
+  DRAW_U.worldrender = (c, T, u) => { c.save(); c.translate(0, 8); c.scale(ART5_WR, ART5_WR); c.translate(0, -8); w4(c, T, u); c.restore(); };
+  DRAW_U.sovereign = (c, T, u) => { c.save(); c.translate(0, 8); c.scale(ART5_SOV, ART5_SOV); c.translate(0, -8); s4(c, T, u); c.restore(); }; }
+
