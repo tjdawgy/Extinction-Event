@@ -1,0 +1,39 @@
+{"map":"classic","f":["bloomhost","lastfist"],"t":734.67,"winner":1,"over":true,"err":null,"b5c":true,"bh":{"roll":{"apex":1,"airExp":1},"paths":[],"needle":0,"cloud":0,"needleAir":0,"quillAir":103,"foeAir":8}}
+{"map":"classic","f":["lastfist","axiarchs"],"t":1299.73,"winner":0,"over":true,"err":null,"b5c":true,"bh":null}
+{"map":"classic","f":["lastfist","bloomhost"],"t":893.57,"winner":1,"over":true,"err":null,"b5c":true,"bh":{"roll":{"swarm":1,"airExp":1},"paths":["Swarm Bloom"],"needle":36,"cloud":3,"needleAir":53,"quillAir":298,"foeAir":5}}
+{"map":"classic","f":["bloomhost","axiarchs"],"t":1314.2,"winner":0,"over":true,"err":null,"b5c":true,"bh":{"roll":{"apex":1,"airExp":1},"paths":["Apex Bloom"],"needle":0,"cloud":0,"needleAir":0,"quillAir":758,"foeAir":44}}
+{"map":"classic","f":["axiarchs","lastfist"],"t":1046.57,"winner":1,"over":true,"err":null,"b5c":true,"bh":null}
+{"map":"classic","f":["axiarchs","bloomhost"],"t":852.07,"winner":1,"over":true,"err":null,"b5c":true,"bh":{"roll":{"swarm":1,"airExp":1},"paths":["Swarm Bloom"],"needle":21,"cloud":0,"needleAir":3,"quillAir":284,"foeAir":8}}
+{"map":"twolane","f":["lastfist","axiarchs"],"t":702.83,"winner":1,"over":true,"err":null,"b5c":true,"bh":null}
+{"map":"twolane","f":["lastfist","bloomhost"],"t":1055.67,"winner":1,"over":true,"err":null,"b5c":true,"bh":{"roll":{"apex":1,"airExp":1},"paths":["Apex Bloom"],"needle":0,"cloud":0,"needleAir":0,"quillAir":60,"foeAir":0}}
+{"map":"twolane","f":["bloomhost","axiarchs"],"t":842.63,"winner":1,"over":true,"err":null,"b5c":true,"bh":{"roll":{},"paths":[],"needle":0,"cloud":0,"needleAir":0,"quillAir":39,"foeAir":10}}
+{"map":"twolane","f":["bloomhost","lastfist"],"t":1054.47,"winner":1,"over":true,"err":null,"b5c":true,"bh":{"roll":{"swarm":1,"airExp":1},"paths":["Swarm Bloom"],"needle":14,"cloud":0,"needleAir":0,"quillAir":0,"foeAir":0}}
+{"map":"twolane","f":["axiarchs","bloomhost"],"t":483.8,"winner":1,"over":true,"err":null,"b5c":true,"bh":{"roll":{},"paths":[],"needle":0,"cloud":0,"needleAir":0,"quillAir":26,"foeAir":1}}
+{"map":"threelane","f":["lastfist","axiarchs"],"t":497.97,"winner":1,"over":true,"err":null,"b5c":true,"bh":null}
+{"map":"twolane","f":["axiarchs","lastfist"],"t":1060.43,"winner":1,"over":true,"err":null,"b5c":true,"bh":null}
+{"map":"threelane","f":["lastfist","bloomhost"],"t":842.1,"winner":1,"over":true,"err":null,"b5c":true,"bh":{"roll":{"swarm":1,"airExp":1},"paths":["Swarm Bloom"],"needle":43,"cloud":2,"needleAir":11,"quillAir":154,"foeAir":1}}
+{"map":"threelane","f":["bloomhost","axiarchs"],"t":691.43,"winner":1,"over":true,"err":null,"b5c":true,"bh":{"roll":{},"paths":[],"needle":0,"cloud":0,"needleAir":0,"quillAir":0,"foeAir":9}}
+{"map":"threelane","f":["bloomhost","lastfist"],"t":673.63,"winner":1,"over":true,"err":null,"b5c":true,"bh":{"roll":{"apex":1,"airExp":1},"paths":["Apex Bloom"],"needle":0,"cloud":0,"needleAir":0,"quillAir":145,"foeAir":10}}
+{"map":"threelane","f":["axiarchs","lastfist"],"t":662.63,"winner":1,"over":true,"err":null,"b5c":true,"bh":null}
+{"map":"threelane","f":["axiarchs","bloomhost"],"t":483.33,"winner":1,"over":true,"err":null,"b5c":true,"bh":{"roll":{},"paths":[],"needle":0,"cloud":0,"needleAir":0,"quillAir":0,"foeAir":0}}
+errors: 0 of 18 | b5c on in every match: true
+map       match                  end (s)  Bloomspire roll (air expected)  built           Needlewings  strikes on aircraft  quills at aircraft  enemy aircraft trained  winner
+classic   axiarchs vs bloomhost   852.07  Swarm Bloom (yes)               Swarm Bloom              21                    3                 284                       8  bloomhost
+classic   bloomhost vs axiarchs   1314.2  Apex Bloom (yes)                Apex Bloom                0                    0                 758                      44  bloomhost
+classic   bloomhost vs lastfist   734.67  Apex Bloom (yes)                -                         0                    0                 103                       8  lastfist
+classic   lastfist vs bloomhost   893.57  Swarm Bloom (yes)               Swarm Bloom              36                   53                 298                       5  bloomhost
+threelane axiarchs vs bloomhost   483.33  (no T2 Bloomspire)              -                         0                    0                   0                       0  bloomhost
+threelane bloomhost vs axiarchs   691.43  (no T2 Bloomspire)              -                         0                    0                   0                       9  axiarchs
+threelane bloomhost vs lastfist   673.63  Apex Bloom (yes)                Apex Bloom                0                    0                 145                      10  lastfist
+threelane lastfist vs bloomhost    842.1  Swarm Bloom (yes)               Swarm Bloom              43                   11                 154                       1  bloomhost
+twolane   axiarchs vs bloomhost    483.8  (no T2 Bloomspire)              -                         0                    0                  26                       1  bloomhost
+twolane   bloomhost vs axiarchs   842.63  (no T2 Bloomspire)              -                         0                    0                  39                      10  axiarchs
+twolane   bloomhost vs lastfist  1054.47  Swarm Bloom (yes)               Swarm Bloom              14                    0                   0                       0  lastfist
+twolane   lastfist vs bloomhost  1055.67  Apex Bloom (yes)                Apex Bloom                0                    0                  60                       0  bloomhost
+Bloomspire rolls: Swarm Bloom 4, Apex Bloom 4, no T2 Bloomspire 4 (air expected at 8 of the rolls) | Needlewings trained 114, strikes on aircraft 67 in 3 matches | Bloomhost won 7, lost 5, draws/unfinished 0 of 12
+classic   axiarchs vs lastfist   1046.57  (no Bloomhost)  winner lastfist
+classic   lastfist vs axiarchs   1299.73  (no Bloomhost)  winner lastfist
+threelane axiarchs vs lastfist    662.63  (no Bloomhost)  winner lastfist
+threelane lastfist vs axiarchs    497.97  (no Bloomhost)  winner axiarchs
+twolane   axiarchs vs lastfist   1060.43  (no Bloomhost)  winner lastfist
+twolane   lastfist vs axiarchs    702.83  (no Bloomhost)  winner axiarchs

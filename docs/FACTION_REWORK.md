@@ -521,10 +521,63 @@ Departures and choices the brief left open:
 - **Historical text:** dated audit reports and logs (audit/*.md reports, audit/logs*) keep "Rifleman" as they were written; the living
   docs, README, KNOWN_ISSUES, CLAUDE.md, tests and the audit scripts say Marine.
 
+## Batch 5c: Axiarch art, the Needlewing AI fix, the Medevac rename
+
+**Batch 5c (the last five Axiarch units redrawn, the Bloomspire AI fix behind `REWORK.b5c`, the Medicopter renamed Medevac): done in
+v2.90.** Art in src/render/units-rework-5c.js; the AI fix in src/sim/rework-5c.js (`REWORK.b5c` → `g.rw.b5c`, on by default; each Test
+Range row has a "Batch 5c" switch). Art and text need no switch. With `b5c` off the game plays exactly as v2.89: every pinned fingerprint
+(the old sets and FP_V288G*) matches, and self-play (audit/sim/selfplay-5c.js `--identity`: Hard vs Hard, all six pairings on Classic,
+Two-Lane and Three-Lane, seed 7) on this build with the switch off and on v2.89's index.html gives 18 identical matches at 4,918 state
+hashes, 0 errors. With every batch on: FP_V290, FP_V290_BA, LF_BH_V290. No balance change: no unit stat, no batch 5b value, nothing of
+another faction.
+- **Axiarch art:** the Lancer, Gravemantle, Eventide, Prismwing and Shardstorm are redrawn in the reworked Axiarch language (the
+  Shardling, Bastion, Riftstalker, Parallax, Marksman, Severance, Worldbreaker, Wraithwing, Voidcarrier and Sovereign): floating obsidian
+  slabs with dark outlines, big team-stone slabs lit from above, nothing touching (thin lines of light), glowing rhombus cores, visor
+  slits, rings and crowns. Lancer: a slim shard knight with a light banner streaming from its back and a long lance with three focus rings
+  and a crystal tip. Gravemantle: a hunched walker under a mantle of two great team slabs, a low cowl with a visor, three stones orbiting
+  it, a violet gravity orb on a projector arm, a dashed gravity well on the ground. Eventide: a heavy hull on four slab legs carrying an
+  upright gate ring of eight segments (team stone on the upper ones) around a singularity, a crown of three shards, a forward prong with
+  its orb. Prismwing: a faceted team-stone dart with an obsidian keel, team-glass fins that beat, a link node and a floating tail shard.
+  Shardstorm: an obsidian crystal core with a team facet inside a turning ring of five shards (team on the near side), an emitter spike
+  forward. Every shot still leaves the SIM's MUZ point (unchanged); the art is built around it (the lance tip, the two gravity orbs, the
+  Prismwing's lens, the Shardstorm's spike).
+- **AI fix (b5c on):** a Normal or Hard Bloomhost AI's first Bloomspire T2 path is one roll from the match's seeded stream, kept for the
+  match (`aiBloomRoll5c`, `side.pRoll.techlab`): Swarm Bloom `AI5C.lean` (75%) of the time when enemy air is expected, the persona's
+  split otherwise (its path `PATHROLL.keep`, 60%, the other 40%). Enemy air is expected (`aiAirExpected5c`) when batch 5b's own signal for
+  the Bloomspire says so (`aiAirSignal5b`, factored out of `aiPath5b` unchanged: aircraft it knows of, or an enemy air production building
+  seen at T2), when it has seen an enemy aircraft at any time this match (`side.air5c`, noted at each AI decision by `aiNote5c`), when it
+  has seen any enemy air production building, or when the enemy is Last Fist.
+- **Medevac:** the Medicopter's player-facing name everywhere (unit and train cards, info card, Codex, the Support path's step, UNIT_TIPS,
+  Test Range labels); plural Medevacs. The internal id stays `medic`. Its desc reads "Unarmed thruster craft that heals nearby infantry…"
+  (was "thruster medevac craft").
+
+Departures and choices the brief left open:
+- **The 60/40 split was already there:** batch 4a's roll (`aiPathRoll`) already covered the Bloomspire, but batch 5b's rule then forced
+  Swarm Bloom whenever aircraft were known, and before any were known the personas mostly roll Apex Bloom (three of the five personas
+  have the Last Fist Air Power taste, which maps to Apex Bloom). With b5c on, the Bloomspire's first pick is one roll that replaces both, so
+  the persona's 60/40 applies when no air is expected and 75% Swarm Bloom when it is (even when aircraft are already known, where 5b
+  always took Swarm Bloom: Apex Bloom stays possible, as asked). Batch 5b's Larva Pit rule (Acidic Evolution for Spitters), its scores
+  and the second-copy rule (a second Bloomspire takes the path the first lacks) are unchanged. Easy keeps its persona's taste.
+- **"Air production building or air tech":** every faction's third production building (Tech Lab, Bloomspire, Celestial Array) builds
+  aircraft from T1, so any enemy one seen, at any tier, counts; its T2 path is its air tech, so that is covered too. Seen means seen through
+  the fog (a remembered building), never read from the enemy's state; the enemy's faction is known from the start, as for a player.
+- **Needlewings at aircraft need the Bloomspire at T2 and an enemy that flies:** the brief changes only the pick. Across seeds 7-10
+  (48 matches with Bloomhost), 14 never took a Bloomspire to T2, and some Swarm Bloom matches met no aircraft; strikes on aircraft
+  came in 11 matches. Nothing else in the AI was changed for this.
+- **Aircraft cache:** the Prismwing and Shardstorm were already in batch 5a's `AIR_CYC` (Prismwing 9, 8 poses; Shardstorm 2.2, 24 poses);
+  the new art keeps those cycles (the fins beat on sin(9t), the ring turns at 2.2t with five-fold symmetry), so both stay cached. The
+  Prismwing's box grew to fit its tail shard; the Lancer, Gravemantle and Eventide got new sprite boxes; every pose fits its box
+  (tests/browser.test.js). Health bars and shadows follow the new heights (`UVIS`: Lancer 38, Gravemantle 34, Eventide 58).
+- **Old draw functions kept:** dLancer, dGravemantle, dEventide, dPrism and dShardstorm stay in the source, unused, as earlier batches
+  left theirs.
+- **Historical text:** dated audit reports and logs (audit/*.md reports, audit/logs7*) keep "Medicopter" as written; the living docs,
+  README, KNOWN_ISSUES, tests and the game say Medevac.
+
 ## Unchanged (already distinct)
 
 Marine, Heavy, Tank, Flame Tank, Hydra, Interceptor, Medevac, Recon Drone, Mite, Razorwing, Cloudwing, Thornback, Lancer,
-Gravemantle, Eventide, Prismwing, Shardstorm. (The Skitterling, Spitter and Needlewing changed in batch 5b, the swarm pass; the Mite,
+Gravemantle, Eventide, Prismwing, Shardstorm. (Every one of them is now drawn in the new style: Last Fist in batch 5a, the Bloomhost ones
+in 5b, the Axiarch five in 5c; their mechanics are unchanged.) (The Skitterling, Spitter and Needlewing changed in batch 5b, the swarm pass; the Mite,
 Razorwing, Cloudwing and Thornback kept their mechanics there but were redrawn, and gained swarm surge and kill frenzy.)
 
 ## Watch list
@@ -573,6 +626,8 @@ visual references. A final art batch after batch 4 redraws the unchanged units a
    units redrawn.
    Last Fist art and the Marine rename (5a, done v2.89, after 5b): all 13 Last Fist units redrawn, the Rifleman renamed Marine, the
    Leviathan, Worldrender and Sovereign resized, aircraft poses cached.
+   Axiarch art, the Needlewing AI fix, the Medevac rename (5c, done v2.90): the last five Axiarch units redrawn, the Bloomspire's roll
+   behind `REWORK.b5c`.
 6. Art batch: unchanged units and buildings in the new style.
 
 Then: the paused balance pass, with all three factions reworked.

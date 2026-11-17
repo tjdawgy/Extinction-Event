@@ -2,7 +2,7 @@
 //   node tests/rework-5c-shots.js [shot ...]   → docs/screenshots/rework5c-<shot>-667x375.png
 // Shots: units (the five redrawn Axiarch units, blue against red, in the Test Range at real size), lineup (every Axiarch unit side by
 // side, both colours, as DRAW_U draws them), match (a real Hard AI self-play match, Bloomhost vs Last Fist, b5c on, nothing forced or
-// spawned: paused while a Needlewing stings an aircraft), medevac (the Medevac's info card on the Tech Lab's train tab).
+// spawned: paused while a Needlewing stings an aircraft), medevac (the Medevac's Codex entry).
 const path = require('path');
 const OUT = path.join(__dirname, '..', 'docs', 'screenshots');
 const { findPlaywright, NARROW, openPage } = require('./browser-kit');
@@ -24,7 +24,7 @@ const NEW = ['lancer', 'gravemantle', 'eventide', 'prismwing', 'shardstorm'];
 
 (async () => {
   const pw = findPlaywright(); if (!pw) { console.error('playwright not installed'); process.exit(1); }
-  const browser = await pw.chromium.launch(), dev = NARROW, errs = [], miss = [];
+  const browser = await pw.chromium.launch(), dev = NARROW, errs = [], miss = [], ok = (b, n) => { if (!b) miss.push(n); };
   const shot = async (page, name) => { await page.evaluate(() => { for (const t of document.querySelectorAll('#toasts > *')) t.remove(); }); await page.screenshot({ path: path.join(OUT, `rework5c-${name}-${dev.width}x${dev.height}.png`) }); console.log('wrote', name); };
   const open = async () => { const r = await openPage(browser, dev); await r.page.click('#bRange'); await r.page.waitForTimeout(300); await r.page.evaluate(() => hideOverlay()); return r; };
   if (on('units')) { // a. the five redrawn units at real size in the Test Range, blue against red (on Hold, no fight)
@@ -49,6 +49,32 @@ const NEW = ['lancer', 'gravemantle', 'eventide', 'prismwing', 'shardstorm'];
       c.fillStyle = '#ffe9a8'; c.font = 'bold 9px system-ui'; c.fillText('The Axiarchs (v2.90): batch 5c units named in gold', W / 2, 18);
     }, AX);
     await page.waitForTimeout(200); await shot(page, 'lineup'); errs.push(...errors); await page.close();
+  }
+  if (on('match')) { // c. a real self-play match (audit/sim/selfplay-5c.js seed 8, Classic, Last Fist vs Bloomhost, Hard vs Hard, b5c on, nothing
+    // forced or spawned), played in the page with the script's own steps until a Needlewing strikes an aircraft, then shown live
+    const { page, errors } = await openPage(browser, dev);
+    await page.evaluate(() => { devPick.a = { f: 'lastfist', ai: 'default', p: 'random' }; devPick.b = { f: 'bloomhost', ai: 'default', p: 'random' }; devPick.speed = 1; startSpectate(); paused = true; });
+    const found = await page.evaluate(() => {
+      game = newGame('hard', { seed: 8, map: 'classic', autoPlayer: true, autoDiff: 'hard', factions: ['lastfist', 'bloomhost'] }); game.countdown = 0; game.spectate = true;
+      const hits = () => (game.sides[1].sw5 || {}).needleAir || 0;
+      for (let k = 0; k < 30 * 1700 && !game.over; k++) {
+        const h0 = hits(); update(game, 1 / 30); game.events.length = 0;
+        if (hits() > h0 && hits() >= 30) { // a few strikes in: the pack is on its prey
+          const nw = game.ents.filter(e => e.type === 'needlewing' && e.side === 1 && e.hp > 0), air = game.ents.filter(e => e.kind === 'u' && e.side === 0 && e.hp > 0 && UDEF[e.type].air);
+          const pr = air.map(a => [a, nw.filter(n => Math.abs(a.u - n.u) < 50).length]).sort((a, b) => b[1] - a[1])[0];
+          if (pr && pr[1] >= 2) { applyZoom(1.35); cam.x = P(pr[0].u, pr[0].v).x; clampCam(); refreshUI(true); return { t: game.t, hits: hits(), rw: game.rw.b5c, path: game.ents.filter(e => e.type === 'techlab' && e.side === 1).map(e => e.path).join() }; }
+        }
+      }
+      return null;
+    });
+    console.log('match:', JSON.stringify(found)); ok(found, 'match');
+    await page.waitForTimeout(400);
+    await shot(page, 'match'); errs.push(...errors); await page.close();
+  }
+  if (on('medevac')) { // d. the Medevac's Codex entry (Last Fist tab), scrolled to it: the new name, its picture and text
+    const { page, errors } = await openPage(browser, dev);
+    ok(await page.evaluate(() => openCodex('lastfist', 'unit:medic')), 'medevac codex');
+    await page.waitForTimeout(500); await shot(page, 'medevac'); errs.push(...errors); await page.close();
   }
   await browser.close();
   if (errs.length) console.error('page errors:', errs);

@@ -1,0 +1,44 @@
+== v2.90 (this build)
+air: 47 units (47 aircraft); frame median 16.7 ms, 95th 33.3 ms; render() median 1.40 ms, 95th 2.80 ms over 300 frames
+air: 47 units (47 aircraft); frame median 16.7 ms, 95th 16.8 ms; render() median 1.40 ms, 95th 2.80 ms over 300 frames
+air: 47 units (47 aircraft); frame median 16.7 ms, 95th 16.8 ms; render() median 1.40 ms, 95th 2.80 ms over 300 frames
+air5c: 56 units (56 aircraft); frame median 16.7 ms, 95th 33.3 ms; render() median 1.60 ms, 95th 3.40 ms over 300 frames
+air5c: 56 units (56 aircraft); frame median 16.7 ms, 95th 33.3 ms; render() median 1.70 ms, 95th 3.70 ms over 300 frames
+air5c: 56 units (56 aircraft); frame median 16.7 ms, 95th 33.3 ms; render() median 1.70 ms, 95th 4.30 ms over 300 frames
+== v2.89 (2d80977's index.html, old Prismwing and Shardstorm art)
+node:internal/fs/promises:639
+  return new FileHandle(await PromisePrototypeThen(
+                        ^
+
+Error: ENOENT: no such file or directory, open '/tmp/claude-0/-home-user-Extinction-Event/703a1a98-4462-5938-af62-0c6a33d92948/scratchpad/assets/title-screen.jpg'
+    at async open (node:internal/fs/promises:639:25)
+    at async Object.readFile (node:internal/fs/promises:1252:14)
+    at async Route2._innerFulfill (/opt/node-tools/node_modules/playwright-core/lib/coreBundle.js:59780:26)
+    at async /opt/node-tools/node_modules/playwright-core/lib/coreBundle.js:59747:11
+    at async Route2._handleRoute (/opt/node-tools/node_modules/playwright-core/lib/coreBundle.js:59753:11)
+    at async Route2.fulfill (/opt/node-tools/node_modules/playwright-core/lib/coreBundle.js:59746:9)
+    at async Promise.all (index 1)
+    at async RouteHandler._handleInternal (/opt/node-tools/node_modules/playwright-core/lib/coreBundle.js:60184:27)
+    at async RouteHandler._handleImpl (/opt/node-tools/node_modules/playwright-core/lib/coreBundle.js:60153:18)
+    at async RouteHandler.handle (/opt/node-tools/node_modules/playwright-core/lib/coreBundle.js:60147:16) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/tmp/claude-0/-home-user-Extinction-Event/703a1a98-4462-5938-af62-0c6a33d92948/scratchpad/assets/title-screen.jpg'
+}
+
+Node.js v22.23.4
+== v2.89 (2d80977's index.html, old Prismwing and Shardstorm art; run with this build's tests/rework-5a-perf.js)
+air: 47 units (47 aircraft); frame median 16.7 ms, 95th 16.8 ms; render() median 1.40 ms, 95th 3.10 ms over 300 frames
+air: 47 units (47 aircraft); frame median 16.7 ms, 95th 16.8 ms; render() median 1.40 ms, 95th 2.90 ms over 300 frames
+air: 47 units (47 aircraft); frame median 16.7 ms, 95th 16.8 ms; render() median 1.40 ms, 95th 2.60 ms over 300 frames
+air5c: 56 units (56 aircraft); frame median 16.7 ms, 95th 33.3 ms; render() median 1.70 ms, 95th 3.30 ms over 300 frames
+air5c: 56 units (56 aircraft); frame median 16.7 ms, 95th 16.8 ms; render() median 1.50 ms, 95th 3.10 ms over 300 frames
+air5c: 56 units (56 aircraft); frame median 16.7 ms, 95th 33.3 ms; render() median 1.60 ms, 95th 3.20 ms over 300 frames
+== v2.90 again (after)
+air: 47 units (47 aircraft); frame median 16.7 ms, 95th 16.8 ms; render() median 1.40 ms, 95th 2.40 ms over 300 frames
+air: 47 units (47 aircraft); frame median 16.7 ms, 95th 16.7 ms; render() median 1.40 ms, 95th 2.80 ms over 300 frames
+air: 47 units (47 aircraft); frame median 16.7 ms, 95th 16.8 ms; render() median 1.40 ms, 95th 3.00 ms over 300 frames
+air5c: 56 units (56 aircraft); frame median 16.7 ms, 95th 33.2 ms; render() median 1.50 ms, 95th 4.00 ms over 300 frames
+air5c: 56 units (56 aircraft); frame median 16.7 ms, 95th 33.3 ms; render() median 1.60 ms, 95th 3.20 ms over 300 frames
+air5c: 56 units (56 aircraft); frame median 16.7 ms, 95th 16.8 ms; render() median 1.50 ms, 95th 3.10 ms over 300 frames
