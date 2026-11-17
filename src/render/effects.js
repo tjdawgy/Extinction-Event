@@ -985,6 +985,7 @@ function render(c, g, time, sel, selPad) {
     if (wp === 'exile') { drawOrb(c, g, p, b); continue; } // v2.82: a Severance's rift orb
     if (p.gs) { drawGsMissile(c, p, a, b); continue; } // v2.86: a Gunship's salvo missile
     if (wp === 'vbolt') { drawVBolt(c, p, a, b); continue; } // v2.87: a Voidcarrier's bolt
+    if (wp === 'bomb' && p.carpet) { drawLvBomb(c, p, b); continue; } // v2.87: a Leviathan's carpet bomb, drawn larger
     if (wp === 'bileglob') { drawBileGlob(c, g, p, b, lit); continue; } // v2.86: a Bilecaster's glob
     if (wp === 'sever') { c.strokeStyle = `rgba(${RIFTA},0.6)`; c.lineWidth = 1.6; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke(); c.fillStyle = '#e6dcff'; c.beginPath(); c.arc(b.x, b.y, 1.8, 0, 7); c.fill(); continue; } // its bolt
     if (drawFacProj(c, g, p, a, b, wp, time)) continue; // faction weapons (v2.36)

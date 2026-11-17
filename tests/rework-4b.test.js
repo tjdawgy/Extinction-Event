@@ -42,7 +42,7 @@ function skirm(s, kind, rw) {
 const SK = {
   e0: '2584f2b4f397048264cb22d83581e8e35a13526f6f1096bbe5fbe547524fc1f1', // Leviathans, Interceptors vs Brood Tyrants, a Worldrender, b4b off: v2.86's
   f0: '2c366c3c0676cc1b2113aa637d89e81390764afaa85f957504353240931f1661', // a Voidcarrier, a Sovereign vs a Last Fist army, b4b off: v2.86's
-  e1: 'c147b273385e371f39883adf83f1548df848c0177e0f5c242b75d21a98defd14', // b4b on
+  e1: 'c550b4aafc7e729252df45a5dc71156a73fe9a58e8be0805140a463dc9ad48e7', // b4b on
   f1: 'dcc1ab5f2bdb3f717f406aad4249927c4d8608f46083473b1b990039bf31ed3b', // b4b on
 };
 test('seeded skirmishes: b4b off hashes as on v2.86; on, as recorded at v2.87', () => {

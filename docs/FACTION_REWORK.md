@@ -332,6 +332,44 @@ Departures and choices the design left open:
 - Text: the Gunship and Wraithwing are base units, so they have no path step text; the other three's steps are updated.
 - Art is drawn the new way in b4a-off games too, as in earlier batches.
 
+**Batch 4b (Leviathan, Brood Tyrant, Worldrender, Voidcarrier, Astral Sovereign): done in v2.87**, with a Wraithwing counter fix
+for 4a first (Part 0, below). Code: src/sim/rework-4b.js (`REWORK.b4b` → `g.rw.b4b`; on by default; each Test Range row has its own
+"Batch 4b" switch), art in src/render/units-rework-4b.js. Starting values as asked (`LEV`, `TYR`, `PUS`, `LAND`, `VC`, `SOV`). The
+units keep their ids and play through per-game definitions (`rwD`, `RW4B_D`); UDEF is untouched, so a b4b-off game plays v2.86
+exactly (the pinned fingerprints match, seeded Test Range skirmishes hash as on v2.86's build, and a b4b-off save leaves the key out).
+- **Part 0 (the Wraithwing's counters, part of b4a, v2.87):** with b4a on, anti-air specialists (a weapon that hits only aircraft,
+  `hitsGround: false`: the Interceptor; or one that prefers them, `preferAir`: the Hydra) and every building gun ignore a Wraithwing's
+  0.4 s re-acquire delay after a hop (`aaTrack`, read by the target search and `ctlCanHit`). Shots already in flight at it still miss
+  when it hops. Its counters are now dedicated anti-air, defences and chaining beams (Codex, desc and UNIT_TIPS updated).
+Departures and choices the design left open:
+- Part 0: "every defensive building" is every building with a gun: Turrets, Maws, Null Lances, bunkers and HQ guns. No Bloomhost or
+  Axiarch unit has either flag (the Bloomhost's air answers are its Maws and Hive). The v2.86 determinism matches with 4a on are
+  unchanged by it (no Wraithwing hops into anti-air in them); 4a's seeded skirmish with Wraithwings against a Hydra is re-recorded.
+- Leviathan: a target within `LEV.reach` (160) starts a run (P10's reach was 40, right below it). The run follows its target until
+  the first bomb falls, then the line is fixed; each bomb is P10's (35, splash 40) and falls slower (`LEV.fall`, so the line can be
+  seen coming). The turn is a 2 s half circle toward its target's side (toward the middle near an edge). Retreat ends a run. At its
+  speed (24) a pass with the 120 carry-on and the turn takes about 12 s, so against one target it does about a quarter of P10's
+  damage per second (flagged for the balance pass, not tuned). AI escorts: an AI's Interceptors with no air target of their own fly
+  with the nearest Leviathan on any stance; the old escort on Attack (Leviathans and Gunships) is kept.
+- Brood Tyrant: the 30 to a building is the hit's 40 scaled by 30/40, so damage buffs apply to it as to the unit hit; a hit on a
+  building splashes ground units only. A pustule belongs to the side whose glob stuck it. Any paid Repair running clears them (checked
+  every tick, so the moment Repair starts). The Mites spawn around the building's edge (tSrc 'pus', the Mound's 30 s life); they
+  count against neither the Mound's cap nor the temporary-unit cap, and they don't burst into acid (that is the Mound's T3).
+- Worldrender: it lands when the building it is attacking is within its range (50) and settles against the building's edge during
+  the 1.5 s. Coming down it is still an aircraft; from touchdown until it is airborne again (take-off included) it is a heavy ground
+  target. First bite at touchdown, then every 2 s; the healing uses its own budget like P11's. It also takes off when ordered
+  elsewhere (a move, Retreat, another target). Below 35% it doesn't land; it fights with its drop from the air. The AI: with units
+  in reach an AI's Worldrender fights them from the air; otherwise it picks the most valuable building within 300 and lands on it.
+- Voidcarrier: the bolt hits buildings too (×1.0). The AI keeps it over the middle of its six front-most ground units, 40 behind them.
+- Astral Sovereign: "its shields break" is the hit that takes them from above 0 to 0; with its shields already down it charges and
+  fires. The damage table is P12's (`DMG.sovereign`: buildings ×2.1). No building preference: a player's Sovereign targets as any
+  unit does. The AI aims at the most expensive target in reach (by cost), at buildings in a base attack or a siege push; mid-charge it
+  keeps its target (a new target restarts the charge, as for the Marksman).
+- AI: own scores for all five (the Leviathan's lower until it has two Interceptors each; Interceptors scored up while it has
+  Leviathans) and tastes for four (`RW4B_TASTE`; the Leviathan keeps the Last Fist personas' own). AI_TWIN is unchanged for b4b-off games.
+- Art: all five are aircraft and draw live, as every aircraft does (no pose cache); the Leviathan is drawn 1.25× and the Worldrender
+  1.35× the old art's size. Art is drawn the new way in b4b-off games too.
+
 ### Sniper (Last Fist, Barracks Specialists T3)
 
 Suppressing fire. Keeps its piercing shot; hits pin infantry in place briefly.
@@ -354,7 +392,8 @@ Missile salvos. A burst of four missiles, then a reload.
 Blink raider. Moves in short teleport hops instead of flying, firing a bolt each time it lands; anti-air keeps losing
 track of it. Replaces phase-on-hit.
 
-**Counter:** splash and chaining anti-air.
+**Counter:** dedicated anti-air and defences (they track it through its hops, v2.87) and chaining beams. (Was: splash and
+chaining anti-air; splash never hits aircraft in this engine.)
 
 ### Leviathan (Last Fist, Tech Lab Air Power T3)
 
@@ -425,7 +464,7 @@ visual references. A final art batch after batch 4 redraws the unchanged units a
 3. Divers and melee: Leaper, Riftstalker, Parallax, Ravager (3a, done v2.84), Dreadthorn, Bastion, Shardling, Bulwark (3b, done
    v2.85).
 4. Ranged and air: Sniper, Astral Marksman, Bilecaster, Gunship, Wraithwing (4a, done v2.86), Leviathan, Brood Tyrant, Worldrender,
-   Voidcarrier, Astral Sovereign.
+   Voidcarrier, Astral Sovereign (4b, done v2.87). Every reworked unit is in.
 5. Art batch: unchanged units and buildings in the new style.
 
 Then: the paused balance pass, with all three factions reworked.

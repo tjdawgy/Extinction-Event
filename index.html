@@ -3507,7 +3507,7 @@ function fire(g, src, t, def) {
     if (BW.g === g && BW.list && bwBeam(g, src, t, def, m)) return; // v2.85: it strikes an enemy Bastion's barrier
     damage(g, t, def.dmg * (sideBuff(g, src.side) ? NANO.dmg : 1) * outMul(g, src), def.weapon, src.side, src);
     const hq = def.weapon === 'hqbeam' || def.weapon === 'sovereign'; // the Axis lance (v2.36), the Sovereign's judgement (v2.37): heavier, violet and cyan
-    if (def.judge) g.fx.push({ k: 'judge', side: src.side, u: t.u, x: a.x, y: a.y, x2: b.x, y2: b.y, t: 0, life: 0.6 }); else // v2.87: a batch 4b Sovereign's judgement beam
+    if (def.judge) { g.fx.push({ k: 'judge', side: src.side, u: t.u, x: a.x, y: a.y, x2: b.x, y2: b.y, t: 0, life: 0.6 }); rw4bEv(g, src.side, 'judge', { u: t.u, b: t.kind === 'b' ? 1 : 0 }); } else // v2.87: a batch 4b Sovereign's judgement beam
     g.fx.push({ k: 'beam', x: a.x, y: a.y, x2: b.x, y2: b.y, t: 0, life: hq ? 0.34 : def.weapon === 'horizon' ? 0.32 : 0.2, w: def.weapon === 'sovereign' ? 5 : hq ? 3.6 : def.weapon === 'horizon' ? 3.2 : def.split ? 1.5 : 2.2, hq });
     if (def.chain) chainBeam(g, src, t, def); // the Shardstorm (v2.29)
     return;
@@ -5766,10 +5766,10 @@ const RW4A_TASTE = { marksman: { turtle: 1.2, economist: 1.1, aggressor: 0.9, tr
      cooldown over (sovFail). The AI aims it at the most valuable target in reach, at buildings when sieging. */
 const rwB4b = g => !!(g && g.rw && g.rw.b4b);
 const aaTrack = (src, d) => src.kind === 'b' || d.hitsGround === false || !!d.preferAir; // Part 0 (v2.87, read only while a b4a Wraithwing's wwT runs)
-const LEV = { reach: 160, over: 120, turn: 2.0, n: 4, gap: 26, edge: 40 };
+const LEV = { reach: 160, over: 120, turn: 2.0, n: 4, gap: 26, edge: 40, fall: 55 }; // fall: its run's bombs drop slower than P10's (a line you can see coming)
 const TYR = { dmg: 40, splash: 24, range: 150, cd: 2.4, bdmg: 30 };
 const PUS = { max: 3, dps: 6, mites: 2, cap: 6 };
-const LAND = { t: 1.5, dmg: 120, every: 2.0, armor: 'heavy', off: 0.35, frac: 0.3, cap: 40, z: 6, seek: 300 };
+const LAND = { t: 1.5, dmg: 120, every: 2.0, armor: 'heavy', off: 0.35, frac: 0.3, cap: 40, z: 6, seek: 300, edge: 16 };
 const VC = { dmg: 18, cd: 1.4, range: 140 };
 const SOV = { dmg: 260, range: 320, charge: 2.5 };
 const AIM4B = { every: 0.25, eco: ['refinery', 'reactor', 'habitat'], def: ['turret', 'bunker'] };
@@ -5843,7 +5843,7 @@ function lvStep(g, u, d, s, st, cs, best, dt, sp) {
 function lvDrop(g, u, d, R, off) {
   RNG.g = g; u.lastAct = g.t;
   const m = muzzle(u), dmg = d.dmg * (sideBuff(g, u.side) ? NANO.dmg : 1) * outMul(g, u);
-  g.projs.push({ u: m.u, v: m.v, z: m.z, pu: m.u, pv: m.v, pz: m.z, target: null, side: u.side, weapon: d.weapon, dmg, splash: d.splash || 0, t: 0, tz: 0, tu: R.tu + R.hd * off + rand(-3, 3), tv: R.tv + rand(-5, 5), speed: PSPEED[d.weapon], carpet: 1 });
+  g.projs.push({ u: m.u, v: m.v, z: m.z, pu: m.u, pv: m.v, pz: m.z, target: null, side: u.side, weapon: d.weapon, dmg, splash: d.splash || 0, t: 0, tz: 0, tu: R.tu + R.hd * off + rand(-3, 3), tv: R.tv + rand(-5, 5), speed: LEV.fall, carpet: 1 });
   u.recoil = 1;
 }
 // The AI's Interceptors fly with its Leviathans on any stance (when they have no air target of their own)
@@ -5894,11 +5894,11 @@ function pusBurst(g, b) { // the building fell with pustules on it: each bursts 
   const s = b.puS, n = Math.min(PUS.cap, b.pus * PUS.mites);
   if (!(s >= 0 && s < 2) || !n) return;
   for (let i = 0; i < n; i++) {
-    const a = i / n * Math.PI * 2 + 0.4, r = b.half * 0.8;
+    const a = i / n * Math.PI * 2 + 0.4, r = b.half + 8;
     const k = spawnUnit(g, s, 'mite', clamp(b.u + Math.cos(a) * r, 0, L), b.v + Math.sin(a) * r * 0.6);
     Object.assign(k, { temp: g.t + MOUND.life, tLife: MOUND.life, tSrc: 'pus' }); k.laneV = clamp(k.v, -LANE_V, LANE_V); arriveOrders(g, k);
   }
-  for (let i = 0; i < b.pus; i++) { const a = i * 2.1 + 0.3, w = P(b.u + Math.cos(a) * b.half * 0.5, b.v + Math.sin(a) * b.half * 0.4, b.h * 0.3); g.fx.push({ k: 'pusburst', side: s, u: b.u, x: w.x, y: w.y, t: 0, life: 0.7 }); }
+  for (let i = 0; i < b.pus; i++) { const a = i * 2.1 + 0.3, w = P(b.u + Math.cos(a) * b.half * 0.5, b.v + Math.sin(a) * b.half * 0.4, b.h * 0.3); g.fx.push({ k: 'pusburst', side: s, u: b.u, x: w.x, y: w.y, t: 0, life: 1.1 }); }
   rw4bEv(g, s, 'pusburst', { u: b.u, n });
   if (g.log) logAdd(g.log.tot[s].mites || (g.log.tot[s].mites = {}), 'pus', n);
 }
@@ -5911,6 +5911,7 @@ function lnStep(g, u, d, s, st, cs, best, dt, sp) {
     u.moving = false; u.tgt = B ? B.id : 0;
     if (u.lnd === 1) { // coming down
       const k = clamp(1 - (u.lnT - g.t) / LAND.t, 0, 1); u.z = lerp(u.lnZ, LAND.z, k);
+      if (B && u.lnP) { u.u = lerp(u.lnP[0], u.lnP[2], k); u.v = lerp(u.lnP[1], u.lnP[3], k); } // settling onto the building's edge
       if (!B || away || u.hp < u.maxHp * LAND.off) { lnOff(g, u, k); return true; }
       if (g.t >= u.lnT) { u.lnd = 2; u.z = LAND.z; u.arm = LAND.armor; u.lnF = g.t; const w = P(u.u, u.v, 0); g.fx.push({ k: 'landdust', side: s, u: u.u, x: w.x, y: w.y, t: 0, life: 1.0 }); rw4bEv(g, s, 'landed', { u: u.u, b: B.type }); }
       return true;
@@ -5922,17 +5923,18 @@ function lnStep(g, u, d, s, st, cs, best, dt, sp) {
       return true;
     }
     const k = clamp((u.lnT - g.t) / LAND.t, 0, 1); u.z = lerp(u.lnZ, LAND.z, k); // taking off (still on the ground until airborne)
-    if (g.t >= u.lnT) { u.lnd = 0; u.z = u.lnZ; u.arm = undefined; u.lnB = 0; }
+    if (g.t >= u.lnT) { u.lnd = 0; u.z = u.lnZ; u.arm = undefined; u.lnB = 0; u.lnP = undefined; }
     return true;
   }
   if (away || !best || best.kind !== 'b' || u.hp < u.maxHp * LAND.off) return false;
   if (effDist(u, best) > d.range) { moveToward(u, d, best.u, best.v, dt, sp); u.tgt = 0; return true; } // an AI's Worldrender on its way to the building it chose
   u.lnd = 1; u.lnT = g.t + LAND.t; u.lnB = best.id; u.lnZ = u.lnZ || u.z; u.moving = false; u.tgt = best.id;
   if (Math.abs(best.u - u.u) > 1) u.face = best.u >= u.u ? 1 : -1;
+  u.lnP = [u.u, u.v, clamp(best.u - u.face * (best.half + LAND.edge), 0, L), best.v + clamp(u.v - best.v, -best.half * 0.5, best.half * 0.5)]; // where it settles: against the building
   rw4bEv(g, s, 'land', { u: u.u });
   return true;
 }
-function lnOff(g, u, k) { u.lnd = 3; u.lnT = g.t + LAND.t * k; if (k <= 0) { u.lnd = 0; u.z = u.lnZ; u.arm = undefined; u.lnB = 0; } rw4bEv(g, u.side, 'takeoff', { u: u.u }); }
+function lnOff(g, u, k) { u.lnd = 3; u.lnT = g.t + LAND.t * k; u.lnP = undefined; if (k <= 0) { u.lnd = 0; u.z = u.lnZ; u.arm = undefined; u.lnB = 0; } rw4bEv(g, u.side, 'takeoff', { u: u.u }); }
 function lnBite(g, u, B) {
   u.lastAct = g.t; u.recoil = 1;
   const h0 = B.hp + (B.shp || 0);
@@ -10413,7 +10415,8 @@ function drawGsMissile(c, p, a, b) {
    them); a landed Worldrender's dust and bites; the Voidcarrier's small bright bolts. */
 
 // Leviathan: bombs leave the bay at MUZ.leviathan (0, -10); u.lvB: the bay is open over the target
-function dLev4(c, T, u) {
+function dLev4(c, T, u) { c.save(); c.scale(1.25, 1.25); dLev4a(c, T, u); c.restore(); } // huge: drawn a quarter larger than its old art
+function dLev4a(c, T, u) {
   const t = u.anim || 0, fl = 0.6 + 0.4 * Math.sin(t * 26), bay = u.lvB ? 1 : 0;
   const eng = (x, y, near) => { c.fillStyle = lgrad(c, 0, y - 2.4, 0, y + 2.4, near ? [STEEL[0], STEEL[1], STEEL[2]] : [STEEL[1], STEEL[2]]); rr(c, x - 7, y - 2.4, 12, 4.8, 2.2); c.fill(); outline(c, 0.7);
     c.fillStyle = RUSTO; c.fillRect(x - 3, y - 2.3, 1.4, 4.6); c.fillStyle = '#15171c'; c.beginPath(); c.ellipse(x + 5, y, 1.2, 2.2, 0, 0, 7); c.fill();
@@ -10471,7 +10474,8 @@ function dTyr4(c, T, u) {
 
 // Worldrender: the maw underneath at MUZ.worldrender (0, -8). Landing (u.lnd 1-3) folds its wings and grips with tendrils
 const lnK = u => { const t = VFX.lastT; return u.lnd === 1 ? clamp(1 - (u.lnT - t) / LAND.t, 0, 1) : u.lnd === 2 ? 1 : u.lnd === 3 ? clamp((u.lnT - t) / LAND.t, 0, 1) : 0; };
-function dWorld4(c, T, u) {
+function dWorld4(c, T, u) { c.save(); c.scale(1.35, 1.35); dWorld4a(c, T, u); c.restore(); } // colossal
+function dWorld4a(c, T, u) {
   const t = u.anim || 0, k = u.lnd ? lnK(u) : 0, r = Math.sin(t * 2.2) * (1 - k), feed = u.lnd === 2 ? Math.max(0, Math.sin(Math.PI * clamp(1 - ((u.lnF || 0) - VFX.lastT) / LAND.every, 0, 1) * 2)) : 0, gape = 3 + feed * 6 + (u.recoil || 0) * 3;
   const span = 1 - 0.6 * k, lift = -k * 4;
   // the far wing
@@ -10639,6 +10643,14 @@ function drawVBolt(c, p, a, b) { // a Voidcarrier's bolt: a small bright bolt in
   c.strokeStyle = `rgba(${T.glow},0.8)`; c.lineWidth = 2; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
   c.globalCompositeOperation = 'lighter'; stamp(c, GLOW['t' + p.side], b.x, b.y, 6, 0.9); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
   c.fillStyle = '#ffffff'; c.beginPath(); c.arc(b.x, b.y, 1.6, 0, 7); c.fill();
+}
+function drawLvBomb(c, p, b) { // a Leviathan's bomb falling: a fat olive bomb with fins and a hazard band, nose down, a thin streak above it
+  const gp = P(p.u, p.v, 0);
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.ellipse(gp.x, gp.y, 5, 2, 0, 0, 7); c.fill(); // its shadow, where it will land
+  c.strokeStyle = 'rgba(255,255,255,0.25)'; c.lineWidth = 1; c.beginPath(); c.moveTo(b.x, b.y - 16); c.lineTo(b.x, b.y - 5); c.stroke();
+  c.fillStyle = OLIVE[1]; c.beginPath(); c.ellipse(b.x, b.y, 2.8, 5, 0, 0, 7); c.fill(); outline(c, 0.7);
+  c.fillStyle = HAZ; c.fillRect(b.x - 2.6, b.y - 1, 5.2, 1.4);
+  c.fillStyle = STEEL[2]; poly(c, [[b.x - 3.4, b.y - 7], [b.x + 3.4, b.y - 7], [b.x + 1.6, b.y - 4], [b.x - 1.6, b.y - 4]]); c.fill();
 }
 /* ---------- Backdrop: sky, mountains and the ground plane ---------- */
 function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -12358,6 +12370,7 @@ function render(c, g, time, sel, selPad) {
     if (wp === 'exile') { drawOrb(c, g, p, b); continue; } // v2.82: a Severance's rift orb
     if (p.gs) { drawGsMissile(c, p, a, b); continue; } // v2.86: a Gunship's salvo missile
     if (wp === 'vbolt') { drawVBolt(c, p, a, b); continue; } // v2.87: a Voidcarrier's bolt
+    if (wp === 'bomb' && p.carpet) { drawLvBomb(c, p, b); continue; } // v2.87: a Leviathan's carpet bomb, drawn larger
     if (wp === 'bileglob') { drawBileGlob(c, g, p, b, lit); continue; } // v2.86: a Bilecaster's glob
     if (wp === 'sever') { c.strokeStyle = `rgba(${RIFTA},0.6)`; c.lineWidth = 1.6; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke(); c.fillStyle = '#e6dcff'; c.beginPath(); c.arc(b.x, b.y, 1.8, 0, 7); c.fill(); continue; } // its bolt
     if (drawFacProj(c, g, p, a, b, wp, time)) continue; // faction weapons (v2.36)

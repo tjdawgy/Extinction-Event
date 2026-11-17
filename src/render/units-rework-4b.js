@@ -11,7 +11,8 @@
    them); a landed Worldrender's dust and bites; the Voidcarrier's small bright bolts. */
 
 // Leviathan: bombs leave the bay at MUZ.leviathan (0, -10); u.lvB: the bay is open over the target
-function dLev4(c, T, u) {
+function dLev4(c, T, u) { c.save(); c.scale(1.25, 1.25); dLev4a(c, T, u); c.restore(); } // huge: drawn a quarter larger than its old art
+function dLev4a(c, T, u) {
   const t = u.anim || 0, fl = 0.6 + 0.4 * Math.sin(t * 26), bay = u.lvB ? 1 : 0;
   const eng = (x, y, near) => { c.fillStyle = lgrad(c, 0, y - 2.4, 0, y + 2.4, near ? [STEEL[0], STEEL[1], STEEL[2]] : [STEEL[1], STEEL[2]]); rr(c, x - 7, y - 2.4, 12, 4.8, 2.2); c.fill(); outline(c, 0.7);
     c.fillStyle = RUSTO; c.fillRect(x - 3, y - 2.3, 1.4, 4.6); c.fillStyle = '#15171c'; c.beginPath(); c.ellipse(x + 5, y, 1.2, 2.2, 0, 0, 7); c.fill();
@@ -69,7 +70,8 @@ function dTyr4(c, T, u) {
 
 // Worldrender: the maw underneath at MUZ.worldrender (0, -8). Landing (u.lnd 1-3) folds its wings and grips with tendrils
 const lnK = u => { const t = VFX.lastT; return u.lnd === 1 ? clamp(1 - (u.lnT - t) / LAND.t, 0, 1) : u.lnd === 2 ? 1 : u.lnd === 3 ? clamp((u.lnT - t) / LAND.t, 0, 1) : 0; };
-function dWorld4(c, T, u) {
+function dWorld4(c, T, u) { c.save(); c.scale(1.35, 1.35); dWorld4a(c, T, u); c.restore(); } // colossal
+function dWorld4a(c, T, u) {
   const t = u.anim || 0, k = u.lnd ? lnK(u) : 0, r = Math.sin(t * 2.2) * (1 - k), feed = u.lnd === 2 ? Math.max(0, Math.sin(Math.PI * clamp(1 - ((u.lnF || 0) - VFX.lastT) / LAND.every, 0, 1) * 2)) : 0, gape = 3 + feed * 6 + (u.recoil || 0) * 3;
   const span = 1 - 0.6 * k, lift = -k * 4;
   // the far wing
@@ -237,4 +239,12 @@ function drawVBolt(c, p, a, b) { // a Voidcarrier's bolt: a small bright bolt in
   c.strokeStyle = `rgba(${T.glow},0.8)`; c.lineWidth = 2; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
   c.globalCompositeOperation = 'lighter'; stamp(c, GLOW['t' + p.side], b.x, b.y, 6, 0.9); c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
   c.fillStyle = '#ffffff'; c.beginPath(); c.arc(b.x, b.y, 1.6, 0, 7); c.fill();
+}
+function drawLvBomb(c, p, b) { // a Leviathan's bomb falling: a fat olive bomb with fins and a hazard band, nose down, a thin streak above it
+  const gp = P(p.u, p.v, 0);
+  c.fillStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.ellipse(gp.x, gp.y, 5, 2, 0, 0, 7); c.fill(); // its shadow, where it will land
+  c.strokeStyle = 'rgba(255,255,255,0.25)'; c.lineWidth = 1; c.beginPath(); c.moveTo(b.x, b.y - 16); c.lineTo(b.x, b.y - 5); c.stroke();
+  c.fillStyle = OLIVE[1]; c.beginPath(); c.ellipse(b.x, b.y, 2.8, 5, 0, 0, 7); c.fill(); outline(c, 0.7);
+  c.fillStyle = HAZ; c.fillRect(b.x - 2.6, b.y - 1, 5.2, 1.4);
+  c.fillStyle = STEEL[2]; poly(c, [[b.x - 3.4, b.y - 7], [b.x + 3.4, b.y - 7], [b.x + 1.6, b.y - 4], [b.x - 1.6, b.y - 4]]); c.fill();
 }

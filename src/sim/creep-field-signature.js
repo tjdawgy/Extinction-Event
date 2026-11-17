@@ -298,7 +298,7 @@ function fire(g, src, t, def) {
     if (BW.g === g && BW.list && bwBeam(g, src, t, def, m)) return; // v2.85: it strikes an enemy Bastion's barrier
     damage(g, t, def.dmg * (sideBuff(g, src.side) ? NANO.dmg : 1) * outMul(g, src), def.weapon, src.side, src);
     const hq = def.weapon === 'hqbeam' || def.weapon === 'sovereign'; // the Axis lance (v2.36), the Sovereign's judgement (v2.37): heavier, violet and cyan
-    if (def.judge) g.fx.push({ k: 'judge', side: src.side, u: t.u, x: a.x, y: a.y, x2: b.x, y2: b.y, t: 0, life: 0.6 }); else // v2.87: a batch 4b Sovereign's judgement beam
+    if (def.judge) { g.fx.push({ k: 'judge', side: src.side, u: t.u, x: a.x, y: a.y, x2: b.x, y2: b.y, t: 0, life: 0.6 }); rw4bEv(g, src.side, 'judge', { u: t.u, b: t.kind === 'b' ? 1 : 0 }); } else // v2.87: a batch 4b Sovereign's judgement beam
     g.fx.push({ k: 'beam', x: a.x, y: a.y, x2: b.x, y2: b.y, t: 0, life: hq ? 0.34 : def.weapon === 'horizon' ? 0.32 : 0.2, w: def.weapon === 'sovereign' ? 5 : hq ? 3.6 : def.weapon === 'horizon' ? 3.2 : def.split ? 1.5 : 2.2, hq });
     if (def.chain) chainBeam(g, src, t, def); // the Shardstorm (v2.29)
     return;

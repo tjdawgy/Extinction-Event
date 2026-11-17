@@ -27,10 +27,10 @@
      cooldown over (sovFail). The AI aims it at the most valuable target in reach, at buildings when sieging. */
 const rwB4b = g => !!(g && g.rw && g.rw.b4b);
 const aaTrack = (src, d) => src.kind === 'b' || d.hitsGround === false || !!d.preferAir; // Part 0 (v2.87, read only while a b4a Wraithwing's wwT runs)
-const LEV = { reach: 160, over: 120, turn: 2.0, n: 4, gap: 26, edge: 40 };
+const LEV = { reach: 160, over: 120, turn: 2.0, n: 4, gap: 26, edge: 40, fall: 55 }; // fall: its run's bombs drop slower than P10's (a line you can see coming)
 const TYR = { dmg: 40, splash: 24, range: 150, cd: 2.4, bdmg: 30 };
 const PUS = { max: 3, dps: 6, mites: 2, cap: 6 };
-const LAND = { t: 1.5, dmg: 120, every: 2.0, armor: 'heavy', off: 0.35, frac: 0.3, cap: 40, z: 6, seek: 300 };
+const LAND = { t: 1.5, dmg: 120, every: 2.0, armor: 'heavy', off: 0.35, frac: 0.3, cap: 40, z: 6, seek: 300, edge: 16 };
 const VC = { dmg: 18, cd: 1.4, range: 140 };
 const SOV = { dmg: 260, range: 320, charge: 2.5 };
 const AIM4B = { every: 0.25, eco: ['refinery', 'reactor', 'habitat'], def: ['turret', 'bunker'] };
@@ -104,7 +104,7 @@ function lvStep(g, u, d, s, st, cs, best, dt, sp) {
 function lvDrop(g, u, d, R, off) {
   RNG.g = g; u.lastAct = g.t;
   const m = muzzle(u), dmg = d.dmg * (sideBuff(g, u.side) ? NANO.dmg : 1) * outMul(g, u);
-  g.projs.push({ u: m.u, v: m.v, z: m.z, pu: m.u, pv: m.v, pz: m.z, target: null, side: u.side, weapon: d.weapon, dmg, splash: d.splash || 0, t: 0, tz: 0, tu: R.tu + R.hd * off + rand(-3, 3), tv: R.tv + rand(-5, 5), speed: PSPEED[d.weapon], carpet: 1 });
+  g.projs.push({ u: m.u, v: m.v, z: m.z, pu: m.u, pv: m.v, pz: m.z, target: null, side: u.side, weapon: d.weapon, dmg, splash: d.splash || 0, t: 0, tz: 0, tu: R.tu + R.hd * off + rand(-3, 3), tv: R.tv + rand(-5, 5), speed: LEV.fall, carpet: 1 });
   u.recoil = 1;
 }
 // The AI's Interceptors fly with its Leviathans on any stance (when they have no air target of their own)
@@ -155,11 +155,11 @@ function pusBurst(g, b) { // the building fell with pustules on it: each bursts 
   const s = b.puS, n = Math.min(PUS.cap, b.pus * PUS.mites);
   if (!(s >= 0 && s < 2) || !n) return;
   for (let i = 0; i < n; i++) {
-    const a = i / n * Math.PI * 2 + 0.4, r = b.half * 0.8;
+    const a = i / n * Math.PI * 2 + 0.4, r = b.half + 8;
     const k = spawnUnit(g, s, 'mite', clamp(b.u + Math.cos(a) * r, 0, L), b.v + Math.sin(a) * r * 0.6);
     Object.assign(k, { temp: g.t + MOUND.life, tLife: MOUND.life, tSrc: 'pus' }); k.laneV = clamp(k.v, -LANE_V, LANE_V); arriveOrders(g, k);
   }
-  for (let i = 0; i < b.pus; i++) { const a = i * 2.1 + 0.3, w = P(b.u + Math.cos(a) * b.half * 0.5, b.v + Math.sin(a) * b.half * 0.4, b.h * 0.3); g.fx.push({ k: 'pusburst', side: s, u: b.u, x: w.x, y: w.y, t: 0, life: 0.7 }); }
+  for (let i = 0; i < b.pus; i++) { const a = i * 2.1 + 0.3, w = P(b.u + Math.cos(a) * b.half * 0.5, b.v + Math.sin(a) * b.half * 0.4, b.h * 0.3); g.fx.push({ k: 'pusburst', side: s, u: b.u, x: w.x, y: w.y, t: 0, life: 1.1 }); }
   rw4bEv(g, s, 'pusburst', { u: b.u, n });
   if (g.log) logAdd(g.log.tot[s].mites || (g.log.tot[s].mites = {}), 'pus', n);
 }
@@ -172,6 +172,7 @@ function lnStep(g, u, d, s, st, cs, best, dt, sp) {
     u.moving = false; u.tgt = B ? B.id : 0;
     if (u.lnd === 1) { // coming down
       const k = clamp(1 - (u.lnT - g.t) / LAND.t, 0, 1); u.z = lerp(u.lnZ, LAND.z, k);
+      if (B && u.lnP) { u.u = lerp(u.lnP[0], u.lnP[2], k); u.v = lerp(u.lnP[1], u.lnP[3], k); } // settling onto the building's edge
       if (!B || away || u.hp < u.maxHp * LAND.off) { lnOff(g, u, k); return true; }
       if (g.t >= u.lnT) { u.lnd = 2; u.z = LAND.z; u.arm = LAND.armor; u.lnF = g.t; const w = P(u.u, u.v, 0); g.fx.push({ k: 'landdust', side: s, u: u.u, x: w.x, y: w.y, t: 0, life: 1.0 }); rw4bEv(g, s, 'landed', { u: u.u, b: B.type }); }
       return true;
@@ -183,17 +184,18 @@ function lnStep(g, u, d, s, st, cs, best, dt, sp) {
       return true;
     }
     const k = clamp((u.lnT - g.t) / LAND.t, 0, 1); u.z = lerp(u.lnZ, LAND.z, k); // taking off (still on the ground until airborne)
-    if (g.t >= u.lnT) { u.lnd = 0; u.z = u.lnZ; u.arm = undefined; u.lnB = 0; }
+    if (g.t >= u.lnT) { u.lnd = 0; u.z = u.lnZ; u.arm = undefined; u.lnB = 0; u.lnP = undefined; }
     return true;
   }
   if (away || !best || best.kind !== 'b' || u.hp < u.maxHp * LAND.off) return false;
   if (effDist(u, best) > d.range) { moveToward(u, d, best.u, best.v, dt, sp); u.tgt = 0; return true; } // an AI's Worldrender on its way to the building it chose
   u.lnd = 1; u.lnT = g.t + LAND.t; u.lnB = best.id; u.lnZ = u.lnZ || u.z; u.moving = false; u.tgt = best.id;
   if (Math.abs(best.u - u.u) > 1) u.face = best.u >= u.u ? 1 : -1;
+  u.lnP = [u.u, u.v, clamp(best.u - u.face * (best.half + LAND.edge), 0, L), best.v + clamp(u.v - best.v, -best.half * 0.5, best.half * 0.5)]; // where it settles: against the building
   rw4bEv(g, s, 'land', { u: u.u });
   return true;
 }
-function lnOff(g, u, k) { u.lnd = 3; u.lnT = g.t + LAND.t * k; if (k <= 0) { u.lnd = 0; u.z = u.lnZ; u.arm = undefined; u.lnB = 0; } rw4bEv(g, u.side, 'takeoff', { u: u.u }); }
+function lnOff(g, u, k) { u.lnd = 3; u.lnT = g.t + LAND.t * k; u.lnP = undefined; if (k <= 0) { u.lnd = 0; u.z = u.lnZ; u.arm = undefined; u.lnB = 0; } rw4bEv(g, u.side, 'takeoff', { u: u.u }); }
 function lnBite(g, u, B) {
   u.lastAct = g.t; u.recoil = 1;
   const h0 = B.hp + (B.shp || 0);
