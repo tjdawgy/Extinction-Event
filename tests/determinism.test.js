@@ -180,3 +180,13 @@ if (require.main === module && process.argv[2] === '--print3a') console.log(fing
 if (require.main === module && process.argv[2] === '--print2a') console.log(fingerprint(false, false, true, true, true), bhAx(true, true, true), lfBh(true));
 if (require.main === module && process.argv[2] === '--print2b') console.log(fingerprint(false, false, true, true, 'b'), bhAx(true, true, 'b'), lfBh('b'));
 if (require.main === module && process.argv[2] === '--print') console.log(fingerprint(false, false, true), bhAx(true), fingerprint(false, false, true, true), bhAx(true, true));
+// v2.88 (faction rework batch 5b, the Bloomhost swarm pass: broods, swarm surge, kill frenzy, Spitter quill volleys, Needlewings at
+// aircraft): every replay above runs with REWORK.b5b false and is unchanged (a b5b-off save leaves the key out). With every batch on
+// (rw 'g': 2a, 2b, 3a, 3b, 4a, 4b and 5b) the same three matches are recorded here.
+const FP_V288G = '296ef1d1af2748dd7a55b89ecb019d62e53d5c647ac9cafb49951e080c8b3477', FP_V288G_BA = 'abf5ce49555a747f790b9a6c19fff20fefcacbf5ed057ccbea5202ed6ad82e52', LF_BH_V288G = '682930e764db5e5cf873205e72b947c6cf4ad1213e6e051022a16fb04cf8666d'; // recorded at v2.88 (every batch on)
+test('v2.88: with every rework batch on (2a to 5b), the same matches match their recorded fingerprints', () => {
+  assert.strictEqual(fingerprint(false, false, true, true, 'g'), FP_V288G);
+  assert.strictEqual(bhAx(true, true, 'g'), FP_V288G_BA);
+  assert.strictEqual(lfBh('g'), LF_BH_V288G);
+});
+if (require.main === module && process.argv[2] === '--print5b') console.log(fingerprint(false, false, true, true, 'g'), bhAx(true, true, 'g'), lfBh('g'));
