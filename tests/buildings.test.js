@@ -92,7 +92,7 @@ test('the drawn tier is always the gameplay tier: built, upgrading, under constr
     let log = frameAt(at, 4);
     const wrong = l => l.filter(x => { const e = game.ents.find(e => e.id === x.id); return e && e.kind === 'b' && !e.upgrading && e.built && x.tier !== e.tier; });
     r.built = { drawn: log.filter(x => x.side === 0).length, wrong: wrong(log).length };
-    r.cached = log.filter(x => x.side === 0).every(x => BCACHE.map.has(x.type + x.side + x.tier + 'lastfist')); // v2.17: the cache key includes the faction
+    r.cached = log.filter(x => x.side === 0).every(x => BCACHE.map.has(bKey(x.type, x.side, x.tier, 'lastfist', dmgStage(game.ents.find(e => e.id === x.id))))); // v2.17: the cache key includes the faction; v2.91: and the damage stage (a building forced finished keeps its construction health)
     // mid-upgrade: the current tier, plus the next one rising under the scaffold
     const up = mine.find(b => b.type === 'barracks'); up.tier = 1; tryUpgrade(game, 0, up, 'A'); up.upProg = 0.5;
     log = frameAt(at); r.upgrading = log.filter(x => x.id === up.id).map(x => x.tier);

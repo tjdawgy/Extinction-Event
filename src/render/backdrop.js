@@ -385,30 +385,35 @@ const lostF = e => { const r = VFX.rec.get(e); return r ? r.ghost / e.maxHp : 0;
 const bTop = b => P(b.u, b.v).y - (bdOf(b).half + bdOf(b).h) * BS;
 
 // Building cache: like unit sprites, each static body is drawn once per type, tier and team at the current zoom step,
-// then stamped with one drawImage; only the light animated parts are drawn every frame.
-const BCACHE = { scale: 0, map: new Map(), budget: 0, made: 0 };
-const bBox = type => { const d = BDEF[type], w = 2 * d.half * IX + 14; return [-w, -(d.half + d.h + 8), 2 * w, 2 * d.half + d.h + 22]; };
-function bodyCanvas(type, side, tier, fac) {
+// then stamped with one drawImage; only the light animated parts are drawn every frame. v2.91 (batch 5d): the key also
+// carries the faction, the damage stage (dmgStage), the draw function and the colours drawn (bArtKey), so a change to any of
+// them draws a fresh body; BCACHE.on false draws every body live (the cache-off half of the pixel check).
+const BCACHE = { scale: 0, map: new Map(), budget: 0, made: 0, on: true };
+const bBox = (type, fac) => { const d = BD(fac, type) || BDEF[type], w = 2 * d.half * IX + 14; return [-w, -(d.half + d.h + 8), 2 * w, 2 * d.half + d.h + 22]; };
+const bKey = (type, side, tier, fac, dmg) => type + side + tier + (fac || '') + '.' + (dmg || 0) + bArtKey(artOf(fac, type)[0], TEAM[side]);
+function bodyCanvas(type, side, tier, fac, dmg = 0) {
+  if (!BCACHE.on) return null;
   const b = 2 ** (Math.ceil(Math.log2(V.dpr * V.S * BS) * 4) / 4); // device pixels per art unit, in quarter-octave steps
   if (b !== BCACHE.scale) { BCACHE.scale = b; BCACHE.map.clear(); }
-  const key = type + side + tier + (fac || '');
+  const key = bKey(type, side, tier, fac, dmg);
   let cv = BCACHE.map.get(key);
   if (!cv && BCACHE.budget > 0) { // a few new bodies per frame at most, so a zoom change never stalls a frame
     BCACHE.budget--; BCACHE.made++;
-    const box = bBox(type);
+    const box = bBox(type, fac);
     cv = document.createElement('canvas'); cv.width = Math.ceil(box[2] * b); cv.height = Math.ceil(box[3] * b);
     const k = cv.getContext('2d'); k.setTransform(b, 0, 0, b, -box[0] * b, -box[1] * b);
-    artOf(fac, type)[0](k, TEAM[side], tier);
+    artOf(fac, type)[0](k, TEAM[side], tier, dmg); dmg5(k, fac, type, dmg);
     cv.box = box; cv.b = b;
     BCACHE.map.set(key, cv);
   }
   return cv;
 }
 function drawArt(c, b, T, t, tier) { // the cached body (drawn live until it is cached) plus the live parts
-  const art = artOf(b.fac, b.type), cv = bodyCanvas(b.type, b.side, tier, b.fac);
+  const art = artOf(b.fac, b.type), dmg = dmgStage(b), cv = bodyCanvas(b.type, b.side, tier, b.fac, dmg);
   if (cv) c.drawImage(cv, cv.box[0], cv.box[1], cv.width / cv.b, cv.height / cv.b);
-  else art[0](c, T, tier);
+  else { art[0](c, T, tier, dmg); dmg5(c, b.fac, b.type, dmg); }
   art[1](c, T, t, b, tier);
+  dmgLive5(c, b, t);
 }
 function drawBuilding(c, b, time) {
   const T = TEAM[b.side], w = P(b.u, b.v), d = bdOf(b);
