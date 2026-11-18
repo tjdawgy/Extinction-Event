@@ -32,11 +32,11 @@ const FAC = ['lastfist', 'bloomhost', 'axiarchs'];
     types.forEach((type, i) => { list.push({ side: 0, fac, type, tier: 1 + i % 3, u: u0 + i * dx, v: -120 }); list.push({ side: 1, fac, type, tier: 1 + (i + 1) % 3, u: u0 + i * dx + 30, v: 110 }); });
     await place(page, list, 680, 0.9); await page.waitForTimeout(200); await shot(page, 'gallery-' + fac); errs.push(...errors); await page.close();
   }
-  if (on('stages')) { // b. construction and damage: one building per faction (Last Fist War Factory, Bloomhost Hive, Axiarch Genesis Gate)
+  if (on('stages')) { // b. construction and damage: one building per faction (Last Fist War Factory, Bloomhost Evolution Chamber, Axiarch Genesis Gate)
     const { page, errors } = await range();
-    const pick = { lastfist: 'factory', bloomhost: 'hq', axiarchs: 'barracks' }, list = [], st = [{ prog: 0.25 }, { prog: 0.6 }, { hp: 1 }, { hp: 0.5 }, { hp: 0.2 }];
-    FAC.forEach((fac, r) => st.forEach((s, i) => list.push({ side: r === 1 ? 1 : 0, fac, type: pick[fac], tier: 2, u: 520 + i * 82, v: -110 + r * 105, ...s })));
-    await place(page, list, 690, 1.0); await page.waitForTimeout(200); await shot(page, 'stages'); errs.push(...errors); await page.close();
+    const pick = { lastfist: 'factory', bloomhost: 'factory', axiarchs: 'barracks' }, list = [], st = [{ prog: 0.25 }, { prog: 0.6 }, { hp: 1 }, { hp: 0.5 }, { hp: 0.2 }];
+    FAC.forEach((fac, r) => st.forEach((s, i) => list.push({ side: r === 1 ? 1 : 0, fac, type: pick[fac], tier: 2, u: 520 + i * 92, v: -165 + r * 130, ...s })));
+    await place(page, list, 705, 1.0); await page.waitForTimeout(200); await shot(page, 'stages'); errs.push(...errors); await page.close();
   }
   // a real self-play match: Hard vs Hard, nothing forced or spawned, run in the page to time t, then shown paused
   const match = async (f0, f1, seed, t, view) => {

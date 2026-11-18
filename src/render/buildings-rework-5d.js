@@ -755,7 +755,7 @@ function dmg5(c, fac, type, s) {
   const A = (DMG5_AT[facOf(fac)] || {})[type]; if (!s || !A) return;
   const n = s === 1 ? Math.min(2, A.length) : A.length, f = facOf(fac);
   for (let i = 0; i < n; i++) {
-    const [x, y] = pt(...A[i]), r = s === 1 ? 5 : 6.5;
+    const [x, y] = pt(...A[i]), r = s === 1 ? 5.5 : 8;
     if (f === 'lastfist') { // scorch, cracks, and at stage 2 a torn hole glowing from the fire inside and a bent plate
       c.fillStyle = 'rgba(14,11,9,0.6)'; c.beginPath(); c.ellipse(x, y, r * 1.3, r * 0.8, 0.3, 0, 7); c.fill();
       c.strokeStyle = 'rgba(8,8,10,0.85)'; c.lineWidth = 0.7; c.beginPath(); c.moveTo(x, y); c.lineTo(x + 3 + jag5(i, 1), y - 3); c.lineTo(x + 5, y - 2 + jag5(i, 2)); c.moveTo(x, y); c.lineTo(x - 3, y + 2 + jag5(i, 3)); c.stroke();
