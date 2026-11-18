@@ -22,12 +22,12 @@ const SETUP = () => {
   window.frameAt = (u, n = 1) => { cam.x = u; clampCam(); for (let i = 0; i < n; i++) { LOG.length = 0; render(ctx, game, 1, null, null); } return LOG.slice(); };
 };
 
-test('building art stays on its pad and below its health bar, every tier, team and gun angle; the body fits its cache box', { skip }, async () => {
+test('building art stays on its pad and below its health bar, every faction, tier, team and gun angle; every cached body (each damage stage) fits its cache box', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
   const out = await page.evaluate(() => {
     const out = [], k = 3, pad = 60, real = gunAngle;
-    const ink = (draw, type) => { // ink bounds in art units, relative to the building origin
-      const d = BDEF[type], W = 2 * (2 * d.half + pad), H = 2 * d.half + d.h + 2 * pad;
+    const ink = (draw, type, fac) => { // ink bounds in art units, relative to the building origin
+      const d = BD(fac, type), W = 2 * (2 * d.half + pad), H = 2 * d.half + d.h + 2 * pad;
       const cv = document.createElement('canvas'); cv.width = W * k; cv.height = H * k;
       const c = cv.getContext('2d'); c.setTransform(k, 0, 0, k, W / 2 * k, (d.half + d.h + pad) * k);
       draw(c);
@@ -36,19 +36,21 @@ test('building art stays on its pad and below its health bar, every tier, team a
       for (let y = 0; y < cv.height; y++) for (let x = 0; x < cv.width; x++) if (px[(y * cv.width + x) * 4 + 3] > 24) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
       return { x0: x0 / k - W / 2, x1: (x1 + 1) / k - W / 2, y0: y0 / k - (d.half + d.h + pad), y1: (y1 + 1) / k - (d.half + d.h + pad) };
     };
-    for (const type of Object.keys(BART)) for (const tier of [1, 2, 3]) for (const side of [0, 1]) {
-      const d = BDEF[type], top = -(d.half + d.h), wx = 2 * (d.half + 2) * IX + 1, bot = d.half + 3, box = bBox(type);
+    for (const fac of Object.keys(BARTS)) for (const type of Object.keys(BARTS[fac])) for (const tier of [1, 2, 3]) for (const side of [0, 1]) { // v2.91: all three factions
+      const d = BD(fac, type), top = -(d.half + d.h), wx = 2 * (d.half + 2) * IX + 1, bot = d.half + 3, box = bBox(type, fac);
       for (let i = 0; i <= 16; i++) { // the gun at rest, then pointing every way (straight up included)
         const a = -Math.PI + i * Math.PI / 8;
         window.gunAngle = i === 16 ? real : () => a;
         for (const t of [0, 0.7, 1.9, 3.3]) {
-          const r = ink(c => DRAW_B[type](c, TEAM[side], t, { side, u: 0, v: 0, aim: null, queue: ['rifle'] }, tier), type);
-          if (r.y0 < top - 0.5 || r.x0 < -wx || r.x1 > wx || r.y1 > bot) out.push(`${type} T${tier} side ${side} angle ${i} t ${t}: ${JSON.stringify(r)} vs top ${top}, ±${wx.toFixed(1)}, bottom ${bot}`);
+          const r = ink(c => drawBOf(fac)[type](c, TEAM[side], t, { side, u: 0, v: 0, aim: null, queue: ['rifle'] }, tier), type, fac);
+          if (r.y0 < top - 0.5 || r.x0 < -wx || r.x1 > wx || r.y1 > bot) out.push(`${fac} ${type} T${tier} side ${side} angle ${i} t ${t}: ${JSON.stringify(r)} vs top ${top}, ±${wx.toFixed(1)}, bottom ${bot}`);
         }
       }
       window.gunAngle = real;
-      const r = ink(c => BART[type][0](c, TEAM[side], tier), type);
-      if (r.x0 < box[0] || r.y0 < box[1] || r.x1 > box[0] + box[2] || r.y1 > box[1] + box[3]) out.push(`${type} T${tier} body outside its cache box ${JSON.stringify(r)} ${box}`);
+      for (const dmg of [0, 1, 2]) {
+        const r = ink(c => { BARTS[fac][type][0](c, TEAM[side], tier, dmg); dmg5(c, fac, type, dmg); }, type, fac);
+        if (r.x0 < box[0] || r.y0 < box[1] || r.x1 > box[0] + box[2] || r.y1 > box[1] + box[3]) out.push(`${fac} ${type} T${tier} damage ${dmg} body outside its cache box ${JSON.stringify(r)} ${box}`);
+      }
     }
     return out;
   });
