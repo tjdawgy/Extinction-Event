@@ -573,6 +573,93 @@ Departures and choices the brief left open:
 - **Historical text:** dated audit reports and logs (audit/*.md reports, audit/logs7*) keep "Medicopter" as written; the living docs,
   README, KNOWN_ISSUES, tests and the game say Medevac.
 
+## Batch 5d: every building redrawn
+
+**Batch 5d (every building of all three factions redrawn with strong team colour; damage stages; the building cache keyed by art,
+colours and damage stage): done in v2.91.** Art and docs only: nothing in the SIM changes, so there is no switch block. Every pinned
+fingerprint (the old sets, FP_V288G* and FP_V290*) matches; self-play (audit/sim/selfplay-5d.js: Hard vs Hard, all six pairings on
+Classic, Two-Lane and Three-Lane, seed 7) on this build and on v2.90's index.html is identical, run once with `b5c` off and once with it
+on (figures in KNOWN_ISSUES.md). Art in src/render/buildings-rework-5d.js, loaded after the unit art; it replaces the entries of
+BART, BART_BH and BART_AX, so every place that draws a building (the field, card icons, the Codex, the Test Range) draws the new art.
+
+**Inventory** (footprint = BDEF `half`, the pad's half-width in art units; `h` = the drawn height the SIM aims at and the health
+bar sits over; guns turn about the SIM's `muzzle()` point; all unchanged):
+
+| Faction | Building (role) | Job | half / h | Gun (muzzle) | Visual states |
+|---|---|---|---|---|---|
+| Last Fist | Command HQ (hq) | HQ, defence | 44 / 104 | gauss cannon, pt(4, −4, 79) | construction, T1-T3, damage, gun turns |
+| | Refinery | economy | 32 / 62 | | construction, T1-T3, damage, ore belt and flare (live) |
+| | Reactor | economy (energy) | 30 / 60 | | construction, T1-T3, damage, plasma window (live) |
+| | Habitat | supply | 32 / 40 | | construction, T1-T3 (2-4 modules), damage, lit windows |
+| | Barracks | production | 32 / 56 | | construction, T1-T3, path badge, damage, blast door opens while training |
+| | War Factory (factory) | production | 36 / 50 | | construction, T1-T3, path badge, damage, door rolls up while building |
+| | Tech Lab (techlab) | production (air) | 30 / 96 | | construction, T1-T3, path badge, damage, pad lights and thruster wash while building |
+| | Turret | defence | 26 / 46 | gauss gun, pt(0, 0, 38) | construction, T1-T3 (1, 2, 4 barrels), damage, gun turns |
+| | Salvage Yard (sigA) | signature | 32 / 46 | (T3 roof gun, decorative) | construction, T1-T3, damage, crane, Overdrive furnace |
+| | Fortification Depot (sigB) | signature | 32 / 48 | (T3 anti-air gun, decorative) | construction, T1-T3, damage, radar, med light |
+| | Node Bunker (bunker) | defence (on nodes) | 14 / 26 | gauss gun, pt(0, 0, 20) | T1-T3 (Depot's tier), damage, heal light, gun turns |
+| Bloomhost | Hive (hq) | HQ, defence | 44 / 56 | spine launcher, pt(0, 0, 83) | construction, T1-T3, damage, beating mouth |
+| | Goremound (refinery) | economy | 32 / 30 | | construction, T1-T3, damage, spores (live) |
+| | Pulse Organ (reactor) | economy (energy) | 30 / 24 | | construction, T1-T3, damage, beating heart (live) |
+| | Hatchery (habitat) | supply | 32 / 6 | | construction, T1-T3 (3-5 eggs), damage, glowing eggs |
+| | Larva Pit (barracks) | production | 32 / 12 | | construction, T1-T3, path badge, damage, mandibles open while spawning |
+| | Evolution Chamber (factory) | production | 36 / 16 | | construction, T1-T3, path badge, damage, seam gapes while growing |
+| | Bloomspire (techlab) | production (air) | 30 / 52 | | construction, T1-T3, path badge, damage, hatching mouth opens while growing |
+| | Maw (turret) | defence | 26 / 18 | jaws, pt(0, 0, 30) (SIM point 38: see departures) | construction, T1-T3, damage, jaws turn and gape |
+| | Brood Mound (sigA) | signature | 32 / 22 | | construction, T1-T3, damage, eggs brighten toward the next clutch |
+| | Rootheart (sigB) | signature | 32 / 30 | | construction, T1-T3, damage, beating heart |
+| Axiarchs | Axis (hq) | HQ, defence | 44 / 70 | lance, pt(0, 0, 83) | construction, T1-T3 (obelisks, crown), damage, rings and lance |
+| | Matter Loom (refinery) | economy | 32 / 40 | | construction, T1-T3, damage, turning cube |
+| | Singularity Well (reactor) | economy (energy) | 30 / 46 | | construction, T1-T3 (5-7 shards), damage, pulsing sphere |
+| | Continuum Spire (habitat) | supply | 32 / 30 | | construction, T1-T3 (1-3 towers), damage, cores |
+| | Genesis Gate (barracks) | production | 32 / 44 | | construction, T1-T3, path badge, damage, portal flares while forming |
+| | Architectum (factory) | production | 36 / 40 | | construction, T1-T3, path badge, damage, hovering slab lowers and a light column while forming |
+| | Celestial Array (techlab) | production (air) | 30 / 70 | | construction, T1-T3, path badge, damage, rings, core swells while forming |
+| | Null Lance (turret) | defence | 26 / 40 | prism, pt(0, 0, 38) | construction, T1-T3 (orbiting shards, ring), damage, prism turns |
+| | Phase Beacon (sigA) | signature | 32 / 50 | | construction, T1-T3, damage, lens dark while collapsed |
+| | Echo Reliquary (sigB) | signature | 32 / 46 | | construction, T1-T3, damage, a mote per stored echo |
+
+No faction has walls, barriers or creep structures that are buildings: the Bastion's barrier, Worldbreaker ridges, tunnels and creep are
+unit effects or ground, drawn elsewhere and unchanged. Paths do not change a body (unchanged): the path badge (`drawPathMark`) shows the
+path, as before.
+
+- **Last Fist:** a future frontier army base. Every building is a prefab armoured module whose walls are the team colour (T.face), under
+  gunmetal angular caps and foundations; blast doors in hazard frames, glowing visor-slit windows, stencils, chipped edges, landing pads
+  with thruster scorch (Tech Lab, HQ T2+), sensor masts, floodlights with beams, gauss guns with glowing coil rings (HQ, Turret, bunker,
+  the Yard's and Depot's T3 guns), prefab barrier blocks (no sandbags anywhere now). Roles: HQ a fortress under a command tower;
+  Barracks a troop module with a door that rolls up while it trains; War Factory a hangar with a great door and a gantry; Tech Lab a
+  hangar and control tower with a landing pad; Refinery team silos and a flare stack; Reactor a team containment tower in cooling fins;
+  Habitat stacked living modules with rows of lit windows; Turret an armoured octagon under a gauss gun.
+- **Bloomhost:** living structures grown out of the creep. Flesh mounds under team-coloured carapace (lit from above, plate seams with a
+  lit lip), bone spines, sacs with a team glow, team veins running into the creep bed, orifices and mandibles. Producing buildings open:
+  the Larva Pit's mandibles splay and larvae wriggle up, the Evolution Chamber's seam gapes, the Bloomspire's hatching mouth opens.
+- **Axiarchs:** floating obsidian and team-stone slabs that never touch, held by lines of light; rhombus cores, turning rings, a crown on
+  the Axis at T3, a gate (the Genesis Gate), a hovering forge slab (the Architectum), shard rings (the Singularity Well).
+- **Team colour:** each faction's largest surfaces are the team colour (Last Fist module walls, Bloomhost carapace, Axiarch team stone),
+  so a zoomed-out base reads blue or red at once (docs/screenshots/rework5d-match).
+- **Damage (new for every building):** from health only (`dmgStage`: 0 above 66%, 1 above 33%, 2 at or below), drawn on the faces of
+  each building's main mass (`DMG5_AT`, building-local points) into the cached body: Last Fist scorch and cracks, at stage 2 torn holes
+  glowing from inside and bent plates, plus a live flame; Bloomhost bruised, wilting patches with ooze, at stage 2 weeping wounds and a
+  live drip; Axiarch cracked stone and chipped corners, at stage 2 broken seams and a crack whose light flickers. The SIM's smoke under
+  50% health is unchanged.
+- **Building cache:** bodies were already cached per type, tier and team (BCACHE, v2.7). The key now also carries the faction, the
+  damage stage and the art and colours drawn (`bKey`, `bArtKey`: which draw function, `T.main`, `T.hull`, `T.light`, `T.glow`), so a
+  change to any of them draws a fresh body; a zoom step clears it, as before; `BCACHE.on` false draws every body live (used by the
+  pixel check). Construction shows the cached T1 body revealed by a clip under the faction's scaffold, as before (no extra key needed).
+  Live parts on top: guns, doors, pulses, rings, lights.
+
+Departures and choices the brief left open:
+- **The Maw's jaws turn 8 below the SIM's turret muzzle** (pt(0, 0, 30); the SIM fires from 38): the Maw's health bar sits 44 above
+  its foot (its BDEF h is 18, which the SIM aims at and can't change), and jaws turning about 38 would cross it. Every other gun (the
+  three HQs, the Turret, the Null Lance, the node bunker) now turns exactly about its SIM muzzle point (before this batch the Last Fist
+  HQ's gun sat 2-14 off it by tier, the Hive's and the Axis's 3-9, the Null Lance's 2-8); tests/rework-5d.test.js checks the pivots.
+- **No damage while under construction or for a ghost:** a building being built has low health by design, so it shows its scaffold, not
+  damage; a remembered ghost has no known health and shows none.
+- **Path changes stay on the badge:** no body changes with the path (none did before); the path badge is unchanged.
+- **The node bunker is not in the Test Range gallery:** the Test Range places only pad buildings; the bunker is in the art gallery test
+  and appears on held nodes in matches.
+- **Old draw functions kept:** the v2.7-v2.34 building functions stay in the source, unused, as earlier batches left theirs.
+
 ## Unchanged (already distinct)
 
 Marine, Heavy, Tank, Flame Tank, Hydra, Interceptor, Medevac, Recon Drone, Mite, Razorwing, Cloudwing, Thornback, Lancer,
@@ -612,7 +699,8 @@ Units stay cached as poses (the sprite cache), so richer drawing costs little pe
 and live-drawn poses.
 
 Each batch redraws its reworked units in this style. Ty may provide Forge design codes (from the Forge prototype) as
-visual references. A final art batch after batch 4 redraws the unchanged units and the buildings to match.
+visual references. A final art batch after batch 4 redraws the unchanged units and the buildings to match (units: batches 5a-5c;
+buildings: batch 5d, v2.91, with team colour on their largest surfaces).
 
 ## Batch order
 
@@ -628,6 +716,6 @@ visual references. A final art batch after batch 4 redraws the unchanged units a
    Leviathan, Worldrender and Sovereign resized, aircraft poses cached.
    Axiarch art, the Needlewing AI fix, the Medevac rename (5c, done v2.90): the last five Axiarch units redrawn, the Bloomspire's roll
    behind `REWORK.b5c`.
-6. Art batch: unchanged units and buildings in the new style.
+6. Art batch: unchanged units and buildings in the new style (units in 5a-5c; every building in 5d, done v2.91).
 
 Then: the paused balance pass, with all three factions reworked.

@@ -1,0 +1,37 @@
+{"map":"classic","f":["bloomhost","axiarchs"],"t":327.4,"winner":0,"checks":98,"same":true,"err":null,"vers":["2.91","2.90"],"b5c":[false,false]}
+{"map":"classic","f":["lastfist","bloomhost"],"t":520.3,"winner":0,"checks":156,"same":true,"err":null,"vers":["2.91","2.90"],"b5c":[false,false]}
+{"map":"classic","f":["axiarchs","lastfist"],"t":375.37,"winner":0,"checks":112,"same":true,"err":null,"vers":["2.91","2.90"],"b5c":[false,false]}
+{"map":"classic","f":["lastfist","axiarchs"],"t":634.17,"winner":1,"checks":190,"same":true,"err":null,"vers":["2.91","2.90"],"b5c":[false,false]}
+{"map":"classic","f":["bloomhost","lastfist"],"t":959.13,"winner":0,"checks":287,"same":true,"err":null,"vers":["2.91","2.90"],"b5c":[false,false]}
+{"map":"classic","f":["axiarchs","bloomhost"],"t":1027.37,"winner":1,"checks":308,"same":true,"err":null,"vers":["2.91","2.90"],"b5c":[false,false]}
+{"map":"twolane","f":["bloomhost","axiarchs"],"t":435.9,"winner":0,"checks":130,"same":true,"err":null,"vers":["2.91","2.90"],"b5c":[false,false]}
+{"map":"twolane","f":["lastfist","axiarchs"],"t":1046.73,"winner":0,"checks":314,"same":true,"err":null,"vers":["2.91","2.90"],"b5c":[false,false]}
+{"map":"twolane","f":["bloomhost","lastfist"],"t":1005.97,"winner":0,"checks":301,"same":true,"err":null,"vers":["2.91","2.90"],"b5c":[false,false]}
+{"map":"twolane","f":["lastfist","bloomhost"],"t":1231.03,"winner":0,"checks":369,"same":true,"err":null,"vers":["2.91","2.90"],"b5c":[false,false]}
+{"map":"twolane","f":["axiarchs","bloomhost"],"t":1309.8,"winner":-1,"checks":392,"same":true,"err":null,"vers":["2.91","2.90"],"b5c":[false,false]}
+{"map":"threelane","f":["lastfist","bloomhost"],"t":932.13,"winner":0,"checks":279,"same":true,"err":null,"vers":["2.91","2.90"],"b5c":[false,false]}
+{"map":"threelane","f":["lastfist","axiarchs"],"t":966.5,"winner":0,"checks":289,"same":true,"err":null,"vers":["2.91","2.90"],"b5c":[false,false]}
+{"map":"twolane","f":["axiarchs","lastfist"],"t":1162.33,"winner":0,"checks":348,"same":true,"err":null,"vers":["2.91","2.90"],"b5c":[false,false]}
+{"map":"threelane","f":["bloomhost","lastfist"],"t":1234.4,"winner":1,"checks":370,"same":true,"err":null,"vers":["2.91","2.90"],"b5c":[false,false]}
+{"map":"threelane","f":["bloomhost","axiarchs"],"t":994,"winner":0,"checks":298,"same":true,"err":null,"vers":["2.91","2.90"],"b5c":[false,false]}
+{"map":"threelane","f":["axiarchs","lastfist"],"t":1271.3,"winner":0,"checks":381,"same":true,"err":null,"vers":["2.91","2.90"],"b5c":[false,false]}
+{"map":"threelane","f":["axiarchs","bloomhost"],"t":989.3,"winner":1,"checks":296,"same":true,"err":null,"vers":["2.91","2.90"],"b5c":[false,false]}
+b5c off | errors: 0 of 18 | identical to the reference: 18 of 18 | state checks: 4918 | b5c off in every run: true | versions 2.91 vs 2.90
+classic   axiarchs vs bloomhost  1027.37 s  winner bloomhost
+classic   axiarchs vs lastfist    375.37 s  winner axiarchs
+classic   bloomhost vs axiarchs    327.4 s  winner bloomhost
+classic   bloomhost vs lastfist   959.13 s  winner bloomhost
+classic   lastfist vs axiarchs    634.17 s  winner axiarchs
+classic   lastfist vs bloomhost    520.3 s  winner lastfist
+threelane axiarchs vs bloomhost    989.3 s  winner bloomhost
+threelane axiarchs vs lastfist    1271.3 s  winner axiarchs
+threelane bloomhost vs axiarchs      994 s  winner bloomhost
+threelane bloomhost vs lastfist   1234.4 s  winner lastfist
+threelane lastfist vs axiarchs     966.5 s  winner lastfist
+threelane lastfist vs bloomhost   932.13 s  winner lastfist
+twolane   axiarchs vs bloomhost   1309.8 s  winner draw/unfinished
+twolane   axiarchs vs lastfist   1162.33 s  winner axiarchs
+twolane   bloomhost vs axiarchs    435.9 s  winner bloomhost
+twolane   bloomhost vs lastfist  1005.97 s  winner bloomhost
+twolane   lastfist vs axiarchs   1046.73 s  winner lastfist
+twolane   lastfist vs bloomhost  1231.03 s  winner lastfist
