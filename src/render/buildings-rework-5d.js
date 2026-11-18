@@ -347,6 +347,208 @@ Object.assign(BART, {
   sigA: [yardBody5, yardLive5], sigB: [depotBody5, depotLive5], bunker: [bunkerBody5, bunkerLive5],
 });
 
+/* ---- Bloomhost: living structures grown out of the creep. Flesh mounds under overlapping carapace plates in the team
+   colour, bone spines, pulsing team sacs and veins, maws and orifices that open while producing; no straight lines ---- */
+function bm5(c, T, u, v, r, z, h, team, lw = 0.9) { // a mound: flesh, or team carapace lit from above, outlined
+  const [x, y] = pt(u, v, z), rx = r * 1.2247, ry = r * 0.7071;
+  c.beginPath(); c.moveTo(x - rx, y); c.ellipse(x, y, rx, ry, 0, Math.PI, 0, true);
+  c.bezierCurveTo(x + rx, y - h * 0.9, x + rx * 0.45, y - h, x, y - h); c.bezierCurveTo(x - rx * 0.45, y - h, x - rx, y - h * 0.9, x - rx, y);
+  c.fillStyle = lgrad(c, x - rx * 0.4, y - h, x + rx * 0.5, y + ry, team ? [T.light, T.main, T.hull] : SW_FLESH); c.fill(); outline(c, lw);
+  c.strokeStyle = team ? 'rgba(255,255,255,0.4)' : 'rgba(255,200,220,0.25)'; c.lineWidth = 0.7; c.beginPath(); c.moveTo(x - rx * 0.75, y - h * 0.55); c.quadraticCurveTo(x - rx * 0.45, y - h * 0.97, x, y - h * 0.97); c.stroke();
+}
+function bseams5(c, u, v, r, z, h, n) { // the seams between carapace plates: dark arcs with a lit lip
+  const [x, y] = pt(u, v, z), rx = r * 1.2247;
+  for (let i = 1; i <= n; i++) { const k = i / (n + 1), w = rx * Math.sqrt(1 - k * k) * 0.97, yy = y - h * k, hh = h * 0.16 * (1 - k * 0.5);
+    c.strokeStyle = 'rgba(10,4,12,0.6)'; c.lineWidth = 1; c.beginPath(); c.ellipse(x, yy, w, hh, 0, 0.12, Math.PI - 0.12); c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,0.22)'; c.lineWidth = 0.6; c.beginPath(); c.ellipse(x, yy - 1, w * 0.96, hh, 0, 0.3, Math.PI - 0.3); c.stroke(); }
+}
+function bsp5(c, u, v, z, h, w, lean, col = SW_BONE) { // a curved spine, outlined
+  const [x, y] = pt(u, v, z);
+  c.fillStyle = col; c.beginPath(); c.moveTo(x - w, y); c.quadraticCurveTo(x - w * 0.2 + lean * 0.4, y - h * 0.6, x + lean, y - h); c.quadraticCurveTo(x + w * 0.4 + lean * 0.3, y - h * 0.5, x + w, y); c.closePath(); c.fill(); outline(c, 0.6);
+}
+function bsac5(c, T, u, v, z, r, a = 0.5, fill = SW_FLESH[0]) { // a sac: a membrane with a team glow inside
+  const [x, y] = pt(u, v, z);
+  c.fillStyle = fill; c.beginPath(); c.ellipse(x, y - r * 0.9, r * 0.8, r, 0, 0, 7); c.fill(); outline(c, 0.6);
+  if (a) { c.fillStyle = `rgba(${T.glow},${a})`; c.beginPath(); c.ellipse(x, y - r * 0.85, r * 0.5, r * 0.65, 0, 0, 7); c.fill(); }
+  c.fillStyle = 'rgba(255,255,255,0.3)'; c.beginPath(); c.ellipse(x - r * 0.3, y - r * 1.3, r * 0.16, r * 0.26, -0.4, 0, 7); c.fill();
+}
+function bbed5(c, half, T, tier) { // the creep bed it grows from: dark flesh, team veins running out
+  const [x, y] = pt(0, 0, 0), rx = (half + 4) * 1.2247, ry = (half + 4) * 0.7071;
+  c.fillStyle = SW_DARK; c.beginPath(); c.ellipse(x, y + 2, rx, ry, 0, 0, 7); c.fill();
+  c.fillStyle = SW_FLESH[2]; c.beginPath(); c.ellipse(x, y, rx * 0.93, ry * 0.9, 0, 0, 7); c.fill();
+  const n = 6 + tier * 2;
+  for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + 0.3; vein(c, [[0, 0, 1], [Math.cos(a) * half * 0.55, Math.sin(a) * half * 0.55, 1], [Math.cos(a + 0.25) * (half + 2), Math.sin(a + 0.25) * (half + 2), 0]], `rgba(${T.glow},${0.35 + tier * 0.08})`, 1.3); }
+}
+function borif5(c, T, u, v, z, rx, ry, k) { // an orifice: a dark throat ringed in bone, the team glow inside; k 0…1 how open (live)
+  const [x, y] = pt(u, v, z);
+  c.fillStyle = SW_DARK; c.beginPath(); c.ellipse(x, y, rx, ry * (0.35 + 0.65 * k), 0, 0, 7); c.fill(); outline(c, 0.7);
+  c.fillStyle = `rgba(${T.glow},${0.3 + 0.5 * k})`; c.beginPath(); c.ellipse(x, y + ry * 0.1, rx * 0.6, ry * (0.2 + 0.4 * k), 0, 0, 7); c.fill();
+  c.strokeStyle = SW_BONE; c.lineWidth = 1; for (const s of [-1, 1]) for (let i = 0; i < 3; i++) { const xx = x - rx * 0.6 + i * rx * 0.6; c.beginPath(); c.moveTo(xx - 1, y + s * ry * (0.35 + 0.65 * k)); c.lineTo(xx, y + s * ry * (0.1 + 0.3 * k)); c.lineTo(xx + 1, y + s * ry * (0.35 + 0.65 * k)); c.stroke(); }
+}
+const busy5 = b => !!(b && b.queue && b.queue.length);
+// Hive: a great carapace mound over a skirt of flesh, a crown of spines at T3; its spine launcher turns at pt(0, 0, 83)
+function hiveBody5(c, T, tier) {
+  bbed5(c, 44, T, tier);
+  bm5(c, T, 0, 0, 42, 0, 18, false);
+  if (tier >= 2) for (const [u, v] of [[-30, 20], [26, -28]]) { bm5(c, T, u, v, 13, 0, 30, true); bseams5(c, u, v, 13, 0, 30, 2); }
+  bm5(c, T, 0, 0, 34, 6, 50, true); bseams5(c, 0, 0, 34, 6, 50, 3 + tier);
+  if (tier >= 3) for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2 + 0.2; bsp5(c, Math.cos(a) * 26, Math.sin(a) * 26, 34, 24, 3.5, Math.cos(a) * 6); }
+  bm5(c, T, 0, 0, 17, 50, 22, true); bseams5(c, 0, 0, 17, 50, 22, 2); // the upper lobe
+  cone(c, 0, 0, 6, 4, 66, 12, SW_FLESH[0], SW_FLESH[2], SW_FLESH[1]); // the launcher's neck
+  for (const [u, v, z] of [[-30, -6, 10], [-12, 30, 8], [26, 16, 12]]) bsac5(c, T, u, v, z, 5 + tier, 0.55);
+  for (const [u, v] of [[-34, 10], [12, 34]]) bsp5(c, u, v, 6, 12, 2.5, -2);
+}
+function hiveLive5(c, T, t, b, tier) {
+  const k = pulse(t, 0, 1.6); borif5(c, T, -26, 26, 22, 8, 5, 0.5 + 0.5 * k); // the core's mouth beats
+  const [hx, hy] = pt(0, 0, 83), a = gunAngle(b, hx, hy, -0.4);
+  c.save(); c.translate(hx, hy); c.rotate(a);
+  c.fillStyle = lgrad(c, 0, -6, 0, 6, [T.light, T.main, T.hull]); c.beginPath(); c.ellipse(4, 0, 11, 5.5, 0, 0, 7); c.fill(); outline(c, 0.7);
+  c.fillStyle = SW_BONE; c.beginPath(); c.moveTo(13, -3); c.lineTo(21, 0); c.lineTo(13, 3); c.closePath(); c.fill(); outline(c, 0.5);
+  c.fillStyle = `rgba(${T.glow},${0.5 + 0.4 * pulse(t, 1, 5)})`; c.beginPath(); c.arc(12, 0, 2.2, 0, 7); c.fill();
+  c.restore();
+}
+// Goremound: a bulging digestion mound under team plates, nutrient sacs at its feet, a vent that breathes spores
+const GORE5 = [0, 30, 36, 42];
+function goreBody5(c, T, tier) {
+  bbed5(c, 32, T, tier);
+  if (tier >= 2) { bm5(c, T, 16, 16, 10, 0, 20, false); bsac5(c, T, 18, 20, 4, 5, 0, '#d9a050'); }
+  if (tier >= 3) { bm5(c, T, -18, 14, 9, 0, 16, false); bsac5(c, T, -20, 18, 4, 4.5, 0, '#d9a050'); }
+  bm5(c, T, 0, 0, 27, 0, 14, false);
+  bm5(c, T, 0, -2, 22, 6, GORE5[tier] - 6, true); bseams5(c, 0, -2, 22, 6, GORE5[tier] - 6, 2 + tier);
+  cone(c, 0, -6, 6, 4.5, GORE5[tier] - 2, 8, SW_FLESH[0], SW_FLESH[2], SW_DARK); // the vent
+  for (const [u, v] of [[-16, -12], [10, 16], [-8, 20]].slice(0, tier + 1)) bsac5(c, T, u, v, 4, 4.5, 0, '#d9a050'); // amber nutrient sacs
+}
+function goreLive5(c, T, t, b, tier) {
+  const [x, y] = pt(0, -6, GORE5[tier] + 6); glow(c, x, y, 2.5, T.glow, 0.3 + 0.35 * pulse(t, 0, 3));
+  for (let i = 0; i < 2; i++) { const q = (t * 0.5 + i / 2) % 1; c.fillStyle = `rgba(200,230,120,${0.45 * (1 - q)})`; c.beginPath(); c.arc(x + Math.sin(t * 2 + i * 3) * 3, y - 2 - q * 12, 1.4 + q * 2, 0, 7); c.fill(); } // spores
+}
+// Pulse Organ: a beating heart held up in a cradle of team carapace ribs on a stalk
+function pulseBody5(c, T, tier) {
+  bbed5(c, 30, T, tier);
+  for (let i = 0; i < 3 + tier; i++) { const a = i / (3 + tier) * Math.PI * 2; vein(c, [[0, 0, 18], [Math.cos(a) * 14, Math.sin(a) * 14, 6], [Math.cos(a) * 26, Math.sin(a) * 26, 0]], `rgba(${T.glow},0.6)`, 1.8); }
+  bm5(c, T, 0, 0, 18, 0, 10, true); bseams5(c, 0, 0, 18, 0, 10, 1);
+  cone(c, 0, 0, 9, 6, 8, 14, SW_FLESH[0], SW_FLESH[2], null); // the stalk
+  if (tier >= 2) for (const [u, v] of [[-20, 12], [16, -18]]) bsac5(c, T, u, v, 2, 5.5, 0.55);
+  if (tier >= 3) for (const [u, v] of [[18, 16], [-16, -20]]) bsp5(c, u, v, 0, 18, 3, 0);
+  for (const s of [-1, 1]) { const [x0, y0] = pt(0, 0, 20), x1 = x0 + s * 15; c.fillStyle = lgrad(c, x1, y0 - 26, x0, y0, [T.light, T.main, T.hull]); c.beginPath(); c.moveTo(x0 + s * 3, y0); c.quadraticCurveTo(x1 + s * 2, y0 - 6, x1, y0 - 22 - tier * 2); c.quadraticCurveTo(x1 - s * 4, y0 - 10, x0 + s * 1, y0 - 3); c.closePath(); c.fill(); outline(c, 0.7); } // back ribs
+}
+function pulseLive5(c, T, t, b, tier) {
+  const k = pulse(t, 0, 3.2), r = [0, 10, 11, 12][tier] * (0.94 + 0.08 * k), [x, y] = pt(0, 0, 22 + r);
+  c.fillStyle = lgrad(c, x - r, y - r, x + r, y + r, ['#c66a82', SW_FLESH[1], SW_FLESH[2]]); c.beginPath(); c.ellipse(x, y, r * 0.95, r, 0, 0, 7); c.fill(); outline(c, 0.7);
+  c.fillStyle = `rgba(${T.glow},${0.4 + 0.45 * k})`; c.beginPath(); c.ellipse(x, y, r * 0.55, r * 0.62, 0, 0, 7); c.fill();
+  glow(c, x, y, 3 + tier, T.glow, 0.2 + 0.3 * k);
+  const [x0, y0] = pt(0, 0, 20); c.fillStyle = lgrad(c, x0, y0 - 20, x0, y0, [T.light, T.main, T.hull]); // the front rib over the heart
+  c.beginPath(); c.moveTo(x0 - 3, y0); c.quadraticCurveTo(x0 - 5, y0 - 12, x0 + 1, y0 - 16 - tier); c.quadraticCurveTo(x0 + 1, y0 - 8, x0 + 3, y0); c.closePath(); c.fill(); outline(c, 0.6);
+}
+// Hatchery: a low team carapace cradle of eggs; more and bigger eggs per tier
+const HATCH5 = [null, [[-8, 6], [8, -6], [6, 10]], [[-10, 8], [10, -8], [8, 12], [-12, -10]], [[-12, 10], [12, -10], [10, 14], [-14, -12], [0, 0]]];
+function hatchBody5(c, T, tier) {
+  bbed5(c, 32, T, tier);
+  bm5(c, T, 0, 0, 28, 0, 9, true); bseams5(c, 0, 0, 28, 0, 9, 1);
+  const [x, y] = pt(0, 0, 8); c.fillStyle = SW_FLESH[1]; c.beginPath(); c.ellipse(x, y, 22 * 1.2247, 22 * 0.7071, 0, 0, 7); c.fill(); outline(c, 0.6); // the cradle's hollow
+  for (const [u, v] of HATCH5[tier].slice().sort((p, q) => (p[1] - p[0]) - (q[1] - q[0]))) bsac5(c, T, u, v, 8, 5 + tier * 0.8, 0.4, '#e3d3b4');
+  if (tier >= 3) for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2 + 0.6; bsp5(c, Math.cos(a) * 27, Math.sin(a) * 27, 4, 14, 3, -Math.cos(a) * 4); }
+}
+function hatchLive5(c, T, t, b, tier) { for (const [u, v] of HATCH5[tier]) { const [x, y] = pt(u, v, 14 + tier * 0.6); c.fillStyle = `rgba(${T.glow},${0.12 + 0.3 * pulse(t, u, 1.8)})`; c.beginPath(); c.ellipse(x, y, 2.4, 3, 0, 0, 7); c.fill(); } }
+// Larva Pit: a team carapace ring around a pit, bone mandibles over its throat that open while it spawns
+function larvaBody5(c, T, tier) {
+  bbed5(c, 32, T, tier);
+  if (tier >= 2) { bm5(c, T, -24, 20, 8, 0, 14, false); bsac5(c, T, -24, 20, 10, 4, 0.5); }
+  if (tier >= 3) { bm5(c, T, 22, -24, 8, 0, 14, false); bsac5(c, T, 22, -24, 10, 4, 0.5); }
+  bm5(c, T, 0, 0, 28, 0, 15, true); bseams5(c, 0, 0, 28, 0, 15, 2);
+  const [x, y] = pt(0, 0, 14); c.fillStyle = SW_DARK; c.beginPath(); c.ellipse(x, y, 16 * 1.2247, 16 * 0.7071, 0, 0, 7); c.fill(); outline(c, 0.8); // the pit
+  for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + 0.5; if (Math.sin(a) - Math.cos(a) < 0) bsp5(c, Math.cos(a) * 21, Math.sin(a) * 21, 12, 16 + (i % 2) * 4, 3, -Math.cos(a) * 5); } // back spines
+}
+function larvaLive5(c, T, t, b, tier) {
+  const k = busy5(b) ? 0.55 + 0.45 * Math.sin(t * 3) : 0.12, [x, y] = pt(0, 0, 14);
+  c.fillStyle = `rgba(${T.glow},${0.25 + 0.4 * k + 0.1 * pulse(t, 0, 2.2)})`; c.beginPath(); c.ellipse(x, y, 13, 6.5, 0, 0, 7); c.fill();
+  if (k > 0.3) for (let i = 0; i < 3; i++) { const q = (t * 1.3 + i / 3) % 1; c.fillStyle = `rgba(240,225,200,${0.8 * (1 - q)})`; c.beginPath(); c.ellipse(x - 6 + i * 6, y - q * 6, 1.6, 1.1, 0, 0, 7); c.fill(); } // larvae wriggle up
+  for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2 + 0.78, ox = Math.cos(a) * 16 * 1.2247, oy = Math.sin(a) * 16 * 0.7071, o = 0.25 + 0.75 * k; // the mandibles
+    c.fillStyle = SW_BONE; c.beginPath(); c.moveTo(x + ox, y + oy); c.quadraticCurveTo(x + ox * (1 - 0.5 * (1 - o)), y + oy - 9, x + ox * (1 - o) * 0.8, y + oy * (1 - o) * 0.8 - 4); c.lineTo(x + ox * 0.95, y + oy * 0.95 - 2); c.closePath(); c.fill(); outline(c, 0.5); }
+  for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + 0.5; if (Math.sin(a) - Math.cos(a) >= 0) bsp5(c, Math.cos(a) * 21, Math.sin(a) * 21, 12, 16 + (i % 2) * 4, 3, -Math.cos(a) * 5); } // front spines (over the mandibles)
+}
+// Evolution Chamber: a long cocoon of team carapace on bone ribs, split by a seam that gapes while a beast grows
+function evoBody5(c, T, tier) {
+  bbed5(c, 36, T, tier);
+  if (tier >= 2) { bm5(c, T, 22, -20, 11, 0, 22, false); bsac5(c, T, 22, -20, 18, 5, 0.55); }
+  bm5(c, T, -6, 6, 31, 0, 36, true); bseams5(c, -6, 6, 31, 0, 36, 4);
+  { const [x, y] = pt(-6, 6, 0), rx = 31 * 1.2247; for (const k of [-0.62, -0.2, 0.22, 0.62]) { const bx = x + k * rx, tx = x + k * rx * 0.35, ty = y - 36 * (0.97 - 0.12 * Math.abs(k)); // bone ribs bowing up over the cocoon
+    for (const [col, w] of [[OUTL, 3.6], [SW_BONE, 2.2]]) { c.strokeStyle = col; c.lineWidth = w; c.beginPath(); c.moveTo(bx, y + 21 * 0.7 * Math.sqrt(1 - k * k) - 2); c.quadraticCurveTo(bx + (k > 0 ? 4 : -4), y - 26, tx, ty); c.stroke(); } } }
+  if (tier >= 3) for (const [u, v] of [[26, 18], [-30, -22]]) bsp5(c, u, v, 0, 22, 3.5, 0);
+}
+function evoLive5(c, T, t, b, tier) {
+  const k = busy5(b) ? 0.6 + 0.4 * Math.sin(t * 2) : 0.15, [x, y] = pt(-6, 6, 20);
+  c.fillStyle = SW_DARK; c.beginPath(); c.moveTo(x - 9, y - 14); c.quadraticCurveTo(x - 1 - 4 * k, y - 2, x + 11, y + 9); c.quadraticCurveTo(x + 1 + 4 * k, y - 4, x - 9, y - 14); c.fill();
+  c.strokeStyle = `rgba(${T.glow},${0.45 + 0.4 * k * pulse(t, 0, 3)})`; c.lineWidth = 1.2 + 2 * k; c.beginPath(); c.moveTo(x - 8, y - 13); c.quadraticCurveTo(x, y - 3, x + 10, y + 8); c.stroke();
+}
+// Maw: a fanged mouth on a fleshy neck banded in team carapace, rising from a spined mound; its jaws turn about pt(0, 0, 30)
+function mawBody5(c, T, tier) {
+  bbed5(c, 26, T, tier);
+  bm5(c, T, 0, 0, 20, 0, 11, true); bseams5(c, 0, 0, 20, 0, 11, 1);
+  for (let i = 0; i < 3 + tier; i++) { const a = i / (3 + tier) * Math.PI * 2; if (Math.sin(a) - Math.cos(a) < 0) bsp5(c, Math.cos(a) * 17, Math.sin(a) * 17, 5, 10 + tier * 2, 2.5, Math.cos(a) * 3); }
+  cone(c, 0, 0, 8.5, 6.5, 9, 18, SW_FLESH[0], SW_FLESH[2], null); // the neck
+  for (const z of [13, 20]) { const [x, y] = pt(0, 0, z); c.fillStyle = lgrad(c, x, y - 3, x, y + 3, [T.light, T.main, T.hull]); c.beginPath(); c.ellipse(x, y, 9.5, 4, 0, 0, 7); c.fill(); outline(c, 0.6); }
+  for (let i = 0; i < 3 + tier; i++) { const a = i / (3 + tier) * Math.PI * 2; if (Math.sin(a) - Math.cos(a) >= 0) bsp5(c, Math.cos(a) * 17, Math.sin(a) * 17, 5, 10 + tier * 2, 2.5, Math.cos(a) * 3); }
+}
+function mawLive5(c, T, t, b, tier) {
+  const [hx, hy] = pt(0, 0, 30), a = gunAngle(b, hx, hy, -0.3), open = 0.25 + 0.2 * pulse(t, 0, b && b.aim ? 9 : 1.5), L0 = 11 + tier;
+  c.save(); c.translate(hx, hy); c.rotate(a);
+  for (const s of [-1, 1]) { c.fillStyle = lgrad(c, 0, s * -8, 0, s * 4, [T.light, T.main, T.hull]); c.beginPath(); c.moveTo(-6, 0); c.quadraticCurveTo(3, s * (8 + open * 4), L0, s * (3 + open * 3)); c.lineTo(L0 - 3, 0); c.closePath(); c.fill(); outline(c, 0.6); }
+  c.fillStyle = `rgba(${T.glow},0.8)`; c.beginPath(); c.ellipse(3, 0, 4, 1.4 + open * 2.5, 0, 0, 7); c.fill();
+  c.fillStyle = SW_BONE; for (const s of [-1, 1]) for (let i = 0; i < 3; i++) { const x = 2 + i * 3.5; c.beginPath(); c.moveTo(x, s * (1.8 + open * 2.5)); c.lineTo(x + 1.3, s * 0.4); c.lineTo(x + 2.6, s * (1.8 + open * 2.5)); c.fill(); }
+  c.restore();
+}
+// Bloomspire: a tall stalk of team carapace, membrane flight pods along it; more pods per tier, a bone crown at T3
+const SPIRE5 = [0, 64, 70, 76];
+function spireBody5(c, T, tier) {
+  bbed5(c, 30, T, tier);
+  bm5(c, T, 0, 0, 22, 0, 12, false);
+  const H = SPIRE5[tier], [x0, y0] = pt(0, 0, 4), [x1, y1] = pt(0, 0, H);
+  c.fillStyle = lgrad(c, x0 - 14, y1, x0 + 14, y0, [T.light, T.main, T.hull]); c.beginPath(); c.moveTo(x0 - 15, y0); c.bezierCurveTo(x0 - 12, y0 - H * 0.4, x1 - 9, y1 + H * 0.35, x1 - 2, y1); c.quadraticCurveTo(x1 + 4, y1 + 2, x1 + 6, y1 + 8); c.bezierCurveTo(x1 + 9, y1 + H * 0.4, x0 + 12, y0 - H * 0.3, x0 + 15, y0); c.closePath(); c.fill(); outline(c, 0.9);
+  for (let i = 1; i <= 5; i++) { const z = 4 + (H - 4) * i / 6, w = 15 - 9 * i / 6, [x, y] = pt(0, 0, z); c.strokeStyle = 'rgba(10,4,12,0.55)'; c.lineWidth = 0.9; c.beginPath(); c.ellipse(x, y, w, w * 0.3, 0, 0.15, Math.PI - 0.15); c.stroke(); }
+  for (const [u, v, z] of [[12, -4, 18], [-12, 6, 32], [10, 8, 44], [-8, -10, 56]].slice(0, 1 + tier)) bsac5(c, T, u, v, z, 6.5, 0.4, 'rgba(176,130,200,0.85)');
+  if (tier >= 3) for (const s of [-1, 1]) bsp5(c, s * 4, -s * 4, H - 6, 12, 2.2, s * 5);
+}
+function spireLive5(c, T, t, b, tier) {
+  const [x, y] = pt(0, 0, SPIRE5[tier] - 4), k = busy5(b) ? 1 : 0.5; glow(c, x, y, 3 + tier, T.glow, (0.25 + 0.35 * pulse(t, 0, 2)) * (0.6 + 0.6 * k));
+  borif5(c, T, -6, 6, 12, 5, 3.2, busy5(b) ? 0.6 + 0.4 * Math.sin(t * 3) : 0.2); // the hatching mouth
+}
+// Brood Mound: a membrane cradle of eggs on team carapace, where Mites hatch; a feeding sac at T2, an acid gland and spines at T3
+function moundBody5(c, T, tier) {
+  bbed5(c, 32, T, tier);
+  if (tier >= 2) { bm5(c, T, 22, -20, 10, 0, 16, false); bsac5(c, T, 22, -20, 12, 5.5, 0.5); }
+  if (tier >= 3) { bm5(c, T, -18, -22, 9, 0, 16, false); for (const [u, v] of [[-22, -26], [-14, -18]]) bsac5(c, T, u, v, 12, 3, 0, '#b6ff5a'); }
+  bm5(c, T, 0, 0, 26, 0, 10 + tier * 3, true); bseams5(c, 0, 0, 26, 0, 10 + tier * 3, 2);
+  for (const [u, v, r] of MOUNDE[tier]) bsac5(c, T, u, v, 8 + tier * 3, r, 0, '#e3d3b4');
+  if (tier >= 3) for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2 + 0.4; bsp5(c, Math.cos(a) * 28, Math.sin(a) * 28, 4, 16, 3, -Math.cos(a) * 5); }
+}
+function moundLive5(c, T, t, b, tier) {
+  const due = b && game && b.mt !== undefined ? clamp(1 - (b.mt - game.t) / MOUND.every, 0, 1) : 0.4;
+  for (const [u, v, r] of MOUNDE[tier]) { const [x, y] = pt(u, v, 8 + tier * 3); c.fillStyle = `rgba(${T.glow},${0.15 + 0.5 * due * (0.7 + 0.3 * pulse(t, u, 3))})`; c.beginPath(); c.ellipse(x, y - r * 0.9, r * 0.42, r * 0.58, 0, 0, 7); c.fill(); }
+  if (tier >= 3) { const [x, y] = pt(-18, -22, 20); glow(c, x, y, 2.4, '182,255,90', 0.3 + 0.35 * pulse(t, 0, 2)); }
+}
+// Rootheart: a heart in a knot of team-carapace roots that run out into the creep; seed pods at T2, a thorn crown at T3
+function rootheartBody5(c, T, tier) {
+  bbed5(c, 32, T, tier);
+  const n = 4 + tier * 2;
+  for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + 0.2, r1 = 30 + (i % 2) * 3, P = [[Math.cos(a) * 6, Math.sin(a) * 6, 10], [Math.cos(a + 0.3) * 18, Math.sin(a + 0.3) * 18, 3], [Math.cos(a + 0.1) * r1, Math.sin(a + 0.1) * r1, 0]];
+    vein(c, P, OUTL, 4.6 + tier * 0.4); vein(c, P, i % 2 ? T.hull : T.main, 3 + tier * 0.4); vein(c, P.slice(0, 2), `rgba(${T.glow},0.6)`, 1); } // roots
+  if (tier >= 2) for (const [u, v] of [[-20, 14], [18, -16]]) bsac5(c, T, u, v, 2, 5, 0.45, '#9c7a4a');
+  bm5(c, T, 0, 0, 13, 0, RHZ[tier] - 4, true); bseams5(c, 0, 0, 13, 0, RHZ[tier] - 4, 2); // the root knot
+  if (tier >= 3) for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; bsp5(c, Math.cos(a) * 12, Math.sin(a) * 12, RHZ[tier] - 10, 16, 2.4, Math.cos(a) * 6, SW_BONE); }
+}
+function rootheartLive5(c, T, t, b, tier) {
+  const k = pulse(t, 0, 3.6), r = (6 + tier) * (0.92 + 0.1 * k), [x, y] = pt(0, 0, RHZ[tier] - 4 + r * 0.6);
+  c.fillStyle = lgrad(c, x - r, y - r, x + r, y + r, ['#c66a82', SW_FLESH[1], SW_FLESH[2]]); c.beginPath(); c.ellipse(x, y, r, r * 1.05, 0, 0, 7); c.fill(); outline(c, 0.7);
+  c.fillStyle = `rgba(${T.glow},${0.3 + 0.5 * k})`; c.beginPath(); c.ellipse(x, y, r * 0.5, r * 0.6, 0, 0, 7); c.fill();
+  glow(c, x, y, 3 + tier, T.glow, 0.15 + 0.25 * k);
+}
+Object.assign(BART_BH, {
+  hq: [hiveBody5, hiveLive5], refinery: [goreBody5, goreLive5], reactor: [pulseBody5, pulseLive5], habitat: [hatchBody5, hatchLive5],
+  barracks: [larvaBody5, larvaLive5], factory: [evoBody5, evoLive5], turret: [mawBody5, mawLive5], techlab: [spireBody5, spireLive5],
+  sigA: [moundBody5, moundLive5], sigB: [rootheartBody5, rootheartLive5],
+});
+
 /* ---- Damage stages (all factions): marks drawn from the building's health only (dmgStage: 0 above 66%, 1 above 33%, 2
    below), on the faces of its main mass (DMG5_AT: building-local points), into the cached body; stage 2 adds a live
    flicker (fire for Last Fist, a drip for Bloomhost, a failing glow for the Axiarchs). A building under construction and a
@@ -358,7 +560,10 @@ const DMG5_AT = {
     techlab: [[-24.3, -16, 18], [12, 24.3, 18], [-14, 24.3, 13]], reactor: [[-14.6, 6.6, 36], [-15, 3, 20], [16, 25.3, 11]],
     refinery: [[-17.4, 21.4, 28], [-23.5, -12, 26], [-10, 24.5, 16]], habitat: [[-23.2, 6, 12], [-8, 21.2, 10], [-23.2, 15, 8]],
     sigA: [[-24.3, 2, 12], [-4, 4.3, 14], [-18, 4.3, 10]], sigB: [[-16.3, -14, 11], [16, 13.3, 12], [-16.3, 4, 19]], bunker: [[-8, 3, 6], [3, 8, 7]] },
-  bloomhost: {}, axiarchs: {},
+  bloomhost: { hq: [[-30, 20, 26], [20, 26, 22], [-34, -6, 30], [6, 30, 34]], refinery: [[-16, 10, 14], [8, 18, 12], [-14, -2, 24]], reactor: [[-10, 10, 4], [6, 14, 4]],
+    habitat: [[-22, 10, 4], [6, 22, 4], [-14, 18, 3]], barracks: [[-20, 14, 6], [8, 22, 6], [-22, 2, 10]], factory: [[-24, 20, 14], [4, 30, 12], [-28, 8, 24]],
+    turret: [[-12, 10, 4], [6, 14, 4]], techlab: [[-8, 8, 24], [-6, 10, 40], [-14, 12, 4]], sigA: [[-18, 14, 6], [8, 20, 6], [-20, 4, 10]], sigB: [[-8, 6, 10], [4, 10, 8]] },
+  axiarchs: {},
 };
 const dmgStage = b => !b || !b.built || !(b.maxHp > 0) ? 0 : b.hp / b.maxHp > DMG5.cut[0] ? 0 : b.hp / b.maxHp > DMG5.cut[1] ? 1 : 2;
 const jag5 = (i, k) => ((((i + 3) * 97 + k * 131) % 17) / 17 - 0.5) * 2; // a fixed wobble per mark
