@@ -1,0 +1,18 @@
+v2.91 base cache on: 36 buildings, 48 units; frame median 16.7 ms, 95th 16.8 ms; render() median 2.40 ms, 95th 3.60 ms over 300 frames
+v2.91 base cache on: 36 buildings, 48 units; frame median 16.7 ms, 95th 16.8 ms; render() median 2.40 ms, 95th 3.80 ms over 300 frames
+v2.91 base cache on: 36 buildings, 48 units; frame median 16.7 ms, 95th 16.8 ms; render() median 2.30 ms, 95th 3.90 ms over 300 frames
+v2.91 base cache off: 36 buildings, 46 units; frame median 16.7 ms, 95th 33.4 ms; render() median 4.50 ms, 95th 6.60 ms over 300 frames
+v2.91 base cache off: 36 buildings, 46 units; frame median 16.7 ms, 95th 33.4 ms; render() median 4.40 ms, 95th 6.10 ms over 300 frames
+v2.91 base cache off: 36 buildings, 46 units; frame median 16.7 ms, 95th 33.4 ms; render() median 4.40 ms, 95th 6.30 ms over 300 frames
+v2.91 swarm cache on: 0 buildings, 73 units; frame median 16.7 ms, 95th 33.3 ms; render() median 2.20 ms, 95th 3.20 ms over 300 frames
+v2.91 swarm cache on: 0 buildings, 73 units; frame median 16.7 ms, 95th 33.3 ms; render() median 1.90 ms, 95th 2.90 ms over 300 frames
+v2.91 swarm cache on: 0 buildings, 73 units; frame median 16.7 ms, 95th 33.3 ms; render() median 1.90 ms, 95th 3.30 ms over 300 frames
+v2.91 swarm cache off: 0 buildings, 73 units; frame median 16.7 ms, 95th 33.3 ms; render() median 2.00 ms, 95th 3.10 ms over 300 frames
+v2.91 swarm cache off: 0 buildings, 73 units; frame median 16.7 ms, 95th 33.3 ms; render() median 2.00 ms, 95th 3.20 ms over 300 frames
+v2.91 swarm cache off: 0 buildings, 73 units; frame median 16.7 ms, 95th 33.4 ms; render() median 2.00 ms, 95th 3.60 ms over 300 frames
+v2.90 base cache on (no switch): 36 buildings, 48 units; frame median 16.7 ms, 95th 16.7 ms; render() median 2.10 ms, 95th 2.50 ms over 300 frames
+v2.90 base cache on (no switch): 36 buildings, 48 units; frame median 16.7 ms, 95th 16.7 ms; render() median 2.20 ms, 95th 3.10 ms over 300 frames
+v2.90 base cache on (no switch): 36 buildings, 48 units; frame median 16.7 ms, 95th 16.8 ms; render() median 2.10 ms, 95th 2.80 ms over 300 frames
+v2.90 swarm cache on (no switch): 0 buildings, 73 units; frame median 16.7 ms, 95th 33.3 ms; render() median 1.90 ms, 95th 3.50 ms over 300 frames
+v2.90 swarm cache on (no switch): 0 buildings, 73 units; frame median 16.7 ms, 95th 33.3 ms; render() median 1.90 ms, 95th 3.00 ms over 300 frames
+v2.90 swarm cache on (no switch): 0 buildings, 73 units; frame median 16.7 ms, 95th 33.4 ms; render() median 2.10 ms, 95th 3.20 ms over 300 frames
