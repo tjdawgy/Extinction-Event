@@ -1,0 +1,7 @@
+classic lastfist vs bloomhost seed 7: 1189 s, winner 0; 713 checkpoints; identical
+classic axiarchs vs lastfist seed 8: 1025 s, winner 1; 614 checkpoints; identical
+twolane bloomhost vs axiarchs seed 9: 1250 s, winner -1; 749 checkpoints; identical
+twolane lastfist vs axiarchs seed 10: 1310 s, winner -1; 785 checkpoints; identical
+threelane axiarchs vs bloomhost seed 11: 1310 s, winner -1; 785 checkpoints; identical
+threelane bloomhost vs lastfist seed 12: 1301 s, winner -1; 780 checkpoints; identical
+6 of 6 identical

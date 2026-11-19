@@ -84,3 +84,17 @@ test('b6c: off plays v2.92\'s numbers; on, the tuned ones (barrier, brood price,
   const g2 = sim.rangeGame({ seed: 3, factions: ['axiarchs', 'lastfist'], rework: { b6c: false } }); const b2 = sim.rangeUnit(g2, 0, 'bastion', 500, 0); sim.rangeStep(g2);
   assert.strictEqual(b2.bwHp, sim.BAR.hp);
 });
+
+test('Part C: with the player on the right (g.me 1) the AI plays the left side normally at the chosen difficulty; the player\'s side holds, gets no AI', () => {
+  const s = loadSim({ random: (a => () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; })(9) });
+  const g = s.newGame('hard', { seed: 21, me: 1, factions: ['bloomhost', 'lastfist'] }); g.countdown = 0;
+  assert.strictEqual(g.me, 1); assert.ok(g.sides[0].persona && !g.sides[1].persona, 'the AI (left) has a personality, the player (right) none');
+  assert.strictEqual(g.sides[1].stance, 'hold'); assert.strictEqual(g.sides[0].stance, 'retreat');
+  assert.strictEqual(s.aiDiff(g, 0).label, 'Hard'); assert.ok(s.playerSide(g, 1) && !s.playerSide(g, 0));
+  for (let i = 0; i < 60 * 360; i++) { s.update(g, s.TICK); g.events.length = 0; }
+  const b = s => g.ents.filter(e => e.kind === 'b' && e.side === s && e.type !== 'hq').length, u = s => g.ents.filter(e => e.kind === 'u' && e.side === s).length;
+  assert.ok(b(0) >= 4 && u(0) >= 5, `the AI on the left built ${b(0)} buildings and has ${u(0)} units`);
+  assert.strictEqual(b(1), 0, 'nothing builds for the idle player'); assert.strictEqual(u(1), 0);
+  const o = JSON.parse(s.serialize(g, {})); assert.strictEqual(o.me, 1); assert.strictEqual(s.deserialize(JSON.stringify(o)).me, 1, 'a save keeps the side');
+  const g0 = s.newGame('hard', { seed: 21 }); assert.ok(!('me' in g0) && !('me' in JSON.parse(s.serialize(g0, {}))), 'the default side leaves no trace');
+});

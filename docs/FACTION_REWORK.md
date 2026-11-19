@@ -801,6 +801,126 @@ per 100 spent** (b6side alone 453 / 116; v2.91 492 / 112): third in Last Fist af
 fails in Bloomhost's favour, not Last Fist's); Dreadthorns were added to the diver list (a charge is a dive); Ruinmaws were not (they
 open a tunnel for the army, they don't strike).
 
+## Batch 6c: faction measurement, the HQ shield rule, first unit tuning, start side and team colours
+
+**Batch 6c (v2.93): three parts, in order.** Part A measured (no game change), Part B added two switches, `REWORK.b6hq` (the HQ
+shield rule) and `REWORK.b6c` (unit tuning), both in src/sim/rework-6c.js, per game in `g.rw`, on by default, saved only when on,
+with Test Range switches ("Batch 6c HQ shield", "Batch 6c tuning"). With both off the game is v2.92 exactly: every pinned set
+matches under its own switches (the old sets, FP_V288G* … FP_V292A; the pinned replays now set b6hq and b6c off), and two modern
+matches (Hard vs Hard, every rule of today) hash as on v2.92's build (FP_V292M). Recorded: FP_V293H (b6hq on, b6c off) and FP_V293
+(both on), tests/determinism.test.js. Part C (start side, team colours) changes no match: the same six Hard vs Hard matches on
+every map are identical to the Part B build at every one of 4,426 checkpoints (audit/sim/identity6c.js,
+audit/logs-p1/identity6c/). Tests: tests/rework-6c.test.js, tests/start-side-6c.test.js, tests/switches-on-6c.test.js,
+tests/slow/switches-on-6c.test.js.
+
+### Part A: measurement
+
+- **Persona-balanced self-play** (audit/sim/selfplay-6c.js; personalities set from the harness through newGame's `autoPersona` and
+  `persona`, no game code): each faction plays Boomer, Economist and Turtle equally often against each personality of the other,
+  on each map, against each opponent, from both sides: 162 Hard vs Hard matches, 0 errors. Faction win rates (95% Wilson
+  intervals): Last Fist 60% (51-69), Bloomhost 44% (35-54), Axiarchs 32% (24-42). Per personality: Boomer 71%, Economist 36%,
+  Turtle 30%. Tables in docs/BALANCE_AUDIT.md section 10 and audit/logs-p1/selfplay6c-a1/.
+- **Artillery hit rate (R7, 70% → 51% with b6side):** the mirrored spacing (`ctlFree` dir), not the shuffle: R7's moving targets
+  are side 1, and the mirrored ring walk gives the aimed-at unit a farther spot at each end of its walk, so it never stands still
+  (13% → 0% of ticks) and shells, which aim where it is when fired, miss more. Spacing unmirrored: 67% (audit/sim/arthit6c.js).
+- **Slow suite on v2.92:** 15 of 15 (audit/logs-p1/pinned6c/slow-suite-v292.txt).
+- **Tests pinned to switches off:** 171 test blocks pin a switch; 21 are fingerprints (covered by the all-on sets), 36 already test
+  both sides of their switch, the rest got switches-on counterparts: 87 re-run with every switch held on and 23 rewritten for the
+  reworked rules in tests/switches-on-6c.test.js, 5 long AI-match tests and the Two-Lane AI test in tests/slow/switches-on-6c.test.js
+  (inventory: audit/logs-p1/pinned6c/pinned-tests.md).
+
+### Part B0: the HQ shield rule (b6hq)
+
+**Before (v2.92, `refreshShields` in src/sim/game.js, every tick):** a side's HQ was shielded only while (1) another building of
+that side stood that was finished (`built`), not a Node Bunker (`bunker`) and not on a forward pad (`slot >= FWD_SLOT`), **and**
+(2) with `BREAK.prod` on (v2.69 (d), the default) a finished production building (Barracks, War Factory or Tech Lab role, any
+faction's) stood in the base. Signature buildings, Refineries, Reactors, Habitats and Turrets counted for (1) but never for (2).
+No timer; the storm ignores the shield (it burns buildings directly) and the tutorial's HQ can't fall. **Why it dropped early in
+the owner's games:** rule (2). Once the enemy's production buildings were gone the shield fell while its Refineries, Reactors,
+Habitats, Turrets and signature building still stood.
+
+**After (b6hq on):** the HQ is shielded while at least one other finished building of that side stands (`hqHolds`): not the HQ,
+not a building on a field node (the Node Bunker, and anything on a forward pad, which is a node), not one under construction. It
+drops when none is left and comes back when one is finished; the same rule for both sides. The count (`hqHolders`) is drawn on
+the HQ's shield (a badge on the side facing the field) for both HQs, on the shield icon in the top bar and in the HQ's readout
+("Shielded · 3"); an enemy HQ out of sight shows its ghost, without a count. **AI:** an AI base attack's target bonus (`bbFocus`)
+now treats every finished building as a shield holder (the extra 40 the production buildings had goes to all of them); a shielded
+HQ can't be targeted or hurt, so the AI breaks the holders first. Texts (the HQ's description, the start screen, the Codex's
+"Breaking a base", the tutorial) follow the switch. **Effect** (persona-balanced self-play, b6hq on, b6c off, against A1): median
+length 13:58 → 14:35, ended by an HQ destroyed 91% → 91% (148 of 162 both; audit/logs-p1/selfplay6c-b0/).
+
+### Part B1: unit tuning (b6c)
+
+Measured with audit/sim/b6c-range.js (Test Range, 10 seeds × both orientations, 20 runs a cell; before/after in
+audit/logs-p1/b6c-range/), each lever through per-game values (`B6C`, `barHp`, `broodCost`, `latchDps`, `rwD`), UDEF untouched.
+
+| item | lever | before | after | measurement before → after | target | met |
+|---|---|---|---|---|---|---|
+| Bastion barrier | `BAR.hp` | 600 | 300 | Tanks + Marines need 865 without the barrier (b3b off); with it 2,230 (+158%) → 1,320 (+53%). Lancers 495 → 825 (+67%) → 495 (+0%) | +40-60%, never over +110% | yes (Tanks + Marines) |
+| Broods | `BROOD.cost` | 120 | 164 | against equal-cost Marines at five army sizes (100 runs): 100-0 keeping 67% → 58-42 keeping 29% in wins; Shardlings 100-0 → 98-2 (31% kept); Lancers 100-0 → 100-0 (68% kept) | Marines 40-60%, under 50% kept | yes |
+| Leviathan | its run bombs' damage | 35 | 90 | damage per second against one Tank 6.8 → 17.6 (pre-rework 26.3: 0.26 → 0.67); 6 Tanks 0.64, 12 Marines 0.63, a Refinery 0.62 of pre-rework | 60-70% | yes |
+| Leaper | `LATCH.dps` | 10 | 55 | self-play damage per 100 spent 36 → 91; head-on against equal-cost Marines it already won 20-0 before (its leap and bite; the latch only acts on hosts) and still does | at least about 100, not beating Marines head-on | no (91; and the head-on condition was already broken before) |
+| Riftstalker | its blade's damage, then its armour table | 18 (×0.9 heavy, ×0.6 vehicle) | 23 (×1.5 heavy, ×1.4 vehicle; light ×1.5 kept) | self-play 40 → 74; head-on against Marines 0-20 → 0-20 | at least about 100, not beating Marines head-on | no (74) |
+
+The brood fight flips from 20-0 to 0-20 with a single Skitterling more or less at one army size (counts are whole numbers), so its
+share is read over five sizes (18 to 36 Marines). The divers' second value: a 24 blade one-shots a Marine (36 health at ×1.5), and
+5 Riftstalkers then beat 21 Marines 20-0, so 23 is the most the named lever can give without breaking the head-on rule; the rest
+went into its blade against heavy and vehicle armour (`riftblade6`, its own weapon entry, v2.92's untouched), which a Marine fight
+never uses. Higher values (Leaper 70, Riftstalker ×2.0) measured no better in a Classic probe (54 matches, noise larger than the
+change): the divers die before they deal damage (Leapers 247 of 254 lost there), and more damage per hit does not buy more hits.
+
+### Part B2: self-play with both on (audit/logs-p1/selfplay6c-b2/)
+
+162 matches, 0 errors. Last Fist 60% → 65% (55-73), Bloomhost 44% → 36% (28-46), Axiarchs 32% → 34% (26-44): Bloomhost and the
+Axiarchs are outside 40-60% (reported, not tuned further). Median length 13:58 → 15:06; ended by an HQ 91% → 90%. Damage per 100
+spent (usage: trained, sides): Bastion 116 → 112 (586 → 642, 91 → 98 sides); Skitterling 124 → 82 (7,028 → 5,728); Leviathan 81 → 144
+(26 → 38, 22 → 25 sides; tier-3 units in the same run: Shardstorm 357, Worldbreaker 348, Titan 266, Brood Tyrant 246, Worldrender
+245, Sovereign 241, Ruinmaw 197, Voidcarrier 84, Cloudwing 57); Leaper 36 → 91 (505 → 1,021); Riftstalker 40 → 74 (571 → 625).
+Bloomhost's drop comes mostly against Last Fist: 31% → 17% of decided (Last Fist 31-14-9 → 39-8-7), after the brood price. Details: docs/BALANCE_AUDIT.md
+section 11.
+
+### Part C: start side and team colours
+
+- **Start side** (C1): on the battlefield screen (the match setup before Play; the main setup has no room left at 667×375), beside
+  Play: **Start: Left / Right / ?** (Random; Left/Right, the maps run east-west) and a **Colour** button that steps through Random
+  and the eight colours. Both remembered (`extinctionEvent.start`, `extinctionEvent.color`). The default is Left: **side 0**, the
+  side the player has always played. The thumbnails show your start base in blue. The view is never flipped.
+- **Either side** (C2): the player's side is `g.me` (absent = 0, so a default game, its save and every hash are v2.92's). The SIM:
+  which side the AI runs (`aiUpdate` / `side6Ai` for the side that isn't `g.me`), its personality, difficulty (`aiDiff`) and the
+  starting stances, `playerSide`, the screen shake's fog, the match log's "you" (report.js), the stats summary (`me`), save and load.
+  The UI and render read `myS()` / `foeS()` (src/ui/core.js) for: the start camera (`homeX`: the right-hand base looks left) and
+  the intro; selection, taps, the box, double-tap, All, control groups, lanes, commands and targets (src/ui/controls.js); direct
+  control (`ctlStart`); building on pads, the signature pad and forward pads, cards, upgrades, Repair, Sell, Echoes, the warp point,
+  abilities and their aim previews; fog (`viewFog`), enemy pads, creep and field drawn from what you have seen, tunnels, markers,
+  projectiles and effects in the fog; the HUD (resources, supply, the HQ readout and its count, Overdrive), alerts and toasts,
+  sounds for your events, the minimap (the enemy HQ's last-seen bar); the post-match screens (Victory/Defeat, You/Enemy columns,
+  graphs, army tables, the enemy timeline, the copied log). The 6b spacing (`ctlFree`'s dir) already mirrors by side. Positional
+  uses (dirOf, hqU, gun facing, node capture direction, Ruinmaw edges) stay by side number. The tutorial stays on the left (it never
+  passes `me`); the Test Range keeps blue as the side you can command.
+- **Team colours** (C3, src/render/core.js `PALETTE`, `palRoll`, `setTeams`): Blue and Red exactly as before; Green (emerald
+  #14c98a, bluer and darker than the lime acid), Gold (#ffb82e), Purple (#a05cff), Pink (#ff38b4), Pearl (#ece2d0, dark edges and
+  a dark outline), Onyx (#24232c, a bright outline and white-violet light lines; on Axiarchs the glowing lines carry it). Onyx
+  passed the readability screenshots and ships. **Excluded pairs:** Blue/Purple, Red/Pink, Pink/Purple, Red/Green (colour-blind),
+  Blue/Green (both cool and cyan-leaning at phone size; a tritan confusion pair). A match rolls two allowed colours from the UI's
+  own `Math.random`, never the SIM's streams; the player may pick theirs (the opponent then gets a random allowed one). Stored as
+  `g.tc` (side 0's key, side 1's) with saves, never read by the SIM, left out of every hash (a SIM-only game never has it).
+  `setTeams` fills TEAM[0..1] per match (the relic guards turn slate when a team is Gold) and remakes what was drawn once from them
+  (team glows, shield bubbles, the ground's base glows, creep and field canvases; remembered for up to four pairs so Test Range rows
+  switch cheaply); the sprite, aircraft and building caches already key on the colours, so a new pair draws fresh poses, bounded
+  by their existing budgets. The Test Range lets each row pick each side's colour or Random.
+- **Checks** (C4): tests/start-side-6c.test.js (five matches against Hard from each side with several pairs on all three maps:
+  your units only, your fog, build, train, a fight, Victory; Defeat from the right; a save on the right resumes there with its
+  colours; the setup fits and remembers; 10,000 rolls never an excluded pair and never touching the match streams);
+  audit/sim/identity6c.js (6 of 6 identical); screenshots docs/screenshots/colors6c-*.png (tests/colors6c-shots.js).
+
+### Departures
+
+- The Start and Colour choices sit on the battlefield screen, not the first setup screen (no room at 667×375 without scrolling).
+- The Leaper and Riftstalker targets (about 100 per 100 spent) are not met (91, 74); the Leaper already beat equal-cost Marines
+  head-on before the change. The Riftstalker used a second value (its armour table), explained above.
+- Bloomhost and the Axiarchs land outside 40-60% with both switches on; not tuned further, as asked.
+- The Test Range keeps the side names Blue and Red in its texts whatever colours a row picks.
+
 ## Unchanged (already distinct)
 
 Marine, Heavy, Tank, Flame Tank, Hydra, Interceptor, Medevac, Recon Drone, Mite, Razorwing, Cloudwing, Thornback, Lancer,

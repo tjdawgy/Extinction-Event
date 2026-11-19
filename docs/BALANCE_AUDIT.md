@@ -595,7 +595,7 @@ target is when they fire and fly about 1.3 s, so a target that is always walking
 landing 30 → 48). b6side on with the shuffle off: 51% (unchanged); b6side on with the spacing not mirrored: 67% (v2.91 70%); 2 Tanks
 45% / 57% (v2.91 54%). A property of R7's walking pattern, not of the Artillery or the order fix.
 
-**Slow suite:** run in full on v2.92 (section 11 lists results). **Tests pinned to switches off:** see docs/FACTION_REWORK.md
+**Slow suite:** run in full on v2.92: 15 of 15 passed (audit/logs-p1/pinned6c/slow-suite-v292.txt); the new slow counterparts 11 of 11. **Tests pinned to switches off:** see docs/FACTION_REWORK.md
 "Batch 6c" and audit/logs-p1/pinned6c/pinned-tests.md.
 
 ### 10.6 Ranked list, updated (A1 plus the Test Range, audit/sim/b6c-range.js on v2.92, 10 seeds × both orientations)
@@ -620,3 +620,57 @@ landing 30 → 48). b6side on with the shuffle off: 51% (unchanged); b6side on w
 8. **Last Fist strongest** (60%, 51-69), mostly through the Boomer (92%); against Bloomhost 57%. Not tuned (out of scope).
 9. **Ranged backline value:** Worldbreaker 426, Sniper 387, Shardstorm 368, Hydra 333, Artillery 297 (6b's target of about 300 now
    met in self-play). The Needlewing (64) and Severance (68) are weak.
+
+## 11. After batch 6c (v2.93): the HQ shield rule and the first unit tuning
+
+The persona-balanced self-play of section 10 (162 Hard vs Hard matches, audit/sim/selfplay-6c.js) re-run with b6hq on and b6c off
+(audit/logs-p1/selfplay6c-b0/) and with both on (audit/logs-p1/selfplay6c-b2/), 0 errors each; tables in each folder's report6c.md
+(with 95% Wilson intervals) and report.md. Values and Test Range measurements: docs/FACTION_REWORK.md "Batch 6c".
+
+### 11.1 Faction win rates
+
+| faction | A1 (v2.92) | b6hq on, b6c off | both on (v2.93) |
+|---|---|---|---|
+| Last Fist | 65-34-9, 60% (51-69) | 67-34-7, 62% (53-71) | 70-25-13, 65% (55-73) |
+| Bloomhost | 48-46-14, 44% (35-54) | 41-54-13, 38% (29-47) | 39-59-10, 36% (28-46) |
+| Axiarchs | 35-68-5, 32% (24-42) | 40-60-8, 37% (29-46) | 37-62-9, 34% (26-44) |
+| Last Fist vs Bloomhost (first named) | 31-14-9 | - | 39-8-7 |
+| Last Fist vs Axiarchs | 34-20-0 | - | 31-17-6 |
+| Bloomhost vs Axiarchs | 34-15-5 | - | 31-20-3 |
+| side 1 share of decided | 49% (41-57) | - | 49% (41-57) |
+| median length | 13:58 | 14:35 | 15:06 |
+| ended by an HQ destroyed | 91% (148 of 162) | 91% (148) | 90% (146) |
+
+Bloomhost (36%) and the Axiarchs (34%) are below 40% with both on; Last Fist (65%) above 60%. Per personality with both on: Boomer
+68%, Economist 33%, Turtle 34%; Last Fist's Boomer 33-2-1. Per map with both on: the Axiarchs 53% on Classic, 25% on Two-Lane and
+Three-Lane; Bloomhost 28% on Classic.
+
+### 11.2 The tuned units (damage and killed value per 100 spent; trained; sides)
+
+| unit | A1 | both on |
+|---|---|---|
+| Bastion | 116 / 31; 586; 91 | 112 / 29; 642; 98 |
+| Skitterling | 124 / 31; 7,028; 108 | 82 / 25; 5,728; 108 |
+| Leviathan | 81 / 2; 26; 22 | 144 / 8; 38; 25 |
+| Leaper | 36 / 11; 505; 35 | 91 / 39; 1,021; 38 |
+| Riftstalker | 40 / 14; 571; 31 | 74 / 28; 625; 29 |
+
+Tier-3 units with both on (damage per 100 spent): Shardstorm 357, Worldbreaker 348, Titan 266, Brood Tyrant 246, Worldrender 245,
+Sovereign 241, Ruinmaw 197, Leviathan 144, Voidcarrier 84, Cloudwing 57. Artillery 375 (297 in A1).
+
+### 11.3 Ranked list, updated
+
+1. **Last Fist strongest, Bloomhost and the Axiarchs below 40%** (65 / 36 / 34%). Last Fist's Boomer wins 92-94% of its matches;
+   Last Fist beats Bloomhost 39-8-7. *Levers:* the personalities (next item), then Last Fist's economy opening, not units.
+2. **The Boomer opening dominates every faction** (68%; Economist 33%, Turtle 34%), and the Axiarchs' Hard pool is two-thirds Turtle.
+   *Lever:* the Turtle and Economist personas' dials and the per-faction `kinds` (src/sim/ai-presets.js).
+3. **Divers still trade below the ranged units** (Leaper 91, Riftstalker 74 per 100 spent, from 36 and 40) and die before they
+   deal more (more damage per hit measured no better). *Lever:* their survival (Riftstalker shields, the Leaper's health or leap
+   timing), or their AI use.
+4. **Bloomhost after the brood price:** Skitterlings 82 per 100 spent; Bloomhost 28% on Classic. Watch with the persona work.
+5. **Axiarchs on the lane maps** (25% on Two-Lane and Three-Lane).
+6. **Top-tier air still rare** (Leviathan 38 trained in 162 matches; T3 aircraft in a quarter of sides or fewer) and the Tech Lab
+   role skipped by about a quarter of sides: AI tech timing.
+7. **Ranged backline value:** Artillery 375, Shardstorm 357, Worldbreaker 348.
+Done in 6c: the Bastion barrier (+53% to break with Tanks and Marines), brood fights (58-42 against equal-cost Marines), the
+Leviathan (0.62-0.67 of its pre-rework damage per second).
