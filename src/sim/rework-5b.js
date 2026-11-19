@@ -28,7 +28,7 @@ Object.assign(DMG, {
 });
 PSPEED.quill = 640;
 const RW5B_D = {
-  skitterling: () => Object.assign({}, UDEF.skitterling, { hp: BROOD.hp, cost: { c: BROOD.cost / BROOD.n, e: 0 }, time: BROOD.time, brood: { n: BROOD.n, c: BROOD.cost, time: BROOD.time } }), // cost: per Skitterling (the info card shows the brood's)
+  skitterling: g => Object.assign({}, UDEF.skitterling, { hp: BROOD.hp, cost: { c: broodCost(g) / BROOD.n, e: 0 }, time: BROOD.time, brood: { n: BROOD.n, c: broodCost(g), time: BROOD.time } }), // v2.93: b6c's brood price (broodCost) // cost: per Skitterling (the info card shows the brood's)
   spitter: () => Object.assign({}, UDEF.spitter, { weapon: 'quill', dmg: QUILL.dmg, cd: QUILL.cycle / QUILL.n, range: QUILL.range, hitsAir: true, preferAir: true, quill: true }), // cd: the average gap, as the info card reads it
   needlewing: () => Object.assign({}, UDEF.needlewing, { weapon: 'needle5', hitsAir: true }),
 };
@@ -38,11 +38,11 @@ const rw5bCount = (g, s, k, n) => { const side = g.sides[s]; if (!side) return; 
 
 /* ---- Broods ---- */
 // What one order of a type costs and takes in game g (the UI's cards and the AI read it; a brood in a b5b game)
-const trainCost = (g, t) => t === 'skitterling' && rwB5b(g) ? { c: BROOD.cost, e: 0 } : UDEF[t].cost;
+const trainCost = (g, t) => t === 'skitterling' && rwB5b(g) ? { c: broodCost(g), e: 0 } : UDEF[t].cost;
 const trainPop = (g, t) => t === 'skitterling' && rwB5b(g) ? UDEF.skitterling.pop * BROOD.n : UDEF[t].pop;
 const trainTime = (g, t) => t === 'skitterling' && rwB5b(g) ? BROOD.time : UDEF[t].time;
 function broodTrain(g, s, d, prods) {
-  const side = g.sides[s], cost = BROOD.cost, pop = d.pop * BROOD.n;
+  const side = g.sides[s], cost = broodCost(g), pop = d.pop * BROOD.n;
   if (d.max && unitCount(g, s, 'skitterling') >= d.max) return { ok: false, msg: `At most ${d.max} ${PLURAL.skitterling} at a time` };
   prods.sort((a, b) => a.queue.length - b.queue.length);
   const p = prods.find(b => b.queue.length < 5) || prods[0], cap = popCap(g, s);
@@ -58,7 +58,7 @@ function broodHatch(g, b) {
   const d = UDEF.skitterling, s = b.side;
   let alive = 0; for (const e of g.ents) if (e.kind === 'u' && e.side === s && e.type === 'skitterling' && e.hp > 0) alive++;
   const n = d.max ? clamp(d.max - alive, 0, BROOD.n) : BROOD.n;
-  if (n < BROOD.n) { const back = BROOD.cost / BROOD.n * (BROOD.n - n); g.sides[s].res.c += back; rw5bCount(g, s, 'refund', BROOD.n - n); }
+  if (n < BROOD.n) { const back = broodCost(g) / BROOD.n * (BROOD.n - n); g.sides[s].res.c += back; rw5bCount(g, s, 'refund', BROOD.n - n); }
   rw5bEv(g, s, 'brood', { u: b.u, n }); rw5bCount(g, s, 'broods'); rw5bCount(g, s, 'hatched', n);
   return n;
 }
@@ -170,4 +170,4 @@ rw5bText(TREES_BH.techlab.A.steps[2], 'txt', 'Unlocks Needlewings: cheap flyers 
 // The faction's mechanic, as the Codex, the faction picker and the tutorial explain it (numbers in the Codex's live line)
 { const m0 = FACTIONS.bloomhost.mech, m5 = { name: 'Creep and the swarm', txt: 'Creep from your buildings and held nodes speeds and heals Bloomhost ground units. The swarm hatches in broods, runs faster in numbers and attacks faster when enemies die nearby.' };
   Object.defineProperty(FACTIONS.bloomhost, 'mech', { get: () => REWORK.b5b ? m5 : m0, enumerable: true, configurable: true }); }
-const swarmFacts = () => `Broods of ${BROOD.n} for ${BROOD.cost} credits (${txN(BROOD.time)} s, ${BROOD.hp} health each); swarm surge +${txP(SURGE.per)} speed for every other Bloomhost ground unit within ${SURGE.r}, up to +${txP(SURGE.max)}; kill frenzy: an enemy unit dying within ${KFRENZY.r} makes your organisms attack ${txP(KFRENZY.rate - 1)} faster for ${txN(KFRENZY.dur)} s (refreshed, never stacked).`;
+const swarmFacts = () => `Broods of ${BROOD.n} for ${broodCost({ rw: REWORK })} credits (${txN(BROOD.time)} s, ${BROOD.hp} health each); swarm surge +${txP(SURGE.per)} speed for every other Bloomhost ground unit within ${SURGE.r}, up to +${txP(SURGE.max)}; kill frenzy: an enemy unit dying within ${KFRENZY.r} makes your organisms attack ${txP(KFRENZY.rate - 1)} faster for ${txN(KFRENZY.dur)} s (refreshed, never stacked).`;

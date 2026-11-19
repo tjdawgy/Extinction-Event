@@ -1,0 +1,77 @@
+TAP version 13
+# Subtest: on: v2.11: Repair Pulse is never wasted by the AI; repairHealable tells the player when nothing in range can be healed
+ok 1 - on: v2.11: Repair Pulse is never wasted by the AI; repairHealable tells the player when nothing in range can be healed
+  ---
+  duration_ms: 36548.089217
+  type: 'test'
+  ...
+# Subtest: on: abilities.test.js: every listed test found for the re-run
+ok 2 - on: abilities.test.js: every listed test found for the re-run
+  ---
+  duration_ms: 0.605502
+  type: 'test'
+  ...
+# Subtest: on: the AI casts all three under one shared cooldown; Mass Warp only for 4+ units below 40% health in one area
+ok 3 - on: the AI casts all three under one shared cooldown; Mass Warp only for 4+ units below 40% health in one area
+  ---
+  duration_ms: 53157.249335
+  type: 'test'
+  ...
+# Subtest: on: ax-abilities.test.js: every listed test found for the re-run
+ok 4 - on: ax-abilities.test.js: every listed test found for the re-run
+  ---
+  duration_ms: 0.14487
+  type: 'test'
+  ...
+# Subtest: on: the AI maps its Last Fist paths onto the Axiarchs and trains path units (seeded Hard)
+ok 5 - on: the AI maps its Last Fist paths onto the Axiarchs and trains path units (seeded Hard)
+  ---
+  duration_ms: 29747.995803
+  type: 'test'
+  ...
+# Subtest: on: ax-trees.test.js: every listed test found for the re-run
+ok 6 - on: ax-trees.test.js: every listed test found for the re-run
+  ---
+  duration_ms: 0.139125
+  type: 'test'
+  ...
+# Subtest: on: the AI maps its Last Fist path taste onto Bloomhost and trains path units (one seeded Hard match each way)
+ok 7 - on: the AI maps its Last Fist path taste onto Bloomhost and trains path units (one seeded Hard match each way)
+  ---
+  duration_ms: 30541.000445
+  type: 'test'
+  ...
+# Subtest: on: bh-trees.test.js: every listed test found for the re-run
+ok 8 - on: bh-trees.test.js: every listed test found for the re-run
+  ---
+  duration_ms: 0.110901
+  type: 'test'
+  ...
+# Subtest: on: a full AI-vs-AI match: samples every 10 s, counts that agree with the match log, damage, timestamps, the result
+ok 9 - on: a full AI-vs-AI match: samples every 10 s, counts that agree with the match log, damage, timestamps, the result
+  ---
+  duration_ms: 19602.947386
+  type: 'test'
+  ...
+# Subtest: on: stats.test.js: every listed test found for the re-run
+ok 10 - on: stats.test.js: every listed test found for the re-run
+  ---
+  duration_ms: 0.404406
+  type: 'test'
+  ...
+# Subtest: on: Hard vs Hard on Two-Lane: decided matches, both lanes, the centre and forward pads (every switch on)
+ok 11 - on: Hard vs Hard on Two-Lane: decided matches, both lanes, the centre and forward pads (every switch on)
+  ---
+  duration_ms: 357665.413205
+  type: 'test'
+  ...
+1..11
+# tests 11
+# suites 0
+# pass 11
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 527433.893119
+EXIT 0

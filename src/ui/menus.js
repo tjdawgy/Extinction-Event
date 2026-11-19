@@ -44,7 +44,7 @@ function showStart() {
     <p>Pick a side, grow an outpost, field an army and destroy the enemy HQ before it destroys yours.</p>
     <div class="how">
       <div><b>Build and upgrade</b>Tap an empty pad then a building card, or just tap a card. Tap a building to upgrade, repair or sell it. Hold any card for details.</div>
-      <div><b>Control the field</b>Ground troops standing on a field node capture it for extra income. Your HQ is shielded while a production building stands in your base.</div>
+      <div><b>Control the field</b>Ground troops standing on a field node capture it for extra income. Your HQ is ${hqShieldTxt(REWORK).replace(/^Shielded/, 'shielded')}.</div>
       <div><b>Command your army</b>Select units (tap them, double-tap one for its type, hold and draw a loop, or All on the left), then tap the ground to move them, or Attack, Hold or Retreat. Drag to look around.</div>
     </div>
     <div class="setup"><span class="lbl">Difficulty</span>${diffSeg()}<span class="lbl">You</span>${facSeg('meSeg', 'me')}<span class="lbl">Opponent</span>${facSeg('foeSeg', 'foe')}<p class="fdesc" id="facDesc">${factionDesc(facPick.me)}</p></div>

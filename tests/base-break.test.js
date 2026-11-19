@@ -56,6 +56,7 @@ test('rubble: a destroyed building\'s pad can\'t be built on until it clears; ot
 });
 
 test('the HQ shield drops once no production building stands in the base, and comes back with a new one', () => {
+  sim.REWORK.b6hq = false; // v2.93: v2.69's rule (b6hq off); batch 6c's rule: tests/rework-6c.test.js
   set({ prod: true });
   const g = setup();
   built(g, 0, 'refinery'); sim.refreshShields(g);
@@ -64,6 +65,7 @@ test('the HQ shield drops once no production building stands in the base, and co
   sim.kill(g, bar, 1); sim.refreshShields(g); assert.ok(!g.sides[0].hq.shielded, 'its last production building gone');
   for (const t of ['factory', 'techlab']) { const g2 = setup(); built(g2, 0, 'refinery'); const b0 = built(g2, 0, 'barracks'); built(g2, 0, t); sim.kill(g2, b0, 1); sim.refreshShields(g2); assert.ok(g2.sides[0].hq.shielded, t); }
   set({ prod: false }); const h = setup(); built(h, 0, 'refinery'); sim.refreshShields(h); assert.ok(h.sides[0].hq.shielded, 'off: any building holds it up');
+  sim.REWORK.b6hq = true;
 });
 
 test('the AI base attack gathers just outside the enemy HQ gun, goes in together (siege units first), and gathers again for the next wave', () => {

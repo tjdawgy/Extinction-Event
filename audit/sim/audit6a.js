@@ -16,7 +16,7 @@ if (process.argv[2] === '--one') {
   const RW = {}; for (const kv of (rwArg || '').split(',').filter(Boolean)) { const [k, v] = kv.split('='); RW[k] = v !== '0' && v !== 'false'; } // v2.92 (batch 6b): --rw b6art=0 etc.
   const { loadSim } = require('./load');
   const play = instr => {
-    const S = loadSim(+seed, instr ? { instrument: INSTR } : {}); Object.assign(S.REWORK, RW);
+    const S = loadSim(+seed, instr ? { instrument: INSTR } : {}); Object.assign(S.REWORK, RW); if (process.env.EE_B6C && S.B6C) Object.assign(S.B6C, JSON.parse(process.env.EE_B6C)); // v2.93: EE_B6C='{"latchDps":20}' tries batch 6c numbers
     const g = S.newGame('hard', { seed: +seed, map, autoPlayer: true, autoDiff: 'hard', factions: [f0, f1], autoPersona: p0 || undefined, persona: p1 || undefined }); g.countdown = 0;
     const R = { tier: [{}, {}], paths: [{}, {}], t3u: [null, null], t3air: [null, null], peakUnits: [0, 0] };
     let k = 0, err = null; const hs = [];
@@ -58,7 +58,7 @@ if (process.argv[2] === '--one') {
       dmg: A.dmg[s], dmgB: A.dmgB[s], kills: A.kills[s], kval: A.kval[s], tier2: R.tier[s][2] ?? null, tier3: R.tier[s][3] ?? null,
       t3unit: R.t3u[s], t3air: R.t3air[s], paths, peak: R.peakUnits[s], persona: g.sides[s].persona ? g.sides[s].persona.kind : null, paths0: g.sides[s].persona ? g.sides[s].persona.paths : null, bLost: tot.bLost };
   });
-  process.send({ map, f: [f0, f1], seed: +seed, t: Math.round(g.t * 10) / 10, over: !!g.over, winner: g.over ? g.winner : null, how: g.result ? g.result.how : null,
+  process.send({ b6c: S.B6C ? Object.assign({}, S.B6C) : null, map, f: [f0, f1], seed: +seed, t: Math.round(g.t * 10) / 10, over: !!g.over, winner: g.over ? g.winner : null, how: g.result ? g.result.how : null,
     by: g.result ? g.result.by || g.result.reason || null : null, err, ver: S.VERSION, rw: g.rw, sides });
   process.exit(0);
 }

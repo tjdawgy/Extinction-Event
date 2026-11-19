@@ -347,7 +347,7 @@ function setLane(g, s, scope, key, lane) {
 function refreshShields(g) {
   for (let s = 0; s < 2; s++) {
     const hq = g.sides[s].hq, sh = g.ents.some(b => b.kind === 'b' && b.side === s && b.type !== 'hq' && b.type !== 'bunker' && !(b.slot >= FWD_SLOT) && b.hp > 0 && b.built) // v2.32: node bunkers don't hold the shield up; v2.67: nor buildings out on forward pads (only the base's) // v2.11: finished buildings only (no shield from construction starts)
-      && (!BREAK.prod.on || g.ents.some(b => b.kind === 'b' && b.side === s && BREAK.prod.roles.includes(b.type) && !(b.slot >= FWD_SLOT) && b.hp > 0 && b.built)); // v2.69 (d): and only while a production building of its base stands
+      && (rwB6hq(g) || !BREAK.prod.on || g.ents.some(b => b.kind === 'b' && b.side === s && BREAK.prod.roles.includes(b.type) && !(b.slot >= FWD_SLOT) && b.hp > 0 && b.built)); // v2.69 (d): and only while a production building of its base stands (v2.93, b6hq: not any more; src/sim/rework-6c.js)
     if (hq.shielded && !sh) { ev(g, { type: 'shieldDown', side: s, seen: !!g.fog && visibleTo(g, 1 - s, hq) }); lg(g, s, 'H'); }
     hq.shielded = sh;
   }

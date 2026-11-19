@@ -144,10 +144,10 @@ function updateBarriers(g, dt) {
   BW.g = g; BW.list = null;
   for (const u of g.ents) {
     if (u.kind !== 'u' || u.type !== 'bastion' || u.hp <= 0 || u.dead) continue;
-    if (u.bwHp === undefined) { u.bwHp = BAR.hp; u.bwHit = -99; u.bwDn = 0; u.bwF = dirOf(u.side); }
+    if (u.bwHp === undefined) { u.bwHp = barHp(g); /* v2.93: b6c's barrier health */ u.bwHit = -99; u.bwDn = 0; u.bwF = dirOf(u.side); }
     if (u.gone) continue; // exiled: down while away
-    if (u.bwDn) { if (g.t < u.bwDn) continue; u.bwDn = 0; u.bwHp = BAR.hp; const w = P(u.u + u.bwF * BAR.off, u.v, 0); g.fx.push({ k: 'bwup', side: u.side, u: u.u, x: w.x, y: w.y, t: 0, life: 0.5, F: u.bwF }); }
-    else if (u.bwHp < BAR.hp && g.t - u.bwHit >= BAR.calm) u.bwHp = Math.min(BAR.hp, u.bwHp + BAR.regen * dt);
+    if (u.bwDn) { if (g.t < u.bwDn) continue; u.bwDn = 0; u.bwHp = barHp(g); const w = P(u.u + u.bwF * BAR.off, u.v, 0); g.fx.push({ k: 'bwup', side: u.side, u: u.u, x: w.x, y: w.y, t: 0, life: 0.5, F: u.bwF }); }
+    else if (u.bwHp < barHp(g) && g.t - u.bwHit >= BAR.calm) u.bwHp = Math.min(barHp(g), u.bwHp + BAR.regen * dt);
     let F = 0, bd = BAR.face;
     for (const e of g.ents) { // it faces the nearest enemy it can see
       if (e.side !== 1 - u.side || e.hp <= 0 || e.gone || (e.kind === 'u' && UDEF[e.type].air)) continue;

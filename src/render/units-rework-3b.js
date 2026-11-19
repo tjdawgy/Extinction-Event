@@ -202,7 +202,7 @@ function drawBarriers(c, g, lit, t) {
   for (const B of g.ents) {
     if (B.kind !== 'u' || B.type !== 'bastion' || B.hp <= 0 || B.bwHp === undefined || B.bwDn || B.gone) continue;
     const cu = B.u + B.bwF * BAR.off; if (!lit(cu, B.v)) continue;
-    const frac = clamp(B.bwHp / BAR.hp, 0, 1), hit = clamp(1 - (g.t - B.bwHit) / 0.18, 0, 1), T = TEAM[B.side], H = BAR.h;
+    const frac = clamp(B.bwHp / barHp(g), 0, 1), hit = clamp(1 - (g.t - B.bwHit) / 0.18, 0, 1), T = TEAM[B.side], H = BAR.h;
     const fl = frac < 0.3 ? 0.75 + 0.25 * Math.sin(t * 30 + B.id) : 1; // weak: it flickers
     const bot = [], top = [];
     for (let i = 0; i < BWV.n; i++) { const q = -1 + 2 * i / (BWV.n - 1), dv = q * BAR.half, u = B.u + B.bwF * (BAR.off - BAR.bow * q * q); bot.push(P(u, B.v + dv, 0)); top.push(P(u, B.v + dv, H * (1 - 0.18 * q * q))); }

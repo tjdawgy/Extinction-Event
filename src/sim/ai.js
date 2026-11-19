@@ -376,7 +376,7 @@ function aiUpdate(g, s, dt) {
       }
       if (!tryTrain(g, s, pick).ok) break;
       log.trained[pick] = (log.trained[pick] || 0) + 1;
-      if (pick === 'skitterling' && rwB5b(g) && side.res.c - BROOD.cost >= reserve.c && fits(pick) && tryTrain(g, s, pick).ok) log.trained[pick]++; // v2.88 (batch 5b): broods in bulk, two at a time
+      if (pick === 'skitterling' && rwB5b(g) && side.res.c - broodCost(g) >= reserve.c && fits(pick) && tryTrain(g, s, pick).ok) log.trained[pick]++; // v2.88 (batch 5b): broods in bulk, two at a time
       used = popUsed(g, s);
     }
   }

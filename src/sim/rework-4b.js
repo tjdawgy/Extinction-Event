@@ -42,7 +42,7 @@ Object.assign(DMG, {
 });
 PSPEED.vbolt = 900;
 const RW4B_D = {
-  leviathan: () => { const C = UDEF.leviathan.carpet || { n: LEV.n, gap: LEV.gap }; return Object.assign({}, UDEF.leviathan, { range: LEV.reach, carpet: { n: C.n, gap: C.gap }, bombRun: true }); },
+  leviathan: g => { const C = UDEF.leviathan.carpet || { n: LEV.n, gap: LEV.gap }; return Object.assign({}, UDEF.leviathan, { range: LEV.reach, carpet: { n: C.n, gap: C.gap }, bombRun: true }, rwB6c(g) ? { dmg: B6C.levDmg } : {}); }, // v2.93: b6c's run bombs
   broodtyrant: () => Object.assign({}, UDEF.broodtyrant, { dmg: TYR.dmg, splash: TYR.splash, range: TYR.range, cd: TYR.cd, infest: true }),
   worldrender: () => Object.assign({}, UDEF.worldrender, { devour: { frac: LAND.frac, cap: LAND.cap }, lands: true }),
   voidcarrier: () => Object.assign({}, UDEF.voidcarrier, { weapon: 'vbolt', dmg: VC.dmg, cd: VC.cd, range: VC.range, hitsAir: true, splash: 0, preferB: undefined, node: UDEF.voidcarrier.node || { r: 120 }, vcSup: true }),

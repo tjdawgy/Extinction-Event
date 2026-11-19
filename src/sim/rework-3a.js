@@ -31,7 +31,7 @@ Object.assign(DMG, { latch: { light: 1.0, heavy: 1.0, vehicle: 1.0, air: 0, buil
 // The batch's own definitions (built from the current UDEF entry, so setBalance / setRedesign still apply underneath)
 const RW3A_D = {
   leaper: () => Object.assign({}, UDEF.leaper, { latch: true }),
-  riftstalker: () => Object.assign({}, UDEF.riftstalker, { chain: undefined, rsChain: true }),
+  riftstalker: g => Object.assign({}, UDEF.riftstalker, { chain: undefined, rsChain: true }, rwB6c(g) ? { dmg: B6C.rsDmg } : {}), // v2.93: b6c's blade
   parallax: () => { const d = Object.assign({}, UDEF.parallax, { swap: true }); delete d.leap; return d; },
   ravager: () => { const d = Object.assign({}, UDEF.ravager, { devour3: true }); delete d.bloodfrenzy; return d; },
 };
@@ -112,7 +112,7 @@ function latchRide(g, u, d, side, dt) {
   H.ltT = g.t + 0.1;
   if (g.t >= u.ltN) {
     u.ltN += LATCH.tick;
-    if (!side.hush) { damage(g, H, LATCH.dps * LATCH.tick * (sideBuff(g, u.side) ? NANO.dmg : 1) * outMul(g, u), 'latch', u.side, u); u.lastAct = g.t; u.ltF = Math.min(8, (u.ltF || 0) + 1); }
+    if (!side.hush) { damage(g, H, latchDps(g) * LATCH.tick * (sideBuff(g, u.side) ? NANO.dmg : 1) * outMul(g, u), 'latch', u.side, u); u.lastAct = g.t; u.ltF = Math.min(8, (u.ltF || 0) + 1); }
   }
   return true;
 }
