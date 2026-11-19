@@ -1,9 +1,11 @@
 // v2.70 (Phase 1, Three-Lane) in headless Chromium at both iPhone sizes: the map-select card, the army column (v2.74: All,
 // North, Centre and South on the left, each on screen, uncovered and 44 pt), orders per lane, the active lane, a fight at a
-// crossing, and the lane-map tip. Screenshots: docs/screenshots/threelane-{map,lanes,crossing}-<size>.png.
+// crossing, and the lane-map tip. Screenshots: tests/screenshots/ (docs/screenshots/ with EE_DOC_SHOTS=1): threelane-{map,lanes,crossing}-<size>.png.
 const test = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
+// v2.92 (batch 6b): screenshots go to the gitignored tests/screenshots, so a test run leaves the working tree clean; EE_DOC_SHOTS=1 writes docs/screenshots on purpose
+const SHOTS = process.env.EE_DOC_SHOTS ? path.join(__dirname, '..', 'docs', 'screenshots') : path.join(__dirname, 'screenshots'); require('fs').mkdirSync(SHOTS, { recursive: true });
 const { findPlaywright, PHONE, NARROW, openPage } = require('./browser-kit');
 
 const pw = findPlaywright();
@@ -11,7 +13,7 @@ const skip = !pw && 'playwright not installed';
 let browser;
 test.before(async () => { if (pw) browser = await pw.chromium.launch(); });
 test.after(async () => { if (browser) await browser.close(); });
-const shot = (page, name, dev) => page.screenshot({ path: path.join(__dirname, '..', 'docs', 'screenshots', `threelane-${name}-${dev.width}x${dev.height}.png`) });
+const shot = (page, name, dev) => page.screenshot({ path: path.join(SHOTS, `threelane-${name}-${dev.width}x${dev.height}.png`) });
 
 for (const dev of [PHONE, NARROW]) test(`Three-Lane at ${dev.width}×${dev.height}: map select, the lane column, orders per lane, a fight at a crossing`, { skip }, async () => {
   const { page, errors } = await openPage(browser, dev);

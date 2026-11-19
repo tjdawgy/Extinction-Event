@@ -1,5 +1,5 @@
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.91'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.92'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -19,9 +19,9 @@ const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
    match seed (g.fs): it never feeds a rule, so effects can change without changing a match. RNG.g is the game the streams
    belong to (set by newGame, update, deserialize and the entry points that can roll from the UI). RNG.legacy true sends
    both back to Math.random in v2.49's call order: the pinned replays in tests/determinism.test.js run that way. */
-const RNG = { legacy: false, g: null };
+const RNG = { legacy: false, g: null, ai: -1 }; // ai (v2.92, batch 6b): the side whose AI is rolling (its own stream, g.ar)
 const m32 = st => { let t = Math.imul(st ^ st >>> 15, 1 | st); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
-function simRnd() { const g = RNG.g; if (RNG.legacy || !g || g.rs === undefined) return Math.random(); g.rs = g.rs + 0x6D2B79F5 | 0; return m32(g.rs); }
+function simRnd() { const g = RNG.g; if (RNG.legacy || !g || g.rs === undefined) return Math.random(); if (RNG.ai >= 0 && g.ar) { const k = RNG.ai; g.ar[k] = g.ar[k] + 0x6D2B79F5 | 0; return m32(g.ar[k]); } /* v2.92: an AI's own dice (batch 6b) */ g.rs = g.rs + 0x6D2B79F5 | 0; return m32(g.rs); }
 function fxRnd() { const g = RNG.g; if (RNG.legacy || !g || g.fs === undefined) return Math.random(); g.fs = g.fs + 0x6D2B79F5 | 0; return m32(g.fs); }
 const rand = (a, b) => a + simRnd() * (b - a);
 const fxRand = (a, b) => a + fxRnd() * (b - a);

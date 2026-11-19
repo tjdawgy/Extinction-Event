@@ -137,7 +137,7 @@ test('AI: Bloomhost scores broods up and answers aircraft with Spitters and Need
 function skirm(s, kind, rw) {
   const S = kind === 'g' ? { f: ['bloomhost', 'lastfist'], u: [['skitterling', 560, -20, 12], ['spitter', 520, 30, 4], ['needlewing', 540, 60, 4]], v: [['rifle', 820, -10, 6], ['aircraft', 860, 20, 2], ['interceptor', 880, 40, 1], ['tank', 860, -40, 1]] }
     : { f: ['axiarchs', 'bloomhost'], u: [['shardling', 600, -20, 3], ['lancer', 580, 20, 3], ['wraithwing', 560, 50, 2]], v: [['skitterling', 820, 0, 10], ['thornback', 860, -30, 1], ['dreadthorn', 880, 20, 1], ['razorwing', 840, 50, 2], ['cloudwing', 860, 60, 1]] };
-  const g = s.rangeGame({ seed: 17, factions: S.f, rework: Object.assign({ b5c: false }, rw) }) /* v2.90: pinned before batch 5c (its key would be saved) */;
+  const g = s.rangeGame({ seed: 17, factions: S.f, rework: Object.assign({ b5c: false, b6side: false }, rw) }) /* v2.90: pinned before batch 5c (its key would be saved) */;
   for (const [t, u, v, n] of S.u) for (let i = 0; i < n; i++) s.rangeUnit(g, 0, t, u + (i % 4) * 12, v + Math.floor(i / 4) * 14);
   for (const [t, u, v, n] of S.v) for (let i = 0; i < n; i++) s.rangeUnit(g, 1, t, u + (i % 4) * 12, v + Math.floor(i / 4) * 14);
   s.rangeMode(g, 0, 'attack'); s.rangeMode(g, 1, 'attack');

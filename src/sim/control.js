@@ -40,11 +40,11 @@ function ctlTaken(g, s, skip) {
   return { add, clash };
 }
 const ctlOpen = (u, v, air) => u >= 8 && u <= L - 8 && Math.abs(v) <= (MAP_2D ? MAP.size.h / 2 - 16 : LANE_V - 6) && (air || !NAV.on || !navShut(u, v));
-function ctlFree(T, air, r, pu, pv, ok) { // the free spot nearest (pu, pv): rings CTRL.ring apart on screen, each walked evenly (ok: a further test a spot must pass)
-  for (let ring = 0; ring < CTRL.rings; ring++) {
+function ctlFree(T, air, r, pu, pv, ok, dir = 1) { // the free spot nearest (pu, pv): rings CTRL.ring apart on screen, each walked evenly (ok: a further test a spot must pass)
+  for (let ring = 0; ring < CTRL.rings; ring++) { // dir (v2.92, batch 6b): the side's facing, so both sides walk the rings as mirror images (1: as before)
     const rad = ring * CTRL.ring, n = ring ? Math.max(6, Math.round(2 * Math.PI * rad / CTRL.ring)) : 1, a0 = ring * 0.9;
     for (let i = 0; i < n; i++) {
-      const a = a0 + i * 2 * Math.PI / n, u = pu + Math.cos(a) * rad, v = pv + Math.sin(a) * rad / DY;
+      const a = a0 + i * 2 * Math.PI / n, u = pu + dir * Math.cos(a) * rad, v = pv + Math.sin(a) * rad / DY;
       if (ctlOpen(u, v, air) && !T.clash(u, v, air, r) && (!ok || ok(u, v))) return [u, v];
     }
   }
@@ -58,7 +58,7 @@ function ctlPack(g, s, us, cu, cv, own) {
   if (!own && NAV.on && navShut(cu, cv)) [cu, cv] = navOpen(cu, cv);
   for (const e of list) {
     const air = !!UDEF[e.type].air, r = ctlFoot(e.type);
-    const p = ctlFree(T, air, r, own ? e.u : cu, own ? e.v : cv);
+    const p = ctlFree(T, air, r, own ? e.u : cu, own ? e.v : cv, undefined, rwB6side(g) ? dirOf(s) : 1); // v2.92: mirrored per side (batch 6b)
     T.add(p[0], p[1], air, r); out.set(e.id, p);
   }
   return out;
@@ -102,7 +102,7 @@ function ctlFollow(g, s, id) {
       if ((u - B.u) * back >= 0) break; // reached the base without getting clear
     }
     if (!p0) p0 = [B.u, B.v];
-    const p = ctlFree(T, air, r, p0[0], p0[1], ok);
+    const p = ctlFree(T, air, r, p0[0], p0[1], ok, rwB6side(g) ? dirOf(s) : 1);
     T.add(p[0], p[1], air, r);
     if (Math.hypot(p[0] - e.u, p[1] - e.v) <= CTRL.arrive) ctlHold(e, p[0], p[1]);
     else { e.po = { o: 'go', u: p[0], v: p[1], back: 1 }; e.holdU = undefined; e.holdV = undefined; } // back: holding fire on the way, like Retreat

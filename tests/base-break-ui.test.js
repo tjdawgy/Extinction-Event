@@ -1,9 +1,11 @@
 // v2.69 (Phase 1, base-breaking): what the player sees of the new rules: a "Power failing" alert once per step from 15:00,
 // the failing guns drawn flickering with sparks and a warning bolt, and rubble on a destroyed building's pad (tapping it
-// says how long it has left). Screenshots go to docs/screenshots/basebreak-*.png.
+// says how long it has left). Screenshots go to tests/screenshots/ (docs/screenshots/ with EE_DOC_SHOTS=1): basebreak-*.png.
 const test = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
+// v2.92 (batch 6b): screenshots go to the gitignored tests/screenshots, so a test run leaves the working tree clean; EE_DOC_SHOTS=1 writes docs/screenshots on purpose
+const SHOTS = process.env.EE_DOC_SHOTS ? path.join(__dirname, '..', 'docs', 'screenshots') : path.join(__dirname, 'screenshots'); require('fs').mkdirSync(SHOTS, { recursive: true });
 const { findPlaywright, PHONE, NARROW, openPage } = require('./browser-kit');
 
 const pw = findPlaywright();
@@ -40,7 +42,7 @@ for (const dev of [PHONE, NARROW]) test(`at ${dev.width}×${dev.height}: Power f
   await page.evaluate(() => { for (let i = 0; i < 150; i++) update(game, TICK); game.t = BREAK.power.from + 90; for (const t of document.querySelectorAll('#toasts > *, #alerts > *')) t.remove(); applyZoom(1.15); cam.x = game.sides[0].hq.u + 160; clampCam(); drawNow(); });
   await page.waitForTimeout(300);
   await page.evaluate(() => drawNow());
-  await page.screenshot({ path: path.join(__dirname, '..', 'docs', 'screenshots', `basebreak-${dev.width}x${dev.height}.png`) });
+  await page.screenshot({ path: path.join(SHOTS, `basebreak-${dev.width}x${dev.height}.png`) });
   assert.deepStrictEqual(errors, []);
   await page.close();
 });

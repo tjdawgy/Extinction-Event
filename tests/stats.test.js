@@ -23,7 +23,7 @@ test('a full AI-vs-AI match: samples every 10 s, counts that agree with the matc
     assert.ok(sum(D.c) > 0 && sum(D.e) > 0, 'income recorded');
     // income + Salvage, never sales: what the match log counts the same way, give or take the last partial window
     const gathered = T[s].earn[0] + (T[s].salv || 0);
-    assert.ok(sum(D.c) <= gathered + 1 && sum(D.c) >= gathered - 400, `credits ${sum(D.c)} vs ${gathered}`);
+    assert.ok(sum(D.c) <= gathered + 1 + D.c.length * 0.5 && sum(D.c) >= gathered - 400, /* v2.92: each 10 s sample is rounded, up to half a credit each */ `credits ${sum(D.c)} vs ${gathered}`);
     assert.deepStrictEqual(D.built, T[s].trained, 'units built = the log\'s trained');
     assert.deepStrictEqual(D.lost, T[s].lost, 'units lost');
     assert.deepStrictEqual(D.bBuilt, T[s].bBuilt, 'buildings built');

@@ -1,10 +1,12 @@
 // v2.72 (Phase 1, Proposal F) in headless Chromium at both iPhone sizes: the map-select screen has a row of condition
 // toggles (the picked map's, plus Random) and a line describing them, all on screen; the choice is remembered and reaches
 // the match; Random picks one the map allows; the match shows its conditions as icons on the minimap; a meteor's warning
-// circle; the post-match screen lists the conditions. Screenshots: docs/screenshots/conditions-{select,meteor}-<size>.png.
+// circle; the post-match screen lists the conditions. Screenshots: tests/screenshots/ (docs/screenshots/ with EE_DOC_SHOTS=1): conditions-{select,meteor}-<size>.png.
 const test = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
+// v2.92 (batch 6b): screenshots go to the gitignored tests/screenshots, so a test run leaves the working tree clean; EE_DOC_SHOTS=1 writes docs/screenshots on purpose
+const SHOTS = process.env.EE_DOC_SHOTS ? path.join(__dirname, '..', 'docs', 'screenshots') : path.join(__dirname, 'screenshots'); require('fs').mkdirSync(SHOTS, { recursive: true });
 const { findPlaywright, PHONE, NARROW, openPage } = require('./browser-kit');
 
 const pw = findPlaywright();
@@ -12,7 +14,7 @@ const skip = !pw && 'playwright not installed';
 let browser;
 test.before(async () => { if (pw) browser = await pw.chromium.launch(); });
 test.after(async () => { if (browser) await browser.close(); });
-const shot = (page, name, dev) => page.screenshot({ path: path.join(__dirname, '..', 'docs', 'screenshots', `conditions-${name}-${dev.width}x${dev.height}.png`) });
+const shot = (page, name, dev) => page.screenshot({ path: path.join(SHOTS, `conditions-${name}-${dev.width}x${dev.height}.png`) });
 
 for (const dev of [PHONE, NARROW]) test(`conditions at ${dev.width}×${dev.height}: toggles, Random, minimap icons, a meteor, the report`, { skip }, async () => {
   const { page, errors } = await openPage(browser, dev);

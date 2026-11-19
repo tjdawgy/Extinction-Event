@@ -1,0 +1,43 @@
+/* ---------- Batch 6b, Part A (v2.92, docs/FACTION_REWORK.md "Batch 6b"): the side-bias fix ----------
+   REWORK.b6side, stored per game in g.rw like the rework batches (rwB6side). Off: everything plays exactly as in v2.91 and
+   nothing below runs or is saved. A bug fix: no unit, cost, AI strategy or balance value changes. The causes the batch 6b
+   diagnosis found (audit/sim/mirror6b.js, audit/sim/sidebias6b.js; docs/FACTION_REWORK.md "Batch 6b" has the evidence),
+   each fixed at its root:
+   1. Update order. update() ran every unit and building in the order of the entity list, and damage lands at once, so whoever
+      sits earlier in the list moves, aims and strikes first in every tick, and the other side always answers what has already
+      happened. On: the units and buildings run in a fresh seeded random order each tick (side6Order), drawn from the game's own
+      order stream (g.os), so neither side, nor any spot in the list, goes first more often than another.
+   2. AI order and start. side 1's AI always decided before side 0's in a tick, and side 0's first decision came at 1 s, side
+      1's at 1.5 s. On: both decide first at SIDE6.aiT0 and the order is a seeded coin each tick (side6Ai).
+   3. AI dice. Both AIs drew their rolls (the personality and opening, the T2 path rolls, the decision timing) from the match's
+      one stream, side 1 first, interleaved with everything else; so at a given seed the slot a faction plays from decided the
+      dice it got (with seeds 7-11 every Turtle personality fell to side 0). On: each side's AI rolls from its own stream
+      (g.ar[s]), seeded from the match seed and the side's faction, never its slot (side6Seed): a faction's AI gets the same
+      dice whichever side it plays, and the AIs' rolls no longer depend on each other's or on the fight's. RNG.ai names the
+      side whose AI is rolling (simRnd reads it); everything else stays on the match stream. */
+const rwB6side = g => !!(g && g.rw && g.rw.b6side);
+const SIDE6 = { aiT0: 1, ord: 0x51DE0B6, ai: 0x0A1D1CE5 };
+function side6Seed(seed, k) { // a well-mixed 32-bit state from the match seed and a key (murmur3's finaliser)
+  let h = (seed ^ Math.imul(k + 1, 0x9E3779B1)) | 0;
+  h = Math.imul(h ^ (h >>> 16), 0x85EBCA6B); h = Math.imul(h ^ (h >>> 13), 0xC2B2AE35);
+  return (h ^ (h >>> 16)) | 0;
+}
+function side6Init(g) { // newGame, once the sides and their factions exist (before any AI rolls)
+  const seed = g.seed >>> 0;
+  g.os = side6Seed(seed ^ SIDE6.ord, 0);
+  g.ar = [0, 1].map(s => side6Seed(seed ^ SIDE6.ai, FACTION_KEYS.indexOf(facOf(g.sides[s].faction)) + 1));
+}
+const side6Rnd = g => { g.os = g.os + 0x6D2B79F5 | 0; return m32(g.os); };
+// The units and buildings of this tick in a seeded random order (the first n of the list: what update() runs)
+function side6Order(g, n) {
+  const o = g.ents.slice(0, n);
+  for (let i = n - 1; i > 0; i--) { const j = Math.floor(side6Rnd(g) * (i + 1)), t = o[i]; o[i] = o[j]; o[j] = t; }
+  return o;
+}
+function side6Ai1(g, s, dt) { RNG.ai = s; try { aiUpdate(g, s, dt); aiSpotter(g, s); } finally { RNG.ai = -1; } }
+function side6Ai(g, dt) { // both AIs (side 0's only when it is AI-played), a seeded coin for which decides first
+  const first = side6Rnd(g) < 0.5 ? 0 : 1;
+  for (const s of [first, 1 - first]) if (s === 1 || g.auto) side6Ai1(g, s, dt);
+}
+function side6Persona(g, s, f) { RNG.ai = s; try { return f(); } finally { RNG.ai = -1; } } // a side's personality, rolled from its own stream
+

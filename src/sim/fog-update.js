@@ -112,8 +112,9 @@ function update(g, dt) {
   indexFoes(foes[0], dt); indexFoes(foes[1], dt); // v2.37: lane-sorted, so target searches look only near the searcher
   RDG.list = null; if (rwB2b(g)) update2b(g); if (rwB3a(g)) update3a(g); /* v2.84: remains */ if (rwB3b(g)) update3b(g, dt); /* v2.85: barriers, knocks, Bulwark regen */ if (rwB4a(g)) update4a(g); /* v2.86: marked targets */ if (rwB4b(g)) update4b(g, dt); if (rwB5b(g)) update5b(g); /* v2.88: swarm surge */ /* v2.87: pustules */ // v2.83: Titan cover, Worldbreaker cracks and ridges (RDG.list: this game's ridges, while its units move)
   const n = g.ents.length; NAV.now = g.t; // v2.65: the clock the navigation paths age by
+  const ord = rwB6side(g) ? side6Order(g, n) : null; // v2.92 (batch 6b): a seeded random order each tick, so no side acts first
   for (let i = 0; i < n; i++) {
-    const e = g.ents[i];
+    const e = ord ? ord[i] : g.ents[i];
     if (e.hp <= 0) continue;
     if (e.kind === 'b') updateBuilding(g, e, foes[e.side], dt); else { updateUnit(g, e, foes[e.side], dt); if (NAV.on && e.hp > 0 && !UDEF[e.type].air && !e.leaping && navShut(e.u, e.v)) navEject(e); } // v2.65: never inside a wall
   }
@@ -138,8 +139,10 @@ function update(g, dt) {
   updateAbilities(g, dt);
   if (Math.floor(g.t * 2) !== Math.floor(t0 * 2)) { updateOrders(g); if (MECH7C.on) updateRallyWait(g); }
   updateStorm(g, dt, t0);
+  if (rwB6side(g)) side6Ai(g, dt); else { // v2.92 (batch 6b): a seeded coin for which AI decides first, each rolling its own dice
   aiUpdate(g, 1, dt); aiSpotter(g, 1);
   if (g.auto) { aiUpdate(g, 0, dt); aiSpotter(g, 0); }
+  }
   if (g.ents.some(e => e.hp <= 0)) g.ents = g.ents.filter(e => e.hp > 0);
   resolveEnd(g);
 }

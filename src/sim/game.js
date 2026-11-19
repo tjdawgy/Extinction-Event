@@ -143,15 +143,21 @@ function newGame(diffKey, opts = {}) {
   seedGame(g, opts.seed); // v2.50: the match's random streams (opts.seed, else a fresh one)
   for (let s = 0; s < 2; s++) {
     g.sides.push({ faction: (opts.factions && opts.factions[s]) || DEFAULT_FACTION, res: { c: START_RES.c, e: START_RES.e }, stance: s === 0 && !(opts.autoPlayer && AUTO_STANCE.retreat) ? 'hold' : 'retreat', stanceAt: 0, pushTo: null, slots: new Array(SLOT_COUNT).fill(null),
-      hq: null, aiT: 1 + s * 0.5, stats: { built: 0, kills: 0, lost: 0, earned: 0 }, lastAlert: -99, buff: false, ab: newAb(0, (opts.factions && opts.factions[s]) || DEFAULT_FACTION), abK: null, abEnd: 0, orders: newOrders(), sel: null, warp: null, salv: newSalv(), od: 0 }); // od: Overdrive's end time (v2.32) // salv: Salvage (v2.30); warp: the player's chosen warp point (Axiarchs, v2.26); null = the default
+      hq: null, aiT: rwB6side(g) ? SIDE6.aiT0 : 1 + s * 0.5, /* v2.92 (batch 6b): both AIs start together */ stats: { built: 0, kills: 0, lost: 0, earned: 0 }, lastAlert: -99, buff: false, ab: newAb(0, (opts.factions && opts.factions[s]) || DEFAULT_FACTION), abK: null, abEnd: 0, orders: newOrders(), sel: null, warp: null, salv: newSalv(), od: 0 }); // od: Overdrive's end time (v2.32) // salv: Salvage (v2.30); warp: the player's chosen warp point (Axiarchs, v2.26); null = the default
     const hq = mkBuilding(g, s, 'hq', -1);
     hq.built = true; hq.progress = 1; hq.hp = hq.maxHp; hq.shp = hq.maxShp;
     g.sides[s].hq = hq;
   }
   // secret: never shown until the match is over; opts.ai: its preset (v2.38). v2.40: with none given, Hard plays the Hard preset
   const presetFor = (ai, dk) => ai || (dk === 'hard' ? 'hard' : undefined);
+  if (rwB6side(g)) { // v2.92 (batch 6b): each AI rolls its personality from its own stream (seeded by the match and its faction)
+    side6Init(g);
+    g.sides[1].persona = side6Persona(g, 1, () => rollPersona(opts.persona, presetFor(opts.ai, g.diffKey), g.sides[1].faction, g.diffKey));
+    if (g.auto) g.sides[0].persona = side6Persona(g, 0, () => rollPersona(opts.autoPersona, presetFor(opts.autoAi, g.autoDiff), g.sides[0].faction, g.autoDiff));
+  } else {
   g.sides[1].persona = rollPersona(opts.persona, presetFor(opts.ai, g.diffKey), g.sides[1].faction, g.diffKey);
   if (g.auto) g.sides[0].persona = rollPersona(opts.autoPersona, presetFor(opts.autoAi, g.autoDiff), g.sides[0].faction, g.autoDiff);
+  }
   g.log = newLog(0); // the match log (never read by the SIM)
   g.stats = newStats(0); // v2.51: the stats tracker (never read by the SIM)
   setupConds(g, opts.cond); // v2.72: battlefield conditions (none unless asked for)

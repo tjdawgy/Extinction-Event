@@ -1,9 +1,11 @@
 // v2.71 (Phase 1, Proposal E) in headless Chromium at both iPhone sizes: on Three-Lane the relic's neutral guards (gold),
 // the relic and a repair depot are drawn; taking a relic shows a toast with its reward. Screenshots:
-// docs/screenshots/special-{relic,depot}-<size>.png.
+// tests/screenshots/ (docs/screenshots/ with EE_DOC_SHOTS=1): special-{relic,depot}-<size>.png.
 const test = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
+// v2.92 (batch 6b): screenshots go to the gitignored tests/screenshots, so a test run leaves the working tree clean; EE_DOC_SHOTS=1 writes docs/screenshots on purpose
+const SHOTS = process.env.EE_DOC_SHOTS ? path.join(__dirname, '..', 'docs', 'screenshots') : path.join(__dirname, 'screenshots'); require('fs').mkdirSync(SHOTS, { recursive: true });
 const { findPlaywright, PHONE, NARROW, openPage } = require('./browser-kit');
 
 const pw = findPlaywright();
@@ -11,7 +13,7 @@ const skip = !pw && 'playwright not installed';
 let browser;
 test.before(async () => { if (pw) browser = await pw.chromium.launch(); });
 test.after(async () => { if (browser) await browser.close(); });
-const shot = (page, name, dev) => page.screenshot({ path: path.join(__dirname, '..', 'docs', 'screenshots', `special-${name}-${dev.width}x${dev.height}.png`) });
+const shot = (page, name, dev) => page.screenshot({ path: path.join(SHOTS, `special-${name}-${dev.width}x${dev.height}.png`) });
 const look = (page, u, v) => page.evaluate(([u, v]) => { applyZoom(1.25); cam.x = u; cam.y = v * DY - (Y_TOP + Y_BOT) / 2; clampCam(); for (const t of document.querySelectorAll('#toasts > *')) t.remove(); drawNow(); }, [u, v]);
 
 for (const dev of [PHONE, NARROW]) test(`relic and repair depot at ${dev.width}×${dev.height}`, { skip }, async () => {
