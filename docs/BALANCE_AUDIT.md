@@ -525,3 +525,98 @@ Equal-cost Test Range fights (art6b.js, 20 runs, Last Fist holding): typical vs 
    Its efficiency target (about 300) was not reached: below 45 a salvo Last Fist loses its typical fight with the Axiarchs (FACTION_REWORK
    "Batch 6b"). *Lever:* the Sniper next if backline value stays the concern.
 10. **The Turtle persona loses** (14 wins in 60 sides with both on) and **the Bilecaster is weak** (88 / 100 spent).
+
+## 10. Batch 6c, Part A (v2.92 measured, no game change): persona-balanced self-play and the updated ranked list
+
+### 10.1 The design
+
+Since batch 6b each AI's personality comes from its own stream (match seed and faction), so a few seeds give each faction only a
+few personality draws (seeds 7-11 gave Last Fist the Boomer 4 times in 5). audit/sim/selfplay-6c.js sets the personalities from
+the harness instead (newGame's `autoPersona` / `persona` options: no game code changed): every faction plays each of Hard's three
+personalities (the union of its per-faction pools: Boomer, Economist, Turtle; Bloomhost and the Axiarchs never roll the Economist
+on their own) against each personality of the other faction, on each map, against each opponent faction, from both sides: 3 maps
+× 6 ordered pairings × 9 personality pairs = 162 Hard vs Hard matches, a match and its mirror sharing a seed. Every switch at its
+default (on). 162 matches, 0 errors. Tables: audit/logs-p1/selfplay6c-a1/report6c.md (with 95% Wilson intervals) and report.md
+(the section 2 tables: tiers, units, damage per credit, paths, fast matches); audit/sim/selfplay-6c-report.js.
+
+### 10.2 Faction win rates
+
+| faction | W-L-D | win rate (95% CI) | of decided | natural personality mix |
+|---|---|---|---|---|
+| Last Fist | 65-34-9 | 60% (51-69) | 66% (56-74) | 63% (50-75) |
+| Bloomhost | 48-46-14 | 44% (35-54) | 51% (41-61) | 62% (47-75) |
+| Axiarchs | 35-68-5 | 32% (24-42) | 34% (26-44) | 19% (10-34) |
+
+"Natural mix" weights each match by how likely Hard's own dice make those two personalities (Last Fist Boomer 1/2, Economist and
+Turtle 1/4; Bloomhost Boomer 3/4, Turtle 1/4; Axiarchs Boomer 1/3, Turtle 2/3): the Axiarchs' pool is two-thirds Turtle, the
+weakest personality, which is most of their gap in normal play.
+
+| pairing (first-named) | Classic | Two-Lane | Three-Lane | all (54) |
+|---|---|---|---|---|
+| Last Fist vs Bloomhost | 14-3-1, 78% (55-91) | 8-8-2, 44% (25-66) | 9-3-6, 50% (29-71) | 31-14-9, 57% (44-70) |
+| Last Fist vs Axiarchs | 9-9-0, 50% (29-71) | 13-5-0, 72% (49-88) | 12-6-0, 67% (44-84) | 34-20-0, 63% (50-75) |
+| Bloomhost vs Axiarchs | 10-8-0, 56% (34-75) | 12-2-4, 67% (44-84) | 12-5-1, 67% (44-84) | 34-15-5, 63% (50-75) |
+
+Per faction and map: Last Fist 64% / 58% / 58% (Classic / Two-Lane / Three-Lane); Bloomhost 36% / 56% / 42%; Axiarchs 47% / 19%
+(10-35) / 31%. Sides: 75-73-14 (side 1 49% of decided, 41-57). Median length 13:58 (Classic 11:04, Two-Lane 16:54, Three-Lane
+14:07); 91% (86-95) of matches end by an HQ destroyed, 14 draws.
+
+**Does Bloomhost beat Last Fist in self-play?** No. Last Fist won 31-14-9 (57% of all, 69% of decided, 54-80), 14-3-1 on Classic;
+even on Two-Lane it is level (8-8-2). The Test Range's 0-20 at equal cost (6b) is a set-piece fight (Last Fist holding with
+Artillery set up against the AI's Bloomhost ranged mix); in real matches Last Fist's economy, Turrets and timing decide first.
+
+### 10.3 Personalities
+
+| personality | W-L-D (all factions) | win rate (95% CI) | Last Fist | Bloomhost | Axiarchs |
+|---|---|---|---|---|---|
+| Boomer | 77-25-6 | 71% (62-79) | 33-3-0, 92% (78-97) | 26-7-3, 72% (56-84) | 18-15-3, 50% (34-66) |
+| Economist | 39-53-16 | 36% (28-46) | 17-14-5, 47% | 12-14-10, 33% | 10-25-1, 28% |
+| Turtle | 32-70-6 | 30% (22-39) | 15-17-4, 42% | 10-25-1, 28% | 7-28-1, 19% (10-35) |
+
+Boomer vs Economist 81%, Boomer vs Turtle 86%, Economist vs Turtle 58% (all factions). The opening matters more than the faction.
+
+### 10.4 Units (damage and killed value per 100 spent, 108 sides per faction)
+
+Last Fist: Sniper 387, Hydra 333, Artillery 297 (427 trained), Titan 250, Tank 230, Aircraft 179, Heavy 164, Marine 162, Interceptor
+157, Flame Tank 105, Leviathan 81 (26 trained in 22 sides, 5 kills). Bloomhost: Brood Tyrant 285, Ruinmaw 224, Spitter 222,
+Ravager 168, Bulwark 146, Razorwing 138, Skitterling 124 (7,028 trained), Gorebore 117, Thornback 105, Bilecaster 104, Dreadthorn
+86, Cloudwing 70, Needlewing 64, Leaper 36 (505 trained, 48 kills). Axiarchs: Worldbreaker 426, Shardstorm 368, Sovereign 304,
+Lancer 264, Wraithwing 216, Marksman 166, Prismwing 165, Bastion 116, Eventide 115, Voidcarrier 96, Gravemantle 78, Shardling 74,
+Parallax 71, Severance 68, Riftstalker 40 (571 trained, 551 lost). Tech Lab role never at T2 in 30 / 27 / 33 of 108 sides.
+
+### 10.5 Loose ends from 6b
+
+**Artillery hit rate on moving targets (R7: 70% → 51% with b6side).** Explained: it is the mirrored spacing of b6side (`ctlFree`'s
+dir), not the update-order shuffle and not the Artillery (audit/sim/arthit6c.js, audit/logs-p1/arthit6c/arthit.txt). R7's targets
+are side 1 under direct control, ordered to walk between two spots every 5 s. With b6side the spot search walks its rings as side
+1's mirror image, which gives the unit every Artillery aims at a farther spot at each end: it never finishes a leg inside the 5 s
+(standing still 13% of ticks → 0%, under a go order 84% → 100%; path per leg 171 → 195; 2 Tanks: 148 → 167). Shells aim where the
+target is when they fire and fly about 1.3 s, so a target that is always walking is missed more (median aim-to-target distance at
+landing 30 → 48). b6side on with the shuffle off: 51% (unchanged); b6side on with the spacing not mirrored: 67% (v2.91 70%); 2 Tanks
+45% / 57% (v2.91 54%). A property of R7's walking pattern, not of the Artillery or the order fix.
+
+**Slow suite:** run in full on v2.92 (section 11 lists results). **Tests pinned to switches off:** see docs/FACTION_REWORK.md
+"Batch 6c" and audit/logs-p1/pinned6c/pinned-tests.md.
+
+### 10.6 Ranked list, updated (A1 plus the Test Range, audit/sim/b6c-range.js on v2.92, 10 seeds × both orientations)
+
+1. **Axiarchs weakest** (32%, 24-42 balanced; 19% with their natural, Turtle-heavy pool; 7-25-4 on Two-Lane). Causes in the data:
+   the Turtle personality (19% for the Axiarchs) and weak melee and divers (Shardling 74, Riftstalker 40, Parallax 71 per 100 spent).
+   *Lever:* not in batch 6c's scope (the Turtle persona, the Axiarch Hard pool `kinds`). Reported only.
+2. **Boomer opening dominates; Turtle and Economist lose** (71% vs 30% and 36%). *Lever:* the Turtle persona's dials (out of scope).
+3. **Bastion barrier blocks direct fire too well.** Re-measured: Tanks + Marines need 2,230 with the barrier against 865 without
+   (+158%); Lancers 825 against 495 (+67%). **Supported** for batch 6c by the Test Range, with a caution: the Axiarchs are the weakest
+   faction in self-play, and Bastions do only 116 damage per 100 spent there; the change should stay within the target (+40-60%).
+4. **Broods win the early game cost for cost.** Re-measured: broods beat equal-cost Marines 20-0 (keeping 64% of their value),
+   Shardlings 20-0 (76%), Lancers 20-0 (80%). In self-play the Skitterling does 124 per 100 spent and Bloomhost is not dominant
+   (44%); Bloomhost beats the Axiarchs 63%. **Supported** (the fights are lopsided at every seed).
+5. **Divers trade badly.** Leaper 36, Riftstalker 40 damage per 100 spent in self-play (6b's Artillery preference changed little;
+   they were 34 and 33 in 6a). Head-on against equal-cost Marines: Leapers already win 20-0, Riftstalkers lose 0-20. **Supported**
+   (still clearly weak); the Leaper's lever (`LATCH.dps`) only acts on latched hosts, so it does not change the Marine fight.
+6. **Leviathan.** 0.25× the pre-rework damage per second on every target (one Tank 26.3 → 6.8); 26 trained in 162 matches, 5 kills,
+   81 per 100 spent. **Supported.**
+7. **Top-tier air rare** (T3 aircraft in 18-25% of sides) and **the Tech Lab role skipped** (never T2 in 25-31% of sides): AI tech
+   timing, out of scope.
+8. **Last Fist strongest** (60%, 51-69), mostly through the Boomer (92%); against Bloomhost 57%. Not tuned (out of scope).
+9. **Ranged backline value:** Worldbreaker 426, Sniper 387, Shardstorm 368, Hydra 333, Artillery 297 (6b's target of about 300 now
+   met in self-play). The Needlewing (64) and Severance (68) are weak.
