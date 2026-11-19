@@ -1,0 +1,9 @@
+b6c-range on 2.92; switches {}; B6C (none); seeds 11,12,13,14,15,16,17,18,19,20 × both orientations
+
+Bastion barrier (BAR.hp in play: 600): cost to break 2 Bastions + 4 Lancers (holding), 0.25 steps of the mix, 12+ of 20 wins
+
+| attacking mix | barrier off (b3b off) | barrier on | barrier raises it by |
+|---|---|---|---|
+| Tanks + Marines (1:2) | 865 | 2230 | +158% |
+| Lancers | 495 | 825 | +67% |
+

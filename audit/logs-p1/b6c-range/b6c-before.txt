@@ -1,0 +1,26 @@
+b6c-range on 2.92; switches {}; B6C (none); seeds 11,12,13,14,15,16,17,18,19,20 × both orientations
+
+Broods (one order: 4 Skitterlings; price in play 120) against equal-cost armies, both attack
+
+| vs | Skitterlings (price each) | W-L | win share | value kept in wins |
+|---|---|---|---|---|
+| 18 Marines (810) | 27 at 30 | 20-0 | 100% | 64% |
+| 10 Shardlings (800) | 27 at 30 | 20-0 | 100% | 76% |
+| 6 Lancers (990) | 33 at 30 | 20-0 | 100% | 80% |
+
+Leviathan damage per second (R1 setup; 3 seeds)
+
+| target | pre-rework (b4b off) dmg/s | now dmg/s | now / pre-rework |
+|---|---|---|---|
+| one Tank | 26.3 | 6.8 | 0.26 |
+| 6 Tanks, packed | 141.6 | 35.1 | 0.25 |
+| 12 Marines, packed | 152.4 | 37.4 | 0.25 |
+| one Refinery (building) | 89.2 | 21.5 | 0.24 |
+
+Divers head-on against equal-cost Marines (both attack)
+
+| fight | diver W-L | diver damage per 100 spent |
+|---|---|---|
+| 9 leaper (900) vs 20 Marines | 20-0 | 66 |
+| 5 riftstalker (950) vs 21 Marines | 0-20 | 77 |
+
