@@ -20,7 +20,7 @@ const hqShieldTxt = (rw, your = 'your') => (rw || REWORK).b6hq ? `Shielded while
    - latchDps: a latched Leaper's damage per second (LATCH.dps 10); rsDmg: the Riftstalker's blade (18).
    The values and the measurements behind them are in docs/FACTION_REWORK.md "Batch 6c" (audit/sim/b6c-range.js). */
 const rwB6c = g => !!(g && g.rw && g.rw.b6c);
-const B6C = { barHp: 600, broodCost: 120, levDmg: 35, latchDps: 10, rsDmg: 18, rsHeavy: 0.9, rsVeh: 0.6 };
+const B6C = { barHp: 300, broodCost: 164, levDmg: 90, latchDps: 55, rsDmg: 23, rsHeavy: 1.5, rsVeh: 1.4 }; // v2.92: 600, 120, 35, 10, 18, 0.9, 0.6 (docs/FACTION_REWORK.md "Batch 6c")
 // The Riftstalker's blade against armour with b6c on (a weapon of its own, so v2.92's riftblade is untouched): light stays 1.5 (a
 // Marine must still take two blows, so it never wins head-on against Marines), heavy and vehicle from B6C (the second lever)
 DMG.riftblade6 = Object.defineProperties({ light: DMG.riftblade.light, air: DMG.riftblade.air, building: DMG.riftblade.building }, { heavy: { get: () => B6C.rsHeavy, enumerable: true }, vehicle: { get: () => B6C.rsVeh, enumerable: true } });

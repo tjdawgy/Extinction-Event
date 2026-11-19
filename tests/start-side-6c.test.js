@@ -30,7 +30,7 @@ for (const [start0, color, fac, foe, map] of [['right', 'random', 'lastfist', 'b
     await page.evaluate(HELPERS);
     await start(page, map);
     const me = start0 === 'right' ? 1 : 0;
-    const a = await page.evaluate(() => ({ me: myS(), gme: game.me, tc: game.tc, ok: palOk(game.tc[0], game.tc[1]), fac: game.sides.map(s => s.faction), dir: game.sides.map(s => !!s.direct), per: game.sides.map(s => !!s.persona), diff: game.diffKey, camx: cam.x, hq: [hqU(0), hqU(1)], fogMine: viewFog(game) === game.fog[myS()], teams: [TEAM[0].main, TEAM[1].main], pal: game.tc.map(k => PALETTE[k].main), cd: document.querySelector('#cd small') && document.querySelector('#cd small').textContent, you: getComputedStyle(document.documentElement).getPropertyValue('--you').trim() }));
+    const a = await page.evaluate(() => ({ me: myS(), gme: game.me, tc: game.tc, ok: palOk(game.tc[0], game.tc[1]), fac: game.sides.map(s => s.faction), dir: game.sides.map(s => !!s.direct), per: game.sides.map(s => !!s.persona), diff: game.diffKey, camx: (camTouched = false, introCamera(1), camTouched = true, cam.x), /* the camera where the intro leaves it */ hq: [hqU(0), hqU(1)], fogMine: viewFog(game) === game.fog[myS()], teams: [TEAM[0].main, TEAM[1].main], pal: game.tc.map(k => PALETTE[k].main), cd: document.querySelector('#cd small') && document.querySelector('#cd small').textContent, you: getComputedStyle(document.documentElement).getPropertyValue('--you').trim() }));
     assert.strictEqual(a.me, me, 'the player plays the chosen side'); assert.strictEqual(a.gme, me ? 1 : undefined, 'g.me only when on the right');
     assert.ok(a.ok, `an allowed pair: ${a.tc}`); if (color !== 'random') assert.strictEqual(a.tc[me], color, 'your colour');
     assert.deepStrictEqual(a.teams, a.pal, 'the match is drawn in its colours'); assert.strictEqual(a.you.toLowerCase(), a.pal[me].toLowerCase(), 'the HUD carries your colour');
@@ -53,11 +53,11 @@ for (const [start0, color, fac, foe, map] of [['right', 'random', 'lastfist', 'b
     assert.ok(b.bar && b.bside === me, 'the Barracks is yours'); assert.ok(b.units >= 1, `${b.first} trained (${b.units})`);
     // a fight in the middle: your units and theirs near each other in view; taps select only yours, a tap on an enemy targets it
     const f = await page.evaluate(() => {
-      const me = myS(), u0 = L / 2 + (me ? 60 : -60), us = [], them = [];
-      for (let i = 0; i < 4; i++) us.push(spawnUnit(game, me, game.sides[me].faction === 'bloomhost' ? 'spitter' : game.sides[me].faction === 'axiarchs' ? 'lancer' : 'heavy', u0 + i * 8 * dirOf(me), -20 + i * 10));
-      for (let i = 0; i < 3; i++) them.push(spawnUnit(game, 1 - me, 'skitterling' in UDEF && game.sides[1 - me].faction === 'bloomhost' ? 'skitterling' : game.sides[1 - me].faction === 'axiarchs' ? 'shardling' : 'rifle', L / 2 + (me ? -120 : 120), -10 + i * 10));
-      for (const e of them) { e.hp = e.maxHp; } game.sides[1 - me].aiT = 1e9;
-      __look(L / 2, 0); SELN.clear(); refreshCtl();
+      const me = myS(), d = dirOf(me), u0 = hqU(me) + d * 260, us = [], them = [];
+      for (let i = 0; i < 4; i++) us.push(spawnUnit(game, me, game.sides[me].faction === 'bloomhost' ? 'spitter' : game.sides[me].faction === 'axiarchs' ? 'lancer' : 'heavy', u0 - i * 8 * d, -20 + i * 10));
+      for (let i = 0; i < 3; i++) them.push(spawnUnit(game, 1 - me, 'skitterling' in UDEF && game.sides[1 - me].faction === 'bloomhost' ? 'skitterling' : game.sides[1 - me].faction === 'axiarchs' ? 'shardling' : 'rifle', hqU(me) + d * 420, -10 + i * 10));
+      for (const e of them) { e.hp = e.maxHp; } game.sides[1 - me].aiT = 1e9; setStance(game, 1 - me, 'hold'); // the AI side stands and fights here
+      __look(hqU(me) + d * 340, 0); SELN.clear(); refreshCtl();
       return { us: us.map(e => e.id), them: them.map(e => e.id) };
     });
     const [x, y] = await page.evaluate(i => __scr(i), f.us[0]); await page.mouse.click(x, y); await page.waitForTimeout(80);
@@ -66,10 +66,14 @@ for (const [start0, color, fac, foe, map] of [['right', 'random', 'lastfist', 'b
     const [ex, ey] = await page.evaluate(i => __scr(i), f.them[0]); await page.mouse.click(ex, ey); await page.waitForTimeout(80);
     const t = await page.evaluate(i => { const e = game.ents.find(x => x.id === i); return { sel: [...SELN], po: e && e.po }; }, f.us[0]);
     assert.ok(!t.sel.includes(f.them[0]), 'an enemy is never selected');
-    assert.ok(t.po && t.po.o === 'target' && t.po.id === f.them[0], `your unit targets the tapped enemy (${JSON.stringify(t.po)})`);
-    await page.evaluate(() => { __run(15); });
-    const after = await page.evaluate(ids => ids.filter(i => game.ents.some(e => e.id === i && e.hp > 0)).length, f.them);
-    assert.ok(after < 3, `the fight happened (${after} of 3 enemies left)`);
+    assert.ok(t.po && t.po.o === 'target' && f.them.includes(t.po.id), `your unit targets the tapped enemy (${JSON.stringify(t.po)})`);
+    await page.evaluate(ids => selSet(myUnits().filter(e => ids.includes(e.id))), f.us); // the whole squad, then the enemy again
+    { const [qx, qy] = await page.evaluate(i => __scr(i), f.them[1]); await page.mouse.click(qx, qy); await page.waitForTimeout(80); }
+    const hp0 = await page.evaluate(ids => ids.reduce((a, i) => { const e = game.ents.find(x => x.id === i); return a + (e ? e.hp + (e.shp || 0) : 0); }, 0), f.them);
+    await page.evaluate(() => { __run(25); });
+    const after = await page.evaluate(([ids, us]) => ({ n: ids.filter(i => game.ents.some(e => e.id === i && e.hp > 0)).length, dbg: us.concat(ids).map(i => { const e = game.ents.find(x => x.id === i); return e ? [e.type, e.side, Math.round(e.u), Math.round(e.hp), e.po && e.po.o, e.tgt] : null; }), over: game.over, t: game.t }), [f.them, f.us]);
+    const hp1 = await page.evaluate(ids => ids.reduce((a, i) => { const e = game.ents.find(x => x.id === i); return a + (e && e.hp > 0 ? e.hp + (e.shp || 0) : 0); }, 0), f.them);
+    assert.ok(hp1 < hp0 * 0.8, `the fight happened: the enemies lost ${Math.round(hp0 - hp1)} of ${Math.round(hp0)} (${after.n} of 3 left) ${JSON.stringify(after)}`);
     // the end: the opponent's HQ falls → Victory; then a fresh page for a defeat from the same side
     const end = await page.evaluate(() => { const foe = game.sides[foeS()]; for (const e of game.ents) if (e.kind === 'b' && e.side === foeS() && e.type !== 'hq') { e.hp = 0; e.dead = true; } refreshShields(game); foe.hq.hp = 1; kill(game, foe.hq, myS()); for (let i = 0; i < 60 * 8 && !game.over; i++) update(game, TICK); return { over: game.over, winner: game.winner }; });
     assert.ok(end.over && end.winner === me, `you won (${JSON.stringify(end)})`);

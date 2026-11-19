@@ -236,7 +236,7 @@ function modern(rw) {
 }
 const FP_V292M = ['6a0a377251985b7370df356ed62745aef818e5a2ad702900d014e1f8cbad676f', 'ce6148f62bb896758eb144d0d78057b1ed271dd54936b1adfb74524fa3e875f1']; // recorded on v2.92's build (every switch of v2.92 on)
 const FP_V293H = ['d9797f62612636b81cb84040f67e8e7ebfc56eee562c5ce430410b962344338c', '3bb7596c848c90ea4375fcf52a7be3df3075447aa5bc09b6742e9ff2bcfc4866']; // b6hq on, b6c off
-const FP_V293 = ['PENDING', 'PENDING']; // b6hq and b6c on (the new-game default)
+const FP_V293 = ['befa62f5a80c0a846d48d2e8eb66e98817cb57019f58145389bc5d128501534f', 'a3bdd8829f759087e08b53cc166107d9ba33791bca824d250fcd8bc08e0d3db9']; // b6hq and b6c on (the new-game default)
 test('v2.93: modern matches: b6hq and b6c off play as v2.92 (FP_V292M); b6hq on (FP_V293H); both on (FP_V293)', () => {
   assert.deepStrictEqual(modern({ b6hq: false, b6c: false }), FP_V292M);
   assert.deepStrictEqual(modern({ b6hq: true, b6c: false }), FP_V293H);
