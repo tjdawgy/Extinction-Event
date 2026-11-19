@@ -12,12 +12,12 @@
 const { fork } = require('child_process'), fs = require('fs'), path = require('path'), crypto = require('crypto');
 const INSTR = require('./audit6a-instrument');
 if (process.argv[2] === '--one') {
-  const [map, f0, f1, seed, maxT, ident, rwArg] = process.argv.slice(3);
+  const [map, f0, f1, seed, maxT, ident, rwArg, p0, p1] = process.argv.slice(3); // v2.93 (batch 6c): p0, p1 force each side's personality (audit only: newGame's autoPersona / persona options)
   const RW = {}; for (const kv of (rwArg || '').split(',').filter(Boolean)) { const [k, v] = kv.split('='); RW[k] = v !== '0' && v !== 'false'; } // v2.92 (batch 6b): --rw b6art=0 etc.
   const { loadSim } = require('./load');
   const play = instr => {
     const S = loadSim(+seed, instr ? { instrument: INSTR } : {}); Object.assign(S.REWORK, RW);
-    const g = S.newGame('hard', { seed: +seed, map, autoPlayer: true, autoDiff: 'hard', factions: [f0, f1] }); g.countdown = 0;
+    const g = S.newGame('hard', { seed: +seed, map, autoPlayer: true, autoDiff: 'hard', factions: [f0, f1], autoPersona: p0 || undefined, persona: p1 || undefined }); g.countdown = 0;
     const R = { tier: [{}, {}], paths: [{}, {}], t3u: [null, null], t3air: [null, null], peakUnits: [0, 0] };
     let k = 0, err = null; const hs = [];
     const T3 = new Set(), T2 = new Set();

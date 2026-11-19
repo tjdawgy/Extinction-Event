@@ -1,0 +1,23 @@
+| variant | target | hit share | shells/run | target-ticks moving | spread u | spread v | median distance aim → nearest target at landing | shells landing >30 from any target | damage/min |
+|---|---|---|---|---|---|---|---|---|---|
+| b6side off (v2.91) | 6 Marines, moving | 70% | 215 | 87% | 13.7 | 17.8 | 29.6 | 49% | 2876 |
+| b6side off (v2.91) | 2 Tanks, moving | 54% | 217 | 94% | 6 | 3.2 | 40.4 | 66% | 783 |
+| b6side on (v2.92) | 6 Marines, moving | 51% | 216 | 88% | 14.3 | 20.5 | 48.2 | 70% | 2035 |
+| b6side on (v2.92) | 2 Tanks, moving | 45% | 201 | 100% | 5.7 | 3.2 | 48.2 | 76% | 539 |
+| on, shuffle off | 6 Marines, moving | 51% | 216 | 88% | 14.3 | 20.5 | 48.5 | 70% | 2033 |
+| on, shuffle off | 2 Tanks, moving | 45% | 207 | 100% | 5.7 | 3.2 | 47.6 | 75% | 574 |
+| on, spacing not mirrored | 6 Marines, moving | 67% | 216 | 87% | 13.7 | 17.8 | 31.1 | 52% | 2893 |
+| on, spacing not mirrored | 2 Tanks, moving | 57% | 216 | 94% | 6 | 3.2 | 38.3 | 64% | 818 |
+| on, both off (= off?) | 6 Marines, moving | 67% | 216 | 87% | 13.7 | 17.8 | 31.1 | 52% | 2902 |
+| on, both off (= off?) | 2 Tanks, moving | 56% | 216 | 94% | 6 | 3.2 | 39.4 | 64% | 810 |
+
+The unit every Artillery is ordered onto (the first target; R7 re-targets it every 0.5 s): its share of ticks standing still, of ticks under a go order (still walking to its spot), and its path per 5 s leg (3 seeds):
+
+| target | spacing | standing still | walking | path per leg |
+|---|---|---|---|---|
+| 6 Marines | b6side off | 13% | 84% | 171 |
+| 6 Marines | b6side on | 0% | 100% | 195 |
+| 6 Marines | on, not mirrored | 13% | 84% | 171 |
+| 2 Tanks | b6side off | 13% | 82% | 148 |
+| 2 Tanks | b6side on | 0% | 97% | 167 |
+| 2 Tanks | on, not mirrored | 13% | 82% | 148 |
