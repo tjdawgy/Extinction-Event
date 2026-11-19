@@ -1,0 +1,6 @@
+{"map":"classic","f":["lastfist","axiarchs"],"seed":7,"t":400.0166666666315,"winner":-1,"checks":240,"same":true,"err":null}
+{"map":"classic","f":["lastfist","bloomhost"],"seed":7,"t":400.0166666666315,"winner":-1,"checks":240,"same":true,"err":null}
+{"map":"classic","f":["bloomhost","lastfist"],"seed":7,"t":400.0166666666315,"winner":-1,"checks":240,"same":true,"err":null}
+{"map":"classic","f":["bloomhost","axiarchs"],"seed":7,"t":400.0166666666315,"winner":-1,"checks":240,"same":true,"err":null}
+{"map":"classic","f":["axiarchs","lastfist"],"seed":7,"t":366.9333333333283,"winner":0,"checks":220,"same":true,"err":null}
+{"map":"classic","f":["axiarchs","bloomhost"],"seed":7,"t":285.7000000000688,"winner":1,"checks":171,"same":true,"err":null}
