@@ -416,10 +416,10 @@ function drawArt(c, b, T, t, tier) { // the cached body (drawn live until it is 
   art[1](c, T, t, b, tier);
   dmgLive5(c, b, t);
 }
-// v2.93 (batch 6c, b6hq): a badge at the top of an HQ's shield: a small shield and the number of buildings holding it up
-function drawHolders(c, n, T) {
-  const y = -150, w = n > 9 ? 40 : 32;
-  c.save();
+// v2.93 (batch 6c, b6hq): a badge on an HQ's shield: a small shield and the number of buildings holding it up
+function drawHolders(c, n, T, side) {
+  const x0 = 72 * dirOf(side), y = -92, w = n > 9 ? 40 : 32; // on the shield's edge, on the side facing the field (below the top bar)
+  c.save(); c.translate(x0, 0);
   c.fillStyle = 'rgba(8,14,22,0.82)'; c.strokeStyle = `rgba(${T.glow},0.95)`; c.lineWidth = 2;
   c.beginPath(); c.roundRect ? c.roundRect(-w / 2, y - 11, w, 22, 8) : c.rect(-w / 2, y - 11, w, 22); c.fill(); c.stroke();
   const sx = -w / 2 + 9; // the shield glyph
@@ -455,7 +455,7 @@ function drawBuilding(c, b, time) {
     c.beginPath(); c.ellipse(0, 12, 96, 158, 0, Math.PI, Math.PI * 2); c.stroke();
     c.strokeStyle = `rgba(${T.glow},${a * 0.5})`; c.lineWidth = 1;
     c.beginPath(); c.ellipse(0, 12, 96, 40, 0, 0, Math.PI); c.stroke();
-    if (b.type === 'hq' && typeof game !== 'undefined' && game && rwB6hq(game)) drawHolders(c, hqHolders(game, b.side), T); // v2.93 (batch 6c, b6hq): how many buildings hold the shield up
+    if (b.type === 'hq' && typeof game !== 'undefined' && game && rwB6hq(game)) drawHolders(c, hqHolders(game, b.side), T, b.side); // v2.93 (batch 6c, b6hq): how many buildings hold the shield up
   }
   c.restore();
 }

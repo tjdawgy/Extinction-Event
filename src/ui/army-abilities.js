@@ -98,7 +98,9 @@ function refreshUI(force) {
     const st = hqStatus(game, myS(), myS()), el = $('hq' + k), fill = el.querySelector('.hb i'); // v2.93: the player's side
     el.className = 'hqr ' + st.state + (st.stale ? ' stale' : '');
     fill.style.width = (st.frac * 100).toFixed(1) + '%'; fill.style.background = hpColor(st.frac);
-    el.querySelector('small').textContent = st.stale ? 'Last seen' : HQ_STATE[st.state] + (st.state === 'shielded' && rwB6hq(game) ? ` · ${hqHolders(game, myS())}` : ''); // v2.93 (b6hq): how many buildings hold it up
+    const hn = st.state === 'shielded' && rwB6hq(game) ? hqHolders(game, myS()) : null; // v2.93 (b6hq): how many buildings hold it up
+    el.querySelector('small').textContent = st.stale ? 'Last seen' : HQ_STATE[st.state] + (hn != null ? ` · ${hn}` : '');
+    { const b = el.querySelector('.hn'); if (b) b.textContent = hn != null ? String(hn) : ''; }
     el.setAttribute('aria-label', `${k ? 'Enemy' : 'Your'} HQ: ${st.stale ? 'last seen with ' : ''}${Math.ceil(st.hp)} of ${Math.round(st.maxHp)} HP, ${HQ_STATE[st.state].toLowerCase()}`);
   }
   $('resP').classList.toggle('full', used >= cap);

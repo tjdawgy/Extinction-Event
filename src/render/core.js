@@ -24,7 +24,7 @@ const PALETTE = {
   onyx: { name: 'Onyx', main: '#24232c', light: '#e8eeff', hull: '#0c0c11', glow: '214,226,255', face: ['#3a3946', '#22212a', '#141319'], edge: '#dfe8ff' },
 };
 const PAL_KEYS = Object.keys(PALETTE);
-const PAL_BAD = [['blue', 'purple'], ['red', 'pink'], ['pink', 'purple'], ['red', 'green']]; // never rolled together (docs/FACTION_REWORK.md "Batch 6c")
+const PAL_BAD = [['blue', 'purple'], ['red', 'pink'], ['pink', 'purple'], ['red', 'green'], ['blue', 'green']]; // blue and green: both cool cyan-leaning at phone size (the colours6c screenshots), and a tritan confusion pair // never rolled together (docs/FACTION_REWORK.md "Batch 6c")
 const palOk = (a, b) => !!PALETTE[a] && !!PALETTE[b] && a !== b && !PAL_BAD.some(([x, y]) => (x === a && y === b) || (x === b && y === a));
 // [the player's colour, the opponent's]: mine a palette key (or 'random'/null); rnd defaults to Math.random (the UI's own dice)
 function palRoll(mine, rnd = Math.random) {
