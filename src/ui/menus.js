@@ -20,12 +20,15 @@ function wireFactions() {
 const START_KEY = 'extinctionEvent.start', COLOR_KEY = 'extinctionEvent.color', START_PICKS = ['left', 'right', 'random'];
 let startPick = 'left', colorPick = 'random';
 try { const k = localStorage.getItem(START_KEY); if (START_PICKS.includes(k)) startPick = k; const c = localStorage.getItem(COLOR_KEY); if (c === 'random' || PALETTE[c]) colorPick = c; } catch (e) {}
-function startSeg() { return `<div class="seg" id="startSeg">${START_PICKS.map(k => `<button data-k="${k}" class="${startPick === k ? 'on' : ''}">${k === 'left' ? 'Left' : k === 'right' ? 'Right' : 'Random'}</button>`).join('')}</div>`; }
-function colorSeg() { return `<div class="seg colseg" id="colorSeg"><button data-k="random" class="${colorPick === 'random' ? 'on' : ''}">Random</button>${PAL_KEYS.map(k => `<button data-k="${k}" class="sw${colorPick === k ? ' on' : ''}" style="--sw:${PALETTE[k].main}" title="${PALETTE[k].name}" aria-label="${PALETTE[k].name}"><i></i></button>`).join('')}</div>`; }
+// On the battlefield screen, beside Play: Start (Left / Right / Random) and a colour button that steps through Random and the palette
+function startSeg() { return `<span class="lbl">Start</span><div class="seg" id="startSeg">${START_PICKS.map(k => `<button data-k="${k}" class="${startPick === k ? 'on' : ''}" aria-label="Start ${k}">${k === 'left' ? 'Left' : k === 'right' ? 'Right' : '?'}</button>`).join('')}</div>`; }
+const colorLbl = () => colorPick === 'random' ? 'Random' : PALETTE[colorPick].name;
+function colorBtn() { return `<button class="ghost colbtn" id="colorBtn" data-k="${colorPick}" style="--sw:${PALETTE[colorPick] ? PALETTE[colorPick].main : 'transparent'}" aria-label="Your colour: ${colorLbl()}"><i class="${colorPick === 'random' ? 'rnd' : ''}"></i><span>Colour</span></button>`; }
 function wireStartColor() {
-  for (const [id, set] of [['startSeg', k => { startPick = k; try { localStorage.setItem(START_KEY, k); } catch (e) {} }], ['colorSeg', k => { colorPick = k; try { localStorage.setItem(COLOR_KEY, k); } catch (e) {} }]])
-    for (const b of $(id).children) b.addEventListener('click', () => { set(b.dataset.k); for (const x of $(id).children) x.classList.toggle('on', x === b); });
+  for (const b of $('startSeg').children) b.addEventListener('click', () => { startPick = b.dataset.k; try { localStorage.setItem(START_KEY, startPick); } catch (e) {} for (const x of $('startSeg').children) x.classList.toggle('on', x === b); for (const c of document.querySelectorAll('.mapc')) drawMapThumb(c.querySelector('canvas'), MAPS[c.dataset.m]); });
+  wireColor();
 }
+function wireColor() { const b = $('colorBtn'); b.addEventListener('click', () => { const all = ['random', ...PAL_KEYS]; colorPick = all[(all.indexOf(colorPick) + 1) % all.length]; try { localStorage.setItem(COLOR_KEY, colorPick); } catch (e) {} b.outerHTML = colorBtn(); wireColor(); toast(`Your colour: ${colorLbl()}`, 'ok'); }); }
 const pickStart = () => startPick === 'right' ? 1 : startPick === 'random' ? (Math.random() < 0.5 ? 0 : 1) : 0; // the UI's own dice, never the match's
 // The match's team colours by side ([side 0, side 1]), from the UI's own dice: the player's colour (picked or random), then a random one that pairs with it
 function pickColors(me) { const [a, b] = palRoll(colorPick); return me ? [b, a] : [a, b]; }
@@ -61,9 +64,9 @@ function showStart() {
       <div><b>Control the field</b>Ground troops standing on a field node capture it for extra income. Your HQ is ${hqShieldTxt(REWORK).replace(/^Shielded/, 'shielded')}.</div>
       <div><b>Command your army</b>Select units (tap them, double-tap one for its type, hold and draw a loop, or All on the left), then tap the ground to move them, or Attack, Hold or Retreat. Drag to look around.</div>
     </div>
-    <div class="setup"><span class="lbl">Difficulty</span>${diffSeg()}<span class="lbl">You</span>${facSeg('meSeg', 'me')}<span class="lbl">Opponent</span>${facSeg('foeSeg', 'foe')}<p class="fdesc" id="facDesc">${factionDesc(facPick.me)}</p><span class="lbl">Start</span>${startSeg()}<span class="lbl">Your colour</span>${colorSeg()}</div>
+    <div class="setup"><span class="lbl">Difficulty</span>${diffSeg()}<span class="lbl">You</span>${facSeg('meSeg', 'me')}<span class="lbl">Opponent</span>${facSeg('foeSeg', 'foe')}<p class="fdesc" id="facDesc">${factionDesc(facPick.me)}</p></div>
     <div class="row">${sv ? `<button class="big" id="bResume">Resume match</button><button class="ghost" id="bPlay">New match</button><span class="lbl">${DIFF[sv.diffKey] ? DIFF[sv.diffKey].label : ''}${sv.map !== 'classic' ? ', ' + cxEsc(MAPS[sv.map].display.name) : ''}, ${fmtTime(sv.t)} in</span>` : '<button class="big" id="bPlay">Start match</button>'}<button class="ghost" id="bCodex">Codex</button><button class="ghost" id="bRange">Test Range</button><button class="ghost" id="bSound">${sndLabel()}</button></div>`);
-  wireDiff(); wireFactions(); wireStartColor(); wireSound();
+  wireDiff(); wireFactions(); wireSound();
   $('bRange').addEventListener('click', trOpen); // v2.81: the Test Range
   $('bCodex').addEventListener('click', () => openCodex(CX.tab));
   $('bPlay').addEventListener('click', showMapSelect);
@@ -131,7 +134,7 @@ function showMapSelect() {
   const card = id => { const m = MAPS[id]; return `<button class="mapc${id === mapPick ? ' on' : ''}" data-m="${id}"><canvas class="mapt"></canvas><b>${cxEsc(m.display.name)}${id === 'classic' ? ' <small>default</small>' : ''}</b><span>${cxEsc(m.display.desc)}</span></button>`; };
   overlay(`<h1>Choose a <span>battlefield</span></h1><div class="maps">${MAP_ORDER.filter(k => MAPS[k]).map(card).join('')}</div>
     <div class="conds" id="conds"></div><p class="condl" id="condLine"></p>
-    <div class="row"><button class="big" id="bMapGo">Play ▸</button><button class="ghost" id="bMapBack">Back</button></div>`);
+    <div class="row"><button class="big" id="bMapGo">Play ▸</button><button class="ghost" id="bMapBack">Back</button><span class="startcol">${startSeg()}${colorBtn()}</span></div>`); // v2.93: the start side and your colour
   $('box').classList.add('mapsel');
   const cards = [...document.querySelectorAll('.mapc')];
   for (const b of cards) {
@@ -139,6 +142,7 @@ function showMapSelect() {
     b.addEventListener('click', () => { mapPick = b.dataset.m; try { localStorage.setItem(MAP_KEY, mapPick); } catch (e) {} for (const x of cards) x.classList.toggle('on', x === b); condRow(); });
   }
   condRow(); // v2.72
+  wireStartColor(); // v2.93
   $('bMapGo').addEventListener('click', startGame);
   $('bMapBack').addEventListener('click', showStart);
 }

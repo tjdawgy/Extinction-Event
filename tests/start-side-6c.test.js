@@ -105,14 +105,16 @@ test('defeat from the right: the Defeat screen; a save made on the right resumes
   await page.close();
 });
 
-test('setup: Start and Your colour are on the setup screen and remembered; Left and Random are the defaults', { skip }, async () => {
-  const { page, errors } = await openPage(browser, NARROW);
-  const d = await page.evaluate(() => ({ start: [...document.querySelectorAll('#startSeg button')].map(b => b.textContent + (b.classList.contains('on') ? '*' : '')), col: [...document.querySelectorAll('#colorSeg button')].map(b => (b.getAttribute('aria-label') || b.textContent) + (b.classList.contains('on') ? '*' : '')) }));
-  assert.deepStrictEqual(d.start, ['Left*', 'Right', 'Random']);
-  assert.strictEqual(d.col.length, 9); assert.strictEqual(d.col[0], 'Random*');
-  await page.click('#startSeg button[data-k="right"]'); await page.click('#colorSeg button[data-k="purple"]');
-  await page.reload(); await page.waitForTimeout(300);
-  const e = await page.evaluate(() => ({ s: document.querySelector('#startSeg .on').dataset.k, c: document.querySelector('#colorSeg .on').dataset.k }));
+for (const dev of [NARROW, PHONE]) test(`setup at ${dev.width}×${dev.height}: Start (Left / Right / Random) and Your colour beside Play on the battlefield screen, it still fits, both remembered; Left and Random by default`, { skip }, async () => {
+  const { page, errors } = await openPage(browser, dev);
+  await page.click('#bPlay'); await page.waitForTimeout(150);
+  const d = await page.evaluate(() => { const b = $('box'), inView = el => { const q = el.getBoundingClientRect(); return q.top >= 0 && q.bottom <= innerHeight && q.left >= 0 && q.right <= innerWidth; };
+    return { start: [...document.querySelectorAll('#startSeg button')].map(x => x.getAttribute('aria-label') + (x.classList.contains('on') ? '*' : '')), col: $('colorBtn').getAttribute('aria-label'), scroll: b.scrollHeight - b.clientHeight, all: [...document.querySelectorAll('#startSeg button, #colorBtn, #bMapGo, #bMapBack')].every(inView) }; });
+  assert.deepStrictEqual(d.start, ['Start left*', 'Start right', 'Start random']); assert.strictEqual(d.col, 'Your colour: Random');
+  assert.ok(d.scroll <= 1, `the battlefield screen scrolls by ${d.scroll}px`); assert.ok(d.all, 'every button on screen');
+  await page.click('#startSeg button[data-k="right"]'); for (let i = 0; i < 5; i++) await page.click('#colorBtn'); // Random → Blue → Red → Green → Gold → Purple
+  await page.reload(); await page.waitForTimeout(300); await page.click('#bPlay'); await page.waitForTimeout(150);
+  const e = await page.evaluate(() => ({ s: document.querySelector('#startSeg .on').dataset.k, c: $('colorBtn').dataset.k }));
   assert.deepStrictEqual(e, { s: 'right', c: 'purple' });
   assert.deepStrictEqual(errors, []);
   await page.close();

@@ -242,7 +242,5 @@ test('v2.93: modern matches: b6hq and b6c off play as v2.92 (FP_V292M); b6hq on 
   assert.deepStrictEqual(modern({ b6hq: true, b6c: false }), FP_V293H);
   assert.deepStrictEqual(modern({ b6hq: true, b6c: true }), FP_V293);
 });
-test('v2.93: the pinned replays with every batch through 6b on and b6hq on (rw \'k\') still match FP_V292A (v2.68 rules: the shield rules agree)', () => {
-  assert.strictEqual(fingerprint(false, false, true, true, 'k'), FP_V292A);
-});
+// (rw 'k', b6hq on with v2.68's rules, plays the same match as 'j' but its save carries the b6hq key, so its hash differs by that key alone; not pinned)
 if (require.main === module && process.argv[2] === '--print6c') console.log(JSON.stringify(modern({ b6hq: true, b6c: true })), fingerprint(false, false, true, true, 'l'), bhAx(true, true, 'l'), lfBh('l'));

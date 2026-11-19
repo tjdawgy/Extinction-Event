@@ -2,7 +2,7 @@
 // written to docs/screenshots/colors6c-*.png:
 //   colors6c-<faction>.png        every colour on that faction's units and buildings (one row per colour), on the battlefield ground
 //   colors6c-pearl-onyx.png, colors6c-green-acid.png, colors6c-gold-blue.png, colors6c-purple-axiarch.png   real fights in those pairs
-//   colors6c-setup.png            the setup screen with the Start and Your colour choices
+//   colors6c-setup.png            the battlefield screen (the match setup before Play) with Start and Your colour
 //   colors6c-right-start.png      a match started on the right, mid-fight, with the HUD and the HQ shield count
 //   node tests/colors6c-shots.js
 const path = require('path'), fs = require('fs');
@@ -61,7 +61,7 @@ const SIZE = { ...NARROW };
   await fight('purple-axiarch', ['purple', 'green'], ['axiarchs', 'axiarchs'], [['lancer', 4], ['shardling', 5], ['marksman', 2]], [['lancer', 4], ['bastion', 2], ['riftstalker', 2]]);
   await fight('onyx-axiarch', ['onyx', 'red'], ['axiarchs', 'bloomhost'], [['lancer', 4], ['shardling', 5], ['bastion', 1]], [['skitterling', 10], ['spitter', 4]]);
   // (c) the setup screen
-  { const { page } = await openPage(browser, SIZE); await page.evaluate(() => { const b = document.getElementById('box'); const s = b.querySelector('.setup'); if (s) s.scrollIntoView(); }); await shot(page, 'setup'); await page.close(); }
+  { const { page } = await openPage(browser, SIZE, { init: `localStorage.setItem('extinctionEvent.start','right'); localStorage.setItem('extinctionEvent.color','gold');` }); await page.click('#bPlay'); await page.waitForTimeout(200); await shot(page, 'setup'); await page.close(); }
   // (d) a match started on the right, mid-fight, the HUD and the HQ shield count in view
   {
     const { page } = await openPage(browser, SIZE, { init: `localStorage.setItem('extinctionEvent.start','right'); localStorage.setItem('extinctionEvent.color','pink');` });

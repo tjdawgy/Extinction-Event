@@ -75,8 +75,8 @@ test('HQ readouts: yours in the top bar, the enemy\'s last seen on the minimap',
   const { page, errors } = await openPage(browser, PHONE);
   await page.click('#bPlay'); await page.click('#bMapGo'); // v2.65: through map select (Classic, the default)
   await page.evaluate(() => { game.countdown = 0; tryBuild(game, 0, 'barracks'); for (const b of game.ents) if (b.type === 'barracks') { b.built = true; b.progress = 1; } update(game, 1 / 30); refreshUI(true); }); // only a finished building shields the HQ (v2.11)
-  const r0 = await page.evaluate(() => ({ cls: $('hq0').className, txt: $('hq0').querySelector('small').textContent, hq1: !!$('hq1') }));
-  assert.strictEqual(r0.cls, 'hqr shielded'); assert.strictEqual(r0.txt, 'Shielded');
+  const r0 = await page.evaluate(() => ({ cls: $('hq0').className, txt: $('hq0').querySelector('small').textContent, hn: $('hq0').querySelector('.hn').textContent, hq1: !!$('hq1') }));
+  assert.strictEqual(r0.cls, 'hqr shielded'); assert.strictEqual(r0.txt, 'Shielded · 1'); assert.strictEqual(r0.hn, '1', 'v2.93 (b6hq): one building holds it up, on the shield');
   assert.strictEqual(r0.hq1, false, 'v2.47: the enemy HQ block left the top bar');
   // v2.47: the minimap bar under the enemy HQ: hidden until scouted, then last-seen health (no leak out of sight)
   const bar = () => page.evaluate(() => { const fr = []; const orig = CanvasRenderingContext2D.prototype.fillRect, hc = ['#5dff8a', '#ffd34d', '#ff5a5a'];

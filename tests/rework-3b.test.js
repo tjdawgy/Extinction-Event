@@ -123,7 +123,7 @@ test('Dreadthorn: an AI\'s charge needs a group or a big unit on the line (a lon
 });
 
 test('Bastion: its barrier takes enemy shots (shields and units behind untouched); friendly shots, lobbed shells and melee pass; 600, 30/s after 3 s, 8 s down when broken', () => {
-  const s = loadSim();
+  const s = loadSim(); s.REWORK.b6c = false; /* v2.93: v2.92's numbers (batch 6c's tuning, on by default, is tested in tests/rework-6c.test.js) */
   const g = s.rangeGame({ factions: ['axiarchs', 'lastfist'] });
   const B = s.rangeUnit(g, 0, 'bastion', 500, 0), L = s.rangeUnit(g, 0, 'lancer', 470, 0), r = s.rangeUnit(g, 1, 'rifle', 595, 0);
   B.cd = L.cd = 1e6; g.sides[0].hush = true; L.hp = L.maxHp = 1e5;
