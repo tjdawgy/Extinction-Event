@@ -19,8 +19,8 @@
      exiles a weak bolt (its UDEF weapon).
    New internal ids rather than renamed ones: a game with b2a off still has Bile Lobbers and Rift Mortars, and saves, match
    history and tests keep naming them. */
-const REWORK = { b2a: true, artDeploy: true, artTelegraph: true, b2b: true, b3a: true, b3b: true, b4a: true, b4b: true, b5b: true, b5c: true, b6side: true }; // b6side (v2.92): the side-bias fix, src/sim/rework-6b.js; b5c (v2.90): the Needlewing AI fix (the Bloomspire roll), src/sim/rework-5c.js; b5b (v2.88): the Bloomhost swarm pass, src/sim/rework-5b.js; b4b (v2.87): batch 4b, src/sim/rework-4b.js; b4a (v2.86): batch 4a, src/sim/rework-4a.js; b2b (v2.83): batch 2b, src/sim/rework-2b.js; b3a (v2.84): batch 3a, src/sim/rework-3a.js; b3b (v2.85): batch 3b, src/sim/rework-3b.js
-const RW_KEYS = ['b2a', 'artDeploy', 'artTelegraph', 'b2b', 'b3a', 'b3b', 'b4a', 'b4b', 'b5b', 'b5c', 'b6side'];
+const REWORK = { b2a: true, artDeploy: true, artTelegraph: true, b2b: true, b3a: true, b3b: true, b4a: true, b4b: true, b5b: true, b5c: true, b6side: true, b6art: true }; // b6side (v2.92): the side-bias fix, b6art (v2.92): Artillery counterplay, both src/sim/rework-6b.js; b5c (v2.90): the Needlewing AI fix (the Bloomspire roll), src/sim/rework-5c.js; b5b (v2.88): the Bloomhost swarm pass, src/sim/rework-5b.js; b4b (v2.87): batch 4b, src/sim/rework-4b.js; b4a (v2.86): batch 4a, src/sim/rework-4a.js; b2b (v2.83): batch 2b, src/sim/rework-2b.js; b3a (v2.84): batch 3a, src/sim/rework-3a.js; b3b (v2.85): batch 3b, src/sim/rework-3b.js
+const RW_KEYS = ['b2a', 'artDeploy', 'artTelegraph', 'b2b', 'b3a', 'b3b', 'b4a', 'b4b', 'b5b', 'b5c', 'b6side', 'b6art'];
 const rwInit = o => { const r = Object.assign({}, REWORK, o || {}), out = {}; for (const k of RW_KEYS) out[k] = !!r[k]; return out; };
 const rwB2a = g => !!(g && g.rw && g.rw.b2a);
 const rwDep = g => rwB2a(g) && !!g.rw.artDeploy;
@@ -102,6 +102,7 @@ function boreRank(e) { // 0: ranged backline, 1: other ranged, 2: any other unit
 }
 const boreOk = (g, u, e) => e.hp > 0 && !e.gone && !e.shielded && !(e.phT > g.t) && e.side !== u.side && e.side !== NEUTRAL && !(e.kind === 'u' && UDEF[e.type].air) && visibleTo(g, u.side, e);
 function borePick(g, u, foes, cu, cv, R) { // the best target within R of (cu, cv): backline first, then ranged, then nearest
+  const A6 = art6Pick(g, u, foes, cu, cv, R, e => boreOk(g, u, e)); if (A6) return A6; // v2.92 (batch 6b): an AI's Gorebore goes for a deployed Artillery first
   let best = null, br = 9, bd = 1e9;
   for (const e of foes) {
     if (e.side === NEUTRAL || !boreOk(g, u, e)) continue;

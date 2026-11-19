@@ -453,3 +453,75 @@ Lower: the Titan (F4, small), the Sovereign (F19, not an outlier), the Spitter's
 - `node audit/sim/audit6a-report.js [dir]`: the section 2 tables (report.md).
 - `node audit/sim/audit6a-range.js [R1 … R10]`: the section 3 measurements (range.txt and range.json when run in full; about 10 minutes, R3 and R4 take most of it).
 - Logs of this run: audit/logs-p1/audit6a-v291/.
+
+## 9. After batch 6b (v2.92): the side-bias fix and Artillery counterplay
+
+Batch 6b fixed the spawn-side bias (ranked 1 above) behind `REWORK.b6side` and toned the Artillery down behind `REWORK.b6art`; causes,
+fixes and every measurement are in docs/FACTION_REWORK.md "Batch 6b". The same 90-match self-play as section 2 (audit/sim/audit6a.js,
+seeds 7-11), run with b6side on and b6art off (audit/logs-p1/audit6b-side/) and with both on (audit/logs-p1/audit6b-art/); 0 errors in
+each. Test Range measurements with `audit6a-range.js --oneway` (10 seeds, one orientation: the Test Range no longer leans to the side
+placed first) in the same folders.
+
+### 9.1 Side and faction win rates
+
+| | v2.91 (section 2) | b6side on, b6art off | both on (v2.92) |
+|---|---|---|---|
+| side 0 - side 1 - draws | 26-55-9 | 41-39-10 | 40-42-8 |
+| side 1 share of decided | 68% | 49% | 51% |
+| Classic (side 0 - side 1) | 13-15 | 14-14 | 15-14 |
+| Two-Lane | 6-19 | 11-14 | 11-13 |
+| Three-Lane | 7-21 | 16-11 | 14-15 |
+| Last Fist W-L-D | 29-26-5 (48%) | 40-12-8 (67%) | 40-14-6 (67%) |
+| Bloomhost | 27-26-7 (45%) | 23-30-7 (38%) | 25-29-6 (42%) |
+| Axiarchs | 25-29-6 (42%) | 17-38-5 (28%) | 17-39-4 (28%) |
+| Last Fist as side 0 / as side 1 | 11-18-1 / 18-8-4 | 21-6-3 / 19-6-5 | 19-7-4 / 21-7-2 |
+| Bloomhost as side 0 / as side 1 | 9-17-4 / 18-9-3 | 12-15-3 / 11-15-4 | 14-15-1 / 11-14-5 |
+| Axiarchs as side 0 / as side 1 | 6-20-4 / 19-9-2 | 8-18-4 / 9-20-1 | 7-20-3 / 10-19-1 |
+
+The faction rates moved because of the dice, not the side fix's mechanics: each AI's personality now comes from its own stream keyed
+by seed and faction, so at a seed a faction plays the same personality in every match, and seeds 7-11 gave Last Fist the Boomer 4
+times out of 5 (never the Economist, which lost to Bloomhost at seeds 10-11 on v2.91) and the Axiarchs and Bloomhost the Turtle twice.
+Per personality (both on): Last Fist Boomer 33 wins of 48 sides, Turtle 7/12; Bloomhost Boomer 18/36, Turtle 7/24; Axiarch Boomer
+10/36, Turtle 7/24. Five seeds are now five personality draws per faction: run seeds 12-21 before reading the faction table as balance.
+
+### 9.2 Artillery
+
+| | v2.91 | b6side | both on |
+|---|---|---|---|
+| shell damage per salvo | 60 | 60 | 45 |
+| trained (sides with any, of 60) | 279 (29) | 443 (45) | 433 (45) |
+| damage per 100 spent (self-play) | 492 | 453 | 383 |
+| killed value per 100 spent | 112 | 116 | 75 |
+| damage per 100 spent, Test Range army fights (audit/sim/art6b.js) | - | 436 | 382 |
+
+R7 (two Artillery at 300, default switches; hit share and damage per minute of the pair): v2.91 standing Marines 100%, 7,568/min;
+moving Marines 70%, 3,835/min; standing Tanks 100%, 2,286/min; moving Tanks 54%, 1,044/min. b6side: 100% / 7,851; 51% / 2,714; 100% /
+2,331; 45% / 719 (the drop against moving targets is not explained yet: these runs are one orientation, 10 seeds, against v2.91's
+both orientations, 5 seeds, and the update order changed too; not separated). Both on: 100% / 5,889; 51% /
+2,035; 100% / 1,748; 45% / 539 (×0.75, the damage change).
+
+Equal-cost Test Range fights (art6b.js, 20 runs, Last Fist holding): typical vs Axiarchs 10-10 → 6-14; Artillery-heavy vs Axiarchs
+20-0 → 14-6; both Last Fist mixes vs Bloomhost 0-20 → 0-20. Diver strikes: see FACTION_REWORK.md.
+
+### 9.3 Ranked list, updated
+
+1. ~~Spawn side decides too many matches~~ **Fixed** (b6side): 51% side 1 overall, 48-54% per map.
+2. **Bastion barrier blocks direct fire too well.** Unchanged: Tanks + Marines still need more than 1,820 against 2 Bastions + 4
+   Lancers (R4 with --oneway). *Lever:* `BAR.hp`.
+3. **Broods win the early game cost for cost.** Unchanged (R10: 27 Skitterlings beat 18 Marines, 10 Shardlings and 6 Lancers 10-0).
+   *Lever:* `BROOD.cost`.
+4. **New: Bloomhost's ranged line beats Last Fist's ground army cost for cost.** At about 4,750 a side, Last Fist holding with its
+   Artillery set up loses 0-20 to the AI's own Bloomhost mix (Spitters, Bulwarks, Gorebores do the damage; the Spitter's 165 range
+   outreaches Marines and Heavies), with or without b6art. In self-play the Spitter is Bloomhost's top unit (259 / 100 spent).
+   *Lever:* the Spitter's range or `QUILL` damage (not touched: batch 6b tunes only the Artillery).
+5. **Axiarchs weakest in this run** (28%, 17-39-4; worst on Three-Lane, 2-18-0). Partly the personality draws above (Turtle in 2 of 5
+   seeds); the Shardling (82 / 100 spent), Riftstalker (40) and Parallax (74) trade badly. Confirm with seeds 12-21 first.
+6. **Divers and melee trade badly.** Leaper 40 damage per 100 spent (was 34), Riftstalker 40 (33), Parallax 74 (42), Shardling 82
+   (69), Dreadthorn 85 (75). b6art's diver preference helped little in self-play. *Lever:* `LATCH.dps`, Riftstalker damage.
+7. **Top-tier air is effectively missing.** No T3 aircraft in 87% (Last Fist), 60% (Bloomhost), 92% (Axiarchs) of sides; Leviathan 10
+   in 90 matches, 79 / 100 spent.
+8. **Tech Lab role reached late or never**: never at T2 in 26 (Last Fist), 9 (Bloomhost), 29 (Axiarchs) of 60 sides.
+9. **Ranged backline value.** Artillery 383 / 100 spent (was 492), now third in Last Fist after the Hydra (446) and Sniper (440).
+   Its efficiency target (about 300) was not reached: below 45 a salvo Last Fist loses its typical fight with the Axiarchs (FACTION_REWORK
+   "Batch 6b"). *Lever:* the Sniper next if backline value stays the concern.
+10. **The Turtle persona loses** (14 wins in 60 sides with both on) and **the Bilecaster is weak** (88 / 100 spent).

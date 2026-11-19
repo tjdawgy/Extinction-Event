@@ -63,6 +63,7 @@ function latchRank(g, u, H, R) { // [tier, -weight, distance] or null (not a hos
 const rankLess = (a, b, ea, eb) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2] || ea.id - eb.id;
 function latchPick(g, u, foes, R, only) {
   let best = null, br = null;
+  if (!only) { const A6 = art6Pick(g, u, foes, u.u, u.v, R, H => !!latchRank(g, u, H, R) && latchN(g, H) < LATCH.max); if (A6) return A6; } // v2.92 (batch 6b): an AI's Leaper leaps onto a deployed Artillery first
   for (const H of only ? [only] : foes) {
     if (H.kind !== 'u') continue;
     const r = latchRank(g, u, H, R); if (!r || latchN(g, H) >= LATCH.max) continue;
@@ -138,6 +139,7 @@ function rsRanged(g, s, e) {
   const d = rwD(g, e.type); return !!d.weapon && !d.melee && d.range > 40;
 }
 function rsPick(g, u, foes, cu, cv, lo, hi) { // the ranged enemy to strike: within [lo, hi] of (cu, cv), the longest range first, then nearest
+  const A6 = art6Pick(g, u, foes, cu, cv, hi, e => rsRanged(g, u.side, e) && Math.hypot(e.u - cu, e.v - cv) >= lo); if (A6) return A6; // v2.92 (batch 6b): an AI's Riftstalker strikes a deployed Artillery first
   let best = null, br = -1, bd = 1e9;
   for (const e of foes) {
     if (!rsRanged(g, u.side, e) || !visibleTo(g, u.side, e)) continue;
@@ -307,6 +309,7 @@ function aiRework3a(g, s, mine) {
     if (u.type === 'leaper' && !u.lt && !u.ltH) {
       let best = null, br = null;
       for (const H of foes) { const r = latchRank(g, u, H, LATCH.aim); if (r && r[0] === 0 && latchN(g, H) < LATCH.max && (!best || rankLess(r, br, H, best) < 0)) { best = H; br = r; } }
+      const A6 = art6Pick(g, u, foes, u.u, u.v, LATCH.aim, H => !!latchRank(g, u, H, LATCH.aim) && latchN(g, H) < LATCH.max); if (A6) best = A6; // v2.92 (batch 6b): a deployed Artillery first
       u.ltAim = best ? best.id : 0;
     } else if (u.type === 'riftstalker' && !u.rsH) {
       let best = null, bs = 1e9;
@@ -316,6 +319,7 @@ function aiRework3a(g, s, mine) {
         const sc = guards * 200 - rwD(g, e.type).range + Math.hypot(e.u - u.u, e.v - u.v) * 0.3;
         if (sc < bs || (sc === bs && e.id < best.id)) { bs = sc; best = e; }
       }
+      { const A6 = art6Pick(g, u, foes, u.u, u.v, RS.aim, e => rsRanged(g, s, e)); if (A6) best = A6; } // v2.92 (batch 6b): a deployed Artillery first
       u.rsAim = best ? best.id : 0;
     }
   }

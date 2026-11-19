@@ -1,0 +1,880 @@
+{
+ "version": "2.92",
+ "art6": {
+  "dmg": 45,
+  "cd": 3.2
+ },
+ "scale": 1,
+ "rw": {
+  "b6art": true
+ },
+ "seeds": [
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  19,
+  20
+ ],
+ "armies": {
+  "LF_ARMY": [
+   [
+    "rifle",
+    24,
+    520
+   ],
+   [
+    "heavy",
+    6,
+    505
+   ],
+   [
+    "tank",
+    3,
+    540
+   ],
+   [
+    "flame",
+    2,
+    545
+   ],
+   [
+    "titan",
+    1,
+    480
+   ],
+   [
+    "artillery",
+    2,
+    400
+   ]
+  ],
+  "LF_ART": [
+   [
+    "rifle",
+    20,
+    520
+   ],
+   [
+    "heavy",
+    6,
+    500
+   ],
+   [
+    "tank",
+    4,
+    540
+   ],
+   [
+    "artillery",
+    6,
+    400
+   ]
+  ],
+  "BH_ARMY": [
+   [
+    "skitterling",
+    28,
+    1150
+   ],
+   [
+    "bulwark",
+    7,
+    1130
+   ],
+   [
+    "spitter",
+    8,
+    1190
+   ],
+   [
+    "leaper",
+    4,
+    1160
+   ],
+   [
+    "thornback",
+    2,
+    1140
+   ],
+   [
+    "dreadthorn",
+    1,
+    1170
+   ],
+   [
+    "ravager",
+    2,
+    1165
+   ],
+   [
+    "gorebore",
+    1,
+    1200
+   ]
+  ],
+  "AX_ARMY": [
+   [
+    "shardling",
+    18,
+    1150
+   ],
+   [
+    "bastion",
+    3,
+    1130
+   ],
+   [
+    "lancer",
+    5,
+    1190
+   ],
+   [
+    "riftstalker",
+    4,
+    1160
+   ],
+   [
+    "marksman",
+    1,
+    1210
+   ],
+   [
+    "gravemantle",
+    1,
+    1180
+   ]
+  ],
+  "LINE": [
+   [
+    "artillery",
+    4,
+    400
+   ],
+   [
+    "tank",
+    1,
+    480
+   ],
+   [
+    "rifle",
+    2,
+    470
+   ]
+  ],
+  "DIVERS": {
+   "leaper": [
+    [
+     "leaper",
+     14,
+     1150
+    ]
+   ],
+   "gorebore": [
+    [
+     "gorebore",
+     6,
+     1150
+    ]
+   ],
+   "riftstalker": [
+    [
+     "riftstalker",
+     7,
+     1150
+    ]
+   ]
+  }
+ },
+ "A": {},
+ "D": {
+  "leaper": {
+   "dmgByA": {
+    "artillery": 1326,
+    "tank": 503,
+    "rifle": 64
+   },
+   "dmgByB": {
+    "leaper": 896,
+    "skitterling": 404
+   },
+   "n": 20,
+   "w": 0,
+   "l": 20,
+   "d": 0,
+   "pct": 0,
+   "t": 17.7,
+   "leftA": 0,
+   "leftB": 945,
+   "art": 26522.0015004236,
+   "artSpent": 18800,
+   "artLeft": 0,
+   "artDead": 17.7,
+   "byFlip": [
+    "0-10",
+    "0-10"
+   ],
+   "runs": [
+    {
+     "seed": 11,
+     "flip": 0,
+     "win": -1,
+     "t": 16.9,
+     "leftA": 0,
+     "leftB": 1300,
+     "art": 1274,
+     "artLeft": 0
+    },
+    {
+     "seed": 11,
+     "flip": 1,
+     "win": -1,
+     "t": 16,
+     "leftA": 0,
+     "leftB": 1300,
+     "art": 1002,
+     "artLeft": 0
+    },
+    {
+     "seed": 12,
+     "flip": 0,
+     "win": -1,
+     "t": 18,
+     "leftA": 0,
+     "leftB": 700,
+     "art": 1391,
+     "artLeft": 0
+    },
+    {
+     "seed": 12,
+     "flip": 1,
+     "win": -1,
+     "t": 17.7,
+     "leftA": 0,
+     "leftB": 900,
+     "art": 1372,
+     "artLeft": 0
+    },
+    {
+     "seed": 13,
+     "flip": 0,
+     "win": -1,
+     "t": 17.1,
+     "leftA": 0,
+     "leftB": 1200,
+     "art": 1117,
+     "artLeft": 0
+    },
+    {
+     "seed": 13,
+     "flip": 1,
+     "win": -1,
+     "t": 17.1,
+     "leftA": 0,
+     "leftB": 1200,
+     "art": 1262,
+     "artLeft": 0
+    },
+    {
+     "seed": 14,
+     "flip": 0,
+     "win": -1,
+     "t": 17.4,
+     "leftA": 0,
+     "leftB": 1000,
+     "art": 1487,
+     "artLeft": 0
+    },
+    {
+     "seed": 14,
+     "flip": 1,
+     "win": -1,
+     "t": 17.4,
+     "leftA": 0,
+     "leftB": 1000,
+     "art": 1518,
+     "artLeft": 0
+    },
+    {
+     "seed": 15,
+     "flip": 0,
+     "win": -1,
+     "t": 17.9,
+     "leftA": 0,
+     "leftB": 800,
+     "art": 1372,
+     "artLeft": 0
+    },
+    {
+     "seed": 15,
+     "flip": 1,
+     "win": -1,
+     "t": 18,
+     "leftA": 0,
+     "leftB": 700,
+     "art": 1482,
+     "artLeft": 0
+    },
+    {
+     "seed": 16,
+     "flip": 0,
+     "win": -1,
+     "t": 18.1,
+     "leftA": 0,
+     "leftB": 700,
+     "art": 1486,
+     "artLeft": 0
+    },
+    {
+     "seed": 16,
+     "flip": 1,
+     "win": -1,
+     "t": 18.3,
+     "leftA": 0,
+     "leftB": 600,
+     "art": 1438,
+     "artLeft": 0
+    },
+    {
+     "seed": 17,
+     "flip": 0,
+     "win": -1,
+     "t": 18.3,
+     "leftA": 0,
+     "leftB": 600,
+     "art": 1393,
+     "artLeft": 0
+    },
+    {
+     "seed": 17,
+     "flip": 1,
+     "win": -1,
+     "t": 17.1,
+     "leftA": 0,
+     "leftB": 1100,
+     "art": 1277,
+     "artLeft": 0
+    },
+    {
+     "seed": 18,
+     "flip": 0,
+     "win": -1,
+     "t": 17.4,
+     "leftA": 0,
+     "leftB": 1000,
+     "art": 1423,
+     "artLeft": 0
+    },
+    {
+     "seed": 18,
+     "flip": 1,
+     "win": -1,
+     "t": 17.8,
+     "leftA": 0,
+     "leftB": 800,
+     "art": 1398,
+     "artLeft": 0
+    },
+    {
+     "seed": 19,
+     "flip": 0,
+     "win": -1,
+     "t": 16.3,
+     "leftA": 0,
+     "leftB": 1100,
+     "art": 1065,
+     "artLeft": 0
+    },
+    {
+     "seed": 19,
+     "flip": 1,
+     "win": -1,
+     "t": 16.7,
+     "leftA": 0,
+     "leftB": 1200,
+     "art": 1205,
+     "artLeft": 0
+    },
+    {
+     "seed": 20,
+     "flip": 0,
+     "win": -1,
+     "t": 17.7,
+     "leftA": 0,
+     "leftB": 1000,
+     "art": 1274,
+     "artLeft": 0
+    },
+    {
+     "seed": 20,
+     "flip": 1,
+     "win": -1,
+     "t": 18.1,
+     "leftA": 0,
+     "leftB": 700,
+     "art": 1286,
+     "artLeft": 0
+    }
+   ]
+  },
+  "gorebore": {
+   "dmgByA": {
+    "tank": 363,
+    "rifle": 23
+   },
+   "dmgByB": {
+    "gorebore": 1300
+   },
+   "n": 20,
+   "w": 0,
+   "l": 20,
+   "d": 0,
+   "pct": 0,
+   "t": 25.3,
+   "leftA": 0,
+   "leftB": 1380,
+   "art": 0,
+   "artSpent": 18800,
+   "artLeft": 0,
+   "artDead": 19.9,
+   "byFlip": [
+    "0-10",
+    "0-10"
+   ],
+   "runs": [
+    {
+     "seed": 11,
+     "flip": 0,
+     "win": -1,
+     "t": 25.4,
+     "leftA": 0,
+     "leftB": 1380,
+     "art": 0,
+     "artLeft": 0
+    },
+    {
+     "seed": 11,
+     "flip": 1,
+     "win": -1,
+     "t": 25.4,
+     "leftA": 0,
+     "leftB": 1380,
+     "art": 0,
+     "artLeft": 0
+    },
+    {
+     "seed": 12,
+     "flip": 0,
+     "win": -1,
+     "t": 25.2,
+     "leftA": 0,
+     "leftB": 1380,
+     "art": 0,
+     "artLeft": 0
+    },
+    {
+     "seed": 12,
+     "flip": 1,
+     "win": -1,
+     "t": 25.2,
+     "leftA": 0,
+     "leftB": 1380,
+     "art": 0,
+     "artLeft": 0
+    },
+    {
+     "seed": 13,
+     "flip": 0,
+     "win": -1,
+     "t": 25.4,
+     "leftA": 0,
+     "leftB": 1380,
+     "art": 0,
+     "artLeft": 0
+    },
+    {
+     "seed": 13,
+     "flip": 1,
+     "win": -1,
+     "t": 25.4,
+     "leftA": 0,
+     "leftB": 1380,
+     "art": 0,
+     "artLeft": 0
+    },
+    {
+     "seed": 14,
+     "flip": 0,
+     "win": -1,
+     "t": 25.3,
+     "leftA": 0,
+     "leftB": 1380,
+     "art": 0,
+     "artLeft": 0
+    },
+    {
+     "seed": 14,
+     "flip": 1,
+     "win": -1,
+     "t": 25.3,
+     "leftA": 0,
+     "leftB": 1380,
+     "art": 0,
+     "artLeft": 0
+    },
+    {
+     "seed": 15,
+     "flip": 0,
+     "win": -1,
+     "t": 25.4,
+     "leftA": 0,
+     "leftB": 1380,
+     "art": 0,
+     "artLeft": 0
+    },
+    {
+     "seed": 15,
+     "flip": 1,
+     "win": -1,
+     "t": 25.4,
+     "leftA": 0,
+     "leftB": 1380,
+     "art": 0,
+     "artLeft": 0
+    },
+    {
+     "seed": 16,
+     "flip": 0,
+     "win": -1,
+     "t": 25.3,
+     "leftA": 0,
+     "leftB": 1380,
+     "art": 0,
+     "artLeft": 0
+    },
+    {
+     "seed": 16,
+     "flip": 1,
+     "win": -1,
+     "t": 25.3,
+     "leftA": 0,
+     "leftB": 1380,
+     "art": 0,
+     "artLeft": 0
+    },
+    {
+     "seed": 17,
+     "flip": 0,
+     "win": -1,
+     "t": 25.3,
+     "leftA": 0,
+     "leftB": 1380,
+     "art": 0,
+     "artLeft": 0
+    },
+    {
+     "seed": 17,
+     "flip": 1,
+     "win": -1,
+     "t": 25.3,
+     "leftA": 0,
+     "leftB": 1380,
+     "art": 0,
+     "artLeft": 0
+    },
+    {
+     "seed": 18,
+     "flip": 0,
+     "win": -1,
+     "t": 25.4,
+     "leftA": 0,
+     "leftB": 1380,
+     "art": 0,
+     "artLeft": 0
+    },
+    {
+     "seed": 18,
+     "flip": 1,
+     "win": -1,
+     "t": 25.4,
+     "leftA": 0,
+     "leftB": 1380,
+     "art": 0,
+     "artLeft": 0
+    },
+    {
+     "seed": 19,
+     "flip": 0,
+     "win": -1,
+     "t": 25.3,
+     "leftA": 0,
+     "leftB": 1380,
+     "art": 0,
+     "artLeft": 0
+    },
+    {
+     "seed": 19,
+     "flip": 1,
+     "win": -1,
+     "t": 25.3,
+     "leftA": 0,
+     "leftB": 1380,
+     "art": 0,
+     "artLeft": 0
+    },
+    {
+     "seed": 20,
+     "flip": 0,
+     "win": -1,
+     "t": 25.3,
+     "leftA": 0,
+     "leftB": 1380,
+     "art": 0,
+     "artLeft": 0
+    },
+    {
+     "seed": 20,
+     "flip": 1,
+     "win": -1,
+     "t": 25.3,
+     "leftA": 0,
+     "leftB": 1380,
+     "art": 0,
+     "artLeft": 0
+    }
+   ]
+  },
+  "riftstalker": {
+   "dmgByA": {
+    "artillery": 1044,
+    "tank": 486,
+    "rifle": 141
+   },
+   "dmgByB": {
+    "riftstalker": 1192
+   },
+   "n": 20,
+   "w": 6,
+   "l": 14,
+   "d": 0,
+   "pct": 30,
+   "t": 33.9,
+   "leftA": 208,
+   "leftB": 523,
+   "art": 20879.29703333651,
+   "artSpent": 18800,
+   "artLeft": 0.8,
+   "artDead": 39.9,
+   "byFlip": [
+    "3-7",
+    "3-7"
+   ],
+   "runs": [
+    {
+     "seed": 11,
+     "flip": 0,
+     "win": -1,
+     "t": 39.9,
+     "leftA": 0,
+     "leftB": 380,
+     "art": 1051,
+     "artLeft": 0
+    },
+    {
+     "seed": 11,
+     "flip": 1,
+     "win": -1,
+     "t": 52.6,
+     "leftA": 0,
+     "leftB": 190,
+     "art": 1032,
+     "artLeft": 0
+    },
+    {
+     "seed": 12,
+     "flip": 0,
+     "win": -1,
+     "t": 61.5,
+     "leftA": 0,
+     "leftB": 190,
+     "art": 1227,
+     "artLeft": 0
+    },
+    {
+     "seed": 12,
+     "flip": 1,
+     "win": -1,
+     "t": 58.2,
+     "leftA": 0,
+     "leftB": 190,
+     "art": 1231,
+     "artLeft": 0
+    },
+    {
+     "seed": 13,
+     "flip": 0,
+     "win": 1,
+     "t": 43.4,
+     "leftA": 515,
+     "leftB": 0,
+     "art": 1154,
+     "artLeft": 2
+    },
+    {
+     "seed": 13,
+     "flip": 1,
+     "win": -1,
+     "t": 30.4,
+     "leftA": 0,
+     "leftB": 760,
+     "art": 1166,
+     "artLeft": 0
+    },
+    {
+     "seed": 14,
+     "flip": 0,
+     "win": 1,
+     "t": 38.2,
+     "leftA": 515,
+     "leftB": 0,
+     "art": 1224,
+     "artLeft": 2
+    },
+    {
+     "seed": 14,
+     "flip": 1,
+     "win": 1,
+     "t": 39.7,
+     "leftA": 515,
+     "leftB": 0,
+     "art": 1206,
+     "artLeft": 2
+    },
+    {
+     "seed": 15,
+     "flip": 0,
+     "win": -1,
+     "t": 27.3,
+     "leftA": 0,
+     "leftB": 1140,
+     "art": 961,
+     "artLeft": 0
+    },
+    {
+     "seed": 15,
+     "flip": 1,
+     "win": -1,
+     "t": 28.2,
+     "leftA": 0,
+     "leftB": 950,
+     "art": 896,
+     "artLeft": 0
+    },
+    {
+     "seed": 16,
+     "flip": 0,
+     "win": -1,
+     "t": 27.2,
+     "leftA": 0,
+     "leftB": 1140,
+     "art": 819,
+     "artLeft": 0
+    },
+    {
+     "seed": 16,
+     "flip": 1,
+     "win": -1,
+     "t": 26.2,
+     "leftA": 0,
+     "leftB": 1330,
+     "art": 703,
+     "artLeft": 0
+    },
+    {
+     "seed": 17,
+     "flip": 0,
+     "win": -1,
+     "t": 29.6,
+     "leftA": 0,
+     "leftB": 950,
+     "art": 883,
+     "artLeft": 0
+    },
+    {
+     "seed": 17,
+     "flip": 1,
+     "win": 1,
+     "t": 25.9,
+     "leftA": 1350,
+     "leftB": 0,
+     "art": 1318,
+     "artLeft": 4
+    },
+    {
+     "seed": 18,
+     "flip": 0,
+     "win": 1,
+     "t": 40.1,
+     "leftA": 515,
+     "leftB": 0,
+     "art": 1133,
+     "artLeft": 2
+    },
+    {
+     "seed": 18,
+     "flip": 1,
+     "win": 1,
+     "t": 33.9,
+     "leftA": 750,
+     "leftB": 0,
+     "art": 1236,
+     "artLeft": 3
+    },
+    {
+     "seed": 19,
+     "flip": 0,
+     "win": -1,
+     "t": 33.4,
+     "leftA": 0,
+     "leftB": 570,
+     "art": 911,
+     "artLeft": 0
+    },
+    {
+     "seed": 19,
+     "flip": 1,
+     "win": -1,
+     "t": 34,
+     "leftA": 0,
+     "leftB": 570,
+     "art": 1052,
+     "artLeft": 0
+    },
+    {
+     "seed": 20,
+     "flip": 0,
+     "win": -1,
+     "t": 27.3,
+     "leftA": 0,
+     "leftB": 1140,
+     "art": 654,
+     "artLeft": 0
+    },
+    {
+     "seed": 20,
+     "flip": 1,
+     "win": -1,
+     "t": 28.8,
+     "leftA": 0,
+     "leftB": 950,
+     "art": 1022,
+     "artLeft": 0
+    }
+   ]
+  }
+ }
+}

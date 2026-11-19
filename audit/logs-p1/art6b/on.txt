@@ -1,0 +1,13 @@
+v2.92 scale 1 rw {} ART6 {"dmg":45,"cd":3.2} seeds 11-20 x both orientations
+A typical vs Bloomhost: Last Fist (4755, holding) vs 4725 advancing: LF 0-20 (0%; as side 0 0-10, as side 1 0-10), median 45.2 s, left LF 0 / foe 1166, Artillery dmg/100 spent 171, Artillery left 0 of 2
+A typical vs Axiarchs: Last Fist (4755, holding) vs 4740 advancing: LF 6-14 (30%; as side 0 5-5, as side 1 1-9), median 86.7 s, left LF 349 / foe 670, Artillery dmg/100 spent 653, Artillery left 0.6 of 2
+A Artillery-heavy vs Bloomhost: Last Fist (4820, holding) vs 4725 advancing: LF 0-20 (0%; as side 0 0-10, as side 1 0-10), median 34.3 s, left LF 0 / foe 1838, Artillery dmg/100 spent 318, Artillery left 0 of 6
+A Artillery-heavy vs Axiarchs: Last Fist (4820, holding) vs 4740 advancing: LF 14-6 (70%; as side 0 9-1, as side 1 5-5), median 68.5 s, left LF 1269 / foe 380, Artillery dmg/100 spent 427, Artillery left 3.9 of 6
+  typical vs Bloomhost damage per fight, Last Fist: {"heavy":2239,"tank":1974,"flame":1893,"titan":1749,"rifle":1587,"artillery":802}; foe: {"spitter":3152,"bulwark":2622,"gorebore":1290,"dreadthorn":295,"thornback":182,"skitterling":89,"leaper":5,"ravager":5}
+  typical vs Axiarchs damage per fight, Last Fist: {"artillery":3069,"flame":1978,"titan":1185,"tank":1020,"heavy":999,"rifle":993}; foe: {"lancer":4799,"marksman":987,"bastion":861,"gravemantle":314,"shardling":241,"riftstalker":118}
+  Artillery-heavy vs Bloomhost damage per fight, Last Fist: {"artillery":4482,"tank":2082,"heavy":1514,"rifle":1257}; foe: {"spitter":1959,"bulwark":1930,"gorebore":873,"skitterling":447,"dreadthorn":355,"thornback":332,"ravager":59,"leaper":24}
+  Artillery-heavy vs Axiarchs damage per fight, Last Fist: {"artillery":6024,"tank":1625,"heavy":936,"rifle":935}; foe: {"lancer":2422,"marksman":741,"bastion":723,"shardling":681,"gravemantle":237,"riftstalker":139}
+Artillery damage per 100 spent (all four army fights): 382
+D leaper: Artillery line (1120) vs 1100: line 0-20 (as side 0 0-10, as side 1 0-10), median 13.9 s, Artillery left 0 of 4, value left line 0 / divers 1100, Artillery dmg/100 spent 5
+D gorebore: Artillery line (1120) vs 1150: line 0-20 (as side 0 0-10, as side 1 0-10), median 21.8 s, Artillery left 0 of 4, value left line 0 / divers 1150, Artillery dmg/100 spent 0
+D riftstalker: Artillery line (1120) vs 1140: line 0-20 (as side 0 0-10, as side 1 0-10), median 22.7 s, Artillery left 0 of 4, value left line 0 / divers 1140, Artillery dmg/100 spent 12

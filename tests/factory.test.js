@@ -122,7 +122,7 @@ test('the AI: Aggressor and Trickster default to Assault, Turtle and Economist t
   }
   let flames = 0, hydras = 0, assault = 0;
   for (let m = 0; m < 3; m++) {
-    const g2 = sim.newGame('hard', { autoPlayer: true, autoDiff: 'hard', persona: 'aggressor', autoPersona: 'aggressor' });
+    const g2 = sim.newGame('hard', { seed: 900 + m, autoPlayer: true, autoDiff: 'hard', persona: 'aggressor', autoPersona: 'aggressor' }); // v2.92: seeded (unseeded, the matches changed with every test run before it, and failed now and then)
     for (let i = 0; i < 30 * 900 && !g2.over; i++) sim.update(g2, 1 / 30);
     for (const s of [0, 1]) { const T = g2.log.tot[s].trained; flames += T.flame || 0; hydras += T.hydra || 0; }
     assault += g2.log.ev.filter(e => e[2] === 'U' && e[3] === 'factory' && e[6] === 'B').length;

@@ -91,6 +91,8 @@ function trampleGo(g, u, d, st, cs, foes, best, side) {
       if (L_.len < TRAMPLE.min * 0.5) continue; // a wall right ahead
       if (L_.sup > bs || (L_.sup === bs && k < bd)) { bs = L_.sup; bd = k; pick = L_; }
     }
+    { const A6 = art6Pick(g, u, foes, u.u, u.v, TRAMPLE.max, e => trampleFoe(g, u, e) && effDist(u, e) >= TRAMPLE.min && !(hold && Math.hypot(e.u - u.holdU, e.v - u.holdV) > MECH7C.holdR + d.range)); // v2.92 (batch 6b): an AI's Dreadthorn charges a deployed Artillery first
+      if (A6) { const L6 = trampleLine(g, u, A6, foes); if (L6.len >= TRAMPLE.min * 0.5) { pick = L6; pick.sup = Math.max(pick.sup, TRAMPLE.aiMin); } } }
     if (!pick || (!side.direct && pick.sup < TRAMPLE.aiMin)) return false; // an AI's charge needs a group (or one big unit) on the line
   }
   Object.assign(u, { crg: 1, crU: pick.du, crV: pick.dv, crL: TRAMPLE.len, crHit: [], crCd: g.t + TRAMPLE.cd, crU0: u.u, crV0: u.v, crS: g.t, tgt: 0, chT: 0, nav: undefined });

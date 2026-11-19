@@ -45,3 +45,29 @@ function side6Ai(g, dt) { // both AIs (side 0's only when it is AI-played), a se
 }
 function side6Persona(g, s, f) { RNG.ai = s; try { return f(); } finally { RNG.ai = -1; } } // a side's personality, rolled from its own stream
 
+/* ---------- Batch 6b, Part B (v2.92): Artillery counterplay (REWORK.b6art) ----------
+   Stored per game in g.rw (rwB6art). Off: v2.91's Artillery exactly; nothing below runs or is saved. Artillery stays Last Fist's
+   only true long-range unit; the answer to it is getting close, so:
+   - its efficiency comes down to about 300 damage per 100 spent in the Test Range (audit/sim/art6b.js): ART6's numbers, played
+     through a per-game definition (RW6A_D, read by rwD), UDEF untouched. Its minimum range (110, a quarter of its 440 reach) was
+     already there and is kept.
+   - an AI's divers go for a deployed enemy Artillery first when one is within their reach (art6Pick): Leapers (the leap and
+     the aim), Riftstalkers (the strike and the aim), Gorebores (what they burrow toward) and Dreadthorns (the charge). A
+     player's units are untouched (they go where they are sent). */
+const rwB6art = g => !!(g && g.rw && g.rw.b6art);
+const ART6 = { dmg: 45, cd: 3.2 }; // v2.91: 60 per salvo (3 shells of 20), 3.2 s; measured in audit/sim/art6b.js
+const RW6A_D = { artillery: () => Object.assign({}, UDEF.artillery, { dmg: ART6.dmg, cd: ART6.cd }) };
+// Deployed: set up to fire (deploying or deployed; in a game without the deploy switch, standing still)
+const art6Set = (g, e) => e.kind === 'u' && e.type === 'artillery' && e.hp > 0 && !e.gone && (rwDep(g) ? e.dep === 1 || e.dep === 2 : !e.moving);
+const art6Ai = (g, u) => rwB6art(g) && !g.sides[u.side].direct;
+// The nearest deployed enemy Artillery within R of (cu, cv) that ok accepts, for an AI's diver; null otherwise
+function art6Pick(g, u, foes, cu, cv, R, ok) {
+  if (!art6Ai(g, u)) return null;
+  let best = null, bd = 1e9;
+  for (const e of foes) {
+    if (e.side === u.side || e.side === NEUTRAL || !art6Set(g, e) || !visibleTo(g, u.side, e) || (ok && !ok(e))) continue;
+    const k = Math.hypot(e.u - cu, e.v - cv); if (k > R) continue;
+    if (k < bd || (k === bd && e.id < best.id)) { bd = k; best = e; }
+  }
+  return best;
+}

@@ -49,7 +49,9 @@ test('Test Range: setup, placing, inspecting, Start, speeds, Reset replays exact
   assert.deepStrictEqual(await page.evaluate(() => [game.ents.filter(e => e.type === 'tank').length, TR.set.items.length]), [2, 13]);
   // Start, speeds, Pause
   await page.click('#trGo'); await page.click('#trSpd'); assert.strictEqual(await page.evaluate(() => TR.speed), 2);
-  await page.waitForTimeout(1500); await page.click('#trGo');
+  await page.waitForTimeout(1500);
+  await page.waitForFunction(() => { const R = rangeRead(game); return R.dmg[0] > 0 && R.dmg[1] > 0; }, null, { timeout: 8000 }); // v2.92: until both sides have fired (a busy machine runs fewer frames in 1.5 s)
+  await page.click('#trGo');
   const t1 = await page.evaluate(() => game.t); assert.ok(t1 > 1.5, `2× runs faster (${t1})`);
   await page.click('#trSpd'); assert.strictEqual(await page.evaluate(() => TR.speed), 0.5);
   await page.click('#trSpd'); assert.strictEqual(await page.evaluate(() => TR.speed), 1);

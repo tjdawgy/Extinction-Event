@@ -660,6 +660,147 @@ Departures and choices the brief left open:
   and appears on held nodes in matches.
 - **Old draw functions kept:** the v2.7-v2.34 building functions stay in the source, unused, as earlier batches left theirs.
 
+## Batch 6b: the side-bias fix, then Artillery counterplay
+
+**Batch 6b (v2.92): two switches, done in order.** `REWORK.b6side` (Part A, a bug fix: no unit, cost, AI strategy or balance
+value changed) and `REWORK.b6art` (Part B, the Artillery). Both are stored per game in `g.rw`, on by default, saved only when on
+(a save with both off is a v2.91 save), with Test Range switches (Setup → Rework switches: "Batch 6b side", "Batch 6b Artillery").
+Code: src/sim/rework-6b.js. With both off the game is v2.91 exactly: every pinned fingerprint matches (the old sets, FP_V288G*,
+FP_V290*), and the Test Range hashes 5c pinned with b5c off run with both new switches off too. Recorded: FP_V292 (b6side on, b6art
+off) and FP_V292A (both on), tests/determinism.test.js. Tests: tests/rework-6b.test.js.
+
+### Part A: why side 1 won 55 to 26 (diagnosis)
+
+Scripts: audit/sim/mirror6b.js (Test Range mirror fights: identical armies in exactly mirrored positions, no AI or the AI's unit
+rules (`--ai`), run with side 0 on the left and on the right, and with either side placed first; ablations that remove one
+candidate at a time) and audit/sim/sidebias6b.js (Hard vs Hard matches with one candidate removed by a patch to the SIM source).
+Logs: audit/logs-p1/side6b/. Each cause, its evidence, and how much it explains:
+
+1. **Entity order decided mirror fights.** `update()` ran every unit and building in the order of `g.ents`, and damage lands at once,
+   so the entity listed first moved, aimed and struck first every tick and the other side always answered what had already happened;
+   target ties went to the earlier entry too. In 24-seed mirrors the side placed first won Marines 88-8, Skitterlings 96-0, Leapers
+   96-0, Riftstalkers 96-0, Spitters 94-2 (runs: 4 per seed), and lost Shardlings 24-72 (the parry rewards striking second). Side
+   number and left/right made no difference at all (the paired cells mirror exactly), so this is the Test Range's "0-5 one way":
+   the harness placed side A first in both orientations. Ablations: shuffling the update order each tick evened Skitterlings,
+   Bulwarks and Riftstalkers; holding all damage to the end of the loop (simultaneous damage) changed nothing, so the cause is the
+   order, not immediate damage. Shuffling only the update order left Leapers at 2:1 for the side placed second; shuffling the list
+   itself fixed that (positions in the list, not ids). In matches the list interleaves by creation time, so this is noise for
+   either side there rather than a lean, but it decided every Test Range comparison.
+2. **AI order and start.** Side 1's AI always decided first within a tick, and side 0's first decision came at 1 s, side 1's at
+   1.5 s (`aiT: 1 + s * 0.5`): side 0 started every match half a second ahead. On v2.91, Two-Lane mirror matches with seeds 1-4 went
+   9-1 to side 0 (sidebias-v291-twolane-mirrors.jsonl), including matches where both sides rolled the same personality.
+3. **AI dice from the shared stream, in side order.** Both AIs drew their personality and opening from the match's one stream, side 1
+   first. Over 5,000 seeds the draws are unbiased (the Turtle about 25% for Last Fist and Bloomhost and 33% for the Axiarchs on either side, as their kinds lists say), but the paired design of the 6a
+   audit plays each pairing both ways *with the same seed*, so the slot decided the dice: with seeds 7-11 side 1 never rolled the
+   Turtle and side 0 rolled it 30 times (the Turtle won 4 of those 30). That alone accounts for most of the 55-26: matches with no
+   Turtle went 22-31 (side 1 58% of decided), the rest 4-24. Seeds 1-4 leaned the other way (cause 2). Both are seed luck routed
+   through the slot, which is the bug.
+4. **Spacing (direct control).** `ctlFree`, the search for a free spot when a directly controlled unit steps apart, walked its rings
+   from the same angle for both sides, so both drifted east: toward the enemy for the west side, away for the east. With causes 1-3
+   fixed, Marine mirrors were then won by the army on the right 17-7 in every orientation. Affects the player's side and the Test
+   Range only (the AI is never under direct control).
+5. **Ruled out:** map geometry (Classic, Two-Lane and Three-Lane are exact mirrors across x, pads, nodes, lanes, walls, forward pads
+   and relics, index by index; the fog and navigation grids mirror cell for cell), range and distance checks (all symmetric:
+   `effDist`, the targeting index's inclusive bounds), projectile flight and hits, income, the storm and `resolveEnd`. Two AI
+   tie-breaks prefer lane or node index 0 for both sides (the north lane, the west relic), which is the same physical spot for both,
+   not a side preference.
+
+### Part A: the fix (b6side)
+
+- **The entity list in a fresh seeded random order each tick** (`side6Order`, drawn from the game's own order stream `g.os`): the
+  update loop and every other pass over the list that tick (target lists and their ties, kills, splash, the AI's reads) see it, so
+  neither side and no list position goes first or wins a tie more often. The UI reads units by id where order showed (control
+  groups `groupUnits`, `myUnits`, overlapping-building taps), as the list was in id order before.
+- **Both AIs start at 1 s, and a seeded coin decides which decides first each tick** (`side6Ai`).
+- **Each AI rolls from its own stream** (`g.ar[s]`, `RNG.ai`), seeded from the match seed and the side's *faction*, never its slot
+  (`side6Seed`): a faction's AI gets the same dice whichever side it plays, and the AIs' rolls no longer depend on each other's or the
+  fight's. In a mirror match both AIs roll the same dice (the fairest mirror; a player only ever faces one AI).
+- **Spacing mirrored per side** (`ctlFree`'s `dir`).
+- No handicaps or compensating bonuses. Departure: the Test Range "0-5" lean turned out to be placement order, which the harness also
+  reproduces; `audit6a-range.js --oneway` now runs one orientation (10 seeds instead of 5 × both).
+
+### Part A: results (b6side on, b6art off)
+
+- Test Range mirrors, 24 seeds, side placed first vs second (v2.91 → b6side): Marines 88-8 → 56-40, Skitterlings 96-0 → 48-48,
+  Spitters 94-2 → 48-48, Bulwarks 68-28 → 40-56, Shardlings 24-72 → 68-28, Leapers 96-0 → 68-28, Riftstalkers 96-0 → 64-32, Lancers
+  36-60 → 52-40, mixed Last Fist 24-72 → 48-48; left/right even in every scenario. The three that stayed lopsided were checked on 48
+  more seeds: Shardlings 22-26, Leapers 26-22, Riftstalkers 27-21 (noise; with b6side the paired runs mirror exactly, so a seed's
+  spawn rolls count twice). AI-mode mirrors (both sides played as the AI plays) even too (mixed Axiarchs 27-21, mixed Bloomhost
+  24-24 / 25-23 on seeds 25-72).
+- Self-play, audit6a.js (90 Hard vs Hard, seeds 7-11, b6art off; audit/logs-p1/audit6b-side/): side 0 41, side 1 39, 10 draws
+  (v2.91: 26-55-9); side 1 49% of decided; Classic 14-14, Two-Lane 11-14 (56%), Three-Lane 16-11 (41%); 0 errors.
+- Faction rates moved, but by the dice, not the mechanics: with the dice keyed by faction, each faction's personality at a seed is the
+  same in all its matches, and seeds 7-11 gave Last Fist the Boomer in 4 of 5 (never the Economist, which lost to Bloomhost at seeds 10
+  and 11 on v2.91) and the Axiarchs and Bloomhost the Turtle in 2 of 5. Last Fist 40-12-8 (67%), Bloomhost 23-30-7, Axiarchs
+  17-38-5; per personality Last Fist Boomer 32 of 48, Bloomhost Boomer 16 of 36, Axiarch Boomer 10 of 36. Faction rates from five
+  seeds now rest on five personality draws per faction; more seeds are needed before reading them as balance.
+
+### Part B: Artillery counterplay (b6art)
+
+The owner's playtest: Artillery is still too strong, and Bloomhost and Axiarchs have nothing with its range. The design intent: it
+stays Last Fist's only true long-range unit and its best backline unit; the answer is getting close (Bloomhost speed, tunnels and
+Leapers; Axiarch blinks), not long-range units for the others and not auto-dodging.
+
+**Values before (v2.91, the runtime UDEF with the redesign and balance layers):** cost 175 credits + 60 energy (235); 150 HP; range
+440; **minimum range 110 already** (a quarter of its reach; enemies inside it can't be shot, and it holds still); deploy 2 s, pack
+1.5 s, packs after 2 s with nothing in reach (`ART`); a salvo of 3 shells every 3.2 s (± 10%), **60 damage per salvo (20 a shell)**,
+the shells spread 30 around the aim point, 0.12 s apart; splash radius 40, full damage at the centre falling to half at the edge;
+flight 0.7 s + distance / 520 (1.55 s at full range), at least 1.6 s with the telegraph, each shell's spot marked from firing to
+impact. The Bastion's barrier does not stop its shells (arcing shells, bombs, ground attacks and melee pass; batch 3b); unchanged.
+
+**Changes (behind b6art; per-game definition `RW6A_D`, read through `rwD`; UDEF untouched):**
+- Shell damage **60 → 45 per salvo** (15 a shell). Reload, range, minimum range, splash radius and falloff unchanged.
+- An AI's divers take a **deployed** enemy Artillery (deploying or deployed) within their reach first (`art6Pick`): Leapers (the
+  leap and the aim; v2.91 took the heaviest host, so a Tank before an Artillery), Riftstalkers (the strike and the aim; they
+  already took the longest-range unit, so this mainly adds the aim), Gorebores (what they burrow toward; they already ranked
+  minimum-range units first) and Dreadthorns (the charge, given the AI's supply rule). A player's units go where they are sent.
+- The minimum range was there already and is kept (the targets didn't call for more).
+
+**Measurements (audit/sim/art6b.js, logs in audit/logs-p1/art6b/):** equal cost, Last Fist holding (its Artillery set up), the
+other side advancing from beyond its reach, both played the way the AI plays them, 10 seeds × both orientations (20 runs). Armies in
+the proportions the Hard AI spends on ground units in the 6a self-play, about 4,750 each, plus an Artillery-heavy Last Fist line (six
+Artillery behind Marines, Heavies and Tanks: the playtest's case).
+
+| fight (Last Fist W-L, 20 runs) | b6art off | b6art on (45) |
+|---|---|---|
+| typical Last Fist vs typical Bloomhost | 0-20 | 0-20 |
+| typical Last Fist vs typical Axiarchs | 10-10 | 6-14 |
+| Artillery-heavy Last Fist vs Bloomhost | 0-20 | 0-20 |
+| Artillery-heavy Last Fist vs Axiarchs | 20-0 | 14-6 |
+| Artillery damage per 100 spent, all four | 436 | 382 |
+
+The sweep that chose 45 (same fights; Last Fist win % typical vs Bloomhost / typical vs Axiarchs / heavy vs Bloomhost / heavy vs
+Axiarchs; Artillery damage per 100 spent): off 0/70/0/100, 442 (before the last Part A refinement); 50: 0/30/0/85, 398; 45:
+0/30/0/70, 382; 40: 0/15/0/50, 355; 60 with a 4.0 s reload: 0/35/0/80, 401; 40 with 4.8 s: 0/0/0/5, 254.
+
+Diver strikes (four Artillery set up behind a Tank and two Marines, 1,395, holding; equal-cost divers advancing; 20 runs):
+
+| divers | b6art off | b6art on |
+|---|---|---|
+| 14 Leapers (1,400) | line 0-20, every Artillery dead by 18.4 s, divers keep 595 | 0-20, 17.7 s, divers keep 945 |
+| 6 Gorebores (1,380) | 0-20, 19.9 s, 1,380 | 0-20, 19.9 s, 1,380 (they already went for it) |
+| 7 Riftstalkers (1,330) | line 8-12, Artillery all dead by 58.9 s, divers keep 399 | 6-14, 39.9 s, 523 |
+
+Self-play with both switches on (audit6a.js, 90 Hard vs Hard, seeds 7-11, audit/logs-p1/audit6b-art/): 0 errors; side 0 40, side 1 42,
+8 draws (51%); Classic 15-14, Two-Lane 11-13, Three-Lane 14-15; Last Fist 40-14-6 (67%), Bloomhost 25-29-6 (42%), Axiarchs 17-39-4
+(28%); Artillery 433 trained in 45 of 60 Last Fist sides (b6side alone: 443 in 45; v2.91: 279 in 29), **383 damage and 75 killed value
+per 100 spent** (b6side alone 453 / 116; v2.91 492 / 112): third in Last Fist after the Hydra (446) and the Sniper (440), ahead of everything in the other factions (Ruinmaw 303, Worldbreaker 314, Spitter 259, Lancer 242).
+
+**Targets, and why two are not met:**
+- *Efficiency about 300:* 382 in the Test Range (436 before), 383 in self-play. Getting to 300 needs about 33 a salvo, and at 40
+  Last Fist already loses its typical army fight against the Axiarchs 3-17. The equal-cost target came first.
+- *Neither side above about 65% at equal cost:* against the Axiarchs, 70% / 70% the two ways (typical: Axiarchs 14-6; heavy: Last Fist
+  14-6), the closest any single value came; 50 left the heavy line at 85%, 40 the typical army at 15%. Against Bloomhost Last Fist
+  loses 0-20 with b6art off and on, both mixes: Spitters (range 165, outranging Marines 120 and Heavies 130), Bulwarks and Gorebores win
+  it, and Artillery mostly kills Skitterlings before they arrive. Weakening Artillery can't bring that fight to 65%, and no other unit
+  was to be tuned (the Spitter is ranked 3 in docs/BALANCE_AUDIT.md "After batch 6b").
+- *Divers:* the line still loses every Leaper and Gorebore strike (telegraphed shells land where a fast diver was); with b6art the
+  Leapers lose a third less of their value and the Riftstalkers kill the Artillery 19 s sooner.
+
+**Departures:** the minimum range was not added (it existed at a quarter of the range); the splash falloff was kept (the swarm fight
+fails in Bloomhost's favour, not Last Fist's); Dreadthorns were added to the diver list (a charge is a dive); Ruinmaws were not (they
+open a tunnel for the army, they don't strike).
+
 ## Unchanged (already distinct)
 
 Marine, Heavy, Tank, Flame Tank, Hydra, Interceptor, Medevac, Recon Drone, Mite, Razorwing, Cloudwing, Thornback, Lancer,
@@ -717,5 +858,8 @@ buildings: batch 5d, v2.91, with team colour on their largest surfaces).
    Axiarch art, the Needlewing AI fix, the Medevac rename (5c, done v2.90): the last five Axiarch units redrawn, the Bloomspire's roll
    behind `REWORK.b5c`.
 6. Art batch: unchanged units and buildings in the new style (units in 5a-5c; every building in 5d, done v2.91).
+
+7. Batch 6a (v2.91): the balance audit (docs/BALANCE_AUDIT.md). Batch 6b (v2.92): the side-bias fix (`b6side`) and Artillery counterplay
+   (`b6art`).
 
 Then: the paused balance pass, with all three factions reworked.

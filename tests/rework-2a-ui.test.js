@@ -15,7 +15,7 @@ test('Test Range: per-row rework switches; the three units fight without errors;
   const { page, errors } = await openPage(browser, NARROW);
   await page.click('#bRange'); await page.waitForTimeout(200);
   await page.click('#trCr button[data-k="3"]'); await page.waitForTimeout(100);
-  for (const k of [0, 1, 2]) for (const key of ['b2a', 'artDeploy', 'artTelegraph']) assert.ok(await page.$(`#trRw${k}${key} button[data-k="0"]`), `row ${k + 1} ${key} switch`);
+  for (const k of [0, 1, 2]) for (const key of ['b2a', 'artDeploy', 'artTelegraph', 'b6side', 'b6art']) assert.ok(await page.$(`#trRw${k}${key} button[data-k="0"]`), `row ${k + 1} ${key} switch`);
   const small = await page.evaluate(() => [...document.querySelectorAll('.trrw button')].filter(b => b.getBoundingClientRect().height < 44).length);
   assert.strictEqual(small, 0, 'every switch at least 44 pt');
   await page.click('#trRw1b2a button[data-k="0"]'); await page.waitForTimeout(100); // row 2: before the batch

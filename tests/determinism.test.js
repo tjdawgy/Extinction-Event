@@ -208,4 +208,12 @@ test('v2.92: with every rework batch on and the side-bias fix (b6side) on, b6art
   assert.strictEqual(lfBh('i'), LF_BH_V292);
 });
 if (require.main === module && process.argv[2] === '--print6b') console.log(fingerprint(false, false, true, true, 'i'), bhAx(true, true, 'i'), lfBh('i'));
+// v2.92 (batch 6b, Part B: Artillery counterplay, REWORK.b6art): every replay above runs with b6art false. With every batch on, b6side
+// and b6art on (rw 'j', the new-game default) the same three matches:
+const FP_V292A = '7f1f4570ed8b70f374384cd0164207c8180c431b91dc72fdfadfacec14441ed4', FP_V292A_BA = '1f5a3f4d28386accd80140fe7712f921940440e8ec0e4af37ae2376556a7e8a4', LF_BH_V292A = '3b1dbc516c2d269e6bafde73163c3c0339e7cbabeb80eb00780e76bba05180c3'; // recorded at v2.92 (every switch on)
+test('v2.92: with every rework batch on, the side-bias fix and the Artillery counterplay (b6side, b6art), the same matches match their recorded fingerprints', () => {
+  assert.strictEqual(fingerprint(false, false, true, true, 'j'), FP_V292A);
+  assert.strictEqual(bhAx(true, true, 'j'), FP_V292A_BA);
+  assert.strictEqual(lfBh('j'), LF_BH_V292A);
+});
 if (require.main === module && process.argv[2] === '--print6bA') console.log(fingerprint(false, false, true, true, 'j'), bhAx(true, true, 'j'), lfBh('j'));
