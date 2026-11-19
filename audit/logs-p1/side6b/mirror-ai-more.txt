@@ -1,0 +1,2 @@
+mixed AX     b6side  side0-side1 48-48-96  left-right 48-48  first-second 54-42  margin(side0, % of army) 0  [L0:27-21 L1:21-27 R0:0-0-48 R1:0-0-48]
+mixed BH     b6side  side0-side1 49-47-96  left-right 49-47  first-second 47-49  margin(side0, % of army) 0.3  [L0:24-24 L1:25-23 R0:0-0-48 R1:0-0-48]

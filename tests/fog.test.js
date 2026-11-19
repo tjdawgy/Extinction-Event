@@ -138,7 +138,7 @@ test('AI decisions use only its own vision (identical choices whatever is hidden
   // Each game gets its own seeded random stream, so both see exactly the same random numbers
   let seed = 0;
   const rnd = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
-  const det = loadSim({ random: () => rnd() });
+  const det = loadSim({ random: () => rnd() }); det.REWORK.b6side = false; // v2.92: batch 6b shuffles the entity list each tick from a stream whose draws depend on how many entities there are, so a hidden army changes the order (not what the AI knows)
   const make = extra => {
     seed = 42; const g = det.newGame('hard');
     if (extra) for (let i = 0; i < extra.n; i++) { const t = det.spawnUnit(g, 0, 'tank', extra.u + i * 8, 0); t.holdU = t.u; t.holdV = t.v; }
@@ -147,7 +147,7 @@ test('AI decisions use only its own vision (identical choices whatever is hidden
   };
   const step = g => { seed = g.seed; det.update(g, STEP); g.seed = seed; };
   const aiState = g => JSON.stringify({ res: g.sides[1].res, stance: g.sides[1].stance, push: g.sides[1].pushTo,
-    ents: g.ents.filter(e => e.side === 1).map(e => [e.kind, e.type, e.tier, Math.round(e.u * 100), e.queue ? e.queue.join() : '']) });
+    ents: g.ents.filter(e => e.side === 1).sort((x, y) => x.id - y.id).map(e => [e.kind, e.type, e.tier, Math.round(e.u * 100), e.queue ? e.queue.join() : '']) });
   const A = make(null), B = make({ n: 12, u: 280 }); // B: a big army hidden inside the player's base
   let steps = 0;
   for (; steps < 90 * 30; steps++) {

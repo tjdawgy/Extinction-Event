@@ -24,7 +24,9 @@ const EXTRA = `
 }).call(this);`;
 const S = loadSim(1, { instrument: INSTR + EXTRA });
 const F = ['lastfist', 'bloomhost', 'axiarchs'], FN = { lastfist: 'Last Fist', bloomhost: 'Bloomhost', axiarchs: 'Axiarchs' };
-const SEEDS = [11, 12, 13, 14, 15];
+const ONEWAY = process.argv.includes('--oneway'), OUTDIR = (i => i > 0 ? process.argv[i + 1] : null)(process.argv.indexOf('--out')); // v2.92 (batch 6b): --oneway: one orientation (the side bias is fixed with b6side), seeds 11-20 so each cell still has 10 runs; --out dir
+const ORI = ONEWAY ? '10 seeds, one orientation' : '5 seeds × both orientations';
+const SEEDS = ONEWAY ? [11, 12, 13, 14, 15, 16, 17, 18, 19, 20] : [11, 12, 13, 14, 15];
 const cost = t => { const c = S.UDEF[t].cost; return c.c + c.e; };
 const r0 = x => Math.round(x), r1 = x => Math.round(x * 10) / 10, r2 = x => Math.round(x * 100) / 100;
 const reset = () => { const A = S.a6; for (const k of Object.keys(A)) A[k] = [{}, {}]; const X = S.x6; for (const k of Object.keys(X)) X[k] = k === 'firstHit' ? null : 0; };
@@ -38,12 +40,12 @@ const sum = o => Object.values(o).reduce((a, b) => a + b, 0);
 const out = [], J = {};
 const say = s => { out.push(s); console.log(s); };
 const table = (head, rows) => { say('| ' + head.join(' | ') + ' |'); say('|' + head.map(() => '---').join('|') + '|'); for (const r of rows) say('| ' + r.join(' | ') + ' |'); say(''); };
-// a fight to the end (or maxT), every seed in both orientations (A on the left as side 0, then A on the right as side 1:
+// a fight to the end (or maxT), every seed in both orientations (--oneway: A as side 0 only) (A on the left as side 0, then A on the right as side 1:
 // the Test Range has a small side bias, a mirror of 8 Lancers went 0-5 one way); counts are A's: wins-losses(-draws) of
 // 2 × seeds, time median, value left (credits + energy, averaged), damage dealt per side and per type (A first)
 function fight(factions, rework, A, B, o = {}) {
   const res = [];
-  for (const seed of o.seeds || SEEDS) for (const flip of [0, 1]) {
+  for (const seed of o.seeds || SEEDS) for (const flip of ONEWAY ? [0] : [0, 1]) {
     const g = game(flip ? [factions[1], factions[0]] : factions, rework, seed), sA = flip, sB = 1 - flip, at = u => flip ? 1280 - u : u;
     for (const [t, n, u, v] of A) place(g, sA, t, at(u ?? 480), v ?? 0, n);
     for (const [t, n, u, v] of B) place(g, sB, t, at(u ?? 800), v ?? 0, n);
@@ -129,7 +131,7 @@ R.R3 = () => {
 // The Axiarch front holds (an attacker walks into it). For each attacking mix: the outcome at a fixed size, and the
 // smallest multiple of the mix (×0.5 steps up to ×4) that wins at least 6 of 10 against each front: the cost to break it.
 R.R4 = () => {
-  say('### R4. Ranged armies attacking a held Axiarch front, with and without Bastions (2 Bastions + 4 Lancers = 1350 against 8 Lancers = 1320; 5 seeds × both orientations; "absorbed" = barrier HP lost, "blocked" = raw damage of the shots and beams it stopped; "cost to break" = the smallest multiple of the mix, in 0.5 steps, that wins 6+ of 10)');
+  say(`### R4. Ranged armies attacking a held Axiarch front, with and without Bastions (2 Bastions + 4 Lancers = 1350 against 8 Lancers = 1320; ${ORI}; "absorbed" = barrier HP lost, "blocked" = raw damage of the shots and beams it stopped; "cost to break" = the smallest multiple of the mix, in 0.5 steps, that wins 6+ of 10)`);
   const AXwith = [['bastion', 2, 820], ['lancer', 4, 860]], AXno = [['lancer', 8, 860]];
   const armies = [['Last Fist: Marines + Heavies (5:2)', 'lastfist', [['rifle', 5, 420], ['heavy', 2, 380]]], ['Last Fist: Artillery + Marines (1:2)', 'lastfist', [['artillery', 1, 360], ['rifle', 2, 440]]],
     ['Last Fist: Tanks + Marines (1:2)', 'lastfist', [['tank', 1, 400], ['rifle', 2, 440]]], ['Bloomhost: Spitters', 'bloomhost', [['spitter', 5, 420]]], ['Bloomhost: Skitterlings (broods)', 'bloomhost', [['skitterling', 12, 440]]], ['Axiarchs: Lancers', 'axiarchs', [['lancer', 3, 420]]]];
@@ -145,7 +147,7 @@ R.R4 = () => {
 };
 // ---- R5: Leapers against each faction's vehicles, cost for cost, b3a off and on (and Skitterlings for reference) ----
 R.R5 = () => {
-  say('### R5. Leapers against vehicles, cost for cost (both sides attack; 5 seeds × both orientations; W-L for the Leapers; values in credits + energy)');
+  say(`### R5. Leapers against vehicles, cost for cost (both sides attack; ${ORI}; W-L for the Leapers; values in credits + energy)`);
   const rows = [];
   const vs = [['lastfist', 'tank', 4], ['lastfist', 'titan', 2], ['lastfist', 'hydra', 2], ['bloomhost', 'bulwark', 9], ['axiarchs', 'bastion', 4], ['axiarchs', 'eventide', 2]];
   for (const [fac, veh, n] of vs) {
@@ -242,7 +244,7 @@ R.R8 = () => {
 };
 // ---- R9: Spitter anti-air, cost for cost, b5b off and on ----
 R.R9 = () => {
-  say('### R9. Spitters against aircraft, cost for cost (both sides attack; 5 seeds × both orientations); the Hydra and Lancer as other factions\' anti-air for reference');
+  say(`### R9. Spitters against aircraft, cost for cost (both sides attack; ${ORI}); the Hydra and Lancer as other factions' anti-air for reference`);
   const rows = [];
   const air = [['lastfist', 'aircraft', 3], ['lastfist', 'interceptor', 5], ['lastfist', 'leviathan', 1], ['bloomhost', 'razorwing', 5], ['bloomhost', 'broodtyrant', 2], ['axiarchs', 'wraithwing', 3], ['axiarchs', 'prismwing', 7], ['axiarchs', 'shardstorm', 2], ['axiarchs', 'voidcarrier', 2]];
   for (const [fac, t, n] of air) {
@@ -263,7 +265,7 @@ R.R9 = () => {
 };
 // ---- R10: early fights the parry and broods change: Shardlings against each faction's tier-1 infantry, cost for cost ----
 R.R10 = () => {
-  say('### R10. Shardlings against tier-1 armies, cost for cost (about 800 each side; both attack; 5 seeds × both orientations), b3b off and on; and broods against them, b5b off and on');
+  say(`### R10. Shardlings against tier-1 armies, cost for cost (about 800 each side; both attack; ${ORI}), b3b off and on; and broods against them, b5b off and on`);
   const rows = [];
   for (const [nm, fac, B] of [['18 Marines (810)', 'lastfist', [['rifle', 18, 800]]], ['27 Skitterlings, b5b on (810)', 'bloomhost', [['skitterling', 27, 800]]], ['5 Bulwarks (825)', 'bloomhost', [['bulwark', 5, 800]]], ['2 Tanks + 2 Marines (820)', 'lastfist', [['tank', 2, 800], ['rifle', 2, 800]]]]) {
     const row = [nm];
@@ -285,4 +287,4 @@ R.R10 = () => {
 const want = process.argv.slice(2).filter(a => /^R\d+$/.test(a)), list = want.length ? want : Object.keys(R);
 say(`Batch 6a targeted measurements on ${S.VERSION} (${new Date().toISOString().slice(0, 10)}); seeds ${SEEDS.join(', ')} unless a table says otherwise.`); say('');
 for (const k of list) { const t0 = Date.now(); R[k](); console.error(`${k}: ${((Date.now() - t0) / 1000).toFixed(0)} s`); }
-if (!want.length) { const dir = path.join(__dirname, '..', 'logs-p1', 'audit6a-v291'); fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, 'range.txt'), out.join('\n') + '\n'); fs.writeFileSync(path.join(dir, 'range.json'), JSON.stringify(J)); }
+if (!want.length) { const dir = OUTDIR || path.join(__dirname, '..', 'logs-p1', 'audit6a-v291'); fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, 'range.txt'), out.join('\n') + '\n'); fs.writeFileSync(path.join(dir, 'range.json'), JSON.stringify(J)); }

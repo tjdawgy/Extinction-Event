@@ -30,7 +30,7 @@ test('switch: per game; b4b off plays the v2.86 units (UDEF untouched), on the b
 function skirm(s, kind, rw) {
   const S = kind === 'e' ? { f: ['lastfist', 'bloomhost'], b: [[0, 'lastfist', 'refinery', 420, 0], [1, 'bloomhost', 'refinery', 1020, 0]], u: [['leviathan', 600, -20, 1], ['interceptor', 580, 30, 2], ['rifle', 640, 20, 4], ['heavy', 620, -40, 2]], v: [['broodtyrant', 840, -10, 2], ['worldrender', 880, 20, 1], ['skitterling', 800, 20, 4], ['spitter', 860, 30, 2]] }
     : { f: ['axiarchs', 'lastfist'], b: [[1, 'lastfist', 'barracks', 1020, 0]], u: [['voidcarrier', 560, -20, 1], ['sovereign', 520, 10, 1], ['lancer', 620, 20, 3], ['shardling', 640, -30, 3]], v: [['tank', 840, -10, 2], ['rifle', 800, 20, 5], ['heavy', 820, 40, 3], ['hydra', 880, 0, 1]] };
-  const g = s.rangeGame({ seed: 17, factions: S.f, rework: Object.assign({ b5c: false, b6side: false }, rw) }) /* v2.90: pinned before batch 5c (its key would be saved) */;
+  const g = s.rangeGame({ seed: 17, factions: S.f, rework: Object.assign({ b5c: false, b6side: false, b6art: false }, rw) }) /* v2.90: pinned before batch 5c (its key would be saved) */;
   for (const [k, f, r, u, v] of S.b) s.rangeBuilding(g, k, f, r, u, v);
   for (const [t, u, v, n] of S.u) for (let i = 0; i < n; i++) s.rangeUnit(g, 0, t, u + (i % 3) * 14, v + Math.floor(i / 3) * 16);
   for (const [t, u, v, n] of S.v) for (let i = 0; i < n; i++) s.rangeUnit(g, 1, t, u + (i % 3) * 14, v + Math.floor(i / 3) * 16);

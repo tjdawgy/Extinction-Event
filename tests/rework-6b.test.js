@@ -65,3 +65,4 @@ test('b6side: in a mirrored fight, the side listed first no longer wins every ti
   const w0 = on.filter(w => w === 0).length, w1 = on.filter(w => w === 1).length;
   assert.ok(w0 >= 2 && w1 >= 2, `on: both sides win some (${w0}-${w1})`);
 });
+

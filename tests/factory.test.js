@@ -15,7 +15,7 @@ function base(nFactory = 2) {
     sim.tryBuild(g, 0, k); for (const b of g.ents) if (b.kind === 'b') { b.built = true; b.progress = 1; }
   }
   sim.setStance(g, 0, 'hold');
-  return { g, fac: g.ents.filter(e => e.type === 'factory') };
+  return { g, fac: g.ents.filter(e => e.type === 'factory').sort((x, y) => x.id - y.id) };
 }
 const finishUp = (g, b) => { b.upProg = 0.9999; step(g, 0.2); };
 // a quiet field for unit checks: no AI, both sides see everything
@@ -136,13 +136,13 @@ test('saves keep War Factory paths and Hydra aim; a v13 save migrates (T2+ War F
   sim.tryUpgrade(g, 0, a, 'B'); finishUp(g, a); sim.tryUpgrade(g, 0, b, 'B');
   const h = sim.spawnUnit(g, 0, 'hydra', 900, 0); h.aimAir = 1;
   const g2 = sim.deserialize(sim.serialize(g, {}));
-  const [a2, b2] = g2.ents.filter(e => e.type === 'factory');
+  const [a2, b2] = g2.ents.filter(e => e.type === 'factory').sort((x, y) => x.id - y.id);
   same([a2.path, b2.upPath], ['B', 'B']);
   assert.strictEqual(g2.ents.find(e => e.type === 'hydra').aimAir, 1);
   const o = JSON.parse(sim.serialize(g, {})); o.v = 13;
   for (const e of o.ents) if (e.type === 'factory') { delete e.path; delete e.upPath; }
   for (const e of o.ents) delete e.aimAir;
-  const g3 = sim.deserialize(JSON.stringify(o)), [a3, b3] = g3.ents.filter(e => e.type === 'factory');
+  const g3 = sim.deserialize(JSON.stringify(o)), [a3, b3] = g3.ents.filter(e => e.type === 'factory').sort((x, y) => x.id - y.id);
   same([a3.tier, a3.path, b3.path, b3.upPath], [2, 'A', null, 'A']);
   assert.ok(g3.ents.filter(e => e.kind === 'u').every(u => u.aimAir === 0));
   assert.strictEqual(g3.ents.find(e => e.type === 'barracks').path, null, 'Barracks untouched');

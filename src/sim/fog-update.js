@@ -87,6 +87,7 @@ function update(g, dt) {
   }
   const t0 = g.t;
   g.t += dt;
+  if (rwB6side(g)) side6Order(g); // v2.92 (batch 6b): the entity list in a fresh seeded random order each tick, so no side (and no spot in the list) acts or is picked first
   for (let s = 0; s < 2; s++) {
     const inc = income(g, s), side = g.sides[s];
     side.res.c += inc.c * dt; side.res.e += inc.e * dt; side.stats.earned = (side.stats.earned || 0) + inc.c * dt;
@@ -112,9 +113,8 @@ function update(g, dt) {
   indexFoes(foes[0], dt); indexFoes(foes[1], dt); // v2.37: lane-sorted, so target searches look only near the searcher
   RDG.list = null; if (rwB2b(g)) update2b(g); if (rwB3a(g)) update3a(g); /* v2.84: remains */ if (rwB3b(g)) update3b(g, dt); /* v2.85: barriers, knocks, Bulwark regen */ if (rwB4a(g)) update4a(g); /* v2.86: marked targets */ if (rwB4b(g)) update4b(g, dt); if (rwB5b(g)) update5b(g); /* v2.88: swarm surge */ /* v2.87: pustules */ // v2.83: Titan cover, Worldbreaker cracks and ridges (RDG.list: this game's ridges, while its units move)
   const n = g.ents.length; NAV.now = g.t; // v2.65: the clock the navigation paths age by
-  const ord = rwB6side(g) ? side6Order(g, n) : null; // v2.92 (batch 6b): a seeded random order each tick, so no side acts first
   for (let i = 0; i < n; i++) {
-    const e = ord ? ord[i] : g.ents[i];
+    const e = g.ents[i];
     if (e.hp <= 0) continue;
     if (e.kind === 'b') updateBuilding(g, e, foes[e.side], dt); else { updateUnit(g, e, foes[e.side], dt); if (NAV.on && e.hp > 0 && !UDEF[e.type].air && !e.leaping && navShut(e.u, e.v)) navEject(e); } // v2.65: never inside a wall
   }

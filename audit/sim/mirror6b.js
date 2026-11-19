@@ -9,12 +9,15 @@
 //   --abl shuffle   g.ents shuffled (seeded) before every tick: no fixed update order, no fixed tie-break order
 //   --abl defer     damage dealt during the unit/building update loop is held and applied after it (simultaneous)
 //   --abl b6side    the game's own fix (REWORK.b6side on), when the build has it
+//   --abl b6shuf    b6side on, and the entity list itself shuffled every tick too (positions in the list random, ids kept)
 // A scenario's units fight with every REWORK switch at its default unless --rw sets some (e.g. --rw b6side=0).
-//   node audit/sim/mirror6b.js [--abl none,shuffle,defer] [--seeds 1-8] [--only lancer,shardling] [--json out.json]
+//   node audit/sim/mirror6b.js [--abl none,shuffle,defer] [--seeds 1-8] [--only lancer,shardling] [--orders 0,1,i] [--json out.json]
+//   --ai: both sides played the way the AI plays them (not under direct control: stance Attack, the AI's unit rules)
+//   (--orders i: interleaved placement, side 0's unit then side 1's, so ids and list positions alternate)
 const { loadSim, mulberry } = require('./load');
 const args = process.argv.slice(2), arg = (k, d) => { const i = args.indexOf('--' + k); return i >= 0 ? args[i + 1] : d; };
 const rng = s => { const [a, b] = s.split('-').map(Number); const o = []; for (let i = a; i <= (b ?? a); i++) o.push(i); return o; };
-const SEEDS = rng(arg('seeds', '1-8')), ABL = arg('abl', 'none,shuffle,defer').split(','), ONLY = arg('only', null);
+const AIM = args.includes('--ai'), SEEDS = rng(arg('seeds', '1-8')), ABL = arg('abl', 'none,shuffle,defer').split(','), ONLY = arg('only', null);
 const RW = {}; for (const kv of (arg('rw', '') || '').split(',').filter(Boolean)) { const [k, v] = kv.split('='); RW[k] = v !== '0' && v !== 'false'; }
 // The defer ablation: while the unit/building loop of update() runs, damage1 calls are queued; they are applied, in the
 // order they were dealt, just before the projectiles move (updateProjs, the first call after the loop).
@@ -26,7 +29,7 @@ const INSTR = `
   updateBuilding = function (g) { if (D.on) D.loop = true; return ub.apply(this, arguments); };
   damage1 = function (g, e) { if (D.on && D.loop) { D.q.push(Array.from(arguments)); return; } return d1.apply(this, arguments); };
   updateProjs = function () { if (D.on) { D.loop = false; const q = D.q; D.q = []; for (const a of q) if (a[1].hp > 0 || a[1].kind === 'b') d1.apply(this, a); } return up.apply(this, arguments); };
-  Object.assign(this.__sim, { rangeGame, rangeUnit, rangeMode, rangeStep, rangeCount, rwD });
+  Object.assign(this.__sim, { rangeGame, rangeUnit, rangeMode, rangeStep, rangeCount, rwD, setStance });
 }).call(this);`;
 const S = loadSim(1, { instrument: INSTR });
 const MID = 850, GAP = 170;
@@ -46,12 +49,14 @@ const SCEN = [
   ['riftstalker', [['riftstalker', 5]], 'ability (blink)'],
   ['artillery', [['artillery', 3], ['rifle', 6]], 'ability (deploy, shells)'],
   ['mixed LF', [['rifle', 8], ['heavy', 3], ['tank', 2]], 'mixed'],
+  ['mixed AX', [['shardling', 6], ['lancer', 3], ['bastion', 1], ['riftstalker', 1]], 'mixed'],
+  ['mixed BH', [['skitterling', 12], ['bulwark', 2], ['spitter', 4], ['leaper', 2]], 'mixed'],
 ];
 const facOf = t => S.UDEF[t].fac || 'lastfist';
 const cost = t => { const c = S.UDEF[t].cost; return c.c + c.e; };
 function one(list, seed, geom, order, abl) {
   const fac = facOf(list[0][0]), rw = Object.assign({}, RW);
-  if (abl === 'b6side') rw.b6side = true;
+  if (abl === 'b6side' || abl === 'b6shuf') rw.b6side = true;
   const g = S.rangeGame({ seed, factions: [fac, fac], rework: rw });
   // side s stands at MID - GAP on the left or MID + GAP on the right; sign: which way its rows go back from its front
   const left = s => geom === 'L' ? s === 0 : s === 1;
@@ -63,14 +68,18 @@ function one(list, seed, geom, order, abl) {
       e.face = -back; // facing the enemy, as a mirror would
     }
   };
-  if (order === '0') { place(0); place(1); } else { place(1); place(0); }
-  S.rangeMode(g, 0, 'attack'); S.rangeMode(g, 1, 'attack');
+  if (order === 'i') { const A = [], B = []; const g0 = g; // interleaved: A0, B0, A1, B1, … (ids and list positions alternate)
+    const pl = (s, i, t) => { const L_ = left(s), base = L_ ? MID - GAP : MID + GAP, back = L_ ? -1 : 1; const e = S.rangeUnit(g0, s, t, base + back * (i % 4) * 16, ((Math.floor(i / 4) % 6) - 2.5) * 18); e.face = -back; };
+    let i = 0; for (const [t, n] of list) for (let k = 0; k < n; k++, i++) { pl(0, i, t); pl(1, i, t); } }
+  else if (order === '0') { place(0); place(1); } else { place(1); place(0); }
+  if (AIM) { for (const e of g.ents) e.po = undefined; for (const s of [0, 1]) { g.sides[s].direct = false; g.sides[s].mode = null; S.setStance(g, s, 'attack'); } } // --ai: played as the AI plays them (stance Attack, the AI's unit rules)
+  else { S.rangeMode(g, 0, 'attack'); S.rangeMode(g, 1, 'attack'); }
   S.dfr.on = abl === 'defer';
   const R = mulberry(seed * 7919 + 13);
   const alive = s => g.ents.filter(e => e.side === s && e.hp > 0 && e.kind === 'u');
   const n = 150 * 60;
   for (let k = 0; k < n; k++) {
-    if (abl === 'shuffle') { const a = g.ents; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; } }
+    if (abl === 'shuffle' || abl === 'b6shuf') { const a = g.ents; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; } }
     S.rangeStep(g); g.events.length = 0;
     if (!alive(0).length || !alive(1).length) break;
   }
@@ -85,7 +94,7 @@ for (const [name, list, cls] of SCEN) {
   const army = list.reduce((a, [t, n]) => a + cost(t) * n, 0);
   for (const abl of ABL) {
     const cells = {}; let w0 = 0, w1 = 0, dr = 0, mg = 0, N = 0, wl = 0, wr = 0, wf = 0, ws = 0;
-    for (const geom of ['L', 'R']) for (const order of ['0', '1']) {
+    for (const geom of ['L', 'R']) for (const order of (arg('orders', '0,1')).split(',')) {
       const c = cells[geom + order] = [0, 0, 0];
       for (const seed of SEEDS) {
         const r = one(list, seed, geom, order, abl); N++;
@@ -93,7 +102,7 @@ for (const [name, list, cls] of SCEN) {
         mg += (r.v0 - r.v1) / army;
         if (r.win >= 0) {
           const wLeft = geom === 'L' ? r.win === 0 : r.win === 1; if (wLeft) wl++; else wr++;
-          const wFirst = order === '0' ? r.win === 0 : r.win === 1; if (wFirst) wf++; else ws++;
+          const wFirst = order === '0' || order === 'i' ? r.win === 0 : r.win === 1; if (wFirst) wf++; else ws++;
         }
       }
     }

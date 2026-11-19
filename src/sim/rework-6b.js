@@ -5,8 +5,12 @@
    each fixed at its root:
    1. Update order. update() ran every unit and building in the order of the entity list, and damage lands at once, so whoever
       sits earlier in the list moves, aims and strikes first in every tick, and the other side always answers what has already
-      happened. On: the units and buildings run in a fresh seeded random order each tick (side6Order), drawn from the game's own
-      order stream (g.os), so neither side, nor any spot in the list, goes first more often than another.
+      happened; ties in target picks went to the earlier entry too. On: the entity list is put in a fresh seeded random order at
+      the start of each tick (side6Order), drawn from the game's own order stream (g.os), so neither side, nor any spot in the
+      list, goes first or wins a tie more often than another.
+   4. Spacing (direct control: the player's side and the Test Range). The free-spot search for units stepping apart walked its
+      rings the same way for both sides, so both drifted toward the east edge (toward the enemy for the west side, away from it
+      for the east). On: each side walks them as its mirror image (ctlFree's dir).
    2. AI order and start. side 1's AI always decided before side 0's in a tick, and side 0's first decision came at 1 s, side
       1's at 1.5 s. On: both decide first at SIDE6.aiT0 and the order is a seeded coin each tick (side6Ai).
    3. AI dice. Both AIs drew their rolls (the personality and opening, the T2 path rolls, the decision timing) from the match's
@@ -28,11 +32,11 @@ function side6Init(g) { // newGame, once the sides and their factions exist (bef
   g.ar = [0, 1].map(s => side6Seed(seed ^ SIDE6.ai, FACTION_KEYS.indexOf(facOf(g.sides[s].faction)) + 1));
 }
 const side6Rnd = g => { g.os = g.os + 0x6D2B79F5 | 0; return m32(g.os); };
-// The units and buildings of this tick in a seeded random order (the first n of the list: what update() runs)
-function side6Order(g, n) {
-  const o = g.ents.slice(0, n);
-  for (let i = n - 1; i > 0; i--) { const j = Math.floor(side6Rnd(g) * (i + 1)), t = o[i]; o[i] = o[j]; o[j] = t; }
-  return o;
+// The entity list in a seeded random order, in place, at the start of each tick: the update loop runs in this order and every
+// other pass over the list this tick (the target lists and their ties, kills, splash, the AI's reads) sees it too
+function side6Order(g) {
+  const o = g.ents;
+  for (let i = o.length - 1; i > 0; i--) { const j = Math.floor(side6Rnd(g) * (i + 1)), t = o[i]; o[i] = o[j]; o[j] = t; }
 }
 function side6Ai1(g, s, dt) { RNG.ai = s; try { aiUpdate(g, s, dt); aiSpotter(g, s); } finally { RNG.ai = -1; } }
 function side6Ai(g, dt) { // both AIs (side 0's only when it is AI-played), a seeded coin for which decides first

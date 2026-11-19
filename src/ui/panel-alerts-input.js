@@ -236,7 +236,7 @@ function handleTap(x, y) {
     const y0 = p.y - (d.half + d.h) * BS - 12, y1 = p.y + d.half * BS + 6;
     if (Math.abs(w.x - p.x) <= hw && w.y >= y0 && w.y <= y1) hits.push(b);
   }
-  hits.sort((a, b) => b.v - a.v); // front first
+  hits.sort((a, b) => b.v - a.v || a.id - b.id); // front first (v2.92: ties by id, not by place in the entity list, which batch 6b shuffles each tick)
   if (hits.length) {
     // tapping the same spot again steps to the building behind
     let pick = hits[0];

@@ -14,7 +14,7 @@ function base(nBarracks = 2) {
   sim.tryBuild(g, 0, 'habitat'); sim.tryBuild(g, 0, 'habitat');
   for (const b of g.ents) if (b.kind === 'b') { b.built = true; b.progress = 1; }
   sim.setStance(g, 0, 'hold');
-  return { g, bar: g.ents.filter(e => e.type === 'barracks') };
+  return { g, bar: g.ents.filter(e => e.type === 'barracks').sort((x, y) => x.id - y.id) };
 }
 const finishUp = (g, b) => { b.upProg = 0.9999; step(g, 0.2); };
 
@@ -99,11 +99,11 @@ test('saves keep paths; a v12 save migrates (T2/T3 Barracks → Specialists, an 
   const { g, bar: [a, b] } = base();
   sim.tryUpgrade(g, 0, a, 'B'); finishUp(g, a); sim.tryUpgrade(g, 0, b, 'A');
   const g2 = sim.deserialize(sim.serialize(g, {}));
-  const [a2, b2] = g2.ents.filter(e => e.type === 'barracks');
+  const [a2, b2] = g2.ents.filter(e => e.type === 'barracks').sort((x, y) => x.id - y.id);
   assert.deepStrictEqual([a2.path, b2.upPath], ['B', 'A']);
   const o = JSON.parse(sim.serialize(g, {})); o.v = 12;
   for (const e of o.ents) { delete e.path; delete e.upPath; delete e.vet; }
-  const g3 = sim.deserialize(JSON.stringify(o)), [a3, b3] = g3.ents.filter(e => e.type === 'barracks');
+  const g3 = sim.deserialize(JSON.stringify(o)), [a3, b3] = g3.ents.filter(e => e.type === 'barracks').sort((x, y) => x.id - y.id);
   assert.deepStrictEqual([a3.path, b3.path, b3.upPath], ['A', null, 'A']);
   assert.ok(g3.ents.filter(e => e.kind === 'u').every(u => u.vet === 0));
   assert.ok(g3.ents.filter(e => e.kind === 'b' && e.type !== 'barracks').every(e => e.path === null));

@@ -12,7 +12,7 @@ const CT = { hitPx: 26, dbl: 350, lassoMs: 260, lassoMin: 14, lineSel: 22, still
 let ctlMark = null, ctlLoop = null; // ctlLoop: the last box, fading out; ctlMark: where the last move order went (or its target)
 const ctlOn = () => !!(game && running && !game.over && !game.spectate && game.sides[0].direct && (!game.range || game.sides[0].manual)); // v2.81: in the Test Range only with Control blue myself
 const laneName = k => MAP.lanes[k].id[0].toUpperCase() + MAP.lanes[k].id.slice(1);
-const myUnits = () => game.ents.filter(e => e.kind === 'u' && e.side === 0 && e.hp > 0 && e.gone !== 3); // v2.83: not units inside a tunnel
+const myUnits = () => game.ents.filter(e => e.kind === 'u' && e.side === 0 && e.hp > 0 && e.gone !== 3).sort((a, b) => a.id - b.id); // v2.83: not units inside a tunnel; v2.92: by id (batch 6b shuffles the entity list each tick; it was in id order before)
 function selLive() { // the selected units still alive (the dead drop out of the selection)
   const out = myUnits().filter(e => SELN.has(e.id));
   if (out.length !== SELN.size) { SELN.clear(); for (const e of out) SELN.add(e.id); }

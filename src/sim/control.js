@@ -236,7 +236,7 @@ function setGroup(g, s, k, ids) {
 }
 function groupUnits(g, s, k) { // the group's living units (the dead are dropped from it)
   const side = g.sides[s], ids = side.groups && side.groups[k]; if (!ids || !ids.length) return [];
-  const want = new Set(ids), out = g.ents.filter(e => e.kind === 'u' && e.side === s && e.hp > 0 && want.has(e.id));
+  const want = new Set(ids), out = g.ents.filter(e => e.kind === 'u' && e.side === s && e.hp > 0 && want.has(e.id)).sort((a, b) => a.id - b.id); // by id (v2.92: the entity list is shuffled each tick with b6side; it was in id order before)
   if (out.length !== ids.length) side.groups[k] = ids.filter(id => out.some(e => e.id === id));
   return out;
 }

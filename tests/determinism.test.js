@@ -201,10 +201,11 @@ test('v2.90: with every rework batch on (2a to 5c), the same matches match their
 if (require.main === module && process.argv[2] === '--print5c') console.log(fingerprint(false, false, true, true, 'h'), bhAx(true, true, 'h'), lfBh('h'));
 // v2.92 (batch 6b, Part A: the side-bias fix, REWORK.b6side): every replay above runs with b6side false and is unchanged (a
 // b6side-off save leaves the key and its streams out). With every batch on and b6side on (rw 'i'; b6art off) the same three:
-const FP_V292 = '2456f66a7eaa5efda4b245bbcd85f56c5a74c3fc3a12321fdedbc638ec719f97', FP_V292_BA = 'cacb69c34b43bbab704b212d99c5f407ebd4cea28428cf36d0ce8c2fd3ede36f', LF_BH_V292 = '45b30a2c52cd85602bd8a5800c5382eef47cc79674dcd54f1b93f7f45d4b46fe'; // recorded at v2.92 (2a to 5c and b6side on, b6art off)
+const FP_V292 = 'c4d5fa024d417334e969e2d2eae9ee0ee307f38f3e6278511272927358f8d7e3', FP_V292_BA = '4cb66ccab3eb639863f2e2458547e2b5b1970ce129f043a22aaa6a85af22c0a1', LF_BH_V292 = 'fdd220b8dff8d50fee1a4b5811b6f68b8113721ae196989657302389ccde229d'; // recorded at v2.92 (2a to 5c and b6side on, b6art off)
 test('v2.92: with every rework batch on and the side-bias fix (b6side) on, b6art off, the same matches match their recorded fingerprints', () => {
   assert.strictEqual(fingerprint(false, false, true, true, 'i'), FP_V292);
   assert.strictEqual(bhAx(true, true, 'i'), FP_V292_BA);
   assert.strictEqual(lfBh('i'), LF_BH_V292);
 });
 if (require.main === module && process.argv[2] === '--print6b') console.log(fingerprint(false, false, true, true, 'i'), bhAx(true, true, 'i'), lfBh('i'));
+if (require.main === module && process.argv[2] === '--print6bA') console.log(fingerprint(false, false, true, true, 'j'), bhAx(true, true, 'j'), lfBh('j'));

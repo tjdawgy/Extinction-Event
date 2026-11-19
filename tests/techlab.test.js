@@ -16,7 +16,7 @@ function base(nLab = 2) {
     sim.tryBuild(g, 0, k); for (const b of g.ents) if (b.kind === 'b') { b.built = true; b.progress = 1; }
   }
   sim.setStance(g, 0, 'hold');
-  return { g, lab: g.ents.filter(e => e.type === 'techlab') };
+  return { g, lab: g.ents.filter(e => e.type === 'techlab').sort((x, y) => x.id - y.id) };
 }
 const finishUp = (g, b) => { b.upProg = 0.9999; step(g, 0.2); };
 function field() { // no AI, both sides see everything
@@ -129,13 +129,13 @@ test('the AI: Economist and Trickster default to Air Power, Aggressor and Turtle
 });
 
 test('saves keep Tech Lab paths; a v14 save migrates (T2 → Air Power, T3 → Support, an upgrade from T1 → Air Power)', () => {
-  const { g, lab: [a, b] } = base(3); const c = g.ents.filter(e => e.type === 'techlab')[2];
+  const { g, lab: [a, b] } = base(3); const c = g.ents.filter(e => e.type === 'techlab').sort((x, y) => x.id - y.id)[2];
   sim.tryUpgrade(g, 0, a, 'A'); finishUp(g, a); sim.tryUpgrade(g, 0, b, 'B'); finishUp(g, b); sim.tryUpgrade(g, 0, b); finishUp(g, b); sim.tryUpgrade(g, 0, c, 'B');
-  const g2 = sim.deserialize(sim.serialize(g, {})), L2 = g2.ents.filter(e => e.type === 'techlab');
+  const g2 = sim.deserialize(sim.serialize(g, {})), L2 = g2.ents.filter(e => e.type === 'techlab').sort((x, y) => x.id - y.id);
   same(L2.map(e => [e.tier, e.path, e.upPath]), [[2, 'A', null], [3, 'B', null], [1, null, 'B']]);
   const o = JSON.parse(sim.serialize(g, {})); o.v = 14;
   for (const e of o.ents) { if (e.type === 'techlab') { e.path = null; e.upPath = null; } delete e.medAt; }
-  const g3 = sim.deserialize(JSON.stringify(o)), L3 = g3.ents.filter(e => e.type === 'techlab');
+  const g3 = sim.deserialize(JSON.stringify(o)), L3 = g3.ents.filter(e => e.type === 'techlab').sort((x, y) => x.id - y.id);
   same(L3.map(e => [e.tier, e.path, e.upPath]), [[2, 'A', null], [3, 'B', null], [1, null, 'A']]);
   assert.ok(g3.ents.filter(e => e.kind === 'u').every(u => u.medAt === -1));
   step(g3, 0.1); assert.strictEqual(g3.sides[0].buff, true, 'a migrated T3 keeps Nanoweave');

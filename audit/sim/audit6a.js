@@ -5,17 +5,18 @@
 // T3, the first unit of a T3 unlock, the first T3 aircraft), path picks per building (the first path each building role
 // took, and every one taken), units trained per type, credits+energy spent per type, and (audit/sim/audit6a-instrument.js)
 // damage dealt, kills and killed value per unit or building type.
-//   node audit/sim/audit6a.js [--seeds 7-11] [--maps classic,twolane,threelane] [--maxT 1700] [--jobs 4] [--out dir]
+//   node audit/sim/audit6a.js [--seeds 7-11] [--maps classic,twolane,threelane] [--maxT 1700] [--jobs 4] [--out dir] [--rw b6art=0,b6side=1]
 //        writes <out>/matches.jsonl (one line per match) and prints progress; audit/sim/audit6a-report.js makes the tables.
 //   node audit/sim/audit6a.js --identity [--seeds 7] [--maps classic]   each match twice, with and without the
 //        instrumentation, the state hashed every 100 ticks: they must be identical (the counters change nothing).
 const { fork } = require('child_process'), fs = require('fs'), path = require('path'), crypto = require('crypto');
 const INSTR = require('./audit6a-instrument');
 if (process.argv[2] === '--one') {
-  const [map, f0, f1, seed, maxT, ident] = process.argv.slice(3);
+  const [map, f0, f1, seed, maxT, ident, rwArg] = process.argv.slice(3);
+  const RW = {}; for (const kv of (rwArg || '').split(',').filter(Boolean)) { const [k, v] = kv.split('='); RW[k] = v !== '0' && v !== 'false'; } // v2.92 (batch 6b): --rw b6art=0 etc.
   const { loadSim } = require('./load');
   const play = instr => {
-    const S = loadSim(+seed, instr ? { instrument: INSTR } : {});
+    const S = loadSim(+seed, instr ? { instrument: INSTR } : {}); Object.assign(S.REWORK, RW);
     const g = S.newGame('hard', { seed: +seed, map, autoPlayer: true, autoDiff: 'hard', factions: [f0, f1] }); g.countdown = 0;
     const R = { tier: [{}, {}], paths: [{}, {}], t3u: [null, null], t3air: [null, null], peakUnits: [0, 0] };
     let k = 0, err = null; const hs = [];
@@ -77,7 +78,7 @@ let next = 0, live = 0, n = 0; const t0 = Date.now();
 function go() {
   while (live < J && next < todo.length) {
     const [map, a, b, seed] = todo[next++]; live++;
-    const c = fork(__filename, ['--one', map, a, b, String(seed), maxT, ident]);
+    const c = fork(__filename, ['--one', map, a, b, String(seed), maxT, ident, arg('rw', '')]);
     c.on('message', m => { fs.appendFileSync(file, JSON.stringify(m) + '\n'); n++;
       console.log(`${n}/${todo.length} ${((Date.now() - t0) / 60000).toFixed(1)} min  ${m.map} ${m.f.join(' vs ')} seed ${m.seed}: ${m.t} s, winner ${m.winner == null || m.winner < 0 ? 'none' : m.f[m.winner]}${m.how ? ' (' + m.how + ')' : ''}${ident === '1' ? (m.same ? ' identical' : ' DIFFERENT') : ''}${m.err ? ' ERROR ' + m.err.slice(0, 200) : ''}`); });
     c.on('exit', () => { live--; go(); });

@@ -1,0 +1,8 @@
+artillery    none    side0-side1 28-20-48  left-right 28-20  first-second 24-24  margin(side0, % of army) 5  [L0:14-10 L1:14-10 R0:0-0-24 R1:0-0-24]
+artillery    b6side  side0-side1 21-27-48  left-right 21-27  first-second 25-23  margin(side0, % of army) -3.9  [L0:11-13 L1:10-14 R0:0-0-24 R1:0-0-24]
+mixed LF     none    side0-side1 24-24-48  left-right 24-24  first-second 30-18  margin(side0, % of army) 0  [L0:15-9 L1:9-15 R0:0-0-24 R1:0-0-24]
+mixed LF     b6side  side0-side1 24-24-48  left-right 24-24  first-second 26-22  margin(side0, % of army) 0  [L0:13-11 L1:11-13 R0:0-0-24 R1:0-0-24]
+mixed AX     none    side0-side1 24-24-48  left-right 24-24  first-second 28-20  margin(side0, % of army) 0  [L0:14-10 L1:10-14 R0:0-0-24 R1:0-0-24]
+mixed AX     b6side  side0-side1 24-24-48  left-right 24-24  first-second 34-14  margin(side0, % of army) 0  [L0:17-7 L1:7-17 R0:0-0-24 R1:0-0-24]
+mixed BH     none    side0-side1 23-25-48  left-right 23-25  first-second 33-15  margin(side0, % of army) -0.2  [L0:16-8 L1:7-17 R0:0-0-24 R1:0-0-24]
+mixed BH     b6side  side0-side1 26-22-48  left-right 26-22  first-second 16-32  margin(side0, % of army) 0  [L0:9-15 L1:17-7 R0:0-0-24 R1:0-0-24]
