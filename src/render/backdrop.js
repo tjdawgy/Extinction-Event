@@ -412,6 +412,7 @@ function bodyCanvas(type, side, tier, fac, dmg = 0) {
 function drawArt(c, b, T, t, tier) { // the cached body (drawn live until it is cached) plus the live parts
   const art = artOf(b.fac, b.type), dmg = dmgStage(b), cv = bodyCanvas(b.type, b.side, tier, b.fac, dmg);
   if (cv) c.drawImage(cv, cv.box[0], cv.box[1], cv.width / cv.b, cv.height / cv.b);
+  else if (T.edge || T.edgeDk) { c.save(); c.shadowColor = T.edge || '#2c261d'; c.shadowBlur = 2.5 * V.dpr; art[0](c, T, tier, dmg); c.restore(); dmg5(c, b.fac, b.type, dmg); } // v2.93: Onyx and Pearl outlined while the cache fills
   else { art[0](c, T, tier, dmg); dmg5(c, b.fac, b.type, dmg); }
   art[1](c, T, t, b, tier);
   dmgLive5(c, b, t);

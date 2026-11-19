@@ -30,9 +30,10 @@ const COUNT_CANVAS_RESIZES = `(() => {
   Object.defineProperty(HTMLCanvasElement.prototype, 'height', { get: h.get, set(v) { bump(this); h.set.call(this, v); }, configurable: true });
 })();`;
 
-async function openPage(browser, device = PHONE, { countCanvasResizes = false, init = null, title = false, firstRun = false } = {}) {
+async function openPage(browser, device = PHONE, { countCanvasResizes = false, init = null, title = false, firstRun = false, teams = false } = {}) {
   const page = await browser.newPage({ viewport: { width: device.width, height: device.height }, deviceScaleFactor: 2 });
   if (countCanvasResizes) await page.addInitScript(COUNT_CANVAS_RESIZES);
+  if (!teams) await page.addInitScript(() => { window.EE_FIXED_TEAMS = true; }); // v2.93: matches keep Blue and Red unless a test asks for the random team colours (teams: true)
   if (init) await page.addInitScript(init);
   // v2.46: the first-launch tutorial prompt was already answered, so tests start at the main menu (firstRun: true shows it)
   if (!firstRun) await page.addInitScript(() => { try { if (!localStorage.getItem('extinctionEvent.tutorial')) localStorage.setItem('extinctionEvent.tutorial', '{"seen":1}'); if (!localStorage.getItem('extinctionEvent.tips')) localStorage.setItem('extinctionEvent.tips', '{"split":1,"split3":1,"lanes":1}'); } catch (e) {} }); // v2.66: and the first Two-Lane tip (v2.70: and Three-Lane's)

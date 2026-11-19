@@ -61,10 +61,10 @@ const SIZE = { ...NARROW };
   await fight('purple-axiarch', ['purple', 'green'], ['axiarchs', 'axiarchs'], [['lancer', 4], ['shardling', 5], ['marksman', 2]], [['lancer', 4], ['bastion', 2], ['riftstalker', 2]]);
   await fight('onyx-axiarch', ['onyx', 'red'], ['axiarchs', 'bloomhost'], [['lancer', 4], ['shardling', 5], ['bastion', 1]], [['skitterling', 10], ['spitter', 4]]);
   // (c) the setup screen
-  { const { page } = await openPage(browser, SIZE, { init: `localStorage.setItem('extinctionEvent.start','right'); localStorage.setItem('extinctionEvent.color','gold');` }); await page.click('#bPlay'); await page.waitForTimeout(200); await shot(page, 'setup'); await page.close(); }
+  { const { page } = await openPage(browser, SIZE, { teams: true, init: `localStorage.setItem('extinctionEvent.start','right'); localStorage.setItem('extinctionEvent.color','gold');` }); await page.click('#bPlay'); await page.waitForTimeout(200); await shot(page, 'setup'); await page.close(); }
   // (d) a match started on the right, mid-fight, the HUD and the HQ shield count in view
   {
-    const { page } = await openPage(browser, SIZE, { init: `localStorage.setItem('extinctionEvent.start','right'); localStorage.setItem('extinctionEvent.color','pink');` });
+    const { page } = await openPage(browser, SIZE, { teams: true, init: `localStorage.setItem('extinctionEvent.start','right'); localStorage.setItem('extinctionEvent.color','pink');` });
     await page.click('#bPlay'); await page.click('#bMapGo'); await page.waitForTimeout(200);
     await page.evaluate(() => {
       game.countdown = 0; hideCountdown(); updateIntro(); camTouched = true; closePanel();

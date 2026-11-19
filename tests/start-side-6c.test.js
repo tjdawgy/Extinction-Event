@@ -26,7 +26,7 @@ async function start(page, map = 'classic') {
 
 for (const [start0, color, fac, foe, map] of [['right', 'random', 'lastfist', 'bloomhost', 'classic'], ['left', 'pearl', 'axiarchs', 'lastfist', 'classic'], ['right', 'onyx', 'bloomhost', 'axiarchs', 'twolane'], ['right', 'gold', 'lastfist', 'axiarchs', 'threelane'], ['left', 'random', 'bloomhost', 'lastfist', 'twolane']]) {
   test(`start ${start0}, colour ${color}, ${fac} vs Hard ${foe} on ${map}: your controls, your fog, build, train, fight, the right end screen`, { skip }, async () => {
-    const { page, errors } = await openPage(browser, PHONE, { init: prefs(start0, color, fac, foe) });
+    const { page, errors } = await openPage(browser, PHONE, { init: prefs(start0, color, fac, foe), teams: true });
     await page.evaluate(HELPERS);
     await start(page, map);
     const me = start0 === 'right' ? 1 : 0;
@@ -86,7 +86,7 @@ for (const [start0, color, fac, foe, map] of [['right', 'random', 'lastfist', 'b
 }
 
 test('defeat from the right: the Defeat screen; a save made on the right resumes on the right with its colours', { skip }, async () => {
-  const { page, errors } = await openPage(browser, NARROW, { init: prefs('right', 'green', 'axiarchs', 'bloomhost') });
+  const { page, errors } = await openPage(browser, NARROW, { init: prefs('right', 'green', 'axiarchs', 'bloomhost'), teams: true });
   await page.evaluate(HELPERS);
   await start(page, 'classic');
   const s1 = await page.evaluate(() => { const s = game.sides[myS()]; s.res.c = 9000; onCard('refinery', document.createElement('div')); __run(3); saveGame(); return { me: myS(), tc: game.tc.slice(), cam: cam.x, t: game.t }; });

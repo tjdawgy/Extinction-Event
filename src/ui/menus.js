@@ -31,7 +31,7 @@ function wireStartColor() {
 function wireColor() { const b = $('colorBtn'); b.addEventListener('click', () => { const all = ['random', ...PAL_KEYS]; colorPick = all[(all.indexOf(colorPick) + 1) % all.length]; try { localStorage.setItem(COLOR_KEY, colorPick); } catch (e) {} b.outerHTML = colorBtn(); wireColor(); toast(`Your colour: ${colorLbl()}`, 'ok'); }); }
 const pickStart = () => startPick === 'right' ? 1 : startPick === 'random' ? (Math.random() < 0.5 ? 0 : 1) : 0; // the UI's own dice, never the match's
 // The match's team colours by side ([side 0, side 1]), from the UI's own dice: the player's colour (picked or random), then a random one that pairs with it
-function pickColors(me) { const [a, b] = palRoll(colorPick); return me ? [b, a] : [a, b]; }
+function pickColors(me) { if (window.EE_FIXED_TEAMS) return null; /* the test kit: Blue and Red, as before (tests/browser-kit.js) */ const [a, b] = palRoll(colorPick); return me ? [b, a] : [a, b]; }
 const pickFaction = k => k === 'random' ? FACTION_KEYS[Math.floor(Math.random() * FACTION_KEYS.length)] : facOf(k);
 function wireSound() { $('bSound').addEventListener('click', () => { sndSet(!SND.on); $('bSound').textContent = sndLabel(); }); }
 function wireDiff() {
