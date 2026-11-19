@@ -41,7 +41,7 @@ function side6Order(g) {
 function side6Ai1(g, s, dt) { RNG.ai = s; try { aiUpdate(g, s, dt); aiSpotter(g, s); } finally { RNG.ai = -1; } }
 function side6Ai(g, dt) { // both AIs (side 0's only when it is AI-played), a seeded coin for which decides first
   const first = side6Rnd(g) < 0.5 ? 0 : 1;
-  for (const s of [first, 1 - first]) if (s === 1 || g.auto) side6Ai1(g, s, dt);
+  for (const s of [first, 1 - first]) if (s !== (g.me | 0) || g.auto) side6Ai1(g, s, dt); // v2.93: the opponent's AI, whichever side it plays
 }
 function side6Persona(g, s, f) { RNG.ai = s; try { return f(); } finally { RNG.ai = -1; } } // a side's personality, rolled from its own stream
 

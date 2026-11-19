@@ -40,6 +40,15 @@ function trVfxUse(k) {
 const TR_RW = [['b2a', 'Batch 2a'], ['artDeploy', 'Deploy'], ['artTelegraph', 'Telegraph'], ['b2b', 'Batch 2b'], ['b3a', 'Batch 3a'], ['b3b', 'Batch 3b'], ['b4a', 'Batch 4a'], ['b4b', 'Batch 4b'], ['b5b', 'Batch 5b'], ['b5c', 'Batch 5c'], ['b6side', 'Batch 6b side'], ['b6art', 'Batch 6b Artillery'], ['b6hq', 'Batch 6c HQ shield'], ['b6c', 'Batch 6c tuning']]; // b6hq, b6c (v2.93); // b5c (v2.90); b5b (v2.88); b4b (v2.87); b2b (v2.83), b3a (v2.84), b3b (v2.85), b4a (v2.86)
 function trRw(k) { const S = TR.set; if (!Array.isArray(S.rw)) S.rw = []; return S.rw[k] || (S.rw[k] = rwInit()); }
 const trRwTag = k => { const r = trRw(k), a = !r.b2a ? 'pre-2a' : r.artDeploy && r.artTelegraph ? '2a' : `2a${r.artDeploy ? ' deploy' : ''}${r.artTelegraph ? ' telegraph' : ''}${!r.artDeploy && !r.artTelegraph ? ' (no Artillery switches)' : ''}`; return `${a}, ${r.b2b ? '2b' : 'pre-2b'}, ${r.b3a ? '3a' : 'pre-3a'}, ${r.b3b ? '3b' : 'pre-3b'}, ${r.b4a ? '4a' : 'pre-4a'}, ${r.b4b ? '4b' : 'pre-4b'}, ${r.b5b ? '5b' : 'pre-5b'}, ${r.b5c ? '5c' : 'pre-5c'}, ${r.b6side ? '6b side' : 'pre-6b side'}, ${r.b6art ? '6b Artillery' : 'pre-6b Artillery'}, ${r.b6hq ? '6c HQ shield' : 'pre-6c HQ shield'}, ${r.b6c ? '6c tuning' : 'pre-6c tuning'}`; }; // v2.90: and 5c; v2.88: and 5b; v2.87: and 4b; // v2.86: and 4a; v2.83: and batch 2b; v2.84: and 3a; v2.85: and 3b
+// v2.93 (batch 6c, Part C3): each row's team colours ([side 0, side 1] palette keys or 'random'; Blue and Red by default). The
+// sides keep their names (Blue, Red) in the Test Range's texts; Random rolls from the UI's own dice each time the rows are built
+function trTc(k) { const S = TR.set; if (!Array.isArray(S.tc)) S.tc = []; return S.tc[k] || (S.tc[k] = ['blue', 'red']); }
+function trTcRoll(k) {
+  const [a0, b0] = trTc(k), a = PALETTE[a0] ? a0 : null, b = PALETTE[b0] ? b0 : null;
+  if (a && b && palOk(a, b)) return [a, b];
+  if (a) return palRoll(a); if (b) return palRoll(b).reverse();
+  return palRoll(null);
+}
 // Rows: each row's factions (the first thing placed on each side), building every row from the items
 const trFacs = k => [0, 1].map(s => { const it = TR.set.items.find(i => i.row === k && i.side === s); return it ? (it.kind === 'u' ? rangeFac(it.type) : it.fac) : DEFAULT_FACTION; });
 function trBuild() {
@@ -50,6 +59,7 @@ function trBuild() {
     for (const it of TR.set.items) if (it.row === k) (it.kind === 'u' ? rangeUnit(g, it.side, it.type, it.u, it.v) : rangeBuilding(g, it.side, it.fac, it.type, it.u, it.v)).trk = it.id;
     for (let s = 0; s < 2; s++) g.sides[s].mode = TR.set.modes[s];
     g.sides[1].hush = !TR.set.fight; g.sides[0].manual = !!TR.set.ctl && n === 1;
+    g.tc = trTcRoll(k); // v2.93: the row's team colours
     TR.games.push(g);
   }
   game = TR.games[0]; TR.acc = 0; TR.info = null; hideInfo(); document.body.classList.toggle('trcmp', n > 1);
@@ -250,6 +260,7 @@ function trSetup() {
       <span class="lbl">Control blue myself</span><div class="trrow">${trSeg('trCb', [[0, 'Off'], [1, 'On']], set.ctl && !cmp ? 1 : 0)}<small class="trn">${cmp ? 'Not in Compare mode' : 'On: blue takes the game\'s own controls (tap, double-tap, box, All, groups, tap the ground or an enemy, Attack, Hold, Retreat)'}</small></div>
       <span class="lbl">Compare</span><div class="trrow">${trSeg('trCr', [[1, '1 row'], [2, '2 rows'], [3, '3 rows']], n)}${cmp ? '<button class="trq" id="trCp">Copy red to every row</button>' : ''}<small class="trn">Rows that can't touch: the same enemy, a different attacker in each</small></div>
       <span class="lbl">Rework switches</span><div class="trrw">${[...Array(n).keys()].map(k => `<div class="trrow">${cmp ? `<span class="trl">Row ${k + 1}</span>` : ''}${TR_RW.map(([key, nm]) => trSeg(`trRw${k}${key}`, [[1, nm + ' on'], [0, 'off']], trRw(k)[key] ? 1 : 0)).join('')}</div>`).join('')}<small class="trn">Batch 2a off: the Artillery, Bile Lobber and Rift Mortar as before the rework; on: Gorebore and Severance, and the Artillery's Deploy and Telegraph if those are on</small></div>
+      <span class="lbl">Team colours</span><div class="trrw">${[...Array(n).keys()].map(k => `<div class="trrow">${cmp ? `<span class="trl">Row ${k + 1}</span>` : ''}${[0, 1].map(s2 => `<span class="trl">${s2 ? 'Red side' : 'Blue side'}</span>` + trSeg(`trTc${k}${s2}`, [['random', 'Random'], ...PAL_KEYS.map(c => [c, PALETTE[c].name])], trTc(k)[s2])).join('')}</div>`).join('')}<small class="trn">Pairs too alike (and red with green) are never used together: the other side is rolled again</small></div>
       <span class="lbl">Setups</span><div class="trrow trsv"><input id="trNm" maxlength="24" placeholder="Name this setup" aria-label="Setup name"><button class="trq" id="trSv">Save</button>
         ${saved.map((x, i) => `<span class="trit"><button class="trq" data-load="${i}">${cxEsc(x.name)}</button><button class="trq trdel" data-del="${i}" aria-label="Delete ${cxEsc(x.name)}">×</button></span>`).join('')}<small class="trn">${saved.length}/${TR_MAX} saved on this device</small></div>
     </div>`);
@@ -270,6 +281,7 @@ function trSetup() {
   seg('trCb', k => { if (cmp) { trSetup(); toast('Control blue myself is off in Compare mode', 'bad'); return; } trCtl(k === '1'); });
   seg('trCr', k => trRowsSet(+k));
   for (let k = 0; k < n; k++) for (const [key] of TR_RW) seg(`trRw${k}${key}`, v => { trRw(k)[key] = v === '1'; TR.go = false; trBuild(); toast(`Row ${k + 1}: ${trRwTag(k)}`, 'ok'); });
+  for (let k = 0; k < n; k++) for (const s2 of [0, 1]) seg(`trTc${k}${s2}`, v => { trTc(k)[s2] = v; TR.go = false; trBuild(); const c = TR.games[k].tc; toast(`Row ${k + 1}: ${PALETTE[c[0]].name} and ${PALETTE[c[1]].name}`, 'ok'); }); // v2.93
   for (const b of document.querySelectorAll('#trQ button')) b.addEventListener('click', () => trPreset(TR_PRESETS[+b.dataset.i]));
   if ($('trCp')) $('trCp').addEventListener('click', trCopyRed);
   $('trSv').addEventListener('click', () => trSave($('trNm').value));

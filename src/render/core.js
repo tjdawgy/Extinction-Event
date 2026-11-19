@@ -3,10 +3,44 @@
    Draw functions take a canvas context so the same art is reused for icons.
    ===================================================================== */
 const TEAM = [
-  { main: '#39c8ff', light: '#c4f3ff', hull: '#24506b', glow: '57,200,255', face: ['#7adcff', '#2ea6d6', '#1f7aa2'] },
-  { main: '#ff4d4d', light: '#ffd0d0', hull: '#6b2626', glow: '255,77,77', face: ['#ff8a8a', '#d63d3d', '#a52c2c'] },
+  { main: '#39c8ff', light: '#c4f3ff', hull: '#24506b', glow: '57,200,255', face: ['#7adcff', '#2ea6d6', '#1f7aa2'], core: '#bff2ff' },
+  { main: '#ff4d4d', light: '#ffd0d0', hull: '#6b2626', glow: '255,77,77', face: ['#ff8a8a', '#d63d3d', '#a52c2c'], core: '#ffd0d0' },
   { main: '#e8c25a', light: '#fff1c4', hull: '#5e5030', glow: '232,194,90', face: ['#f2d98a', '#c9a646', '#9a7d30'] }, // v2.71: neutral (relic guards)
 ];
+/* v2.93 (batch 6c, Part C3): team colours, picked per match (g.tc: the palette keys of side 0 and side 1, set by the UI from its
+   own random roll, never the SIM's streams; saved with the match, never read by the SIM). Blue and Red are TEAM's two exactly.
+   Green is an emerald (bluer and darker than Bloomhost's lime acid), Pearl a warm off-white with dark edges, Onyx a near-black
+   whose edges, seams and light lines glow (edge: every sprite gets a bright outline; on Axiarchs the light lines carry it).
+   PAL_BAD lists the pairs never rolled (too alike, or red and green for colour-blind players). setTeams fills TEAM[0..1] (and the
+   neutral relic guards' colour, slate when a team is Gold) and rebuilds every cache drawn from them. */
+const PALETTE = {
+  blue: Object.assign({ name: 'Blue' }, TEAM[0]),
+  red: Object.assign({ name: 'Red' }, TEAM[1]),
+  green: { name: 'Green', main: '#14c98a', light: '#b6f5dc', hull: '#155c45', glow: '20,201,138', face: ['#54dfab', '#12a873', '#0c7b55'] },
+  gold: { name: 'Gold', main: '#ffb82e', light: '#ffecbe', hull: '#6e4f12', glow: '255,184,46', face: ['#ffcd66', '#dc961c', '#a86f10'] },
+  purple: { name: 'Purple', main: '#a05cff', light: '#e4d2ff', hull: '#40236b', glow: '160,92,255', face: ['#bd8aff', '#8644e0', '#6430ad'] },
+  pink: { name: 'Pink', main: '#ff38b4', light: '#ffcdea', hull: '#6e1a4d', glow: '255,56,180', face: ['#ff78cc', '#dc2896', '#a91d72'] },
+  pearl: { name: 'Pearl', main: '#ece2d0', light: '#fffaf0', hull: '#6f6553', glow: '255,240,214', face: ['#f8f1e4', '#d2c4ab', '#a29275'], edgeDk: true },
+  onyx: { name: 'Onyx', main: '#24232c', light: '#e8eeff', hull: '#0c0c11', glow: '214,226,255', face: ['#3a3946', '#22212a', '#141319'], edge: '#dfe8ff' },
+};
+const PAL_KEYS = Object.keys(PALETTE);
+const PAL_BAD = [['blue', 'purple'], ['red', 'pink'], ['pink', 'purple'], ['red', 'green']]; // never rolled together (docs/FACTION_REWORK.md "Batch 6c")
+const palOk = (a, b) => !!PALETTE[a] && !!PALETTE[b] && a !== b && !PAL_BAD.some(([x, y]) => (x === a && y === b) || (x === b && y === a));
+// [the player's colour, the opponent's]: mine a palette key (or 'random'/null); rnd defaults to Math.random (the UI's own dice)
+function palRoll(mine, rnd = Math.random) {
+  const a = PALETTE[mine] ? mine : PAL_KEYS[Math.floor(rnd() * PAL_KEYS.length)], ok = PAL_KEYS.filter(k => palOk(a, k));
+  return [a, ok[Math.floor(rnd() * ok.length)]];
+}
+const TEAM_NEUTRAL = TEAM[2], TEAM_SLATE = { main: '#a9b3c2', light: '#eef2f7', hull: '#4a5263', glow: '200,210,224', face: ['#c6cfdb', '#8c97a8', '#69748a'] };
+let TEAM_KEY = 'blue,red';
+function setTeams(tc) { // tc: [side 0's key, side 1's key]; anything else: Blue and Red
+  const k = Array.isArray(tc) && palOk(tc[0], tc[1]) ? tc : ['blue', 'red'], key = k.join();
+  if (key === TEAM_KEY) return false;
+  TEAM_KEY = key; TEAM[0] = PALETTE[k[0]]; TEAM[1] = PALETTE[k[1]]; TEAM[2] = k.includes('gold') ? TEAM_SLATE : TEAM_NEUTRAL;
+  if (typeof teamRebuild === 'function') teamRebuild();
+  return true;
+}
+const teamName = s => (TEAM[s] && TEAM[s].name) || (s ? 'Red' : 'Blue');
 const M = { d: '#161e2c', m: '#2a3648', l: '#435269', h: '#7c8ba2' };
 const MAT = { metal: ['#66779a', '#3e4b65', '#2a3448'], dark: ['#3a465c', '#262f42', '#1a2131'], light: ['#97a7c1', '#66758f', '#4c5a72'] };
 const V = { cw: 0, ch: 0, dpr: 1, S: 1, S0: 1, zoom: 1, A: 0, ft: 0, fb: 0 };

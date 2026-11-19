@@ -64,7 +64,7 @@ const LADDER = {
 const LADDER_D = {};
 for (const k in DIFF) LADDER_D[k] = Object.assign(Object.create(DIFF[k]), LADDER[k] || {});
 function aiDiff(g, s) { // the difficulty a side's AI plays: its DIFF entry, with the ladder's settings when its preset uses them
-  const base = s === 1 ? g.diff : (DIFF[g.autoDiff] || DIFF.normal);
+  const base = s !== (g.me | 0) ? g.diff : (DIFF[g.autoDiff] || DIFF.normal); // v2.93: the opponent plays the chosen difficulty, whichever side it is
   return aiFix(g.sides[s].persona, 'ladder') ? LADDER_D[base.label.toLowerCase()] : base;
 }
 

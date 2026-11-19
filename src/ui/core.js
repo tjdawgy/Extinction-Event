@@ -49,8 +49,15 @@ if (window.ResizeObserver) {
   new ResizeObserver(() => { if (resizeMain()) drawNow(); }).observe($('field'));
   new ResizeObserver(() => { if (resizeMinimap()) drawMinimapNow(); }).observe(mm);
 }
+// v2.93 (batch 6c, Part C): the player's side (g.me; 0 = the left start, 1 = the right) and the opponent's. Every UI and render
+// read of "the player" goes through these; side numbers that mean a place on the map (dirOf, hqU, gun facing) stay as they are
+const myS = () => (game && game.me) | 0, foeS = () => 1 - myS();
+// v2.93: the player's and the opponent's team colours as CSS variables (the HQ readout, report legends), refreshed with the teams
+let TEAM_CSS = '';
+function teamCss() { const k = TEAM[myS()].main + TEAM[foeS()].main; if (k === TEAM_CSS) return; TEAM_CSS = k; const r = document.documentElement.style; r.setProperty('--you', TEAM[myS()].main); r.setProperty('--foe', TEAM[foeS()].main); }
 function homeX() {
   const lp = (V.lpad || 0) / V.S0, hw = V.cw / 2 / V.S0, x0 = UMIN - 40 - lp, x1 = UMAX + 40; // v2.74: the base sits right of the army column
+  if (myS()) return x1 - x0 < 2 * hw ? (x0 + x1) / 2 : clamp(hqU(1) - hw * 0.55 + 60, x0 + hw, x1 - hw); // v2.93: the right-hand base, looking left into the field
   return x1 - x0 < 2 * hw ? (x0 + x1) / 2 : clamp(HQ_U + hw * 0.55 - 60 - lp * 0.8, x0 + hw, x1 - hw);
 }
 function homeCamera() { cam.x = homeX(); cam.vx = 0; clampCam(); }

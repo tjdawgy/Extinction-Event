@@ -140,8 +140,9 @@ function update(g, dt) {
   if (Math.floor(g.t * 2) !== Math.floor(t0 * 2)) { updateOrders(g); if (MECH7C.on) updateRallyWait(g); }
   updateStorm(g, dt, t0);
   if (rwB6side(g)) side6Ai(g, dt); else { // v2.92 (batch 6b): a seeded coin for which AI decides first, each rolling its own dice
-  aiUpdate(g, 1, dt); aiSpotter(g, 1);
-  if (g.auto) { aiUpdate(g, 0, dt); aiSpotter(g, 0); }
+  const foe = 1 - (g.me | 0); // v2.93: the opponent's AI first, then the player's side when AI-played
+  aiUpdate(g, foe, dt); aiSpotter(g, foe);
+  if (g.auto) { aiUpdate(g, 1 - foe, dt); aiSpotter(g, 1 - foe); }
   }
   if (g.ents.some(e => e.hp <= 0)) g.ents = g.ents.filter(e => e.hp > 0);
   resolveEnd(g);

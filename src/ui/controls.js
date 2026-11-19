@@ -10,9 +10,9 @@
 const SELN = new Set(); // the selected units' ids
 const CT = { hitPx: 26, dbl: 350, lassoMs: 260, lassoMin: 14, lineSel: 22, still: 8, baseOut: 140, onBld: 12 }; // onBld: a tap on an enemy building targets it unless one of yours is this close under the tap
 let ctlMark = null, ctlLoop = null; // ctlLoop: the last box, fading out; ctlMark: where the last move order went (or its target)
-const ctlOn = () => !!(game && running && !game.over && !game.spectate && game.sides[0].direct && (!game.range || game.sides[0].manual)); // v2.81: in the Test Range only with Control blue myself
+const ctlOn = () => !!(game && running && !game.over && !game.spectate && game.sides[myS()].direct && (!game.range || game.sides[myS()].manual)); // v2.81: in the Test Range only with Control blue myself
 const laneName = k => MAP.lanes[k].id[0].toUpperCase() + MAP.lanes[k].id.slice(1);
-const myUnits = () => game.ents.filter(e => e.kind === 'u' && e.side === 0 && e.hp > 0 && e.gone !== 3).sort((a, b) => a.id - b.id); // v2.83: not units inside a tunnel; v2.92: by id (batch 6b shuffles the entity list each tick; it was in id order before)
+const myUnits = () => game.ents.filter(e => e.kind === 'u' && e.side === myS() && e.hp > 0 && e.gone !== 3).sort((a, b) => a.id - b.id); // v2.83: not units inside a tunnel; v2.92: by id (batch 6b shuffles the entity list each tick; it was in id order before)
 function selLive() { // the selected units still alive (the dead drop out of the selection)
   const out = myUnits().filter(e => SELN.has(e.id));
   if (out.length !== SELN.size) { SELN.clear(); for (const e of out) SELN.add(e.id); }
@@ -30,24 +30,24 @@ function unitHit(x, y, list) { // the nearest unit of list under a tap: within C
 }
 const unitAt = (x, y) => { const h = unitHit(x, y, myUnits()); return h ? h.e : null; }; // the nearest of your units under a tap
 // v2.77: the nearest enemy unit or relic guard you can see under a tap
-const foeUnitHit = (x, y) => unitHit(x, y, game.ents.concat(game.guards || []).filter(e => e.kind === 'u' && e.side !== 0 && e.hp > 0 && visibleTo(game, 0, e)));
+const foeUnitHit = (x, y) => unitHit(x, y, game.ents.concat(game.guards || []).filter(e => e.kind === 'u' && e.side !== myS() && e.hp > 0 && visibleTo(game, myS(), e)));
 function foeBldAt(x, y) { // an enemy building you can see under a tap (its body, as a tap on your own finds it)
   const w = toWorld(x, y);
-  return game.ents.find(b => { if (b.kind !== 'b' || b.side === 0 || b.hp <= 0 || !visibleTo(game, 0, b)) return false; const d = bdOf(b), p = P(b.u, b.v), hw = 2 * d.half * IX * BS + 6; return Math.abs(w.x - p.x) <= hw && w.y >= p.y - (d.half + d.h) * BS - 12 && w.y <= p.y + d.half * BS + 6; });
+  return game.ents.find(b => { if (b.kind !== 'b' || b.side === myS() || b.hp <= 0 || !visibleTo(game, myS(), b)) return false; const d = bdOf(b), p = P(b.u, b.v), hw = 2 * d.half * IX * BS + 6; return Math.abs(w.x - p.x) <= hw && w.y >= p.y - (d.half + d.h) * BS - 12 && w.y <= p.y + d.half * BS + 6; });
 }
 function selSet(list, add) { if (!add) SELN.clear(); for (const e of list) SELN.add(e.id); if (SELN.size) { closePanel(); hideInfo(); endAim(); } refreshCtl(); }
 const selAll = () => selSet(myUnits());
 const selType = t => { const F = fieldView(); selSet(myUnits().filter(e => e.type === t && onScreen(e, F)), true); }; // v2.78: only those on screen (added to the selection)
 // v2.76: the lane a unit is in, from where it stands (the lane's centre line nearest it); in the base (up to CT.baseOut
 // beyond the base rally point, where the lanes meet) it is in none, and counts toward All only
-const unitLane = e => { if (!MAP_LANED || dirOf(0) * (e.u - ctlBase(0).u) <= CT.baseOut) return null; return laneAt(e.u, e.v); };
+const unitLane = e => { if (!MAP_LANED || dirOf(myS()) * (e.u - ctlBase(myS()).u) <= CT.baseOut) return null; return laneAt(e.u, e.v); };
 const selLane = k => selSet(myUnits().filter(e => unitLane(e) === k), true);
 function selClear() { SELN.clear(); closePick(); refreshCtl(); }
 // An order for the selection; it clears afterwards
 function issue(o, u, v) {
   if (!ctlOn()) return;
   const ids = selLive().map(e => e.id);
-  const r = command(game, 0, ids, o, u, v);
+  const r = command(game, myS(), ids, o, u, v);
   toast(r.msg, r.ok ? (o === 'attack' ? 'warn' : 'ok') : 'bad');
   if (!r.ok) { shake($('cmdbar')); return; }
   if (o === 'go') ctlMark = { u, v, t: performance.now() };
@@ -144,7 +144,7 @@ function buildLanes() {
 }
 function refreshCtl() {
   const box = $('lanes'), bar = $('cmdbar'), on = ctlOn();
-  box.classList.toggle('hide', !on); V.lpad = game && !game.spectate && game.sides[0].direct && (!game.range || game.sides[0].manual) ? 58 : 0; // the column's width: the camera can scroll the field's left edge clear of it
+  box.classList.toggle('hide', !on); V.lpad = game && !game.spectate && game.sides[myS()].direct && (!game.range || game.sides[myS()].manual) ? 58 : 0; // the column's width: the camera can scroll the field's left edge clear of it
   refreshGroups(on);
   if (!on) { bar.classList.add('hide'); closePick(); document.body.classList.remove('selecting'); return; }
   const us = myUnits(), n = MAP_LANED ? MAP.lanes.length : 0, cnt = new Array(n).fill(0);
@@ -156,7 +156,7 @@ function refreshCtl() {
   const sl = selLive(), m = sl.length;
   bar.classList.toggle('hide', !m); document.body.classList.toggle('selecting', !!m); if (!m) closePick();
   if (m) setHTML($('selN'), String(m));
-  const tb = bar.querySelector('[data-c="tunnel"]'); tb.classList.toggle('hide', !(m && rwB2b(game) && sl.some(tunnelOk) && tunnelGate(game, 0))); // v2.83: Tunnel, while a Ruinmaw of yours is surfaced and Bloomhost ground units are selected
+  const tb = bar.querySelector('[data-c="tunnel"]'); tb.classList.toggle('hide', !(m && rwB2b(game) && sl.some(tunnelOk) && tunnelGate(game, myS()))); // v2.83: Tunnel, while a Ruinmaw of yours is surfaced and Bloomhost ground units are selected
 }
 for (const b of document.querySelectorAll('#cmdbar [data-c]')) b.addEventListener('click', () => { if (paused) return; if (b.dataset.c === 'attack' && MAP_LANED) { TUT.sig.pick = true; openPick(); } else issue(b.dataset.c); }); // v2.77: on a lane map, Attack asks which lane
 $('selX').addEventListener('click', selClear);
@@ -199,12 +199,12 @@ let grpTap = { t: 0, k: -1 }, grpHold = null;
 function grpSave(k, b) {
   const ids = selLive().map(e => e.id);
   if (!ids.length) { toast('Select units first, then hold a slot to save them as a group', ''); return; }
-  const r = setGroup(game, 0, k, ids); toast(r.msg, r.ok ? 'ok' : 'bad'); if (!r.ok) return;
+  const r = setGroup(game, myS(), k, ids); toast(r.msg, r.ok ? 'ok' : 'bad'); if (!r.ok) return;
   b.classList.remove('saved'); void b.offsetWidth; b.classList.add('saved'); sndPlay('built');
   TUT.sig.grpSave = true; refreshCtl();
 }
 function grpTapped(k) {
-  const us = groupUnits(game, 0, k);
+  const us = groupUnits(game, myS(), k);
   if (!us.length) { toast(`Group ${k + 1} is empty: select units, then hold the slot to save them`, ''); grpTap.t = 0; refreshCtl(); return; }
   const now = performance.now();
   if (grpTap.k === k && now - grpTap.t < CT.dbl) { // the second tap: jump to them (the first already selected them)
@@ -231,9 +231,9 @@ for (const b of document.querySelectorAll('#grps button')) {
   b.addEventListener('contextmenu', ev => ev.preventDefault());
 }
 function refreshGroups(on) {
-  const box = $('grps'), S = game && game.sides[0]; box.classList.toggle('hide', !on || !S.groups); $('panel').classList.toggle('grp', !!(on && S.groups));
+  const box = $('grps'), S = game && game.sides[myS()]; box.classList.toggle('hide', !on || !S.groups); $('panel').classList.toggle('grp', !!(on && S.groups));
   if (!on || !S.groups) return;
-  for (const b of box.children) { const n = groupUnits(game, 0, +b.dataset.g).length; setHTML(b.querySelector('i'), n ? String(n) : '–'); b.classList.toggle('empty', !n); }
+  for (const b of box.children) { const n = groupUnits(game, myS(), +b.dataset.g).length; setHTML(b.querySelector('i'), n ? String(n) : '–'); b.classList.toggle('empty', !n); }
 }
 // A new or resumed match: under direct control, nothing selected, the column for its map
-function ctlStart() { SELN.clear(); closePick(); grpTap = { t: 0, k: -1 }; ctlMark = null; ctlLoop = null; if (game && !game.spectate) directControl(game, 0); buildLanes(); }
+function ctlStart() { SELN.clear(); closePick(); grpTap = { t: 0, k: -1 }; ctlMark = null; ctlLoop = null; if (game && !game.spectate) directControl(game, myS()); buildLanes(); }

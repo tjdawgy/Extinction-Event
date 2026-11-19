@@ -32,17 +32,17 @@ function drawMinimap(c, g, w, h) {
     if (cellsLit(F.vis, gh.u, gh.half, gh.v)) continue;
     c.strokeStyle = TEAM[gh.side].main; c.lineWidth = 1; c.globalAlpha = 0.8; c.strokeRect(mx(gh.u) - 1.5, my(gh.v) - 1, 3, 2); c.globalAlpha = 1;
   }
-  if (g) for (const x of g.guards || []) if (x.hp > 0 && visibleTo(g, 0, x)) { c.fillStyle = TEAM[2].main; c.fillRect(mx(x.u) - 1, my(x.v) - 1, 2, 2); } // v2.71: relic guards
+  if (g) for (const x of g.guards || []) if (x.hp > 0 && visibleTo(g, myS(), x)) { c.fillStyle = TEAM[2].main; c.fillRect(mx(x.u) - 1, my(x.v) - 1, 2, 2); } // v2.71: relic guards
   if (g) for (const e of g.ents) {
-    if (e.side !== 0 && !visibleTo(g, 0, e)) continue;
+    if (e.side !== myS() && !visibleTo(g, myS(), e)) continue;
     c.fillStyle = TEAM[e.side].main;
     if (e.kind === 'b') { c.globalAlpha = e.built ? 0.9 : 0.4; c.fillRect(mx(e.u) - 2, my(e.v) - 1.5, 4, 3); c.globalAlpha = 1; }
     else c.fillRect(mx(e.u) - 1, UDEF[e.type].air ? 3 : my(e.v) - 1, 2, 2);
   }
   if (g) { // v2.47: the enemy HQ's health under its marker, as last seen (moved from the top bar); hidden until scouted
-    const ehq = g.sides[1].hq, vw = g.spectate ? 1 : 0;
-    if (g.spectate || visibleTo(g, 0, ehq) || Object.values(F.ghosts).some(gh => gh.type === 'hq' && gh.side === 1 && gh.fac)) { // the start ghost has no faction until seen
-      const st = hqStatus(g, 1, vw), bw = 14, bx = clamp(mx(ehq.u) - bw / 2, 2, w - bw - 2), by = Math.min(h - 4, my(ehq.v) + 3);
+    const ehq = g.sides[1 - myS()].hq, vw = g.spectate ? 1 - myS() : myS(); // v2.93: the opponent's HQ
+    if (g.spectate || visibleTo(g, myS(), ehq) || Object.values(F.ghosts).some(gh => gh.type === 'hq' && gh.side !== myS() && gh.fac)) { // the start ghost has no faction until seen
+      const st = hqStatus(g, 1 - myS(), vw), bw = 14, bx = clamp(mx(ehq.u) - bw / 2, 2, w - bw - 2), by = Math.min(h - 4, my(ehq.v) + 3);
       c.globalAlpha = st.stale ? 0.6 : 1;
       c.fillStyle = 'rgba(0,0,0,0.6)'; c.fillRect(bx - 0.5, by - 0.5, bw + 1, 3);
       c.fillStyle = hpColor(st.frac); c.fillRect(bx, by, bw * clamp(st.frac, 0, 1), 2);

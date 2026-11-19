@@ -25,7 +25,7 @@ Object.assign(AB_ICON, {
 let aim = null; // { k, placed, u, v, ok, msg }
 function buildAbil() {
   const box = $('abil'); box.innerHTML = '';
-  for (const k of game ? abList(game.sides[0]) : ABIL_ORDER) { // the player's faction's three (v2.20)
+  for (const k of game ? abList(game.sides[myS()]) : ABIL_ORDER) { // the player's faction's three (v2.20)
     const el = document.createElement('button');
     el.className = 'ab'; el.dataset.k = k; el.style.setProperty('--ac', AB_COL[k]); el.setAttribute('aria-label', ABIL[k].name);
     el.innerHTML = `<span class="ring"></span>${AB_ICON[k]}<small></small>`;
@@ -41,7 +41,7 @@ function onAbil(k, el) {
   if (!game || paused || !running) return;
   hideInfo();
   if (aim && aim.k === k) { endAim(); return; }
-  const r = abilityCheck(game, 0, k);
+  const r = abilityCheck(game, myS(), k);
   if (!r.ok) { toast(r.msg, 'bad'); el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); return; }
   closePanel();
   aim = { k, placed: false, u: 0, v: 0, ok: false, msg: '' };
@@ -58,14 +58,14 @@ $('aimX').addEventListener('click', endAim);
 function aimTap(x, y) {
   const w = toWorld(x, y), u = clamp(w.x, -40, L + 40), v = clamp(w.y / DY, -240, 240), A = ABIL[aim.k];
   if (aim.placed && Math.hypot(u - aim.u, v - aim.v) <= A.r) { // second tap inside the circle: confirm
-    const r = useAbility(game, 0, aim.k, aim.u, aim.v);
+    const r = useAbility(game, myS(), aim.k, aim.u, aim.v);
     toast(r.msg, r.ok ? 'ok' : 'bad');
     if (r.ok) { endAim(); refreshUI(false); }
     return;
   }
-  const r = abilityCheck(game, 0, aim.k, u, v);
+  const r = abilityCheck(game, myS(), aim.k, u, v);
   Object.assign(aim, { placed: true, u, v, ok: r.ok, msg: r.msg || '' });
-  const idle = r.ok && aim.k === 'repair' && !repairHealable(game, 0, u, v); // v2.11: warn before a Repair Pulse that would heal nothing
+  const idle = r.ok && aim.k === 'repair' && !repairHealable(game, myS(), u, v); // v2.11: warn before a Repair Pulse that would heal nothing
   $('aimTxt').textContent = !r.ok ? `: ${r.msg}` : idle ? `: nothing here can be healed${game.t >= EXT.start ? ' (buildings can\'t be repaired during the storm)' : ''}. Tap inside to cast anyway` : ': tap inside the circle to confirm';
 }
 const fmtCd = t => t >= 60 ? `${Math.floor(t / 60)}:${String(Math.ceil(t % 60) % 60).padStart(2, '0')}` : `${Math.ceil(t)}s`;
@@ -73,9 +73,9 @@ function refreshAbil() {
   const box = $('abil'), show = !!game && running && !game.over;
   box.classList.toggle('hide', !show);
   if (!show) { if (aim) endAim(); return; }
-  const s = game.sides[0];
+  const s = game.sides[myS()];
   for (const el of box.children) {
-    const k = el.dataset.k, A = ABIL[k], wait = s.ab[k] - game.t, locked = !abilUnlocked(game, 0, A);
+    const k = el.dataset.k, A = ABIL[k], wait = s.ab[k] - game.t, locked = !abilUnlocked(game, myS(), A);
     const cool = wait > 0, poorC = s.res.c < A.cost.c, poorE = s.res.e < A.cost.e, gate = game.countdown > 0;
     const shared = s.abK && Math.abs(s.ab[k] - s.abEnd) < 1e-6, total = shared ? ABIL[s.abK].cd : A.first; // one shared ring on all three
     el.classList.toggle('lock', locked); el.classList.toggle('cool', !locked && cool); el.classList.toggle('wait', gate);
@@ -90,15 +90,15 @@ function refreshAbil() {
 }
 function refreshUI(force) {
   if (!game) return;
-  const s = game.sides[0], inc = income(game, 0), cap = popCap(game, 0), used = popUsed(game, 0);
+  const s = game.sides[myS()], inc = income(game, myS()), cap = popCap(game, myS()), used = popUsed(game, myS());
   $('vC').textContent = Math.floor(s.res.c); $('rC').textContent = `+${inc.c.toFixed(0)}/s`;
   $('vE').textContent = Math.floor(s.res.e); $('rE').textContent = `+${inc.e.toFixed(1)}/s`;
   $('vP').textContent = `${fmtPop(used)}/${cap}`;
   for (let k = 0; k < 1; k++) { // your HQ; the enemy's last-seen health is drawn on the minimap (v2.47)
-    const st = hqStatus(game, k, 0), el = $('hq' + k), fill = el.querySelector('.hb i');
+    const st = hqStatus(game, myS(), myS()), el = $('hq' + k), fill = el.querySelector('.hb i'); // v2.93: the player's side
     el.className = 'hqr ' + st.state + (st.stale ? ' stale' : '');
     fill.style.width = (st.frac * 100).toFixed(1) + '%'; fill.style.background = hpColor(st.frac);
-    el.querySelector('small').textContent = st.stale ? 'Last seen' : HQ_STATE[st.state];
+    el.querySelector('small').textContent = st.stale ? 'Last seen' : HQ_STATE[st.state] + (st.state === 'shielded' && rwB6hq(game) ? ` · ${hqHolders(game, myS())}` : ''); // v2.93 (b6hq): how many buildings hold it up
     el.setAttribute('aria-label', `${k ? 'Enemy' : 'Your'} HQ: ${st.stale ? 'last seen with ' : ''}${Math.ceil(st.hp)} of ${Math.round(st.maxHp)} HP, ${HQ_STATE[st.state].toLowerCase()}`);
   }
   $('resP').classList.toggle('full', used >= cap);
@@ -110,19 +110,19 @@ function refreshUI(force) {
     let html, locked, poor, badge = 0, prog = 0;
     if (tab === 'build') {
       const d = BD(pFac(), type);
-      const mine = alive(game, 0, type), have = !!d.sig && mine.length > 0; // v2.32: one of each signature building at a time (v2.34: a real boolean; undefined made classList.toggle flip the card every refresh)
-      const padBy = d.sig && sigPadOn() && !have ? game.ents.find(e => e.kind === 'b' && e.side === 0 && e.hp > 0 && (e.type === 'sigA' || e.type === 'sigB')) : null; // v2.43: the other one stands (on the signature pad)
-      locked = !!(d.req && !hasBuilt(game, 0, d.req)) || have || !!padBy;
+      const mine = alive(game, myS(), type), have = !!d.sig && mine.length > 0; // v2.32: one of each signature building at a time (v2.34: a real boolean; undefined made classList.toggle flip the card every refresh)
+      const padBy = d.sig && sigPadOn() && !have ? game.ents.find(e => e.kind === 'b' && e.side === myS() && e.hp > 0 && (e.type === 'sigA' || e.type === 'sigB')) : null; // v2.43: the other one stands (on the signature pad)
+      locked = !!(d.req && !hasBuilt(game, myS(), d.req)) || have || !!padBy;
       poor = s.res.c < d.cost.c || s.res.e < d.cost.e;
       badge = have ? 0 : mine.length;
       for (const b of mine) if (!b.built) prog = Math.max(prog, b.progress);
       html = have ? '<span class="lock">Already built</span>' : padBy ? '<span class="lock">Pad in use</span>' : locked ? `<span class="lock">Requires ${BD(pFac(), d.req).name}</span>` : costHTML(d.cost, s.res);
     } else {
       const d = UDEF[type];
-      const prods = alive(game, 0, d.from).filter(b => canMake(b, type, game));
+      const prods = alive(game, myS(), d.from).filter(b => canMake(b, type, game));
       if (type === 'rifle') setHTML(el.querySelector('.pr'), prods.some(b => pathMod(b, 'pairs')) ? 'MASS ×2' : '');
       if (type === 'skitterling') setHTML(el.querySelector('.pr'), rwB5b(game) ? `BROOD ×${BROOD.n}` : ''); // v2.88: a brood (batch 5b)
-      const mx = el.querySelector('.mx'); if (mx) { const n = unitCount(game, 0, type); setHTML(mx, `${n}/${d.max}`); mx.classList.toggle('full', n >= d.max); }
+      const mx = el.querySelector('.mx'); if (mx) { const n = unitCount(game, myS(), type); setHTML(mx, `${n}/${d.max}`); mx.classList.toggle('full', n >= d.max); }
       locked = !prods.length;
       const tc = trainCost(game, type), tp = trainPop(game, type); // v2.88: a brood's cost and supply (batch 5b)
       poor = s.res.c < tc.c || s.res.e < tc.e || used + tp > cap;
@@ -147,7 +147,7 @@ function refreshUI(force) {
   refreshPanel();
 }
 function refreshOd() { // Overdrive (v2.32): shown while your Salvage Yard's production boost runs
-  const s = game.sides[0], on = !game.over && overdrive(game, 0), el = $('od');
+  const s = game.sides[myS()], on = !game.over && overdrive(game, myS()), el = $('od');
   el.classList.toggle('hide', !on);
   if (on) { const txt = `${Math.ceil(s.od - game.t)} s`; if ($('odT').textContent !== txt) $('odT').textContent = txt; el.setAttribute('aria-label', `Overdrive: production +${Math.round(YARD.od * 100)}% for ${txt}`); }
 }

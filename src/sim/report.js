@@ -29,7 +29,7 @@ function logEvText(e, me, g) { // one log event as a line of text (me: written f
     case 'G': return b ? 'Feint attack launched (pulled back)' : a === 'raid' ? 'Raid launched' : a === 'relic' ? 'Sent a group for a relic' : a === 'turtle' || a === 'rush' || a === 'greed' ? `Read the enemy's ${a === 'turtle' ? 'Turrets' : a === 'rush' ? 'rush' : 'greedy economy'}; changed plan` : `Attack launched${a === 'siege' ? ' (siege)' : ''}`; // v2.52: a read is not an attack
     case 'W': return 'Extinction Event warning (30 s)';
     case 'X': return 'Extinction Event began';
-    case 'E': return a === 'draw' ? 'Match ended: draw (the Extinction Event)' : `Match ended: ${b === 0 ? 'you won' : 'you lost'}`; // the player's view, in both columns
+    case 'E': return a === 'draw' ? 'Match ended: draw (the Extinction Event)' : `Match ended: ${b === ((g && g.me) | 0) ? 'you won' : 'you lost'}`; // the player's view, in both columns
     case 'T': case 'K': { const n = UDEF[a] ? UDEF[a].name : a; return `${c === 'K' ? 'Lost ' : ''}${n}${b > 1 ? ` ×${b}, ${mmss(e[0])}–${mmss(x)}` : ''}`; }
   }
   return c;
@@ -65,7 +65,7 @@ function logLines(g, s, widen = true) { // widen: the screen may widen unit grou
     }
     for (let i = ev.length - 1; i >= 0; i--) if (!ev[i]) ev.splice(i, 1);
   }
-  const B = t => logBName(g, s, t), txt = e => e.done === undefined ? logEvText(e, s === 0, g) : e[2] === 'B' ? `${B(e[3])} ${mmss(e[0])} → ${mmss(e.done)}` : `${B(e[3])} T${e[4]}${e[6] && treeOf(g.sides[s].faction, e[3]) ? ` · ${treeOf(g.sides[s].faction, e[3])[e[6]].name}` : ''} ${mmss(e[0])} → ${mmss(e.done)}`;
+  const B = t => logBName(g, s, t), txt = e => e.done === undefined ? logEvText(e, s === (g.me | 0), g) : e[2] === 'B' ? `${B(e[3])} ${mmss(e[0])} → ${mmss(e.done)}` : `${B(e[3])} T${e[4]}${e[6] && treeOf(g.sides[s].faction, e[3]) ? ` · ${treeOf(g.sides[s].faction, e[3])[e[6]].name}` : ''} ${mmss(e[0])} → ${mmss(e.done)}`;
   return ev.map(e => { const u = e[2] === 'T' || e[2] === 'K'; return { t: e[0], i: e.i, key: !u, code: e[2], txt: txt(e), type: u ? e[3] : null, n: u ? e[4] : 0, t1: u ? e[5] : e.done ?? e[0], paired: e.done !== undefined }; });
 }
 function logBattles(g) { // runs of 10-s buckets with unit losses; value = credits + energy of the units lost
@@ -79,23 +79,23 @@ function logBattles(g) { // runs of 10-s buckets with unit losses; value = credi
   }
   return out.map(b => ({ t0: b.k0 * LOG_BUCKET, t1: (b.k1 + 1) * LOG_BUCKET, v: b.v, n: b.n, u: b.u / b.m }));
 }
-const zoneOf = u => u < L * 0.3 ? 'near your base' : u > L * 0.7 ? 'near the enemy base' : 'mid-field';
+const zoneOf = (u, me = 0) => { const x = me ? L - u : u; return x < L * 0.3 ? 'near your base' : x > L * 0.7 ? 'near the enemy base' : 'mid-field'; }; // v2.93: from the player's side
 function logMoments(g) { // up to 8 recorded turning points, in time order
   const L = g.log; if (!L) return [];
-  const c = [], who = s => s === 0 ? 'Your' : 'Enemy', big = logBattles(g).filter(b => b.v[0] + b.v[1] >= 400).sort((a, b) => (b.v[0] + b.v[1]) - (a.v[0] + a.v[1])).slice(0, 3);
-  const worst = big.reduce((m, b) => b.v[0] - b.v[1] > (m ? m.v[0] - m.v[1] : 0) ? b : m, null), best = big.reduce((m, b) => b.v[1] - b.v[0] > (m ? m.v[1] - m.v[0] : 0) ? b : m, null);
-  for (const b of big) c.push({ t: b.t0, p: 6 + (b.v[0] + b.v[1]) / 1000, txt: `Battle ${zoneOf(b.u)}, ${mmss(b.t0)}–${mmss(b.t1)}: you lost ${b.n[0]} units (${b.v[0]}), the enemy lost ${b.n[1]} (${b.v[1]})`, tag: b === worst ? 'largest loss' : b === best ? 'largest win' : '' });
+  const me = g.me | 0, op = 1 - me, c = [], who = s => s === me ? 'Your' : 'Enemy', big = logBattles(g).filter(b => b.v[0] + b.v[1] >= 400).sort((a, b) => (b.v[0] + b.v[1]) - (a.v[0] + a.v[1])).slice(0, 3);
+  const worst = big.reduce((m, b) => b.v[me] - b.v[op] > (m ? m.v[me] - m.v[op] : 0) ? b : m, null), best = big.reduce((m, b) => b.v[op] - b.v[me] > (m ? m.v[op] - m.v[me] : 0) ? b : m, null);
+  for (const b of big) c.push({ t: b.t0, p: 6 + (b.v[0] + b.v[1]) / 1000, txt: `Battle ${zoneOf(b.u, me)}, ${mmss(b.t0)}–${mmss(b.t1)}: you lost ${b.n[me]} units (${b.v[me]}), the enemy lost ${b.n[op]} (${b.v[op]})`, tag: b === worst ? 'largest loss' : b === best ? 'largest win' : '' });
   const firstUnit = {};
   for (const e of L.ev) {
     const [t, s, k, a, b] = e;
     if (k === 'H') { if (!c.some(m => m.h === s && t - m.t < 60)) c.push({ t, p: 9, h: s, txt: `${who(s)} HQ shield went down` }); } // once a minute: it can flicker as buildings fall and rise
     else if (k === 'D' && a === 'hq') c.push({ t, p: 10, txt: `${who(s)} ${logBName(g, s, 'hq')} destroyed${e[5] === -1 ? ' by the storm' : ''}` });
     else if (k === 'D' && ['factory', 'techlab', 'turret', 'refinery'].includes(a)) c.push({ t, p: 5, txt: `${who(s)} ${logBName(g, s, a)} destroyed` });
-    else if (k === 'N' || k === 'L') c.push({ t, p: k === 'L' ? 4 : 3, txt: `${s === 0 ? 'You' : 'The enemy'} ${k === 'N' ? 'captured' : 'lost'} the ${NODE_NAME[a]} field node` });
-    else if (k === 'A' && a === 'corrosive' && b >= 400) c.push({ t, p: 5 + b / 1000, txt: `${s === 0 ? 'Your' : 'Enemy'} Corrosive Bloom: ${b} damage, ${e[5]} destroyed` });
-    else if (k === 'A' && a === 'beam' && b >= 400) c.push({ t, p: 5 + b / 1000, txt: `${s === 0 ? 'Your' : 'Enemy'} Purification Beam: ${b} damage, ${e[5]} destroyed` }); // v2.28
-    else if (k === 'A' && a === 'strike' && b >= 400) c.push({ t, p: 5 + b / 1000, txt: `${s === 0 ? 'Your' : 'Enemy'} Orbital Strike: ${b} damage, ${e[5]} destroyed` });
-    else if (k === 'T' && ['titan', 'aircraft', 'artillery'].includes(a) && !firstUnit[s + a]) { firstUnit[s + a] = 1; c.push({ t, p: 2, txt: `${s === 0 ? 'Your' : 'Enemy'} first ${UDEF[a].name}` }); }
+    else if (k === 'N' || k === 'L') c.push({ t, p: k === 'L' ? 4 : 3, txt: `${s === me ? 'You' : 'The enemy'} ${k === 'N' ? 'captured' : 'lost'} the ${NODE_NAME[a]} field node` });
+    else if (k === 'A' && a === 'corrosive' && b >= 400) c.push({ t, p: 5 + b / 1000, txt: `${s === me ? 'Your' : 'Enemy'} Corrosive Bloom: ${b} damage, ${e[5]} destroyed` });
+    else if (k === 'A' && a === 'beam' && b >= 400) c.push({ t, p: 5 + b / 1000, txt: `${s === me ? 'Your' : 'Enemy'} Purification Beam: ${b} damage, ${e[5]} destroyed` }); // v2.28
+    else if (k === 'A' && a === 'strike' && b >= 400) c.push({ t, p: 5 + b / 1000, txt: `${s === me ? 'Your' : 'Enemy'} Orbital Strike: ${b} damage, ${e[5]} destroyed` });
+    else if (k === 'T' && ['titan', 'aircraft', 'artillery'].includes(a) && !firstUnit[s + a]) { firstUnit[s + a] = 1; c.push({ t, p: 2, txt: `${s === me ? 'Your' : 'Enemy'} first ${UDEF[a].name}` }); }
     else if (k === 'X') c.push({ t, p: 8, txt: 'The Extinction Event began' });
   }
   return c.sort((a, b) => b.p - a.p).slice(0, 8).sort((a, b) => a.t - b.t);
@@ -111,12 +111,12 @@ function logText(g, meta) {
   const sum = o => Object.values(o).reduce((a, b) => a + b, 0);
   lines.push(`Extinction Event v${meta.version} · ${meta.diff} · vs ${meta.persona}`);
   lines.push(`Result: ${meta.result} · ${mmss(g.t)}`);
-  lines.push(`Factions: you ${factionName(g.sides[0].faction)}, enemy ${factionName(g.sides[1].faction)}`);
+  lines.push(`Factions: you ${factionName(g.sides[g.me | 0].faction)}, enemy ${factionName(g.sides[1 - (g.me | 0)].faction)}`);
   if (L.from > 0) lines.push(`Recorded from ${mmss(L.from)} (resumed from an older save); earlier events are not included.`);
-  for (const s of [0, 1]) { lines.push(`${s ? 'Enemy' : 'You'}: ${res(s)}${facOf(g.sides[s].faction) === 'lastfist' ? `; salvage ${Math.round(T[s].salv || 0).toLocaleString('en')} credits${T[s].salvE ? ` and ${Math.round(T[s].salvE).toLocaleString('en')} energy` : ''}` : ''}`); lines.push(`  Units built ${sum(T[s].trained)}, lost ${sum(T[s].lost)}: ${units(T[s].trained, T[s].lost)}`); }
+  for (const s of [g.me | 0, 1 - (g.me | 0)]) { lines.push(`${s !== (g.me | 0) ? 'Enemy' : 'You'}: ${res(s)}${facOf(g.sides[s].faction) === 'lastfist' ? `; salvage ${Math.round(T[s].salv || 0).toLocaleString('en')} credits${T[s].salvE ? ` and ${Math.round(T[s].salvE).toLocaleString('en')} energy` : ''}` : ''}`); lines.push(`  Units built ${sum(T[s].trained)}, lost ${sum(T[s].lost)}: ${units(T[s].trained, T[s].lost)}`); }
   lines.push('TIMELINE');
   const all = [];
-  for (const s of [0, 1]) for (const l of logLines(g, s, false)) if (s === 0 || !['W', 'X', 'E'].includes(l.code)) all.push({ ...l, tag: ['W', 'X', 'E'].includes(l.code) ? 'ALL' : s ? 'ENEMY' : 'ME' });
+  for (const s of [0, 1]) for (const l of logLines(g, s, false)) if (s === (g.me | 0) || !['W', 'X', 'E'].includes(l.code)) all.push({ ...l, tag: ['W', 'X', 'E'].includes(l.code) ? 'ALL' : s !== (g.me | 0) ? 'ENEMY' : 'ME' });
   all.sort((a, b) => a.t - b.t || a.i - b.i);
   for (const l of all) lines.push(`${mmss(l.t)} [${l.tag}] ${l.txt}`);
   if (L.dropped) lines.push(`(Very long match: ${L.dropped} early unit lines were dropped to keep the log small; the totals above still count them.)`);

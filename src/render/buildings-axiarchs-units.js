@@ -906,10 +906,21 @@ function drawUnitArt(c, u, T) {
       cv = document.createElement('canvas'); cv.width = Math.ceil(p.box[2] * b); cv.height = Math.ceil(p.box[3] * b);
       const k = cv.getContext('2d'); k.setTransform(b, 0, 0, b, -p.box[0] * b, -p.box[1] * b);
       DRAW_U[u.type](k, T, p.u);
+      if (T.edge || T.edgeDk) teamEdge(cv, T, b); // v2.93: Onyx's bright outline, Pearl's dark one
       SPR.map.set(key, cv);
     }
     if (cv) { c.drawImage(cv, p.box[0], p.box[1], cv.width / b, cv.height / b); return; }
   }
+  if (T.edge || T.edgeDk) { c.save(); c.shadowColor = T.edge || '#2c261d'; c.shadowBlur = 2.5 * V.dpr; DRAW_U[u.type](c, T, u); c.restore(); return; } // v2.93: drawn live, the outline as a tight glow
   DRAW_U[u.type](c, T, u);
+}
+// v2.93 (batch 6c, Part C3): an outline baked into a cached sprite or building body, behind what is drawn: Onyx's bright edge
+// (T.edge) so a near-black team reads on every map at phone size, Pearl's dark one (T.edgeDk) so it never melts into blasts
+function teamEdge(cv, T, b) {
+  const w = cv.width, h = cv.height, px = Math.max(1, Math.round(b * (T.edge ? 1.1 : 0.8)));
+  const t = document.createElement('canvas'); t.width = w; t.height = h; const k = t.getContext('2d');
+  for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; k.drawImage(cv, Math.round(Math.cos(a) * px), Math.round(Math.sin(a) * px)); }
+  k.globalCompositeOperation = 'source-in'; k.fillStyle = T.edge || 'rgba(44,38,29,0.85)'; k.fillRect(0, 0, w, h);
+  const c = cv.getContext('2d'); c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'destination-over'; c.drawImage(t, 0, 0); c.restore();
 }
 

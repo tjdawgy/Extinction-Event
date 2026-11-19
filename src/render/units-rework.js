@@ -122,7 +122,7 @@ function artK(u, t) {
 function drawMarks(c, g, lit) {
   if (!g.mk || !g.mk.length) return;
   for (const m of g.mk) {
-    if (m.side !== 0 && !lit(m.u, m.v) && !g.spectate) continue;
+    if (m.side !== myS() && !lit(m.u, m.v) && !g.spectate) continue;
     const w = P(m.u, m.v), rx = m.r, ry = m.r / 0.6 * DY, k = clamp((g.t - m.t0) / Math.max(0.1, m.t1 - m.t0), 0, 1), T = TEAM[m.side];
     c.fillStyle = `rgba(${T.glow},${0.08 + 0.12 * k})`; c.beginPath(); c.ellipse(w.x, w.y, rx, ry, 0, 0, 7); c.fill();
     c.strokeStyle = `rgba(${T.glow},${0.6 + 0.35 * k})`; c.lineWidth = 1.6; c.beginPath(); c.ellipse(w.x, w.y, rx, ry, 0, 0, 7); c.stroke();

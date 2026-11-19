@@ -316,22 +316,22 @@ function fieldCanvas(side, patches) {
 }
 function drawField(c, g, F) {
   for (let s = 0; s < 2; s++) {
-    const patches = s === 0 ? g.field[0] : Object.keys(F.field).sort().map(k => ({ k, ...F.field[k] }));
+    const patches = s === myS() ? g.field[s] : Object.keys(F.field).sort().map(k => ({ k, ...F.field[k] }));
     if (!patches.length) { FLV.sig[s] = ''; continue; }
     const cv = fieldCanvas(s, patches);
-    if (s === 1) {
+    if (s !== myS()) {
       c.save(); c.beginPath();
       for (let i = 0; i < FOG_N; i++) if (F.seen[i]) { let j = i; while (j + 1 < FOG_N && F.seen[j + 1]) j++; c.rect(i * FOG_CELL, CRV.y0, (j - i + 1) * FOG_CELL, CRV.h); i = j; }
       c.clip();
     }
     c.drawImage(cv, CRV.x0, CRV.y0, CRV.w, CRV.h);
-    if (s === 1) c.restore();
+    if (s !== myS()) c.restore();
   }
-  if (facOf(g.sides[0].faction) === 'axiarchs' && !g.over) drawWarpMark(c, g); // the player's own warp point
+  if (facOf(g.sides[myS()].faction) === 'axiarchs' && !g.over) drawWarpMark(c, g); // the player's own warp point
 }
 // The player's warp point: a glyph on the ground, brighter when the player placed it (the default sits at the field's front)
 function drawWarpMark(c, g) {
-  const wp = warpPoint(g, 0), w = P(wp.u, wp.v), set = !!g.sides[0].warp, k = 0.6 + 0.4 * Math.sin(VFX.lastT * 3);
+  const wp = warpPoint(g, myS()), w = P(wp.u, wp.v), set = !!g.sides[myS()].warp, k = 0.6 + 0.4 * Math.sin(VFX.lastT * 3);
   c.strokeStyle = `rgba(159,232,255,${(set ? 0.8 : 0.45) * k})`; c.lineWidth = set ? 1.8 : 1.2;
   c.beginPath(); c.moveTo(w.x - 12, w.y); c.lineTo(w.x, w.y - 6); c.lineTo(w.x + 12, w.y); c.lineTo(w.x, w.y + 6); c.closePath(); c.stroke();
   c.beginPath(); c.moveTo(w.x - 6, w.y); c.lineTo(w.x, w.y - 3); c.lineTo(w.x + 6, w.y); c.lineTo(w.x, w.y + 3); c.closePath(); c.stroke();
@@ -341,7 +341,7 @@ function drawWarpMark(c, g) {
 // The enemy's warps show only inside the player's vision (and make no sound outside it).
 function drawWarps(c, g, lit, time) {
   for (const w of g.warps) {
-    if (w.side !== 0 && !lit(w.u)) continue;
+    if (w.side !== myS() && !lit(w.u)) continue;
     if (!VFX.warpSeen.has(w)) { VFX.warpSeen.add(w); if (VFX.primed) sfx('warp', P(w.u, w.v).x); }
     const p = P(w.u, w.v), k = clamp((g.t - w.t0) / WARP.ch, 0, 1), d = UDEF[w.type], h = (d.air ? 70 : 34) + 10 * k;
     c.globalCompositeOperation = 'lighter';
@@ -358,16 +358,16 @@ function drawWarps(c, g, lit, time) {
 }
 function drawCreep(c, g, F) {
   for (let s = 0; s < 2; s++) {
-    const patches = s === 0 ? g.creep[0] : Object.keys(F.creep).sort().map(k => ({ k, ...F.creep[k] }));
+    const patches = s === myS() ? g.creep[s] : Object.keys(F.creep).sort().map(k => ({ k, ...F.creep[k] }));
     if (!patches.length) { CRV.sig[s] = ''; continue; }
     const cv = creepCanvas(s, patches);
-    if (s === 1) { // only on ground the player has seen, as with enemy pads
+    if (s !== myS()) { // only on ground the player has seen, as with enemy pads
       c.save(); c.beginPath();
       for (let i = 0; i < FOG_N; i++) if (F.seen[i]) { let j = i; while (j + 1 < FOG_N && F.seen[j + 1]) j++; c.rect(i * FOG_CELL, CRV.y0, (j - i + 1) * FOG_CELL, CRV.h); i = j; }
       c.clip();
     }
     c.drawImage(cv, CRV.x0, CRV.y0, CRV.w, CRV.h);
-    if (s === 1) c.restore();
+    if (s !== myS()) c.restore();
   }
 }
 function hpColor(f) { return f > 0.6 ? '#5dff8a' : f > 0.3 ? '#ffd34d' : '#ff5a5a'; }
@@ -403,6 +403,7 @@ function bodyCanvas(type, side, tier, fac, dmg = 0) {
     cv = document.createElement('canvas'); cv.width = Math.ceil(box[2] * b); cv.height = Math.ceil(box[3] * b);
     const k = cv.getContext('2d'); k.setTransform(b, 0, 0, b, -box[0] * b, -box[1] * b);
     artOf(fac, type)[0](k, TEAM[side], tier, dmg); dmg5(k, fac, type, dmg);
+    if (TEAM[side].edge || TEAM[side].edgeDk) teamEdge(cv, TEAM[side], b); // v2.93: Onyx's and Pearl's outlines
     cv.box = box; cv.b = b;
     BCACHE.map.set(key, cv);
   }

@@ -70,6 +70,22 @@ T.brood = () => {
   say(`Broods (one order: ${S.BROOD.n} Skitterlings; price in play ${ucost(game(['bloomhost', 'lastfist'], {}, 11), 'skitterling') * 4}) against equal-cost armies, both attack`); say('');
   table(['vs', 'Skitterlings (price each)', 'W-L', 'win share', 'value kept in wins'], rows);
 };
+// The brood fight at five army sizes (18 to 36 Marines, 10 to 20 Shardlings, 6 to 12 Lancers, in quarter steps), 20 runs each: a single
+// size flips from 20-0 to 0-20 with one Skitterling more or less (the count is a whole number), so the share is read over sizes
+T.brood3 = () => {
+  const rows = [];
+  for (const [nm, fac, t, n0] of [['Marines', 'lastfist', 'rifle', 18], ['Shardlings', 'axiarchs', 'shardling', 10], ['Lancers', 'axiarchs', 'lancer', 6]]) {
+    let w = 0, l = 0, d = 0, keptW = 0, cells = [];
+    for (const k of [1, 1.25, 1.5, 1.75, 2]) {
+      const g0 = game(['bloomhost', fac], {}, 11), nb = Math.round(n0 * k), V = nb * ucost(g0, t), per = ucost(g0, 'skitterling'), n = Math.round(V / per);
+      const f = fight(['bloomhost', fac], {}, [['skitterling', n, 480]], [[t, nb, 800]]);
+      w += f.w; l += f.l; d += f.d; if (f.w) keptW += f.keptW * f.w; cells.push(`${n} vs ${nb}: ${f.w}-${f.l}`);
+    }
+    rows.push([nm, cells.join('; '), `${w}-${l}${d ? '-' + d : ''}`, `${r0(100 * w / (w + l + d))}%`, w ? `${r0(100 * keptW / w)}%` : '-']);
+  }
+  say(`Broods at five sizes (price in play ${ucost(game(['bloomhost', 'lastfist'], {}, 11), 'skitterling') * 4} a brood), both attack, 20 runs a size`); say('');
+  table(['vs', 'Skitterlings vs foes: W-L per size', 'W-L (100)', 'win share', 'value kept in wins'], rows);
+};
 T.lev = () => {
   const rows = [];
   const tg = [['one Tank', [['tank', 1]]], ['6 Tanks, packed', [['tank', 6]]], ['12 Marines, packed', [['rifle', 12]]], ['one Refinery (building)', 'bld']];

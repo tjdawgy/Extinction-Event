@@ -20,7 +20,7 @@ function updateIntro() {
   if (!game || game.countdown <= 0) { if (V.zoom !== 1) applyZoom(1); return; }
   const cd = game.countdown;
   introCamera(clamp((2.2 - cd) / 1.4, 0, 1));
-  if (cd > COUNTDOWN) setCountdown('DESTROY THE RED HQ', '', '');
+  if (cd > COUNTDOWN) setCountdown(`DESTROY THE ${teamName(foeS()).toUpperCase()} HQ`, '', '');
   else setCountdown('GET READY', String(Math.ceil(cd)), '');
 }
 function showGo() {
@@ -54,13 +54,14 @@ function drawIcon(cvs, kind, type, fac) {
   const dpr = Math.min(2, window.devicePixelRatio || 1), W = 56, H = 32;
   cvs.width = W * dpr; cvs.height = H * dpr;
   const c = cvs.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  setTeams(game && game.tc); // v2.93: in this match's colours (the cards are built before its first frame)
   if (kind === 'b') {
     const d = BDEF[type], s = Math.min(54 / (d.half * 3.6), 31 / (d.half * 2 + d.h + 4));
-    c.translate(W / 2, H - 1 - d.half * s); c.scale(s, s); drawBOf(fac)[type](c, TEAM[0], 1.2, null, 1);
+    c.translate(W / 2, H - 1 - d.half * s); c.scale(s, s); drawBOf(fac)[type](c, TEAM[myS()], 1.2, null, 1);
   } else {
     const d = UDEF[type], s = d.air ? 1.1 : Math.min(1.45, 28 / (visH(type) + 4));
     c.translate(W / 2 - (type === 'artillery' || type === 'titan' ? 3 : 0), d.air ? H / 2 : H - 2); c.scale(s, s);
-    DRAW_U[type](c, TEAM[0], { anim: 0, moving: false, recoil: 0 });
+    DRAW_U[type](c, TEAM[myS()], { anim: 0, moving: false, recoil: 0 });
   }
 }
 
@@ -114,7 +115,7 @@ const UNIT_TIPS = {
   get broodtyrant() { const u = UDEF.broodtyrant; if (REWORK.b4b) return [`Bases: its glob (range ${txN(TYR.range)}, every ${txN(TYR.cd)} s) does ${txN(TYR.dmg)} to ground units (splash ${txN(TYR.splash)}) or ${txN(TYR.bdmg)} to a building and sticks a pustule on it (up to ${PUS.max}, ${txN(PUS.dps)} damage/s each); a building that falls with pustules bursts into ${PUS.mites} Mites per pustule`, "Paid Repair clears the pustules; Interceptors, Heavies, Hydras, Turrets; it can't hit aircraft"]; return [`Buildings first, then ground units, with heavy globs from ${txN(u.range)} range`, "Interceptors, Heavies, Hydras, Turrets; it can't hit aircraft"]; },
   get worldrender() { const u = UDEF.worldrender; if (REWORK.b4b) return [`Buildings: it lands on one (${txN(LAND.t)} s) and bites it for ${txN(LAND.dmg)} every ${txN(LAND.every)} s, healing ${txP(LAND.frac)} of the damage (at most ${txN(LAND.cap)} HP/s); it takes off when the building falls or it drops below ${txP(LAND.off)} health`, "Landed it is a heavy ground target: Tanks, infantry and every ground gun can hit it (anti-air-only units can't); burst it before it lands"]; return [`Buildings above all, from right above them: it heals for ${txP(u.devour?.frac)} of the damage it does to buildings (at most ${txN(u.devour?.cap)} HP/s)`, "Burst anti-air before it starts feeding; it can't hit aircraft"]; }, // v2.37
 };
-const pFac = () => game ? game.sides[0].faction : DEFAULT_FACTION; // the player's faction (cards, panel and info)
+const pFac = () => game ? game.sides[myS()].faction : DEFAULT_FACTION; // the player's faction (cards, panel and info)
 const stat = (label, val) => `<div><small>${label}</small><b>${val}</b></div>`;
 function showInfo(kind, type) {
   let name, sub, body;
@@ -132,7 +133,7 @@ function showInfo(kind, type) {
     name = A.name; sub = 'Commander ability';
     body = `<div class="istats">${stat('Credits', A.cost.c)}${stat('Energy', A.cost.e)}${stat('Cooldown', A.cd + 's')}${type === 'beam' ? stat('Strip', `${A.len}×${A.w * 2}`) : stat('Radius', A.r)}</div>
       <div class="irow">${A.tip}</div>
-      <div class="irow"><em>Shared cooldown</em> Using any ability locks all three for the used one's cooldown (${(game ? abList(game.sides[0]) : ABIL_ORDER).map(k2 => `${ABIL[k2].name} ${ABIL[k2].cd} s`).join(', ')}).</div>
+      <div class="irow"><em>Shared cooldown</em> Using any ability locks all three for the used one's cooldown (${(game ? abList(game.sides[myS()]) : ABIL_ORDER).map(k2 => `${ABIL[k2].name} ${ABIL[k2].cd} s`).join(', ')}).</div>
       <div class="irow"><em>Available</em> ${A.first} s after GO${A.req ? `, with ${A.reqTier ? 'your' : 'a'} ${abilReqText(A, pFac())}` : ''}. Tap the button, tap the battlefield, then tap inside the circle to confirm.</div>`;
   } else if (treeOf(pFac(), type)) { // a building with an upgrade tree
     const d = BD(pFac(), type), T = treeOf(pFac(), type);
@@ -189,8 +190,8 @@ function buildCards() {
     if (tab === 'train' && d.max) el.insertAdjacentHTML('beforeend', '<span class="path mx"></span>'); // how many of a limited unit you have (v2.37)
     wrap.appendChild(el);
   }
-  if (tab === 'train' && game && relOf(game, 0)) echoCards(wrap); // v2.34: the Echoes section, first
-  if (tab === 'train' && game && facOf(game.sides[0].faction) === 'axiarchs') { wrap.insertBefore(warpCard(), wrap.firstChild); refreshWarpCard(); } // v2.26
+  if (tab === 'train' && game && relOf(game, myS())) echoCards(wrap); // v2.34: the Echoes section, first
+  if (tab === 'train' && game && facOf(game.sides[myS()].faction) === 'axiarchs') { wrap.insertBefore(warpCard(), wrap.firstChild); refreshWarpCard(); } // v2.26
   if (tab === 'train' && game && !list.length) { // nothing to train yet: one line that says what unlocks it
     const el = document.createElement('div');
     el.className = 'trainHint'; el.dataset.type = 'other';
@@ -202,14 +203,14 @@ function buildCards() {
 // Train tab (v2.16): only units you can train now (a finished building, its tier and its chosen path). Units you can't
 // afford still show, greyed out. The tab rebuilds when that set changes.
 let trainSig = '';
-const unitVisible = (g, type) => canTrain(g, 0, type);
+const unitVisible = (g, type) => canTrain(g, myS(), type);
 const hiddenUnits = g => UNIT_ORDER.filter(t => !unitVisible(g, t));
-const trainHint = g => { const n = BD(g.sides[0].faction, 'barracks').name; return g.ents.some(e => e.kind === 'b' && e.side === 0 && e.type === 'barracks' && e.hp > 0) ? `Units unlock when your ${n} is finished` : `Build a ${n} to train units`; };
-const trainSigOf = g => { const h = hiddenUnits(g), rel = relOf(g, 0); return h.join(',') + (h.length === UNIT_ORDER.length && !rel ? '|' + trainHint(g) : '') + (rel ? `|e${rel.tier}:${(rel.ech || []).join(',')}` : ''); }; // v2.34: echoes rebuild the tab
+const trainHint = g => { const n = BD(g.sides[myS()].faction, 'barracks').name; return g.ents.some(e => e.kind === 'b' && e.side === myS() && e.type === 'barracks' && e.hp > 0) ? `Units unlock when your ${n} is finished` : `Build a ${n} to train units`; };
+const trainSigOf = g => { const h = hiddenUnits(g), rel = relOf(g, myS()); return h.join(',') + (h.length === UNIT_ORDER.length && !rel ? '|' + trainHint(g) : '') + (rel ? `|e${rel.tier}:${(rel.ech || []).join(',')}` : ''); }; // v2.34: echoes rebuild the tab
 /* ---------- Echoes (Axiarchs, v2.34): the Train tab's first section while you own an Echo Reliquary ----------
    A label with the count, then one card per stored echo (oldest first): tap it to warp the unit back for half its cost. */
 function echoCards(wrap) {
-  const rel = relOf(game, 0), list = rel.ech || [], hdr = document.createElement('div'), frag = document.createDocumentFragment();
+  const rel = relOf(game, myS()), list = rel.ech || [], hdr = document.createElement('div'), frag = document.createDocumentFragment();
   hdr.className = 'echoHdr'; hdr.dataset.type = 'other'; hdr.id = 'echoHdr';
   hdr.innerHTML = `Echoes<small>${list.length}/${ECHO.n[rel.tier]}</small>${list.length ? '' : '<small>none yet</small>'}`;
   frag.appendChild(hdr);
@@ -219,13 +220,13 @@ function echoCards(wrap) {
     el.innerHTML = '<canvas class="ic"></canvas><span class="nm"></span><span class="cost"></span><span class="path">ECHO</span>';
     el.querySelector('.nm').textContent = UDEF[type].name;
     drawIcon(el.querySelector('.ic'), 'u', type);
-    el.addEventListener('click', () => { if (!game || game.over || paused) return; hideInfo(); const r = tryEcho(game, 0, i); toast(r.msg, r.ok ? 'ok' : 'bad'); if (!r.ok) shake(el); refreshUI(true); });
+    el.addEventListener('click', () => { if (!game || game.over || paused) return; hideInfo(); const r = tryEcho(game, myS(), i); toast(r.msg, r.ok ? 'ok' : 'bad'); if (!r.ok) shake(el); refreshUI(true); });
     frag.appendChild(el);
   });
   wrap.insertBefore(frag, wrap.firstChild);
 }
 function refreshEchoCards() {
-  const s = game.sides[0], cap = popCap(game, 0), used = popUsed(game, 0);
+  const s = game.sides[myS()], cap = popCap(game, myS()), used = popUsed(game, myS());
   for (const el of $('cards').querySelectorAll('.card.echoc')) {
     const t = el.dataset.unit, k = echoCost(t), poor = s.res.c < k.c || s.res.e < k.e || used + UDEF[t].pop > cap;
     setHTML(el.querySelector('.cost'), costHTML(k, s.res, UDEF[t].pop)); el.classList.toggle('poor', !!poor);
@@ -252,9 +253,9 @@ function warpCard() {
   });
   return el;
 }
-function refreshWarpCard() { const el = $('cWarp'); if (el && game) el.querySelector('.cost').textContent = wpt ? 'Cancel' : game.sides[0].warp ? 'Moved · tap to set' : 'Front · tap to set'; }
+function refreshWarpCard() { const el = $('cWarp'); if (el && game) el.querySelector('.cost').textContent = wpt ? 'Cancel' : game.sides[myS()].warp ? 'Moved · tap to set' : 'Front · tap to set'; }
 function wptTap(x, y) {
-  const w = toWorld(x, y), r = setWarp(game, 0, w.x, w.y / DY);
+  const w = toWorld(x, y), r = setWarp(game, myS(), w.x, w.y / DY);
   toast(r.msg, r.ok ? 'ok' : 'bad');
   if (r.ok) endAim(); else $('aimTxt').textContent = `: ${r.msg.toLowerCase()}`;
 }
@@ -262,7 +263,7 @@ function shake(el) { el.classList.remove('shake'); void el.offsetWidth; el.class
 function onCard(type, el) {
   if (!game || game.over || paused) return;
   if (game.spectate) { toast('Spectating: the AIs play both sides', 'warn'); return; }
-  const r = tab === 'build' ? tryBuild(game, 0, type, selPad) : tryTrain(game, 0, type);
+  const r = tab === 'build' ? tryBuild(game, myS(), type, selPad) : tryTrain(game, myS(), type);
   if (r.ok) { toast(r.msg, 'ok'); if (tab === 'build' && selPad >= 0) closePanel(); }
   else { toast(r.msg, 'bad'); shake(el); }
   refreshUI(true);

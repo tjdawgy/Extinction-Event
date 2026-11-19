@@ -180,14 +180,14 @@ function drawBurrowedBig(c, u, w, t) {
 // The tunnel entrance (the owner's side, while one of its Ruinmaws is a gate, or units are on their way in)
 function drawTunnelMouths(c, g, t) {
   for (let s = 0; s < 2; s++) {
-    if (s !== 0 && !g.spectate) continue;
+    if (s !== myS() && !g.spectate) continue;
     const R = tunnelGate(g, s), coming = g.ents.some(e => e.side === s && e.tn && e.hp > 0); if (!R && !coming) continue;
     const E = tunnelEntrance(g, s), w = P(E.u, E.v), k = 0.5 + 0.5 * Math.sin(t * 3);
     c.fillStyle = '#3a2a1c'; c.beginPath(); c.ellipse(w.x, w.y, 17, 7, 0, 0, 7); c.fill();
     c.fillStyle = '#0d0806'; c.beginPath(); c.ellipse(w.x, w.y + 0.5, 12, 4.6, 0, 0, 7); c.fill();
     if (R) { c.globalCompositeOperation = 'lighter'; c.fillStyle = `rgba(${RM_GLOW},${0.25 + 0.2 * k})`; c.beginPath(); c.ellipse(w.x, w.y + 0.5, 9, 3.2, 0, 0, 7); c.fill(); c.globalCompositeOperation = 'source-over'; }
     c.strokeStyle = TEAM[s].main; c.lineWidth = 1.4; c.globalAlpha = 0.8; c.beginPath(); c.ellipse(w.x, w.y, 17, 7, 0, 0, 7); c.stroke(); c.globalAlpha = 1;
-    if (R && s === 0) { const r = P(R.u, R.v); c.globalAlpha = 0.25; c.strokeStyle = `rgb(${RM_GLOW})`; c.lineWidth = 1; c.setLineDash([2, 6]); c.lineDashOffset = -t * 12; c.beginPath(); c.moveTo(w.x, w.y); c.lineTo(r.x, r.y); c.stroke(); c.setLineDash([]); c.lineDashOffset = 0; c.globalAlpha = 1; } // the way through, faintly
+    if (R && s === myS()) { const r = P(R.u, R.v); c.globalAlpha = 0.25; c.strokeStyle = `rgb(${RM_GLOW})`; c.lineWidth = 1; c.setLineDash([2, 6]); c.lineDashOffset = -t * 12; c.beginPath(); c.moveTo(w.x, w.y); c.lineTo(r.x, r.y); c.stroke(); c.setLineDash([]); c.lineDashOffset = 0; c.globalAlpha = 1; } // the way through, faintly
   }
 }
 // A unit going in (inn) or coming out: a burst of dirt and a green glow
@@ -215,7 +215,7 @@ function drawRuptures(c, g, lit) {
   for (const { r } of a) {
     const front = Math.min(r.len, (g.t - r.t0) * WB.speed), done = r.t0 + r.len / WB.speed, fade = g.t > done ? 1 - (g.t - done) / 1.2 : 1;
     if (front <= 0 || fade <= 0) continue;
-    if (r.side !== 0 && !g.spectate && !lit(r.su + r.du * front, r.sv + r.dv * front) && !lit(r.su, r.sv)) continue;
+    if (r.side !== myS() && !g.spectate && !lit(r.su + r.du * front, r.sv + r.dv * front) && !lit(r.su, r.sv)) continue;
     const T = TEAM[r.side], n = Math.max(2, Math.ceil(front / 9)), pts = [];
     for (let i = 0; i <= n; i++) { const d = front * i / n, o = i && i < n ? jag(r.id, i) * 4 : 0, w = P(r.su + r.du * d - r.dv * o, r.sv + r.dv * d + r.du * o); pts.push(w); }
     c.lineCap = 'round'; c.lineJoin = 'round';
@@ -233,7 +233,7 @@ function drawRidgeBase(c, g, lit) {
   if (!g.rdg) return;
   for (const R of g.rdg) {
     const k = Math.min(clamp((g.t - R.t0) / WB.rise, 0, 1), clamp((R.t1 - g.t) / 0.6, 0, 1)); if (k <= 0) continue;
-    if (R.side !== 0 && !g.spectate && !lit((R.au + R.bu) / 2, (R.av + R.bv) / 2)) continue;
+    if (R.side !== myS() && !g.spectate && !lit((R.au + R.bu) / 2, (R.av + R.bv) / 2)) continue;
     const a = P(R.au, R.av), b = P(R.bu, R.bv), T = TEAM[R.side];
     c.lineCap = 'round'; c.globalAlpha = 0.6 * k; c.strokeStyle = '#0d0a16'; c.lineWidth = 16; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
     c.globalCompositeOperation = 'lighter'; c.globalAlpha = 0.5 * k; c.strokeStyle = `rgba(${T.glow},0.9)`; c.lineWidth = 4; c.stroke(); c.globalCompositeOperation = 'source-over';
@@ -245,7 +245,7 @@ function ridgeSlabs(g, list, lit) {
   if (!rwB2b(g) || !g.rdg) return;
   for (const R of g.rdg) {
     const lu = R.bu - R.au, lv = R.bv - R.av, ll = Math.hypot(lu, lv), n = Math.max(2, Math.round(ll / 12));
-    for (let i = 0; i < n; i++) { const k = (i + 0.5) / n, u = R.au + lu * k, v = R.av + lv * k; if (R.side === 0 || g.spectate || lit(u, v)) list.push({ kind: 'slab', u, v, R, i }); }
+    for (let i = 0; i < n; i++) { const k = (i + 0.5) / n, u = R.au + lu * k, v = R.av + lv * k; if (R.side === myS() || g.spectate || lit(u, v)) list.push({ kind: 'slab', u, v, R, i }); }
   }
 }
 function drawSlab(c, g, e) {

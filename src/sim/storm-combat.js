@@ -337,7 +337,7 @@ function fxBoom(g, x, y, size) {
   }
   for (let i = 0; i < n / 2; i++)
     addPart(g, { x: x + fxRand(-size / 3, size / 3), y: y - fxRand(0, size / 3), vx: fxRand(-14, 14), vy: fxRand(-32, -8), life: fxRand(0.8, 1.5), size: fxRand(3, 7) * Math.max(1, size / 30), smoke: true, grav: -8 });
-  if (size > 40 && (!g.fog || g.fog[0].vis[cellOf(x)])) g.shake = Math.max(g.shake, size / 14); // only for blasts the player can see
+  if (size > 40 && (!g.fog || g.fog[g.me | 0].vis[cellOf(x)])) g.shake = Math.max(g.shake, size / 14); // only for blasts the player can see
 }
 function updateFx(g, dt) {
   if (g.shake > 0) g.shake = Math.max(0, g.shake - dt * 18);

@@ -11,7 +11,7 @@ function refreshPanel() {
   $('bpPick').classList.add('hide'); $('bp').classList.remove('wide'); // shown again below for a building choosing its path
   $('bp').classList.toggle('shp', !!(selPad < 0 && sel && sel.maxShp)); // v2.36
   if (selPad >= 0) {
-    if (!game || (selPad >= FWD_SLOT ? fwdAt(game, selPad) || game.nodes[FWD_PADS[selPad - FWD_SLOT].node].owner !== 0 : selPad === SIG_SLOT ? sigOnPad(game, 0) : game.sides[0].slots[selPad])) { closePanel(); return; }
+    if (!game || (selPad >= FWD_SLOT ? fwdAt(game, selPad) || game.nodes[FWD_PADS[selPad - FWD_SLOT].node].owner !== myS() : selPad === SIG_SLOT ? sigOnPad(game, myS()) : game.sides[myS()].slots[selPad])) { closePanel(); return; }
     if (selPad >= FWD_SLOT) { // v2.65: a forward pad you hold
       const al = FWD_PADS[selPad - FWD_SLOT].allow.map(t => BD(pFac(), t).name).join(' or ');
       $('bpName').textContent = 'Forward pad'; $('bpPad').textContent = al; setHTML($('bpPips'), '');
@@ -29,7 +29,7 @@ function refreshPanel() {
   $('bpUp').classList.remove('hide'); $('bpUp').classList.remove('arm');
   if (!sel) return;
   if (!game || sel.hp <= 0 || !game.ents.includes(sel)) { closePanel(); return; }
-  const b = sel, d = bdOf(b), res = game.sides[0].res, up = $('bpUp'), sell = $('bpSell');
+  const b = sel, d = bdOf(b), res = game.sides[myS()].res, up = $('bpUp'), sell = $('bpSell');
   $('bpName').textContent = d.name; $('bpPad').textContent = padLabel(b);
   if (d.noPad) { // a node bunker (v2.32): nothing to buy; it follows the Depot
     setHTML($('bpPips'), [1, 2, 3].map(i => `<i class="${i <= b.tier ? 'on' : ''}"></i>`).join(''));
@@ -116,18 +116,18 @@ $('bpUp').addEventListener('click', () => {
   const T = treeOf(sel.fac, sel.type);
   if (T && sel.tier === 1 && !bpPath) { toast('Pick a path first: tap A or B', 'bad'); shake($('bp')); return; }
   if (upIsBig(sel) && !sel.upgrading && sel.built && !(upArm > performance.now())) { // a costly upgrade: the first tap arms it (v2.35)
-    const nx = bdOf(sel).up[sel.tier + 1], res = game.sides[0].res;
+    const nx = bdOf(sel).up[sel.tier + 1], res = game.sides[myS()].res;
     if (res.c >= nx.c && res.e >= nx.e && game.countdown <= 0) { upArm = performance.now() + 2500; refreshPanel(); return; }
   }
   upArm = 0;
-  const r = tryUpgrade(game, 0, sel, T && sel.tier === 1 ? bpPath : undefined);
+  const r = tryUpgrade(game, myS(), sel, T && sel.tier === 1 ? bpPath : undefined);
   if (r.ok) bpPath = null;
   if (r.ok) toast(r.msg, 'ok'); else { toast(r.msg, 'bad'); shake($('bp')); }
   refreshUI(true);
 });
 $('bpRep').addEventListener('click', () => {
   if (!sel || !game || paused) return;
-  const r = tryRepair(game, 0, sel);
+  const r = tryRepair(game, myS(), sel);
   if (r.ok) toast(r.msg, 'ok'); else { toast(r.msg, 'bad'); shake($('bp')); }
   refreshUI(true);
 });
@@ -135,7 +135,7 @@ $('bpSell').addEventListener('click', () => {
   if (!sel || !game || paused) return;
   if (game.countdown > 0) { toast(WAIT_GO.msg, 'bad'); shake($('bp')); return; }
   if (sellArm < performance.now()) { sellArm = performance.now() + 2500; refreshPanel(); return; }
-  const r = trySell(game, 0, sel);
+  const r = trySell(game, myS(), sel);
   toast(r.msg, r.ok ? 'ok' : 'bad');
   if (r.ok) closePanel();
   refreshUI(true);
@@ -171,36 +171,36 @@ function alertTick() {
   if (alerts.g !== g) { alerts.g = g; alerts.last = {}; alerts.pings = []; $('alerts').textContent = ''; } // a new or resumed match starts clean
   $('alerts').classList.toggle('thru', !!(aim || wpt)); // aiming: taps go through to the field
   for (const b of g.ents) {
-    if (b.kind !== 'b' || b.side !== 0 || b.hp <= 0 || b.lastHit === undefined || g.t - b.lastHit > ALERT.hit) continue;
+    if (b.kind !== 'b' || b.side !== myS() || b.hp <= 0 || b.lastHit === undefined || g.t - b.lastHit > ALERT.hit) continue;
     if (b.type === 'hq') alertRaise('hq', 0, b.u, b.v, 'Your HQ is under attack');
-    else alertRaise('bld', Math.round(b.u / ALERT.cell), b.u, b.v, `${logBName(g, 0, b.type)} under attack`);
+    else alertRaise('bld', Math.round(b.u / ALERT.cell), b.u, b.v, `${logBName(g, myS(), b.type)} under attack`);
   }
-  { const pm = powMul(g); if (pm < 1) { const hq = g.sides[0].hq; alertRaise('power', Math.round(pm * 100), hq.u, hq.v, `Power failing: base guns at ${Math.round(pm * 100)}%`); } } // v2.69 (b): once per step
+  { const pm = powMul(g); if (pm < 1) { const hq = g.sides[myS()].hq; alertRaise('power', Math.round(pm * 100), hq.u, hq.v, `Power failing: base guns at ${Math.round(pm * 100)}%`); } } // v2.69 (b): once per step
   for (const n of g.nodes) {
-    if (n.owner !== 0 && !(n.c && n.c[0] > 0)) continue; // ours, or ours being taken
-    if (g.ents.some(e => e.kind === 'u' && e.side === 1 && e.hp > 0 && !UDEF[e.type].air && !UDEF[e.type].noCap && Math.abs(e.u - n.u) <= NODE_R && visibleTo(g, 0, e)))
+    if (n.owner !== myS() && !(n.c && n.c[myS()] > 0)) continue; // ours, or ours being taken
+    if (g.ents.some(e => e.kind === 'u' && e.side === foeS() && e.hp > 0 && !UDEF[e.type].air && !UDEF[e.type].noCap && Math.abs(e.u - n.u) <= NODE_R && visibleTo(g, myS(), e)))
       alertRaise('node', n.id, n.u, n.v, `The ${nodeLabel(n.id)} is contested`);
   }
 }
 function handleEvents() {
   for (const e of game.events) {
-    if (e.type === 'built' && e.side === 0) { toast(`${e.name} is ready`, 'ok'); sndPlay('built'); }
-    else if (e.type === 'upgraded' && e.side === 0) { toast(`${e.name} reached T${e.tier}`, 'ok'); sndPlay('upgrade'); }
+    if (e.type === 'built' && e.side === myS()) { toast(`${e.name} is ready`, 'ok'); sndPlay('built'); }
+    else if (e.type === 'upgraded' && e.side === myS()) { toast(`${e.name} reached T${e.tier}`, 'ok'); sndPlay('upgrade'); }
     else if (e.type === 'alert') continue; // v2.53: alertTick shows these, per building strip and with a camera jump
-    else if (e.type === 'over') sndPlay(e.winner === 0 ? 'victory' : 'defeat'); // a draw sounds like a defeat
-    else if (e.type === 'destroyed' && e.side === 1 && !e.seen && !e.hq) continue; // happened out of sight
-    else if (e.type === 'destroyed') toast(e.side === 0 ? `${e.name} destroyed` : `Enemy ${e.seen ? e.name : 'HQ'} destroyed`, e.side === 0 ? 'bad' : 'ok'); // an unseen enemy HQ isn't named (v2.17: the name would tell its faction)
-    else if (e.type === 'spotted' && e.side === 0) { toast('Enemy units spotted', 'warn'); sndPlay('ping'); }
-    else if (e.type === 'beaconDown' && (e.side === 0 || e.seen)) toast(e.side === 0 ? `Phase Beacon bubble collapsed: back in ${BEACON.down} s` : 'Enemy field bubble collapsed', e.side === 0 ? 'warn' : 'ok'); // v2.34
-    else if (e.type === 'overdrive' && e.side === 0) toast(`Overdrive: production +${Math.round(YARD.od * 100)}% for ${YARD.odDur} s`, 'ok'); // v2.32
-    else if (e.type === 'warpSnap' && e.side === 0) { toast('Warp point lost with the field: back to the front edge', 'warn'); refreshWarpCard(); } // v2.26
-    else if (e.type === 'relic') { toast(e.side === 0 ? `Relic taken: +${e.c} credits` : 'The enemy took a relic', e.side === 0 ? 'ok' : 'warn'); if (e.side === 0) sndPlay('node'); } // v2.71
-    else if (e.type === 'node') { if (e.side === 0 && !e.lost) sndPlay('node'); toast(e.lost ? (e.side === 0 ? 'You lost a field node' : 'Enemy lost a field node') : (e.side === 0 ? `Field node captured: +${NODE_INC.c} credits, +${NODE_INC.e} energy per second` : 'Enemy captured a field node'), (e.side === 0) === !e.lost ? 'ok' : 'warn'); }
+    else if (e.type === 'over') sndPlay(e.winner === myS() ? 'victory' : 'defeat'); // a draw sounds like a defeat
+    else if (e.type === 'destroyed' && e.side === foeS() && !e.seen && !e.hq) continue; // happened out of sight
+    else if (e.type === 'destroyed') toast(e.side === myS() ? `${e.name} destroyed` : `Enemy ${e.seen ? e.name : 'HQ'} destroyed`, e.side === myS() ? 'bad' : 'ok'); // an unseen enemy HQ isn't named (v2.17: the name would tell its faction)
+    else if (e.type === 'spotted' && e.side === myS()) { toast('Enemy units spotted', 'warn'); sndPlay('ping'); }
+    else if (e.type === 'beaconDown' && (e.side === myS() || e.seen)) toast(e.side === myS() ? `Phase Beacon bubble collapsed: back in ${BEACON.down} s` : 'Enemy field bubble collapsed', e.side === myS() ? 'warn' : 'ok'); // v2.34
+    else if (e.type === 'overdrive' && e.side === myS()) toast(`Overdrive: production +${Math.round(YARD.od * 100)}% for ${YARD.odDur} s`, 'ok'); // v2.32
+    else if (e.type === 'warpSnap' && e.side === myS()) { toast('Warp point lost with the field: back to the front edge', 'warn'); refreshWarpCard(); } // v2.26
+    else if (e.type === 'relic') { toast(e.side === myS() ? `Relic taken: +${e.c} credits` : 'The enemy took a relic', e.side === myS() ? 'ok' : 'warn'); if (e.side === myS()) sndPlay('node'); } // v2.71
+    else if (e.type === 'node') { if (e.side === myS() && !e.lost) sndPlay('node'); toast(e.lost ? (e.side === myS() ? 'You lost a field node' : 'Enemy lost a field node') : (e.side === myS() ? `Field node captured: +${NODE_INC.c} credits, +${NODE_INC.e} energy per second` : 'Enemy captured a field node'), (e.side === myS()) === !e.lost ? 'ok' : 'warn'); }
     else if (e.type === 'go') showGo();
     else if (e.type === 'extWarn') { sndPlay('siren'); toast('The Extinction Event starts in 30 seconds: finish it or lose your base', 'bad'); }
     else if (e.type === 'extStart') sndPlay('rumble');
-    else if (e.type === 'shieldDown' && e.side === 1 && !e.seen) continue;
-    else if (e.type === 'shieldDown') toast(e.side === 1 ? 'Enemy HQ shield is down. Finish it!' : 'Your HQ shield is down', e.side === 1 ? 'ok' : 'bad');
+    else if (e.type === 'shieldDown' && e.side === foeS() && !e.seen) continue;
+    else if (e.type === 'shieldDown') toast(e.side === foeS() ? 'Enemy HQ shield is down. Finish it!' : 'Your HQ shield is down', e.side === foeS() ? 'ok' : 'bad');
   }
   game.events.length = 0;
 }
@@ -215,7 +215,7 @@ function fwdTap(x, y) { // v2.65: a free forward pad: yours to build on while yo
   for (let k = 0; k < FWD_PADS.length; k++) {
     const F = FWD_PADS[k], q = P(F.at[0], F.at[1]);
     if (!inDiamond(w.x, w.y, q.x, q.y, PAD_H + 4) || fwdAt(game, FWD_SLOT + k)) continue;
-    if (game.nodes[F.node].owner === 0) { openPad(FWD_SLOT + k); return true; }
+    if (game.nodes[F.node].owner === myS()) { openPad(FWD_SLOT + k); return true; }
     toast('Capture this forward pad first: stand ground troops on its post', ''); closePanel(); return true;
   }
   return false;
@@ -231,7 +231,7 @@ function handleTap(x, y) {
   if (FWD_PADS.length && fwdTap(x, y)) return; // v2.66: a forward pad under the tap
   const w = toWorld(x, y), hits = [];
   for (const b of game.ents) {
-    if (b.kind !== 'b' || b.side !== 0) continue;
+    if (b.kind !== 'b' || b.side !== myS()) continue;
     const d = BDEF[b.type], p = P(b.u, b.v), hw = 2 * d.half * IX * BS + 6;
     const y0 = p.y - (d.half + d.h) * BS - 12, y1 = p.y + d.half * BS + 6;
     if (Math.abs(w.x - p.x) <= hw && w.y >= y0 && w.y <= y1) hits.push(b);
@@ -248,10 +248,10 @@ function handleTap(x, y) {
   }
   tapCycle = null;
   for (let k = 0; k < SLOT_COUNT; k++) {
-    const p = slotPos(0, k), q = P(p.u, p.v);
-    if (!game.sides[0].slots[k] && inDiamond(w.x, w.y, q.x, q.y, PAD_H + 4)) { openPad(k); return; }
+    const p = slotPos(myS(), k), q = P(p.u, p.v);
+    if (!game.sides[myS()].slots[k] && inDiamond(w.x, w.y, q.x, q.y, PAD_H + 4)) { openPad(k); return; }
   }
-  if (sigPadOn() && SIG.on && BD(pFac(), 'sigA') && !sigOnPad(game, 0)) { const p = slotPos(0, SIG_SLOT), q = P(p.u, p.v); if (inDiamond(w.x, w.y, q.x, q.y, PAD_H + 4)) { openPad(SIG_SLOT); return; } } // v2.43
+  if (sigPadOn() && SIG.on && BD(pFac(), 'sigA') && !sigOnPad(game, myS())) { const p = slotPos(myS(), SIG_SLOT), q = P(p.u, p.v); if (inDiamond(w.x, w.y, q.x, q.y, PAD_H + 4)) { openPad(SIG_SLOT); return; } } // v2.43
   if (fwdTap(x, y)) return;
   closePanel();
 }

@@ -113,9 +113,10 @@ function cxPic(cvs) {
   sc.width = SW; sc.height = SH;
   const c = sc.getContext('2d');
   c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, SW, SH);
+  setTeams(game && game.tc); // v2.93: the match's colours (Blue and Red from the menu)
   try {
-    if (k === 'b') { c.translate(SW / 2, SH * 0.72); c.scale(Z, Z); drawBOf(fac)[t](c, TEAM[0], 1.2, null, 1); }
-    else { c.translate(SW / 2, UDEF[t].air ? SH / 2 : SH * 0.72); c.scale(Z, Z); DRAW_U[t](c, TEAM[0], { anim: 0, moving: false, recoil: 0 }); }
+    if (k === 'b') { c.translate(SW / 2, SH * 0.72); c.scale(Z, Z); drawBOf(fac)[t](c, TEAM[myS()], 1.2, null, 1); }
+    else { c.translate(SW / 2, UDEF[t].air ? SH / 2 : SH * 0.72); c.scale(Z, Z); DRAW_U[t](c, TEAM[myS()], { anim: 0, moving: false, recoil: 0 }); }
   } catch (e) { cvs.dataset.err = e.message; return false; }
   const px = c.getImageData(0, 0, SW, SH).data;
   let x0 = SW, y0 = SH, x1 = -1, y1 = -1;
@@ -150,7 +151,7 @@ function openCodex(tabKey, item) {
   hideInfo();
   if (!$('cxTabs').children.length) $('cxTabs').innerHTML = CX_TABS().map(([k, n]) => `<button role="tab" data-t="${k}">${cxEsc(n)}</button>`).join('');
   CX.open = true; $('codex').classList.remove('hide');
-  const tk = tabKey === 'how' || FACTIONS[tabKey] ? tabKey : tabKey ? facOf(game ? game.sides[0].faction : tabKey) : CX.tab;
+  const tk = tabKey === 'how' || FACTIONS[tabKey] ? tabKey : tabKey ? facOf(game ? game.sides[myS()].faction : tabKey) : CX.tab;
   cxShow(tk);
   return item ? cxGo(item) : true;
 }

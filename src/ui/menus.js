@@ -15,6 +15,20 @@ function wireFactions() {
     if (who === 'me' && $('facDesc')) $('facDesc').textContent = factionDesc(b.dataset.f);
   });
 }
+// v2.93 (batch 6c, Part C): the start side (Left = side 0, the side the player has always played; Right = side 1) and the team
+// colour (Random, or a palette colour; the opponent then gets a random colour that pairs with it), remembered like the factions
+const START_KEY = 'extinctionEvent.start', COLOR_KEY = 'extinctionEvent.color', START_PICKS = ['left', 'right', 'random'];
+let startPick = 'left', colorPick = 'random';
+try { const k = localStorage.getItem(START_KEY); if (START_PICKS.includes(k)) startPick = k; const c = localStorage.getItem(COLOR_KEY); if (c === 'random' || PALETTE[c]) colorPick = c; } catch (e) {}
+function startSeg() { return `<div class="seg" id="startSeg">${START_PICKS.map(k => `<button data-k="${k}" class="${startPick === k ? 'on' : ''}">${k === 'left' ? 'Left' : k === 'right' ? 'Right' : 'Random'}</button>`).join('')}</div>`; }
+function colorSeg() { return `<div class="seg colseg" id="colorSeg"><button data-k="random" class="${colorPick === 'random' ? 'on' : ''}">Random</button>${PAL_KEYS.map(k => `<button data-k="${k}" class="sw${colorPick === k ? ' on' : ''}" style="--sw:${PALETTE[k].main}" title="${PALETTE[k].name}" aria-label="${PALETTE[k].name}"><i></i></button>`).join('')}</div>`; }
+function wireStartColor() {
+  for (const [id, set] of [['startSeg', k => { startPick = k; try { localStorage.setItem(START_KEY, k); } catch (e) {} }], ['colorSeg', k => { colorPick = k; try { localStorage.setItem(COLOR_KEY, k); } catch (e) {} }]])
+    for (const b of $(id).children) b.addEventListener('click', () => { set(b.dataset.k); for (const x of $(id).children) x.classList.toggle('on', x === b); });
+}
+const pickStart = () => startPick === 'right' ? 1 : startPick === 'random' ? (Math.random() < 0.5 ? 0 : 1) : 0; // the UI's own dice, never the match's
+// The match's team colours by side ([side 0, side 1]), from the UI's own dice: the player's colour (picked or random), then a random one that pairs with it
+function pickColors(me) { const [a, b] = palRoll(colorPick); return me ? [b, a] : [a, b]; }
 const pickFaction = k => k === 'random' ? FACTION_KEYS[Math.floor(Math.random() * FACTION_KEYS.length)] : facOf(k);
 function wireSound() { $('bSound').addEventListener('click', () => { sndSet(!SND.on); $('bSound').textContent = sndLabel(); }); }
 function wireDiff() {
@@ -47,9 +61,9 @@ function showStart() {
       <div><b>Control the field</b>Ground troops standing on a field node capture it for extra income. Your HQ is ${hqShieldTxt(REWORK).replace(/^Shielded/, 'shielded')}.</div>
       <div><b>Command your army</b>Select units (tap them, double-tap one for its type, hold and draw a loop, or All on the left), then tap the ground to move them, or Attack, Hold or Retreat. Drag to look around.</div>
     </div>
-    <div class="setup"><span class="lbl">Difficulty</span>${diffSeg()}<span class="lbl">You</span>${facSeg('meSeg', 'me')}<span class="lbl">Opponent</span>${facSeg('foeSeg', 'foe')}<p class="fdesc" id="facDesc">${factionDesc(facPick.me)}</p></div>
+    <div class="setup"><span class="lbl">Difficulty</span>${diffSeg()}<span class="lbl">You</span>${facSeg('meSeg', 'me')}<span class="lbl">Opponent</span>${facSeg('foeSeg', 'foe')}<p class="fdesc" id="facDesc">${factionDesc(facPick.me)}</p><span class="lbl">Start</span>${startSeg()}<span class="lbl">Your colour</span>${colorSeg()}</div>
     <div class="row">${sv ? `<button class="big" id="bResume">Resume match</button><button class="ghost" id="bPlay">New match</button><span class="lbl">${DIFF[sv.diffKey] ? DIFF[sv.diffKey].label : ''}${sv.map !== 'classic' ? ', ' + cxEsc(MAPS[sv.map].display.name) : ''}, ${fmtTime(sv.t)} in</span>` : '<button class="big" id="bPlay">Start match</button>'}<button class="ghost" id="bCodex">Codex</button><button class="ghost" id="bRange">Test Range</button><button class="ghost" id="bSound">${sndLabel()}</button></div>`);
-  wireDiff(); wireFactions(); wireSound();
+  wireDiff(); wireFactions(); wireStartColor(); wireSound();
   $('bRange').addEventListener('click', trOpen); // v2.81: the Test Range
   $('bCodex').addEventListener('click', () => openCodex(CX.tab));
   $('bPlay').addEventListener('click', showMapSelect);
@@ -73,7 +87,7 @@ function drawMapThumb(cv, m) {
   c.lineCap = 'round'; c.lineJoin = 'round';
   for (const ln of m.lanes) { c.strokeStyle = 'rgba(190,175,140,0.35)'; c.lineWidth = ln.width * k; c.beginPath(); ln.path.forEach(([x, y], i) => i ? c.lineTo(X(x), Y(y)) : c.moveTo(X(x), Y(y))); c.stroke(); }
   for (const b of m.blockers || []) { c.fillStyle = '#3a4054'; c.strokeStyle = 'rgba(200,210,240,0.35)'; c.lineWidth = 1; c.beginPath(); b.poly.forEach(([x, y], i) => i ? c.lineTo(X(x), Y(y)) : c.moveTo(X(x), Y(y))); c.closePath(); c.fill(); c.stroke(); }
-  m.bases.forEach((b, s) => { c.fillStyle = TEAM[s].main; for (const p of b.pads) c.fillRect(X(p[0]) - 1.5, Y(p[1]) - 1.5, 3, 3); c.fillRect(X(b.hq[0]) - 4, Y(b.hq[1]) - 4, 8, 8); });
+  m.bases.forEach((b, s) => { const you = startPick === 'right' ? 1 : startPick === 'left' ? 0 : -1; c.fillStyle = you < 0 ? '#9aa6bd' : s === you ? '#39c8ff' : '#ff4d4d'; /* v2.93: your start base in blue */ for (const p of b.pads) c.fillRect(X(p[0]) - 1.5, Y(p[1]) - 1.5, 3, 3); c.fillRect(X(b.hq[0]) - 4, Y(b.hq[1]) - 4, 8, 8); });
   for (const n of m.nodes) {
     const x = X(n.at[0]), y = Y(n.at[1]);
     if (n.type === 'watchtower') { c.fillStyle = '#ffd34d'; c.beginPath(); c.moveTo(x, y - 5); c.lineTo(x + 4, y + 3); c.lineTo(x - 4, y + 3); c.closePath(); c.fill(); }
@@ -182,7 +196,9 @@ function startGame() {
   document.body.classList.remove('spectate'); // v2.38
   clearTimeout(endTimer); endTimer = null;
   const me = pickFaction(facPick.me), foe = pickFaction(facPick.foe); // the opponent's pick is never shown during the match
-  game = newGame(diffKey, { countdown: INTRO_T + COUNTDOWN, factions: [me, foe], map: MAPS[mapPick] ? mapPick : 'classic', cond: condsForMatch() }); // v2.65: the chosen map; v2.72: its conditions
+  const side = pickStart(); // v2.93: the start side (0 Left, 1 Right); the AI takes the other
+  game = newGame(diffKey, { countdown: INTRO_T + COUNTDOWN, factions: side ? [foe, me] : [me, foe], ...(side ? { me: 1 } : {}), map: MAPS[mapPick] ? mapPick : 'classic', cond: condsForMatch() }); // v2.65: the chosen map; v2.72: its conditions
+  game.tc = pickColors(side); // v2.93: the team colours, from the UI's own dice (never the SIM's)
   buildAbil(); ctlStart(); // v2.74: the player's side under direct control (docs/CONTROLS.md)
   hideCountdown(); camTouched = false;
   resize(); introCamera(0); closePanel();
@@ -214,13 +230,13 @@ function pauseGame(restored) {
     wireSound();
     $('bRes').addEventListener('click', () => { paused = false; hideOverlay(); });
     $('bEndTut').addEventListener('click', () => tutEnd());
-    $('bCodex').addEventListener('click', () => openCodex(game.sides[0].faction));
+    $('bCodex').addEventListener('click', () => openCodex(game.sides[myS()].faction));
     return;
   }
   overlay(`<h1>${restored === true ? 'Match restored' : 'Paused'}</h1><p>${DIFF[game.diffKey].label} match, ${fmtTime(game.t)} elapsed.</p>
     <div class="row"><button class="big" id="bRes">Resume</button><button class="ghost" id="bRe">Restart</button><button class="ghost" id="bMenu">Main menu</button><button class="ghost" id="bCodex">Codex</button><button class="ghost" id="bSound">${sndLabel()}</button></div>`);
   wireSound();
-  $('bCodex').addEventListener('click', () => openCodex(game ? game.sides[0].faction : CX.tab));
+  $('bCodex').addEventListener('click', () => openCodex(game ? game.sides[myS()].faction : CX.tab));
   $('bRes').addEventListener('click', () => { paused = false; hideOverlay(); });
   $('bRe').addEventListener('click', startGame);
   $('bMenu').addEventListener('click', showStart);
@@ -231,7 +247,7 @@ function fmtTime(t) { t = Math.floor(t); return `${Math.floor(t / 60)}:${String(
 const REP_TABS = ['Overview', 'Economy', 'Army', 'Enemy Timeline']; // v2.52 (Phase 0 item 5): replaces Summary, Timeline, Key moments and Stats
 let repTab = 'Overview';
 function showEnd() {
-  const g = game, win = g.winner === 0, R = g.result || { how: 'hq' }, L = g.log;
+  const g = game, win = g.winner === myS(), R = g.result || { how: 'hq' }, L = g.log;
   const title = R.how === 'draw' ? 'Draw' : win ? 'Victory' : 'Defeat'; // v2.48: an ending the storm decides is a draw for both sides
   const how = R.how === 'draw' ? (R.reason === 'storm' ? 'A Command HQ fell to the Extinction Event: the storm decided it, not the battle.' : R.reason === 'limit' ? 'The Extinction Event reached its peak with both commands still standing.' : R.reason === 'both' && R.by === 'storm' ? 'Both Command HQs fell in the Extinction Event.' : 'Both commands fell and nothing could separate them.')
     : R.how === 'score' ? `${win ? 'Survived the Extinction Event' : 'Lost to the Extinction Event'}: ${R.reason === 'limit' ? 'the storm reached its peak' : 'both Command HQs fell together'}, and the stronger side remains.`
@@ -241,10 +257,10 @@ function showEnd() {
     : win ? (R.how === 'storm' ? 'You won. Outlasted the extinction.' : R.how === 'score' ? 'You won. Barely. Live to die another day.' : 'You won. Live to die another day.')
     : R.how === 'storm' ? 'You lost. The extinction came for you first.' : 'You lost. Your colony went extinct.';
   const line = `${how} <span class="flav">${flavor}</span>`;
-  const persona = PERSONA_NAME[(g.sides[1].persona || {}).kind] || 'an unknown commander';
+  const persona = PERSONA_NAME[(g.sides[foeS()].persona || {}).kind] || 'an unknown commander';
   closePanel(); repTab = 'Overview';
   overlay(`<div class="top"><h1 class="${R.how === 'draw' ? 'draw' : win ? 'win' : 'lose'}">${title}</h1><div class="seg rtabs" id="repTabs">${REP_TABS.map(t => `<button data-t="${t}">${t}</button>`).join('')}</div></div>
-    <p class="sub">${line} <b>${fmtTime(g.t)}</b> · ${(DIFF[g.diffKey] || DIFF.normal).label} · You faced <b>${persona}</b> · ${factionName(g.sides[0].faction)} vs ${factionName(g.sides[1].faction)}</p>
+    <p class="sub">${line} <b>${fmtTime(g.t)}</b> · ${(DIFF[g.diffKey] || DIFF.normal).label} · You faced <b>${persona}</b> · ${factionName(g.sides[myS()].faction)} vs ${factionName(g.sides[foeS()].faction)}</p>
     <div class="pane" id="repPane"></div>
     <div class="foot"><button class="big" id="bAgain">Play again</button><button class="ghost" id="bMenu2">Main menu</button><span style="flex:1"></span>${diffSeg()}</div>`);
   $('box').classList.add('rep');
@@ -275,12 +291,13 @@ function repSummary(g) {
     mwarp: a => `Mass Warp ×${a[0]}: ${fmtN(a[1])} units`, overcharge: a => `Overcharge ×${a[0]}: ${fmtN(a[1])} blocked, ${fmtN(a[2])} shields`, beam: a => `Beam ×${a[0]}: ${fmtN(a[1])} damage, ${a[2]} destroyed` }; // v2.28: the Axiarchs'
   const abil = t => Object.keys(ABT).filter(k => t.ab[k] && t.ab[k][0]).map(k => ABT[k](t.ab[k])).join(' · ') || 'none';
   const PATHS = [0, 1].map(s => [...new Set(L.ev.filter(e => e[2] === 'U' && e[1] === s && e[6] && treeOf(g.sides[s].faction, e[3])).map(e => `${logBName(g, s, e[3])}: ${treeOf(g.sides[s].faction, e[3])[e[6]].name}`))].join(', ')); // from the recorded path choices
-  const row = (h, f) => `<tr><th>${h}</th><td>${f(T[0])}</td><td class="e">${f(T[1])}</td></tr>`;
-  const att = L.ev.filter(e => e[2] === 'G' && e[1] === 1), real = att.filter(e => !e[4]), aiLog = g.sides[1].aiLog || {};
+  const me = g.me | 0, op = 1 - me; // v2.93: the player's column first, whichever side they played
+  const row = (h, f) => `<tr><th>${h}</th><td>${f(T[me])}</td><td class="e">${f(T[op])}</td></tr>`;
+  const att = L.ev.filter(e => e[2] === 'G' && e[1] === op), real = att.filter(e => !e[4]), aiLog = g.sides[op].aiLog || {};
   const behave = [`${real.length} attack${real.length === 1 ? '' : 's'}${real.length ? ` (first at ${mmss(real[0][0])})` : ''}`, `${att.length - real.length} feint${att.length - real.length === 1 ? '' : 's'}`,
-    `${T[1].bBuilt.turret || 0} ${logBName(g, 1, 'turret')}${T[1].bBuilt.turret === 1 ? '' : 's'} built`, ...(T[1].micro ? [`Artillery pulled back ${T[1].micro} time${T[1].micro === 1 ? '' : 's'}`] : []), aiLog.firstUpgrade != null ? `first upgrade at ${mmss(aiLog.firstUpgrade)}` : 'no upgrades'].join(' · ');
+    `${T[op].bBuilt.turret || 0} ${logBName(g, op, 'turret')}${T[op].bBuilt.turret === 1 ? '' : 's'} built`, ...(T[op].micro ? [`Artillery pulled back ${T[op].micro} time${T[op].micro === 1 ? '' : 's'}`] : []), aiLog.firstUpgrade != null ? `first upgrade at ${mmss(aiLog.firstUpgrade)}` : 'no upgrades'].join(' · ');
   const ext = L.ev.some(e => e[2] === 'X') ? `Reached at 20:00${R.how === 'storm' || R.how === 'score' || R.how === 'draw' ? '; it decided the match' : ''}` : `Not reached (the match ended at ${mmss(g.t)})`;
-  const score = R.score ? `<p class="note">Remaining strength (buildings + army): <b>you ${R.score[0].toLocaleString('en')}</b> · enemy ${R.score[1].toLocaleString('en')}${R.by === 'storm' ? ' (for the record: the Extinction Event makes it a draw)' : R.by !== 'score' ? ` (decided by ${R.by})` : ''}</p>` : '';
+  const score = R.score ? `<p class="note">Remaining strength (buildings + army): <b>you ${R.score[me].toLocaleString('en')}</b> · enemy ${R.score[op].toLocaleString('en')}${R.by === 'storm' ? ' (for the record: the Extinction Event makes it a draw)' : R.by !== 'score' ? ` (decided by ${R.by})` : ''}</p>` : '';
   return `${score}<table><tr><th></th><td><b>You</b></td><td class="e"><b>Enemy</b></td></tr>
     ${row('Faction', t => factionName(g.sides[T.indexOf(t)].faction))}
     ${row('Credits gathered / spent', t => `${fmtN(logGathered(L, t, 0))} / ${fmtN(sp(t, 0))}${t.sold[0] ? ` (${fmtN(t.sold[0])} from sales)` : ''}`)}

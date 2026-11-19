@@ -4,7 +4,9 @@
    damage dealt, buildings built and lost. Enemy Timeline: what the enemy built and when, when it teched (tier and path),
    its first unit of each type, and when it changed strategy (attacks, feints, sieges, the reads that change an AI's plan,
    and shifts in what it produced). The enemy's side is revealed only here, after the match. */
-const REP_COL = ['#39c8ff', '#ff4d4d'];
+const REP_COL = [TEAM[0].main, TEAM[1].main]; // v2.93: [the player's, the opponent's] team colour, set when a report opens (repSides)
+// v2.93 (batch 6c, Part C): a report reads "you" first whichever side the player played: the two sides in that order
+const repSides = (g, a) => { REP_COL[0] = TEAM[myS()].main; REP_COL[1] = TEAM[foeS()].main; return myS() ? [a[1], a[0]] : a; };
 function repOverview(g) {
   const L = g.log, M = logMoments(g);
   return `<div class="tbar"><button class="ghost" id="bCopy">Copy match log</button><span class="note" id="copyMsg" style="margin:0">The full log of both sides, as text</span></div>${g.cond && Object.keys(g.cond).length ? `<p class="note">Battlefield conditions: ${Object.keys(g.cond).map(k => COND_UI[k] ? COND_UI[k].name : k).join(', ')}</p>` : ''}${repSummary(g)}
@@ -21,7 +23,7 @@ const REP_GRAPHS = [
 ];
 function repEconomy(g) {
   const S = g.stats; if (!S || !S.sides[0].c.length) return S ? '<p class="note">The match ended before the first 10 s sample.</p>' : repNoStats;
-  const sum = a => a.reduce((x, y) => x + y, 0), D = S.sides, mins = Math.max(1 / 6, D[0].c.length * STATS.every / 60);
+  const sum = a => a.reduce((x, y) => x + y, 0), D = repSides(g, S.sides), mins = Math.max(1 / 6, D[0].c.length * STATS.every / 60);
   const row = (h, f) => `<tr><th>${h}</th><td>${f(D[0])}</td><td class="e">${f(D[1])}</td></tr>`;
   return `<p class="note" style="margin-top:0"><span style="color:${REP_COL[0]}">■ You</span> · <span style="color:${REP_COL[1]}">■ Enemy</span> · sampled every ${STATS.every} s of game time${S.from > 0 ? ` from ${mmss(S.from)}` : ''}</p>
     <div class="rgrid">${REP_GRAPHS.map(G => `<div><h4 class="sh">${G.title} <span class="note">(${G.note})</span></h4><canvas class="rgraph" id="${G.id}" role="img" aria-label="${G.title} over time, both sides"></canvas></div>`).join('')}</div>
@@ -32,7 +34,7 @@ function repEconomy(g) {
 }
 function repGraphs(g) { // draws the Economy tab's canvases at the size the layout gave them
   const S = g.stats; if (!S) return;
-  for (const G of REP_GRAPHS) { const cv = $(G.id); if (cv) repGraph(cv, [G.get(S.sides[0]), G.get(S.sides[1])], S.from); }
+  for (const G of REP_GRAPHS) { const cv = $(G.id); if (cv) { const Dg = repSides(g, S.sides); repGraph(cv, [G.get(Dg[0]), G.get(Dg[1])], S.from); } }
 }
 function repGraph(cv, series, t0) {
   const dpr = Math.min(3, window.devicePixelRatio || 1), W = Math.max(120, cv.clientWidth || 280), H = Math.max(60, cv.clientHeight || 96);
@@ -51,10 +53,10 @@ function repGraph(cv, series, t0) {
 }
 function repArmy(g) {
   const S = g.stats; if (!S) return repNoStats;
-  const D = S.sides, ks = Object.keys(UDEF).filter(k => D[0].built[k] || D[0].lost[k] || D[1].built[k] || D[1].lost[k]);
+  const D = repSides(g, S.sides), ks = Object.keys(UDEF).filter(k => D[0].built[k] || D[0].lost[k] || D[1].built[k] || D[1].lost[k]);
   const top = Math.max(1, ...ks.flatMap(k => [D[0].built[k] || 0, D[1].built[k] || 0]));
   const bar = (n, lost, s) => `<span class="rbar"><i style="width:${(n / top * 100).toFixed(1)}%;background:${REP_COL[s]}"></i><i class="l" style="width:${(Math.min(lost, n || lost) / top * 100).toFixed(1)}%"></i></span><span class="rn">${n || 0}<small> / ${lost || 0}</small></span>`;
-  const bRow = (h, o) => `<tr><th>${h}</th>${[0, 1].map(s => `<td${s ? ' class="e"' : ''}>${Object.keys(o(D[s])).map(k => `${logBName(g, s, k)}${o(D[s])[k] > 1 ? ' ×' + o(D[s])[k] : ''}`).join(', ') || '–'}</td>`).join('')}</tr>`;
+  const bRow = (h, o) => `<tr><th>${h}</th>${[0, 1].map(s => `<td${s ? ' class="e"' : ''}>${Object.keys(o(D[s])).map(k => `${logBName(g, s ^ myS(), k)}${o(D[s])[k] > 1 ? ' ×' + o(D[s])[k] : ''}`).join(', ') || '–'}</td>`).join('')}</tr>`;
   const sum = o => Object.values(o).reduce((a, b) => a + b, 0);
   return `<table class="rarmy"><tr><th>Unit</th><td><b>You</b> <small>built / lost</small></td><td class="e"><b>Enemy</b> <small>built / lost</small></td></tr>
     ${ks.map(k => `<tr><th>${UDEF[k].name}</th><td>${bar(D[0].built[k] || 0, D[0].lost[k] || 0, 0)}</td><td>${bar(D[1].built[k] || 0, D[1].lost[k] || 0, 1)}</td></tr>`).join('') || '<tr><th>No units were trained.</th><td></td><td></td></tr>'}
@@ -70,7 +72,7 @@ const REP_STRAT = { raid: 'Sent a raid at a field node', turtle: 'Saw your Turre
   siege: 'Moved up to siege your base', all: 'Attacked with its whole army', field: 'Pushed out to fight for the field' };
 const UNIT_ROLE = t => { const d = UDEF[t]; return d.air ? 'aircraft' : d.range >= 300 ? 'long-range units' : (d.cost.c + d.cost.e) >= 250 ? 'heavy units' : d.melee ? 'melee units' : 'light infantry'; };
 function repEnemyEvents(g) {
-  const L = g.log, S = g.stats, s = 1, out = [], P = g.sides[s].persona || {}, fac = g.sides[s].faction;
+  const L = g.log, S = g.stats, s = foeS(), /* v2.93: the opponent */ out = [], P = g.sides[s].persona || {}, fac = g.sides[s].faction;
   if (P.kind) out.push({ t: 0, tag: 'Strategy', txt: `Opened as ${PERSONA_NAME[P.kind] || P.kind}` });
   const seenUnit = {};
   for (const e of L ? L.ev : []) {
@@ -105,14 +107,14 @@ function repEnemyEvents(g) {
   return out.sort((a, b) => a.t - b.t);
 }
 function repEnemy(g) {
-  const E = repEnemyEvents(g), P = g.sides[1].persona || {};
-  return `<p class="note" style="margin-top:0">${factionName(g.sides[1].faction)}, played by ${PERSONA_NAME[P.kind] || 'the AI'}. Revealed after the match: during play you saw only what your units could see.</p>
+  const E = repEnemyEvents(g), P = g.sides[foeS()].persona || {};
+  return `<p class="note" style="margin-top:0">${factionName(g.sides[foeS()].faction)}, played by ${PERSONA_NAME[P.kind] || 'the AI'}. Revealed after the match: during play you saw only what your units could see.</p>
     <ul class="tl ren">${E.map(m => `<li><b>${mmss(m.t)}</b><span class="tag t${m.tag}">${m.tag}</span><span>${m.txt}</span></li>`).join('') || '<li>Nothing was recorded.</li>'}</ul>${repFrom(g.log)}`;
 }
 function repText(g) {
-  const R = g.result || {}, win = g.winner === 0;
+  const R = g.result || {}, win = g.winner === myS();
   const res = R.how === 'draw' ? `Draw (${R.by === 'storm' || R.reason === 'storm' ? 'the Extinction Event' : 'mutual extinction'})` : `${win ? 'Victory' : 'Defeat'}, ${R.how === 'score' ? `decided by ${R.by || 'score'} (${R.reason === 'limit' ? 'storm peak' : 'both HQs fell'})` : R.how === 'storm' ? `${win ? 'enemy' : 'your'} HQ fell to the Extinction Event` : `${win ? 'enemy' : 'your'} HQ destroyed`}`;
-  return logText(g, { version: VERSION, diff: (DIFF[g.diffKey] || DIFF.normal).label, persona: PERSONA_NAME[(g.sides[1].persona || {}).kind] || 'unknown', result: res });
+  return logText(g, { version: VERSION, diff: (DIFF[g.diffKey] || DIFF.normal).label, persona: PERSONA_NAME[(g.sides[foeS()].persona || {}).kind] || 'unknown', result: res });
 }
 function repCopy() {
   const text = repText(game), done = () => { const m = $('copyMsg'); if (m) { m.textContent = 'Copied'; m.className = 'ok'; } };
