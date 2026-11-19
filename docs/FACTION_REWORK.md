@@ -908,6 +908,7 @@ section 11.
   (team glows, shield bubbles, the ground's base glows, creep and field canvases; remembered for up to four pairs so Test Range rows
   switch cheaply); the sprite, aircraft and building caches already key on the colours, so a new pair draws fresh poses, bounded
   by their existing budgets. The Test Range lets each row pick each side's colour or Random.
+- **Test runs (v2.93):** npm test 764 of 764, npm run test:slow 26 of 26 (audit/logs-p1/pinned6c/fast-suite-v293.txt, slow-suite-v293.txt).
 - **Checks** (C4): tests/start-side-6c.test.js (five matches against Hard from each side with several pairs on all three maps:
   your units only, your fog, build, train, a fight, Victory; Defeat from the right; a save on the right resumes there with its
   colours; the setup fits and remembers; 10,000 rolls never an excluded pair and never touching the match streams);
