@@ -13,7 +13,7 @@ module.exports = `
   const A = this.__sim.a6 = { dmg: [{}, {}], kills: [{}, {}], kval: [{}, {}], dmgB: [{}, {}], unk: [{}, {}] };
   const WEAP = { thorns: 'thornback', parry: 'shardling', blade: 'shardling', pustule: 'broodtyrant', tyrglob: 'broodtyrant', bile: 'bilecaster',
     bileglob: 'bilecaster', acidpool: 'acid pools', miteacid: 'mite', exile: 'severance', sever: 'severance', erupt: 'gorebore', gorebite: 'gorebore',
-    ruinbite: 'ruinmaw', ruinchew: 'ruinmaw', latch: 'leaper', trample: 'dreadthorn', landmaw: 'worldrender', meteor: 'meteor', hqgun: 'B:hq', hqbeam: 'B:hq' };
+    ruinbite: 'ruinmaw', ruinchew: 'ruinmaw', latch: 'leaper', trample: 'dreadthorn', landmaw: 'worldrender', rupture: 'worldbreaker', meteor: 'meteor', hqgun: 'B:hq', hqbeam: 'B:hq' };
   const TAG = new WeakMap(); // projectile -> the type that fired it (kept outside the SIM's state)
   let CUR = null; // { t: type tag, s: side }
   const tagOf = e => e.kind === 'b' ? 'B:' + e.type : e.type;
