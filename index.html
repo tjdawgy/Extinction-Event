@@ -54,6 +54,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .hqr .hb i{display:block;height:100%;width:100%;background:var(--good)}
 .hqr small{font-size:9.5px;font-weight:700;color:var(--muted);white-space:nowrap}
 .hqr .shd{width:12px;height:14px;flex:0 0 auto;overflow:visible}
+.hqr{position:relative} .hqr .hn{position:absolute;left:0;top:0;width:12px;text-align:center;font-size:8.5px;font-weight:900;line-height:13px;color:#0b1220;pointer-events:none} .hqr .hn:empty{display:none} /* v2.93 (b6hq): how many buildings hold your shield up, on the shield */
 .hqr .shd path{fill:var(--tc);stroke:var(--tc);stroke-width:1.3;stroke-linejoin:round}
 .hqr .shd .x{display:none;fill:none;stroke:#fff;stroke-width:1.7;stroke-linecap:round}
 .hqr.exposed .shd path{fill:transparent;stroke:var(--bad)}
@@ -480,7 +481,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
     <div class="res" id="resC"><i class="ico c"></i><div><b id="vC">0</b><small id="rC"></small></div></div>
     <div class="res" id="resE"><i class="ico e"></i><div><b id="vE">0</b><small id="rE"></small></div></div>
     <div class="res" id="resP"><i class="ico p"></i><div><b id="vP">0/0</b><small>army</small></div></div>
-    <div class="hqr" id="hq0" role="img" aria-label="Your HQ"><svg class="shd" viewBox="0 0 12 14" aria-hidden="true"><path d="M6 1l5 2v4c0 3-2.2 5-5 6C3.2 12 1 10 1 7V3z"/><path class="x" d="M3.6 4.6l4.8 4.8M8.4 4.6L3.6 9.4"/></svg><div><span class="hb"><i></i></span><small></small></div></div>
+    <div class="hqr" id="hq0" role="img" aria-label="Your HQ"><svg class="shd" viewBox="0 0 12 14" aria-hidden="true"><path d="M6 1l5 2v4c0 3-2.2 5-5 6C3.2 12 1 10 1 7V3z"/><path class="x" d="M3.6 4.6l4.8 4.8M8.4 4.6L3.6 9.4"/></svg><b class="hn"></b><div><span class="hb"><i></i></span><small></small></div></div>
     <canvas id="mm" aria-label="Battlefield overview: tap to jump"></canvas>
     <div id="trTop" role="toolbar" aria-label="Test Range"><button id="trSet">Setup</button><button id="trGo">Start</button><button id="trReset" aria-label="Reset: replay the same setup">Reset</button><button id="trClear">Clear</button><button id="trSpd" aria-label="Speed">1×</button><b class="trt" id="trT">0:00</b><button id="trExit">Exit</button></div>
     <button class="hbtn" id="bSpeed" aria-label="Game speed">1×</button>
@@ -4954,7 +4955,7 @@ Object.assign(DMG, { latch: { light: 1.0, heavy: 1.0, vehicle: 1.0, air: 0, buil
 // The batch's own definitions (built from the current UDEF entry, so setBalance / setRedesign still apply underneath)
 const RW3A_D = {
   leaper: () => Object.assign({}, UDEF.leaper, { latch: true }),
-  riftstalker: g => Object.assign({}, UDEF.riftstalker, { chain: undefined, rsChain: true }, rwB6c(g) ? { dmg: B6C.rsDmg } : {}), // v2.93: b6c's blade
+  riftstalker: g => Object.assign({}, UDEF.riftstalker, { chain: undefined, rsChain: true }, rwB6c(g) ? { dmg: B6C.rsDmg, weapon: 'riftblade6' } : {}), // v2.93: b6c's blade
   parallax: () => { const d = Object.assign({}, UDEF.parallax, { swap: true }); delete d.leap; return d; },
   ravager: () => { const d = Object.assign({}, UDEF.ravager, { devour3: true }); delete d.bloodfrenzy; return d; },
 };
@@ -6340,7 +6341,10 @@ const hqShieldTxt = (rw, your = 'your') => (rw || REWORK).b6hq ? `Shielded while
    - latchDps: a latched Leaper's damage per second (LATCH.dps 10); rsDmg: the Riftstalker's blade (18).
    The values and the measurements behind them are in docs/FACTION_REWORK.md "Batch 6c" (audit/sim/b6c-range.js). */
 const rwB6c = g => !!(g && g.rw && g.rw.b6c);
-const B6C = { barHp: 600, broodCost: 120, levDmg: 35, latchDps: 10, rsDmg: 18 };
+const B6C = { barHp: 600, broodCost: 120, levDmg: 35, latchDps: 10, rsDmg: 18, rsHeavy: 0.9, rsVeh: 0.6 };
+// The Riftstalker's blade against armour with b6c on (a weapon of its own, so v2.92's riftblade is untouched): light stays 1.5 (a
+// Marine must still take two blows, so it never wins head-on against Marines), heavy and vehicle from B6C (the second lever)
+DMG.riftblade6 = Object.defineProperties({ light: DMG.riftblade.light, air: DMG.riftblade.air, building: DMG.riftblade.building }, { heavy: { get: () => B6C.rsHeavy, enumerable: true }, vehicle: { get: () => B6C.rsVeh, enumerable: true } });
 const barHp = g => rwB6c(g) ? B6C.barHp : BAR.hp;
 const broodCost = g => rwB6c(g) ? B6C.broodCost : BROOD.cost;
 const latchDps = g => rwB6c(g) ? B6C.latchDps : LATCH.dps;
@@ -7805,7 +7809,7 @@ const PALETTE = {
   onyx: { name: 'Onyx', main: '#24232c', light: '#e8eeff', hull: '#0c0c11', glow: '214,226,255', face: ['#3a3946', '#22212a', '#141319'], edge: '#dfe8ff' },
 };
 const PAL_KEYS = Object.keys(PALETTE);
-const PAL_BAD = [['blue', 'purple'], ['red', 'pink'], ['pink', 'purple'], ['red', 'green']]; // never rolled together (docs/FACTION_REWORK.md "Batch 6c")
+const PAL_BAD = [['blue', 'purple'], ['red', 'pink'], ['pink', 'purple'], ['red', 'green'], ['blue', 'green']]; // blue and green: both cool cyan-leaning at phone size (the colours6c screenshots), and a tritan confusion pair // never rolled together (docs/FACTION_REWORK.md "Batch 6c")
 const palOk = (a, b) => !!PALETTE[a] && !!PALETTE[b] && a !== b && !PAL_BAD.some(([x, y]) => (x === a && y === b) || (x === b && y === a));
 // [the player's colour, the opponent's]: mine a palette key (or 'random'/null); rnd defaults to Math.random (the UI's own dice)
 function palRoll(mine, rnd = Math.random) {
@@ -13246,10 +13250,10 @@ function drawArt(c, b, T, t, tier) { // the cached body (drawn live until it is 
   art[1](c, T, t, b, tier);
   dmgLive5(c, b, t);
 }
-// v2.93 (batch 6c, b6hq): a badge at the top of an HQ's shield: a small shield and the number of buildings holding it up
-function drawHolders(c, n, T) {
-  const y = -150, w = n > 9 ? 40 : 32;
-  c.save();
+// v2.93 (batch 6c, b6hq): a badge on an HQ's shield: a small shield and the number of buildings holding it up
+function drawHolders(c, n, T, side) {
+  const x0 = 72 * dirOf(side), y = -92, w = n > 9 ? 40 : 32; // on the shield's edge, on the side facing the field (below the top bar)
+  c.save(); c.translate(x0, 0);
   c.fillStyle = 'rgba(8,14,22,0.82)'; c.strokeStyle = `rgba(${T.glow},0.95)`; c.lineWidth = 2;
   c.beginPath(); c.roundRect ? c.roundRect(-w / 2, y - 11, w, 22, 8) : c.rect(-w / 2, y - 11, w, 22); c.fill(); c.stroke();
   const sx = -w / 2 + 9; // the shield glyph
@@ -13285,7 +13289,7 @@ function drawBuilding(c, b, time) {
     c.beginPath(); c.ellipse(0, 12, 96, 158, 0, Math.PI, Math.PI * 2); c.stroke();
     c.strokeStyle = `rgba(${T.glow},${a * 0.5})`; c.lineWidth = 1;
     c.beginPath(); c.ellipse(0, 12, 96, 40, 0, 0, Math.PI); c.stroke();
-    if (b.type === 'hq' && typeof game !== 'undefined' && game && rwB6hq(game)) drawHolders(c, hqHolders(game, b.side), T); // v2.93 (batch 6c, b6hq): how many buildings hold the shield up
+    if (b.type === 'hq' && typeof game !== 'undefined' && game && rwB6hq(game)) drawHolders(c, hqHolders(game, b.side), T, b.side); // v2.93 (batch 6c, b6hq): how many buildings hold the shield up
   }
   c.restore();
 }
@@ -13758,7 +13762,7 @@ function onFire(g, e, lit) {
   if (VFX.nshots < VFX.shots.length) { const s = VFX.shots[VFX.nshots++]; s.e = e; s.u = m.u; s.v = m.v; s.z = m.z; s.w = wpn; }
   if (!lit(m.u, m.v) || !onView(w.x)) return; // firing in the fog stays hidden
   const face = e.face || (e.side ? -1 : 1), col = MUZ_COL[wpn] ? GLOW[MUZ_COL[wpn]] : GLOW['t' + e.side];
-  sfx(wpn === 'hqgun' && facOf(e.fac) === 'bloomhost' ? 'hqspine' : wpn, w.x);
+  sfx(wpn === 'hqgun' && facOf(e.fac) === 'bloomhost' ? 'hqspine' : wpn === 'riftblade6' ? 'riftblade' : wpn, w.x); // v2.93: b6c's blade sounds like the old one
   switch (wpn) {
     case 'rifle': vFx('flash', w.x, w.y, 6, 0.08, col, 1); break;
     case 'gatling': vFx('flash', w.x - 3, w.y, 6, 0.07, col, 1); vFx('flash', w.x + 3, w.y - 1, 6, 0.07, col, 1, 0, 0, 1, 0.08); break;
@@ -13805,7 +13809,7 @@ function onFire(g, e, lit) {
     case 'vbolt': case 'bolt': case 'astral': case 'prism': case 'storm': case 'pulse': vFx('flash', w.x, w.y, wpn === 'astral' ? 10 : wpn === 'pulse' ? 9 : 6, 0.1, GLOW.cyan, 1); vFx('flash', w.x, w.y, 3, 0.08, GLOW.white, 1); break; // Axiarch shots (v2.27; v2.29 Prismwing, Shardstorm; v2.36 the Bastion's pulse)
     case 'breaker': case 'grav': case 'rift': case 'phase': vFx('flash', w.x, w.y, wpn === 'breaker' ? 10 : 7, 0.12, GLOW.violet, 1); vFx('flash', w.x, w.y, 3, 0.08, GLOW.white, 1); break; // rift weapons in violet (v2.36: the Wraithwing's phase bolt too)
     case 'void': case 'sovereign': vFx('flash', w.x, w.y, wpn === 'sovereign' ? 12 : 9, 0.14, GLOW.cyan, 1); vFx('ring', w.x, w.y, 2, 0.25, RIFT, 1, 12, 0, 1.4); break; // a Voidcarrier's orb, a Sovereign's mass released (v2.29)
-    case 'riftblade': case 'parallax':
+    case 'riftblade': case 'riftblade6': case 'parallax':
     case 'claw': case 'talon': case 'slam': case 'rend': case 'maul': case 'gore': case 'needle': // a bite or a blow: a short bright snap at the jaws
       vFx('flash', w.x + face * 3, w.y, wpn === 'slam' ? 10 : 5, 0.08, GLOW['t' + e.side], 1); break;
   }
@@ -15265,7 +15269,9 @@ function refreshUI(force) {
     const st = hqStatus(game, myS(), myS()), el = $('hq' + k), fill = el.querySelector('.hb i'); // v2.93: the player's side
     el.className = 'hqr ' + st.state + (st.stale ? ' stale' : '');
     fill.style.width = (st.frac * 100).toFixed(1) + '%'; fill.style.background = hpColor(st.frac);
-    el.querySelector('small').textContent = st.stale ? 'Last seen' : HQ_STATE[st.state] + (st.state === 'shielded' && rwB6hq(game) ? ` · ${hqHolders(game, myS())}` : ''); // v2.93 (b6hq): how many buildings hold it up
+    const hn = st.state === 'shielded' && rwB6hq(game) ? hqHolders(game, myS()) : null; // v2.93 (b6hq): how many buildings hold it up
+    el.querySelector('small').textContent = st.stale ? 'Last seen' : HQ_STATE[st.state] + (hn != null ? ` · ${hn}` : '');
+    { const b = el.querySelector('.hn'); if (b) b.textContent = hn != null ? String(hn) : ''; }
     el.setAttribute('aria-label', `${k ? 'Enemy' : 'Your'} HQ: ${st.stale ? 'last seen with ' : ''}${Math.ceil(st.hp)} of ${Math.round(st.maxHp)} HP, ${HQ_STATE[st.state].toLowerCase()}`);
   }
   $('resP').classList.toggle('full', used >= cap);

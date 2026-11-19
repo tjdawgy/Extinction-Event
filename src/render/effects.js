@@ -176,7 +176,7 @@ function onFire(g, e, lit) {
   if (VFX.nshots < VFX.shots.length) { const s = VFX.shots[VFX.nshots++]; s.e = e; s.u = m.u; s.v = m.v; s.z = m.z; s.w = wpn; }
   if (!lit(m.u, m.v) || !onView(w.x)) return; // firing in the fog stays hidden
   const face = e.face || (e.side ? -1 : 1), col = MUZ_COL[wpn] ? GLOW[MUZ_COL[wpn]] : GLOW['t' + e.side];
-  sfx(wpn === 'hqgun' && facOf(e.fac) === 'bloomhost' ? 'hqspine' : wpn, w.x);
+  sfx(wpn === 'hqgun' && facOf(e.fac) === 'bloomhost' ? 'hqspine' : wpn === 'riftblade6' ? 'riftblade' : wpn, w.x); // v2.93: b6c's blade sounds like the old one
   switch (wpn) {
     case 'rifle': vFx('flash', w.x, w.y, 6, 0.08, col, 1); break;
     case 'gatling': vFx('flash', w.x - 3, w.y, 6, 0.07, col, 1); vFx('flash', w.x + 3, w.y - 1, 6, 0.07, col, 1, 0, 0, 1, 0.08); break;
@@ -223,7 +223,7 @@ function onFire(g, e, lit) {
     case 'vbolt': case 'bolt': case 'astral': case 'prism': case 'storm': case 'pulse': vFx('flash', w.x, w.y, wpn === 'astral' ? 10 : wpn === 'pulse' ? 9 : 6, 0.1, GLOW.cyan, 1); vFx('flash', w.x, w.y, 3, 0.08, GLOW.white, 1); break; // Axiarch shots (v2.27; v2.29 Prismwing, Shardstorm; v2.36 the Bastion's pulse)
     case 'breaker': case 'grav': case 'rift': case 'phase': vFx('flash', w.x, w.y, wpn === 'breaker' ? 10 : 7, 0.12, GLOW.violet, 1); vFx('flash', w.x, w.y, 3, 0.08, GLOW.white, 1); break; // rift weapons in violet (v2.36: the Wraithwing's phase bolt too)
     case 'void': case 'sovereign': vFx('flash', w.x, w.y, wpn === 'sovereign' ? 12 : 9, 0.14, GLOW.cyan, 1); vFx('ring', w.x, w.y, 2, 0.25, RIFT, 1, 12, 0, 1.4); break; // a Voidcarrier's orb, a Sovereign's mass released (v2.29)
-    case 'riftblade': case 'parallax':
+    case 'riftblade': case 'riftblade6': case 'parallax':
     case 'claw': case 'talon': case 'slam': case 'rend': case 'maul': case 'gore': case 'needle': // a bite or a blow: a short bright snap at the jaws
       vFx('flash', w.x + face * 3, w.y, wpn === 'slam' ? 10 : 5, 0.08, GLOW['t' + e.side], 1); break;
   }

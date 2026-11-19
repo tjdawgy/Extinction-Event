@@ -31,7 +31,7 @@ Object.assign(DMG, { latch: { light: 1.0, heavy: 1.0, vehicle: 1.0, air: 0, buil
 // The batch's own definitions (built from the current UDEF entry, so setBalance / setRedesign still apply underneath)
 const RW3A_D = {
   leaper: () => Object.assign({}, UDEF.leaper, { latch: true }),
-  riftstalker: g => Object.assign({}, UDEF.riftstalker, { chain: undefined, rsChain: true }, rwB6c(g) ? { dmg: B6C.rsDmg } : {}), // v2.93: b6c's blade
+  riftstalker: g => Object.assign({}, UDEF.riftstalker, { chain: undefined, rsChain: true }, rwB6c(g) ? { dmg: B6C.rsDmg, weapon: 'riftblade6' } : {}), // v2.93: b6c's blade
   parallax: () => { const d = Object.assign({}, UDEF.parallax, { swap: true }); delete d.leap; return d; },
   ravager: () => { const d = Object.assign({}, UDEF.ravager, { devour3: true }); delete d.bloodfrenzy; return d; },
 };
