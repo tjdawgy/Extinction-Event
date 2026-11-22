@@ -145,9 +145,11 @@ const pickOne = a => a[Math.floor(simRnd() * a.length)];
 // v2.40: fac and diffKey let a preset carry per-faction settings (byFac: the openings it picks from, dials, rules; the Hard
 // preset's searched strategies) and per-difficulty dials (byDiff: Easy and Normal slowed to their v2.39 challenge). A preset
 // without them rolls exactly as before.
-function rollPersona(kind, preset, fac, diffKey) {
+function rollPersona(kind, preset, fac, diffKey, g) {
   const A = AI_PRESETS[preset] || AI_PRESETS.default, F = A.byFac && A.byFac[facOf(fac)];
-  const P = rollPersona0(kind || (F && F.kinds ? pickOne(F.kinds) : kind));
+  const b6 = A === AI_PRESETS.hard && rwB6ai(g); // v2.94 (batch 6d, b6ai): Hard's pool is Boomer, Economist and Turtle in equal thirds (B6AI.pool)
+  const P = rollPersona0(kind || (F && F.kinds ? pickOne(b6 ? B6AI.pool : F.kinds) : kind));
+  if (b6) b6aiPersona(P); // v2.94: the Turtle's and Economist's batch 6d plans and dials (no random numbers of its own)
   P.preset = AI_PRESETS[preset] ? preset : 'default'; P.smart = A.smart; P.dial = Object.assign({}, A.dials, F && F.dials, { comp: Object.assign({}, A.dials.comp) }, A.fix ? { fix: Object.assign({}, A.fix, F && F.fix) } : {});
   if (F && F.paths) P.paths = Object.assign({}, P.paths, F.paths); // v2.41: a preset's per-faction production paths (Last Fist terms)
   const LD = A.fix && A.fix.ladder && LADDER[diffKey]; // v2.61: a difficulty's own competence rules and dials (LADDER)

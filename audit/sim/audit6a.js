@@ -68,7 +68,7 @@ if (process.argv[2] === '--one') {
     const paths = Object.values(R.paths[s]).map(p => ({ type: p.type, path: p.path, name: p.name, t: Math.round(p.t) }));
     return { fac, trained, lost: tot.lost, spentBy, spentU: tot.spent.u, spentB: tot.spent.b, spentUp: tot.spent.up, earn: tot.earn,
       dmg: A.dmg[s], dmgB: A.dmgB[s], mat: A.mat ? A.mat[s] : null, kills: A.kills[s], kval: A.kval[s], tier2: R.tier[s][2] ?? null, tier3: R.tier[s][3] ?? null,
-      t3unit: R.t3u[s], t3air: R.t3air[s], paths, peak: R.peakUnits[s], persona: g.sides[s].persona ? g.sides[s].persona.kind : null,
+      t3unit: R.t3u[s], t3air: R.t3air[s], paths, peak: R.peakUnits[s], persona: g.sides[s].persona ? g.sides[s].persona.kind : null, salv: [tot.salv || 0, tot.salvE || 0, tot.od || 0], // v2.94: Salvage credits, energy, Overdrive starts
       ser: Object.assign(R.ser[s], { strat: (g.stats.sides[s].strat || []), bBuilt: g.stats.sides[s].bBuilt, firstAttack: (g.sides[s].aiLog || {}).firstAttack ?? null, attacks: (g.sides[s].aiLog || {}).attacks || 0, c10: g.stats.sides[s].c, e10: g.stats.sides[s].e, army10: g.stats.sides[s].army }), paths0: g.sides[s].persona ? g.sides[s].persona.paths : null, bLost: tot.bLost };
   });
   (process.send ? process.send.bind(process) : m => console.log(JSON.stringify(m)))({ b6c: S.B6C ? Object.assign({}, S.B6C) : null, map, f: [f0, f1], seed: +seed, t: Math.round(g.t * 10) / 10, over: !!g.over, winner: g.over ? g.winner : null, how: g.result ? g.result.how : null,

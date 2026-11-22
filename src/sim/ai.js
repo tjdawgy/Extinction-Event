@@ -192,7 +192,7 @@ function aiUpdate(g, s, dt) {
   const buildDone = !want || !freePad || constructing.length > 0;
   const rich2 = aiFix(P, 'spend') && side.res.c > 1500 && g.ents.filter(b => b.kind === 'b' && b.side === s && b.upgrading && b.hp > 0).length < 2; // v2.38 (Default): rich, a second upgrade at once
   const tf = dl.tech || (aiFix(P, 'tech') ? AI_TECH[P.kind] : null), techFocus = tf ? [[tf, 2], [tf, 3]] : []; // v2.40 (tech): its strategy's building goes to T3 right after T2 (the tech dial: the Hard preset's searched order)
-  if (g.t >= D.upStart + P.upShift - (ecoMood ? 30 : 0) && (!upgrading || rich2) && (buildDone || floating) && (!(calm || defend) || floating) && !(punishOn && !floating) && !(D.maxTier < 3 && simRnd() < 0.5)) {
+  if (g.t >= D.upStart + P.upShift - (ecoMood ? 30 : 0) && (!upgrading || rich2) && (buildDone || floating) && (!(calm || defend) || floating || b6aiCalmUp(g, P)) && !(punishOn && !floating) && !(D.maxTier < 3 && simRnd() < 0.5)) {
     const energyShort = (side.res.e < 120 && side.res.c > 800) || starved; // v2.41 (power): starved, the Reactor upgrade first
     for (const [type, tier] of [...(energyShort ? [['reactor', 2], ['reactor', 3]] : []), ...(rich2 ? [['habitat', 2], ['habitat', 3], ['reactor', 2], ['reactor', 3]] : []), ...P.upgFirst, ...techFocus, ...AI_UPG]) {
       if (rich2 && upgrading && alive(g, s, type).some(x => x.upgrading)) continue;
@@ -363,7 +363,7 @@ function aiUpdate(g, s, dt) {
     for (let k = 0; k < D.trainPer && !saveRoom; k++) {
       const cand = types.filter(t => { const d = UDEF[t], tc = trainCost(g, t); return fits(t) && side.res.c - tc.c >= reserve.c && side.res.e - tc.e >= reserve.e && !(noAA && d.hitsGround === false && !d.support); }); // v2.41 (counter): not even as a spare buy
       if (!cand.length) break;
-      const flush = spend && side.res.c > 900; // v2.38 (Default): credits piling up: buy what it can afford now instead of waiting
+      const flush = spend && side.res.c > b6aiFlush(g, P); // v2.94 (b6ai): the batch 6d Economist at B6AI.eco.cap // v2.38 (Default): credits piling up: buy what it can afford now instead of waiting
       if (top && !cand.includes(top) && !mustSpend && !flush && (saving || simRnd() < 0.6)) break;
       if (flush && side.res.e < 80) { const free = cand.filter(t => UDEF[t].cost.e <= 10); if (free.length) cand.splice(0, cand.length, ...free); } // energy-starved: credit-only units
       let pick;
@@ -446,6 +446,7 @@ function aiUpdate(g, s, dt) {
   const ecoAhead = pr && income(g, s).c >= (side.estInc || 1e9) * PR.eco;
   const prSafe = !PR || !PR.power || aiPower(mine) >= aiPower(theirs); // v2.61: a cautious difficulty never presses into a known army stronger than its own
   const prPush = pr && prSafe && myV >= dl.minArmy * (hasCond(g, 'scarce') ? COND.scarce.army : 1) && (myV >= thV * prNeed || (ecoAhead && myV >= thV * prNeed * 0.9));
+  let b6p = null; // v2.94 (b6ai)
   const prField = pr && prSafe && g.nodes[1].owner !== s && myV >= 250 && myV >= thV * PR.field * prNeed / PR.edge;
   if (bo && side.boHold && side.stance === 'attack' && side.pushMode !== 'all' && side.pushMode !== 'siege') { side.stance = 'retreat'; side.pushTo = null; side.pushMode = null; side.stanceAt = g.t; } // v2.42 (breakout): back under the gun
   if (bo && side.boHold && side.stance !== 'attack') { /* v2.42 (breakout): hold and gather; no push while camped on */ }
@@ -454,6 +455,7 @@ function aiUpdate(g, s, dt) {
   }
   else if (side.stance !== 'attack' && g.t >= EXT.warn && myV >= 200 && myV >= thV * 0.7) go(null, 'all'); // the storm is coming: everything in
   else if (side.stance !== 'attack' && punishOn && aiFix(P, 'punish') && g.t >= 105 && myV >= 400 && aiPower(mine) >= aiPower(theirs) * 1.5) go(fieldLine, 'field', true); // v2.41 (read): the timed push on a greedy opening: the field and its nodes, then the base once clearly stronger
+  else if (side.stance !== 'attack' && (b6p = aiB6ai(g, s, P, { myV, thV, threat, nSiege, siegeLine }))) go(b6p[0], b6p[1], true); // v2.94 (b6ai): the Turtle's and Economist's own attacks
   else if (side.stance !== 'attack' && prPush) go(nSiege >= 2 ? siegeLine : null, nSiege >= 2 ? 'siege' : 'all', true); // v2.60 (press)
   else if (side.stance !== 'attack' && prField) go(fieldLine, 'field', true); // v2.60 (press): the centre node, at parity
   else if (side.stance !== 'attack' && holdForStrike) { /* wait */ }

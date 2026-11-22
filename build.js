@@ -3,6 +3,7 @@
 // joined in this order, byte for byte, and written to index.html, which stays committed (GitHub Pages serves it, and it
 // is still one self-contained file). Edit src/, then run `npm run build` (or `node build.js`) and commit both.
 //   node build.js           write index.html
+//   node build.js --out f   write the build to f instead (experiments)
 //   node build.js --check   exit 1 if index.html differs from a fresh build (npm test runs this check)
 // The SIM / RENDER / UI section markers stay inside the parts, so the test kit and audit/sim slice the built file as before.
 const fs = require('fs');
@@ -16,7 +17,7 @@ const PARTS = [
   'sim/maps-twolane.js', // v2.65: the Two-Lane map (docs/TWO_LANE.md)
   'sim/maps-threelane.js', // v2.70: the Three-Lane map (docs/PHASE1_DESIGNS.md, Proposal D)
   'sim/core.js', 'sim/trees-balance.js', 'sim/ai-presets.js', 'sim/game.js', 'sim/fog-update.js', 'sim/units.js', 'sim/control.js', // v2.73: direct control (docs/CONTROLS.md)
-  'sim/creep-field-signature.js', 'sim/abilities.js', 'sim/storm-combat.js', 'sim/nodes-special.js', 'sim/conditions.js', 'sim/rework.js', 'sim/rework-2b.js', 'sim/rework-3a.js', 'sim/rework-3b.js', 'sim/rework-4a.js', 'sim/rework-4b.js', 'sim/rework-5b.js', 'sim/rework-5c.js', 'sim/rework-6b.js', 'sim/rework-6c.js', 'sim/ai.js', 'sim/stats-log-save.js', 'sim/testrange.js', 'sim/report.js', // v2.81: the Test Range's SIM helpers; v2.82: rework batch 2a; v2.83: batch 2b; v2.84: batch 3a; v2.85: batch 3b; v2.86: batch 4a; v2.87: batch 4b; v2.88: batch 5b; v2.89: batch 5a (Last Fist art); v2.90: batch 5c (the Bloomspire roll); v2.92: batch 6b (the side-bias fix); v2.93: batch 6c (the HQ shield rule, unit tuning)
+  'sim/creep-field-signature.js', 'sim/abilities.js', 'sim/storm-combat.js', 'sim/nodes-special.js', 'sim/conditions.js', 'sim/rework.js', 'sim/rework-2b.js', 'sim/rework-3a.js', 'sim/rework-3b.js', 'sim/rework-4a.js', 'sim/rework-4b.js', 'sim/rework-5b.js', 'sim/rework-5c.js', 'sim/rework-6b.js', 'sim/rework-6c.js', 'sim/rework-6d.js', 'sim/ai.js', 'sim/stats-log-save.js', 'sim/testrange.js', 'sim/report.js', // v2.81: the Test Range's SIM helpers; v2.82: rework batch 2a; v2.83: batch 2b; v2.84: batch 3a; v2.85: batch 3b; v2.86: batch 4a; v2.87: batch 4b; v2.88: batch 5b; v2.89: batch 5a (Last Fist art); v2.90: batch 5c (the Bloomspire roll); v2.92: batch 6b (the side-bias fix); v2.93: batch 6c (the HQ shield rule, unit tuning)
   // RENDER: drawing (ends at the RENDER END marker)
   'render/core.js', 'render/buildings-lastfist.js', 'render/buildings-bloomhost.js', 'render/buildings-axiarchs-units.js', 'render/units-rework.js', 'render/units-rework-2b.js', 'render/units-rework-3a.js', 'render/units-rework-3b.js', 'render/units-rework-4a.js', 'render/units-rework-4b.js', 'render/units-rework-5b.js', 'render/units-rework-5a.js', 'render/units-rework-5c.js', 'render/buildings-rework-5d.js', // v2.91: batch 5d (every building redrawn); v2.82: rework batch 2a art; v2.83: batch 2b; v2.84: batch 3a; v2.85: batch 3b; v2.88: batch 5b; v2.89: batch 5a (Last Fist art); v2.90: batch 5c (Axiarch art)
   'render/backdrop.js', 'render/effects.js', 'render/minimap.js',
@@ -45,6 +46,8 @@ if (require.main === module) {
     console.error(`index.html differs from a fresh build of src/ from line ${i + 1}. Edit src/, not index.html, then run: npm run build`);
     process.exit(1);
   }
+  const oi = process.argv.indexOf('--out'); // v2.94: --out <file> writes a build elsewhere (experiments; audit/sim reads it via EE_HTML)
+  if (oi > 0) { fs.writeFileSync(process.argv[oi + 1], html); console.log(`built to ${process.argv[oi + 1]}`); return; }
   fs.writeFileSync(OUT, html);
   console.log(`index.html built from ${PARTS.length} parts (${Buffer.byteLength(html)} bytes)`);
 }

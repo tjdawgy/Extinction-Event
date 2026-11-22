@@ -1,37 +1,37 @@
-# Batch 6d, B1: why Last Fist wins (selfplay6d-base, 114 matches)
+# Batch 6d, B1: why Last Fist wins (selfplay6d-base, 162 matches)
 
 ## Income (credits + energy per second), medians at minute (sides still playing)
 
 | faction | 2 | 3 | 4 | 5 | 6 | 8 | 10 | 12 | 15 |
 |---|---|---|---|---|---|---|---|---|---|
-| Last Fist | 18 | 25 | 29 | 36 | 36 | 32 | 37 | 38 | 32 |
-| Bloomhost | 14 | 18 | 24 | 30 | 32 | 35 | 32 | 34 | 33 |
-| Axiarchs | 22 | 25 | 31 | 30 | 32 | 32 | 31 | 30 | 30 |
+| Last Fist | 16 | 23 | 27 | 34 | 36 | 33 | 37 | 38 | 32 |
+| Bloomhost | 14 | 18 | 24 | 30 | 32 | 36 | 38 | 40 | 42 |
+| Axiarchs | 20 | 25 | 29 | 31 | 32 | 32 | 31 | 32 | 32 |
 
 ## Army value (credits + energy of living units), medians at minute (sides still playing)
 
 | faction | 2 | 3 | 4 | 5 | 6 | 8 | 10 | 12 | 15 |
 |---|---|---|---|---|---|---|---|---|---|
-| Last Fist | 45 | 383 | 1135 | 1498 | 1910 | 2460 | 3168 | 3533 | 3455 |
-| Bloomhost | 123 | 288 | 875 | 1183 | 1293 | 1380 | 1630 | 2133 | 1917 |
-| Axiarchs | 160 | 400 | 770 | 1123 | 1370 | 1925 | 1855 | 2285 | 2650 |
+| Last Fist | 45 | 293 | 960 | 1405 | 1850 | 2415 | 3160 | 3460 | 3690 |
+| Bloomhost | 123 | 247 | 851 | 1205 | 1342 | 1587 | 1885 | 2238 | 2210 |
+| Axiarchs | 160 | 320 | 720 | 1050 | 1315 | 1795 | 1768 | 2055 | 2088 |
 
 Paired in the same match (median of Last Fist minus the opponent), by opponent:
 
 | opponent | measure | 2 | 3 | 4 | 5 | 6 | 8 | 10 |
 |---|---|---|---|---|---|---|---|---|
-| Bloomhost | income | 2 | 4 | 7 | 9 | 7 | -1 | 3 |
-| Bloomhost | army | -78 | 68 | 315 | 560 | 773 | 1388 | 1459 |
-| Axiarchs | income | 0 | 0 | -7 | -2 | -7 | -8 | -5 |
-| Axiarchs | army | -115 | -60 | 145 | 188 | 310 | -15 | 85 |
+| Bloomhost | income | 2 | 3 | 6 | 7 | 3 | -1 | 2 |
+| Bloomhost | army | -78 | 19 | 156 | 427 | 724 | 1222 | 1143 |
+| Axiarchs | income | 0 | 0 | -1 | -1 | -2 | -5 | -2 |
+| Axiarchs | army | -115 | -95 | 138 | 195 | 310 | 510 | 620 |
 
 ## Economy and spending (medians per side over the match; credits + energy)
 
 | faction | earned | per minute | units | buildings | upgrades | tier 2 at | tier 3 at | first T3 unit | peak units |
 |---|---|---|---|---|---|---|---|---|---|
-| Last Fist | 27395 | 1792 | 17280 | 2240 | 6530 | 1:49 | 3:32 | 7:10 | 31 |
-| Bloomhost | 23692 | 1589 | 13868 | 2360 | 4890 | 2:16 | 3:55 | 7:22 | 27 |
-| Axiarchs | 21811 | 1600 | 12185 | 2285 | 5160 | 2:05 | 3:53 | 7:56 | 14 |
+| Last Fist | 28393 | 1792 | 18563 | 2400 | 6640 | 1:58 | 3:33 | 7:22 | 31 |
+| Bloomhost | 23857 | 1658 | 14163 | 2393 | 5740 | 2:15 | 3:53 | 7:22 | 29 |
+| Axiarchs | 22104 | 1617 | 12823 | 2360 | 5570 | 2:09 | 3:59 | 7:50 | 15 |
 
 ## When matches are decided
 
@@ -39,168 +39,168 @@ Paired in the same match (median of Last Fist minus the opponent), by opponent:
 
 | pairing | winner | matches | decided at (median) | lead at decision | income lead then | match length |
 |---|---|---|---|---|---|---|
-| Last Fist vs Bloomhost | Last Fist | 32 | 3:00 | 361 | 11 | 14:10 |
-| Last Fist vs Bloomhost | Bloomhost | 6 | 9:00 | 387 | 17 | 14:54 |
-| Last Fist vs Axiarchs | Last Fist | 18 | 3:00 | 275 | 9 | 14:27 |
-| Last Fist vs Axiarchs | Axiarchs | 13 | 7:00 | 435 | 10 | 10:33 |
-| Bloomhost vs Axiarchs | Bloomhost | 20 | 6:30 | 206 | 11 | 14:49 |
-| Bloomhost vs Axiarchs | Axiarchs | 15 | 3:00 | 382 | 8 | 15:06 |
+| Last Fist vs Bloomhost | Last Fist | 39 | 3:00 | 430 | 10 | 14:19 |
+| Last Fist vs Bloomhost | Bloomhost | 8 | 10:00 | 948 | 17 | 16:11 |
+| Last Fist vs Axiarchs | Last Fist | 31 | 3:00 | 420 | 7 | 14:29 |
+| Last Fist vs Axiarchs | Axiarchs | 17 | 7:00 | 440 | 11 | 10:33 |
+| Bloomhost vs Axiarchs | Bloomhost | 31 | 6:00 | 399 | 11 | 15:11 |
+| Bloomhost vs Axiarchs | Axiarchs | 20 | 3:00 | 379 | 11 | 11:49 |
 
 ## Damage matrix: who deals damage to what (totals over the run, per faction pairing; top dealers, each with its three main targets and its share of its side's damage)
 
-**Last Fist against Bloomhost** (42 sides, 21650 damage per side):
+**Last Fist against Bloomhost** (54 sides, 31226 damage per side):
 
 | dealer | share | to units | to buildings | main targets |
 |---|---|---|---|---|
-| tank | 15% | 2312 | 977 | bulwark 43%, thornback 5%, spitter 4% |
-| B:hq | 12% | 2613 | 0 | bulwark 53%, ruinmaw 13%, razorwing 5% |
-| aircraft | 12% | 2260 | 262 | bulwark 56%, razorwing 5%, dreadthorn 5% |
-| heavy | 11% | 1861 | 611 | bulwark 50%, razorwing 7%, titan 4% |
-| rifle | 11% | 1922 | 549 | bulwark 19%, skitterling 12%, razorwing 9% |
-| artillery | 10% | 1370 | 786 | bulwark 24%, spitter 14%, thornback 6% |
-| sniper | 7% | 982 | 447 | spitter 17%, bulwark 16%, skitterling 7% |
-| titan | 6% | 720 | 569 | bulwark 37%, thornback 3%, ruinmaw 3% |
-| ?orbital | 4% | 641 | 232 | bulwark 19%, spitter 16%, razorwing 8% |
-| hydra | 3% | 521 | 232 | bulwark 36%, razorwing 12%, needlewing 5% |
+| B:hq | 15% | 4570 | 0 | bulwark 50%, ruinmaw 11%, razorwing 8% |
+| tank | 14% | 2969 | 1326 | bulwark 39%, spitter 6%, ruinmaw 4% |
+| aircraft | 13% | 3686 | 391 | bulwark 56%, thornback 5%, razorwing 5% |
+| heavy | 12% | 2947 | 892 | bulwark 50%, razorwing 7%, needlewing 4% |
+| rifle | 10% | 2585 | 511 | bulwark 18%, skitterling 11%, razorwing 11% |
+| artillery | 9% | 1995 | 722 | bulwark 30%, spitter 16%, skitterling 7% |
+| titan | 6% | 1052 | 931 | bulwark 34%, spitter 3%, gorebore 3% |
+| sniper | 6% | 1346 | 414 | spitter 21%, bulwark 16%, skitterling 7% |
+| ?orbital | 4% | 844 | 283 | bulwark 19%, spitter 18%, razorwing 8% |
+| flame | 3% | 882 | 79 | leaper 17%, bulwark 17%, ravager 16% |
 
-**Last Fist against Axiarchs** (36 sides, 24260 damage per side):
-
-| dealer | share | to units | to buildings | main targets |
-|---|---|---|---|---|
-| aircraft | 19% | 4040 | 641 | bastion 40%, riftstalker 11%, shardling 9% |
-| B:hq | 14% | 3396 | 0 | bastion 45%, gravemantle 9%, shardling 8% |
-| tank | 14% | 2386 | 912 | bastion 26%, riftstalker 16%, shardling 14% |
-| rifle | 12% | 2292 | 682 | shardling 28%, riftstalker 22%, bastion 10% |
-| ?orbital | 10% | 1888 | 419 | lancer 30%, bastion 29%, gravemantle 6% |
-| heavy | 7% | 1097 | 563 | bastion 40%, shardling 7%, riftstalker 4% |
-| artillery | 5% | 1082 | 218 | bastion 38%, gravemantle 16%, riftstalker 13% |
-| flame | 4% | 579 | 353 | shardling 30%, bastion 12%, lancer 8% |
-| B:turret | 4% | 898 | 0 | bastion 33%, shardling 18%, riftstalker 12% |
-| hydra | 3% | 527 | 176 | bastion 27%, shardling 15%, voidcarrier 9% |
-
-**Bloomhost against Last Fist** (42 sides, 10902 damage per side):
+**Last Fist against Axiarchs** (54 sides, 32345 damage per side):
 
 | dealer | share | to units | to buildings | main targets |
 |---|---|---|---|---|
-| B:hq | 34% | 3704 | 0 | tank 23%, titan 18%, aircraft 13% |
-| bulwark | 13% | 799 | 623 | rifle 19%, tank 11%, heavy 9% |
-| spitter | 12% | 1144 | 198 | rifle 21%, tank 18%, titan 12% |
-| razorwing | 8% | 828 | 52 | rifle 28%, tank 14%, titan 13% |
-| needlewing | 5% | 517 | 8 | aircraft 30%, rifle 29%, tank 14% |
-| B:turret | 4% | 483 | 0 | rifle 40%, heavy 14%, titan 12% |
-| skitterling | 4% | 243 | 177 | rifle 38%, tank 7%, heavy 6% |
-| acid pools | 3% | 341 | 0 | heavy 44%, tank 24%, rifle 24% |
-| gorebore | 3% | 173 | 157 | rifle 28%, heavy 10%, tank 7% |
-| leaper | 3% | 231 | 48 | tank 28%, rifle 27%, titan 8% |
+| aircraft | 18% | 4986 | 775 | bastion 41%, shardling 9%, riftstalker 7% |
+| tank | 14% | 2754 | 1893 | bastion 24%, shardling 11%, riftstalker 9% |
+| B:hq | 14% | 4589 | 0 | bastion 35%, shardling 12%, lancer 10% |
+| rifle | 12% | 3066 | 922 | shardling 26%, riftstalker 13%, bastion 8% |
+| artillery | 7% | 1975 | 258 | bastion 39%, lancer 15%, gravemantle 11% |
+| ?orbital | 7% | 1682 | 477 | bastion 29%, lancer 26%, gravemantle 5% |
+| heavy | 6% | 1201 | 693 | bastion 33%, shardling 6%, titan 5% |
+| hydra | 5% | 945 | 574 | bastion 20%, shardling 14%, prismwing 7% |
+| sniper | 4% | 1074 | 310 | shardling 29%, lancer 20%, bastion 10% |
+| flame | 4% | 740 | 396 | shardling 33%, bastion 10%, riftstalker 9% |
 
-**Axiarchs against Last Fist** (36 sides, 15583 damage per side):
-
-| dealer | share | to units | to buildings | main targets |
-|---|---|---|---|---|
-| B:hq | 21% | 3319 | 0 | tank 20%, flame 20%, aircraft 19% |
-| lancer | 15% | 1489 | 874 | rifle 20%, flame 13%, aircraft 9% |
-| bastion | 13% | 892 | 1065 | rifle 17%, flame 13%, tank 6% |
-| ?beam | 13% | 789 | 1166 | rifle 19%, heavy 10%, tank 6% |
-| B:turret | 8% | 1276 | 0 | rifle 50%, tank 11%, aircraft 10% |
-| riftstalker | 6% | 699 | 203 | rifle 33%, tank 27%, heavy 12% |
-| shardling | 6% | 628 | 236 | rifle 52%, tank 10%, heavy 8% |
-| wraithwing | 4% | 491 | 58 | rifle 26%, aircraft 20%, tank 20% |
-| worldbreaker | 3% | 136 | 367 | rifle 14%, tank 4%, titan 4% |
-| marksman | 3% | 208 | 254 | rifle 26%, tank 10%, titan 3% |
-
-**Bloomhost against Axiarchs** (36 sides, 21096 damage per side):
+**Bloomhost against Last Fist** (54 sides, 15801 damage per side):
 
 | dealer | share | to units | to buildings | main targets |
 |---|---|---|---|---|
-| spitter | 19% | 2827 | 1218 | shardling 21%, wraithwing 12%, lancer 8% |
-| bulwark | 15% | 1440 | 1759 | shardling 22%, lancer 9%, bastion 5% |
-| razorwing | 14% | 2249 | 751 | shardling 23%, bastion 15%, lancer 11% |
-| B:hq | 13% | 2843 | 0 | bastion 22%, prismwing 15%, shardling 11% |
-| skitterling | 7% | 653 | 735 | shardling 18%, lancer 14%, bastion 8% |
-| needlewing | 6% | 1088 | 270 | lancer 19%, shardling 17%, bastion 15% |
-| B:turret | 5% | 1142 | 0 | shardling 24%, gravemantle 15%, wraithwing 13% |
-| thornback | 3% | 289 | 343 | shardling 16%, lancer 11%, bastion 7% |
-| leaper | 3% | 565 | 62 | bastion 31%, shardling 23%, lancer 18% |
-| acid pools | 3% | 606 | 0 | shardling 36%, lancer 30%, bastion 20% |
+| B:hq | 27% | 4247 | 0 | tank 24%, titan 22%, aircraft 12% |
+| spitter | 15% | 1954 | 409 | rifle 18%, aircraft 14%, tank 14% |
+| bulwark | 13% | 1230 | 836 | rifle 16%, heavy 13%, tank 12% |
+| razorwing | 11% | 1535 | 140 | rifle 22%, tank 21%, titan 18% |
+| needlewing | 6% | 837 | 44 | rifle 24%, aircraft 21%, tank 19% |
+| B:turret | 4% | 672 | 0 | rifle 30%, heavy 13%, tank 13% |
+| gorebore | 4% | 376 | 274 | rifle 26%, heavy 9%, tank 7% |
+| skitterling | 3% | 322 | 231 | rifle 33%, heavy 12%, tank 7% |
+| acid pools | 3% | 504 | 0 | heavy 41%, rifle 24%, tank 20% |
+| ?spores | 2% | 394 | 0 | rifle 42%, heavy 23%, artillery 20% |
 
-**Axiarchs against Bloomhost** (36 sides, 23552 damage per side):
+**Axiarchs against Last Fist** (54 sides, 19916 damage per side):
 
 | dealer | share | to units | to buildings | main targets |
 |---|---|---|---|---|
-| B:hq | 26% | 6210 | 0 | bulwark 52%, razorwing 11%, ruinmaw 9% |
-| B:turret | 18% | 4173 | 0 | bulwark 31%, ruinmaw 13%, razorwing 11% |
-| lancer | 14% | 2418 | 857 | bulwark 28%, razorwing 10%, thornback 7% |
-| wraithwing | 8% | 1766 | 206 | bulwark 37%, ruinmaw 12%, skitterling 8% |
-| shardling | 7% | 1444 | 95 | bulwark 50%, skitterling 19%, spitter 7% |
-| ?beam | 6% | 403 | 927 | spitter 13%, bilecaster 5%, bulwark 3% |
-| prismwing | 6% | 1169 | 134 | bulwark 54%, thornback 9%, ravager 8% |
-| bastion | 3% | 495 | 144 | bulwark 43%, ruinmaw 7%, dreadthorn 6% |
-| worldbreaker | 3% | 161 | 476 | bulwark 20%, thornback 2%, skitterling 2% |
-| gravemantle | 2% | 296 | 143 | bulwark 47%, spitter 7%, skitterling 6% |
+| B:hq | 26% | 5255 | 0 | tank 27%, aircraft 16%, flame 14% |
+| lancer | 16% | 2223 | 903 | rifle 18%, tank 12%, aircraft 10% |
+| ?beam | 12% | 832 | 1562 | rifle 14%, heavy 8%, tank 6% |
+| bastion | 11% | 1111 | 1038 | rifle 18%, flame 11%, tank 10% |
+| B:turret | 7% | 1434 | 0 | rifle 38%, tank 13%, heavy 13% |
+| shardling | 6% | 1034 | 252 | rifle 48%, titan 11%, tank 10% |
+| riftstalker | 5% | 722 | 176 | rifle 30%, tank 27%, heavy 12% |
+| wraithwing | 4% | 665 | 100 | rifle 26%, aircraft 16%, tank 16% |
+| worldbreaker | 2% | 154 | 325 | rifle 18%, tank 6%, hydra 4% |
+| marksman | 2% | 267 | 195 | rifle 27%, tank 11%, heavy 8% |
+
+**Bloomhost against Axiarchs** (54 sides, 26274 damage per side):
+
+| dealer | share | to units | to buildings | main targets |
+|---|---|---|---|---|
+| spitter | 19% | 3448 | 1550 | shardling 20%, wraithwing 10%, lancer 8% |
+| B:hq | 16% | 4100 | 0 | bastion 23%, shardling 13%, lancer 11% |
+| razorwing | 15% | 3104 | 959 | shardling 21%, bastion 14%, lancer 12% |
+| bulwark | 13% | 1592 | 1831 | shardling 21%, lancer 9%, bastion 6% |
+| skitterling | 6% | 753 | 748 | shardling 19%, lancer 15%, bastion 9% |
+| B:turret | 5% | 1364 | 0 | shardling 25%, lancer 22%, bastion 10% |
+| needlewing | 4% | 906 | 219 | lancer 19%, shardling 17%, bastion 13% |
+| ?spores | 3% | 814 | 0 | lancer 57%, shardling 15%, marksman 11% |
+| leaper | 3% | 691 | 98 | bastion 25%, gravemantle 18%, shardling 16% |
+| thornback | 3% | 290 | 458 | shardling 14%, lancer 12%, bastion 6% |
+
+**Axiarchs against Bloomhost** (54 sides, 27733 damage per side):
+
+| dealer | share | to units | to buildings | main targets |
+|---|---|---|---|---|
+| B:hq | 27% | 7387 | 0 | bulwark 47%, razorwing 12%, ruinmaw 6% |
+| lancer | 20% | 4110 | 1498 | bulwark 23%, razorwing 14%, thornback 7% |
+| B:turret | 14% | 3776 | 0 | bulwark 29%, razorwing 13%, ruinmaw 11% |
+| shardling | 7% | 1665 | 194 | bulwark 42%, skitterling 18%, spitter 8% |
+| wraithwing | 6% | 1549 | 197 | bulwark 35%, ruinmaw 10%, razorwing 8% |
+| ?beam | 6% | 536 | 1100 | spitter 15%, bilecaster 5%, bulwark 4% |
+| prismwing | 4% | 992 | 174 | bulwark 45%, thornback 10%, skitterling 7% |
+| worldbreaker | 4% | 426 | 649 | bulwark 18%, leaper 7%, skitterling 6% |
+| bastion | 3% | 594 | 260 | bulwark 40%, skitterling 6%, thornback 5% |
+| marksman | 3% | 311 | 398 | thornback 11%, bulwark 9%, spitter 9% |
 
 ## Units: damage and killed value per 100 spent, trained, and their share of the faction's damage in matches it won
 
-**Last Fist** (78 sides; damage in its wins 2301528):
+**Last Fist** (108 sides; damage in its wins 3441802):
 
 | unit | damage per 100 spent | killed value per 100 spent | trained | sides | spent | share of damage in wins |
 |---|---|---|---|---|---|---|
-| rifle | 163 | 62 | 6171 | 78 | 277695 | 14% |
-| aircraft | 203 | 59 | 736 | 57 | 239200 | 12% |
-| tank | 247 | 55 | 649 | 77 | 236885 | 18% |
-| heavy | 219 | 55 | 1096 | 44 | 191800 | 13% |
-| flame | 124 | 36 | 388 | 41 | 93120 | 3% |
-| artillery | 362 | 69 | 345 | 33 | 81075 | 9% |
-| titan | 267 | 50 | 92 | 25 | 53360 | 5% |
-| sniper | 461 | 161 | 172 | 37 | 36120 | 6% |
-| medic | 0 | 0 | 148 | 25 | 35520 | 0% |
-| interceptor | 211 | 198 | 137 | 22 | 28770 | 1% |
-| hydra | 472 | 155 | 51 | 28 | 25500 | 5% |
-| drone | 0 | 0 | 251 | 27 | 25100 | 0% |
-| leviathan | 185 | 7 | 23 | 14 | 16560 | 1% |
+| rifle | 165 | 62 | 8441 | 108 | 379845 | 13% |
+| aircraft | 211 | 65 | 1081 | 81 | 351325 | 13% |
+| tank | 236 | 50 | 943 | 106 | 344195 | 17% |
+| heavy | 208 | 53 | 1554 | 61 | 271950 | 13% |
+| flame | 141 | 42 | 516 | 52 | 123840 | 4% |
+| artillery | 375 | 75 | 480 | 50 | 112800 | 8% |
+| titan | 266 | 42 | 145 | 41 | 84100 | 5% |
+| sniper | 414 | 158 | 292 | 54 | 61320 | 6% |
+| medic | 0 | 0 | 218 | 37 | 52320 | 0% |
+| interceptor | 206 | 200 | 237 | 34 | 49770 | 2% |
+| drone | 0 | 0 | 387 | 39 | 38700 | 0% |
+| hydra | 485 | 160 | 77 | 39 | 38500 | 5% |
+| leviathan | 144 | 8 | 38 | 25 | 27360 | 1% |
 
-Damage from buildings and abilities (per side): B:hq 5816, ?orbital 2812, B:turret 1578.
+Damage from buildings and abilities (per side): B:hq 6631, ?orbital 2566, B:turret 1651.
 
-**Bloomhost** (78 sides; damage in its wins 1003610):
-
-| unit | damage per 100 spent | killed value per 100 spent | trained | sides | spent | share of damage in wins |
-|---|---|---|---|---|---|---|
-| bulwark | 127 | 35 | 1661 | 78 | 274065 | 21% |
-| razorwing | 122 | 58 | 1074 | 64 | 204060 | 15% |
-| skitterling | 86 | 26 | 4268 | 78 | 174988 | 9% |
-| needlewing | 70 | 38 | 1432 | 42 | 143200 | 6% |
-| spitter | 242 | 115 | 1531 | 48 | 137790 | 20% |
-| leaper | 87 | 41 | 773 | 27 | 77300 | 4% |
-| bilecaster | 79 | 21 | 194 | 32 | 46560 | 3% |
-| thornback | 95 | 22 | 208 | 35 | 45760 | 3% |
-| dreadthorn | 65 | 21 | 59 | 25 | 30680 | 1% |
-| gorebore | 109 | 34 | 132 | 25 | 30360 | 2% |
-| ravager | 114 | 33 | 122 | 20 | 25620 | 2% |
-| ruinmaw | 225 | 7 | 35 | 17 | 19250 | 2% |
-| cloudwing | 53 | 12 | 39 | 18 | 12480 | 0% |
-| broodtyrant | 208 | 58 | 12 | 9 | 5640 | 1% |
-| worldrender | 100 | 5 | 2 | 2 | 1560 | 0% |
-
-Damage from buildings and abilities (per side): B:hq 6973, B:turret 1760, acid pools 750, ?spores 528, mite 7.
-
-**Axiarchs** (72 sides; damage in its wins 1100667):
+**Bloomhost** (108 sides; damage in its wins 1582675):
 
 | unit | damage per 100 spent | killed value per 100 spent | trained | sides | spent | share of damage in wins |
 |---|---|---|---|---|---|---|
-| shardling | 76 | 24 | 3059 | 72 | 244720 | 8% |
-| lancer | 273 | 95 | 924 | 53 | 152460 | 19% |
-| bastion | 119 | 30 | 433 | 67 | 149385 | 8% |
-| riftstalker | 71 | 26 | 528 | 21 | 100320 | 2% |
-| prismwing | 369 | 84 | 590 | 22 | 82600 | 23% |
-| wraithwing | 188 | 65 | 244 | 47 | 80520 | 4% |
-| gravemantle | 88 | 21 | 144 | 24 | 47520 | 2% |
-| parallax | 58 | 11 | 117 | 17 | 36270 | 1% |
-| severance | 56 | 10 | 109 | 30 | 33790 | 1% |
-| marksman | 141 | 45 | 96 | 31 | 33600 | 2% |
-| worldbreaker | 392 | 42 | 29 | 19 | 20590 | 6% |
-| voidcarrier | 64 | 29 | 29 | 18 | 15370 | 0% |
-| eventide | 95 | 31 | 24 | 15 | 14400 | 0% |
-| sovereign | 301 | 27 | 12 | 9 | 10800 | 2% |
-| shardstorm | 445 | 173 | 13 | 7 | 5330 | 1% |
+| bulwark | 130 | 36 | 2183 | 108 | 360195 | 18% |
+| razorwing | 126 | 56 | 1727 | 91 | 328130 | 15% |
+| skitterling | 82 | 25 | 5728 | 108 | 234848 | 8% |
+| spitter | 244 | 118 | 2410 | 75 | 216900 | 21% |
+| needlewing | 67 | 36 | 2055 | 57 | 205500 | 4% |
+| leaper | 91 | 39 | 1021 | 38 | 102100 | 4% |
+| bilecaster | 74 | 20 | 299 | 51 | 71760 | 2% |
+| thornback | 97 | 22 | 311 | 51 | 68420 | 3% |
+| gorebore | 118 | 47 | 213 | 37 | 48990 | 2% |
+| dreadthorn | 69 | 19 | 90 | 37 | 46800 | 1% |
+| ravager | 141 | 45 | 185 | 29 | 38850 | 2% |
+| ruinmaw | 197 | 7 | 53 | 25 | 29150 | 2% |
+| cloudwing | 57 | 18 | 63 | 28 | 20160 | 0% |
+| broodtyrant | 246 | 44 | 28 | 19 | 13160 | 2% |
+| worldrender | 245 | 1 | 9 | 8 | 7020 | 1% |
 
-Damage from buildings and abilities (per side): B:hq 7870, B:turret 3637, ?beam 3150.
+Damage from buildings and abilities (per side): B:hq 6822, B:turret 1720, ?spores 778, acid pools 749, mite 29.
+
+**Axiarchs** (108 sides; damage in its wins 1365803):
+
+| unit | damage per 100 spent | killed value per 100 spent | trained | sides | spent | share of damage in wins |
+|---|---|---|---|---|---|---|
+| shardling | 72 | 23 | 4698 | 108 | 375840 | 9% |
+| lancer | 262 | 100 | 1585 | 86 | 261525 | 21% |
+| bastion | 112 | 29 | 642 | 98 | 221490 | 9% |
+| prismwing | 257 | 60 | 931 | 33 | 130340 | 19% |
+| riftstalker | 74 | 28 | 625 | 29 | 118750 | 3% |
+| wraithwing | 168 | 59 | 353 | 69 | 116490 | 4% |
+| gravemantle | 74 | 18 | 197 | 37 | 65010 | 2% |
+| severance | 58 | 11 | 182 | 48 | 56420 | 2% |
+| marksman | 158 | 46 | 153 | 51 | 53550 | 3% |
+| parallax | 66 | 14 | 139 | 23 | 43090 | 2% |
+| worldbreaker | 348 | 48 | 50 | 33 | 35500 | 7% |
+| voidcarrier | 84 | 43 | 39 | 27 | 20670 | 1% |
+| eventide | 92 | 29 | 31 | 21 | 18600 | 1% |
+| sovereign | 241 | 24 | 17 | 14 | 15300 | 2% |
+| shardstorm | 357 | 141 | 20 | 11 | 8200 | 1% |
+
+Damage from buildings and abilities (per side): B:hq 8391, B:turret 3214, ?beam 3020.
 

@@ -510,7 +510,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
     <div class="tabs"><button data-tab="build" class="on">Build</button><button data-tab="train">Train</button></div>
     <div id="cards"></div>
     <div id="cmdbar" class="hide" role="toolbar" aria-label="Orders for the selected units"><div class="seltag"><span><b id="selN">0</b> selected</span><button id="selX" aria-label="Clear the selection">×</button></div><button data-c="attack">Attack</button><button data-c="hold">Hold</button><button data-c="retreat">Retreat</button><button data-c="tunnel" class="hide" aria-label="Send the selected units through the tunnel">Tunnel</button><span class="cmdhint">Tap the ground to move them there</span></div>
-    <div id="trBar" role="toolbar" aria-label="Test Range: what a tap places, and each side's orders"><button id="trTool"></button><div class="trseg" id="trBb"><span>Blue</span><button data-m="attack">Attack</button><button data-m="hold">Hold</button><em>You</em></div><div class="trseg" id="trBr"><span>Red</span><button data-m="attack">Attack</button><button data-m="hold">Hold</button><em>Calm</em></div></div>
+    <div id="trBar" role="toolbar" aria-label="Test Range: what a tap places, and each side's orders"><button id="trTool"></button><div class="trseg" id="trBb"><span>Left</span><button data-m="attack">Attack</button><button data-m="hold">Hold</button><em>You</em></div><div class="trseg" id="trBr"><span>Right</span><button data-m="attack">Attack</button><button data-m="hold">Hold</button><em>Calm</em></div></div>
     <div id="grps" class="hide" role="group" aria-label="Control groups"><button data-g="0" aria-label="Group 1: tap to select, double-tap to jump there, hold to save the selection"><b>1</b><i>–</i></button><button data-g="1" aria-label="Group 2: tap to select, double-tap to jump there, hold to save the selection"><b>2</b><i>–</i></button><button data-g="2" aria-label="Group 3: tap to select, double-tap to jump there, hold to save the selection"><b>3</b><i>–</i></button></div>
   </footer>
 </div>
@@ -764,7 +764,7 @@ MAPS.threelane = (() => {
   };
 })();
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.93'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.94'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -1489,9 +1489,11 @@ const pickOne = a => a[Math.floor(simRnd() * a.length)];
 // v2.40: fac and diffKey let a preset carry per-faction settings (byFac: the openings it picks from, dials, rules; the Hard
 // preset's searched strategies) and per-difficulty dials (byDiff: Easy and Normal slowed to their v2.39 challenge). A preset
 // without them rolls exactly as before.
-function rollPersona(kind, preset, fac, diffKey) {
+function rollPersona(kind, preset, fac, diffKey, g) {
   const A = AI_PRESETS[preset] || AI_PRESETS.default, F = A.byFac && A.byFac[facOf(fac)];
-  const P = rollPersona0(kind || (F && F.kinds ? pickOne(F.kinds) : kind));
+  const b6 = A === AI_PRESETS.hard && rwB6ai(g); // v2.94 (batch 6d, b6ai): Hard's pool is Boomer, Economist and Turtle in equal thirds (B6AI.pool)
+  const P = rollPersona0(kind || (F && F.kinds ? pickOne(b6 ? B6AI.pool : F.kinds) : kind));
+  if (b6) b6aiPersona(P); // v2.94: the Turtle's and Economist's batch 6d plans and dials (no random numbers of its own)
   P.preset = AI_PRESETS[preset] ? preset : 'default'; P.smart = A.smart; P.dial = Object.assign({}, A.dials, F && F.dials, { comp: Object.assign({}, A.dials.comp) }, A.fix ? { fix: Object.assign({}, A.fix, F && F.fix) } : {});
   if (F && F.paths) P.paths = Object.assign({}, P.paths, F.paths); // v2.41: a preset's per-faction production paths (Last Fist terms)
   const LD = A.fix && A.fix.ladder && LADDER[diffKey]; // v2.61: a difficulty's own competence rules and dials (LADDER)
@@ -1848,11 +1850,11 @@ function newGame(diffKey, opts = {}) {
   const me = g.me | 0, foe = 1 - me; // v2.93: the opponent's AI (opts.persona, opts.ai, the difficulty) plays the side the player doesn't
   if (rwB6side(g)) { // v2.92 (batch 6b): each AI rolls its personality from its own stream (seeded by the match and its faction)
     side6Init(g);
-    g.sides[foe].persona = side6Persona(g, foe, () => rollPersona(opts.persona, presetFor(opts.ai, g.diffKey), g.sides[foe].faction, g.diffKey));
-    if (g.auto) g.sides[me].persona = side6Persona(g, me, () => rollPersona(opts.autoPersona, presetFor(opts.autoAi, g.autoDiff), g.sides[me].faction, g.autoDiff));
+    g.sides[foe].persona = side6Persona(g, foe, () => rollPersona(opts.persona, presetFor(opts.ai, g.diffKey), g.sides[foe].faction, g.diffKey, g));
+    if (g.auto) g.sides[me].persona = side6Persona(g, me, () => rollPersona(opts.autoPersona, presetFor(opts.autoAi, g.autoDiff), g.sides[me].faction, g.autoDiff, g));
   } else {
-  g.sides[foe].persona = rollPersona(opts.persona, presetFor(opts.ai, g.diffKey), g.sides[foe].faction, g.diffKey);
-  if (g.auto) g.sides[me].persona = rollPersona(opts.autoPersona, presetFor(opts.autoAi, g.autoDiff), g.sides[me].faction, g.autoDiff);
+  g.sides[foe].persona = rollPersona(opts.persona, presetFor(opts.ai, g.diffKey), g.sides[foe].faction, g.diffKey, g);
+  if (g.auto) g.sides[me].persona = rollPersona(opts.autoPersona, presetFor(opts.autoAi, g.autoDiff), g.sides[me].faction, g.autoDiff, g);
   }
   g.log = newLog(0); // the match log (never read by the SIM)
   g.stats = newStats(0); // v2.51: the stats tracker (never read by the SIM)
@@ -4326,8 +4328,8 @@ function meteorDodge(g, u) {
      exiles a weak bolt (its UDEF weapon).
    New internal ids rather than renamed ones: a game with b2a off still has Bile Lobbers and Rift Mortars, and saves, match
    history and tests keep naming them. */
-const REWORK = { b2a: true, artDeploy: true, artTelegraph: true, b2b: true, b3a: true, b3b: true, b4a: true, b4b: true, b5b: true, b5c: true, b6side: true, b6art: true, b6hq: true, b6c: true }; // b6hq, b6c (v2.93): the HQ shield rule and the first unit tuning, src/sim/rework-6c.js; b6side (v2.92): the side-bias fix, b6art (v2.92): Artillery counterplay, both src/sim/rework-6b.js; b5c (v2.90): the Needlewing AI fix (the Bloomspire roll), src/sim/rework-5c.js; b5b (v2.88): the Bloomhost swarm pass, src/sim/rework-5b.js; b4b (v2.87): batch 4b, src/sim/rework-4b.js; b4a (v2.86): batch 4a, src/sim/rework-4a.js; b2b (v2.83): batch 2b, src/sim/rework-2b.js; b3a (v2.84): batch 3a, src/sim/rework-3a.js; b3b (v2.85): batch 3b, src/sim/rework-3b.js
-const RW_KEYS = ['b2a', 'artDeploy', 'artTelegraph', 'b2b', 'b3a', 'b3b', 'b4a', 'b4b', 'b5b', 'b5c', 'b6side', 'b6art', 'b6hq', 'b6c'];
+const REWORK = { b2a: true, artDeploy: true, artTelegraph: true, b2b: true, b3a: true, b3b: true, b4a: true, b4b: true, b5b: true, b5c: true, b6side: true, b6art: true, b6hq: true, b6c: true, b6ai: true, b6d: true }; // b6ai, b6d (v2.94): the AI personality fix and the faction balance, src/sim/rework-6d.js; b6hq, b6c (v2.93): the HQ shield rule and the first unit tuning, src/sim/rework-6c.js; b6side (v2.92): the side-bias fix, b6art (v2.92): Artillery counterplay, both src/sim/rework-6b.js; b5c (v2.90): the Needlewing AI fix (the Bloomspire roll), src/sim/rework-5c.js; b5b (v2.88): the Bloomhost swarm pass, src/sim/rework-5b.js; b4b (v2.87): batch 4b, src/sim/rework-4b.js; b4a (v2.86): batch 4a, src/sim/rework-4a.js; b2b (v2.83): batch 2b, src/sim/rework-2b.js; b3a (v2.84): batch 3a, src/sim/rework-3a.js; b3b (v2.85): batch 3b, src/sim/rework-3b.js
+const RW_KEYS = ['b2a', 'artDeploy', 'artTelegraph', 'b2b', 'b3a', 'b3b', 'b4a', 'b4b', 'b5b', 'b5c', 'b6side', 'b6art', 'b6hq', 'b6c', 'b6ai', 'b6d'];
 const rwInit = o => { const r = Object.assign({}, REWORK, o || {}), out = {}; for (const k of RW_KEYS) out[k] = !!r[k]; return out; };
 const rwB2a = g => !!(g && g.rw && g.rw.b2a);
 const rwDep = g => rwB2a(g) && !!g.rw.artDeploy;
@@ -6353,6 +6355,66 @@ for (const D of [BDEF.hq, BDEF_BH.hq, BDEF_AX.hq]) {
   const d0 = D.desc;
   Object.defineProperty(D, 'desc', { get: () => d0.replace(/Shielded while a production building stands in (your|the) base/, (m, w) => hqShieldTxt(REWORK, w)), enumerable: true, configurable: true });
 }
+/* ---------- Batch 6d, Part A (v2.94, docs/FACTION_REWORK.md "Batch 6d"): the AI personality fix (REWORK.b6ai) ----------
+   Stored per game in g.rw (rwB6ai). Off: v2.93's AI exactly; nothing below runs or is saved. On, for the Hard preset only
+   (Easy and Normal keep their pools and their personalities' play):
+   - Hard's personality pool is Boomer, Economist and Turtle in equal thirds for every faction (B6AI.pool; v2.93: Last Fist
+     Boomer 2/4, Economist 1/4, Turtle 1/4; Bloomhost Boomer 3/4, Turtle 1/4; the Axiarchs Boomer 2/3, Turtle 1/3).
+   - Why the two lost (audit/logs-p1/selfplay6d-base/diag-a1.md): both took only Hard's two Refineries (the Economist's plan
+     names three, the cap cut it to two) and upgraded them late, so from 4:00 they earned 25-50% less than the Boomer and
+     fielded less; the Economist then sat at its supply cap with money banked, the Turtle starved with idle production.
+   - b6aiPersona: their plans and dials when rolled (no random numbers of its own, so the dice that follow are unchanged):
+     the Economist: a third Refinery (refDelta), Refineries to T2 at once and on to T3, a Habitat upgrade early (supply);
+     the Turtle: its Refineries to T2 and T3 early (two Refineries upgraded beat three on its eight pads with a Turret), its
+     Turret and HQ upgrades after them, a lower edge before a base attack (attackEdge), and its deadline earlier.
+   - aiB6ai (each AI decision): the Economist spends what passes B6AI.eco.cap (no floating) and attacks once its army leads
+     (B6AI.eco.lead); the Turtle attacks once its army passes B6AI.turtle.army or the time B6AI.turtle.at with an even
+     army, and counterattacks right after a defence it won (enemies were in its base within B6AI.turtle.won s, none now,
+     its army at least B6AI.turtle.counter of theirs). The Boomer is unchanged. */
+const rwB6ai = g => !!(g && g.rw && g.rw.b6ai);
+const B6AI = {
+  pool: ['boomer', 'economist', 'turtle'], calmUp: true,
+  // the Economist: the Boomer's greedy opening (three Refineries first, a small army until 2:30), then its own tech paths and
+  // unit tastes, Refineries on to T3 (it out-earns), money spent past cap, and a base attack once its army leads by lead
+  eco: { plan: ['refinery', 'refinery', 'refinery', 'barracks', 'reactor', 'habitat', 'factory', 'techlab'], refDelta: 1, upShift: -75, earlyFill: 0.35, cap: 600, lead: 1.1, min: 900, from: 300,
+    upgFirst: [['refinery', 2], ['refinery', 2], ['refinery', 2], ['reactor', 2], ['habitat', 2], ['barracks', 2], ['refinery', 3], ['reactor', 3], ['habitat', 3], ['refinery', 3], ['factory', 2], ['refinery', 3], ['techlab', 2]] },
+  // the Turtle: a Turret on the front pad by its fourth building, three Refineries, no Tech Lab (a ground fortress: it fights
+  // near home with what its Barracks and War Factory make), a small army until 2:30 under the Turret and HQ gun, the Turret
+  // and its economy upgraded early, and attacks on an army size, a time, or right after a defence it won
+  turtle: { plan: ['refinery', 'barracks', 'refinery', 'turret', 'refinery', 'reactor', 'habitat', 'factory'], refDelta: 1, earlyFill: 0.35, upShift: -60, attackEdge: 1, deadline: 540,
+    army: 2500, armyEdge: 1, at: 540, atEdge: 0.9, won: 25, counter: 1, counterMin: 600,
+    upgFirst: [['refinery', 2], ['refinery', 2], ['refinery', 2], ['habitat', 2], ['turret', 2], ['reactor', 2], ['barracks', 2], ['factory', 2], ['hq', 2], ['refinery', 3], ['reactor', 3], ['habitat', 3]] },
+};
+function b6aiPersona(P) {
+  const k = P.kind === 'economist' ? B6AI.eco : P.kind === 'turtle' ? B6AI.turtle : null;
+  if (!k) return;
+  P.b6 = 1; // the batch 6d rules apply to this personality (saved with it)
+  for (const f of ['refDelta', 'upShift', 'earlyFill', 'attackEdge', 'deadline']) if (k[f] !== undefined) P[f] = k[f];
+  if (k.plan) P.plan = k.plan.slice();
+  P.upgFirst = k.upgFirst.map(a => a.slice());
+}
+// The credit level above which the AI buys what it can now (v2.38's flush at 900; the batch 6d Economist at B6AI.eco.cap)
+// v2.94: the batch 6d Turtle and Economist keep upgrading while merely threatened (B6AI.calmUp; v2.93 held every upgrade)
+const b6aiCalmUp = (g, P) => !!(B6AI.calmUp && rwB6ai(g) && P && P.b6);
+const b6aiFlush = (g, P) => rwB6ai(g) && P && P.b6 && P.kind === 'economist' ? B6AI.eco.cap : 900;
+// A batch 6d push this decision, or null: [pushTo, mode] with pushTo null for the enemy base. c: the decision's numbers
+function aiB6ai(g, s, P, c) {
+  if (!rwB6ai(g) || !P || !P.b6) return null;
+  const side = g.sides[s], base = c.nSiege >= 2 ? [c.siegeLine, 'siege'] : [null, 'all'];
+  if (P.kind === 'economist') {
+    const E = B6AI.eco;
+    if (g.t >= E.from && c.myV >= E.min && c.myV >= c.thV * E.lead && !c.threat) return base;
+    return null;
+  }
+  const T = B6AI.turtle;
+  if (!c.threat && side.lastDanger !== undefined && g.t - side.lastDanger < T.won && c.myV >= T.counterMin && c.myV >= c.thV * T.counter) return base; // a defence won: out after them
+  if (c.myV >= T.army && c.myV >= c.thV * T.armyEdge) return base;
+  if (g.t >= T.at && c.myV >= 500 && c.myV >= c.thV * T.atEdge) return base;
+  return null;
+}
+
+/* ---------- Batch 6d, Part B (v2.94): faction balance (REWORK.b6d) ---------- (filled in by Part B) */
+const rwB6d = g => !!(g && g.rw && g.rw.b6d);
 /* ---------- Enemy AI: same economy, same rules, same upgrades as the player ---------- */
 // Known base defenses: the enemy HQ gun plus remembered Turrets, each at its last-seen tier
 const HQ_VAL = 400, TURRET_VAL = 300;
@@ -6547,7 +6609,7 @@ function aiUpdate(g, s, dt) {
   const buildDone = !want || !freePad || constructing.length > 0;
   const rich2 = aiFix(P, 'spend') && side.res.c > 1500 && g.ents.filter(b => b.kind === 'b' && b.side === s && b.upgrading && b.hp > 0).length < 2; // v2.38 (Default): rich, a second upgrade at once
   const tf = dl.tech || (aiFix(P, 'tech') ? AI_TECH[P.kind] : null), techFocus = tf ? [[tf, 2], [tf, 3]] : []; // v2.40 (tech): its strategy's building goes to T3 right after T2 (the tech dial: the Hard preset's searched order)
-  if (g.t >= D.upStart + P.upShift - (ecoMood ? 30 : 0) && (!upgrading || rich2) && (buildDone || floating) && (!(calm || defend) || floating) && !(punishOn && !floating) && !(D.maxTier < 3 && simRnd() < 0.5)) {
+  if (g.t >= D.upStart + P.upShift - (ecoMood ? 30 : 0) && (!upgrading || rich2) && (buildDone || floating) && (!(calm || defend) || floating || b6aiCalmUp(g, P)) && !(punishOn && !floating) && !(D.maxTier < 3 && simRnd() < 0.5)) {
     const energyShort = (side.res.e < 120 && side.res.c > 800) || starved; // v2.41 (power): starved, the Reactor upgrade first
     for (const [type, tier] of [...(energyShort ? [['reactor', 2], ['reactor', 3]] : []), ...(rich2 ? [['habitat', 2], ['habitat', 3], ['reactor', 2], ['reactor', 3]] : []), ...P.upgFirst, ...techFocus, ...AI_UPG]) {
       if (rich2 && upgrading && alive(g, s, type).some(x => x.upgrading)) continue;
@@ -6718,7 +6780,7 @@ function aiUpdate(g, s, dt) {
     for (let k = 0; k < D.trainPer && !saveRoom; k++) {
       const cand = types.filter(t => { const d = UDEF[t], tc = trainCost(g, t); return fits(t) && side.res.c - tc.c >= reserve.c && side.res.e - tc.e >= reserve.e && !(noAA && d.hitsGround === false && !d.support); }); // v2.41 (counter): not even as a spare buy
       if (!cand.length) break;
-      const flush = spend && side.res.c > 900; // v2.38 (Default): credits piling up: buy what it can afford now instead of waiting
+      const flush = spend && side.res.c > b6aiFlush(g, P); // v2.94 (b6ai): the batch 6d Economist at B6AI.eco.cap // v2.38 (Default): credits piling up: buy what it can afford now instead of waiting
       if (top && !cand.includes(top) && !mustSpend && !flush && (saving || simRnd() < 0.6)) break;
       if (flush && side.res.e < 80) { const free = cand.filter(t => UDEF[t].cost.e <= 10); if (free.length) cand.splice(0, cand.length, ...free); } // energy-starved: credit-only units
       let pick;
@@ -6801,6 +6863,7 @@ function aiUpdate(g, s, dt) {
   const ecoAhead = pr && income(g, s).c >= (side.estInc || 1e9) * PR.eco;
   const prSafe = !PR || !PR.power || aiPower(mine) >= aiPower(theirs); // v2.61: a cautious difficulty never presses into a known army stronger than its own
   const prPush = pr && prSafe && myV >= dl.minArmy * (hasCond(g, 'scarce') ? COND.scarce.army : 1) && (myV >= thV * prNeed || (ecoAhead && myV >= thV * prNeed * 0.9));
+  let b6p = null; // v2.94 (b6ai)
   const prField = pr && prSafe && g.nodes[1].owner !== s && myV >= 250 && myV >= thV * PR.field * prNeed / PR.edge;
   if (bo && side.boHold && side.stance === 'attack' && side.pushMode !== 'all' && side.pushMode !== 'siege') { side.stance = 'retreat'; side.pushTo = null; side.pushMode = null; side.stanceAt = g.t; } // v2.42 (breakout): back under the gun
   if (bo && side.boHold && side.stance !== 'attack') { /* v2.42 (breakout): hold and gather; no push while camped on */ }
@@ -6809,6 +6872,7 @@ function aiUpdate(g, s, dt) {
   }
   else if (side.stance !== 'attack' && g.t >= EXT.warn && myV >= 200 && myV >= thV * 0.7) go(null, 'all'); // the storm is coming: everything in
   else if (side.stance !== 'attack' && punishOn && aiFix(P, 'punish') && g.t >= 105 && myV >= 400 && aiPower(mine) >= aiPower(theirs) * 1.5) go(fieldLine, 'field', true); // v2.41 (read): the timed push on a greedy opening: the field and its nodes, then the base once clearly stronger
+  else if (side.stance !== 'attack' && (b6p = aiB6ai(g, s, P, { myV, thV, threat, nSiege, siegeLine }))) go(b6p[0], b6p[1], true); // v2.94 (b6ai): the Turtle's and Economist's own attacks
   else if (side.stance !== 'attack' && prPush) go(nSiege >= 2 ? siegeLine : null, nSiege >= 2 ? 'siege' : 'all', true); // v2.60 (press)
   else if (side.stance !== 'attack' && prField) go(fieldLine, 'field', true); // v2.60 (press): the centre node, at parity
   else if (side.stance !== 'attack' && holdForStrike) { /* wait */ }
@@ -7460,7 +7524,7 @@ function serialize(g, extra) {
   const projs = g.projs.map(p => Object.assign({}, p, { target: p.target ? p.target.id : null }));
   const sides = g.sides.map(sd => Object.assign({}, sd, { hq: sd.hq.id, slots: sd.slots.map(b => b ? b.id : null), res: Object.assign({}, sd.res), stats: Object.assign({}, sd.stats), salv: Object.assign({}, sd.salv) }));
   const fog = g.fog.map(f => ({ exp: Array.from(f.exp).join(''), seen: Array.from(f.seen).join(''), ghosts: f.ghosts, creep: f.creep, field: f.field, intel: f.intel, lastHQ: f.lastHQ, lastSpot: f.lastSpot, seenUnits: f.seenUnits }));
-  return JSON.stringify({ v: SAVE_VER, map: { id: MAP.id, v: MAP.v }, ...(g.me ? { me: 1 } : {}), /* v2.93: the player's side, only when it is 1 (the right-hand start) */ ...(extraTc(g)), t: g.t, nid: g.nid, diffKey: g.diffKey, ents, projs, sides, nodes: g.nodes, fog, abil: g.abil, endHold: g.endHold || null, log: g.log, creep: g.creep, field: g.field, warps: g.warps, acid: g.acid, stats: g.stats, ...(g.guards && g.guards.length ? { guards: g.guards } : {}), ...(g.cond && Object.keys(g.cond).length ? { cond: g.cond, meteor: g.meteor || null } : {}), ...(rwB2a(g) || rwB2b(g) || rwB3a(g) || rwB3b(g) || rwB4a(g) || rwB5b(g) || rwB5c(g) || rwB6side(g) || rwB6art(g) || rwB6hq(g) || rwB6c(g) ? { rw: Object.fromEntries(Object.entries(g.rw).filter(([k]) => (k !== 'b3a' || rwB3a(g)) && (k !== 'b3b' || rwB3b(g)) && (k !== 'b4a' || rwB4a(g)) && (k !== 'b4b' || rwB4b(g)) && (k !== 'b5b' || rwB5b(g)) && (k !== 'b5c' || rwB5c(g)) && (k !== 'b6side' || rwB6side(g)) && (k !== 'b6art' || rwB6art(g)) && (k !== 'b6hq' || rwB6hq(g)) && (k !== 'b6c' || rwB6c(g)))), /* v2.93: b6hq and b6c saved only when on (an off save is a v2.92 save) */ /* v2.92: b6side saved only when on (a b6side-off save is a v2.91 save) */ /* v2.90: b5c saved only when on (a b5c-off save is a v2.89 save) */ mk: g.mk || [] } : {}), /* v2.84: b3a saved only when on (a b3a-off save is a v2.83 save); v2.85: b3b the same way (a b3b-off save is a v2.84 save) */ ...(rwB3a(g) && g.rem && g.rem.length ? { rem: g.rem } : {}), ...(rwB3b(g) && g.kn && g.kn.length ? { kn: g.kn } : {}), ...(rwB2b(g) && ((g.rup && g.rup.length) || (g.rdg && g.rdg.length)) ? { rup: g.rup || [], rdg: g.rdg || [] } : {}), seed: g.seed, rs: g.rs, fs: g.fs, ...(rwB6side(g) ? { os: g.os, ar: g.ar.slice() } : {}), extra }); // os, ar (v2.92, batch 6b): the order stream and each AI's own stream, only when b6side is on // rw, mk (v2.82): the rework's switches and shell markers, only when batch 2a is on (older saves and b2a-off games stay as they were) // seed/rs/fs (v2.50): the random streams, so a resumed match rolls on where it stopped
+  return JSON.stringify({ v: SAVE_VER, map: { id: MAP.id, v: MAP.v }, ...(g.me ? { me: 1 } : {}), /* v2.93: the player's side, only when it is 1 (the right-hand start) */ ...(extraTc(g)), t: g.t, nid: g.nid, diffKey: g.diffKey, ents, projs, sides, nodes: g.nodes, fog, abil: g.abil, endHold: g.endHold || null, log: g.log, creep: g.creep, field: g.field, warps: g.warps, acid: g.acid, stats: g.stats, ...(g.guards && g.guards.length ? { guards: g.guards } : {}), ...(g.cond && Object.keys(g.cond).length ? { cond: g.cond, meteor: g.meteor || null } : {}), ...(rwB2a(g) || rwB2b(g) || rwB3a(g) || rwB3b(g) || rwB4a(g) || rwB5b(g) || rwB5c(g) || rwB6side(g) || rwB6art(g) || rwB6hq(g) || rwB6c(g) || rwB6ai(g) || rwB6d(g) ? { rw: Object.fromEntries(Object.entries(g.rw).filter(([k]) => (k !== 'b3a' || rwB3a(g)) && (k !== 'b3b' || rwB3b(g)) && (k !== 'b4a' || rwB4a(g)) && (k !== 'b4b' || rwB4b(g)) && (k !== 'b5b' || rwB5b(g)) && (k !== 'b5c' || rwB5c(g)) && (k !== 'b6side' || rwB6side(g)) && (k !== 'b6art' || rwB6art(g)) && (k !== 'b6hq' || rwB6hq(g)) && (k !== 'b6c' || rwB6c(g)) && (k !== 'b6ai' || rwB6ai(g)) && (k !== 'b6d' || rwB6d(g)))), /* v2.94: b6ai and b6d saved only when on (an off save is a v2.93 save) */ /* v2.93: b6hq and b6c saved only when on (an off save is a v2.92 save) */ /* v2.92: b6side saved only when on (a b6side-off save is a v2.91 save) */ /* v2.90: b5c saved only when on (a b5c-off save is a v2.89 save) */ mk: g.mk || [] } : {}), /* v2.84: b3a saved only when on (a b3a-off save is a v2.83 save); v2.85: b3b the same way (a b3b-off save is a v2.84 save) */ ...(rwB3a(g) && g.rem && g.rem.length ? { rem: g.rem } : {}), ...(rwB3b(g) && g.kn && g.kn.length ? { kn: g.kn } : {}), ...(rwB2b(g) && ((g.rup && g.rup.length) || (g.rdg && g.rdg.length)) ? { rup: g.rup || [], rdg: g.rdg || [] } : {}), seed: g.seed, rs: g.rs, fs: g.fs, ...(rwB6side(g) ? { os: g.os, ar: g.ar.slice() } : {}), extra }); // os, ar (v2.92, batch 6b): the order stream and each AI's own stream, only when b6side is on // rw, mk (v2.82): the rework's switches and shell markers, only when batch 2a is on (older saves and b2a-off games stay as they were) // seed/rs/fs (v2.50): the random streams, so a resumed match rolls on where it stopped
 }
 function deserialize(str) {
   const o = JSON.parse(str);
@@ -7472,7 +7536,7 @@ function deserialize(str) {
   if (o.tc) g.tc = o.tc.slice(); // v2.93: the match's team colours (never read by the SIM)
   if (o.rs !== undefined && !RNG.legacy) { g.seed = o.seed >>> 0; g.rs = o.rs | 0; g.fs = o.fs | 0; } // v2.50: an older save keeps the fresh seed newGame drew
   g.t = o.t; g.nid = o.nid; g.ents = o.ents; g.nodes = o.nodes; g.guards = o.guards || []; g.cond = o.cond || {}; g.meteor = o.meteor || null; // v2.72: battlefield conditions // v2.71: relic guards (a save from before has none)
-  g.rw = rwInit(o.rw ? Object.assign({ b2b: false, b3a: false, b3b: false, b4a: false, b4b: false, b5b: false, b5c: false, b6side: false, b6art: false, b6hq: false, b6c: false }, o.rw) : { b2a: false, artDeploy: false, artTelegraph: false, b2b: false, b3a: false, b3b: false, b4a: false, b4b: false, b5b: false, b5c: false, b6side: false, b6art: false, b6hq: false, b6c: false }); /* v2.92: a v2.91 save resumes with batch 6b off */ /* v2.90: a v2.89 save resumes with batch 5c off */ /* v2.88: a v2.87 save resumes with batch 5b off */ /* v2.87: a v2.86 save resumes with batch 4b off */ /* v2.86: a v2.85 save resumes with batch 4a off */ if (o.rem) g.rem = o.rem; if (o.kn) g.kn = o.kn; /* v2.85: a v2.84 save resumes with batch 3b off; knocks */ /* v2.84: a v2.83 save resumes with batch 3a off; remains */ if (o.mk) g.mk = o.mk; // v2.82: a save without the rework's switches plays as before it (v2.83: a v2.82 save without b2b too)
+  g.rw = rwInit(o.rw ? Object.assign({ b2b: false, b3a: false, b3b: false, b4a: false, b4b: false, b5b: false, b5c: false, b6side: false, b6art: false, b6hq: false, b6c: false, b6ai: false, b6d: false }, o.rw) : { b2a: false, artDeploy: false, artTelegraph: false, b2b: false, b3a: false, b3b: false, b4a: false, b4b: false, b5b: false, b5c: false, b6side: false, b6art: false, b6hq: false, b6c: false, b6ai: false, b6d: false }); /* v2.92: a v2.91 save resumes with batch 6b off */ /* v2.90: a v2.89 save resumes with batch 5c off */ /* v2.88: a v2.87 save resumes with batch 5b off */ /* v2.87: a v2.86 save resumes with batch 4b off */ /* v2.86: a v2.85 save resumes with batch 4a off */ if (o.rem) g.rem = o.rem; if (o.kn) g.kn = o.kn; /* v2.85: a v2.84 save resumes with batch 3b off; knocks */ /* v2.84: a v2.83 save resumes with batch 3a off; remains */ if (o.mk) g.mk = o.mk; // v2.82: a save without the rework's switches plays as before it (v2.83: a v2.82 save without b2b too)
   if (rwB6side(g) && o.ar) { g.os = o.os | 0; g.ar = o.ar.map(x => x | 0); } else { delete g.os; delete g.ar; } // v2.92 (batch 6b): the order stream and the AIs' own streams
   if (o.rup) g.rup = o.rup; if (o.rdg) g.rdg = o.rdg; // v2.83: Worldbreaker cracks and ridges
   g.stats = o.stats && o.stats.v === 1 ? o.stats : newStats(o.t); // v2.51: an older save starts its record now
@@ -13252,6 +13316,20 @@ function drawArt(c, b, T, t, tier) { // the cached body (drawn live until it is 
   dmgLive5(c, b, t);
 }
 // v2.93 (batch 6c, b6hq): a badge on an HQ's shield: a small shield and the number of buildings holding it up
+// v2.94 (batch 6d, Part C1): the count shown on an HQ's shield. The player's own HQ: exact (hqHolders). The enemy's: only the
+// buildings the player knows of, the same knowledge the fog keeps for remembered buildings (its ghosts), counted when the
+// player has seen them finished (HQ_SEEN: ids seen standing and finished, kept by the UI, never read by the SIM). The shield
+// up and no holder known: '?'.
+const HQ_SEEN = { g: null, ids: new Set() };
+function hqHoldersShown(g, s) {
+  const me = myS();
+  if (s === me) return hqHolders(g, s);
+  if (HQ_SEEN.g !== g) { HQ_SEEN.g = g; HQ_SEEN.ids = new Set(); }
+  for (const e of g.ents) if (e.kind === 'b' && e.side === s && e.hp > 0 && hqHolds(e) && visibleTo(g, me, e)) HQ_SEEN.ids.add(e.id);
+  const gh = g.fog[me].ghosts; let n = 0;
+  for (const id in gh) { const k = gh[id]; if (k.side === s && k.type !== 'hq' && k.type !== 'bunker' && !(k.slot >= FWD_SLOT) && HQ_SEEN.ids.has(k.id)) n++; }
+  return n || '?';
+}
 function drawHolders(c, n, T, side) {
   const x0 = 72 * dirOf(side), y = -92, w = n > 9 ? 40 : 32; // on the shield's edge, on the side facing the field (below the top bar)
   c.save(); c.translate(x0, 0);
@@ -13290,7 +13368,7 @@ function drawBuilding(c, b, time) {
     c.beginPath(); c.ellipse(0, 12, 96, 158, 0, Math.PI, Math.PI * 2); c.stroke();
     c.strokeStyle = `rgba(${T.glow},${a * 0.5})`; c.lineWidth = 1;
     c.beginPath(); c.ellipse(0, 12, 96, 40, 0, 0, Math.PI); c.stroke();
-    if (b.type === 'hq' && typeof game !== 'undefined' && game && rwB6hq(game)) drawHolders(c, hqHolders(game, b.side), T, b.side); // v2.93 (batch 6c, b6hq): how many buildings hold the shield up
+    if (b.type === 'hq' && typeof game !== 'undefined' && game && rwB6hq(game)) drawHolders(c, hqHoldersShown(game, b.side), T, b.side); // v2.94 (6d, C1): the enemy's count from what the player has seen; v2.93 (batch 6c, b6hq): how many buildings hold the shield up
   }
   c.restore();
 }
@@ -15640,7 +15718,7 @@ function refreshPanel() {
   const tierTxt = (t, named) => P && t >= 2 ? (named ? `${P.name}: ` : '') + P.steps[t].short : d.tiers[t];
   $('bp').classList.toggle('wide', !!pick);
   $('bpPick').classList.toggle('hide', !pick);
-  $('bpNow').textContent = pick ? '' : `T${b.tier}: ${tierTxt(b.tier, true)}` + (b.type === 'hq' ? (b.shielded ? `. ${hqShieldTxt(game.rw)}${rwB6hq(game) ? `: ${hqHolders(game, b.side)} holding it up` : ''}.` : '. Shield is down!') : '') 
+  $('bpNow').textContent = pick ? '' : `T${b.tier}: ${tierTxt(b.tier, true)}` + (b.type === 'hq' ? (b.shielded ? `. ${hqShieldTxt(game.rw)}${rwB6hq(game) ? `: ${hqHoldersShown(game, b.side)} holding it up` : ''}.` : '. Shield is down!') : '') 
   if (b.tier >= 3) { setHTML($('bpNext'), '<span>Fully upgraded</span>'); up.disabled = true; up.textContent = 'Max tier'; up.classList.remove('poor'); return; }
   const nx = d.up[b.tier + 1];
   if (pick) { // the path picker: tap a path, then the Upgrade button confirms it
@@ -16771,7 +16849,7 @@ $('cxBody').addEventListener('click', e => {
    anything else a match records (it never ends, so nothing is written at its end either).
    The setup (TR.set): rows (1, or 2-3 for Compare: each row its own game, so units, shots and effects can't cross),
    items (every placed unit and building: row, side, type and the exact spot, in the order placed), each side's mode
-   (Attack, Hold), whether red fights back, whether the player commands blue, and the seed. Reset rebuilds every row from
+   (Attack, Hold), whether the right side (red until v2.94) fights back, whether the player commands the left side, and the seed. Reset rebuilds every row from
    the items with the same seed, so the same fight plays again tick for tick. Up to TR_MAX setups are saved by name on the
    device (localStorage extinctionEvent.range, in try/catch).
    Screen: the top bar holds Setup, Start/Pause, Reset, Clear, the speed (0.5×, 1×, 2×), the clock and Exit; the bottom
@@ -16785,7 +16863,7 @@ const TR_PRESETS = [ // one-tap enemy groups (red), every row at once in Compare
   { name: 'Elite', type: 'bastion', n: 3 }, { name: 'Air', type: 'aircraft', n: 4 },
 ];
 const TR_WY = [-96, 44]; // the world rows a Compare strip shows (the lane's depth, the units standing on it)
-const TR_SIDE = ['Blue', 'Red'];
+const TR_SIDE = ['Left', 'Right']; // v2.94 (batch 6d, Part C2): named like the start sides (Left, Right), whatever colours a row picks
 const trNewSet = () => ({ rows: 1, items: [], nid: 1, modes: ['attack', 'attack'], fight: true, ctl: false, seed: RANGE.seed, rw: [0, 1, 2].map(() => rwInit()) }); // rw (v2.82): each row's faction-rework switches
 const TR = { on: false, go: false, speed: 1, acc: 0, games: [], set: trNewSet(), tool: null, pick: { side: 0, fac: DEFAULT_FACTION, n: 5, all: false }, info: null, vfx: [], vfxCur: -1, home: null, clrArm: 0 };
 
@@ -16804,11 +16882,11 @@ function trVfxUse(k) {
 }
 
 // v2.82: a row's rework switches (REWORK's for a setup saved before them)
-const TR_RW = [['b2a', 'Batch 2a'], ['artDeploy', 'Deploy'], ['artTelegraph', 'Telegraph'], ['b2b', 'Batch 2b'], ['b3a', 'Batch 3a'], ['b3b', 'Batch 3b'], ['b4a', 'Batch 4a'], ['b4b', 'Batch 4b'], ['b5b', 'Batch 5b'], ['b5c', 'Batch 5c'], ['b6side', 'Batch 6b side'], ['b6art', 'Batch 6b Artillery'], ['b6hq', 'Batch 6c HQ shield'], ['b6c', 'Batch 6c tuning']]; // b6hq, b6c (v2.93); // b5c (v2.90); b5b (v2.88); b4b (v2.87); b2b (v2.83), b3a (v2.84), b3b (v2.85), b4a (v2.86)
+const TR_RW = [['b2a', 'Batch 2a'], ['artDeploy', 'Deploy'], ['artTelegraph', 'Telegraph'], ['b2b', 'Batch 2b'], ['b3a', 'Batch 3a'], ['b3b', 'Batch 3b'], ['b4a', 'Batch 4a'], ['b4b', 'Batch 4b'], ['b5b', 'Batch 5b'], ['b5c', 'Batch 5c'], ['b6side', 'Batch 6b side'], ['b6art', 'Batch 6b Artillery'], ['b6hq', 'Batch 6c HQ shield'], ['b6c', 'Batch 6c tuning'], ['b6ai', 'Batch 6d AI'], ['b6d', 'Batch 6d balance']]; // b6ai, b6d (v2.94); // b6hq, b6c (v2.93); // b5c (v2.90); b5b (v2.88); b4b (v2.87); b2b (v2.83), b3a (v2.84), b3b (v2.85), b4a (v2.86)
 function trRw(k) { const S = TR.set; if (!Array.isArray(S.rw)) S.rw = []; return S.rw[k] || (S.rw[k] = rwInit()); }
-const trRwTag = k => { const r = trRw(k), a = !r.b2a ? 'pre-2a' : r.artDeploy && r.artTelegraph ? '2a' : `2a${r.artDeploy ? ' deploy' : ''}${r.artTelegraph ? ' telegraph' : ''}${!r.artDeploy && !r.artTelegraph ? ' (no Artillery switches)' : ''}`; return `${a}, ${r.b2b ? '2b' : 'pre-2b'}, ${r.b3a ? '3a' : 'pre-3a'}, ${r.b3b ? '3b' : 'pre-3b'}, ${r.b4a ? '4a' : 'pre-4a'}, ${r.b4b ? '4b' : 'pre-4b'}, ${r.b5b ? '5b' : 'pre-5b'}, ${r.b5c ? '5c' : 'pre-5c'}, ${r.b6side ? '6b side' : 'pre-6b side'}, ${r.b6art ? '6b Artillery' : 'pre-6b Artillery'}, ${r.b6hq ? '6c HQ shield' : 'pre-6c HQ shield'}, ${r.b6c ? '6c tuning' : 'pre-6c tuning'}`; }; // v2.90: and 5c; v2.88: and 5b; v2.87: and 4b; // v2.86: and 4a; v2.83: and batch 2b; v2.84: and 3a; v2.85: and 3b
+const trRwTag = k => { const r = trRw(k), a = !r.b2a ? 'pre-2a' : r.artDeploy && r.artTelegraph ? '2a' : `2a${r.artDeploy ? ' deploy' : ''}${r.artTelegraph ? ' telegraph' : ''}${!r.artDeploy && !r.artTelegraph ? ' (no Artillery switches)' : ''}`; return `${a}, ${r.b2b ? '2b' : 'pre-2b'}, ${r.b3a ? '3a' : 'pre-3a'}, ${r.b3b ? '3b' : 'pre-3b'}, ${r.b4a ? '4a' : 'pre-4a'}, ${r.b4b ? '4b' : 'pre-4b'}, ${r.b5b ? '5b' : 'pre-5b'}, ${r.b5c ? '5c' : 'pre-5c'}, ${r.b6side ? '6b side' : 'pre-6b side'}, ${r.b6art ? '6b Artillery' : 'pre-6b Artillery'}, ${r.b6hq ? '6c HQ shield' : 'pre-6c HQ shield'}, ${r.b6c ? '6c tuning' : 'pre-6c tuning'}, ${r.b6ai ? '6d AI' : 'pre-6d AI'}, ${r.b6d ? '6d balance' : 'pre-6d balance'}`; }; // v2.90: and 5c; v2.88: and 5b; v2.87: and 4b; // v2.86: and 4a; v2.83: and batch 2b; v2.84: and 3a; v2.85: and 3b
 // v2.93 (batch 6c, Part C3): each row's team colours ([side 0, side 1] palette keys or 'random'; Blue and Red by default). The
-// sides keep their names (Blue, Red) in the Test Range's texts; Random rolls from the UI's own dice each time the rows are built
+// sides were named Blue and Red in the Test Range's texts until v2.94 (now Left and Right, TR_SIDE); Random rolls from the UI's own dice each time the rows are built
 function trTc(k) { const S = TR.set; if (!Array.isArray(S.tc)) S.tc = []; return S.tc[k] || (S.tc[k] = ['blue', 'red']); }
 function trTcRoll(k) {
   const [a0, b0] = trTc(k), a = PALETTE[a0] ? a0 : null, b = PALETTE[b0] ? b0 : null;
@@ -16870,14 +16948,14 @@ const trRows = k => TR.pick.all ? TR.games.map((g, i) => i) : [k];
 function trPreset(P) { // red, at red's spot, in every row
   const tool = { kind: 'u', type: P.type, fac: rangeFac(P.type) };
   trPlace(TR.games.map((g, i) => i), RANGE.spot[1], 0, tool, 1, P.n);
-  hideOverlay(); toast(`${P.name}: ${P.n} ${P.n > 1 ? trPl(P.type) : UDEF[P.type].name} for red${TR.games.length > 1 ? ' in every row' : ''}`, 'ok');
+  hideOverlay(); toast(`${P.name}: ${P.n} ${P.n > 1 ? trPl(P.type) : UDEF[P.type].name} for the right side${TR.games.length > 1 ? ' in every row' : ''}`, 'ok');
 }
 function trCopyRed() { // Compare: red of row 1 into every other row (the same spots), replacing what red had there
   const set = TR.set, src = set.items.filter(i => i.row === 0 && i.side === 1);
-  if (!src.length) { toast('Row 1 has no red units to copy', 'bad'); return; }
+  if (!src.length) { toast('Row 1 has no units on the right side to copy', 'bad'); return; }
   set.items = set.items.filter(i => i.row === 0 || i.side !== 1);
   for (let k = 1; k < set.rows; k++) for (const i of src) set.items.push(Object.assign({}, i, { id: set.nid++, row: k }));
-  TR.go = false; trBuild(); hideOverlay(); toast(`Red copied into all ${set.rows} rows`, 'ok');
+  TR.go = false; trBuild(); hideOverlay(); toast(`The right side copied into all ${set.rows} rows`, 'ok');
 }
 
 // Where things are: each row's strip on screen and its scale (one row: the normal view; Compare: strips top to bottom)
@@ -16921,7 +16999,7 @@ function trTap(x, y) {
 function trInfoOpen(k, id) { TR.info = { k, id }; trInfoFill(true); }
 function trState(g, e) {
   const sd = g.sides[e.side], d = e.kind === 'u' ? UDEF[e.type] : null, out = [];
-  if (sd.hush) return 'Not fighting back (red holds its fire)';
+  if (sd.hush) return 'Not fighting back (the right side holds its fire)';
   if (e.kind === 'b') return `T${e.tier}, ${bdOf(e).gun ? 'its gun fires at enemies in range' : 'no weapon'}`;
   const po = e.po || HOLD_PO, T = po.o === 'target' ? ctlEnt(g, po.id) : null, tg = e.tgt ? g.ents.find(x => x.id === e.tgt) : null;
   out.push(po.o === 'target' ? `attacking ${T && T.hp > 0 ? (T.kind === 'u' ? UDEF[T.type].name : bdOf(T).name) : 'its target'}` : po.o === 'go' ? (po.back ? 'falling back' : 'moving') : po.o === 'retreat' ? 'retreating' : po.o === 'attack' ? 'attacking down the lane' : 'holding');
@@ -17015,19 +17093,19 @@ function trSetup() {
   const tile = (kind, type, nm) => `<button class="${TR.tool && TR.tool.kind === kind && TR.tool.type === type && TR.tool.fac === fac ? 'on' : ''}" data-kind="${kind}" data-type="${type}"><canvas></canvas><span>${cxEsc(nm)}</span></button>`;
   overlay(`<div class="trhd"><h1>Test <span>Range</span></h1><small>The real game engine: place units, then Start</small><button class="ghost" id="trSX">Done</button></div>
     <div class="trg">
-      <span class="lbl">Place for</span><div class="trrow">${trSeg('trPs', [[0, 'Blue'], [1, 'Red']], side)}${trSeg('trPn', TR_COUNTS.map(c => [c, '×' + c]), P.n)}${cmp ? trSeg('trPr', [[0, 'Tapped row'], [1, 'Every row']], P.all ? 1 : 0) : ''}</div>
+      <span class="lbl">Place for</span><div class="trrow">${trSeg('trPs', [[0, 'Left'], [1, 'Right']], side)}${trSeg('trPn', TR_COUNTS.map(c => [c, '×' + c]), P.n)}${cmp ? trSeg('trPr', [[0, 'Tapped row'], [1, 'Every row']], P.all ? 1 : 0) : ''}</div>
       <span class="lbl">Faction</span>${trSeg('trPf', FACTION_KEYS.map(k => [k, factionName(k)]), fac)}
       <span class="lbl">Units</span><div class="trunits" id="trU">${units.map(t => tile('u', t, UDEF[t].name)).join('')}</div>
       <span class="lbl">Buildings</span><div class="trunits" id="trB">${blds.map(r => tile('b', r, BD(fac, r).name)).join('')}</div>
       <span class="lbl">Quick enemies</span><div class="trrow" id="trQ">${TR_PRESETS.map((p, i) => `<button class="trq" data-i="${i}">${cxEsc(p.name)}<small>${p.n} ${cxEsc(trPl(p.type))}</small></button>`).join('')}</div>
       <span class="lbl">Battle</span><div class="trrow">
-        <span class="trl">Blue</span>${trSeg('trMb', [['attack', 'Attack'], ['hold', 'Hold']], set.modes[0])}
-        <span class="trl">Red</span>${trSeg('trMr', [['attack', 'Attack'], ['hold', 'Hold']], set.modes[1])}</div>
-      <span class="lbl">Enemies fight back</span><div class="trrow">${trSeg('trFb', [[1, 'On'], [0, 'Off']], set.fight ? 1 : 0)}<small class="trn">Off: red neither moves nor fires, so blue's attack can be studied alone</small></div>
-      <span class="lbl">Control blue myself</span><div class="trrow">${trSeg('trCb', [[0, 'Off'], [1, 'On']], set.ctl && !cmp ? 1 : 0)}<small class="trn">${cmp ? 'Not in Compare mode' : 'On: blue takes the game\'s own controls (tap, double-tap, box, All, groups, tap the ground or an enemy, Attack, Hold, Retreat)'}</small></div>
-      <span class="lbl">Compare</span><div class="trrow">${trSeg('trCr', [[1, '1 row'], [2, '2 rows'], [3, '3 rows']], n)}${cmp ? '<button class="trq" id="trCp">Copy red to every row</button>' : ''}<small class="trn">Rows that can't touch: the same enemy, a different attacker in each</small></div>
+        <span class="trl">Left</span>${trSeg('trMb', [['attack', 'Attack'], ['hold', 'Hold']], set.modes[0])}
+        <span class="trl">Right</span>${trSeg('trMr', [['attack', 'Attack'], ['hold', 'Hold']], set.modes[1])}</div>
+      <span class="lbl">Enemies fight back</span><div class="trrow">${trSeg('trFb', [[1, 'On'], [0, 'Off']], set.fight ? 1 : 0)}<small class="trn">Off: the right side neither moves nor fires, so the left side's attack can be studied alone</small></div>
+      <span class="lbl">Control the left side myself</span><div class="trrow">${trSeg('trCb', [[0, 'Off'], [1, 'On']], set.ctl && !cmp ? 1 : 0)}<small class="trn">${cmp ? 'Not in Compare mode' : 'On: the left side takes the game\'s own controls (tap, double-tap, box, All, groups, tap the ground or an enemy, Attack, Hold, Retreat)'}</small></div>
+      <span class="lbl">Compare</span><div class="trrow">${trSeg('trCr', [[1, '1 row'], [2, '2 rows'], [3, '3 rows']], n)}${cmp ? '<button class="trq" id="trCp">Copy the right side to every row</button>' : ''}<small class="trn">Rows that can't touch: the same enemy, a different attacker in each</small></div>
       <span class="lbl">Rework switches</span><div class="trrw">${[...Array(n).keys()].map(k => `<div class="trrow">${cmp ? `<span class="trl">Row ${k + 1}</span>` : ''}${TR_RW.map(([key, nm]) => trSeg(`trRw${k}${key}`, [[1, nm + ' on'], [0, 'off']], trRw(k)[key] ? 1 : 0)).join('')}</div>`).join('')}<small class="trn">Batch 2a off: the Artillery, Bile Lobber and Rift Mortar as before the rework; on: Gorebore and Severance, and the Artillery's Deploy and Telegraph if those are on</small></div>
-      <span class="lbl">Team colours</span><div class="trrw">${[...Array(n).keys()].map(k => `<div class="trrow">${cmp ? `<span class="trl">Row ${k + 1}</span>` : ''}${[0, 1].map(s2 => `<span class="trl">${s2 ? 'Red side' : 'Blue side'}</span>` + trSeg(`trTc${k}${s2}`, [['random', 'Random'], ...PAL_KEYS.map(c => [c, PALETTE[c].name])], trTc(k)[s2])).join('')}</div>`).join('')}<small class="trn">Pairs too alike (and red with green) are never used together: the other side is rolled again</small></div>
+      <span class="lbl">Team colours</span><div class="trrw">${[...Array(n).keys()].map(k => `<div class="trrow">${cmp ? `<span class="trl">Row ${k + 1}</span>` : ''}${[0, 1].map(s2 => `<span class="trl">${s2 ? 'Right side' : 'Left side'}</span>` + trSeg(`trTc${k}${s2}`, [['random', 'Random'], ...PAL_KEYS.map(c => [c, PALETTE[c].name])], trTc(k)[s2])).join('')}</div>`).join('')}<small class="trn">Pairs too alike (and Red with Green) are never used together: the other side is rolled again</small></div>
       <span class="lbl">Setups</span><div class="trrow trsv"><input id="trNm" maxlength="24" placeholder="Name this setup" aria-label="Setup name"><button class="trq" id="trSv">Save</button>
         ${saved.map((x, i) => `<span class="trit"><button class="trq" data-load="${i}">${cxEsc(x.name)}</button><button class="trq trdel" data-del="${i}" aria-label="Delete ${cxEsc(x.name)}">×</button></span>`).join('')}<small class="trn">${saved.length}/${TR_MAX} saved on this device</small></div>
     </div>`);
@@ -17045,7 +17123,7 @@ function trSetup() {
   seg('trMb', k => trModeSet(0, k));
   seg('trMr', k => trModeSet(1, k));
   seg('trFb', k => trFight(k === '1'));
-  seg('trCb', k => { if (cmp) { trSetup(); toast('Control blue myself is off in Compare mode', 'bad'); return; } trCtl(k === '1'); });
+  seg('trCb', k => { if (cmp) { trSetup(); toast('Control the left side myself is off in Compare mode', 'bad'); return; } trCtl(k === '1'); });
   seg('trCr', k => trRowsSet(+k));
   for (let k = 0; k < n; k++) for (const [key] of TR_RW) seg(`trRw${k}${key}`, v => { trRw(k)[key] = v === '1'; TR.go = false; trBuild(); toast(`Row ${k + 1}: ${trRwTag(k)}`, 'ok'); });
   for (let k = 0; k < n; k++) for (const s2 of [0, 1]) seg(`trTc${k}${s2}`, v => { trTc(k)[s2] = v; TR.go = false; trBuild(); const c = TR.games[k].tc; toast(`Row ${k + 1}: ${PALETTE[c[0]].name} and ${PALETTE[c[1]].name}`, 'ok'); }); // v2.93
@@ -17062,7 +17140,7 @@ function trCtl(on) {
   TR.set.ctl = on; const g = TR.games[0]; g.sides[0].manual = on && TR.games.length === 1;
   ctlStart(); if (!on) rangeMode(g, 0, TR.set.modes[0]);
   hideOverlay(); trBarUI();
-  toast(on ? 'You command blue: tap your units, then the ground or an enemy' : 'Blue follows Attack / Hold again', 'ok');
+  toast(on ? 'You command the left side: tap your units, then the ground or an enemy' : 'The left side follows Attack / Hold again', 'ok');
 }
 function trRowsSet(n) {
   const set = TR.set, gone = set.items.filter(i => i.row >= n).length;
@@ -17115,7 +17193,7 @@ function trUI() { // every UI refresh: the readouts, the clock, the info card, t
     const R = rangeRead(g), T = trView(k), el = box.children[k];
     const who = s => { const c = {}; for (const e of g.ents) if (e.side === s && e.hp > 0) { const nm = e.kind === 'u' ? UDEF[e.type].name : bdOf(e).name; c[nm] = (c[nm] || 0) + 1; } const a = Object.entries(c).sort((x, y) => y[1] - x[1]); return a.length ? a.slice(0, 2).map(([nm, m]) => `${cxEsc(nm)} ×${m}`).join(', ') + (a.length > 2 ? ' …' : '') : 'none'; };
     const w = R.wipe ? ` · <b class="w">${TR_SIDE[R.wipe.side]} wiped out at ${fmtTime(R.wipe.t)}</b>` : '';
-    setHTML(el, `${n > 1 ? `<b>Row ${k + 1}</b> <i class="rw">${cxEsc(trRwTag(k))}</i> ` : trRw(0).b2a && trRw(0).artDeploy && trRw(0).artTelegraph && trRw(0).b2b && trRw(0).b3a && trRw(0).b3b && trRw(0).b4a && trRw(0).b4b && trRw(0).b5b && trRw(0).b5c && trRw(0).b6side && trRw(0).b6art && trRw(0).b6hq && trRw(0).b6c ? '' : `<i class="rw">${cxEsc(trRwTag(0))}</i> `}<span class="b">${who(0)}</span> vs <span class="r">${who(1)}</span> · damage <span class="b">${txN(Math.round(R.dmg[0]))}</span> / <span class="r">${txN(Math.round(R.dmg[1]))}</span> · kills <span class="b">${R.kills[0]}</span> / <span class="r">${R.kills[1]}</span>${w}`);
+    setHTML(el, `${n > 1 ? `<b>Row ${k + 1}</b> <i class="rw">${cxEsc(trRwTag(k))}</i> ` : trRw(0).b2a && trRw(0).artDeploy && trRw(0).artTelegraph && trRw(0).b2b && trRw(0).b3a && trRw(0).b3b && trRw(0).b4a && trRw(0).b4b && trRw(0).b5b && trRw(0).b5c && trRw(0).b6side && trRw(0).b6art && trRw(0).b6hq && trRw(0).b6c && trRw(0).b6ai && trRw(0).b6d ? '' : `<i class="rw">${cxEsc(trRwTag(0))}</i> `}<span class="b">${who(0)}</span> vs <span class="r">${who(1)}</span> · damage <span class="b">${txN(Math.round(R.dmg[0]))}</span> / <span class="r">${txN(Math.round(R.dmg[1]))}</span> · kills <span class="b">${R.kills[0]}</span> / <span class="r">${R.kills[1]}</span>${w}`);
     el.style.left = (T.F.l + 6) + 'px'; el.style.top = (n > 1 ? T.y0 + 2 : T.y1 - 20) + 'px'; // one row: the bottom (toasts show at the top); Compare: each strip's top, above its units el.style.maxWidth = (T.F.r - T.F.l - 12) + 'px';
   });
 }

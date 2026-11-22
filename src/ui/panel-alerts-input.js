@@ -67,7 +67,7 @@ function refreshPanel() {
   const tierTxt = (t, named) => P && t >= 2 ? (named ? `${P.name}: ` : '') + P.steps[t].short : d.tiers[t];
   $('bp').classList.toggle('wide', !!pick);
   $('bpPick').classList.toggle('hide', !pick);
-  $('bpNow').textContent = pick ? '' : `T${b.tier}: ${tierTxt(b.tier, true)}` + (b.type === 'hq' ? (b.shielded ? `. ${hqShieldTxt(game.rw)}${rwB6hq(game) ? `: ${hqHolders(game, b.side)} holding it up` : ''}.` : '. Shield is down!') : '') 
+  $('bpNow').textContent = pick ? '' : `T${b.tier}: ${tierTxt(b.tier, true)}` + (b.type === 'hq' ? (b.shielded ? `. ${hqShieldTxt(game.rw)}${rwB6hq(game) ? `: ${hqHoldersShown(game, b.side)} holding it up` : ''}.` : '. Shield is down!') : '') 
   if (b.tier >= 3) { setHTML($('bpNext'), '<span>Fully upgraded</span>'); up.disabled = true; up.textContent = 'Max tier'; up.classList.remove('poor'); return; }
   const nx = d.up[b.tier + 1];
   if (pick) { // the path picker: tap a path, then the Upgrade button confirms it

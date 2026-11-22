@@ -153,11 +153,11 @@ function newGame(diffKey, opts = {}) {
   const me = g.me | 0, foe = 1 - me; // v2.93: the opponent's AI (opts.persona, opts.ai, the difficulty) plays the side the player doesn't
   if (rwB6side(g)) { // v2.92 (batch 6b): each AI rolls its personality from its own stream (seeded by the match and its faction)
     side6Init(g);
-    g.sides[foe].persona = side6Persona(g, foe, () => rollPersona(opts.persona, presetFor(opts.ai, g.diffKey), g.sides[foe].faction, g.diffKey));
-    if (g.auto) g.sides[me].persona = side6Persona(g, me, () => rollPersona(opts.autoPersona, presetFor(opts.autoAi, g.autoDiff), g.sides[me].faction, g.autoDiff));
+    g.sides[foe].persona = side6Persona(g, foe, () => rollPersona(opts.persona, presetFor(opts.ai, g.diffKey), g.sides[foe].faction, g.diffKey, g));
+    if (g.auto) g.sides[me].persona = side6Persona(g, me, () => rollPersona(opts.autoPersona, presetFor(opts.autoAi, g.autoDiff), g.sides[me].faction, g.autoDiff, g));
   } else {
-  g.sides[foe].persona = rollPersona(opts.persona, presetFor(opts.ai, g.diffKey), g.sides[foe].faction, g.diffKey);
-  if (g.auto) g.sides[me].persona = rollPersona(opts.autoPersona, presetFor(opts.autoAi, g.autoDiff), g.sides[me].faction, g.autoDiff);
+  g.sides[foe].persona = rollPersona(opts.persona, presetFor(opts.ai, g.diffKey), g.sides[foe].faction, g.diffKey, g);
+  if (g.auto) g.sides[me].persona = rollPersona(opts.autoPersona, presetFor(opts.autoAi, g.autoDiff), g.sides[me].faction, g.autoDiff, g);
   }
   g.log = newLog(0); // the match log (never read by the SIM)
   g.stats = newStats(0); // v2.51: the stats tracker (never read by the SIM)

@@ -418,6 +418,20 @@ function drawArt(c, b, T, t, tier) { // the cached body (drawn live until it is 
   dmgLive5(c, b, t);
 }
 // v2.93 (batch 6c, b6hq): a badge on an HQ's shield: a small shield and the number of buildings holding it up
+// v2.94 (batch 6d, Part C1): the count shown on an HQ's shield. The player's own HQ: exact (hqHolders). The enemy's: only the
+// buildings the player knows of, the same knowledge the fog keeps for remembered buildings (its ghosts), counted when the
+// player has seen them finished (HQ_SEEN: ids seen standing and finished, kept by the UI, never read by the SIM). The shield
+// up and no holder known: '?'.
+const HQ_SEEN = { g: null, ids: new Set() };
+function hqHoldersShown(g, s) {
+  const me = myS();
+  if (s === me) return hqHolders(g, s);
+  if (HQ_SEEN.g !== g) { HQ_SEEN.g = g; HQ_SEEN.ids = new Set(); }
+  for (const e of g.ents) if (e.kind === 'b' && e.side === s && e.hp > 0 && hqHolds(e) && visibleTo(g, me, e)) HQ_SEEN.ids.add(e.id);
+  const gh = g.fog[me].ghosts; let n = 0;
+  for (const id in gh) { const k = gh[id]; if (k.side === s && k.type !== 'hq' && k.type !== 'bunker' && !(k.slot >= FWD_SLOT) && HQ_SEEN.ids.has(k.id)) n++; }
+  return n || '?';
+}
 function drawHolders(c, n, T, side) {
   const x0 = 72 * dirOf(side), y = -92, w = n > 9 ? 40 : 32; // on the shield's edge, on the side facing the field (below the top bar)
   c.save(); c.translate(x0, 0);
@@ -456,7 +470,7 @@ function drawBuilding(c, b, time) {
     c.beginPath(); c.ellipse(0, 12, 96, 158, 0, Math.PI, Math.PI * 2); c.stroke();
     c.strokeStyle = `rgba(${T.glow},${a * 0.5})`; c.lineWidth = 1;
     c.beginPath(); c.ellipse(0, 12, 96, 40, 0, 0, Math.PI); c.stroke();
-    if (b.type === 'hq' && typeof game !== 'undefined' && game && rwB6hq(game)) drawHolders(c, hqHolders(game, b.side), T, b.side); // v2.93 (batch 6c, b6hq): how many buildings hold the shield up
+    if (b.type === 'hq' && typeof game !== 'undefined' && game && rwB6hq(game)) drawHolders(c, hqHoldersShown(game, b.side), T, b.side); // v2.94 (6d, C1): the enemy's count from what the player has seen; v2.93 (batch 6c, b6hq): how many buildings hold the shield up
   }
   c.restore();
 }

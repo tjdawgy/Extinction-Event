@@ -33,6 +33,10 @@ async function lasso(page, x0, y0, x1, y1) { // v2.78: the rectangle box: hold, 
   await page.mouse.up(); await page.waitForTimeout(80);
 }
 const selIds = page => page.evaluate(() => [...SELN].sort((a, b) => a - b));
+// v2.94 (batch 6d, C3): wait for a condition instead of assuming a click has already landed (the command test failed once
+// while self-play loaded the machine): the whole army selected (the command bar up), and every unit carrying the order
+const selected = page => page.waitForFunction(() => SELN.size > 0 && SELN.size === myUnits().length && !document.getElementById('cmdbar').classList.contains('hide'), null, { timeout: 15000 });
+const ordered = (page, o) => page.waitForFunction(o => myUnits().every(e => e.po && e.po.o === o), o, { timeout: 15000 });
 
 test('selecting: tap, tap more, double-tap a type, lasso, All, a lane; never enemies or relic guards; clearing', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
@@ -114,16 +118,19 @@ test('commands: move to a tapped spot (then Hold), Attack down the lane, Hold, R
   await page.evaluate(() => __run(12));
   assert.ok(await page.evaluate(([u, v]) => myUnits().every(e => e.po.o === 'hold' && Math.hypot(e.u - u, e.v - v) < 65), W), 'there, holding');
   // Attack: down the north lane
-  await page.click('#lanes [data-k="all"]'); await page.click('#cmdbar [data-c="attack"]'); await page.click('#lpick button[data-k="0"]'); // v2.77: the lane picker
+  await page.click('#lanes [data-k="all"]'); await selected(page); await page.click('#cmdbar [data-c="attack"]'); await page.click('#lpick button[data-k="0"]'); // v2.77: the lane picker
+  await ordered(page, 'attack'); // v2.94: waits for the order rather than a fixed time (it failed once under load)
   assert.deepStrictEqual(await selIds(page), []);
   await page.evaluate(() => __run(6));
   assert.ok(await page.evaluate(() => myUnits().every(e => e.po.o === 'attack' && e.u > 860 && e.v < -150)), 'advancing down the north lane');
   // Hold: they stop
-  await page.click('#lanes [data-k="all"]'); await page.click('#cmdbar [data-c="hold"]');
+  await page.click('#lanes [data-k="all"]'); await selected(page); await page.click('#cmdbar [data-c="hold"]');
+  await ordered(page, 'hold'); // v2.94: the Hold order has landed before the positions are read
   const at = await page.evaluate(() => myUnits().map(e => e.u)); await page.evaluate(() => __run(3));
   assert.ok(await page.evaluate(a => myUnits().every((e, i) => e.po.o === 'hold' && Math.abs(e.u - a[i]) < 12), at), 'holding where they stood');
   // Retreat: to the base rally point
-  await page.click('#lanes [data-k="all"]'); await page.click('#cmdbar [data-c="retreat"]');
+  await page.click('#lanes [data-k="all"]'); await selected(page); await page.click('#cmdbar [data-c="retreat"]');
+  await ordered(page, 'retreat');
   await page.evaluate(() => __run(30));
   assert.ok(await page.evaluate(() => { const F = ctlBase(0); return myUnits().every(e => e.po.o === 'hold' && Math.hypot(e.u - F.u, e.v - F.v) < 70); }), 'back at the base rally point, holding');
   void ids;
