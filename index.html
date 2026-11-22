@@ -1741,7 +1741,7 @@ liveTiers(BDEF_AX.turret, (d, t) => { const gn = d.gun[t]; return [null, `Beam $
   `Split Lattice: up to ${gn.split} beams of ${txDps(gn)} damage/s, ${txN(gn.range)} range, ${txAir(gn)}`,
   `Event Horizon: heavy ${txN(gn.dmg)}-damage hits (${txDps(gn)}/s), ${txN(gn.range)} range, more building damage, ${txAir(gn)}`][t]; });
 liveStr(BDEF.techlab.tiers, 3, nanoTxt);
-liveTiers(BDEF.sigA, (d, t) => [null, `Salvage returns ${txP(b6Yard({ rw: REWORK }, 'pct'))} of a unit's credit cost (base ${txP(SALVAGE.pct)})`,
+liveTiers(BDEF.sigA, (d, t) => [null, b6Yard({ rw: REWORK }, 'pct') > SALVAGE.pct ? `Salvage returns ${txP(b6Yard({ rw: REWORK }, 'pct'))} of a unit's credit cost (base ${txP(SALVAGE.pct)})` : `Salvage keeps its ${txP(SALVAGE.pct)} of a unit's credit cost (the Yard's worth is its higher cap, energy and Overdrive)`, // v2.94: with b6d the Yard's share is the base share
   `Salvage cap ${txX(YARD.cap)} (${txN(SALVAGE.cap * YARD.cap)} ${perMin()}); salvage also returns energy worth ${txP(YARD.energy)} of the credits`,
   `Overdrive: salvage over the cap speeds your production +${txP(YARD.od)} for ${txN(YARD.odDur)} s`][t]);
 liveTiers(BDEF.sigB, (d, t) => { const G = BDEF.bunker.gun; return [null, `A bunker on every field node you hold (${txAir(G[1])})`,

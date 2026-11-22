@@ -920,7 +920,117 @@ section 11.
 - The Leaper and Riftstalker targets (about 100 per 100 spent) are not met (91, 74); the Leaper already beat equal-cost Marines
   head-on before the change. The Riftstalker used a second value (its armour table), explained above.
 - Bloomhost and the Axiarchs land outside 40-60% with both switches on; not tuned further, as asked.
-- The Test Range keeps the side names Blue and Red in its texts whatever colours a row picks.
+- The Test Range kept the side names Blue and Red in its texts whatever colours a row picks (renamed Left and Right in batch 6d).
+
+## Batch 6d: the AI personality fix, then faction balance
+
+**Batch 6d (v2.94): three parts, in order.** Part A fixed the two losing Hard personalities behind `REWORK.b6ai`, Part B tuned four
+values behind `REWORK.b6d`; both in src/sim/rework-6d.js, per game in `g.rw`, on by default, saved only when on, with Test Range
+switches ("Batch 6d AI", "Batch 6d balance"). With both off the game is v2.93 exactly: every pinned set matches under its own
+switches (the old sets, FP_V292M, FP_V293H, FP_V293; every older replay now sets b6ai and b6d off). Recorded: FP_V294A (b6ai on,
+b6d off) and FP_V294 (both on), tests/determinism.test.js. Part C changes no match. Measured with 6c's persona-balanced self-play
+(audit/sim/selfplay-6c.js, 162 Hard vs Hard matches), now with per-side time series (audit/sim/audit6a.js: income, army, bank and
+supply every minute; idle production, banking, attack stance; Salvage; damage by dealer and target). Tests: tests/rework-6d.test.js,
+tests/shield6d-ui.test.js, tests/testrange-sides6d.test.js.
+
+### Part A1: why the Turtle and the Economist lost (audit/logs-p1/selfplay6d-base/A1.md)
+
+On v2.93 (162 matches, identical to 6c's run): Boomer 68%, Economist 33%, Turtle 34%; against the Boomer the Economist went 1-32-3
+and the Turtle 7-26-3. Both took only Hard's two Refineries (the Economist's plan names three; Hard's cap of 2 plus its `refDelta`
+of 0 cut the third) and upgraded them late: income at 4:00 Boomer 38, Economist 26, Turtle 14; first tier 3 at 3:19, 3:41 and
+6:42. The Boomer's first base attack (4:01) met armies half its size (1,380 against 743 and 400). Production stood idle 56% and 65%
+of the match (Boomer 40%) for lack of credits, energy and supply (the Turtle at 19/28 supply at 6:00, the Economist near its cap
+with money banked); the AI's `calm` rule held every upgrade while an enemy was near. The Turtle attacked the base two minutes
+later than the Boomer (6:00), spent 30% of the match on attack stance (54%) and lost 8 of 63 without ever attacking the base.
+**Correction:** 6c's "natural mix" weighted the Axiarchs' Hard pool as 2/3 Turtle; the code's pool (since v2.43) is Boomer,
+Boomer, Turtle. With the true pool v2.93's normal-play figures are Last Fist 60%, Bloomhost 40%, Axiarchs 29% (6c said 19%).
+
+### Part A2: the fix (b6ai)
+
+Hard only (Easy and Normal keep their pools and play); the Boomer is unchanged.
+
+| | v2.93 | b6ai |
+|---|---|---|
+| Hard pools | Last Fist Boomer, Boomer, Economist, Turtle; Bloomhost Boomer ×3, Turtle; Axiarchs Boomer, Boomer, Turtle | every faction Boomer, Economist, Turtle (`B6AI.pool`) |
+| Economist plan | Barracks, Refinery ×3 (the third cut by the cap), Reactor, War Factory, Habitat, Tech Lab | the Boomer's opening: Refinery ×3, Barracks, Reactor, Habitat, War Factory, Tech Lab, `refDelta` 1 |
+| Economist economy | upgrades shift -30 to -60 s, first: Refinery T2, Tech Lab T2, Refinery T3; army limit 50-60% to 2:30 | shift -75 s; Refineries T2 ×3, Reactor T2, Habitat T2, Barracks T2, Refineries T3, Reactor T3, Habitat T3 …; army limit 35% to 2:30 |
+| Economist spending and attack | buys what it can past 900 credits | past 600 (`B6AI.eco.cap`); a base attack from 5:00 once its army is 1.1× the enemy's it knows of and at least 900 (`lead`, `min`) |
+| Turtle plan | Barracks, Refinery ×2, Turret, Reactor, Habitat, War Factory, Tech Lab | Refinery, Barracks, Refinery, Turret, Refinery, Reactor, Habitat, War Factory (`refDelta` 1; no Tech Lab: a ground fortress) |
+| Turtle economy | first upgrades Turret T2, HQ T2; army limit 100% | Refineries T2 ×3, Habitat T2, Turret T2, Reactor T2, Barracks T2, War Factory T2, HQ T2, then T3s; shift -60 s; army limit 35% to 2:30 |
+| Turtle attack | a 1.2-1.4× edge, a 1.1-1.3× wave, a deadline of 11:00-14:00 | edge 1.0; deadline 9:00; a base attack at 2,500 army value with an even army (`army`), from 9:00 at 0.9× (`at`), and right after a defence it won: enemies in its base in the last 25 s, none now, its army at least theirs and 600 (`won`, `counter`) |
+| both, under threat | no upgrades while an enemy is near (`calm`) | they keep upgrading (`B6AI.calmUp`) |
+
+Tried first and measured worse (61 matches against the Boomer, of a planned 72): only a third Refinery, earlier upgrades, the spend cap and the
+attack rules, keeping the old openings: Economist 7-19-3, Turtle 4-22-4 against the Boomer (energy and supply still ran out).
+
+### Part A3: measured (audit/logs-p1/selfplay6d-a3/A3.md; b6ai on, b6d off)
+
+Personalities (target 40-60%: met): Boomer 68% → 44% (35-53), Economist 33% → 52% (43-61), Turtle 34% → 44% (35-53); against the
+Boomer 17-16-3 each. Factions: Last Fist 77% (68-84), Bloomhost 41% (32-50), Axiarchs 21% (15-30) (normal play the same: equal pools).
+
+### Part B1: why Last Fist won (audit/logs-p1/selfplay6d-a3/B1.md)
+
+1. **Volume:** it earned 17-18% more a minute (2,087 against 1,759 and 1,780; Salvage 12% of its earnings, 14 Overdrive starts) and
+   spent 73% on units (60%, 55%): 32% more on units than either opponent, while trading worse per credit (killed value per 100
+   spent 71 and 69, against 104 and 101 for its opponents). The income gap opens at 3:00-4:00, when the first field fight decides
+   who holds the three field nodes (in a traced Boomer mirror Last Fist held all three at 4:00: 33 credits a second against 21).
+2. **The Tank:** 24% of its damage in matches it won, its most-funded unit (542,755 spent), the top dealer against both
+   opponents' front lines (49% of it into Bulwarks, 24% into Bastions) and their buildings.
+3. **The Axiarchs can't turn income into an army:** their units are 26% energy by cost (19% for the others); they bank 1,000+ for
+   22% of the match; peak army 14; their most-funded units fail (Shardling 78 damage per 100 spent on 344,720 spent, Riftstalker
+   64); 5 and 3 wins of 36 on Two-Lane and Three-Lane.
+4. **Artillery:** 400 damage per 100 spent, the most of any unit massed, beyond its targets' reach.
+
+### Part B2: the four values (b6d)
+
+Per game through `B6D` (`b6Yard` for the Salvage Yard, `rwD` and `rw6dSpawn` for units; UDEF untouched). Screened first on
+54-match Latin-square subsets (each faction plays each personality once per map and side), against the same matches of A3:
+
+| package | Last Fist | Bloomhost | Axiarchs |
+|---|---|---|---|
+| A3 (none) | 81% | 33% | 25% |
+| Yard 0.07, Tank 36, Artillery 36 (on 50 matches) | 77% | 42% | 28% |
+| … and Shardling damage 14 | 69% | 47% | 28% |
+| Yard 0.07, Tank 34, Artillery 34, Shardling damage 15 | 72% | 44% | 28% |
+| Yard 0.07, Tank 34, Artillery 34, Shardling health 120 | 67% | 36% | 33% |
+
+| value | cause | before | after | effect (A3 → B3) |
+|---|---|---|---|---|
+| Salvage Yard share (`B6D.yard.pct`) | 1 | 0.14 | 0.07 | Salvage 191 → 108 credits a minute, Overdrive starts 14 → 0; Last Fist earns 2,089 → 2,002 a minute |
+| Tank damage (`B6D.unit.tank.dmg`) | 2 | 42 | 32 | 242 → 179 damage per 100 spent; 24% → 17% of Last Fist's winning damage |
+| Shardling health (`B6D.unit.shardling.hp`; shields 75 kept) | 3 | 80 | 120 | 78 → 105 damage per 100 spent; 10% → 12% of the Axiarchs' winning damage |
+| Artillery salvo (`B6D.unit.artillery.dmg`; deploy, telegraph, range kept) | 4 | 45 (b6art; 60 before 6b) | 34 | 400 → 361 damage per 100 spent |
+
+Identities kept: the Artillery stays Last Fist's only long-range unit (440 range, deploy and telegraph untouched); the Bloomhost are
+untouched; the Axiarchs' Shardling stays a 2-supply, shielded duelist with its parry. 6c's tuning is untouched (B1 did not point there).
+
+### Part B3: measured (audit/logs-p1/selfplay6d-b3/B3.md; both on)
+
+162 matches, 0 errors. Last Fist 62% (53-71), Bloomhost 43% (34-52), Axiarchs 28% (20-37): Bloomhost inside 42-58%, Last Fist and
+the Axiarchs not. Pairings: Last Fist vs Bloomhost 65% (51-76), vs the Axiarchs 59% (46-71), Bloomhost vs the Axiarchs 63%
+(50-75): all within 35-65%. On Classic the three are level (47 / 39 / 50%); the Axiarchs win 17% on each lane map. Personalities
+with both on: 47 / 40 / 45%. Median length 15:21 → 16:34.
+
+### Part C: small fixes (no gameplay change, no switch)
+
+- **C1, the enemy shield count:** the enemy HQ's count (on its shield and in its info card) counts only the holders the player has
+  seen finished, as the fog remembers them (its ghosts; `hqHoldersShown`, `HQ_SEEN`, kept by the UI, never read by the SIM); "?" when
+  the shield is up and none is known. The player's own count stays exact. On Classic a view of the enemy HQ always shows its front
+  pads too (one-dimensional fog), so "?" with the HQ in view shows on the lane maps (screenshots: docs/screenshots/rework6d-shield-*.png).
+- **C2, Test Range labels:** the sides are Left and Right everywhere in the Test Range (bar, setup, info card, tool line, toasts);
+  the Team colours list keeps colour names (rework6d-testrange-*.png).
+- **C3, flaky browser tests:** the controls test's commands (tests/controls-ui.test.js) waited a fixed time after a click; it now
+  waits for the selection and for each order to land. The start-side fight (tests/start-side-6c.test.js) tapped an enemy that real
+  time had already killed under load; the enemies now spawn just out of reach and the tap picks one still standing. Both reproduced
+  under a self-play load, both pass under it now.
+
+### Departures
+
+- The faction target (42-58%) is met for Bloomhost only; Last Fist (62%) and the Axiarchs (28%) are outside. Four values were the
+  limit. The Axiarchs' gap is the lane maps (17% on each; 50% on Classic). Next lever: the Axiarch AI on lane maps (keep a small
+  army on one lane and move it as one), then their energy squeeze (an Axiarch Reactor yield or their units' energy costs).
+- The Turtle no longer builds a Tech Lab (its eight pads go to three Refineries and a Turret); it plays as a ground fortress.
+- b6ai's personality changes apply to Hard only; Easy and Normal Turtles and Economists play as before.
 
 ## Unchanged (already distinct)
 
@@ -981,6 +1091,7 @@ buildings: batch 5d, v2.91, with team colour on their largest surfaces).
 6. Art batch: unchanged units and buildings in the new style (units in 5a-5c; every building in 5d, done v2.91).
 
 7. Batch 6a (v2.91): the balance audit (docs/BALANCE_AUDIT.md). Batch 6b (v2.92): the side-bias fix (`b6side`) and Artillery counterplay
-   (`b6art`).
+   (`b6art`). Batch 6c (v2.93): the HQ shield rule (`b6hq`) and the first unit tuning (`b6c`). Batch 6d (v2.94): the AI
+   personality fix (`b6ai`) and four faction values (`b6d`).
 
 Then: the paused balance pass, with all three factions reworked.

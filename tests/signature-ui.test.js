@@ -7,6 +7,7 @@ const { findPlaywright, PHONE, NARROW, openPage } = require('./browser-kit');
 
 const pw = findPlaywright();
 const skip = !pw && 'playwright not installed';
+const REWORK_B6D = true; // v2.94: the new-game default (batch 6d's Yard share)
 let browser;
 test.before(async () => { if (pw) browser = await pw.chromium.launch(); });
 test.after(async () => { if (browser) await browser.close(); });
@@ -37,7 +38,7 @@ test('Build tab: Salvage Yard and Fortification Depot cards for Last Fist, each 
   assert.ok(r.names.includes('Salvage Yard') && r.names.includes('Fortification Depot'), r.names.join(', '));
   assert.strictEqual(r.yardCost, 'Already built'); assert.ok(r.yardLocked);
   assert.match(r.again, /already built/);
-  assert.match(r.info.sigA.sub, /one at a time/); assert.match(r.info.sigA.body, /14%/); // v2.39: the balance pass (Yard 20% → 14%) assert.match(r.info.sigA.body, /Overdrive/);
+  assert.match(r.info.sigA.sub, /one at a time/); assert.match(r.info.sigA.body, REWORK_B6D ? /keeps its 7%/ : /14%/); // v2.39: the balance pass (Yard 20% → 14%); v2.94: batch 6d (on by default) keeps the base 7% assert.match(r.info.sigA.body, /Overdrive/);
   assert.match(r.info.sigB.body, /Node Bunker/); assert.match(r.info.sigB.body, /45 s/);
   assert.strictEqual(r.info.bunker.name, 'Node Bunker'); assert.match(r.info.bunker.body, /Ground only/); assert.match(r.info.bunker.body, /no Salvage/);
   assert.match(r.after, /150/, 'rebuildable after the loss');

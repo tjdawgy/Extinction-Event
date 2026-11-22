@@ -12,7 +12,7 @@ const seenEv = (g, set, types) => { for (const e of g.events) if (!set.has(e)) {
 
 test('switch: per game; b3b off plays the v2.84 units (UDEF untouched), on plays the batch\'s definitions; saves', () => {
   const s = loadSim();
-  const on = s.rangeGame({ factions: ['bloomhost', 'axiarchs'] }), off = s.rangeGame({ factions: ['bloomhost', 'axiarchs'], rework: { b3b: false } });
+  const on = s.rangeGame({ factions: ['bloomhost', 'axiarchs'], rework: { b6d: false } }), off = s.rangeGame({ factions: ['bloomhost', 'axiarchs'], rework: { b3b: false, b6d: false } }); // v2.94: batch 6d off (its Shardling health, tests/rework-6d.test.js)
   assert.ok(s.rwB3b(on) && !s.rwB3b(off));
   for (const t of ['dreadthorn', 'bastion', 'shardling', 'bulwark']) assert.strictEqual(s.rwD(off, t), s.UDEF[t], `off: the plain UDEF entry (${t})`);
   assert.ok(s.rwD(on, 'dreadthorn').trample && !s.rwD(on, 'dreadthorn').burst && s.UDEF.dreadthorn.burst, 'no spine burst in b3b; UDEF keeps it');

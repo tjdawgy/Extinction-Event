@@ -674,3 +674,60 @@ Sovereign 241, Ruinmaw 197, Leviathan 144, Voidcarrier 84, Cloudwing 57. Artille
 7. **Ranged backline value:** Artillery 375, Shardstorm 357, Worldbreaker 348.
 Done in 6c: the Bastion barrier (+53% to break with Tanks and Marines), brood fights (58-42 against equal-cost Marines), the
 Leviathan (0.62-0.67 of its pre-rework damage per second).
+
+## 12. After batch 6d (v2.94): the AI personality fix and faction balance
+
+Persona-balanced self-play (audit/sim/selfplay-6c.js, 162 Hard vs Hard matches) on v2.93 (audit/logs-p1/selfplay6d-base/, identical
+to 6c's both-on run), with b6ai on and b6d off (audit/logs-p1/selfplay6d-a3/) and with both on (audit/logs-p1/selfplay6d-b3/), 0
+errors each; each folder has report6c.md (95% Wilson intervals), diag-a1.md (timings, income, army, spending per personality) and
+diag-b1.md (curves, decision times, the damage matrix, per-unit damage per credit). Reports: selfplay6d-base/A1.md,
+selfplay6d-a3/A3.md and B1.md, selfplay6d-b3/B3.md. Values and departures: docs/FACTION_REWORK.md "Batch 6d".
+
+**Correction to section 10:** the Axiarchs' Hard pool is Boomer, Boomer, Turtle (since v2.43), not 1/3 Boomer, 2/3 Turtle; with the
+true pools v2.93's normal-play figures are Last Fist 60% (47-72), Bloomhost 40% (26-55), Axiarchs 29% (18-44).
+
+### 12.1 Personalities
+
+| personality | v2.93 | b6ai on | both on |
+|---|---|---|---|
+| Boomer | 73-23-12, 68% (58-76) | 47-49-12, 44% (35-53) | 51-45-12, 47% (38-57) |
+| Economist | 36-60-12, 33% (25-43) | 56-48-4, 52% (43-61) | 43-47-18, 40% (31-49) |
+| Turtle | 37-63-8, 34% (26-44) | 47-53-8, 44% (35-53) | 49-51-8, 45% (36-55) |
+
+### 12.2 Factions
+
+| faction | v2.93 | b6ai on | both on | normal play, both on (equal pools) |
+|---|---|---|---|---|
+| Last Fist | 70-25-13, 65% (55-73) | 83-18-7, 77% (68-84) | 67-29-12, 62% (53-71) | 62% (53-71) |
+| Bloomhost | 39-59-10, 36% (28-46) | 44-55-9, 41% (32-50) | 46-48-14, 43% (34-52) | 43% (34-52) |
+| Axiarchs | 37-62-9, 34% (26-44) | 23-77-8, 21% (15-30) | 30-66-12, 28% (20-37) | 28% (20-37) |
+| Last Fist vs Bloomhost (first named) | 39-8-7 | 43-7-4, 80% | 35-12-7, 65% (51-76) | |
+| Last Fist vs Axiarchs | 31-17-6 | 40-11-3, 74% | 32-17-5, 59% (46-71) | |
+| Bloomhost vs Axiarchs | 31-20-3 | 37-12-5, 69% | 34-13-7, 63% (50-75) | |
+| side 1 share of decided | 49% | 49% (41-57) | 50% (42-58) | |
+| median length | 15:06 | 15:21 | 16:34 | |
+| ended by an HQ destroyed | 90% | 93% (87-96) | 88% (82-92) | |
+
+Per map with both on: Last Fist 47 / 67 / 72% (Classic / Two-Lane / Three-Lane), Bloomhost 39 / 44 / 44%, the Axiarchs 50 / 17 / 17%.
+
+### 12.3 The four b6d values (damage and killed value per 100 spent; trained)
+
+| value | before → after | unit, b6ai on → both on |
+|---|---|---|
+| Salvage Yard share | 0.14 → 0.07 | Salvage 191 → 108 credits a minute per Last Fist side; Overdrive starts 14 → 0 |
+| Tank damage | 42 → 32 | Tank 242 / 54 / 1,487 → 179 / 40 / 1,407 |
+| Shardling health | 80 → 120 | Shardling 78 / 27 / 4,309 → 105 / 33 / 4,450 |
+| Artillery salvo | 45 → 34 | Artillery 400 / 94 / 643 → 361 / 73 / 569 |
+
+### 12.4 Ranked list, updated
+
+1. **Axiarchs on the lane maps** (17% on Two-Lane and Three-Lane with both on; 50% on Classic). Their army peaks at about 15 units
+   and is split across lanes. *Lever:* the Axiarch AI's lane play (`aiLanes`, `aiLanes3`: one army, one lane), not a unit value.
+2. **Axiarch energy squeeze:** their units are 26% energy by cost (19% for the others) on the same Reactors; they bank 1,000+ credits
+   for 22% of a match with production idle 44%. *Lever:* an Axiarch Reactor yield or the energy cost of the Lancer and Shardling.
+3. **Last Fist still above 58%** (62%), mostly on the lane maps (67%, 72%) and against Bloomhost (65%): it wins the first field fight
+   at 3:00-4:00 and the nodes with it. *Lever:* its early army (Marine and Heavy numbers) or node income, measured against Bloomhost.
+4. **Divers** (Riftstalker 76, Leaper 107 per 100 spent with both on) and the Bilecaster (78) still trade below their role.
+5. **Top-tier air rare and the Tech Lab skipped** by the batch 6d Turtle (by design) and often by others: AI tech timing.
+6. **Ranged backline:** Artillery 361 per 100 spent (target about 300), Sniper 355, Lancer 270 (both on).
+Done in 6d: the personalities (each 40-60%), Bloomhost into 42-58%, every pairing within 35-65%.
