@@ -10,7 +10,7 @@
 // any update (acid and bile pools, pustules, meteors) is credited by weapon (WEAP) or left as "?weapon".
 module.exports = `
 (function () {
-  const A = this.__sim.a6 = { dmg: [{}, {}], kills: [{}, {}], kval: [{}, {}], dmgB: [{}, {}], unk: [{}, {}] };
+  const A = this.__sim.a6 = { dmg: [{}, {}], kills: [{}, {}], kval: [{}, {}], dmgB: [{}, {}], unk: [{}, {}], mat: [{}, {}] }; // mat (v2.94, batch 6d B1): damage by dealer type, then by target type (B:<type> a building)
   const WEAP = { thorns: 'thornback', parry: 'shardling', blade: 'shardling', pustule: 'broodtyrant', tyrglob: 'broodtyrant', bile: 'bilecaster',
     bileglob: 'bilecaster', acidpool: 'acid pools', miteacid: 'mite', exile: 'severance', sever: 'severance', erupt: 'gorebore', gorebite: 'gorebore',
     ruinbite: 'ruinmaw', ruinchew: 'ruinmaw', latch: 'leaper', trample: 'dreadthorn', landmaw: 'worldrender', rupture: 'worldbreaker', meteor: 'meteor', hqgun: 'B:hq', hqbeam: 'B:hq' };
@@ -36,7 +36,7 @@ module.exports = `
     const h0 = Math.max(0, e.hp) + (e.shp || 0) + (e.osh || 0);
     const r = dm.apply(this, arguments);
     const h1 = Math.max(0, e.hp) + (e.shp || 0) + (e.osh || 0);
-    if ((fromSide === 0 || fromSide === 1) && h0 > h1) { const k = who(weapon, fromSide); add(A.dmg[fromSide], k, h0 - h1); if (e.kind === 'b') add(A.dmgB[fromSide], k, h0 - h1); }
+    if ((fromSide === 0 || fromSide === 1) && h0 > h1) { const k = who(weapon, fromSide); add(A.dmg[fromSide], k, h0 - h1); add(A.mat[fromSide][k] || (A.mat[fromSide][k] = {}), tagOf(e), h0 - h1); if (e.kind === 'b') add(A.dmgB[fromSide], k, h0 - h1); }
     return r;
   };
   kill = function (g, e, by, weapon) {

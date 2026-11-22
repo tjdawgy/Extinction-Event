@@ -12,6 +12,7 @@ const { fork } = require('child_process'), fs = require('fs'), path = require('p
 const arg = (n, d) => { const i = process.argv.indexOf('--' + n); return i > 0 ? process.argv[i + 1] : d; };
 const F = ['lastfist', 'bloomhost', 'axiarchs'], P = ['boomer', 'economist', 'turtle'];
 const MAPS = arg('maps', 'classic,twolane,threelane').split(','), ALLMAPS = ['classic', 'twolane', 'threelane'];
+const only = arg('only', '') ? new Set(arg('only').split(',')) : null; // v2.94 (batch 6d): --only boomer:turtle,turtle:boomer keeps those personality pairs (p0:p1)
 const out = arg('out', path.join(__dirname, '..', 'logs-p1', 'selfplay6c-a1')), maxT = arg('maxT', '1700'), J = +arg('jobs', '4'), rw = arg('rw', '');
 fs.mkdirSync(out, { recursive: true });
 const jobs = [];
@@ -20,7 +21,7 @@ for (const map of MAPS) for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) 
   const [lo, hi, plo, phi] = a < b ? [a, b, pa, pb] : [b, a, pb, pa];
   const pairIdx = lo === 0 ? hi - 1 : 2; // LF-BH 0, LF-AX 1, BH-AX 2
   const seed = 600 + pairIdx * 27 + ALLMAPS.indexOf(map) * 9 + plo * 3 + phi;
-  jobs.push({ map, f0: F[a], f1: F[b], p0: P[pa], p1: P[pb], seed });
+  if (!only || only.has(P[pa] + ':' + P[pb])) jobs.push({ map, f0: F[a], f1: F[b], p0: P[pa], p1: P[pb], seed });
 }
 const key = j => [j.map, j.f0, j.f1, j.seed, j.p0, j.p1].join();
 const file = path.join(out, 'matches.jsonl'), done = new Set();

@@ -1,0 +1,11 @@
+# v2.93 build, newGame hard, persona forced; per snapshot: game second, side, personality, income (credits, energy per s), bank, supply, node owners, buildings (type+tier; * unfinished, ^ upgrading). Classic: Axiarch Turtle vs Last Fist Boomer (seed 610), Bloomhost Economist vs Last Fist Boomer (seed 605).
+240 0 turtle inc 11.0 3.0 res 189 66 pop 12/22 nodes ,1,1 | hq1 turret2 reactor1 habitat1 barracks1 refinery1 factory1 techlab1 refinery1
+240 1 boomer inc 29.0 11.5 res 111 245 pop 28/28 nodes ,1,1 | refinery2 habitat2 barracks2 hq1 reactor2^ refinery2 factory2 refinery2 reactor3
+360 0 turtle inc 11.0 3.0 res 149 91 pop 12/22 nodes ,1,1 | refinery1 refinery1 sigA1* turret2 hq2 reactor1 factory1 techlab1 habitat1 barracks1
+360 1 boomer inc 29.0 13.0 res 62 526 pop 31/34 nodes ,1,1 | refinery2 hq2 habitat3 refinery2 sigA2 reactor3 barracks3 reactor3 factory3 refinery2
+480 0 turtle inc 15.0 4.0 res 78 95 pop 20/22 nodes 1,1,1 | hq2 barracks2 turret2 factory1^ reactor2 sigA1 refinery2 refinery2 techlab1 habitat1
+480 1 boomer inc 42.0 10.0 res 555 946 pop 34/34 nodes 1,1,1 | sigA3 habitat1* barracks3 refinery3 refinery3 reactor3 refinery3 hq3 habitat3 factory3
+240 0 economist inc 18.0 3.0 res 59 115 pop 15.5/22 nodes ,1,1 | refinery2 barracks1 techlab1 turret1 factory1 hq1 refinery3 habitat1 reactor1
+240 1 boomer inc 29.0 8.5 res 291 82 pop 27/28 nodes ,1,1 | reactor3 factory2 habitat2 refinery2 refinery2 refinery2 barracks2 hq1 techlab1
+360 0 economist inc 3.0 1.0 res 34 114 pop 0/12 nodes 1,1,1 | hq1
+360 1 boomer inc 33.0 10.0 res 1261 164 pop 28/28 nodes 1,1,1 | sigA2 refinery2 reactor3 refinery2 factory3 techlab2 barracks2^ refinery2 habitat2 hq2

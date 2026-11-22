@@ -16,13 +16,18 @@ if (process.argv[2] === '--one') {
   const RW = {}; for (const kv of (rwArg || '').split(',').filter(Boolean)) { const [k, v] = kv.split('='); RW[k] = v !== '0' && v !== 'false'; } // v2.92 (batch 6b): --rw b6art=0 etc.
   const { loadSim } = require('./load');
   const play = instr => {
-    const S = loadSim(+seed, instr ? { instrument: INSTR } : {}); Object.assign(S.REWORK, RW); if (process.env.EE_B6C && S.B6C) Object.assign(S.B6C, JSON.parse(process.env.EE_B6C)); // v2.93: EE_B6C='{"latchDps":20}' tries batch 6c numbers
+    const S = loadSim(+seed, instr ? { instrument: INSTR } : {}); Object.assign(S.REWORK, RW); if (process.env.EE_B6C && S.B6C) Object.assign(S.B6C, JSON.parse(process.env.EE_B6C)); for (const [k, V] of [['EE_B6AI', S.B6AI], ['EE_B6D', S.B6D]]) if (process.env[k] && V) { const o = JSON.parse(process.env[k]); for (const f in o) if (o[f] && typeof o[f] === 'object' && !Array.isArray(o[f]) && V[f]) Object.assign(V[f], o[f]); else V[f] = o[f]; } // v2.94: EE_B6AI='{"eco":{"cap":500}}' tries batch 6d values // v2.93: EE_B6C='{"latchDps":20}' tries batch 6c numbers
     const g = S.newGame('hard', { seed: +seed, map, autoPlayer: true, autoDiff: 'hard', factions: [f0, f1], autoPersona: p0 || undefined, persona: p1 || undefined }); g.countdown = 0;
     const R = { tier: [{}, {}], paths: [{}, {}], t3u: [null, null], t3air: [null, null], peakUnits: [0, 0] };
     let k = 0, err = null; const hs = [];
     const T3 = new Set(), T2 = new Set();
     for (const t of S.UNIT_ORDER) { const tr = S.treeOf(S.UDEF[t].fac || 'lastfist', S.UDEF[t].from); if (!tr) continue; for (const P of ['A', 'B']) tr[P].steps.forEach((st, i) => { if (st && st.unlock && st.unlock.includes(t)) (i >= 3 ? T3 : T2).add(t); }); }
     const seen = [new Set(), new Set()];
+    // v2.94 (batch 6d, A1): per-side time series read once a game second (read only: nothing here changes play). idle: seconds
+    // a finished production building stood with an empty queue (not upgrading) while its side had supply room; float: seconds
+    // with 1000+ credits banked; atk: seconds the side's stance was attack; per minute: bank, army value, own HQ-side share
+    const PROD = new Set(['barracks', 'factory', 'techlab']);
+    R.ser = [0, 1].map(() => ({ idle: 0, idleB: 0, float: 0, float2: 0, atk: 0, armyM: [], bankM: [], incM: [], popM: [] }));
     try {
       while (!g.over && g.t < +maxT) {
         S.update(g, S.TICK);
@@ -37,6 +42,13 @@ if (process.argv[2] === '--one') {
             if (e.path) { const P = R.paths[e.side], key = e.type + ':' + e.id; if (!P[key]) P[key] = { type: e.type, path: e.path, t: g.t, name: (S.treeOf(g.sides[e.side].faction, e.type) || {})[e.path]?.name || e.path }; }
           }
           for (let s = 0; s < 2; s++) R.peakUnits[s] = Math.max(R.peakUnits[s], n[s]);
+          for (let s = 0; s < 2; s++) {
+            const Z = R.ser[s], sd = g.sides[s], room = S.popUsed(g, s) < S.popCap(g, s) - 2;
+            let pb = 0, ib = 0; for (const b of g.ents) if (b.kind === 'b' && b.side === s && b.hp > 0 && b.built && PROD.has(b.type)) { pb++; if (!b.queue.length && !b.upgrading && room) ib++; }
+            if (ib) Z.idle++; Z.idleB += ib; if (sd.res.c >= 1000) Z.float++; if (sd.res.c >= 2000) Z.float2++; if (sd.stance === 'attack') Z.atk++;
+            if (k % 3600 === 0) { const inc = S.income(g, s); Z.bankM.push(Math.round(sd.res.c)); Z.incM.push(Math.round(inc.c + inc.e)); Z.popM.push([S.popUsed(g, s), S.popCap(g, s)]);
+              let v = 0; for (const e of g.ents) if (e.kind === 'u' && e.side === s && e.hp > 0 && !e.temp) { const c = S.rwD(g, e.type).cost; v += c.c + c.e; } Z.armyM.push(v); }
+          }
         }
         if (ident === '1' && k % 100 === 0) { const o = JSON.parse(S.serialize(g, {})); delete o.log; delete o.stats; hs.push(crypto.createHash('sha1').update(JSON.stringify(o)).digest('hex').slice(0, 12)); }
       }
@@ -55,10 +67,11 @@ if (process.argv[2] === '--one') {
     for (const [t, n] of Object.entries(trained)) { const c = S.rwD(g, t).cost; spentBy[t] = n * (c.c + c.e); }
     const paths = Object.values(R.paths[s]).map(p => ({ type: p.type, path: p.path, name: p.name, t: Math.round(p.t) }));
     return { fac, trained, lost: tot.lost, spentBy, spentU: tot.spent.u, spentB: tot.spent.b, spentUp: tot.spent.up, earn: tot.earn,
-      dmg: A.dmg[s], dmgB: A.dmgB[s], kills: A.kills[s], kval: A.kval[s], tier2: R.tier[s][2] ?? null, tier3: R.tier[s][3] ?? null,
-      t3unit: R.t3u[s], t3air: R.t3air[s], paths, peak: R.peakUnits[s], persona: g.sides[s].persona ? g.sides[s].persona.kind : null, paths0: g.sides[s].persona ? g.sides[s].persona.paths : null, bLost: tot.bLost };
+      dmg: A.dmg[s], dmgB: A.dmgB[s], mat: A.mat ? A.mat[s] : null, kills: A.kills[s], kval: A.kval[s], tier2: R.tier[s][2] ?? null, tier3: R.tier[s][3] ?? null,
+      t3unit: R.t3u[s], t3air: R.t3air[s], paths, peak: R.peakUnits[s], persona: g.sides[s].persona ? g.sides[s].persona.kind : null,
+      ser: Object.assign(R.ser[s], { strat: (g.stats.sides[s].strat || []), bBuilt: g.stats.sides[s].bBuilt, firstAttack: (g.sides[s].aiLog || {}).firstAttack ?? null, attacks: (g.sides[s].aiLog || {}).attacks || 0, c10: g.stats.sides[s].c, e10: g.stats.sides[s].e, army10: g.stats.sides[s].army }), paths0: g.sides[s].persona ? g.sides[s].persona.paths : null, bLost: tot.bLost };
   });
-  process.send({ b6c: S.B6C ? Object.assign({}, S.B6C) : null, map, f: [f0, f1], seed: +seed, t: Math.round(g.t * 10) / 10, over: !!g.over, winner: g.over ? g.winner : null, how: g.result ? g.result.how : null,
+  (process.send ? process.send.bind(process) : m => console.log(JSON.stringify(m)))({ b6c: S.B6C ? Object.assign({}, S.B6C) : null, map, f: [f0, f1], seed: +seed, t: Math.round(g.t * 10) / 10, over: !!g.over, winner: g.over ? g.winner : null, how: g.result ? g.result.how : null,
     by: g.result ? g.result.by || g.result.reason || null : null, err, ver: S.VERSION, rw: g.rw, sides });
   process.exit(0);
 }
