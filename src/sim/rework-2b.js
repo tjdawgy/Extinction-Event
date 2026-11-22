@@ -37,13 +37,17 @@ const RW2B_D = {
 };
 const RWD_C = { g: null, t: -1, m: {} };
 function rwD(g, t) { // the definition a unit of type t plays by in game g
-  const f = (rwB2b(g) && RW2B_D[t]) || (rwB3a(g) && RW3A_D[t]) || (rwB3b(g) && RW3B_D[t]) || (rwB4a(g) && RW4A_D[t]) || (rwB4b(g) && RW4B_D[t]) || (rwB5b(g) && RW5B_D[t]) || (rwB6art(g) && RW6A_D[t]); if (!f) return UDEF[t]; // v2.92: batch 6b's Artillery; // v2.87: batch 4b's five; // v2.84: batch 3a's four too; v2.85: 3b's
+  const f = (rwB2b(g) && RW2B_D[t]) || (rwB3a(g) && RW3A_D[t]) || (rwB3b(g) && RW3B_D[t]) || (rwB4a(g) && RW4A_D[t]) || (rwB4b(g) && RW4B_D[t]) || (rwB5b(g) && RW5B_D[t]) || (rwB6art(g) && RW6A_D[t]), o6 = rw6dUnit(g, t); if (!f && !o6) return UDEF[t]; // v2.94: batch 6d's values on top (rw6dUnit) // v2.92: batch 6b's Artillery; // v2.87: batch 4b's five; // v2.84: batch 3a's four too; v2.85: 3b's
   if (RWD_C.g !== g || RWD_C.t !== g.t) { RWD_C.g = g; RWD_C.t = g.t; RWD_C.m = {}; }
-  return RWD_C.m[t] || (RWD_C.m[t] = f(g)); // v2.93: the game, for batch 6c's per-game numbers
+  return RWD_C.m[t] || (RWD_C.m[t] = o6 ? Object.assign({}, f ? f(g) : UDEF[t], o6) : f(g)); // v2.93: the game, for batch 6c's per-game numbers
 }
 // What the UI shows for a type (Codex, the info card): game g's definition, or the new-game default without a game; the
 // Ruinmaw's bite counts as its weapon there
-function rwShow(g, t) {
+function rwShow(g, t) { // v2.94: with batch 6d's values on top (B6D.unit)
+  const d = rwShow0(g, t), o = (g ? rwB6d(g) : REWORK.b6d) ? B6D.unit[t] : null;
+  return o ? Object.assign({}, d, o) : d;
+}
+function rwShow0(g, t) {
   if (RW3A_D[t]) return (g ? rwB3a(g) : REWORK.b3a) ? RW3A_D[t](g || { rw: REWORK }) : UDEF[t]; // v2.84: batch 3a's four
   if (RW3B_D[t]) return (g ? rwB3b(g) : REWORK.b3b) ? RW3B_D[t](g || { rw: REWORK }) : UDEF[t]; // v2.85: batch 3b's four
   if (RW4A_D[t]) return (g ? rwB4a(g) : REWORK.b4a) ? RW4A_D[t](g || { rw: REWORK }) : UDEF[t]; // v2.86: batch 4a's five

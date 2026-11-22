@@ -259,7 +259,7 @@ function updateBuilding(g, b, foes, dt) {
     }
   }
   if (b.queue.length) {
-    b.prodT += g.sides[b.side].od > g.t && overdrive(g, b.side) ? dt * (1 + YARD.od) : dt; // Overdrive (v2.32): Last Fist only
+    b.prodT += g.sides[b.side].od > g.t && overdrive(g, b.side) ? dt * (1 + b6Yard(g, 'od')) : dt; // Overdrive (v2.32): Last Fist only
     const ut = b.queue[0], pair = ut === 'rifle' && b.queue[1] === 'rifle' && pathMod(b, 'pairs'), br = ut === 'skitterling' && rwB5b(g); // br (v2.88): a batch 5b brood
     if (b.prodT >= (br ? BROOD.time : UDEF[ut].time) * (pair ? PAIR_TIME : 1)) {
       b.prodT = 0; b.queue.shift();

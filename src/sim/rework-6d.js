@@ -56,5 +56,26 @@ function aiB6ai(g, s, P, c) {
   return null;
 }
 
-/* ---------- Batch 6d, Part B (v2.94): faction balance (REWORK.b6d) ---------- (filled in by Part B) */
+/* ---------- Batch 6d, Part B (v2.94): faction balance (REWORK.b6d) ----------
+   Stored per game in g.rw (rwB6d). Off: v2.93's numbers; nothing below changes anything. On: B6D's values, each aimed at one
+   cause found in Part B1 (docs/BALANCE_AUDIT.md "After batch 6d"):
+   - yard: Salvage Yard values (YARD's keys) read through b6Yard;
+   - unit: per-unit values played through the per-game definition (rwD) and, for health and shields, set when a unit appears
+     (rw6dSpawn); UDEF untouched. */
 const rwB6d = g => !!(g && g.rw && g.rw.b6d);
+// Each value names the B1 cause it answers (audit/logs-p1/selfplay6d-a3/B1.md); v2.93's value in the comment
+const B6D = {
+  yard: { pct: 0.07 },        // 1. Last Fist's income edge: the Salvage Yard's share of a kill's price (YARD.pct 0.14 with BALANCE; base Salvage 0.07)
+  unit: {
+    tank: { dmg: 32 },        // 2. the Tank carries Last Fist's army through both front lines (42)
+    shardling: { hp: 120 },   // 3. the Axiarchs' most-funded unit fails its front-line role (80; shields 75 unchanged)
+    artillery: { dmg: 34 },   // 4. Artillery, the most efficient unit massed, unanswered at range (45 a salvo with b6art; deploy and telegraph unchanged)
+  },
+};
+const b6Yard = (g, k) => rwB6d(g) && B6D.yard[k] !== undefined ? B6D.yard[k] : YARD[k];
+const rw6dUnit = (g, t) => rwB6d(g) ? B6D.unit[t] || null : null;
+function rw6dSpawn(g, u) {
+  const o = B6D.unit[u.type]; if (!o) return;
+  if (o.hp !== undefined) { u.hp = u.maxHp = o.hp; }
+  if (o.shp !== undefined) { u.shp = u.maxShp = o.shp; }
+}

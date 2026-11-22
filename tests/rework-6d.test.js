@@ -64,3 +64,30 @@ test('b6ai: the Economist spends past its cap; the Turtle attacks on army size, 
   g.t = 200; g.sides[1].lastDanger = 190; assert.ok(sim.aiB6ai(g, 1, T, c({ myV: 800, thV: 700 })), 'a defence won: counterattack');
   assert.strictEqual(sim.aiB6ai(g0, 1, T, c({ myV: 9000, thV: 0 })), null, 'off: no batch 6d push');
 });
+
+test('b6d: its four values play when on (Tank damage, Shardling health, Artillery salvo, the Salvage Yard share); off v2.93\'s; the Codex shows the game default', () => {
+  const on = game(), off = game({ b6d: false });
+  assert.strictEqual(sim.rwD(on, 'tank').dmg, sim.B6D.unit.tank.dmg); assert.strictEqual(sim.rwD(off, 'tank').dmg, sim.UDEF.tank.dmg);
+  assert.strictEqual(sim.rwD(on, 'artillery').dmg, sim.B6D.unit.artillery.dmg); assert.strictEqual(sim.rwD(off, 'artillery').dmg, sim.ART6.dmg, 'off: 6b\'s salvo');
+  assert.ok(sim.rwD(on, 'artillery').deploy === sim.rwD(off, 'artillery').deploy && sim.rwD(on, 'artillery').range === sim.rwD(off, 'artillery').range, 'range and everything else unchanged');
+  const s1 = sim.spawnUnit(on, 1, 'shardling', 900, 0), s0 = sim.spawnUnit(off, 1, 'shardling', 900, 0);
+  assert.strictEqual(s1.maxHp, sim.B6D.unit.shardling.hp); assert.strictEqual(s1.hp, s1.maxHp); assert.strictEqual(s0.maxHp, sim.UDEF.shardling.hp);
+  assert.strictEqual(s1.maxShp, s0.maxShp, 'shields unchanged');
+  assert.strictEqual(sim.b6Yard(on, 'pct'), sim.B6D.yard.pct); assert.strictEqual(sim.b6Yard(off, 'pct'), sim.YARD.pct);
+  for (const k of ['cap', 'energy', 'od', 'odDur']) assert.strictEqual(sim.b6Yard(on, k), sim.YARD[k], `the Yard's ${k} is unchanged`);
+  assert.strictEqual(sim.rwShow(null, 'tank').dmg, sim.B6D.unit.tank.dmg, 'the Codex follows the new-game default');
+  assert.strictEqual(sim.rwShow(off, 'shardling').hp, sim.UDEF.shardling.hp);
+  assert.ok(Object.keys(sim.B6D.unit).length + Object.keys(sim.B6D.yard).length <= 4, 'at most four values');
+  assert.strictEqual(sim.UDEF.tank.dmg, 42, 'UDEF untouched');
+});
+
+test('b6d: a kill pays the Salvage Yard\'s batch 6d share', () => {
+  for (const [rw, pct] of [[undefined, sim.B6D.yard.pct], [{ b6d: false }, sim.YARD.pct]]) {
+    const g = sim.newGame('hard', { seed: 3, factions: ['lastfist', 'axiarchs'], rework: rw }); g.countdown = 0;
+    const s = g.sides[0]; s.res.c = s.res.e = 9e4; assert.ok(sim.tryBuild(g, 0, 'sigA').ok);
+    const y = g.ents.find(e => e.type === 'sigA' && e.side === 0); y.built = true; y.hp = y.maxHp;
+    const m = sim.spawnUnit(g, 0, 'rifle', 900, 0), foe = sim.spawnUnit(g, 1, 'lancer', 920, 0); void m;
+    const c0 = s.res.c; sim.kill(g, foe, 0, 'rifle');
+    assert.strictEqual(s.res.c - c0, Math.round(sim.UDEF.lancer.cost.c * pct), `Salvage at ${pct}`);
+  }
+});

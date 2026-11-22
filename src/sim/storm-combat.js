@@ -308,18 +308,18 @@ function salvage(g, e, w) {
   for (let s = 0; s < 2; s++) {
     const sd = g.sides[s];
     if (facOf(sd.faction) !== 'lastfist' || !g.ents.some(f => f !== e && f.side === s && f.hp > 0 && effDist(e, f) <= SALVAGE.r)) continue;
-    const y = yardOf(g, s), gain = Math.round(paid * (y ? YARD.pct : SALVAGE.pct)), cap = SALVAGE.cap * (y && y.tier >= 2 ? YARD.cap : 1);
+    const y = yardOf(g, s), gain = Math.round(paid * (y ? b6Yard(g, 'pct') : SALVAGE.pct)), cap = SALVAGE.cap * (y && y.tier >= 2 ? b6Yard(g, 'cap') : 1); // v2.94: batch 6d's Yard values (b6Yard)
     if (gain <= 0) continue;
     const S = sd.salv || (sd.salv = newSalv()), m = Math.floor(g.t / SALVAGE.per);
     if (S.m !== m) { S.m = m; S.n = 0; }
     const add = Math.min(gain, Math.max(0, cap - S.n));
     if (add < gain && y && y.tier >= 3) { // Overdrive: the overflow isn't wasted
       if (!(sd.od > g.t)) ev(g, { type: 'overdrive', side: s });
-      sd.od = g.t + YARD.odDur;
+      sd.od = g.t + b6Yard(g, 'odDur');
       if (g.log) g.log.tot[s].od = (g.log.tot[s].od || 0) + 1;
     }
     if (add <= 0) continue;
-    const en = y && y.tier >= 2 ? add * YARD.energy : 0;
+    const en = y && y.tier >= 2 ? add * b6Yard(g, 'energy') : 0;
     S.n += add; S.tot += add; sd.res.c += add; sd.res.e += en;
     if (g.log) { g.log.tot[s].salv = (g.log.tot[s].salv || 0) + add; if (en) g.log.tot[s].salvE = (g.log.tot[s].salvE || 0) + en; }
     statsIncome(g, s, add, en || 0); // v2.51: Salvage counts as gathered

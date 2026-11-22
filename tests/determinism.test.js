@@ -242,5 +242,14 @@ test('v2.93: modern matches: b6hq and b6c off play as v2.92 (FP_V292M); b6hq on 
   assert.deepStrictEqual(modern({ b6hq: true, b6c: false, b6ai: false, b6d: false }), FP_V293H);
   assert.deepStrictEqual(modern({ b6hq: true, b6c: true, b6ai: false, b6d: false }), FP_V293);
 });
+// v2.94 (batch 6d: the AI personality fix REWORK.b6ai and the faction balance REWORK.b6d, src/sim/rework-6d.js). Every set above
+// holds both off and matches as before (with both off the game is v2.93). The same two modern matches: FP_V294A with b6ai on and
+// b6d off, FP_V294 with both on (the new-game default).
+const FP_V294A = ['33e2c927354d44df021aad3ea88aaa31df5d510cf29ff8621c584d842a15cd86', '9cbfa97d72ac5ad3161fde6b9ec2d8c00b50a28a74772727c5b8d6b64c5663a6']; // b6ai on, b6d off
+const FP_V294 = ['202d5518eaec619ef00f5b6b6cf0b9154d0b0affaa3c689a6877d99a7aa028ac', '03029dbdbfc520696334e26a250ac5dabec936c340be78d5c4edc679f7658f00']; // b6ai and b6d on (every switch on)
+test('v2.94: modern matches: b6ai on, b6d off (FP_V294A); both on (FP_V294)', () => {
+  assert.deepStrictEqual(modern({ b6hq: true, b6c: true, b6ai: true, b6d: false }), FP_V294A);
+  assert.deepStrictEqual(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true }), FP_V294);
+});
 // (rw 'k', b6hq on with v2.68's rules, plays the same match as 'j' but its save carries the b6hq key, so its hash differs by that key alone; not pinned)
 if (require.main === module && process.argv[2] === '--print6c') console.log(JSON.stringify(modern({ b6hq: true, b6c: true })), fingerprint(false, false, true, true, 'l'), bhAx(true, true, 'l'), lfBh('l'));

@@ -10,7 +10,7 @@ const table = (h, rows) => { say('| ' + h.join(' | ') + ' |'); say('|' + h.map((
 const med = a => { a = a.filter(x => x != null && !isNaN(x)); if (!a.length) return null; const s = [...a].sort((x, y) => x - y); return s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2; };
 const sum = a => a.reduce((x, y) => x + y, 0);
 const r0 = x => x == null ? '-' : Math.round(x);
-const mmss = t => t == null ? '-' : `${Math.floor(t / 60)}:${String(Math.round(t % 60)).padStart(2, '0')}`;
+const mmss = t => { if (t == null) return "-"; t = Math.round(t); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`; };
 const sides = []; for (const m of M) m.sides.forEach((s, i) => sides.push({ m, i, s, o: m.sides[1 - i], won: m.winner === i, lost: m.winner === 1 - i }));
 say(`# Batch 6d, B1: why Last Fist wins (${path.basename(dir)}, ${M.length} matches)`); say('');
 // 1. curves

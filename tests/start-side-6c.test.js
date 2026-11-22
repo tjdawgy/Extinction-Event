@@ -55,7 +55,7 @@ for (const [start0, color, fac, foe, map] of [['right', 'random', 'lastfist', 'b
     const f = await page.evaluate(() => {
       const me = myS(), d = dirOf(me), u0 = hqU(me) + d * 260, us = [], them = [];
       for (let i = 0; i < 4; i++) us.push(spawnUnit(game, me, game.sides[me].faction === 'bloomhost' ? 'spitter' : game.sides[me].faction === 'axiarchs' ? 'lancer' : 'heavy', u0 - i * 8 * d, -20 + i * 10));
-      for (let i = 0; i < 3; i++) them.push(spawnUnit(game, 1 - me, 'skitterling' in UDEF && game.sides[1 - me].faction === 'bloomhost' ? 'skitterling' : game.sides[1 - me].faction === 'axiarchs' ? 'shardling' : 'rifle', hqU(me) + d * 420, -10 + i * 10));
+      for (let i = 0; i < 3; i++) them.push(spawnUnit(game, 1 - me, 'skitterling' in UDEF && game.sides[1 - me].faction === 'bloomhost' ? 'skitterling' : game.sides[1 - me].faction === 'axiarchs' ? 'shardling' : 'rifle', hqU(me) + d * 470, -10 + i * 10)); // v2.94: just outside every unit's reach (Lancer 170), so no fight starts before the taps (it once did under load)
       for (const e of them) { e.hp = e.maxHp; } game.sides[1 - me].aiT = 1e9; setStance(game, 1 - me, 'hold'); // the AI side stands and fights here
       __look(hqU(me) + d * 340, 0); SELN.clear(); refreshCtl();
       return { us: us.map(e => e.id), them: them.map(e => e.id) };
@@ -68,7 +68,8 @@ for (const [start0, color, fac, foe, map] of [['right', 'random', 'lastfist', 'b
     assert.ok(!t.sel.includes(f.them[0]), 'an enemy is never selected');
     assert.ok(t.po && t.po.o === 'target' && f.them.includes(t.po.id), `your unit targets the tapped enemy (${JSON.stringify(t.po)})`);
     await page.evaluate(ids => selSet(myUnits().filter(e => ids.includes(e.id))), f.us); // the whole squad, then the enemy again
-    { const [qx, qy] = await page.evaluate(i => __scr(i), f.them[1]); await page.mouse.click(qx, qy); await page.waitForTimeout(80); }
+    { const live = await page.evaluate(ids => ids.find(i => i !== ids[0] && game.ents.some(e => e.id === i && e.hp > 0)) || ids.find(i => game.ents.some(e => e.id === i && e.hp > 0)), f.them); // v2.94: an enemy still standing, whatever real time did
+      const [qx, qy] = await page.evaluate(i => __scr(i), live); await page.mouse.click(qx, qy); await page.waitForTimeout(80); }
     const hp0 = await page.evaluate(ids => ids.reduce((a, i) => { const e = game.ents.find(x => x.id === i); return a + (e ? e.hp + (e.shp || 0) : 0); }, 0), f.them);
     await page.evaluate(() => { __run(25); });
     const after = await page.evaluate(([ids, us]) => ({ n: ids.filter(i => game.ents.some(e => e.id === i && e.hp > 0)).length, dbg: us.concat(ids).map(i => { const e = game.ents.find(x => x.id === i); return e ? [e.type, e.side, Math.round(e.u), Math.round(e.hp), e.po && e.po.o, e.tgt] : null; }), over: game.over, t: game.t }), [f.them, f.us]);
