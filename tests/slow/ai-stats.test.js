@@ -39,7 +39,7 @@ test('Bloomhost AI (Turtle) uses all three of its abilities, under one shared co
   const rows = playN(N, 100, { persona: 'turtle', autoPersona: 'turtle', factions: ['lastfist', 'bloomhost'] }, 1200, cdOk,
     (g, S, st) => ({ ab: g.sides[1].aiLog.abil || {}, cdOk: !st.cdBad }));
   check('Bloomhost abilities', rows, [['the shared cooldown kept', r => r.cdOk, 1], ['Frenzy Bloom', r => r.ab.frenzy > 0, 0.5], // measured over 20 (v2.38): 85%
-    ['Corrosive Bloom', r => r.ab.corrosive > 0, 0.45], ['Emergency Brood', r => r.ab.brood > 0, 0.15], // 90%, 55%; v2.82 (rework batch 2a: Gorebores, hard to kill, replace Bile Lobbers): 25% over 20 (40% with the batch off), so the bar is 15%
+    ['Corrosive Bloom', r => r.ab.corrosive > 0, 0.25], /* v2.94: 0.45 → 0.25: measured over 20 (audit/logs-p1/slow6d/report.md) 50% on v2.93 and with b6d off, 35% with every switch on (batch 6d's Tank and Artillery change which fights it sees); still used, the bar sits below the rate as the other rules' do */ ['Emergency Brood', r => r.ab.brood > 0, 0.15], // 90%, 55%; v2.82 (rework batch 2a: Gorebores, hard to kill, replace Bile Lobbers): 25% over 20 (40% with the batch off), so the bar is 15%
     ['never a Last Fist ability', r => !r.ab.shield && !r.ab.strike && !r.ab.repair, 1]]);
 });
 

@@ -27,7 +27,8 @@ function rerun(file, names) {
 }
 rerun('abilities.test.js', ['v2.11: Repair Pulse is never wasted by the AI']); // tests/abilities.test.js:181
 rerun('ax-abilities.test.js', ['the AI casts all three under one shared cooldown']); // tests/ax-abilities.test.js:203
-rerun('ax-trees.test.js', ['the AI maps its Last Fist paths onto the Axiarchs']); // tests/ax-trees.test.js:150
+// v2.94: tests/ax-trees.test.js:150 is pinned with batch 6d off (an intended effect: with b6ai on the forced Last Fist Turtle is the
+// batch 6d Hard Turtle and wins before the Axiarch AI reaches its T2 paths); its switches-on counterpart is tests/slow/switches-on-6d.test.js
 rerun('bh-trees.test.js', ['the AI maps its Last Fist path taste onto Bloomhost']); // tests/bh-trees.test.js:138
 rerun('stats.test.js', ['a full AI-vs-AI match: samples every 10 s']); // tests/stats.test.js:15
 
