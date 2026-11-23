@@ -1011,6 +1011,22 @@ the Axiarchs not. Pairings: Last Fist vs Bloomhost 65% (51-76), vs the Axiarchs 
 (50-75): all within 35-65%. On Classic the three are level (47 / 39 / 50%); the Axiarchs win 17% on each lane map. Personalities
 with both on: 47 / 40 / 45%. Median length 15:21 → 16:34.
 
+### Slow tests after b6ai and b6d (audit/logs-p1/slow6d/report.md, audit/sim/slow6d.js: each over 20 matches, every switch on, b6ai off, b6d off, both off)
+
+- **Bloomhost abilities** (tests/slow/ai-stats.test.js, the Default AI, so b6ai plays no part): Corrosive Bloom in 7 of 20 with
+  every switch on, 10 of 20 with b6d off (the test's own ten seeds: 3 and 5); Frenzy Bloom 20/20 and Emergency Brood 8/20 either way.
+  Seed variance at a bar set when the rate was 90% (v2.38): v2.93 already sat on it (50%). The bar is 25% now.
+- **Axiarch path mapping** (tests/ax-trees.test.js, re-run with every switch on in tests/slow/switches-on-6c.test.js): an intended
+  effect of b6ai. The Axiarch Hard AI faces a forced Last Fist Turtle, which with b6ai on is the batch 6d Hard Turtle: the Axiarchs
+  win 5 of 20 there (17 of 20 with b6ai off) and fall before reaching their T2 paths (a seed pair covering all four paths 1/9 against
+  4/9). The test now holds b6ai and b6d off; its counterpart, tests/slow/switches-on-6d.test.js, checks the same mapping with every
+  switch on against a Last Fist Turtle on Normal (b6ai is Hard only): every match takes a Barracks and a War Factory path, all four
+  over six seeds, path units trained.
+- **Three-Lane** (tests/slow/threelane-match.test.js): seed variance. Both sides use all three lanes in 19 or 20 of 20 matches under
+  every switch set and end by an HQ in 17 of 20 with every switch on (18 with b6ai and b6d off), but the one two-lane match (seed 604,
+  a Bloomhost Turtle holding two lanes at home with b6ai on) and all three non-HQ endings fell on the test's own seeds 600-605. The
+  test moves to seeds 606-611 (the same pairing cycle), where every original check passes in every match.
+
 ### Part C: small fixes (no gameplay change, no switch)
 
 - **C1, the enemy shield count:** the enemy HQ's count (on its shield and in its info card) counts only the holders the player has
