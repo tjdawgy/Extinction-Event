@@ -50,8 +50,15 @@ const B6E = {
   },
 };
 const rw6eCost = (g, t) => rwB6e(g) && B6E.cost[t] ? B6E.cost[t] : null;
+// B2's one further change (audit/logs-p1/selfplay6e-b2/B2.md): with the costs converted the Axiarchs fell to 34%; energy was no
+// longer what held them back (it piled up unspent from 10:00), so not the Singularity Well. The unit failing its role with the
+// most spent on it: the Riftstalker (98 damage and 39 killed value per 100 spent, 3% of the damage in Axiarch wins; its blink
+// home when its shields break pulled it out before it killed). Its shields 110 → 160; health, damage and the rest unchanged.
+B6E.unit = { riftstalker: { shp: 160 } };
+const rw6eUnit = (g, t) => rwB6e(g) && B6E.unit[t] ? B6E.unit[t] : null;
+function rw6eSpawn(g, u) { const o = B6E.unit[u.type]; if (o && o.shp !== undefined) { u.shp = u.maxShp = o.shp; } }
 // Batch 6d's and 6e's per-game values for type t together (rwD's overlay), or null
-function rwOver6(g, t) { const a = rw6dUnit(g, t), c = rw6eCost(g, t); return c ? Object.assign({}, a || {}, { cost: c }) : a; }
+function rwOver6(g, t) { const a = rw6dUnit(g, t), c = rw6eCost(g, t), o = rw6eUnit(g, t); return c || o ? Object.assign({}, a || {}, o || {}, c ? { cost: c } : {}) : a; }
 const unitCost6 = (g, t) => rw6eCost(g, t) || UDEF[t].cost; // what a unit of type t costs in game g (a brood aside: trainCost)
 
 /* ---- b6elane: one army, one lane ---- */

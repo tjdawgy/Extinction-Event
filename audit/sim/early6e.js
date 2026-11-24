@@ -1,8 +1,9 @@
 // Batch 6e (v2.95), Part C1: the opening (read only). The persona-balanced design of audit/sim/selfplay-6c.js (162 Hard vs
 // Hard, the same seeds), each match played to 6:00 only. Per side at 2:00, 3:00, 4:00 and 5:00: army value (credits +
 // energy of its live units), units alive by type, income a second (credits + energy), field nodes held; and the first
-// field fight: from the first unit lost away from both bases until 20 s pass with no unit lost, each side's value lost
-// (the winner lost less), its start and end, and each side's army there when it started.
+// field fight: the first cluster of units lost away from both bases (250+ from each HQ; a cluster ends when 20 s pass with
+// none lost) in which 300+ value is lost; each side's value lost (the winner lost less), its start and end, each side's army
+// when it started (audit/sim/early6e-report.js computes it from the raw losses, `loss`; `fight` is the first cluster of any size).
 //   node audit/sim/early6e.js [--out dir] [--rw b6e=0] [--jobs 4]      writes <out>/early.jsonl
 const { fork } = require('child_process'), fs = require('fs'), path = require('path');
 const END = 360, AT = [120, 180, 240, 300];
@@ -37,7 +38,7 @@ if (process.argv[2] === '--one') {
     const lost = [0, 0], types = [{}, {}]; for (const x of L) if (x[0] <= t1) { lost[x[1]] += x[2]; types[x[1]][x[4]] = (types[x[1]][x[4]] || 0) + 1; }
     fight = { t0: Math.round(t0), t1: Math.round(t1), lost, types, win: lost[0] < lost[1] ? 0 : lost[1] < lost[0] ? 1 : -1, army: armyAt[Math.floor(t0)] || null };
   }
-  process.send({ map, f: [f0, f1], seed: +seed, p: [p0, p1], over: g.over, winner: g.over ? g.winner : null, err, snap, fight });
+  process.send({ map, f: [f0, f1], seed: +seed, p: [p0, p1], over: g.over, winner: g.over ? g.winner : null, err, snap, fight, loss: L.map(x => [Math.round(x[0] * 10) / 10, x[1], x[2], x[4]]), army: armyAt.filter((_, i) => i % 5 === 0) });
   process.exit(0);
 }
 const arg = (n, d) => { const i = process.argv.indexOf('--' + n); return i > 0 ? process.argv[i + 1] : d; };

@@ -320,6 +320,7 @@ function spawnUnit(g, s, type, u, v) {
     moving: false, rallyOff: -simRnd() * 100, recoil: 0, hitT: 0, shT: 0, vet: 0, aimAir: 0, medAt: -1, tgt: 0, braceT: 0, braceCd: 0, lastHurt: -99, lastAct: -99, creepAt: -1, temp: 0, tLife: 0, tSrc: null, kid: 0, spawnT: 0, dis: 0, disT: 0, slow: 0, slowT: 0, chT: 0, chTgt: 0, pulseCd: 0, shp: d.shp || 0, maxShp: d.shp || 0, shpT: -99, shpHit: -99, ovT: 0, frzT: 0, leapCd: 0, leaping: 0, lu: 0, lv: 0, ld: 0, corr: 0, corrT: 0, burstCd: 0 }; // tgt: what it last attacked; braceT/braceCd: the Bulwark's brace (v2.17); lastHurt/lastAct: last damage taken/dealt, creepAt: last creep regen (v2.18); leap*: the Leaper's jump, corr/corrT: corrosion, burstCd: the Dreadthorn's spines (v2.19) // vet: a Drilled Marine (v2.13); aimAir: where a Hydra's guns point (v2.14); medAt: last healed by a Medevac (v2.15) // shT (shield until) set from the start keeps every unit the same shape for the JS engine
   if (rwB5b(g)) rw5bSpawn(g, unit); // v2.88: a batch 5b Skitterling's health
   if (rwB6d(g)) rw6dSpawn(g, unit); // v2.94: batch 6d's health and shields
+  if (rwB6e(g)) rw6eSpawn(g, unit); // v2.95: batch 6e's Riftstalker shields
   if (rwB2b(g)) rw2bSpawn(g, unit); // v2.83: a batch 2b Ruinmaw's health and armour
   if (MAP_LANED) unit.lane = laneNew(g.sides[s]); // v2.63: the lane it walks (Classic: no lane key at all)
   if (NAV.on && !d.air && navShut(unit.u, unit.v)) [unit.u, unit.v] = navOpen(unit.u, unit.v); // v2.66: a ground unit never appears on closed ground (a warp-in or brood on the ridge)
