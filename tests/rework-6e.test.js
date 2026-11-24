@@ -21,7 +21,7 @@ test('b6elane and b6e are on by default, saved per game, and left out of a save 
   const d = sim.deserialize(JSON.stringify(old)); assert.ok(!d.rw.b6elane && !d.rw.b6e, 'a v2.94 save resumes with both off');
 });
 
-test('b6e: every Axiarch unit keeps its total cost, energy at most 20% of it (rounded to 5); the Shardling and other factions unchanged', () => {
+test('b6e: every Axiarch unit keeps its total cost, energy at most 20% of it (rounded to 5); the Shardling unchanged; the Marine 48 (Part C); other units unchanged', () => {
   const on = game(), off = game({ b6e: false });
   for (const t of AX) {
     const a = sim.UDEF[t].cost, b = sim.rwD(on, t).cost;
@@ -31,7 +31,9 @@ test('b6e: every Axiarch unit keeps its total cost, energy at most 20% of it (ro
     same(sim.trainCost(on, t), b); same(sim.trainCost(off, t), a);
   }
   same(sim.rwD(on, 'shardling').cost, sim.UDEF.shardling.cost, 'the Shardling (19% energy) is unchanged');
-  for (const t of ['rifle', 'tank', 'bulwark', 'spitter']) same(sim.rwD(on, t).cost, sim.UDEF[t].cost, t);
+  for (const t of ['tank', 'heavy', 'bulwark', 'spitter']) same(sim.rwD(on, t).cost, sim.UDEF[t].cost, t);
+  same(sim.rwD(on, 'rifle').cost, { c: 48, e: 0 }, 'Part C: the Marine 48 credits'); same(sim.rwD(off, 'rifle').cost, sim.UDEF.rifle.cost, 'off: 45');
+  same(sim.trainCost(on, 'rifle'), { c: 48, e: 0 });
   same(J(sim.B6E.cost.lancer), { c: 130, e: 35 }); same(J(sim.UDEF.lancer.cost), { c: 120, e: 45 }, 'UDEF untouched');
 });
 
@@ -51,7 +53,16 @@ test('b6e: training, refunds, echoes and the Codex use the converted price', () 
   same(sim.echoCost('lancer', g), { c: 65, e: 18 }); same(sim.echoCost('lancer', game({ b6e: false })), { c: 60, e: 23 }, 'off: half v2.94\'s');
   same(sim.rwShow(null, 'lancer').cost, sim.B6E.cost.lancer, 'the Codex shows the new-game default');
   same(sim.rwShow(game({ b6e: false }), 'lancer').cost, sim.UDEF.lancer.cost, 'an info card shows its game\'s price');
-  sim.REWORK.b6e = false; same(sim.rwShow(null, 'lancer').cost, sim.UDEF.lancer.cost); sim.REWORK.b6e = true;
+  sim.REWORK.b6e = false; same(sim.rwShow(null, 'lancer').cost, sim.UDEF.lancer.cost); same(sim.rwShow(null, 'riftstalker').shp, 110); sim.REWORK.b6e = true;
+  same(sim.rwShow(null, 'riftstalker').shp, 160, 'the Codex shows the Riftstalker\'s batch 6e shields'); same(sim.rwShow(null, 'rifle').cost, { c: 48, e: 0 });
+});
+
+test('b6e: a Riftstalker spawns with 160 shields (110 off); a Marine order costs 48', () => {
+  const g = game(), g0 = game({ b6e: false });
+  assert.strictEqual(sim.spawnUnit(g, 0, 'riftstalker', 300, 0).maxShp, 160); assert.strictEqual(sim.spawnUnit(g0, 0, 'riftstalker', 300, 0).maxShp, 110);
+  const h = sim.newGame('hard', { seed: 3, factions: ['lastfist', 'axiarchs'] }); h.countdown = 0;
+  sim.tryBuild(h, 0, 'barracks'); for (const e of h.ents) if (e.kind === 'b' && e.side === 0) { e.built = true; e.hp = e.maxHp; }
+  const c0 = h.sides[0].res.c; assert.ok(sim.tryTrain(h, 0, 'rifle').ok); assert.strictEqual(c0 - h.sides[0].res.c, 48);
 });
 
 const hashRun = (rework, map, secs, fac = ['axiarchs', 'lastfist']) => {

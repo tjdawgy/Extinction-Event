@@ -251,5 +251,16 @@ test('v2.94: modern matches: b6ai on, b6d off (FP_V294A); both on (FP_V294)', ()
   assert.deepStrictEqual(modern({ b6hq: true, b6c: true, b6ai: true, b6d: false, b6elane: false, b6e: false }), FP_V294A);
   assert.deepStrictEqual(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: false, b6e: false }), FP_V294);
 });
+// v2.95 (batch 6e: Axiarch lane play REWORK.b6elane and the Axiarch costs, Riftstalker shields and Marine price REWORK.b6e,
+// src/sim/rework-6e.js). Every set above holds both off and matches as before (with both off the game is v2.94). The same two
+// modern matches (the second is Axiarchs vs Last Fist on Two-Lane, where b6elane acts): FP_V295A with b6elane on and b6e off,
+// FP_V295 with both on (the new-game default).
+const FP_V295A = ['a0f8a4123046213fa1655437da0673a644220e0de0a455b10359c4d3430e63ef', 'e14cdec3c16e4f4985bdd5c1a78685b0b14cda90e01563f9f7fe2601ffdccc7f']; // b6elane on, b6e off
+const FP_V295 = ['012addf30a06e1628cf4f3d61dffe2e8d88b1355650646401735e6eed7bd8181', '3f05e80b540beb27a11906dd37ea7b2411e3065228b89df600fc46d43c4135a7']; // b6elane and b6e on (every switch on)
+test('v2.95: modern matches: b6elane on, b6e off (FP_V295A); both on (FP_V295)', () => {
+  assert.deepStrictEqual(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: false }), FP_V295A);
+  assert.deepStrictEqual(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true }), FP_V295);
+});
+if (require.main === module && process.argv[2] === '--print6e') console.log(JSON.stringify(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: false })), JSON.stringify(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true })));
 // (rw 'k', b6hq on with v2.68's rules, plays the same match as 'j' but its save carries the b6hq key, so its hash differs by that key alone; not pinned)
 if (require.main === module && process.argv[2] === '--print6c') console.log(JSON.stringify(modern({ b6hq: true, b6c: true })), fingerprint(false, false, true, true, 'l'), bhAx(true, true, 'l'), lfBh('l'));

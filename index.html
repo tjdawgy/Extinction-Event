@@ -764,7 +764,7 @@ MAPS.threelane = (() => {
   };
 })();
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.94'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.95'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -2017,6 +2017,7 @@ function spawnUnit(g, s, type, u, v) {
     moving: false, rallyOff: -simRnd() * 100, recoil: 0, hitT: 0, shT: 0, vet: 0, aimAir: 0, medAt: -1, tgt: 0, braceT: 0, braceCd: 0, lastHurt: -99, lastAct: -99, creepAt: -1, temp: 0, tLife: 0, tSrc: null, kid: 0, spawnT: 0, dis: 0, disT: 0, slow: 0, slowT: 0, chT: 0, chTgt: 0, pulseCd: 0, shp: d.shp || 0, maxShp: d.shp || 0, shpT: -99, shpHit: -99, ovT: 0, frzT: 0, leapCd: 0, leaping: 0, lu: 0, lv: 0, ld: 0, corr: 0, corrT: 0, burstCd: 0 }; // tgt: what it last attacked; braceT/braceCd: the Bulwark's brace (v2.17); lastHurt/lastAct: last damage taken/dealt, creepAt: last creep regen (v2.18); leap*: the Leaper's jump, corr/corrT: corrosion, burstCd: the Dreadthorn's spines (v2.19) // vet: a Drilled Marine (v2.13); aimAir: where a Hydra's guns point (v2.14); medAt: last healed by a Medevac (v2.15) // shT (shield until) set from the start keeps every unit the same shape for the JS engine
   if (rwB5b(g)) rw5bSpawn(g, unit); // v2.88: a batch 5b Skitterling's health
   if (rwB6d(g)) rw6dSpawn(g, unit); // v2.94: batch 6d's health and shields
+  if (rwB6e(g)) rw6eSpawn(g, unit); // v2.95: batch 6e's Riftstalker shields
   if (rwB2b(g)) rw2bSpawn(g, unit); // v2.83: a batch 2b Ruinmaw's health and armour
   if (MAP_LANED) unit.lane = laneNew(g.sides[s]); // v2.63: the lane it walks (Classic: no lane key at all)
   if (NAV.on && !d.air && navShut(unit.u, unit.v)) [unit.u, unit.v] = navOpen(unit.u, unit.v); // v2.66: a ground unit never appears on closed ground (a warp-in or brood on the ridge)
@@ -4573,8 +4574,8 @@ function rwD(g, t) { // the definition a unit of type t plays by in game g
 // What the UI shows for a type (Codex, the info card): game g's definition, or the new-game default without a game; the
 // Ruinmaw's bite counts as its weapon there
 function rwShow(g, t) { // v2.94: with batch 6d's values on top (B6D.unit)
-  const d = rwShow0(g, t), o = (g ? rwB6d(g) : REWORK.b6d) ? B6D.unit[t] : null, c = (g ? rwB6e(g) : REWORK.b6e) ? B6E.cost[t] : null; // v2.95: batch 6e's Axiarch costs (B6E.cost)
-  return o || c ? Object.assign({}, d, o || {}, c ? { cost: c } : {}) : d;
+  const d = rwShow0(g, t), o = (g ? rwB6d(g) : REWORK.b6d) ? B6D.unit[t] : null, e6 = (g ? rwB6e(g) : REWORK.b6e), c = e6 ? B6E.cost[t] : null, u6 = e6 ? B6E.unit[t] : null; // v2.95: batch 6e's Axiarch costs (B6E.cost) and the Riftstalker's shields (B6E.unit)
+  return o || c || u6 ? Object.assign({}, d, o || {}, u6 || {}, c ? { cost: c } : {}) : d;
 }
 function rwShow0(g, t) {
   if (RW3A_D[t]) return (g ? rwB3a(g) : REWORK.b3a) ? RW3A_D[t](g || { rw: REWORK }) : UDEF[t]; // v2.84: batch 3a's four
@@ -6465,7 +6466,7 @@ const rwB6elane = g => !!(g && g.rw && g.rw.b6elane);
 const LANE6E = { screen: 1, screenMax: 150, hold: 25, danger: 1.5, win: 1.15, ahead: 60, base: 250, past: 60 };
 const lane6eOn = (g, s) => rwB6elane(g) && facOf(g.sides[s].faction) === 'axiarchs';
 
-/* ---------- Batch 6e, Part B (v2.95): the Axiarch energy squeeze (REWORK.b6e) ----------
+/* ---------- Batch 6e, Parts B and C (v2.95): the Axiarch energy squeeze, then Last Fist's early edge (REWORK.b6e) ----------
    Stored per game in g.rw (rwB6e). Off: v2.94's costs. On: every Axiarch unit's energy is at most B6E.share of its total
    cost (rounded to 5), the rest moved onto its credits: its total (credits + energy) is unchanged, a unit already at or
    under the share (the Shardling) is unchanged. By the Axiarchs' own training mix in batch 6d's self-play, the energy share
@@ -6491,11 +6492,21 @@ const B6E = {
     shardstorm: { c: 330, e: 80 },   // 280/130
     voidcarrier: { c: 425, e: 105 }, // 360/170
     sovereign: { c: 720, e: 180 },   // 600/300
+    // Part C (audit/logs-p1/selfplay6e-c3/C3.md): Last Fist's edge was volume (it spent 11-28% more a minute on units than
+    // either opponent; its 4:00 army, 39% Marines by value, decided the Axiarch pairing). The Marine 45 → 48 credits; nothing else
+    rifle: { c: 48, e: 0 },          // 45/0
   },
 };
 const rw6eCost = (g, t) => rwB6e(g) && B6E.cost[t] ? B6E.cost[t] : null;
+// B2's one further change (audit/logs-p1/selfplay6e-b2/B2.md): with the costs converted the Axiarchs fell to 34%; energy was no
+// longer what held them back (it piled up unspent from 10:00), so not the Singularity Well. The unit failing its role with the
+// most spent on it: the Riftstalker (98 damage and 39 killed value per 100 spent, 3% of the damage in Axiarch wins; its blink
+// home when its shields break pulled it out before it killed). Its shields 110 → 160; health, damage and the rest unchanged.
+B6E.unit = { riftstalker: { shp: 160 } };
+const rw6eUnit = (g, t) => rwB6e(g) && B6E.unit[t] ? B6E.unit[t] : null;
+function rw6eSpawn(g, u) { const o = B6E.unit[u.type]; if (o && o.shp !== undefined) { u.shp = u.maxShp = o.shp; } }
 // Batch 6d's and 6e's per-game values for type t together (rwD's overlay), or null
-function rwOver6(g, t) { const a = rw6dUnit(g, t), c = rw6eCost(g, t); return c ? Object.assign({}, a || {}, { cost: c }) : a; }
+function rwOver6(g, t) { const a = rw6dUnit(g, t), c = rw6eCost(g, t), o = rw6eUnit(g, t); return c || o ? Object.assign({}, a || {}, o || {}, c ? { cost: c } : {}) : a; }
 const unitCost6 = (g, t) => rw6eCost(g, t) || UDEF[t].cost; // what a unit of type t costs in game g (a brood aside: trainCost)
 
 /* ---- b6elane: one army, one lane ---- */
@@ -17497,7 +17508,7 @@ const TUT_CH = [
       { txt: () => 'To build: tap a pad, then a card. Or just tap a card and it takes the first free pad.' },
     ] },
   { key: 'army', name: 'Army', blurb: 'Training troops, selecting, Attack, Hold and Retreat, the rally point and healing, lanes',
-    setup: () => { tPlace('barracks', 4); tMe().res.c += UDEF.rifle.cost.c * 2; },
+    setup: () => { tPlace('barracks', 4); tMe().res.c += trainCost(game, 'rifle').c * 2; } // v2.95: the Marine's price in this game (batch 6e: 48),
     steps: [
       { act: true, txt: () => `Troops come from production buildings like your ${tN('barracks')}. Open the Train tab.`, hi: () => tEl('.tabs [data-tab="train"]'), done: () => tab === 'train' },
       { act: true, txt: () => `Tap the ${UDEF.rifle.name} card to train one.`, hi: () => tCard('rifle'), done: () => { const b = tMy('barracks'); if (b && b.queue.length && !TUT.firstUnit) TUT.firstUnit = b.queue[0]; return !!TUT.firstUnit || game.ents.some(e => e.kind === 'u' && e.side === 0); } },

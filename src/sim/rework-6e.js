@@ -21,7 +21,7 @@ const rwB6elane = g => !!(g && g.rw && g.rw.b6elane);
 const LANE6E = { screen: 1, screenMax: 150, hold: 25, danger: 1.5, win: 1.15, ahead: 60, base: 250, past: 60 };
 const lane6eOn = (g, s) => rwB6elane(g) && facOf(g.sides[s].faction) === 'axiarchs';
 
-/* ---------- Batch 6e, Part B (v2.95): the Axiarch energy squeeze (REWORK.b6e) ----------
+/* ---------- Batch 6e, Parts B and C (v2.95): the Axiarch energy squeeze, then Last Fist's early edge (REWORK.b6e) ----------
    Stored per game in g.rw (rwB6e). Off: v2.94's costs. On: every Axiarch unit's energy is at most B6E.share of its total
    cost (rounded to 5), the rest moved onto its credits: its total (credits + energy) is unchanged, a unit already at or
    under the share (the Shardling) is unchanged. By the Axiarchs' own training mix in batch 6d's self-play, the energy share
@@ -47,6 +47,9 @@ const B6E = {
     shardstorm: { c: 330, e: 80 },   // 280/130
     voidcarrier: { c: 425, e: 105 }, // 360/170
     sovereign: { c: 720, e: 180 },   // 600/300
+    // Part C (audit/logs-p1/selfplay6e-c3/C3.md): Last Fist's edge was volume (it spent 11-28% more a minute on units than
+    // either opponent; its 4:00 army, 39% Marines by value, decided the Axiarch pairing). The Marine 45 → 48 credits; nothing else
+    rifle: { c: 48, e: 0 },          // 45/0
   },
 };
 const rw6eCost = (g, t) => rwB6e(g) && B6E.cost[t] ? B6E.cost[t] : null;
