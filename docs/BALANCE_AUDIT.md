@@ -731,3 +731,79 @@ Per map with both on: Last Fist 47 / 67 / 72% (Classic / Two-Lane / Three-Lane),
 5. **Top-tier air rare and the Tech Lab skipped** by the batch 6d Turtle (by design) and often by others: AI tech timing.
 6. **Ranged backline:** Artillery 361 per 100 spent (target about 300), Sniper 355, Lancer 270 (both on).
 Done in 6d: the personalities (each 40-60%), Bloomhost into 42-58%, every pairing within 35-65%.
+
+## 13. After batch 6e (v2.95): Axiarch lane play and energy, then Last Fist's early edge
+
+Persona-balanced self-play (audit/sim/selfplay-6c.js, 162 Hard vs Hard matches, 0 errors each) after each part: b6elane on and
+b6e off (audit/logs-p1/selfplay6e-a3/), b6e's cost conversion alone (selfplay6e-b2/), both on with the Riftstalker's shields
+(selfplay6e-b3/), every switch on with the Marine at 48 (selfplay6e-c3/: the v2.95 default). Lane traces: lanes6e-base/ (v2.94)
+and lanes6e-a3/; openings: early6e-c1/ and early6e-c3/. Each folder has report6c.md (95% Wilson intervals), diag-a1.md and
+diag-b1.md; the part reports are lanes6e-base/A1.md, selfplay6e-a3/A3.md, selfplay6e-b2/B2.md, selfplay6e-b3/B2.md,
+early6e-c1/C1.md and selfplay6e-c3/C3.md. Values and departures: docs/FACTION_REWORK.md "Batch 6e".
+
+### 13.1 Factions
+
+| faction | 6d (v2.94) | A: b6elane | B: + b6e (costs, Riftstalker) | C: + Marine 48 (v2.95) |
+|---|---|---|---|---|
+| Last Fist | 67-29-12, 62% (53-71) | 58-38-12, 54% (44-63) | 66-32-10, 61% (52-70) | 50-47-11, 46% (37-56) |
+| Bloomhost | 46-48-14, 43% (34-52) | 38-58-12, 35% (27-45) | 37-57-14, 34% (26-44) | 47-47-14, 44% (35-53) |
+| Axiarchs | 30-66-12, 28% (20-37) | 49-49-10, 45% (36-55) | 42-56-10, 39% (30-48) | 47-50-11, 44% (35-53) |
+
+(The conversion alone, before the Riftstalker change: Last Fist 61%, Bloomhost 39%, Axiarchs 34% (26-44).)
+
+Per map (Classic / Two-Lane / Three-Lane):
+
+| faction | 6d | A | B | C (v2.95) |
+|---|---|---|---|---|
+| Last Fist | 47 / 67 / 72% | 47 / 61 / 53% | 50 / 64 / 69% | 31 / 53 / 56% |
+| Bloomhost | 39 / 44 / 44% | 39 / 42 / 25% | 39 / 39 / 25% | 67 / 42 / 22% |
+| Axiarchs | 50 / 17 / 17% | 50 / 39 / 47% | 47 / 39 / 31% | 44 / 44 / 42% |
+
+Pairings (first named): Last Fist vs Bloomhost 65% → 65% → 65% → 46% (34-59); Last Fist vs the Axiarchs 59% → 43% → 57% → 46%
+(34-59); Bloomhost vs the Axiarchs 63% → 48% → 46% → 46% (34-59). Side 1's share of decided matches at v2.95: 44% (36-52). Median
+length 16:34 → 15:42; ended by an HQ 88% → 89%.
+
+### 13.2 Personalities
+
+| personality | 6d | A | B | C (v2.95) |
+|---|---|---|---|---|
+| Boomer | 47% (38-57) | 46% (37-56) | 45% (36-55) | 42-57-9, 39% (30-48) |
+| Economist | 40% (31-49) | 42% (33-51) | 37% (29-46) | 47-55-6, 44% (35-53) |
+| Turtle | 45% (36-55) | 46% (37-56) | 52% (43-61) | 55-32-21, 51% (42-60) |
+
+### 13.3 The Axiarchs on the lanes and their bank
+
+| | v2.94 | b6elane |
+|---|---|---|
+| top lane's share of the ground army (Two / Three-Lane) | 93% / 91% | 90% / 95% |
+| value lost to units dying alone | 18% / 20% (others 4-6%) | 8% / 9% |
+| warp point 400+ ahead of the army's middle | 35% / 45% of the time | 16% / 3% |
+
+Credits / energy banked (median), Axiarchs: b6e off 790 / 117 at 4:00, 872 / 127 at 8:00, 624 / 232 at 12:00, 1,000+ credits 25%
+of the match; b6e on 718 / 119, 363 / 167, 188 / 731, 15%. Energy share of their unit spending 25.9% → 20.0%.
+
+### 13.4 Targets
+
+| target | v2.95 | met |
+|---|---|---|
+| every faction 42-58% | 46 / 44 / 44% | yes |
+| no pairing beyond 35-65% | 46 / 46 / 46% | yes |
+| the Axiarchs 40%+ on each lane map | 44% Two-Lane, 42% Three-Lane | yes |
+| every personality 40-60% | Boomer 39% (30-48), Economist 44%, Turtle 51% | no, by one point (the Boomer) |
+
+### 13.5 Ranked list, updated
+
+1. **Map spread:** Bloomhost 67% on Classic and 22% on Three-Lane; Last Fist 31% on Classic (both new at v2.95; 54 sides a map,
+   intervals about ±13). *Lever:* measure first (per-map pairings, Bloomhost's Three-Lane losses with the new Axiarch lane AI: 5-10-3
+   against them there at A3).
+2. **The Boomer at 39%** (one point under its 40-60% band; 42-57-9). *Lever:* its attack timing against the batch 6d Turtle (the
+   Turtle is 51%, 61% for Bloomhost).
+3. **b6e's conversion costs the Axiarchs** (45% with b6elane alone, 34% with the conversion alone, 44% only with the Marine change
+   beside it): credits are short and energy unspent from 8:00. *Lever:* a share near 24%.
+4. **Every AI's base attack walks to the map's edge** on the lane maps when it has no push point (fixed for the Axiarchs only,
+   `lane6eEnd`). *Lever:* the same end point for Last Fist and Bloomhost.
+5. **Divers and backline** (both on): Riftstalker 120 damage per 100 spent, Leaper and Bilecaster (see diag-b1.md); Artillery 354,
+   Sniper 331 (Part B's run).
+6. **Sensitivity:** a 3-credit Marine change moved Last Fist 15 points: a value change changes every later AI decision, so each
+   match becomes a new draw; 162 matches give intervals of about ±10 points per faction.
+Done in 6e: every faction 42-58%, every pairing within 35-65%, the Axiarchs 40%+ on each lane map.

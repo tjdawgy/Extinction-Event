@@ -1048,6 +1048,123 @@ with both on: 47 / 40 / 45%. Median length 15:21 → 16:34.
 - The Turtle no longer builds a Tech Lab (its eight pads go to three Refineries and a Turret); it plays as a ground fortress.
 - b6ai's personality changes apply to Hard only; Easy and Normal Turtles and Economists play as before.
 
+## Batch 6e: Axiarch lane play and energy, then Last Fist's early edge
+
+**Batch 6e (v2.95): three parts, in order.** Part A fixed the Axiarch AI on the lane maps behind `REWORK.b6elane`; Part B converted
+Axiarch energy costs into credits and made one further Axiarch change behind `REWORK.b6e`; Part C (Last Fist was still at 61%) set
+one Last Fist value, also behind `b6e`. Both switches in src/sim/rework-6e.js, per game in `g.rw`, on by default, saved only when
+on, with Test Range switches ("Batch 6e lanes", "Batch 6e costs"). With both off the game is v2.94 exactly: every pinned set
+matches under its own switches (the old sets, FP_V294A, FP_V294; every older replay now sets b6elane and b6e off). Recorded:
+FP_V295A (b6elane on, b6e off) and FP_V295 (both on), tests/determinism.test.js. Measured with 6c's persona-balanced self-play
+(audit/sim/selfplay-6c.js, 162 Hard vs Hard matches) and three new tracers: audit/sim/lanes6e.js (the army per lane, losses alone,
+the warp point), audit/sim/early6e.js (the opening to 6:00) and audit/sim/bank6e.js (credits and energy banked). Tests:
+tests/rework-6e.test.js, tests/costs6e-ui.test.js.
+
+### Part A1: how the AIs use the lanes (audit/logs-p1/lanes6e-base/A1.md)
+
+The premise did not hold: no faction splits its army much. Every 10 s over the 108 lane-map matches, the top lane held 93% of the
+Axiarchs' ground army on Two-Lane and 91% on Three-Lane (Last Fist 93/90%, Bloomhost 89/85%). What the Axiarchs did differently:
+18% (Two-Lane) and 20% (Three-Lane) of the value they lost died **alone** (no other Axiarch unit within 300), against 4-6% for the
+others; 73-83% of those were under a minute old, and 72-77% died while the army held at home. Every Axiarch unit warps in at the
+warp point, by default the front edge of the frontmost power-field patch: on the lane maps the centre node or a forward pad,
+999-1,049 from the HQ (median), while the army's middle stood 458-738 from it and the warp point was 400+ ahead of it 35-45% of
+the time. New units appeared in the enemy's path and died there. A second fault, in every faction's AI: an all-in base attack
+walks to the map's edge behind the enemy base and stands there out of sight of what the enemy rebuilds (the Axiarchs' army stood
+past the enemy HQ in 6-7% of samples; in one trial a 3× army stood there 12 minutes and the match was drawn). Reported for all,
+changed for the Axiarchs only.
+
+### Part A2: the fix (b6elane)
+
+An Axiarch AI on a lane map (every difficulty; Classic has no lanes and plays as before), in place of the lane AI's reinforcement
+and shift rules (`aiLanes6e`, called from `aiLanes` and `aiLanes3`):
+
+| rule | v2.94 | b6elane |
+|---|---|---|
+| where the army goes | new units to the lane that needs them, a surplus shifted to a losing lane | one focus lane (`side.la.fc`): every ground unit but at most one cheap screen (150 or less) per other lane, and every new unit |
+| which lane | (per lane) | the lane under the most dangerous attack (enemy value in its own half, weighted up to 2× near the HQ, 150+); else the lane where it can win (the most enemy value its army beats 1.15×), else the least enemy; held 25 s unless a threat elsewhere is 1.5× the current lane's |
+| the warp point | the front edge of the frontmost field patch | the field spot on the focus lane nearest the middle of the army there, never more than 60 ahead of it (`lane6eWarp`; the player's "Set warp point" mechanism, `side.warp`) |
+| a lane switch | units walk | the warp point moves at once; Mass Warp (an existing ability) is cast on the biggest group still on the old lane when ready (`aiMassWarp6e`), the rest walk |
+| an all-in base attack | down one lane, to the map's edge | down one lane, to the enemy HQ plus 60 (`lane6eEnd`, `side.end6e`) |
+| capture groups (Three-Lane) | two at once | one |
+
+Base attacks keep v2.94's one-lane rule. No unit values change; no new ability.
+
+### Part A3: measured (audit/logs-p1/selfplay6e-a3/A3.md; b6elane on, b6e off)
+
+Axiarchs 28% (20-37) → 45% (36-55): Two-Lane 17% → 39%, Three-Lane 17% → 47%, Classic unchanged (the 54 Classic matches are
+identical to 6d's). Last Fist 62% → 54%, Bloomhost 43% → 35%. Pairings: Last Fist vs Bloomhost 65% (unchanged), vs the Axiarchs
+59% → 43%, Bloomhost vs the Axiarchs 63% → 48%. Personalities 46 / 42 / 46%. Lone deaths 18% → 8% and 20% → 9%; the warp point 400+
+ahead of the army 35% → 16% and 45% → 3% of the time; the top lane's share 93% → 90% and 91% → 95%.
+
+### Part B1: the energy conversion and one further change (b6e)
+
+Every Axiarch unit's energy at most 20% of its total cost (rounded to 5), the rest onto its credits; totals unchanged, the
+Shardling (19%) unchanged (`B6E.cost`, played through `trainCost`, `rwD`, `rwShow`, `echoCost`, a sold queue's refund; UDEF
+untouched; the AI's `armyValue` keeps UDEF's numbers):
+
+| unit | v2.94 | b6e |
+|---|---|---|
+| Shardling | 65 / 15 | unchanged |
+| Riftstalker | 140 / 50 | 150 / 40 |
+| Lancer | 120 / 45 | 130 / 35 |
+| Prismwing | 100 / 40 | 110 / 30 |
+| Bastion | 260 / 85 | 275 / 70 |
+| Parallax | 220 / 90 | 250 / 60 |
+| Severance | 220 / 90 | 250 / 60 |
+| Rift Mortar (b2a off) | 250 / 100 | 280 / 70 |
+| Gravemantle | 230 / 100 | 265 / 65 |
+| Wraithwing | 230 / 100 | 265 / 65 |
+| Astral Marksman | 240 / 110 | 280 / 70 |
+| Shardstorm | 280 / 130 | 330 / 80 |
+| Voidcarrier | 360 / 170 | 425 / 105 |
+| Eventide | 420 / 180 | 480 / 120 |
+| Worldbreaker | 500 / 210 | 570 / 140 |
+| Astral Sovereign | 600 / 300 | 720 / 180 |
+
+Energy share of Axiarch unit spending 25.9% → 20.0% (Last Fist 19.3%, Bloomhost 19.2%). **Measured alone it made the Axiarchs
+worse: 45% → 34% (26-44)** (audit/logs-p1/selfplay6e-b2/B2.md). From 8:00 they were short of credits instead (median 255-363
+banked at 8:00-10:00, 188-326 later) with energy unspent (415-1,381 from 10:00), and their spending moved from the Bastion and
+Prismwing to the units the old energy price had held back (Marksman, Riftstalker, Severance, Gravemantle, Wraithwing), none of
+which trades better. Under 42%, so one further change: not the Singularity Well's energy yield (energy was no longer short), but
+the unit failing its role with the most spent on it, the **Riftstalker: shields 110 → 160** (`B6E.unit`, `rw6eSpawn`): 98 damage and
+39 killed value per 100 spent, 3% of the damage in Axiarch wins; its rule blinks it home when its shields break, so it left or
+died before it killed.
+
+### Part B2: measured (audit/logs-p1/selfplay6e-b3/B2.md; both on)
+
+Last Fist 61% (52-70), Bloomhost 34% (26-44), Axiarchs 39% (30-48) (Two-Lane 39%, Three-Lane 31%). Riftstalker 98 → 120 damage per
+100 spent (5% of winning damage). Damage per 100 spent for every changed unit is in B2.md.
+
+### Part C1: Last Fist's early edge (audit/logs-p1/early6e-c1/C1.md)
+
+At 4:00 Last Fist fields 1,566 (13.5 Marines, 39% of it by value; 1.6 Heavies, 1.3 Tanks) against Bloomhost's 1,235 and the
+Axiarchs' 1,146, earns 37.4 a second (33.2, 38.8) and holds 2.09 nodes (1.19, 2.24); it wins the first field fight (300+ value
+lost, from 3:20) against Bloomhost 61% and against the Axiarchs 33%. Joined with the full matches: against the Axiarchs the 4:00
+army decides (1.2× bigger: 25-6; 1.2× smaller: 0-7); against Bloomhost the opening does not (Last Fist wins 15-3 after losing the
+first fight, 14-3 with fewer nodes at 5:00, 14-1 with armies within 20% at 4:00): 6d's reading no longer holds. What Last Fist has
+over both is volume: it spends 1,389-1,401 a minute on units against 1,246 and 1,098, from a little more income and a larger
+share on units (69-70% against 65% and 58%).
+
+### Part C2/C3: one value, measured (audit/logs-p1/selfplay6e-c3/C3.md)
+
+| value | before | after |
+|---|---|---|
+| Marine credits (`B6E.cost.rifle`, behind b6e) | 45 | 48 |
+
+Screened on a Latin-square subset first (Marine 50: Last Fist 64% → 39% there; +5 overshot). Measured with every switch on: Last
+Fist 46% (37-56), Bloomhost 44% (35-53), Axiarchs 44% (35-53); every pairing 46%; the Axiarchs 44% on Two-Lane and 42% on Three-
+Lane; personalities Boomer 39% (30-48), Economist 44%, Turtle 51%. The opening hardly moved (Last Fist's 4:00 army 1,566 → 1,525,
+first fight vs Bloomhost 61% → 56%); the gap closes later in the match. The second allowed change was not used.
+
+### Departures
+
+- A1 found no army split; the fix is the warp point (plus the one-lane rule asked for, and the base attack's end), not a split.
+- The conversion did its job on the numbers (20%) and hurt the Axiarchs (45% → 34% alone); it is kept as asked, with the
+  Riftstalker change and the Part C Marine price behind the same switch. Next lever if the Axiarchs slip: a share near 24%.
+- Part C's change is the Marine's price, not the 3:00-4:00 fight: C1 found the fight decides neither Last Fist pairing.
+- The Boomer personality is at 39% (30-48), one point under its 40-60% target; not tuned (no Part C change was aimed at it).
+- New map spread (not a target): Bloomhost 67% on Classic and 22% on Three-Lane; Last Fist 31% on Classic.
+
 ## Unchanged (already distinct)
 
 Marine, Heavy, Tank, Flame Tank, Hydra, Interceptor, Medevac, Recon Drone, Mite, Razorwing, Cloudwing, Thornback, Lancer,
@@ -1108,6 +1225,7 @@ buildings: batch 5d, v2.91, with team colour on their largest surfaces).
 
 7. Batch 6a (v2.91): the balance audit (docs/BALANCE_AUDIT.md). Batch 6b (v2.92): the side-bias fix (`b6side`) and Artillery counterplay
    (`b6art`). Batch 6c (v2.93): the HQ shield rule (`b6hq`) and the first unit tuning (`b6c`). Batch 6d (v2.94): the AI
-   personality fix (`b6ai`) and four faction values (`b6d`).
+   personality fix (`b6ai`) and four faction values (`b6d`). Batch 6e (v2.95): Axiarch lane play (`b6elane`), the Axiarch
+   energy costs, the Riftstalker's shields and the Marine's price (`b6e`).
 
 Then: the paused balance pass, with all three factions reworked.

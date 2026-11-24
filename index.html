@@ -17508,7 +17508,7 @@ const TUT_CH = [
       { txt: () => 'To build: tap a pad, then a card. Or just tap a card and it takes the first free pad.' },
     ] },
   { key: 'army', name: 'Army', blurb: 'Training troops, selecting, Attack, Hold and Retreat, the rally point and healing, lanes',
-    setup: () => { tPlace('barracks', 4); tMe().res.c += trainCost(game, 'rifle').c * 2; } // v2.95: the Marine's price in this game (batch 6e: 48),
+    setup: () => { tPlace('barracks', 4); tMe().res.c += trainCost(game, 'rifle').c * 2; /* v2.95: the Marine's price in this game (batch 6e: 48) */ },
     steps: [
       { act: true, txt: () => `Troops come from production buildings like your ${tN('barracks')}. Open the Train tab.`, hi: () => tEl('.tabs [data-tab="train"]'), done: () => tab === 'train' },
       { act: true, txt: () => `Tap the ${UDEF.rifle.name} card to train one.`, hi: () => tCard('rifle'), done: () => { const b = tMy('barracks'); if (b && b.queue.length && !TUT.firstUnit) TUT.firstUnit = b.queue[0]; return !!TUT.firstUnit || game.ents.some(e => e.kind === 'u' && e.side === 0); } },
