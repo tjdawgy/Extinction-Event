@@ -21,7 +21,7 @@ test('Set warp point: the first Train card arms it; a tap outside the field is r
   });
   await page.click('.tabs [data-tab="train"]');
   assert.strictEqual(await page.evaluate(() => $('cards').firstChild.id), 'cWarp', 'the first card on the Train tab');
-  assert.match(await page.textContent('#cWarp'), /Warp point.*Front/);
+  assert.match(await page.textContent('#cWarp'), /Warp point.*Base/); // v2.96 (b6f): the default beside the base rally point (Front with b6f off)
   await page.click('#cWarp');
   assert.ok(await page.evaluate(() => wpt && !$('aim').classList.contains('hide')) && /Set warp point/.test(await page.textContent('#aim')));
   const out = await page.evaluate(() => __xy(hqPos(0).u + FIELD.axisR + 140, hqPos(0).v + 40));
