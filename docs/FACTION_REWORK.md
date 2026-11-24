@@ -1156,6 +1156,20 @@ Fist 46% (37-56), Bloomhost 44% (35-53), Axiarchs 44% (35-53); every pairing 46%
 Lane; personalities Boomer 39% (30-48), Economist 44%, Turtle 51%. The opening hardly moved (Last Fist's 4:00 army 1,566 → 1,525,
 first fight vs Bloomhost 61% → 56%); the gap closes later in the match. The second allowed change was not used.
 
+### Tests after b6elane and b6e
+
+- Fast suite: the pinned older switch sets hold b6elane and b6e off (determinism, the rework and 6d tests and the rest). Five
+  tests checked prices against v2.94's numbers; each now checks the same intent against the game's price (`trainCost`,
+  `echoCost`): an echo costs half the unit's price (tests/axiarchs-sig.test.js, tests/axiarchs-sig-ui.test.js), a sold queue
+  refunds its units in full (tests/regression.test.js), a Mass Deployment order costs two Marines (tests/trees.test.js, and its
+  switches-on rerun). tests/rework-3a.test.js's "b3a off plays the plain UDEF entry" holds b6e off too (b6e's Riftstalker price and
+  shields sit on top of any batch).
+- Slow suite: tests/slow/threelane-match.test.js failed "both sides used all three lanes" on one match. Over 20 seeds and four
+  switch sets (audit/logs-p1/slow6e/report.md, audit/sim/slow6e.js) it is an intended effect of b6elane: the Axiarch side reaches
+  all three lanes in 5 of 10 matches with it on, 10 of 10 off; every other side and check is unchanged. The test holds b6elane off;
+  tests/slow/switches-on-6e.test.js checks the same intent with every switch on (the Axiarchs move one army between two lanes or
+  more, every other side uses all three).
+
 ### Departures
 
 - A1 found no army split; the fix is the warp point (plus the one-lane rule asked for, and the base attack's end), not a split.
