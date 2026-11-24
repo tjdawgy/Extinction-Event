@@ -228,7 +228,7 @@ function echoCards(wrap) {
 function refreshEchoCards() {
   const s = game.sides[myS()], cap = popCap(game, myS()), used = popUsed(game, myS());
   for (const el of $('cards').querySelectorAll('.card.echoc')) {
-    const t = el.dataset.unit, k = echoCost(t), poor = s.res.c < k.c || s.res.e < k.e || used + UDEF[t].pop > cap;
+    const t = el.dataset.unit, k = echoCost(t, game), poor = s.res.c < k.c || s.res.e < k.e || used + UDEF[t].pop > cap;
     setHTML(el.querySelector('.cost'), costHTML(k, s.res, UDEF[t].pop)); el.classList.toggle('poor', !!poor);
   }
 }

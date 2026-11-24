@@ -219,7 +219,7 @@ function aiAbility(g, s, P, ctx) {
     if (!spare(k)) continue;
     if (like(k) === 'strike') { if (lvl > 0) opts.push([k, aiStrikeTarget(g, s, kind, lvl, seen, ctx, k)]); }
     else if (like(k) === 'shield') opts.push([k, aiShieldTarget(g, s, kind, lvl, seen, ctx, k)]);
-    else opts.push([k, k === 'brood' ? aiBroodTarget(g, s, kind, lvl, ctx) : k === 'mwarp' ? aiMassWarpTarget(g, s, ctx) : aiRepairTarget(g, s, kind, lvl, ctx)]);
+    else opts.push([k, k === 'brood' ? aiBroodTarget(g, s, kind, lvl, ctx) : k === 'mwarp' ? (lane6eOn(g, s) && aiMassWarp6e(g, s, ctx)) || aiMassWarpTarget(g, s, ctx) : aiRepairTarget(g, s, kind, lvl, ctx)]);
   }
   // The Aggressor saves the cooldown for a Strike on known defences while it builds up to a push; only a fight it is losing gets a Shield
   const hold = kind === 'aggressor' && lvl > 0 && !ctx.threat && abList(side).includes('strike') && aiFortified(g, s) && abilUnlocked(g, s, ABIL.strike) && ctx.myV >= 300;

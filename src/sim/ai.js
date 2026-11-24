@@ -649,10 +649,12 @@ function aiLanes(g, s, D, mine, theirs, threat, myV = 0, thV = 0) {
     const k = side.atkLane != null && side.atkAt === side.stanceAt ? side.atkLane : en[0] !== en[1] ? (en[0] > en[1] ? 0 : 1) : mv[0] >= mv[1] ? 0 : 1;
     side.atkLane = k; side.atkAt = side.stanceAt; side.laneNew = k;
     for (const u of army) if (u.lane !== k) u.lane = k;
+    if (lane6eOn(g, s)) { side.la.fc = k; side.la.fcT = g.t; lane6eGo(g, s, army, k, false); side.end6e = side.pushTo === null ? lane6eEnd(g, s) : null; } // v2.95 (b6elane): the warp point onto the attack lane; the focus follows it
     if (!easy) aiForward(g, s, D, threat);
     return;
   }
   side.atkLane = null;
+  if (lane6eOn(g, s)) { side.end6e = null; aiLanes6e(g, s, army, theirs, en, [0, 1]); if (!easy) aiForward(g, s, D, threat); return; } // v2.95 (b6elane): one army, one lane (src/sim/rework-6e.js)
   side.laneNew = Math.abs(need[0] - need[1]) < LANE_AI.even ? null : need[0] > need[1] ? 0 : 1;
   if (!easy && g.t - LA.sh >= LANE_AI.shift) for (const k of [0, 1]) {
     const o = 1 - k;
@@ -709,10 +711,12 @@ function aiLanes3(g, s, D, mine, theirs, threat, myV = 0, thV = 0) {
     }
     side.atkLane = k; side.atkAt = side.stanceAt; side.laneNew = k;
     for (const u of army) if (u.lane !== k) u.lane = k;
+    if (lane6eOn(g, s)) { side.la.fc = k; side.la.fcT = g.t; lane6eGo(g, s, army, k, false); side.end6e = side.pushTo === null ? lane6eEnd(g, s) : null; } // v2.95 (b6elane)
     if (!easy) aiForward(g, s, D, threat);
     return;
   }
   side.atkLane = null;
+  if (lane6eOn(g, s)) { side.end6e = null; aiLanes6e(g, s, army, theirs, en, lanes); if (!easy) aiForward(g, s, D, threat); return; } // v2.95 (b6elane): one army, one lane (src/sim/rework-6e.js)
   const top = need.indexOf(Math.max(...need)), sorted = need.slice().sort((a, b) => b - a);
   side.laneNew = sorted[0] - sorted[1] < LANE_AI.even && alarm < 0 ? null : top;
   if (!easy && g.t - LA.sh >= LANE_AI.shift) for (const k of lanes) {
@@ -757,7 +761,7 @@ function aiCapture(g, s, mine, theirs, easy, key = 'capT', atKey = 'capAt', othe
 function aiCapture3(g, s, mine, theirs, easy) {
   const side = g.sides[s];
   aiCapture(g, s, mine, theirs, easy, 'capT', 'capAt', side.capT2);
-  if (!easy) aiCapture(g, s, mine, theirs, easy, 'capT2', 'capAt2', side.capT);
+  if (!easy && !lane6eOn(g, s)) aiCapture(g, s, mine, theirs, easy, 'capT2', 'capAt2', side.capT); // v2.95 (b6elane): an Axiarch army keeps one capture group
 }
 const capBusy = (side, id) => (side.capT && side.capT.ids.includes(id)) || (side.capT2 && side.capT2.ids.includes(id)) || (side.relicG && side.relicG.ids.includes(id)); // v2.71: or the relic group
 // v2.71 (Proposal E): a guarded relic. With no push on, nothing threatening at home and nothing it knows of near the relic,

@@ -253,7 +253,7 @@ function trySell(g, s, b) {
   if (b.hp <= 0) return { ok: false, msg: 'That building is gone' };
   const r = sellValue(b);
   side.res.c += r.c; side.res.e += r.e;
-  for (const q of b.queue) { side.res.c += UDEF[q].cost.c; side.res.e += UDEF[q].cost.e; logSpend(g, s, 'u', -UDEF[q].cost.c, -UDEF[q].cost.e); } // queued units are refunded: never spent
+  for (const q of b.queue) { const k = unitCost6(g, q); side.res.c += k.c; side.res.e += k.e; logSpend(g, s, 'u', -k.c, -k.e); } // queued units are refunded: never spent (v2.95: at batch 6e's price, unitCost6)
   if (g.log) { const T = g.log.tot[s]; T.sold[0] += r.c; T.sold[1] += r.e; T.bSold++; lg(g, s, 'S', b.type, b.tier); }
   b.queue.length = 0; b.hp = 0; b.dead = true; b.sold = true;
   if (b.slot >= 0 && side.slots[b.slot] === b) side.slots[b.slot] = null;
@@ -302,12 +302,13 @@ function tryTrain(g, s, type) {
   const nOf = b => type === 'rifle' && pathMod(b, 'pairs') ? 2 : 1, p = prods.find(b => b.queue.length + nOf(b) <= 5) || prods[0], n = nOf(p); // the first with room in its queue
   const cap = popCap(g, s);
   if (popUsed(g, s) + d.pop * n > cap) return { ok: false, msg: cap >= POP_MAX ? 'Army is at maximum size' : 'Army is full — build or upgrade a Habitat' };
-  if (side.res.c < d.cost.c * n) return { ok: false, msg: `Need ${Math.ceil(d.cost.c * n - side.res.c)} more credits` };
-  if (side.res.e < d.cost.e * n) return { ok: false, msg: `Need ${Math.ceil(d.cost.e * n - side.res.e)} more energy` };
+  const k = unitCost6(g, type); // v2.95: batch 6e's Axiarch costs (UDEF's otherwise)
+  if (side.res.c < k.c * n) return { ok: false, msg: `Need ${Math.ceil(k.c * n - side.res.c)} more credits` };
+  if (side.res.e < k.e * n) return { ok: false, msg: `Need ${Math.ceil(k.e * n - side.res.e)} more energy` };
   if (p.queue.length + n > 5) return { ok: false, msg: 'Production queue is full' };
-  side.res.c -= d.cost.c * n; side.res.e -= d.cost.e * n;
+  side.res.c -= k.c * n; side.res.e -= k.e * n;
   for (let i = 0; i < n; i++) p.queue.push(type);
-  logSpend(g, s, 'u', d.cost.c * n, d.cost.e * n);
+  logSpend(g, s, 'u', k.c * n, k.e * n);
   return { ok: true, msg: n === 2 ? 'Marines ×2 queued' : `${d.name} queued` };
 }
 

@@ -107,13 +107,13 @@ function echoStore(g, e) {
   const L0 = rel.ech || (rel.ech = []); L0.push(e.type);
   while (L0.length > ECHO.n[rel.tier]) L0.shift(); // full: the oldest gives way
 }
-const echoCost = type => ({ c: Math.round(UDEF[type].cost.c * ECHO.cost), e: Math.round(UDEF[type].cost.e * ECHO.cost) });
+const echoCost = (type, g) => { const k = unitCost6(g, type); return { c: Math.round(k.c * ECHO.cost), e: Math.round(k.e * ECHO.cost) }; }; // v2.95: half batch 6e's price when it is on (g: the game)
 function tryEcho(g, s, i) {
   const rel = relOf(g, s), side = g.sides[s];
   if (g.over) return { ok: false, msg: 'The match is over' };
   if (g.countdown > 0) return WAIT_GO;
   if (!rel || !rel.ech || !rel.ech[i]) return { ok: false, msg: 'No such echo' };
-  const type = rel.ech[i], d = UDEF[type], k = echoCost(type), cap = popCap(g, s);
+  const type = rel.ech[i], d = UDEF[type], k = echoCost(type, g), cap = popCap(g, s);
   if (popUsed(g, s) + d.pop > cap) return { ok: false, msg: cap >= POP_MAX ? 'Army is at maximum size' : `Army is full — build or upgrade a ${bdS(g, s, 'habitat').name}` };
   if (side.res.c < k.c) return { ok: false, msg: `Need ${Math.ceil(k.c - side.res.c)} more credits` };
   if (side.res.e < k.e) return { ok: false, msg: `Need ${Math.ceil(k.e - side.res.e)} more energy` };

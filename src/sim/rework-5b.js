@@ -38,7 +38,7 @@ const rw5bCount = (g, s, k, n) => { const side = g.sides[s]; if (!side) return; 
 
 /* ---- Broods ---- */
 // What one order of a type costs and takes in game g (the UI's cards and the AI read it; a brood in a b5b game)
-const trainCost = (g, t) => t === 'skitterling' && rwB5b(g) ? { c: broodCost(g), e: 0 } : UDEF[t].cost;
+const trainCost = (g, t) => t === 'skitterling' && rwB5b(g) ? { c: broodCost(g), e: 0 } : unitCost6(g, t); // v2.95: batch 6e's Axiarch costs (unitCost6)
 const trainPop = (g, t) => t === 'skitterling' && rwB5b(g) ? UDEF.skitterling.pop * BROOD.n : UDEF[t].pop;
 const trainTime = (g, t) => t === 'skitterling' && rwB5b(g) ? BROOD.time : UDEF[t].time;
 function broodTrain(g, s, d, prods) {
