@@ -6,7 +6,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { loadSim } = require('../load-sim');
 
-const sim = loadSim();
+const sim = loadSim(); sim.REWORK.b6elane = false; // v2.95: batch 6e's Axiarch lane play off (an intended effect, audit/logs-p1/slow6e/report.md: with it on the Axiarch army holds one focus lane at a time and reaches all three lanes in 5 of 10 matches, 10 of 10 off; every other check unchanged). Counterpart with every switch on: tests/slow/switches-on-6e.test.js
 const F = ['lastfist', 'bloomhost', 'axiarchs'];
 // v2.94: seeds 606-611 (were 600-605; the same pairing cycle). With batch 6d on, every check still holds at its old rate over 20
 // seeds (audit/logs-p1/slow6d/report.md: all three lanes 19/20, ended by an HQ 17/20 against 18/20 with b6ai and b6d off), but
