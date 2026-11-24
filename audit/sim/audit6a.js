@@ -27,7 +27,7 @@ if (process.argv[2] === '--one') {
     // a finished production building stood with an empty queue (not upgrading) while its side had supply room; float: seconds
     // with 1000+ credits banked; atk: seconds the side's stance was attack; per minute: bank, army value, own HQ-side share
     const PROD = new Set(['barracks', 'factory', 'techlab']);
-    R.ser = [0, 1].map(() => ({ idle: 0, idleB: 0, float: 0, float2: 0, atk: 0, armyM: [], bankM: [], incM: [], popM: [] }));
+    R.ser = [0, 1].map(() => ({ idle: 0, idleB: 0, float: 0, float2: 0, atk: 0, armyM: [], bankM: [], incM: [], popM: [], eM: [] })); // eM (v2.95, batch 6e B2): energy banked each minute
     try {
       while (!g.over && g.t < +maxT) {
         S.update(g, S.TICK);
@@ -46,7 +46,7 @@ if (process.argv[2] === '--one') {
             const Z = R.ser[s], sd = g.sides[s], room = S.popUsed(g, s) < S.popCap(g, s) - 2;
             let pb = 0, ib = 0; for (const b of g.ents) if (b.kind === 'b' && b.side === s && b.hp > 0 && b.built && PROD.has(b.type)) { pb++; if (!b.queue.length && !b.upgrading && room) ib++; }
             if (ib) Z.idle++; Z.idleB += ib; if (sd.res.c >= 1000) Z.float++; if (sd.res.c >= 2000) Z.float2++; if (sd.stance === 'attack') Z.atk++;
-            if (k % 3600 === 0) { const inc = S.income(g, s); Z.bankM.push(Math.round(sd.res.c)); Z.incM.push(Math.round(inc.c + inc.e)); Z.popM.push([S.popUsed(g, s), S.popCap(g, s)]);
+            if (k % 3600 === 0) { const inc = S.income(g, s); Z.bankM.push(Math.round(sd.res.c)); Z.eM.push(Math.round(sd.res.e)); Z.incM.push(Math.round(inc.c + inc.e)); Z.popM.push([S.popUsed(g, s), S.popCap(g, s)]);
               let v = 0; for (const e of g.ents) if (e.kind === 'u' && e.side === s && e.hp > 0 && !e.temp) { const c = S.rwD(g, e.type).cost; v += c.c + c.e; } Z.armyM.push(v); }
           }
         }
