@@ -84,7 +84,7 @@ function useAbility(g, s, k, u, v) {
     for (const e of g.ents) if (e.kind === 'u' && e.side === s && e.hp > 0 && e.maxShp && inAbil(e, u, v, A.r)) { e.ovT = g.t + A.dur; n++; }
     g.abil.push({ k, side: s, u, v, t0: g.t, end: g.t + 0.6, n });
   } else if (k === 'mwarp') { // v2.28: the chosen units channel at once and arrive at the end (updateAbilities)
-    const wp = warpPoint(g, s);
+    const wp = warpAt(g, s); // v2.96 (b6f): the player's default beside the base rally point
     g.abil.push({ k, side: s, u, v, t0: g.t, end: g.t + A.ch, ids: mwarpPick(g, s, u, v).map(e => e.id), wu: wp.u, wv: wp.v });
   } else if (k === 'beam') g.abil.push({ k, side: s, u, v: clamp(v, -LANE_V, LANE_V), t0: g.t, end: g.t + A.delay + A.sweep, at: 0, hit: [] }); // at: how far the sweep has gone (0-1)
   else if (k === 'strike' || k === 'brood') g.abil.push({ k, side: s, u, v, t0: g.t, end: g.t + A.delay });
@@ -101,7 +101,7 @@ function mwarpPick(g, s, u, v) {
 // The channel ends: each chosen unit still alive moves to a valid spot at the warp point (the one shown at the cast while it
 // is still in the field, else the current one). Nothing is created or removed.
 function mwarpLand(g, a) {
-  const wp = onField(g, a.side, a.wu, a.wv) ? { u: a.wu, v: a.wv } : warpPoint(g, a.side), taken = [];
+  const wp = onField(g, a.side, a.wu, a.wv) ? { u: a.wu, v: a.wv } : warpAt(g, a.side), taken = []; // v2.96: warpAt (b6f)
   let n = 0;
   for (const id of a.ids) {
     const e = g.ents.find(x => x.id === id && x.hp > 0); if (!e) continue;

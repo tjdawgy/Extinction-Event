@@ -253,7 +253,7 @@ function warpCard() {
   });
   return el;
 }
-function refreshWarpCard() { const el = $('cWarp'); if (el && game) el.querySelector('.cost').textContent = wpt ? 'Cancel' : game.sides[myS()].warp ? 'Moved · tap to set' : 'Front · tap to set'; }
+function refreshWarpCard() { const el = $('cWarp'); if (el && game) el.querySelector('.cost').textContent = wpt ? 'Cancel' : game.sides[myS()].warp ? 'Moved · tap to set' : rwB6f(game) ? 'Base · tap to set' : 'Front · tap to set'; }
 function wptTap(x, y) {
   const w = toWorld(x, y), r = setWarp(game, myS(), w.x, w.y / DY);
   toast(r.msg, r.ok ? 'ok' : 'bad');

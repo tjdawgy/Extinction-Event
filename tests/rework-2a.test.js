@@ -8,7 +8,7 @@ const step = (s, g, sec) => { for (let i = 0; i < Math.round(sec * 60); i++) s.r
 
 test('switches: per game; b2a off keeps the Bile Lobber and Rift Mortar, on gives the Gorebore and Severance', () => {
   const s = loadSim();
-  assert.strictEqual(JSON.stringify(s.rwInit()), JSON.stringify({ b2a: true, artDeploy: true, artTelegraph: true, b2b: true, b3a: true, b3b: true, b4a: true, b4b: true, b5b: true, b5c: true, b6side: true, b6art: true, b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true }), 'the new default is on (v2.83: b2b too; v2.84: b3a; v2.85: b3b)');
+  assert.strictEqual(JSON.stringify(s.rwInit()), JSON.stringify({ b2a: true, artDeploy: true, artTelegraph: true, b2b: true, b3a: true, b3b: true, b4a: true, b4b: true, b5b: true, b5c: true, b6side: true, b6art: true, b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: true, b6f: true }), 'the new default is on (v2.83: b2b too; v2.84: b3a; v2.85: b3b)');
   const on = s.rangeGame({ factions: ['bloomhost', 'axiarchs'] }), off = s.rangeGame({ factions: ['bloomhost', 'axiarchs'], rework: { b2a: false } });
   assert.strictEqual(s.rangeUnit(on, 0, 'bilelobber', 600, 0).type, 'gorebore');
   assert.strictEqual(s.rangeUnit(off, 0, 'gorebore', 600, 0).type, 'bilelobber');
@@ -103,8 +103,8 @@ test('Severance: a slow orb; enemy units hit take its damage, then are frozen, u
 test('saves: the switches are saved only with b2a (or b2b, v2.83) on; a save without them plays as before the rework', () => {
   const s = loadSim();
   const g = s.newGame('normal', { seed: 5 }), o = JSON.parse(s.serialize(g, {}));
-  assert.strictEqual(JSON.stringify(o.rw), JSON.stringify({ b2a: true, artDeploy: true, artTelegraph: true, b2b: true, b3a: true, b3b: true, b4a: true, b4b: true, b5b: true, b5c: true, b6side: true, b6art: true, b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true }));
-  const g0 = s.newGame('normal', { seed: 5, rework: { b2a: false, b2b: false, b3a: false, b3b: false, b4a: false, b4b: false, b5b: false, b5c: false, b6side: false, b6art: false, b6hq: false, b6c: false, b6ai: false, b6d: false, b6elane: false, b6e: false } }), o0 = JSON.parse(s.serialize(g0, {}));
+  assert.strictEqual(JSON.stringify(o.rw), JSON.stringify({ b2a: true, artDeploy: true, artTelegraph: true, b2b: true, b3a: true, b3b: true, b4a: true, b4b: true, b5b: true, b5c: true, b6side: true, b6art: true, b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: true, b6f: true }));
+  const g0 = s.newGame('normal', { seed: 5, rework: { b2a: false, b2b: false, b3a: false, b3b: false, b4a: false, b4b: false, b5b: false, b5c: false, b6side: false, b6art: false, b6hq: false, b6c: false, b6ai: false, b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false } }), o0 = JSON.parse(s.serialize(g0, {}));
   assert.ok(!('rw' in o0) && !('mk' in o0));
   assert.strictEqual(s.deserialize(s.serialize(g0, {})).rw.b2a, false);
   assert.strictEqual(s.deserialize(s.serialize(g, {})).rw.b2a, true);

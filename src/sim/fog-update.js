@@ -267,7 +267,7 @@ function updateBuilding(g, b, foes, dt) {
       if (n === 2) b.queue.shift();
       for (let i = 0; i < n; i++) {
         const fr = fwdRally(g, b.side, b); // v2.68: a forward Barracks sends its units to its lane's Forward flag
-        if (facOf(b.fac) === 'axiarchs') { if (fr) g.warps.push({ side: b.side, type: ut, u: fr.u + rand(-12, 12), v: fr.v + rand(-20, 20), t0: g.t, end: g.t + WARP.ch, fwd: fr }); else startWarp(g, b.side, ut); continue; } // Axiarchs (v2.26): the unit warps in at the warp point instead
+        if (facOf(b.fac) === 'axiarchs') { if (fr) g.warps.push({ side: b.side, type: ut, u: fr.u + rand(-12, 12), v: fr.v + rand(-20, 20), t0: g.t, end: g.t + WARP.ch, fwd: fr }); else startWarp(g, b.side, ut, undefined, b); continue; } // Axiarchs (v2.26): the unit warps in at the warp point instead
         const nu = fr ? spawnUnit(g, b.side, ut, fr.u + rand(-12, 12), fr.v + rand(-20, 20)) : spawnUnit(g, b.side, ut, b.u + dirOf(b.side) * (b.half + 10), b.v + rand(-12, 12) + (br ? (i - 1.5) * 9 : i * 16));
         if (fr) { nu.lane = fr.lane; nu.fwdHome = { u: fr.u, n: fr.n }; nu.laneV = clamp(nu.v - fr.v, -LANE_V, LANE_V); }
         if (g.sides[b.side].direct) ctlTrained(g, nu, fr); // v2.73: to the base rally point (or beside a forward Barracks), each in its own space (v2.76), then Hold

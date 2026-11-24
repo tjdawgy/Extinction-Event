@@ -651,7 +651,7 @@ function drawAim(c, g) {
     return;
   }
   if (aim.ok && aim.k === 'mwarp') { // v2.28: the units that will warp, and where to
-    const wp = warpPoint(g, myS()), q = P(wp.u, wp.v); c.strokeStyle = col; c.lineWidth = 1.2; c.globalAlpha = 0.9;
+    const wp = warpAt(g, myS()), q = P(wp.u, wp.v); // v2.96: warpAt (b6f) c.strokeStyle = col; c.lineWidth = 1.2; c.globalAlpha = 0.9;
     for (const e of mwarpPick(g, myS(), aim.u, aim.v)) { const p = P(e.u, e.v); c.beginPath(); c.ellipse(p.x, p.y, 9, 4, 0, 0, 7); c.stroke(); }
     c.setLineDash([3, 5]); c.beginPath(); c.moveTo(w.x, w.y); c.lineTo(q.x, q.y); c.stroke(); c.setLineDash([]); c.globalAlpha = 1;
   }

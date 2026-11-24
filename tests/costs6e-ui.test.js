@@ -13,9 +13,10 @@ test.before(async () => { if (pw) browser = await pw.chromium.launch(); });
 test.after(async () => { if (browser) await browser.close(); });
 const OUT = process.env.EE_DOC_SHOTS ? path.join(__dirname, '..', 'docs', 'screenshots') : path.join(__dirname, 'screenshots');
 
-test('b6e: the Codex and the info card show the converted Axiarch prices and changed values; off, v2.94\'s', { skip }, async () => {
+test('b6e (b6f off): the Codex and the info card show the converted Axiarch prices and changed values; off, v2.94\'s', { skip }, async () => {
   fs.mkdirSync(OUT, { recursive: true });
   const { page, errors } = await openPage(browser, PHONE);
+  await page.evaluate(() => { REWORK.b6f = false; }); // v2.96: b6f undoes the conversion (tests/rework-6f-ui.test.js)
   const read = () => page.evaluate(() => {
     const card = t => document.getElementById('cx-u-' + t), row = t => $('cxTw').querySelector(`tbody tr[data-t="${t}"]`);
     return { lancerCard: card('lancer').textContent, lancerRow: row('lancer').textContent, rsCard: card('riftstalker').textContent, shCard: card('shardling').textContent, want: J(B6E) };
@@ -36,6 +37,6 @@ test('b6e: the Codex and the info card show the converted Axiarch prices and cha
   assert.ok(off.rsCard.includes('110') && !off.rsCard.includes(String(on.want.unit.riftstalker.shp)), 'off: v2.94\'s Riftstalker shields');
   const info0 = await page.evaluate(() => { closeCodex && closeCodex(); showInfo('u', 'marksman'); return document.getElementById('info').textContent; });
   assert.ok(info0.includes('240 credits, 110 energy'), `off info card: ${info0.slice(0, 200)}`);
-  await page.evaluate(() => { REWORK.b6e = true; });
+  await page.evaluate(() => { REWORK.b6e = true; REWORK.b6f = true; });
   assert.deepStrictEqual(errors, []);
 });

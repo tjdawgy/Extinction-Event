@@ -7,7 +7,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { loadSim } = require('./load-sim');
 
-const sim = loadSim(); sim.REWORK.b6d = false; sim.REWORK.b6elane = false; sim.REWORK.b6e = false; /* v2.95 */ /* v2.94: batch 6d's Yard share off (tests/rework-6d.test.js) */ sim.setBalance(false); // v2.39: these tests pin the mechanic at its own numbers (v2.30 Salvage, v2.32 Yard and unit costs); the balance pass values are pinned in tests/salvage.test.js
+const sim = loadSim(); sim.REWORK.b6d = false; sim.REWORK.b6elane = false; sim.REWORK.b6e = false; sim.REWORK.b6fai = false; sim.REWORK.b6f = false; /* v2.96 */ /* v2.95 */ /* v2.94: batch 6d's Yard share off (tests/rework-6d.test.js) */ sim.setBalance(false); // v2.39: these tests pin the mechanic at its own numbers (v2.30 Salvage, v2.32 Yard and unit costs); the balance pass values are pinned in tests/salvage.test.js
 const U = sim.UDEF, S = sim.SALVAGE, MID = sim.L / 2;
 const quiet = (f0 = 'lastfist', f1 = 'bloomhost') => { const g = sim.newGame('normal', { factions: [f0, f1] }); g.countdown = 0; g.t = 30; for (const s of g.sides) { s.aiT = 1e9; s.res.c = s.res.e = 1000; } sim.setStance(g, 0, 'hold'); sim.setStance(g, 1, 'hold'); return g; };
 const put = (g, s, t, u, v = 0) => { const e = sim.spawnUnit(g, s, t, u, v); e.holdU = u; e.holdV = v; e.cd = 1e6; return e; };
@@ -21,7 +21,7 @@ test('the SALVAGE block holds every number: 10%, within 200, at most 200 credits
 });
 
 test('v2.39 balance pass (on in the game): Salvage 7%, the Salvage Yard 14%; a kill pays on the new costs; the Yard card says so; off restores 10% and 20%', () => {
-  const s2 = loadSim(), U2 = s2.UDEF; s2.REWORK.b6d = false; s2.REWORK.b6elane = false; s2.REWORK.b6e = false; /* v2.95 */ /* v2.94: batch 6d's Yard share off */ s2.setBalance7c(false); // v2.43: the phase 7c layer changes the Bulwark's cost (tests/polish.test.js)
+  const s2 = loadSim(), U2 = s2.UDEF; s2.REWORK.b6d = false; s2.REWORK.b6elane = false; s2.REWORK.b6e = false; s2.REWORK.b6fai = false; s2.REWORK.b6f = false; /* v2.96 */ /* v2.95 */ /* v2.94: batch 6d's Yard share off */ s2.setBalance7c(false); // v2.43: the phase 7c layer changes the Bulwark's cost (tests/polish.test.js)
   assert.strictEqual(s2.BALANCE.on, true);
   assert.strictEqual(s2.SALVAGE.pct, 0.07); assert.strictEqual(s2.YARD.pct, 0.14);
   assert.deepStrictEqual({ ...U2.bulwark.cost }, { c: 150, e: 30 });

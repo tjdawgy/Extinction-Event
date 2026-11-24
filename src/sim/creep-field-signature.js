@@ -160,9 +160,9 @@ function warpSpot(g, s, u, v, taken) {
 }
 // A finished unit starts its warp: a channel of WARP.ch seconds at a valid spot near the warp point. It is already paid
 // for and counts toward supply until it arrives (popUsed).
-function startWarp(g, s, type, extra) { // extra: an echo's flags (v2.34)
+function startWarp(g, s, type, extra, b) { // extra: an echo's flags (v2.34); b (v2.96): the producing building
   RNG.g = g; // v2.50: roll from this match's stream (these can run from the UI, between ticks)
-  const w = warpPoint(g, s), p = warpSpot(g, s, w.u, w.v);
+  const w = warpAt(g, s, b), p = warpSpot(g, s, w.u, w.v); // v2.96 (b6f): a player with no warp point of its own: beside the base rally point (src/sim/rework-6f.js)
   g.warps.push(Object.assign({ side: s, type, u: p.u, v: p.v, t0: g.t, end: g.t + WARP.ch }, extra));
 }
 // Gravemantle aura and Eventide pulse (v2.27)

@@ -6,7 +6,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { loadSim } = require('./load-sim');
 
-const sim = loadSim(); sim.REWORK.b6d = false; sim.REWORK.b6elane = false; sim.REWORK.b6e = false; /* v2.95 */ /* v2.94: batch 6d's Yard share off (tests/rework-6d.test.js) */ sim.setMech7c(false); // v2.43: these tests pin the v2.32-v2.34 signature rules (regular pads, both at once) and v2.42 nodes; tests/polish.test.js covers the signature pad (MECH7C)
+const sim = loadSim(); sim.REWORK.b6d = false; sim.REWORK.b6elane = false; sim.REWORK.b6e = false; sim.REWORK.b6fai = false; sim.REWORK.b6f = false; /* v2.96 */ /* v2.95 */ /* v2.94: batch 6d's Yard share off (tests/rework-6d.test.js) */ sim.setMech7c(false); // v2.43: these tests pin the v2.32-v2.34 signature rules (regular pads, both at once) and v2.42 nodes; tests/polish.test.js covers the signature pad (MECH7C)
 sim.BREAK.prod.on = false; // v2.69: these tests shield an HQ with any finished building (the rule before v2.69); tests/base-break.test.js covers the production rule
  sim.setBalance(false); // v2.39: these tests pin the mechanic at its own numbers (v2.30 Salvage, v2.32 Yard and unit costs); the balance pass values are pinned in tests/salvage.test.js
 const U = sim.UDEF, B = sim.BDEF, S = sim.SALVAGE, Y = sim.YARD, MID = sim.L / 2;

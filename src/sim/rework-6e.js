@@ -52,7 +52,7 @@ const B6E = {
     rifle: { c: 48, e: 0 },          // 45/0
   },
 };
-const rw6eCost = (g, t) => rwB6e(g) && B6E.cost[t] ? B6E.cost[t] : null;
+const rw6eCost = (g, t) => rwB6e(g) && B6E.cost[t] && !(rwB6f(g) && B6F.undo(t)) ? B6E.cost[t] : null; // v2.96 (b6f): the Axiarch conversion undone (src/sim/rework-6f.js)
 // B2's one further change (audit/logs-p1/selfplay6e-b2/B2.md): with the costs converted the Axiarchs fell to 34%; energy was no
 // longer what held them back (it piled up unspent from 10:00), so not the Singularity Well. The unit failing its role with the
 // most spent on it: the Riftstalker (98 damage and 39 killed value per 100 spent, 3% of the damage in Axiarch wins; its blink

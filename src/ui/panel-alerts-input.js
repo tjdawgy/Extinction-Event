@@ -193,7 +193,7 @@ function handleEvents() {
     else if (e.type === 'spotted' && e.side === myS()) { toast('Enemy units spotted', 'warn'); sndPlay('ping'); }
     else if (e.type === 'beaconDown' && (e.side === myS() || e.seen)) toast(e.side === myS() ? `Phase Beacon bubble collapsed: back in ${BEACON.down} s` : 'Enemy field bubble collapsed', e.side === myS() ? 'warn' : 'ok'); // v2.34
     else if (e.type === 'overdrive' && e.side === myS()) toast(`Overdrive: production +${Math.round(YARD.od * 100)}% for ${YARD.odDur} s`, 'ok'); // v2.32
-    else if (e.type === 'warpSnap' && e.side === myS()) { toast('Warp point lost with the field: back to the front edge', 'warn'); refreshWarpCard(); } // v2.26
+    else if (e.type === 'warpSnap' && e.side === myS()) { toast(rwB6f(game) ? 'Warp point lost with the field: back beside your base' : 'Warp point lost with the field: back to the front edge', 'warn'); /* v2.96 (b6f) */ refreshWarpCard(); } // v2.26
     else if (e.type === 'relic') { toast(e.side === myS() ? `Relic taken: +${e.c} credits` : 'The enemy took a relic', e.side === myS() ? 'ok' : 'warn'); if (e.side === myS()) sndPlay('node'); } // v2.71
     else if (e.type === 'node') { if (e.side === myS() && !e.lost) sndPlay('node'); toast(e.lost ? (e.side === myS() ? 'You lost a field node' : 'Enemy lost a field node') : (e.side === myS() ? `Field node captured: +${NODE_INC.c} credits, +${NODE_INC.e} energy per second` : 'Enemy captured a field node'), (e.side === myS()) === !e.lost ? 'ok' : 'warn'); }
     else if (e.type === 'go') showGo();

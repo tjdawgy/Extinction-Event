@@ -12,7 +12,7 @@ const until = (s, g, f, sec = 20) => { for (let i = 0; i < sec * 60; i++) { if (
 const tough = (...es) => es.forEach(e => { e.hp = e.maxHp = 1e6; });
 
 test('switch: per game; b5b off plays the v2.87 units (UDEF untouched), on the batch\'s definitions; saves', () => {
-  const s = loadSim(); s.REWORK.b6c = false; s.REWORK.b6ai = false; s.REWORK.b6d = false; s.REWORK.b6elane = false; s.REWORK.b6e = false; /* v2.95 */ /* v2.94 */ /* v2.93: v2.92's numbers (batch 6c's tuning, on by default, is tested in tests/rework-6c.test.js) */
+  const s = loadSim(); s.REWORK.b6c = false; s.REWORK.b6ai = false; s.REWORK.b6d = false; s.REWORK.b6elane = false; s.REWORK.b6e = false; s.REWORK.b6fai = false; s.REWORK.b6f = false; /* v2.96 */ /* v2.95 */ /* v2.94 */ /* v2.93: v2.92's numbers (batch 6c's tuning, on by default, is tested in tests/rework-6c.test.js) */
   assert.strictEqual(s.rwInit().b5b, true, 'on by default');
   const on = s.rangeGame({ factions: ['bloomhost', 'lastfist'] }), off = s.rangeGame({ factions: ['bloomhost', 'lastfist'], rework: { b5b: false } });
   const sk = s.rwD(on, 'skitterling'); assert.ok(sk.hp === 50 && sk.brood.n === 4 && sk.brood.c === 120 && sk.brood.time === 6 && sk.swarm && s.UDEF.skitterling.hp !== 50 && s.rwD(off, 'skitterling') === s.UDEF.skitterling);
@@ -27,7 +27,7 @@ test('switch: per game; b5b off plays the v2.87 units (UDEF untouched), on the b
 });
 
 test('broods: one order costs 120 for 4 Skitterlings of 50 health in 6 s, counts 4 against supply and the limit; past the limit only what fits hatches, the rest refunded', () => {
-  const s = loadSim(); s.REWORK.b6c = false; s.REWORK.b6ai = false; s.REWORK.b6d = false; s.REWORK.b6elane = false; s.REWORK.b6e = false; /* v2.95 */ /* v2.94 */ /* v2.93: v2.92's numbers (batch 6c's tuning, on by default, is tested in tests/rework-6c.test.js) */
+  const s = loadSim(); s.REWORK.b6c = false; s.REWORK.b6ai = false; s.REWORK.b6d = false; s.REWORK.b6elane = false; s.REWORK.b6e = false; s.REWORK.b6fai = false; s.REWORK.b6f = false; /* v2.96 */ /* v2.95 */ /* v2.94 */ /* v2.93: v2.92's numbers (batch 6c's tuning, on by default, is tested in tests/rework-6c.test.js) */
   const g = s.newGame('normal', { seed: 3, factions: ['bloomhost', 'lastfist'], countdown: 0 }); g.sides[0].aiT = g.sides[1].aiT = 1e9;
   s.rangeBuilding(g, 0, 'bloomhost', 'barracks', 300, 0);
   const sd = g.sides[0]; sd.res.c = 1000; sd.res.e = 0;
@@ -137,7 +137,7 @@ test('AI: Bloomhost scores broods up and answers aircraft with Spitters and Need
 function skirm(s, kind, rw) {
   const S = kind === 'g' ? { f: ['bloomhost', 'lastfist'], u: [['skitterling', 560, -20, 12], ['spitter', 520, 30, 4], ['needlewing', 540, 60, 4]], v: [['rifle', 820, -10, 6], ['aircraft', 860, 20, 2], ['interceptor', 880, 40, 1], ['tank', 860, -40, 1]] }
     : { f: ['axiarchs', 'bloomhost'], u: [['shardling', 600, -20, 3], ['lancer', 580, 20, 3], ['wraithwing', 560, 50, 2]], v: [['skitterling', 820, 0, 10], ['thornback', 860, -30, 1], ['dreadthorn', 880, 20, 1], ['razorwing', 840, 50, 2], ['cloudwing', 860, 60, 1]] };
-  const g = s.rangeGame({ seed: 17, factions: S.f, rework: Object.assign({ b5c: false, b6side: false, b6art: false, b6hq: false, b6c: false, b6ai: false, b6d: false, b6elane: false, b6e: false }, rw) }) /* v2.90: pinned before batch 5c (its key would be saved) */;
+  const g = s.rangeGame({ seed: 17, factions: S.f, rework: Object.assign({ b5c: false, b6side: false, b6art: false, b6hq: false, b6c: false, b6ai: false, b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false }, rw) }) /* v2.90: pinned before batch 5c (its key would be saved) */;
   for (const [t, u, v, n] of S.u) for (let i = 0; i < n; i++) s.rangeUnit(g, 0, t, u + (i % 4) * 12, v + Math.floor(i / 4) * 14);
   for (const [t, u, v, n] of S.v) for (let i = 0; i < n; i++) s.rangeUnit(g, 1, t, u + (i % 4) * 12, v + Math.floor(i / 4) * 14);
   s.rangeMode(g, 0, 'attack'); s.rangeMode(g, 1, 'attack');

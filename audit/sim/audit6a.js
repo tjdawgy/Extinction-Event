@@ -45,6 +45,17 @@ if (process.argv[2] === '--one') {
           for (let s = 0; s < 2; s++) {
             const Z = R.ser[s], sd = g.sides[s], room = S.popUsed(g, s) < S.popCap(g, s) - 2;
             let pb = 0, ib = 0; for (const b of g.ents) if (b.kind === 'b' && b.side === s && b.hp > 0 && b.built && PROD.has(b.type)) { pb++; if (!b.queue.length && !b.upgrading && room) ib++; }
+            // v2.96 (batch 6f, Part A): an all-in base attack standing past the enemy HQ (read only). edge: seconds with half or more of
+            // its ground army (value) over EDGE past the enemy HQ toward the map's edge; edgeIdle: of those, seconds with no enemy
+            // building or unit it can see within 300 of any of them; edgeAt: the first such second
+            if (sd.stance === 'attack' && sd.pushTo === null && (sd.pushMode === 'all' || sd.pushMode === 'siege')) {
+              Z.allIn = (Z.allIn || 0) + 1;
+              const dr = s === 0 ? 1 : -1, eh = S.hqU(1 - s), bz = new Set([sd.scoutId, ...(sd.capT ? sd.capT.ids : []), ...(sd.capT2 ? sd.capT2.ids : []), ...(sd.raid ? sd.raid.ids : []), ...(sd.relicG ? sd.relicG.ids : [])]);
+              let tv = 0, pv = 0; const past = [];
+              for (const e of g.ents) { if (e.kind !== 'u' || e.side !== s || e.hp <= 0 || e.temp || bz.has(e.id) || S.UDEF[e.type].air || S.UDEF[e.type].support) continue; const v = S.armyValue([e]); tv += v; if (dr * (e.u - eh) > 100) { pv += v; past.push(e); } }
+              if (tv > 0 && pv >= tv * 0.5) { Z.edge = (Z.edge || 0) + 1; if (Z.edgeAt == null) Z.edgeAt = Math.round(g.t);
+                if (!g.ents.some(x => x.side === 1 - s && x.hp > 0 && (x.kind === 'b' || x.kind === 'u') && S.visibleTo(g, s, x) && past.some(e => Math.hypot(e.u - x.u, (e.v || 0) - (x.v || 0)) < 300))) Z.edgeIdle = (Z.edgeIdle || 0) + 1; }
+            }
             if (ib) Z.idle++; Z.idleB += ib; if (sd.res.c >= 1000) Z.float++; if (sd.res.c >= 2000) Z.float2++; if (sd.stance === 'attack') Z.atk++;
             if (k % 3600 === 0) { const inc = S.income(g, s); Z.bankM.push(Math.round(sd.res.c)); Z.eM.push(Math.round(sd.res.e)); Z.incM.push(Math.round(inc.c + inc.e)); Z.popM.push([S.popUsed(g, s), S.popCap(g, s)]);
               let v = 0; for (const e of g.ents) if (e.kind === 'u' && e.side === s && e.hp > 0 && !e.temp) { const c = S.rwD(g, e.type).cost; v += c.c + c.e; } Z.armyM.push(v); }

@@ -359,7 +359,7 @@ function updateUnit(g, u, foes, dt) {
   else if (st === 'attack') {
     // a field push spreads forward of its line; a siege spreads back from it, so nobody stands inside the enemy HQ's range
     const spread = side.pushMode === 'siege' ? -1 : 1;
-    const end = side.pushTo !== null ? side.pushTo - spread * u.rallyOff * dir * 0.6 : side.end6e != null ? side.end6e : (dir > 0 ? L : 0); // v2.95 (b6elane): an Axiarch AI's base attack on a lane map ends at the enemy HQ, not the map's edge behind it (side.end6e)
+    const end = side.pushTo !== null ? side.pushTo - spread * u.rallyOff * dir * 0.6 : side.end6e != null ? side.end6e : rwB6fai(g) && !side.direct ? end6f(g, u.side) : (dir > 0 ? L : 0); // v2.96 (b6fai): every AI's base attack ends there too (end6f) // v2.95 (b6elane): an Axiarch AI's base attack on a lane map ends at the enemy HQ, not the map's edge behind it (side.end6e)
     if (u.id === side.spotter && side.spotU != null && (side.pushTo !== null || side.spotAny)) tu = side.spotU; // spotAny (v2.38): a Default AI spots for its long guns on any push
     else if (u.type === 'interceptor') { // escort the nearest of your Leviathans and Gunships; with none, wait behind the front
       let esc = null, ed = 1e9;
