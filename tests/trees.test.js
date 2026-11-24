@@ -53,7 +53,7 @@ test('Mass Deployment: a Marine order is a pair (double cost and army size), tra
   const c0 = g.sides[0].res.c, n0 = g.ents.filter(e => e.type === 'rifle').length;
   const r = sim.tryTrain(g, 0, 'rifle');
   assert.ok(r.ok); assert.strictEqual(r.msg, 'Marines ×2 queued');
-  assert.strictEqual(c0 - g.sides[0].res.c, 100);
+  assert.strictEqual(c0 - g.sides[0].res.c, 2 * sim.trainCost(g, 'rifle').c, 'a pair at twice the Marine\'s price in this game (v2.95: b6e\'s 48)');
   assert.deepStrictEqual([...b.queue], ['rifle', 'rifle'], 'at the Mass Barracks'); assert.strictEqual(a.queue.length, 0);
   step(g, 4.2);
   assert.strictEqual(g.ents.filter(e => e.type === 'rifle').length - n0, 0, 'a pair takes 1.5× a Marine\'s time (6 s)');

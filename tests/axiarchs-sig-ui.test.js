@@ -27,7 +27,7 @@ test('as the Axiarchs: Phase Beacon and Echo Reliquary cards and info; the Echoe
     document.querySelector('.tabs [data-tab="train"]').click(); refreshUI(true);
     out.empty = $('echoHdr') && $('echoHdr').textContent;
     game.ents.find(e => e.type === 'sigB').ech = ['lancer', 'parallax']; refreshUI(false);
-    out.hdr = $('echoHdr').textContent; out.echoCards = [...$('cards').querySelectorAll('.card.echoc')].map(x => x.querySelector('.nm').textContent + ' ' + x.querySelector('.cost').textContent);
+    out.hdr = $('echoHdr').textContent; out.echoCards = [...$('cards').querySelectorAll('.card.echoc')].map(x => x.querySelector('.nm').textContent + ' ' + x.querySelector('.cost').textContent); out.echoPar = echoCost('parallax', game).c;
     out.first = [...$('cards').children].slice(0, 4).map(x => x.id || x.className);
     const c0 = game.sides[0].res.c; $('cards').querySelector('.card.echoc[data-unit="parallax"]').click(); refreshUI(false);
     out.paid = c0 - game.sides[0].res.c; out.warps = game.warps.map(w => w.type + (w.echo ? ':echo' : '')); out.left = [...$('cards').querySelectorAll('.card.echoc')].map(x => x.dataset.unit);
@@ -38,9 +38,9 @@ test('as the Axiarchs: Phase Beacon and Echo Reliquary cards and info; the Echoe
   assert.match(r.info.sigA.body, /frontmost/); assert.match(r.info.sigA.body, /never stacks/); assert.match(r.info.sigB.body, /half its cost/);
   assert.deepStrictEqual(r.bad, []);
   assert.match(r.empty, /Echoes\s*0\/3/); assert.match(r.hdr, /Echoes\s*2\/3/);
-  assert.strictEqual(r.echoCards.length, 2); assert.match(r.echoCards[1], /Astral|Parallax/); assert.match(r.echoCards[1], /110/);
+  assert.strictEqual(r.echoCards.length, 2); assert.match(r.echoCards[1], /Astral|Parallax/); assert.match(r.echoCards[1], new RegExp(String(r.echoPar))); // v2.95: half the Parallax's price in this game (b6e: 250 → 125)
   assert.strictEqual(r.first[0], 'cWarp', 'the warp point card first'); assert.strictEqual(r.first[1], 'echoHdr', 'then the Echoes section');
-  assert.strictEqual(r.paid, 110); assert.deepStrictEqual(r.warps, ['parallax:echo']); assert.deepStrictEqual(r.left, ['lancer']);
+  assert.strictEqual(r.paid, r.echoPar, 'half the Parallax\'s price in this game (v2.95: 125 with b6e on)'); assert.deepStrictEqual(r.warps, ['parallax:echo']); assert.deepStrictEqual(r.left, ['lancer']);
   assert.deepStrictEqual(errors, []);
   await page.close();
 });

@@ -1,5 +1,5 @@
 // v2.95 (batch 6e, REWORK.b6e) in a real browser: the Codex (card and stats table) and a unit's info card show the batch 6e
-// prices and values when b6e is on (the new-game default) and v2.94's with it off. Screenshots: tests/screenshots/costs6e-*.png
+// prices and values when b6e is on (the new-game default) and v2.94's with it off. Screenshot: tests/screenshots/costs6e-codex-on.png
 // (docs/screenshots with EE_DOC_SHOTS=1).
 const test = require('node:test');
 const assert = require('node:assert');
@@ -29,7 +29,6 @@ test('b6e: the Codex and the info card show the converted Axiarch prices and cha
   await page.screenshot({ path: path.join(OUT, 'costs6e-codex-on.png') });
   const info = await page.evaluate(() => { closeCodex && closeCodex(); showInfo('u', 'marksman'); return document.getElementById('info').textContent; });
   assert.ok(info.includes(`${M.c} credits, ${M.e} energy`), `info card: ${info.slice(0, 200)}`);
-  await page.screenshot({ path: path.join(OUT, 'costs6e-info-on.png') });
   await page.evaluate(() => { REWORK.b6e = false; const i = document.getElementById('info'); if (i) i.classList.remove('show'); openCodex('axiarchs', 'unit:lancer'); });
   await page.waitForTimeout(200);
   const off = await read();

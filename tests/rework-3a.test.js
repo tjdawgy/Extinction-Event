@@ -10,7 +10,7 @@ const until = (s, g, f, sec = 20) => { for (let i = 0; i < sec * 60; i++) { if (
 
 test('switch: per game; b3a off plays the v2.83 units (UDEF untouched), on plays the batch\'s definitions; saves', () => {
   const s = loadSim();
-  const on = s.rangeGame({ factions: ['axiarchs', 'bloomhost'] }), off = s.rangeGame({ factions: ['axiarchs', 'bloomhost'], rework: { b3a: false } });
+  const on = s.rangeGame({ factions: ['axiarchs', 'bloomhost'] }), off = s.rangeGame({ factions: ['axiarchs', 'bloomhost'], rework: { b3a: false, b6e: false } }); // v2.95: b6e off too (its Riftstalker price and shields sit on top of any batch; tests/rework-6e.test.js)
   assert.ok(s.rwB3a(on) && !s.rwB3a(off));
   for (const t of ['leaper', 'riftstalker', 'parallax', 'ravager']) assert.strictEqual(s.rwD(off, t), s.UDEF[t], `off: the plain UDEF entry (${t})`);
   assert.ok(!s.rwD(on, 'parallax').leap && s.UDEF.parallax.leap, 'the Parallax has no leap in b3a; UDEF keeps it');

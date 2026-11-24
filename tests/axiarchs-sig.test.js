@@ -101,7 +101,7 @@ test('echoes: only Axiarch T2/T3 deaths, never temporary or recovered units; 3 k
 test('a re-warp: 50% of the cost, normal supply and warp rules, consumes the echo, no production building or path needed', () => {
   const g = quiet(); const rel = fin(g, 0, 'sigB'); step(g, 30); rel.ech = ['riftstalker', 'parallax']; // the Axis field grown
   assert.ok(!g.ents.some(e => e.type === 'barracks'), 'no Genesis Gate at all');
-  const k = sim.echoCost('parallax'); assert.deepStrictEqual({ ...k }, { c: Math.round(U.parallax.cost.c * E.cost), e: Math.round(U.parallax.cost.e * E.cost) });
+  const k = sim.echoCost('parallax', g), P = sim.trainCost(g, 'parallax'); assert.deepStrictEqual({ ...k }, { c: Math.round(P.c * E.cost), e: Math.round(P.e * E.cost) }); // v2.95: half the unit's price in this game (batch 6e's converted price with b6e on)
   const c0 = g.sides[0].res.c, e0 = g.sides[0].res.e;
   const r = sim.tryEcho(g, 0, 1); assert.ok(r.ok, r.msg);
   assert.deepStrictEqual([c0 - g.sides[0].res.c, e0 - g.sides[0].res.e], [k.c, k.e], 'half the cost');
