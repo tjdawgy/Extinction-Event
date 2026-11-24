@@ -28,7 +28,7 @@ test('switch: per game; b3a off plays the v2.83 units (UDEF untouched), on plays
 });
 
 test('Leaper: leaps onto the big unit in reach (never aircraft or buildings), rides it, eats 10/s, slows it 30% (not stacking); 3 per host', () => {
-  const s = loadSim(); s.REWORK.b6c = false; s.REWORK.b6ai = false; s.REWORK.b6d = false; /* v2.94 */ /* v2.93: v2.92's numbers (batch 6c's tuning, on by default, is tested in tests/rework-6c.test.js) */
+  const s = loadSim(); s.REWORK.b6c = false; s.REWORK.b6ai = false; s.REWORK.b6d = false; s.REWORK.b6elane = false; s.REWORK.b6e = false; /* v2.95 */ /* v2.94 */ /* v2.93: v2.92's numbers (batch 6c's tuning, on by default, is tested in tests/rework-6c.test.js) */
   const g = s.rangeGame({ factions: ['bloomhost', 'lastfist'] });
   const L = [0, 1, 2, 3].map(i => s.rangeUnit(g, 0, 'leaper', 650, -15 + i * 10));
   const tank = s.rangeUnit(g, 1, 'tank', 760, 0), rifle = s.rangeUnit(g, 1, 'rifle', 720, 30), heli = s.rangeUnit(g, 1, 'aircraft', 700, 0);

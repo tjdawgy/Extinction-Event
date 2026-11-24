@@ -5,7 +5,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { loadSim } = require('../load-sim');
 
-const sim = loadSim(); sim.REWORK.b6side = false; sim.REWORK.b6art = false; sim.REWORK.b6hq = false; sim.REWORK.b6c = false; sim.REWORK.b6ai = false; sim.REWORK.b6d = false; /* v2.94 */ // v2.92: these six seeds pinned with batch 6b off (with it on, its own dice make them other matches; 3 of these 6 fell by an HQ then, against 24 of 30 Two-Lane matches in the 90-match self-play with both on, audit/logs-p1/audit6b-art/)
+const sim = loadSim(); sim.REWORK.b6side = false; sim.REWORK.b6art = false; sim.REWORK.b6hq = false; sim.REWORK.b6c = false; sim.REWORK.b6ai = false; sim.REWORK.b6d = false; sim.REWORK.b6elane = false; sim.REWORK.b6e = false; /* v2.95 */ /* v2.94 */ // v2.92: these six seeds pinned with batch 6b off (with it on, its own dice make them other matches; 3 of these 6 fell by an HQ then, against 24 of 30 Two-Lane matches in the 90-match self-play with both on, audit/logs-p1/audit6b-art/)
 const F = ['lastfist', 'bloomhost', 'axiarchs'];
 test('Hard vs Hard on Two-Lane: decided matches, both lanes, the centre and forward pads', () => {
   let hq = 0, fwdUsed = 0;
