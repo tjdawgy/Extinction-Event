@@ -46,14 +46,6 @@ const warpAt = (g, s, b) => (warp6fOn(g, s) && warp6f(g, s, b)) || warpPoint(g, 
 // Not while a Phase Beacon's bubble stands: the beacon exists to warp units in at the front (its bubble is then the front edge)
 const warp6fOn = (g, s) => { const sd = g.sides[s], bp = rwB6f(g) && sd.direct ? beaconPatch(g, s) : null; return rwB6f(g) && !!sd.direct && !(sd.warp && onField(g, s, sd.warp.u, sd.warp.v)) && !(bp && bp.r > 0); };
 
-/* ---- b6fai, Part D2 (docs/FACTION_REWORK.md "Batch 6f", Part D): the Bloomhost swarm keeps to one lane ----
-   Why (audit/logs-p1/lanes6f-d1/D1.md): on Three-Lane the Bloomhost AI spread its army the most of any faction (1.38 lanes
-   holding 20%+ of it, against 1.14-1.23; 7% of its army in capture and raid groups, against 3-4%), was outnumbered in its
-   main lane in 59% of samples and lost 40% of its army's value outnumbered, while its swarm surge pays only for a packed
-   swarm. On a lane map (every difficulty; Classic has no lanes) the Bloomhost AI now plays batch 6e's one-army lane rule
-   (aiLanes6e: one focus lane with at most a one-unit screen elsewhere, every new unit there; base attacks down one lane;
-   one capture group on Three-Lane). The warp point it also sets is never read for a Bloomhost side. */
-const lane6fOn = (g, s) => lane6eOn(g, s) || (rwB6fai(g) && facOf(g.sides[s].faction) === 'bloomhost');
 
 /* ---- b6fai, Part D2: a press attack counts the base's defences ----
    Why (audit/logs-p1/lanes6f-d1/D1.md): Last Fist lost all 12 of its Classic matches against a Turtle (6-0 to each faction's
