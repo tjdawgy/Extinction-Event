@@ -54,3 +54,14 @@ const warp6fOn = (g, s) => { const sd = g.sides[s], bp = rwB6f(g) && sd.direct ?
    (aiLanes6e: one focus lane with at most a one-unit screen elsewhere, every new unit there; base attacks down one lane;
    one capture group on Three-Lane). The warp point it also sets is never read for a Bloomhost side. */
 const lane6fOn = (g, s) => lane6eOn(g, s) || (rwB6fai(g) && facOf(g.sides[s].faction) === 'bloomhost');
+
+/* ---- b6fai, Part D2: a press attack counts the base's defences ----
+   Why (audit/logs-p1/lanes6f-d1/D1.md): Last Fist lost all 12 of its Classic matches against a Turtle (6-0 to each faction's
+   Turtle; every other personality and map pairing was normal), 12 of its 25 Classic losses. Ahead early on volume, its Hard
+   AI's press rule (ATTACK.press: an all-in or siege push whenever its army beats the enemy army it knows of by the press
+   edge) sent it again and again into the Turtle's Turrets and HQ gun on the short map: press attacks skip the engage check,
+   and unlike every other base-attack rule (thV + hqVal) press never counted the base's known defences. Last Fist lost
+   9,500-10,400 by 10:00 against 6,600-6,700, and the Turtle out-grew it. With b6fai on, every AI's press base attack also
+   needs its army to be at least B6FAI.press × (the enemy army it knows of + the base's known defences, knownDefense). */
+B6FAI.press = 1;
+const press6f = (g, myV, thV, hqVal) => !rwB6fai(g) || myV >= (thV + hqVal) * B6FAI.press;

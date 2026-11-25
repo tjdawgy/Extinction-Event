@@ -445,7 +445,7 @@ function aiUpdate(g, s, dt) {
   const prNeed = PR ? lerp(PR.edge, PR.edgeLate, clamp((g.t - PR.late0) / (EXT.warn - PR.late0), 0, 1)) : 1;
   const ecoAhead = pr && income(g, s).c >= (side.estInc || 1e9) * PR.eco;
   const prSafe = !PR || !PR.power || aiPower(mine) >= aiPower(theirs); // v2.61: a cautious difficulty never presses into a known army stronger than its own
-  const prPush = pr && prSafe && myV >= dl.minArmy * (hasCond(g, 'scarce') ? COND.scarce.army : 1) && (myV >= thV * prNeed || (ecoAhead && myV >= thV * prNeed * 0.9));
+  const prPush = pr && prSafe && myV >= dl.minArmy * (hasCond(g, 'scarce') ? COND.scarce.army : 1) && (myV >= thV * prNeed || (ecoAhead && myV >= thV * prNeed * 0.9)) && press6f(g, myV, thV, hqVal); // v2.96 (b6fai): and the base's known defences (src/sim/rework-6f.js)
   let b6p = null; // v2.94 (b6ai)
   const prField = pr && prSafe && g.nodes[1].owner !== s && myV >= 250 && myV >= thV * PR.field * prNeed / PR.edge;
   if (bo && side.boHold && side.stance === 'attack' && side.pushMode !== 'all' && side.pushMode !== 'siege') { side.stance = 'retreat'; side.pushTo = null; side.pushMode = null; side.stanceAt = g.t; } // v2.42 (breakout): back under the gun
