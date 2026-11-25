@@ -267,8 +267,8 @@ if (require.main === module && process.argv[2] === '--print6c') console.log(JSON
 // v2.96 (batch 6f: base attacks for every AI and the press rule's base defences REWORK.b6fai; the Axiarch prices undone and the
 // player's default warp point REWORK.b6f; src/sim/rework-6f.js). Every set above holds both off and matches as before (with both
 // off the game is v2.95). The same two modern matches: FP_V296A with b6fai on and b6f off, FP_V296 with both on (the new-game default).
-const FP_V296A = ['A0', 'A1']; // b6fai on, b6f off
-const FP_V296 = ['B0', 'B1']; // b6fai and b6f on (every switch on)
+const FP_V296A = ['3a2c5d5d97bf5035bcb787fe40198e9a15edf363efb39594b88f374ad4c5c228', '2072979de61d332d254d331ba9639fd37c927821cc848a59ceffe5e47eca4d6a']; // b6fai on, b6f off
+const FP_V296 = ['83bdf7d6667ebf2693be23c7cde2b9ae114536bae47fd6b3ff46c9733b200d93', 'fe38b5d31c1e775dff1a8bd2f7247c58aa3faa394cffab1d3286fe19eed6bc0c']; // b6fai and b6f on (every switch on; the Classic match differs from FP_V296A by the save's b6f key alone)
 test('v2.96: modern matches: b6fai on, b6f off (FP_V296A); both on (FP_V296)', () => {
   assert.deepStrictEqual(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: true, b6f: false }), FP_V296A);
   assert.deepStrictEqual(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: true, b6f: true }), FP_V296);
