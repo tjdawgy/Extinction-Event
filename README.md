@@ -80,6 +80,14 @@ Bloomhost plays as a fast, deadly swarm with a real answer to aircraft, behind `
 
 With `b5b` off everything plays exactly as v2.87 (the pinned determinism fingerprints match; seeded skirmishes hash as on v2.87's build). Tests: `tests/rework-5b.test.js`; screenshots: `node tests/rework-5b-shots.js` → docs/screenshots/rework5b-*.png; self-play: `node audit/sim/selfplay-5b.js [seed] [maxT] [--force]`.
 
+## Batch 6f: base attacks for every AI, the Axiarch prices undone, player warp-in, the maps (v2.96)
+
+Details in [docs/FACTION_REWORK.md](docs/FACTION_REWORK.md) "Batch 6f" and [docs/BALANCE_AUDIT.md](docs/BALANCE_AUDIT.md) section 14; code in src/sim/rework-6f.js. Two switches, per game, on by default, with Test Range switches (both off = v2.95 exactly):
+- **AI** (`b6fai`): every AI's all-out base attack stops at the enemy HQ (60 past it), not the map's edge behind the base, on every map and for every faction; a Hard AI's "press" attack now also counts the enemy base's known defences (its HQ gun and Turrets), not just its army.
+- **Prices and warp-in** (`b6f`): every Axiarch unit costs its v2.94 credits and energy again (the Riftstalker keeps 160 shields, the Marine 48 credits); a human Axiarch player's new units warp in beside the base rally point unless a warp point is set (the Train tab's card now reads "Base"; a Phase Beacon still brings them to the front).
+- Results (324 persona-balanced Hard matches): Last Fist 50%, Bloomhost 43%, Axiarchs 42%; every faction 36-57% on every map (were 22-67%); pairings 44-56%; personalities 41-49%.
+- Measurement: `node audit/sim/selfplay-6c.js --seedBase 1000` (a second seed set), `node audit/sim/edge6f-report.js dir` (base attacks standing past the enemy HQ), `node audit/sim/maps6f-report.js selfplayDir lanesDir` (the map diagnosis; lane traces from `audit/sim/lanes6e.js --maps classic,twolane,threelane`).
+
 ## Batch 6e: Axiarch lane play and energy, then Last Fist's early edge (v2.95)
 
 Details in [docs/FACTION_REWORK.md](docs/FACTION_REWORK.md) "Batch 6e" and [docs/BALANCE_AUDIT.md](docs/BALANCE_AUDIT.md) section 13; code in src/sim/rework-6e.js. Two switches, per game, on by default, with Test Range switches (both off = v2.94 exactly):
@@ -208,6 +216,8 @@ npm run test:slow   # the long statistical tests (tests/slow/): before any commi
 | `tests/rework-6e.test.js` | Batch 6e (v2.95): `b6elane` (a focus lane, new units and the warp point on it, Classic untouched, off untouched) and `b6e` (converted Axiarch prices with totals kept, the Riftstalker's shields, the Marine's price; training, refunds, echoes and the Codex use them) |
 | `tests/slow/switches-on-6e.test.js` | Batch 6e: the switches-on counterpart of the Three-Lane test pinned with b6elane off (the Axiarchs move one army between lanes; every other side uses all three) |
 | `tests/costs6e-ui.test.js` | Batch 6e in the browser: the Codex card, stats table and a unit's info card show the batch 6e prices and shields with b6e on, v2.94's off (screenshots costs6e-*.png) |
+| `tests/rework-6f.test.js` | Batch 6f (v2.96): `b6fai` (every AI's base attack ends at the enemy HQ on every map, faction by faction; off, the map's edge) and `b6f` (v2.94's Axiarch prices, the Marine and Riftstalker kept, a sold queue's refund; the player's default warp point beside the base rally point, a set point kept, the AI untouched) |
+| `tests/rework-6f-ui.test.js` | Batch 6f in the browser: the Codex and info card show v2.94's Axiarch prices; a human Axiarch player's trained unit warps in beside the base rally flag (at a set point when set; the front edge with b6f off; screenshot warp6f-base.png) |
 | `tests/rework-6d.test.js` | Batch 6d (v2.94): `b6ai` (Hard's pools in thirds; the Turtle's and Economist's plans, spending and attacks; Easy and Normal untouched) and `b6d` (the four values on, v2.93's off, the Codex follows the default, Salvage pays the new share) |
 | `tests/slow/switches-on-6d.test.js` | Batch 6d: the switches-on counterpart of the Axiarch path-mapping test pinned with b6ai and b6d off |
 | `tests/shield6d-ui.test.js` | Batch 6d Part C1 in the browser on Two-Lane: the enemy HQ's shield count from what you have seen, "?" with none seen, your own count exact (screenshots rework6d-shield-*.png) |

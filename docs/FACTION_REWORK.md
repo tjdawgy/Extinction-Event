@@ -1253,7 +1253,21 @@ Habitats and fields 77-100 supply on Three-Lane).
 | the Bloomhost AI plays 6e's one-army lane rule on lane maps | cause 1 | Bloomhost on Three-Lane 28 → 36%, but 0-15 there against Last Fist; Last Fist 69% and the Axiarchs 25% on Three-Lane, the Axiarchs 41% overall | no (removed) |
 | a press base attack needs its army ≥ (the enemy army known + the base's known defences) × 1 (`press6f`, `B6FAI.press`, b6fai) | cause 2 | every faction-map 36-53% (Last Fist on Classic 31 → 42%, Bloomhost on Classic 67 → 50%, on Three-Lane 28 → 42%); Last Fist vs the Turtle on Classic only 0-12 → 2-10 | yes |
 
-FINAL_PLACEHOLDER
+### Final confirmation (audit/logs-p1/selfplay6f-final/: seeds 600+ and 1000+, 324 matches, every switch on)
+
+Last Fist 108-81-27, 50% (43-57); Bloomhost 93-104-19, 43% (37-50); the Axiarchs 90-106-20, 42% (35-48). Per map (Classic /
+Two-Lane / Three-Lane): Last Fist 47 / 46 / 57%, Bloomhost 49 / 42 / 39%, the Axiarchs 49 / 40 / 36%. Pairings: Last Fist vs
+Bloomhost 56%, vs the Axiarchs 44%, Bloomhost vs the Axiarchs 54%. Personalities: Boomer 41%, Economist 45%, Turtle 49%. Every
+target is met on its point estimate; the Axiarchs sit at the 42% floor (38% on the second seed set alone) and are the next item.
+
+### Tests after b6fai and b6f
+
+- Fast suite: every pinned older switch set holds b6fai and b6f off (determinism, the rework tests and the rest; FP_V295 and
+  every older set match). Changed for an intended effect: tests/rework-6e.test.js's b6e price checks and tests/costs6e-ui.test.js
+  hold b6f off (b6f undoes that conversion; tests/rework-6f.test.js and tests/rework-6f-ui.test.js check v2.94's prices with it
+  on); tests/axiarchs-ui.test.js reads "Base" on the warp card (the player's new default). tests/rework-2a.test.js's switch list
+  gains b6fai and b6f.
+- Slow suite: see KNOWN_ISSUES.md "Batch 6f" for the run and any test measured over 20 matches.
 
 ### Departures
 

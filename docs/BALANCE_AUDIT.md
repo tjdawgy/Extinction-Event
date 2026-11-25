@@ -807,3 +807,78 @@ of the match; b6e on 718 / 119, 363 / 167, 188 / 731, 15%. Energy share of their
 6. **Sensitivity:** a 3-credit Marine change moved Last Fist 15 points: a value change changes every later AI decision, so each
    match becomes a new draw; 162 matches give intervals of about ±10 points per faction.
 Done in 6e: every faction 42-58%, every pairing within 35-65%, the Axiarchs 40%+ on each lane map.
+
+## 14. After batch 6f (v2.96): base attacks for every AI, the Axiarch prices undone, the maps
+
+Persona-balanced self-play (audit/sim/selfplay-6c.js, 162 Hard vs Hard matches, 0 errors each) after each part: the v2.95
+baseline with read-only edge counters (audit/logs-p1/selfplay6f-a0/, identical to 6e's run), b6fai on and b6f off
+(selfplay6f-a/), both on (selfplay6f-b/), a rejected Bloomhost lane change (selfplay6f-d2-rejected/), the shipped press change
+(selfplay6f-d2/), and the final confirmation: selfplay6f-d2 plus a second run with other seeds (`--seedBase 1000`,
+selfplay6f-final2/), 324 matches together (selfplay6f-final/). Each folder has report6c.md (95% Wilson intervals); part reports
+A.md, B.md, lanes6f-d1/D1.md (the map diagnosis, with a lane trace of the Part B matches), D2.md, REJECTED.md. Values and
+departures: docs/FACTION_REWORK.md "Batch 6f".
+
+### 14.1 Factions
+
+| faction | v2.95 | A: b6fai | B: + b6f | D: + press6f (seeds 600+) | final, 324 matches |
+|---|---|---|---|---|---|
+| Last Fist | 50-47-11, 46% (37-56) | 48-49-11, 44% (35-54) | 51-48-9, 47% (38-57) | 52-43-13, 48% (39-57) | 108-81-27, 50% (43-57) |
+| Bloomhost | 47-47-14, 44% (35-53) | 49-48-11, 45% (36-55) | 50-49-9, 46% (37-56) | 46-54-8, 43% (34-52) | 93-104-19, 43% (37-50) |
+| Axiarchs | 47-50-11, 44% (35-53) | 49-49-10, 45% (36-55) | 49-53-6, 45% (36-55) | 49-50-9, 45% (36-55) | 90-106-20, 42% (35-48) |
+
+(The second seed set alone: Last Fist 52%, Bloomhost 44%, Axiarchs 38% (29-47).)
+
+Per map (Classic / Two-Lane / Three-Lane):
+
+| faction | v2.95 | A | B | D | final, 324 |
+|---|---|---|---|---|---|
+| Last Fist | 31 / 53 / 56% | 31 / 50 / 53% | 31 / 53 / 58% | 42 / 53 / 50% | 47 (36-59) / 46 (35-57) / 57 (45-68)% |
+| Bloomhost | 67 / 42 / 22% | 67 / 42 / 28% | 67 / 44 / 28% | 50 / 36 / 42% | 49 (37-60) / 42 (31-53) / 39 (28-50)% |
+| Axiarchs | 44 / 44 / 42% | 47 / 47 / 42% | 53 / 39 / 44% | 53 / 42 / 42% | 49 (37-60) / 40 (30-52) / 36 (26-48)% |
+
+Pairings (first named), final: Last Fist vs Bloomhost 56% (46-65), Last Fist vs the Axiarchs 44% (35-54), Bloomhost vs the
+Axiarchs 54% (44-63). Per map, Last Fist vs the Axiarchs 39 / 39 / 56%, Bloomhost vs the Axiarchs 61 / 53 / 47%, Last Fist vs
+Bloomhost 56 / 53 / 58%. Side 1's share of decided matches 49% (44-55). Median length 15:32 (Classic 10:12, Two-Lane 17:14,
+Three-Lane 17:49); ended by an HQ 90%.
+
+### 14.2 Personalities
+
+| personality | v2.95 | A | B | D | final, 324 |
+|---|---|---|---|---|---|
+| Boomer | 39% (30-48) | 39% | 44% | 39% | 88-114-14, 41% (34-47) |
+| Economist | 44% (35-53) | 44% | 44% | 46% | 97-97-22, 45% (38-52) |
+| Turtle | 51% (42-60) | 53% | 52% | 51% | 106-80-30, 49% (42-56) |
+
+Per faction (final): Bloomhost's Boomer 36% (26-48) and Economist 38% against its Turtle 56%; Last Fist's Economist 57%.
+
+### 14.3 The edge, the Axiarch bank, the press rule
+
+- Base attacks at the map's edge (Part A): 8 of 324 sides at v2.95 (Bloomhost 5, the Axiarchs 3 on Classic; the affected sides
+  6-0-2); after b6fai none idle.
+- The Axiarch bank at 12:00 (median credits / energy): 196 / 648 with b6e's conversion, 624 / 210 with b6f; energy 25.9% of their
+  unit spending again.
+- Last Fist against a Turtle on Classic: 0-12 (Part B) → 2-10 (press6f, seeds 600+); 6-16-2 over the 324.
+
+### 14.4 Targets
+
+| target | final (324) | met |
+|---|---|---|
+| every faction 42-58% | 50 / 43 / 42% | yes (the Axiarchs at the floor: 42%, 35-48) |
+| every faction 35-65% on each map | 36-57% | yes (the Axiarchs on Three-Lane 36%, 26-48) |
+| no pairing beyond 35-65% | 56 / 44 / 54% | yes |
+| every personality 40-60% | 41 / 45 / 49% | yes |
+
+### 14.5 Ranked list, updated
+
+1. **The Axiarchs on the lane maps** (40% Two-Lane, 36% Three-Lane; 38% overall on the second seed set): the lowest cells and at
+   the floor overall. *Lever:* their army falls behind from 12:00 on Three-Lane (D1: 3.0 nodes to 8.0 at 12:00); look at their
+   node play under b6elane's single capture group before any value.
+2. **Bloomhost's Boomer and Economist** (36% and 38%; its Turtle 56%). *Lever:* the Bloomhost Hard plans per personality.
+3. **Last Fist's volume on Three-Lane** (57%; 71% of decided against the Axiarchs there): its Hard AI sells buildings for Habitats
+   and fields 77-100 supply (army limit 120). *Lever:* the supply rule's cap on the big maps.
+4. **Press attacks into a Turtle**: press6f moved Last Fist vs the Turtle on Classic only 0-12 → 2-10 (6-16-2 over 324); the map
+   spread closed mostly elsewhere. *Lever:* the engage check for press attacks.
+5. **Sensitivity** (6e's item 6 holds): one AI rule moved Bloomhost on Three-Lane 28 → 42% with no mechanism aimed there, and the
+   two seed sets differ by up to 14 points a faction (the Axiarchs 45% → 38%). Read single 162-match runs as ±10 points.
+Done in 6f: every faction 42-58%, every faction-map 35-65%, every pairing and personality in band (324 matches); the base-attack
+end fixed for every AI; the Axiarch conversion undone; the player's default warp point beside the base.
