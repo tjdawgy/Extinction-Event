@@ -1179,6 +1179,90 @@ first fight vs Bloomhost 61% → 56%); the gap closes later in the match. The se
 - The Boomer personality is at 39% (30-48), one point under its 40-60% target; not tuned (no Part C change was aimed at it).
 - New map spread (not a target): Bloomhost 67% on Classic and 22% on Three-Lane; Last Fist 31% on Classic.
 
+## Batch 6f: base attacks for every AI, the Axiarch prices undone, player warp-in, the maps
+
+**Batch 6f (v2.96): four parts, in order.** Both switches in src/sim/rework-6f.js, per game in `g.rw`, on by default, saved only
+when on, with Test Range switches ("Batch 6f AI", "Batch 6f prices"): `REWORK.b6fai` (AI behaviour: Part A and Part D's change) and
+`REWORK.b6f` (values and the player's warp point: Parts B and C). With both off the game is v2.95 exactly: every pinned set
+matches under its own switches (the old sets, FP_V295A, FP_V295; every older replay now sets b6fai and b6f off). Recorded:
+FP_V296A (b6fai on, b6f off) and FP_V296 (both on), tests/determinism.test.js. Measured with 6c's persona-balanced self-play
+(audit/sim/selfplay-6c.js, 162 Hard vs Hard matches; `--seedBase` for other seeds) after each part. Tests:
+tests/rework-6f.test.js, tests/rework-6f-ui.test.js.
+
+### Part A: base attacks for every AI (b6fai; audit/logs-p1/selfplay6f-a/A.md)
+
+Every AI-played side (never the player's own Attack order), every faction and map, Classic included: an all-in base attack walks
+to the enemy HQ and 60 beyond it (`end6f`, units.js), not to the map's edge behind the base; b6elane's own end point (the same
+spot) comes first where it is set. How often the edge happened at v2.95 (new read-only counters in audit/sim/audit6a.js,
+audit/sim/edge6f-report.js: a side "at the edge" for 20+ s with half its ground army over 100 past the enemy HQ): Last Fist 0 of
+108 sides, Bloomhost 5 (Two-Lane 1, Three-Lane 4; 298 s), the Axiarchs 3 (all on Classic, outside 6e's lane-map fix; 733 s); the
+affected sides went 6-0-2, and nearly every such second had an enemy in sight. After: none idle (2 Classic Axiarch sides still
+counted, fighting buildings on the enemy's back pads, 121 past its HQ). Win rates moved within the noise (46 / 44 / 44% →
+44 / 45 / 45%).
+
+### Part B: the Axiarch energy conversion undone (b6f; audit/logs-p1/selfplay6f-b/B.md)
+
+Every Axiarch unit costs v2.94's credits and energy again (b6e's `B6E.cost` entries for Axiarch units skipped by `rw6eCost` and
+`rwShow` when b6f is on: training, rwD, the Codex and info cards, echoes, a sold queue's refund). Kept, still behind b6e: the
+Riftstalker's shields 160, the Marine 48 credits.
+
+| unit | v2.95 (b6e) | b6f (= v2.94) |
+|---|---|---|
+| Riftstalker | 150 / 40 | 140 / 50 |
+| Lancer | 130 / 35 | 120 / 45 |
+| Prismwing | 110 / 30 | 100 / 40 |
+| Bastion | 275 / 70 | 260 / 85 |
+| Parallax, Severance | 250 / 60 | 220 / 90 |
+| Gravemantle, Wraithwing | 265 / 65 | 230 / 100 |
+| Astral Marksman | 280 / 70 | 240 / 110 |
+| Shardstorm | 330 / 80 | 280 / 130 |
+| Voidcarrier | 425 / 105 | 360 / 170 |
+| Eventide | 480 / 120 | 420 / 180 |
+| Worldbreaker | 570 / 140 | 500 / 210 |
+| Astral Sovereign | 720 / 180 | 600 / 300 |
+
+Axiarchs 45% (36-55) with both on (45% with b6f off): no Riftstalker step was needed (the 58% trigger was not reached). Their bank
+at 12:00: 196 credits / 648 energy → 624 / 210; energy back to 25.9% of their unit spending.
+
+### Part C: the player's Axiarch warp-in (b6f)
+
+How it worked: a human Axiarch player's trained units warp in at the warp point: the spot set with the Train tab's "Warp point"
+card while it stays inside the field, else the default, the front edge of the frontmost field patch, where every new unit then
+held alone (`ctlArrive`). The player could move it with the card; there is no other rally point to set (since v2.76 the base
+rally point is the map's). Batch 6e's change (`lane6eWarp`) was the AI's only and never touched the player. Changed under b6f:
+a player with no warp point of its own (none set, or the set one left the field) warps in at the field spot nearest the base
+rally point (`warp6f`, `warpAt`; nearest the producing building only if no field spot is found), and Mass Warp and the warp mark
+use the same point; not while a Phase Beacon's bubble stands (warping in at the front is the Beacon's purpose); a set point is
+kept. The card reads "Base · tap to set" (was "Front"). Checked in the browser (tests/rework-6f-ui.test.js, screenshot
+warp6f-base.png): with its own node and the centre held, a Shardling trained by tapping its card appeared beside the base rally
+flag; at the set point when one was set; at the front edge with b6f off.
+
+### Part D1: the map diagnosis (audit/logs-p1/lanes6f-d1/D1.md)
+
+From the Part B build: the self-play and a lane trace of the same 162 matches (audit/sim/maps6f-report.js). Ranked causes:
+(1) Bloomhost's AI splits its swarm on Three-Lane (1.38 lanes holding 20%+ of its army, 7% in capture and raid groups; outnumbered in
+its main lane 59% of samples; 40% of its losses outnumbered); (2) Last Fist's press attacks into a Turtle on Classic (0-12 against
+the Turtle there, every other cell ordinary: its Hard AI's press rule launched all-ins on army strength alone into Turrets and an
+HQ gun on the short map, never counting the base's defences); (3) Last Fist's volume on the big maps (it sells buildings for
+Habitats and fields 77-100 supply on Three-Lane).
+
+### Part D2: two changes tried, one kept (audit/logs-p1/selfplay6f-d2/D2.md)
+
+| change | aimed at | result | kept |
+|---|---|---|---|
+| the Bloomhost AI plays 6e's one-army lane rule on lane maps | cause 1 | Bloomhost on Three-Lane 28 → 36%, but 0-15 there against Last Fist; Last Fist 69% and the Axiarchs 25% on Three-Lane, the Axiarchs 41% overall | no (removed) |
+| a press base attack needs its army ≥ (the enemy army known + the base's known defences) × 1 (`press6f`, `B6FAI.press`, b6fai) | cause 2 | every faction-map 36-53% (Last Fist on Classic 31 → 42%, Bloomhost on Classic 67 → 50%, on Three-Lane 28 → 42%); Last Fist vs the Turtle on Classic only 0-12 → 2-10 | yes |
+
+FINAL_PLACEHOLDER
+
+### Departures
+
+- Part A's bug was rarer than 6e suggested (8 of 324 sides at v2.95, the affected sides 6-0-2); the fix is kept as a correctness fix.
+  The player's own Attack order still walks to the map's edge (the request covered the AI only).
+- Part C: the player could already move the warp point (the card); only the default changed, because it repeated the AI's fault.
+- Part D: one change ships, not two. The first tried was measured and removed; the second's gains are not concentrated on the
+  matchup it targets (Last Fist vs the Turtle on Classic 2-10), so part of its effect is the reshuffle any AI rule causes.
+
 ## Unchanged (already distinct)
 
 Marine, Heavy, Tank, Flame Tank, Hydra, Interceptor, Medevac, Recon Drone, Mite, Razorwing, Cloudwing, Thornback, Lancer,
@@ -1240,6 +1324,7 @@ buildings: batch 5d, v2.91, with team colour on their largest surfaces).
 7. Batch 6a (v2.91): the balance audit (docs/BALANCE_AUDIT.md). Batch 6b (v2.92): the side-bias fix (`b6side`) and Artillery counterplay
    (`b6art`). Batch 6c (v2.93): the HQ shield rule (`b6hq`) and the first unit tuning (`b6c`). Batch 6d (v2.94): the AI
    personality fix (`b6ai`) and four faction values (`b6d`). Batch 6e (v2.95): Axiarch lane play (`b6elane`), the Axiarch
-   energy costs, the Riftstalker's shields and the Marine's price (`b6e`).
+   energy costs, the Riftstalker's shields and the Marine's price (`b6e`). Batch 6f (v2.96): base attacks for every AI and the press
+   rule's base defences (`b6fai`), the Axiarch prices undone and the player's warp-in (`b6f`).
 
 Then: the paused balance pass, with all three factions reworked.
