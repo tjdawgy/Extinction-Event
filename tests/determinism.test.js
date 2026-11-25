@@ -264,3 +264,13 @@ test('v2.95: modern matches: b6elane on, b6e off (FP_V295A); both on (FP_V295)',
 if (require.main === module && process.argv[2] === '--print6e') console.log(JSON.stringify(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: false, b6fai: false, b6f: false })), JSON.stringify(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: false, b6f: false })));
 // (rw 'k', b6hq on with v2.68's rules, plays the same match as 'j' but its save carries the b6hq key, so its hash differs by that key alone; not pinned)
 if (require.main === module && process.argv[2] === '--print6c') console.log(JSON.stringify(modern({ b6hq: true, b6c: true })), fingerprint(false, false, true, true, 'l'), bhAx(true, true, 'l'), lfBh('l'));
+// v2.96 (batch 6f: base attacks for every AI and the press rule's base defences REWORK.b6fai; the Axiarch prices undone and the
+// player's default warp point REWORK.b6f; src/sim/rework-6f.js). Every set above holds both off and matches as before (with both
+// off the game is v2.95). The same two modern matches: FP_V296A with b6fai on and b6f off, FP_V296 with both on (the new-game default).
+const FP_V296A = ['A0', 'A1']; // b6fai on, b6f off
+const FP_V296 = ['B0', 'B1']; // b6fai and b6f on (every switch on)
+test('v2.96: modern matches: b6fai on, b6f off (FP_V296A); both on (FP_V296)', () => {
+  assert.deepStrictEqual(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: true, b6f: false }), FP_V296A);
+  assert.deepStrictEqual(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: true, b6f: true }), FP_V296);
+});
+if (require.main === module && process.argv[2] === '--print6f') console.log(JSON.stringify(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: true, b6f: false })), JSON.stringify(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: true, b6f: true })));
