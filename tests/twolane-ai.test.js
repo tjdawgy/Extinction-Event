@@ -6,7 +6,7 @@ const assert = require('node:assert');
 const { loadSim } = require('./load-sim');
 
 const sim = loadSim();
-const setup = (diff = 'hard') => { const g = sim.newGame(diff, { map: 'twolane', seed: 9, factions: ['lastfist', 'lastfist'] }); g.countdown = 0; g.t = 300; for (const s of g.sides) s.aiT = 1e9; g.ents = g.ents.filter(e => e.kind !== 'u'); return g; };
+const setup = (diff = 'hard', rework) => { const g = sim.newGame(diff, { map: 'twolane', seed: 9, factions: ['lastfist', 'lastfist'], rework }); g.countdown = 0; g.t = 300; for (const s of g.sides) s.aiT = 1e9; g.ents = g.ents.filter(e => e.kind !== 'u'); return g; };
 const D = (g, s) => sim.aiDiff(g, s);
 const army = (g, s) => g.ents.filter(e => e.kind === 'u' && e.side === s && e.hp > 0);
 const intel = (g, s, list) => { for (const [i, e] of list.entries()) g.fog[s].intel[90000 + i] = { type: e[0], u: e[1], v: e[2], t: g.t }; };
@@ -52,9 +52,9 @@ test('a capture group takes the centre node (off both lanes), then the watchtowe
   sim.aiCapture(e, 1, army(e, 1), [], true); assert.strictEqual(e.sides[1].capT, undefined, 'Easy goes for the centre only');
 });
 
-test('forward pads: Hard builds a Turret, then a Barracks, on pads it holds on its own half; Easy never', () => {
+test('forward pads: Hard builds a Turret, then a Barracks, on pads it holds on its own half; Easy never', () => { // v2.97: b6g off (aiFort6g: tests/rework-6g.test.js)
   for (const diff of ['hard', 'normal', 'easy']) {
-    const g = setup(diff), side = g.sides[1];
+    const g = setup(diff, { b6g: false }), side = g.sides[1];
     side.res.c = 5000; side.res.e = 5000;
     const bar = sim.tryBuild(g, 1, 'barracks'); assert.ok(bar.ok); const b = g.ents.find(x => x.side === 1 && x.type === 'barracks'); b.built = true; b.hp = b.maxHp;
     for (const n of g.nodes) if (n.type === 'forwardPad') { n.owner = 1; n.prog = -100; }
@@ -98,7 +98,7 @@ test('Classic: the lane layer never runs', () => {
 // v2.68 (Two-Lane draw fix)
 test('a: units trained at a forward Barracks (each faction\'s) start at that lane\'s Forward flag and gather there while the post is held', () => {
   for (const fac of ['lastfist', 'bloomhost', 'axiarchs']) {
-    const g = setup('hard'); g.sides[0].faction = fac; g.ents = g.ents.filter(e => e.kind !== 'b' || e.type === 'hq');
+    const g = setup('hard', fac === 'axiarchs' ? { b6g: false } : undefined); g.sides[0].faction = fac; // v2.97: with b6g an Axiarch forward Gate's unit warps in at a safe spot (tests/rework-6g.test.js) g.ents = g.ents.filter(e => e.kind !== 'b' || e.type === 'hq');
     const side = g.sides[0]; side.res.c = side.res.e = 9000;
     const F = sim.cur().FWD_PADS, k = F.findIndex(f => f.at[0] === 820 && f.at[1] === 280), post = g.nodes[F[k].node]; post.owner = 0; post.prog = 100;
     for (const n of g.nodes) if (n !== post) { n.owner = null; n.prog = 0; }

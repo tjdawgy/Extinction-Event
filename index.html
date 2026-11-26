@@ -6769,14 +6769,14 @@ const bbf6g = (g, src) => rwB6g(g) && src.kind === 'u' && !!src.po && src.po.o =
      it closes, fights whatever comes in reach first, and gives up after B6G3.charge s or B6G3.leash + B6G3.slack from its spot;
    - otherwise pulls back (u.r6.m 'p') toward its rally point (the player's: the base rally point) holding fire, until it is
      B6G3.clear beyond that enemy's reach or B6G3.back s pass; then B6G3.cd s before it pulls back again.
-   An attacking unit never pulls back from a building ahead of it (it is on its way there; an HQ gun outranges every unit).
+   An attacking unit never responds to a building (it is on its way into the base; an HQ gun outranges every unit).
    Either way it then takes up its order again. A new order, an AI stance change or the enemy's death ends it. Never on the
    player's move, target or retreat orders (or a forward unit's crossing), nor siege-locked, deployed, burrowed or support units. */
 const HIT6G = { by: 0 }; // the shooter of the projectile landing now (impact)
 const B6G3 = { recent: 0.6, leash: 250, slack: 60, charge: 8, back: 6, clear: 40, cd: 5, home: 40 };
 function hurt6g(g, e, src) { const by = src && src.id != null && src.side !== e.side ? src.id : HIT6G.by; if (by) { e.hb6 = by; e.hbT = g.t; } }
-function hits6g(g, d, T) { // could this weapon hurt T at all (range aside)
-  if (!d.weapon || !d.dmg) return false;
+function hits6g(g, d, T) { // could this weapon hurt T at all (range aside): never a shielded HQ, an exiled or burrowed unit
+  if (!d.weapon || !d.dmg || T.shielded || T.gone) return false;
   const air = T.kind === 'u' && !!UDEF[T.type].air && !(T.lnd >= 2);
   if (air ? !d.hitsAir : d.hitsGround === false) return false;
   return !!DMG[d.weapon][T.kind === 'b' ? 'building' : T.lnd >= 2 ? LAND.armor : UDEF[T.type].armor];
@@ -6802,7 +6802,7 @@ function fire6g(g, u, d, side, st, cs, po, best, home, dt, sp) {
   else if (!(st === 'attack' || st === 'hold' || (st === 'retreat' && Math.abs(home - u.u) <= B6G3.home)) || u.aiBack > g.t) return false;
   const T = ctlEnt(g, u.hb6); if (!T || T.hp <= 0 || T.gone || T.side === u.side) return false;
   const o = po ? po.o : side.stance;
-  if (o === 'attack' && T.kind === 'b' && dirOf(u.side) * (T.u - u.u) > 0) return false; // a building ahead of an attack: it is on its way there (the HQ gun outranges everything; pulling back from it would undo every base attack)
+  if (o === 'attack' && T.kind === 'b') return false; // an attack and a building: it is going into the base (the HQ gun outranges everything; pulling back from it would undo every base attack, and its targeting takes buildings in reach)
   if (hits6g(g, d, T) && visibleTo(g, u.side, T) && Math.hypot(T.u - u.u, T.v - u.v) <= B6G3.leash) {
     u.r6 = { m: 'c', id: T.id, t0: g.t, au: u.u, av: u.v, o }; go6g(u, d, T.u, T.v, dt, sp); return true;
   }

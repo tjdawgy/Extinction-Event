@@ -13,7 +13,7 @@ const sim = loadSim(); sim.REWORK.b3b = false; sim.REWORK.b4a = false; sim.REWOR
 sim.BREAK.prod.on = false; // v2.69: these tests shield an HQ with any finished building (the rule before v2.69); tests/base-break.test.js covers the production rule
 const U = sim.UDEF, A = sim.ABIL;
 const step = (g, secs) => { for (let i = 0; i < Math.round(secs * 30); i++) sim.update(g, 1 / 30); };
-const quiet = (f0 = 'axiarchs', f1 = 'lastfist') => { const g = sim.newGame('normal', { factions: [f0, f1] }); g.countdown = 0; for (const s of g.sides) { s.aiT = 1e9; s.res.c = s.res.e = 9000; } sim.setStance(g, 0, 'hold'); sim.setStance(g, 1, 'hold'); return g; };
+const quiet = (f0 = 'axiarchs', f1 = 'lastfist', rework) => { const g = sim.newGame('normal', { factions: [f0, f1], rework }); g.countdown = 0; for (const s of g.sides) { s.aiT = 1e9; s.res.c = s.res.e = 9000; } sim.setStance(g, 0, 'hold'); sim.setStance(g, 1, 'hold'); return g; };
 const finish = (g, s, k) => { assert.ok(sim.tryBuild(g, s, k).ok, k); const b = g.ents.filter(e => e.side === s && e.type === k).at(-1); b.built = true; b.progress = 1; b.hp = b.maxHp; b.shp = b.maxShp; return b; };
 const seeAll = g => { for (const f of g.fog) { f.vis.fill(1); f.exp.fill(1); } };
 const ready = (g, s = 0) => { for (const k in g.sides[s].ab) g.sides[s].ab[k] = 0; };
@@ -60,7 +60,7 @@ test('Mass Warp arrivals on Hold stay where they arrive, including a unit that h
 });
 
 test('Emergency Brood Skitterlings and Cloudwing offspring on Hold stay where they appear', () => {
-  const g = quiet('bloomhost', 'lastfist'); seeAll(g); ready(g);
+  const g = quiet('bloomhost', 'lastfist', { b6g: false }); seeAll(g); ready(g); // v2.97: b6g off (with it the enemy Tank, shot by a Cloudwing it can't hit, pulls back and the offspring follow it: an intended effect; tests/rework-6g.test.js checks the same with an enemy that shoots back)
   assert.ok(sim.useAbility(g, 0, 'brood', 700, 0).ok); step(g, A.brood.delay + 0.1);
   const brood = g.ents.filter(e => e.side === 0 && e.tSrc === 'brood'); assert.strictEqual(brood.length, A.brood.n);
   const at = brood.map(e => ({ u: e.u, v: e.v })); step(g, 10);

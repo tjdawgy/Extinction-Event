@@ -9,7 +9,7 @@ const { loadSim } = require('./load-sim');
 const sim = loadSim();
 const M = sim.MAPS.threelane;
 test.afterEach(() => sim.useMap('classic'));
-const setup = (diff = 'hard') => { const g = sim.newGame(diff, { map: 'threelane', seed: 9, factions: ['lastfist', 'lastfist'] }); g.countdown = 0; g.t = 300; for (const s of g.sides) s.aiT = 1e9; g.ents = g.ents.filter(e => e.kind !== 'u'); g.guards = []; for (const n of g.nodes) if (n.type === 'relic') n.spent = true; return g; }; // v2.71: relics out of the way (tests/special-nodes.test.js covers them)
+const setup = (diff = 'hard', rework) => { const g = sim.newGame(diff, { map: 'threelane', seed: 9, factions: ['lastfist', 'lastfist'], rework }); g.countdown = 0; g.t = 300; for (const s of g.sides) s.aiT = 1e9; g.ents = g.ents.filter(e => e.kind !== 'u'); g.guards = []; for (const n of g.nodes) if (n.type === 'relic') n.spent = true; return g; }; // v2.71: relics out of the way (tests/special-nodes.test.js covers them)
 const D = (g, s) => sim.aiDiff(g, s);
 const army = (g, s) => g.ents.filter(e => e.kind === 'u' && e.side === s && e.hp > 0);
 const intel = (g, s, list) => { for (const [i, e] of list.entries()) g.fog[s].intel[90000 + i] = { type: e[0], u: e[1], v: e[2], t: g.t }; };
@@ -106,9 +106,9 @@ test('the centre and both watchtowers at once: two capture groups on Hard, the c
   assert.ok(e.sides[1].capT && e.sides[1].capT.node === 1 && !e.sides[1].capT2);
 });
 
-test('forward pads in three lanes: Hard up to 3, Normal 2, Easy none, all on its own half', () => {
+test('forward pads in three lanes: Hard up to 3, Normal 2, Easy none, all on its own half', () => { // v2.97: b6g off (b6g's aiFort6g caps turrets by personality and fortifies held pads anywhere: tests/rework-6g.test.js)
   for (const [diff, want] of [['hard', 3], ['normal', 2], ['easy', 0]]) {
-    const g = setup(diff), side = g.sides[1]; side.res.c = side.res.e = 9000;
+    const g = setup(diff, { b6g: false }), side = g.sides[1]; side.res.c = side.res.e = 9000;
     assert.ok(sim.tryBuild(g, 1, 'barracks').ok); const b = g.ents.find(x => x.side === 1 && x.type === 'barracks'); b.built = true; b.hp = b.maxHp;
     for (const n of g.nodes) if (n.type === 'forwardPad') { n.owner = 1; n.prog = -100; }
     for (let k = 0; k < 5; k++) { side.la = Object.assign(side.la || {}, { fw: -99, t: -99 }); sim.aiLanes(g, 1, D(g, 1), [], [], false); }

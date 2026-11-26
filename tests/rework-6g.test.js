@@ -236,3 +236,52 @@ test('b6g (counterpart of controls "a target"): they attack the target first, ki
   assert.strictEqual(first, t.id, 'the target first'); assert.ok(t.hp <= 0, 'killed');
   run(g, 8); for (const u of us) { assert.strictEqual(u.po.o, 'hold', 'then Hold'); assert.ok(u.u < 820, 'where they are, not on past it'); }
 });
+test('b6g (counterpart of orders-weapons "Emergency Brood ... on Hold"): Brood Skitterlings and Cloudwing offspring on Hold stay where they appear', () => {
+  const g = quiet(sim.newGame('normal', { factions: ['bloomhost', 'lastfist'] })); for (const sd of g.sides) sd.res.c = sd.res.e = 9000;
+  sim.setStance(g, 0, 'hold'); sim.setStance(g, 1, 'hold');
+  const see = () => { for (const f of g.fog) { f.vis.fill(1); f.exp.fill(1); } }; see();
+  for (const k in g.sides[0].ab) g.sides[0].ab[k] = 0;
+  assert.ok(sim.useAbility(g, 0, 'brood', 700, 0).ok); for (let i = 0; i < 30 * (sim.ABIL.brood.delay + 0.1); i++) sim.update(g, 1 / 30);
+  const brood = g.ents.filter(e => e.side === 0 && e.tSrc === 'brood'), at = brood.map(e => ({ u: e.u, v: e.v }));
+  for (let i = 0; i < 30 * 10; i++) sim.update(g, 1 / 30);
+  brood.forEach((e, i) => assert.ok(Math.hypot(e.u - at[i].u, e.v - at[i].v) < 2, `brood ${i} stayed`));
+  const c = sim.spawnUnit(g, 0, 'cloudwing', 900, 0); c.holdU = 900; c.holdV = 0; c.hp = c.maxHp = 1e6;
+  const t = sim.spawnUnit(g, 1, 'hydra', 930, 0); t.holdU = 930; t.holdV = 0; t.hp = t.maxHp = 1e6; t.cd = 1e6; // a Hydra can hit the Cloudwing: no reason to pull back
+  for (let i = 0; i < 30 * 5 && !g.ents.some(e => e.tSrc === 'cloud'); i++) { sim.update(g, 1 / 30); see(); }
+  const kids = g.ents.filter(e => e.tSrc === 'cloud'); assert.ok(kids.length > 0, 'offspring released');
+  const kAt = kids.map(k => ({ u: k.u, v: k.v })); for (let i = 0; i < 30 * 6; i++) { sim.update(g, 1 / 30); see(); }
+  kids.forEach((k, i) => assert.ok(k.hp <= 0 || Math.hypot(k.u - kAt[i].u, k.v - kAt[i].v) < 2, `offspring ${i} stayed`));
+});
+test('b6g (counterpart of the forward-pad tests in twolane-ai and threelane): Easy builds none, Normal stays within aiForward\'s cap, Hard by personality; one forward production building on its own half', () => {
+  for (const [map, cap] of [['twolane', { normal: 1 }], ['threelane', { normal: 2 }]]) {
+    sim.useMap(map);
+    for (const diff of ['hard', 'normal', 'easy']) for (const kind of ['boomer', 'economist', 'turtle']) {
+      const g = quiet(sim.newGame(diff, { map, seed: 9, factions: ['lastfist', 'lastfist'], autoPlayer: true, autoDiff: diff })); g.t = 300;
+      const side = g.sides[1]; side.res.c = side.res.e = 9000; if (side.persona) side.persona.kind = kind;
+      assert.ok(sim.tryBuild(g, 1, 'barracks').ok); finish(g);
+      for (const n of g.nodes) if (n.type === 'forwardPad') { n.owner = 1; n.prog = -100; }
+      side.n6 = { t: -99, own: [], lost: {}, hot: {} }; for (const i in g.nodes) side.n6.hot[i] = g.t; // contested, so the Boomer fortifies too
+      for (let k = 0; k < 8; k++) { side.la = Object.assign(side.la || {}, { fw: -99, t: -99, f6: -99 }); sim.aiFort6g(g, 1, sim.aiDiff(g, 1), false); }
+      const fw = g.ents.filter(x => x.side === 1 && x.slot >= sim.FWD_SLOT), tur = fw.filter(x => x.type === 'turret'), bar = fw.filter(x => x.type === 'barracks');
+      if (diff === 'easy') { assert.strictEqual(fw.length, 0, `${map} easy: none`); continue; }
+      const want = diff === 'hard' ? Math.min(sim.B6G5.total[kind], sim.cur().FWD_PADS.length) : Math.min(sim.B6G5.total[kind], cap.normal);
+      assert.ok(tur.length <= want && tur.length >= 1, `${map} ${diff} ${kind}: ${tur.length} turrets (at most ${want})`);
+      assert.ok(bar.length <= 1 && bar.every(b => b.u > sim.cur().L / 2), `${map} ${diff} ${kind}: one forward production building, on its own half`);
+    }
+  }
+  sim.useMap('classic');
+});
+test('b6g (counterpart of twolane-ai "a: units trained at a forward Barracks"): an Axiarch AI\'s forward Gate warps its unit in at a safe spot, not at the forward flag', () => {
+  sim.useMap('twolane');
+  const g = quiet(sim.newGame('hard', { map: 'twolane', seed: 9, factions: ['axiarchs', 'lastfist'], autoPlayer: true, autoDiff: 'hard' }));
+  g.ents = g.ents.filter(e => e.kind !== 'u'); const side = g.sides[0]; side.res.c = side.res.e = 9000;
+  const F = sim.cur().FWD_PADS, k = F.findIndex(f => f.at[0] === 820 && f.at[1] === 280), post = g.nodes[F[k].node]; post.owner = 0; post.prog = 100;
+  run(g, 20);
+  assert.ok(sim.tryBuild(g, 0, 'barracks', sim.FWD_SLOT + k).ok);
+  const bar = sim.fwdAt(g, sim.FWD_SLOT + k); bar.built = true; bar.hp = bar.maxHp; bar.progress = 1;
+  const foe = sim.spawnUnit(g, 1, 'rifle', F[k].at[0] + 80, F[k].at[1]); foe.holdU = foe.u; foe.holdV = foe.v; foe.cd = 1e9; sim.updateVision(g);
+  bar.queue.push('shardling'); bar.prodT = 1e9; sim.update(g, sim.TICK);
+  const w = g.warps.at(-1); assert.ok(w && !w.fwd, 'a warp through warp6g');
+  assert.ok(Math.hypot(w.u - foe.u, w.v - foe.v) >= sim.B6G.safe && sim.safe6g(g, 0, w.u, w.v), `safe: ${Math.round(Math.hypot(w.u - foe.u, w.v - foe.v))} from the Marine`);
+  sim.useMap('classic');
+});

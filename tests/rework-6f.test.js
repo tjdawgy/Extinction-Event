@@ -60,7 +60,7 @@ const hashRun = (rework, map, secs, fac = ['lastfist', 'bloomhost']) => {
 
 test('b6fai: an AI\'s all-in base attack walks to the enemy HQ and 60 past it, never to the map\'s edge (v2.95: the edge)', () => {
   // the enemy base emptied but for its HQ, made untargetable and quiet, so the walk alone decides where the unit ends
-  for (const map of ['classic', 'twolane', 'threelane']) for (const fac of ['lastfist', 'bloomhost', 'axiarchs']) for (const rw of [undefined, { b6fai: false, b6elane: false }]) {
+  for (const map of ['classic', 'twolane', 'threelane']) for (const fac of ['lastfist', 'bloomhost', 'axiarchs']) for (const rw of [undefined, { b6fai: false, b6elane: false, b6g: false }]) /* v2.97: off means b6g off too (b6g's end6g also ends it at the HQ) */ {
     sim.useMap(map);
     const g = game(rw, { map, factions: [fac, 'lastfist'], autoPlayer: true, autoDiff: 'hard' }); g.countdown = 0;
     for (const s of g.sides) s.aiT = 1e9;
@@ -76,7 +76,7 @@ test('b6fai: an AI\'s all-in base attack walks to the enemy HQ and 60 past it, n
 });
 
 test('b6fai off: Classic plays exactly as v2.95; on, it changes only what happens after a base attack starts', () => {
-  const a = hashRun({ b6fai: false }, 'classic', 200), b = hashRun({ b6fai: false, b6f: false, b6g: false }, 'classic', 200);
+  const a = hashRun({ b6fai: false, b6g: false }, 'classic', 200), b = hashRun({ b6fai: false, b6f: false, b6g: false }, 'classic', 200);
   assert.strictEqual(a.h, b.h, 'b6f has no effect on a Last Fist vs Bloomhost match (no Axiarchs, no player)');
 });
 
@@ -97,7 +97,7 @@ test('b6f (Part C): a player with no warp point of its own warps in beside the b
   same([sim.warpAt(p.g, 0).u, sim.warpAt(p.g, 0).v].map(Math.round), [sim.warp6f(p.g, 0).u, sim.warp6f(p.g, 0).v].map(Math.round), 'the mark the player sees is that point');
   const q = run({ b6f: false, b6g: false }, true);
   assert.ok(Math.hypot(q.w.u - q.front.u, q.w.v - q.front.v) < 60, 'b6f off: the field\'s front edge (v2.95)');
-  const a = run(undefined, false);
+  const a = run({ b6g: false }, false); // v2.97: with b6g an AI side warps in at a safe spot (tests/rework-6g.test.js)
   assert.ok(Math.hypot(a.w.u - a.front.u, a.w.v - a.front.v) < 60, 'an AI side keeps v2.95\'s default');
   const at = { u: sim.hqU(0) + 150, v: 10 }, sp = run(undefined, true, at);
   assert.ok(Math.hypot(sp.w.u - at.u, sp.w.v - at.v) < 60, 'a point the player set is kept');
