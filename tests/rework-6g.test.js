@@ -3,7 +3,7 @@
 // the nodes it holds, the Purification Beam on any lane, the Wraithwing keeping its target. FP_V297 is in tests/determinism.test.js.
 const test = require('node:test');
 const assert = require('node:assert');
-const { loadSim } = require('./load-sim');
+const { loadSim, pin6h } = require('./load-sim');
 const sim = loadSim();
 const off = { b6g: false, b6h: false, b6hbody: false, b6hnode: false };
 const quiet = g => { g.countdown = 0; for (const sd of g.sides) sd.aiT = 1e9; return g; }; // both AIs idle
@@ -187,7 +187,7 @@ test('b6g: every AI fortifies a safe forward pad it holds with its turret; per p
   sim.useMap('classic');
 });
 
-test('b6g: the Bloomhost AI sends a group worth more than a turreted node\'s defence, building-breakers first, and aims at the guns', () => {
+test('b6g: the Bloomhost AI sends a group worth more than a turreted node\'s defence, building-breakers first, and aims at the guns', pin6h(['b6hnode'], () => { // v2.98 (batch 6h): held b6hnode off (intended); counterpart in tests/switches-on-6h.test.js
   sim.useMap('twolane');
   const g = quiet(sim.newGame('hard', { seed: 13, map: 'twolane', factions: ['bloomhost', 'lastfist'] }));
   const P = sim.cur().FWD_PADS, k = P.findIndex(p => sim.cur().MAP.nodes[p.node].id === 'fwn'), n = g.nodes[P[k].node];
@@ -209,7 +209,7 @@ test('b6g: the Bloomhost AI sends a group worth more than a turreted node\'s def
   assert.ok(us.length >= 4 && us.every(e => e.type === 'gorebore'), 'the building-breakers (Gorebores) go first');
   assert.strictEqual(T.ph, 'gather');
   sim.useMap('classic');
-});
+}));
 
 // Counterparts of tests pinned to b6g off (tests/axiarchs-field.test.js, tests/controls.test.js), the same intent with it on
 test('b6g (counterpart of axiarchs-field): a trained unit warps in at the safe point after a visible channel, paid once, counted in supply, never onto enemies', () => {
@@ -236,7 +236,7 @@ test('b6g (counterpart of controls "a target"): they attack the target first, ki
   assert.strictEqual(first, t.id, 'the target first'); assert.ok(t.hp <= 0, 'killed');
   run(g, 8); for (const u of us) { assert.strictEqual(u.po.o, 'hold', 'then Hold'); assert.ok(u.u < 820, 'where they are, not on past it'); }
 });
-test('b6g (counterpart of orders-weapons "Emergency Brood ... on Hold"): Brood Skitterlings and Cloudwing offspring on Hold stay where they appear', () => {
+test('b6g (counterpart of orders-weapons "Emergency Brood ... on Hold"): Brood Skitterlings and Cloudwing offspring on Hold stay where they appear', pin6h(['b6hbody'], () => { // v2.98 (batch 6h): held b6hbody off (intended); counterpart in tests/switches-on-6h.test.js
   const g = quiet(sim.newGame('normal', { factions: ['bloomhost', 'lastfist'] })); for (const sd of g.sides) sd.res.c = sd.res.e = 9000;
   sim.setStance(g, 0, 'hold'); sim.setStance(g, 1, 'hold');
   const see = () => { for (const f of g.fog) { f.vis.fill(1); f.exp.fill(1); } }; see();
@@ -251,7 +251,7 @@ test('b6g (counterpart of orders-weapons "Emergency Brood ... on Hold"): Brood S
   const kids = g.ents.filter(e => e.tSrc === 'cloud'); assert.ok(kids.length > 0, 'offspring released');
   const kAt = kids.map(k => ({ u: k.u, v: k.v })); for (let i = 0; i < 30 * 6; i++) { sim.update(g, 1 / 30); see(); }
   kids.forEach((k, i) => assert.ok(k.hp <= 0 || Math.hypot(k.u - kAt[i].u, k.v - kAt[i].v) < 2, `offspring ${i} stayed`));
-});
+}));
 test('b6g (counterpart of the forward-pad tests in twolane-ai and threelane): Easy builds none, Normal stays within aiForward\'s cap, Hard by personality; one forward production building on its own half', () => {
   for (const [map, cap] of [['twolane', { normal: 1 }], ['threelane', { normal: 2 }]]) {
     sim.useMap(map);

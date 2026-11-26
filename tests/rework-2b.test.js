@@ -2,7 +2,7 @@
 // Worldbreaker (the crack, the ridge), behind REWORK.b2b (per game, g.rw.b2b). Played on Test Range games (the real SIM).
 const test = require('node:test');
 const assert = require('node:assert');
-const { loadSim } = require('./load-sim');
+const { loadSim, pin6h } = require('./load-sim');
 
 const step = (s, g, sec) => { for (let i = 0; i < Math.round(sec * 60); i++) s.rangeStep(g); };
 
@@ -56,7 +56,7 @@ test('Titan breaching: it walks up to an enemy building, plants (2 s), hits it 2
   assert.ok(!t2.siege && e.hp < e.maxHp, 'no plant against units: it just fires');
 });
 
-test('Ruinmaw: burrows on the move (untouchable), surfaces where it stops; the Tunnel pours units out of its mouth', () => {
+test('Ruinmaw: burrows on the move (untouchable), surfaces where it stops; the Tunnel pours units out of its mouth', pin6h(['b6h'], () => { // v2.98 (batch 6h): held b6h off (intended); counterpart in tests/switches-on-6h.test.js
   const s = loadSim();
   const g = s.rangeGame({ factions: ['bloomhost', 'lastfist'] });
   const R = s.rangeUnit(g, 0, 'ruinmaw', 300, 0), army = s.rangeUnits(g, 0, 'skitterling', 160, 0, 5);
@@ -76,9 +76,9 @@ test('Ruinmaw: burrows on the move (untouchable), surfaces where it stops; the T
   for (let i = 1; i < out.length; i++) assert.ok(out[i].t - out[i - 1].t >= s.RUIN.every - 1e-6, 'one every 0.5 s');
   // the Tunnel on a unit that can't use it
   const tk = s.rangeUnit(g, 0, 'bulwark', 200, 0); assert.ok(s.command(g, 0, [tk.id], 'tunnel').ok, 'a Bulwark is a ground unit');
-});
+}));
 
-test('Ruinmaw: moving sends units inside back to the entrance; its death kills them; surfaced it bites and chews', () => {
+test('Ruinmaw: moving sends units inside back to the entrance; its death kills them; surfaced it bites and chews', pin6h(['b6h'], () => { // v2.98 (batch 6h): held b6h off (intended); counterpart in tests/switches-on-6h.test.js
   const s = loadSim();
   const g = s.rangeGame({ factions: ['bloomhost', 'lastfist'] });
   const R = s.rangeUnit(g, 0, 'ruinmaw', 900, 0), us = s.rangeUnits(g, 0, 'skitterling', 60, 0, 4);
@@ -96,7 +96,7 @@ test('Ruinmaw: moving sends units inside back to the entrance; its death kills t
   const M = s.rangeUnit(h, 0, 'ruinmaw', 700, 0), b = s.rangeBuilding(h, 1, 'lastfist', 'refinery', 700 + 20 + 30, 0), f = s.rangeUnit(h, 1, 'rifle', 718, 0);
   h.sides[1].hush = true; const bh = b.hp, fh = f.hp; step(s, h, 0.1);
   assert.ok(fh - f.hp >= s.RUIN.bite * 0.99, 'bite'); assert.ok(bh - b.hp >= s.RUIN.chew * 0.99, 'chew');
-});
+}));
 
 test('Worldbreaker: a crack through its target to full range hits everything on the line (buildings 2.5x), not aircraft; every 12 s a ridge', () => {
   const s = loadSim();

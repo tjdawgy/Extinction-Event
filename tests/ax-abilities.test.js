@@ -6,7 +6,7 @@
 // casts is in tests/axiarchs-ui.test.js.
 const test = require('node:test');
 const assert = require('node:assert');
-const { loadSim } = require('./load-sim');
+const { loadSim, pin6h } = require('./load-sim');
 
 const sim = loadSim(); sim.setMech7c(false); /* v2.43: the v2.42 mechanics (staged melee units stand on Hold next to enemies; tests/polish.test.js covers MECH7C) */ sim.setBalance7b(false); // v2.42: these tests pin the mechanics at v2.41's numbers (the phase 7b layer off; tests/strategy.test.js covers it)
 sim.REWORK.b3b = false; sim.REWORK.b4a = false; // v2.86: and the v2.85 Wraithwing (batch 4a off; tests/rework-4a.test.js covers it on) // v2.85: these tests pin the v2.84 Shardling and Bastion (rework batch 3b off; tests/rework-3b.test.js covers it on)
@@ -44,7 +44,7 @@ test('costs, cooldowns and unlocks mirror Last Fist (Mass Warp ↔ Repair Pulse,
   assert.match(sim.abilityCheck(g, 0, 'strike').msg, /is not a Axiarchs ability/);
 });
 
-test('Mass Warp: up to 8 units (the most damaged first) channel 2 s, then arrive at the warp point; the total unit count never changes', () => {
+test('Mass Warp: up to 8 units (the most damaged first) channel 2 s, then arrive at the warp point; the total unit count never changes', pin6h(['b6hbody'], () => { // v2.98 (batch 6h): held b6hbody off (intended); counterpart in tests/switches-on-6h.test.js
   const g = grown(); ready(g);
   const wp = sim.warpPoint(g, 0), home = sim.hqU(0);
   assert.ok(sim.onField(g, 0, wp.u, wp.v) && wp.u > home + 150, `the warp point is at the front of a grown field (${JSON.stringify(wp)})`);
@@ -70,7 +70,7 @@ test('Mass Warp: up to 8 units (the most damaged first) channel 2 s, then arrive
   assert.strictEqual(new Set(g.ents.map(e => e.id)).size, g.ents.length, 'no duplicates');
   sim.finish(g, 0, 'hq'); // the log fills in a cast's effect at the side's next cast or the end of the match, as for the other factions
   assert.match(sim.logText(g, { version: sim.VERSION, diff: 'Normal', persona: 'x', result: 'x' }), /Mass Warp: 7 units warped/);
-});
+}));
 
 test('Mass Warp never changes the total unit count (random casts, deaths, a field too small to land in, saves mid-channel)', () => {
   const S = loadSim({ random: mul(11) }), rnd = mul(5);

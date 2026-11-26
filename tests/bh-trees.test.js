@@ -4,7 +4,7 @@
 // aircraft; every unit in the Army tab tables; the AI picks paths and trains path units. SIM only (Node).
 const test = require('node:test');
 const assert = require('node:assert');
-const { loadSim } = require('./load-sim');
+const { loadSim, pin6h } = require('./load-sim');
 
 const sim = loadSim(); sim.REWORK.b3b = false; // v2.85: these tests pin the v2.84 Shardling, Bastion, Bulwark and Dreadthorn (rework batch 3b off; tests/rework-3b.test.js covers it on)
 const U = sim.UDEF;
@@ -14,7 +14,7 @@ const finish = (g, s, k) => { assert.ok(sim.tryBuild(g, s, k).ok); const b = g.e
 const upTo = (g, b, path, tier) => { while (b.tier < tier) { assert.ok(sim.tryUpgrade(g, 0, b, path).ok); b.upProg = 0.9999; step(g, 0.2); } };
 const put = (g, s, t, u, v = 0) => { const e = sim.spawnUnit(g, s, t, u, v); e.holdU = u; e.holdV = v; return e; };
 
-test('Larva Pit and Evolution Chamber: a path at T2 locks the building; T3 deepens it; selling resets (v2.21: the Bloomspire tree is in tests/bh-spire.test.js)', () => {
+test('Larva Pit and Evolution Chamber: a path at T2 locks the building; T3 deepens it; selling resets (v2.21: the Bloomspire tree is in tests/bh-spire.test.js)', pin6h(['b6h'], () => { // v2.98 (batch 6h): held b6h off (intended); counterpart in tests/switches-on-6h.test.js
   const g = quiet(); g.countdown = 0;
   const pit = finish(g, 0, 'barracks'), evo = finish(g, 0, 'factory'), spire = finish(g, 0, 'techlab'); finish(g, 0, 'habitat'); finish(g, 0, 'habitat');
   assert.match(sim.tryUpgrade(g, 0, pit).msg, /Choose a path/);
@@ -30,7 +30,7 @@ test('Larva Pit and Evolution Chamber: a path at T2 locks the building; T3 deepe
   upTo(g, pit2, 'B', 2); assert.ok(sim.tryTrain(g, 0, 'spitter').ok);
   assert.match(sim.tryUpgrade(g, 0, spire).msg, /Choose a path/); // v2.21: the Bloomspire has its tree (tests/bh-spire.test.js)
   assert.strictEqual(sim.TREES_BH.barracks.A.name, 'Predatory Evolution'); assert.strictEqual(sim.TREES_BH.factory.B.name, 'Predator Evolution');
-});
+}));
 
 test('Leaper: leaps onto a target 45–140 away, never further, then waits out its cooldown', () => {
   const g = quiet(); g.countdown = 0; sim.setStance(g, 0, 'attack');

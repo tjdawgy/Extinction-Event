@@ -1,7 +1,7 @@
 // Commander abilities (Step 6; one shared cooldown from v2.8): rules, effects, fog limits, save/resume and AI use. SIM only (Node).
 const test = require('node:test');
 const assert = require('node:assert');
-const { loadSim } = require('./load-sim');
+const { loadSim, pin6h } = require('./load-sim');
 
 const sim = loadSim(); sim.REWORK.b4b = false; // v2.87: a batch 4b Leviathan flies its bombing runs (tests/rework-4b.test.js); the strike tests here want it to stay put
 sim.BREAK.prod.on = false; // v2.69: these tests shield an HQ with any finished building (the rule before v2.69); tests/base-break.test.js covers the production rule
@@ -105,7 +105,7 @@ test('a v9 save (separate cooldowns) migrates: the longest cooldown still runnin
   assert.deepStrictEqual(['shield', 'strike', 'repair'].map(k => g3.sides[0].ab[k]), [60, 120, 60]);
 });
 
-test('Orbital Strike: 3 s warning, 280 at the centre to 140 at the edge, every enemy unit (aircraft too), enemies only, shielded HQ immune', () => {
+test('Orbital Strike: 3 s warning, 280 at the centre to 140 at the edge, every enemy unit (aircraft too), enemies only, shielded HQ immune', pin6h(['b6hbody'], () => { // v2.98 (batch 6h): held b6hbody off (intended); counterpart in tests/switches-on-6h.test.js
   const g = quiet(); seeAll(g);
   hqT2(g); g.sides[0].res.c = g.sides[0].res.e = 5000;
   const c = hold(sim.spawnUnit(g, 1, 'titan', 1000, 0), 1000, 0), e = hold(sim.spawnUnit(g, 1, 'titan', 1060, 0), 1060, 0);
@@ -129,7 +129,7 @@ test('Orbital Strike: 3 s warning, 280 at the centre to 140 at the edge, every e
   assert.ok(hq.shielded);
   assert.ok(sim.useAbility(g, 0, 'strike', hq.u, hq.v).ok); step(g, 3.2);
   assert.strictEqual(hq.hp, hqHp);
-});
+}));
 
 test('Repair Pulse: 6%/s for 6 s on units and finished buildings; paid Repair is not doubled; capped at full HP', () => {
   const g = quiet();

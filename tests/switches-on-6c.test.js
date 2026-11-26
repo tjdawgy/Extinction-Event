@@ -13,10 +13,10 @@ const assert = require('node:assert');
 const crypto = require('crypto');
 const path = require('path');
 const Module = require('module');
-const LS = require('./load-sim');
+const LS = require('./load-sim'), { pin6h } = LS;
 const loadSim = LS.loadSim; // the real one (the re-runs below get a wrapped one)
 const mulberry = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
-const allOn = s => Object.values(s.REWORK).every(v => v === true);
+const allOn = s => Object.entries(s.REWORK).every(([k, v]) => v === true || (LS.PIN.keys && LS.PIN.keys.includes(k))); // v2.98: a switch a test holds off (pin6h, batch 6h) aside
 
 // ---------- 1. Re-runs with every switch held on ----------
 // The SIM a re-run file loads keeps REWORK at its defaults: each key reads true and assignments to it are ignored, so a
@@ -85,7 +85,7 @@ rerun('axiarchs.test.js', [ // file pins b3b off (tests/axiarchs.test.js:9)
   'saves v22 keep shields', // :114
 ]);
 rerun('bh-trees.test.js', [ // file pins b3b off (tests/bh-trees.test.js:9)
-  'Larva Pit and Evolution Chamber: a path at T2', // :17
+  // 'Larva Pit and Evolution Chamber: a path at T2', // :17 (v2.98: batch 6h changes this on purpose; its counterpart is in tests/switches-on-6h.test.js)
   'Leaper: leaps onto a target 45', // :35
   'Ravager: its maul does extra damage', // :51
   'Ruinmaw acid pools', // :86
@@ -95,13 +95,13 @@ rerun('bh-trees.test.js', [ // file pins b3b off (tests/bh-trees.test.js:9)
 ]);
 rerun('bloomhost-sig.test.js', [ // file pins b3b off (tests/bloomhost-sig.test.js:11)
   'the Brood Mound and Rootheart: Larva Pit cost', // :21
-  'Mites: 2 at T1 and 3 at T2', // :34
+  // 'Mites: 2 at T1 and 3 at T2', // :34 (v2.98: batch 6h changes this on purpose; its counterpart is in tests/switches-on-6h.test.js)
   'Mites follow the army', // :51
   'the T3 acid burst', // :69
   'Rootheart T1: creep spreads', // :86
-  'Rootheart T3: every 15 s roots snare', // :118
+  // 'Rootheart T3: every 15 s roots snare', // :118 (v2.98: batch 6h changes this on purpose; its counterpart is in tests/switches-on-6h.test.js)
   'the minimal AI (Bloomhost)', // :144
-  'saves v29 keep Mites', // :154
+  // 'saves v29 keep Mites', // :154 (v2.98: batch 6h changes this on purpose; its counterpart is in tests/switches-on-6h.test.js)
 ]);
 rerun('creep.test.js', [ // file pins b3b off (tests/creep.test.js:8)
   'creep grows gradually from the Hive', // :15
@@ -120,7 +120,7 @@ rerun('factory.test.js', [ // file pins b4a off (tests/factory.test.js:7)
   'the match log counts what killed your units', // :151
 ]);
 rerun('orders-weapons.test.js', [ // file pins b3b, b4a and b4b off (tests/orders-weapons.test.js:12)
-  'a unit that warps in while the army is on Hold', // :28
+  // 'a unit that warps in while the army is on Hold', // :28 (v2.98: batch 6h changes this on purpose; its counterpart is in tests/switches-on-6h.test.js)
   'Mass Warp arrivals on Hold', // :46
   'Emergency Brood Skitterlings and Cloudwing offspring', // :62
   'the Gravemantle and the Eventide attack', // :95
@@ -145,7 +145,7 @@ rerun('stats.test.js', [ // file pins b3b off (tests/stats.test.js:7)
 rerun('techlab.test.js', [ // file pins b4a and b4b off (tests/techlab.test.js:8)
   'the Tech Lab picks Air Power or Support', // :29
   'Nanoweave only on Support T3', // :43
-  'Interceptor rework', // :52
+  // 'Interceptor rework', // :52 (v2.98: batch 6h changes this on purpose; its counterpart is in tests/switches-on-6h.test.js)
   'Medevac: heals your infantry', // :81
   'Medevac follows your biggest infantry group', // :97
   'Recon Drone: sight 420', // :108
@@ -167,7 +167,7 @@ const NO_PARRY = Infinity; // u.prT: a batch 3b Shardling's next parry (rework-3
 
 // tests/abilities.test.js:108. b4b on: a Leviathan with a target within 160 flies a bombing run off the strike's centre
 // (tests/rework-4b.test.js:69), so the own Titan leaves the circle before the Leviathan is placed there.
-test('on: Orbital Strike: 3 s warning, 280 at the centre to 140 at the edge, every enemy unit (aircraft too), enemies only, shielded HQ immune', () => {
+test('on: Orbital Strike: 3 s warning, 280 at the centre to 140 at the edge, every enemy unit (aircraft too), enemies only, shielded HQ immune', pin6h(['b6hbody'], () => { // v2.98 (batch 6h): held b6hbody off (units on one spot are pushed apart); counterpart in tests/switches-on-6h.test.js
   const sim = loadSim(); sim.BREAK.prod.on = false; assert.ok(allOn(sim)); const step = stepper(sim);
   const g = sim.newGame('normal'); for (const s of [0, 1]) { g.sides[s].aiT = 1e9; g.sides[s].stance = 'hold'; } g.t = 130; seeAll(g);
   const hold = (e, u, v) => { e.holdU = u; e.holdV = v; e.cd = 1e6; return e; }, ready = () => { for (const k of ['shield', 'strike', 'repair']) g.sides[0].ab[k] = 0; };
@@ -191,7 +191,7 @@ test('on: Orbital Strike: 3 s warning, 280 at the centre to 140 at the edge, eve
   const hq = g.sides[1].hq, hqHp = hq.hp; assert.ok(hq.shielded);
   assert.ok(sim.useAbility(g, 0, 'strike', hq.u, hq.v).ok); step(g, 3.2);
   assert.strictEqual(hq.hp, hqHp, 'a shielded HQ takes nothing');
-});
+}));
 
 // The Axiarch ability tests' setup (tests/ax-abilities.test.js:11-21), switches on
 function axAbil() {
@@ -205,7 +205,7 @@ function axAbil() {
 
 // tests/ax-abilities.test.js:47. b4a on: a Wraithwing hops around enemies in reach (tests/rework-4a.test.js:148), so the
 // most damaged unit is a Shardling here, which stays put until the channel ends.
-test('on: Mass Warp: up to 8 units (the most damaged first) channel 2 s, then arrive at the warp point; the total unit count never changes', () => {
+test('on: Mass Warp: up to 8 units (the most damaged first) channel 2 s, then arrive at the warp point; the total unit count never changes', pin6h(['b6hbody'], () => { // v2.98 (batch 6h): held b6hbody off (units on one spot are pushed apart); counterpart in tests/switches-on-6h.test.js
   const { sim, put, grown, units } = axAbil(), A = sim.ABIL;
   const g = grown(), wp = sim.warpPoint(g, 0), home = sim.hqU(0);
   assert.ok(sim.onField(g, 0, wp.u, wp.v) && wp.u > home + 150, `the warp point is at the front of a grown field (${JSON.stringify(wp)})`);
@@ -230,7 +230,7 @@ test('on: Mass Warp: up to 8 units (the most damaged first) channel 2 s, then ar
   assert.strictEqual(new Set(g.ents.map(e => e.id)).size, g.ents.length, 'no duplicates');
   sim.finish(g, 0, 'hq');
   assert.match(sim.logText(g, { version: sim.VERSION, diff: 'Normal', persona: 'x', result: 'x' }), /Mass Warp: 7 units warped/);
-});
+}));
 
 // tests/ax-abilities.test.js:107. b3b on: a Shardling parries the next hit every 4 s (tests/rework-3b.test.js:162), so its
 // parry is spent here; and no Axiarch unit braces any more (the Bastion has its barrier instead), so the brace cap has

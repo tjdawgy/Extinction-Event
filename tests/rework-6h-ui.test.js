@@ -135,3 +135,12 @@ test('b6h: the Codex shows the Spitter from the start and the Queen on Acidic Ev
   await page.waitForTimeout(300); fs.mkdirSync(OUT, { recursive: true }); await page.screenshot({ path: path.join(OUT, 'rework6h-codex.png') });
   assert.deepStrictEqual(errors, []); await page.close();
 });
+
+// bloomhost-ui "a match as Bloomhost" holds b6h off (its Train cards are v2.97's); this is its switches-on counterpart
+test('b6h: a T1 Larva Pit\'s Train cards are the Skitterling and the Spitter', { skip }, async () => {
+  const { page, errors } = await match('bloomhost', 'lastfist');
+  await page.evaluate(() => { tryBuild(game, 0, 'barracks', 0); for (const b of game.ents) if (b.kind === 'b' && b.side === 0) { b.built = true; b.progress = 1; b.hp = b.maxHp; } paused = false; refreshUI(true); });
+  await page.click('.tabs [data-tab="train"]'); await page.waitForTimeout(100);
+  assert.deepStrictEqual(await page.$$eval('#cards .card', c => c.map(x => x.dataset.type)), ['skitterling', 'spitter']);
+  assert.deepStrictEqual(errors, []); await page.close();
+});

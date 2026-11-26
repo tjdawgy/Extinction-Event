@@ -5,7 +5,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const crypto = require('crypto');
-const { loadSim } = require('./load-sim');
+const { loadSim, pin6h } = require('./load-sim');
 
 const step = (s, g, sec) => { for (let i = 0; i < Math.round(sec * 60); i++) s.rangeStep(g); };
 const until = (s, g, f, sec = 20) => { for (let i = 0; i < sec * 60; i++) { if (f()) return true; s.rangeStep(g); } return f(); };
@@ -50,7 +50,7 @@ test('broods: one order costs 120 for 4 Skitterlings of 50 health in 6 s, counts
   assert.ok(s.tryTrain(g1, 0, 'skitterling').ok); assert.strictEqual(1000 - g1.sides[0].res.c, s.UDEF.skitterling.cost.c, 'off: one Skitterling as before');
 });
 
-test('swarm surge: +5% per Bloomhost ground unit within 80, up to +40%, on top of creep; not aircraft, other factions or burrowed units', () => {
+test('swarm surge: +5% per Bloomhost ground unit within 80, up to +40%, on top of creep; not aircraft, other factions or burrowed units', pin6h(['b6h', 'b6hbody'], () => { // v2.98 (batch 6h): held b6h, b6hbody off (intended); counterpart in tests/switches-on-6h.test.js
   const s = loadSim();
   const run = (n, rw) => {
     const g = s.rangeGame({ factions: ['bloomhost', 'lastfist'], rework: rw });
@@ -69,7 +69,7 @@ test('swarm surge: +5% per Bloomhost ground unit within 80, up to +40%, on top o
   assert.strictEqual(s.surgeMul({ sgN: 8, bur: 1 }), 1, 'burrowed'); assert.strictEqual(s.surgeMul({ sgN: 8, lt: 3 }), 1, 'latched'); assert.ok(Math.abs(s.surgeMul({ sgN: 3 }) - 1.15) < 1e-9);
   const g = s.rangeGame({ factions: ['lastfist', 'lastfist'] }); for (let i = 0; i < 5; i++) s.rangeUnit(g, 0, 'rifle', 300 + i * 5, 0); s.rangeStep(g);
   assert.ok(g.ents.every(e => !e.sgN), 'other factions: none');
-});
+}));
 
 test('kill frenzy: an enemy unit dying within 120 makes nearby Bloomhost units attack 30% faster for 4 s; refreshed, never stacked', () => {
   const s = loadSim();
@@ -114,7 +114,7 @@ test('Needlewing: hits aircraft too (swarm bonus kept); with b5b off it can\'t',
   }
 });
 
-test('AI: Bloomhost scores broods up and answers aircraft with Spitters and Needlewings; its anti-air paths; the pack waits for its median', () => {
+test('AI: Bloomhost scores broods up and answers aircraft with Spitters and Needlewings; its anti-air paths; the pack waits for its median', pin6h(['b6h'], () => { // v2.98 (batch 6h): held b6h off (intended); counterpart in tests/switches-on-6h.test.js
   const s = loadSim();
   const g = s.newGame('hard', { seed: 4, factions: ['bloomhost', 'lastfist'], countdown: 0 });
   const theirs = [{ type: 'aircraft', w: 1 }, { type: 'aircraft', w: 1 }, { type: 'rifle', w: 1 }];
@@ -130,7 +130,7 @@ test('AI: Bloomhost scores broods up and answers aircraft with Spitters and Need
   const mine = [0, 1, 2, 3, 4, 5].map(i => s.spawnUnit(g, 1, 'skitterling', 1400 - i * 10, 0)); const runner = s.spawnUnit(g, 1, 'skitterling', 1100, 0), sp = s.spawnUnit(g, 1, 'spitter', 1360, 0);
   s.aiRework5b(g, 1, [...mine, runner, sp]);
   assert.ok(runner.aiWait > g.t, 'a front-runner waits for the pack'); assert.ok(sp.aiWait > g.t, 'a Spitter ahead of the swarm waits behind it'); assert.ok(!(mine[0].aiWait > g.t), 'the rear keeps going');
-});
+}));
 
 // Seeded skirmishes (the Test Range, 40 s, the state hashed every second). With b5b off they hash exactly as on v2.87's
 // index.html (checked against the v2.87 build when recorded, EE_HTML); with it on, recorded at v2.88.

@@ -375,7 +375,9 @@ function body6h(g, dt) {
         const A = a.e, B = b.e;
         if ((A.tgt === B.id && UDEF[A.type].melee) || (B.tgt === A.id && UDEF[B.type].melee)) continue;
         if (A.qm === B.id || B.qm === A.id) continue; // a Queen and her own Mites swarm through each other // a melee unit stops at its target's edge: no push between them
-        const du = B.u - A.u, dy2 = (B.v - A.v) * DY, d = Math.hypot(du, dy2), min = a.r + b.r - BODY6.allow;
+        let min = a.r + b.r - BODY6.allow;
+        if (A.side !== B.side) { const ma = UDEF[A.type].melee ? rwD(g, A.type).range * 0.8 : 1e9, mb = UDEF[B.type].melee ? rwD(g, B.type).range * 0.8 : 1e9; min = Math.min(min, ma, mb); } // a melee unit can always close to its reach on an enemy
+        const du = B.u - A.u, dy2 = (B.v - A.v) * DY, d = Math.hypot(du, dy2);
         if (d >= min) continue;
         let nx, ny;
         if (d > 1e-6) { nx = du / d; ny = dy2 / d; } else { const an = (A.id * 7 + B.id * 13) % 628 / 100; nx = Math.cos(an); ny = Math.sin(an); }
@@ -394,6 +396,7 @@ function body6h(g, dt) {
     if (it.air) { e.u = nu; e.v = nv; continue; }
     if (MAP_2D) { const H = MAP.size.h / 2 - 6; nv = clamp(nv, -H, H); if (NAV.on && navShut(nu, nv)) { if (!navShut(nu, e.v)) e.u = nu; else if (!navShut(e.u, nv)) e.v = nv; continue; } }
     else nv = clamp(nv, -LANE_V, LANE_V);
+    if (g.rdg && g.rdg.length && g.rdg.some(R => R.side !== e.side && R.t1 > g.t && rdgCross(R, e.u, e.v, nu, nv, 2))) continue; // never pushed through an enemy Worldbreaker ridge
     if (it.pm && !e.moving && !e.tgt && e.holdU !== undefined) { e.holdU += nu - e.u; e.holdV += nv - e.v; } // a standing unit pushed aside by one on the move makes way: its spot moves with it (it doesn't shove back)
     e.u = nu; e.v = nv;
   }

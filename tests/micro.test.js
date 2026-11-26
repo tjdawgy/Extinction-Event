@@ -2,7 +2,7 @@
 // flag, replacement), the global stance clearing orders, countdown and game-over blocking, saves, the AI's micro. SIM only.
 const test = require('node:test');
 const assert = require('node:assert');
-const { loadSim } = require('./load-sim');
+const { loadSim, pin6h } = require('./load-sim');
 
 const sim = loadSim();
 const step = (g, secs) => { for (let i = 0; i < Math.round(secs * 30); i++) sim.update(g, 1 / 30); };
@@ -21,7 +21,7 @@ const moved = (list, from) => list.every(u => Math.abs(u.u - from.get(u)) > 30);
 const still = (list, from) => list.every(u => Math.abs(u.u - from.get(u)) < 3);
 const snapshot = g => new Map(g.ents.filter(e => e.kind === 'u').map(e => [e, e.u]));
 
-test('a type order moves only that type; a group order only that group; the rest keep the global stance', () => {
+test('a type order moves only that type; a group order only that group; the rest keep the global stance', pin6h(['b6hbody'], () => { // v2.98 (batch 6h): held b6hbody off (intended); counterpart in tests/switches-on-6h.test.js
   const { g, army } = quiet();
   let at = snapshot(g);
   assert.ok(sim.giveOrder(g, 0, 'type', 'tank', 'attack').ok);
@@ -33,7 +33,7 @@ test('a type order moves only that type; a group order only that group; the rest
   step(g, 4);
   assert.ok(moved([...army.rifle, ...army.heavy], at), 'infantry advance');
   assert.ok(still(army.artillery, at), 'artillery (Armor group, no order of its own) holds');
-});
+}));
 
 test('the most recent order wins where a group and a type order both cover a unit; a global stance clears them all', () => {
   const { g } = quiet(), S = g.sides[0];
@@ -66,7 +66,7 @@ test('newly trained units follow their type order, else their group order, else 
   assert.ok(Math.abs(r.u - sim.rallyU(0)) < 115, `the new Marine goes to the rally flag (retreat): ${(r.u - sim.rallyU(0)).toFixed(0)}`); // each unit has its own spot up to 100 behind the flag
 });
 
-test('Regroup: units walk to the flag and hold there; the flag is done when all have arrived; a new order replaces it', () => {
+test('Regroup: units walk to the flag and hold there; the flag is done when all have arrived; a new order replaces it', pin6h(['b6hbody'], () => { // v2.98 (batch 6h): held b6hbody off (intended); counterpart in tests/switches-on-6h.test.js
   const { g, army, u0 } = quiet(), S = g.sides[0];
   assert.ok(sim.giveOrder(g, 0, 'group', 'arm', 'move', u0 + 400, 60).ok);
   const ord = S.orders.groups.arm;
@@ -86,7 +86,7 @@ test('Regroup: units walk to the flag and hold there; the flag is done when all 
   sim.giveOrder(g, 0, 'all', null, 'move', u0 + 250, 0); step(g, 40);
   assert.strictEqual(S.orders.all.done, true);
   for (const u of g.ents.filter(e => e.kind === 'u' && e.side === 0)) assert.ok(Math.abs(u.u - (u0 + 250)) < 50, `${u.type} regrouped`);
-});
+}));
 
 test('no orders during GET READY or after the match; Regroup must target the battlefield', () => {
   const g = sim.newGame('normal', { countdown: 3 });
@@ -99,7 +99,7 @@ test('no orders during GET READY or after the match; Regroup must target the bat
   assert.match(sim.giveOrder(h, 0, 'type', 'rifle', 'hold').msg, /over/);
 });
 
-test('save and resume mid-Regroup keep orders, the selection and the flag; a v11 save starts with no group orders', () => {
+test('save and resume mid-Regroup keep orders, the selection and the flag; a v11 save starts with no group orders', pin6h(['b6hbody'], () => { // v2.98 (batch 6h): held b6hbody off (intended); counterpart in tests/switches-on-6h.test.js
   const { g, u0 } = quiet(), S = g.sides[0];
   S.sel = 'g:arm';
   sim.giveOrder(g, 0, 'group', 'arm', 'move', u0 + 400, 0); sim.giveOrder(g, 0, 'type', 'rifle', 'attack');
@@ -114,7 +114,7 @@ test('save and resume mid-Regroup keep orders, the selection and the flag; a v11
   const g3 = sim.deserialize(JSON.stringify(o));
   assert.ok(g3 && g3.sides.every(sd => sd.sel === null && !sd.orders.all && !Object.keys(sd.orders.groups).length && !Object.keys(sd.orders.types).length));
   step(g3, 1); // and it plays on
-});
+}));
 
 test('orders are in the match log; the AI pulls its Artillery back when enemies it can see come close, then lets it go', () => {
   const { g } = quiet();

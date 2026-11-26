@@ -2,7 +2,7 @@
 // Off: v2.91 exactly (tests/determinism.test.js pins it; a b6side-off save leaves the key and its streams out).
 const test = require('node:test');
 const assert = require('node:assert');
-const { loadSim, readHtml } = require('./load-sim');
+const { loadSim, readHtml, pin6h } = require('./load-sim');
 
 test('b6side: on by default, per game, saved only when on (with its order stream and the AIs\' own streams), resumed as saved', () => {
   const s = loadSim();
@@ -60,7 +60,7 @@ test('b6side: in a mirrored fight, the side listed first no longer wins every ti
     return alive(0) && !alive(1) ? 0 : alive(1) && !alive(0) ? 1 : -1;
   };
   const off = [], on = [];
-  for (let seed = 1; seed <= 8; seed++) { off.push(run({ b6side: false }, seed)); on.push(run({}, seed)); }
+  for (let seed = 1; seed <= 8; seed++) { off.push(run({ b6side: false, b6h: false, b6hbody: false, b6hnode: false }, seed)); on.push(run({}, seed)); } // v2.98: v2.91 holds batch 6h off too
   assert.ok(off.every(w => w === 0), `v2.91: side 0 (listed first) wins every seed: ${off}`);
   const w0 = on.filter(w => w === 0).length, w1 = on.filter(w => w === 1).length;
   assert.ok(w0 >= 2 && w1 >= 2, `on: both sides win some (${w0}-${w1})`);
@@ -91,7 +91,7 @@ function diverPick(s, type, rw, ai) {
   if (type === 'gorebore') return s.borePick(g, u, foes, u.u, u.v, 300);
   return null;
 }
-test('b6art: an AI\'s Leaper, Riftstalker and Gorebore take a deployed Artillery in reach first; a player\'s and b6art-off ones as before', () => {
+test('b6art: an AI\'s Leaper, Riftstalker and Gorebore take a deployed Artillery in reach first; a player\'s and b6art-off ones as before', pin6h(['b6h'], () => { // v2.98 (batch 6h): held b6h off (its Leapers rank targets their own way, Artillery first too); counterpart in tests/switches-on-6h.test.js
   const s = loadSim();
   for (const type of ['leaper', 'riftstalker', 'gorebore']) {
     assert.strictEqual(diverPick(s, type, {}, true).type, 'artillery', `${type}, AI, b6art on`);
@@ -104,7 +104,7 @@ test('b6art: an AI\'s Leaper, Riftstalker and Gorebore take a deployed Artillery
   const g = s.rangeGame({ seed: 4, factions: ['lastfist', 'bloomhost'] }); s.rangeUnit(g, 0, 'tank', 760, -40); const a = s.rangeUnit(g, 0, 'artillery', 760, 40); a.dep = 0;
   const u = s.rangeUnit(g, 1, 'leaper', 900, 0); g.sides[1].direct = false;
   assert.strictEqual(s.latchPick(g, u, g.ents.filter(e => e.side === 0), 200).type, 'tank');
-});
+}));
 
 test('b6art: an AI\'s Dreadthorn charges at a deployed Artillery in reach', () => {
   const s = loadSim();

@@ -4,7 +4,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const crypto = require('crypto');
-const { loadSim } = require('./load-sim');
+const { loadSim, pin6h } = require('./load-sim');
 
 const step = (s, g, sec) => { for (let i = 0; i < Math.round(sec * 60); i++) s.rangeStep(g); };
 const until = (s, g, f, sec = 20) => { for (let i = 0; i < sec * 60; i++) { if (f()) return true; s.rangeStep(g); } return f(); };
@@ -82,7 +82,7 @@ test('Part 0, Riftstalker: after a strike it stays and fights its target (no fad
   s.update(m, s.TICK); assert.ok(!(a.aiHold > m.t) && b.aiHold > m.t, 'strikes at 55%, holds at 45%');
 });
 
-test('Dreadthorn: charges at an enemy 80-200 away (140/s, up to 220), 50 to every ground unit it passes once, knocked 30 aside; dazed 2 s; ready 14 s after it starts', () => {
+test('Dreadthorn: charges at an enemy 80-200 away (140/s, up to 220), 50 to every ground unit it passes once, knocked 30 aside; dazed 2 s; ready 14 s after it starts', pin6h(['b6hbody'], () => { // v2.98 (batch 6h): held b6hbody off (intended); counterpart in tests/switches-on-6h.test.js
   const s = loadSim();
   const g = s.rangeGame({ factions: ['bloomhost', 'lastfist'] });
   const D = s.rangeUnit(g, 0, 'dreadthorn', 500, 0), R = [];
@@ -108,7 +108,7 @@ test('Dreadthorn: charges at an enemy 80-200 away (140/s, up to 220), 50 to ever
   const B = s.rangeBuilding(h, 1, 'lastfist', 'refinery', 680, 0); h.sides[1].hush = true; D2.po = { o: 'attack' }; D2.holdU = undefined; T2.hp = T2.maxHp = 1e4;
   assert.ok(until(s, h, () => D2.crg, 2)); assert.ok(until(s, h, () => !D2.crg, 3));
   assert.ok(D2.u < B.u - B.half && D2.u - D2.crU0 < s.TRAMPLE.len - 20, `stopped at the building (${D2.u.toFixed(0)}, building at ${B.u})`);
-});
+}));
 
 test('Dreadthorn: an AI\'s charge needs a group or a big unit on the line (a lone Marine: no); a player\'s takes any; a target order aims it', () => {
   const s = loadSim();

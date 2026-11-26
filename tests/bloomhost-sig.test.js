@@ -5,7 +5,7 @@
 // minimal AI, and saves v29. SIM only (Node).
 const test = require('node:test');
 const assert = require('node:assert');
-const { loadSim } = require('./load-sim');
+const { loadSim, pin6h } = require('./load-sim');
 
 const sim = loadSim(); sim.setMech7c(false); // v2.43: these tests pin the v2.32-v2.34 signature rules (regular pads, both at once) and v2.42 nodes; tests/polish.test.js covers the signature pad (MECH7C)
 sim.REWORK.b3b = false; // v2.85: these tests pin the v2.84 Bulwark's creep regeneration (rework batch 3b off; tests/rework-3b.test.js covers it on)
@@ -31,7 +31,7 @@ test('the Brood Mound and Rootheart: Larva Pit cost, time, HP and upgrades; the 
   assert.ok(!sim.canTrain(g, 0, 'mite'), 'never trained'); assert.strictEqual(sim.tryTrain(g, 0, 'mite').ok, false);
 });
 
-test('Mites: 2 at T1 and 3 at T2 every 20 s, they expire after 30 s, and living Mites never exceed 10', () => {
+test('Mites: 2 at T1 and 3 at T2 every 20 s, they expire after 30 s, and living Mites never exceed 10', pin6h(['b6h'], () => { // v2.98 (batch 6h): held b6h off (intended); counterpart in tests/switches-on-6h.test.js
   const g = quiet(); const mo = fin(g, 0, 'sigA');
   step(g, M.every - 0.5); assert.strictEqual(mites(g).length, 0, 'the first clutch 20 s after it finishes');
   step(g, 0.6); assert.strictEqual(mites(g).length, 2, 'T1: 2');
@@ -46,7 +46,7 @@ test('Mites: 2 at T1 and 3 at T2 every 20 s, they expire after 30 s, and living 
   const n0 = mites(g).length; step(g, M.every); assert.strictEqual(mites(g).length, n0, 'at the cap the clutch is skipped');
   // the Mound lost: no more Mites (the living ones live out their time)
   sim.kill(g, mo, 1); for (const e of mites(g)) e.hp = 0; step(g, M.every + 1); assert.strictEqual(mites(g).length, 0);
-});
+}));
 
 test('Mites follow the army\'s orders, can\'t capture nodes and give no Salvage, Salvage Yard or not; Emergency Brood keeps its own cap', () => {
   const g = quiet('bloomhost', 'lastfist'); seeAll(g); fin(g, 0, 'sigA'); step(g, M.every + 0.1);
@@ -115,7 +115,7 @@ test('Rootheart: the 15% slow hits only enemy ground units standing on its creep
   assert.ok(Math.abs(b.hp - hp0 - b.maxHp * C.regen * R.regen) < 1e-6, `healed ${b.hp - hp0}`);
 });
 
-test('Rootheart T3: every 15 s roots snare at most 5 enemy ground units on the creep\'s edge for 1 s (they still attack), then 10 s immunity', () => {
+test('Rootheart T3: every 15 s roots snare at most 5 enemy ground units on the creep\'s edge for 1 s (they still attack), then 10 s immunity', pin6h(['b6hbody'], () => { // v2.98 (batch 6h): held b6hbody off (intended); counterpart in tests/switches-on-6h.test.js
   const g = quiet(); seeAll(g); const rh = fin(g, 0, 'sigB'); rh.tier = 3;
   const patch = () => { g.creep[0] = [{ k: 'x', u: 900, v: 0, r: 120, R: 120, node: false }]; };
   patch(); const edge = [], inner = [];
@@ -139,7 +139,7 @@ test('Rootheart T3: every 15 s roots snare at most 5 enemy ground units on the c
   // below T3: no snares
   const h = quiet(); const r2 = fin(h, 0, 'sigB'); r2.tier = 2; h.creep[0] = [{ k: 'x', u: 900, v: 0, r: 120, R: 120, node: false }]; const e2 = put(h, 1, 'rifle', 1012);
   step(h, R.every + 1); assert.ok(!(e2.snT > 0), 'T2: none');
-});
+}));
 
 test('the minimal AI (Bloomhost): the Aggressor and Trickster build the Brood Mound, the Turtle and Economist the Rootheart; Mites join its army', () => {
   for (const [persona, want, other] of [['aggressor', 'sigA', 'sigB'], ['turtle', 'sigB', 'sigA']]) {
@@ -151,7 +151,7 @@ test('the minimal AI (Bloomhost): the Aggressor and Trickster build the Brood Mo
   }
 });
 
-test('saves v29 keep Mites, the Mound and Rootheart timers and snares; an older save with a stray Bloomhost signature building drops it', () => {
+test('saves v29 keep Mites, the Mound and Rootheart timers and snares; an older save with a stray Bloomhost signature building drops it', pin6h(['b6h'], () => { // v2.98 (batch 6h): held b6h off (intended); counterpart in tests/switches-on-6h.test.js
   assert.ok(sim.SAVE_VER >= 29); assert.ok(sim.SAVE_OK.includes(28) && sim.SAVE_OK.includes(29)); // v30 (v2.34) loads the same way
   const g = quiet(); seeAll(g); const mo = fin(g, 0, 'sigA'); const rh = fin(g, 0, 'sigB'); rh.tier = 3; step(g, M.every + 0.5);
   const e = put(g, 1, 'rifle', 900); e.snT = g.t + 0.6; e.snImm = g.t + 9;
@@ -167,4 +167,4 @@ test('saves v29 keep Mites, the Mound and Rootheart timers and snares; an older 
   assert.ok(!g3.ents.some(x => x.type === 'sigA' || x.type === 'sigB'), 'a v28 Bloomhost side could not have them: dropped');
   assert.ok(g3.sides[0].slots.every(b => !b || b.hp > 0), 'their pads are free');
   assert.strictEqual(sim.tryBuild(g3, 0, 'sigA').ok, true, 'and it can build one now');
-});
+}));

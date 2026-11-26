@@ -3,7 +3,7 @@
 // with itself or a Repair Pulse), the Recon Drone's sight, cap and spotting, the AI's default paths, saves and v14 migration.
 const test = require('node:test');
 const assert = require('node:assert');
-const { loadSim } = require('./load-sim');
+const { loadSim, pin6h } = require('./load-sim');
 
 const sim = loadSim(); sim.REWORK.b4a = false; sim.REWORK.b4b = false; /* v2.87: the v2.86 Leviathan (tests/rework-4b.test.js covers its runs) */ /* v2.86: v2.85's path choice and units (rework batch 4a off; tests/rework-4a.test.js covers it on) */ 
 const same = (a, b, m) => assert.strictEqual(JSON.stringify(a), JSON.stringify(b), m);
@@ -49,7 +49,7 @@ test('Nanoweave only on Support T3: Air Power T3 gives no buff', () => {
   b.hp = 0; step(g, 0.1); assert.strictEqual(g.sides[0].buff, false, 'lost with the building');
 });
 
-test('Interceptor rework: 150/60, 190 HP, speed 100, still air-only; with no air target it escorts your Leviathan', () => {
+test('Interceptor rework: 150/60, 190 HP, speed 100, still air-only; with no air target it escorts your Leviathan', pin6h(['b6hbody'], () => { // v2.98 (batch 6h): held b6hbody off (intended); counterpart in tests/switches-on-6h.test.js
   const d = sim.UDEF.interceptor;
   same([d.cost.c, d.cost.e, d.hp, d.speed, d.hitsGround, sim.DMG.flak.air], [150, 60, 190, 100, false, 1.8]);
   const g = field(); sim.setStance(g, 0, 'attack');
@@ -57,7 +57,7 @@ test('Interceptor rework: 150/60, 190 HP, speed 100, still air-only; with no air
   lev.hp = lev.maxHp = 1e6; g.sides[0].orders.types.leviathan = { o: 'hold', n: 99, t: 0 }; lev.holdU = 900; lev.holdV = 40;
   step(g, 6);
   assert.ok(Math.abs(it.u - (lev.u - 12)) < 6 && Math.abs(it.v - lev.v) < 20, `escorting: ${it.u.toFixed(0)},${it.v.toFixed(0)} vs ${lev.u.toFixed(0)},${lev.v}`);
-});
+}));
 
 test('Leviathan: bombs what is right below it (40 range), four bombs in a line (v2.37), 2× on buildings, prefers buildings, cannot hit air, obeys the HQ shield', () => {
   const d = sim.UDEF.leviathan;

@@ -140,9 +140,9 @@ function dBrood6(c, T, u) {
   DRAW_U.queen = dQueen6; DRAW_U.broodback = dBrood6;
   DRAW_U.bulwark = (c, T, u) => art6h() ? dWarden6(c, T, u) : bul0(c, T, u);
   DRAW_U.mite = (c, T, u) => art6h() ? dMite6(c, T, u) : mite0(c, T, u);
-  SPR_BOX.queen = [-14, -50, 36, 52]; SPR_BOX.broodback = [-32, -40, 64, 42];
+  SPR_BOX.queen = [-18, -54, 48, 58]; SPR_BOX.broodback = [-38, -52, 72, 56];
   const swapGet = (o, k, on) => { const d = Object.getOwnPropertyDescriptor(o, k), off = d ? d.value : undefined; Object.defineProperty(o, k, { get: () => art6h() ? on : off, set: v => { Object.defineProperty(o, k, { value: v, writable: true, enumerable: true, configurable: true }); }, enumerable: true, configurable: true }); };
-  swapGet(SPR_BOX, 'bulwark', [-24, -54, 50, 56]); swapGet(SPR_BOX, 'mite', [-10, -12, 22, 14]);
+  swapGet(SPR_BOX, 'bulwark', [-28, -58, 58, 62]); swapGet(SPR_BOX, 'mite', [-14, -13, 30, 16]);
   Object.assign(SPR_STEP, { queen: [5, 6], broodback: [6, 6] }); if (!SPR_STEP.bulwark) SPR_STEP.bulwark = [5.5, 6];
   Object.assign(UVIS, { queen: { h: 46, w: 11 }, broodback: { h: 34, w: 21 } });
   swapGet(UVIS, 'bulwark', { h: 52, w: 18 }); swapGet(UVIS, 'mite', { h: 9, w: 7 });

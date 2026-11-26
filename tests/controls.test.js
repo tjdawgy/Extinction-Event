@@ -7,7 +7,7 @@
 // control (the AI) is untouched. The browser side is in tests/controls-ui.test.js.
 const test = require('node:test');
 const assert = require('node:assert');
-const { loadSim } = require('./load-sim');
+const { loadSim, pin6h } = require('./load-sim');
 
 const sim = loadSim();
 test.afterEach(() => sim.useMap('classic'));
@@ -40,7 +40,7 @@ test('direct control: the state is created then (control groups, no lane flags o
   }
 });
 
-test('new units gather at the base rally point, each in its own space, and wait on Hold; a forward Barracks\' units beside it', () => {
+test('new units gather at the base rally point, each in its own space, and wait on Hold; a forward Barracks\' units beside it', pin6h(['b6hbody'], () => { // v2.98 (batch 6h): held b6hbody off (intended); counterpart in tests/switches-on-6h.test.js
   for (const map of ['classic', 'threelane']) {
     const g = mk(map); sim.directControl(g, 0); g.sides[0].res.c = 1e5; g.sides[0].res.e = 1e5;
     assert.ok(sim.tryBuild(g, 0, 'barracks', 0).ok); assert.ok(sim.tryBuild(g, 0, 'barracks', 1).ok);
@@ -62,7 +62,7 @@ test('new units gather at the base rally point, each in its own space, and wait 
   assert.strictEqual(fu.length, 3);
   for (const u of fu) { assert.ok(u.po.o === 'hold' && near(u, FB.u, FB.v, 110), `beside the forward Barracks (${u.u | 0},${u.v | 0} vs ${FB.u},${FB.v})`); assert.strictEqual(u.lane, 0); assert.strictEqual(u.fwdHome, undefined); }
   spacedOut(fu, 'beside a forward Barracks');
-});
+}));
 
 test('a tapped spot: they spread into their own spaces there, stop to fight enemies they meet on the way, then hold', () => {
   const g = mk(); sim.directControl(g, 0);
@@ -93,7 +93,7 @@ test('melee units close on an enemy they meet on the way; Hold spreads stacked u
   spacedOut(st, 'Hold');
 });
 
-test('Retreat: back to the base rally point holding fire and ignoring enemies, each in its own space, then Hold', () => {
+test('Retreat: back to the base rally point holding fire and ignoring enemies, each in its own space, then Hold', pin6h(['b6hbody'], () => { // v2.98 (batch 6h): held b6hbody off (intended); counterpart in tests/switches-on-6h.test.js
   const g = mk('threelane'); sim.directControl(g, 0);
   const us = [sim.spawnUnit(g, 0, 'rifle', 900, -400), sim.spawnUnit(g, 0, 'rifle', 900, 0), sim.spawnUnit(g, 0, 'tank', 900, 380), sim.spawnUnit(g, 0, 'ravager', 920, 0)];
   const foe = tough(sim.spawnUnit(g, 1, 'rifle', 860, -400)); g.sides[1].stance = 'hold'; foe.holdU = 860; foe.holdV = -400; void foe;
@@ -103,7 +103,7 @@ test('Retreat: back to the base rally point holding fire and ignoring enemies, e
   const R = sim.ctlBase(0);
   for (const u of us) { assert.strictEqual(u.po.o, 'hold'); assert.ok(near(u, R.u, R.v, 80), `at the base rally point (${u.u | 0},${u.v | 0})`); assert.ok(!sim.navShut(u.u, u.v)); }
   spacedOut(us, 'retreated');
-});
+}));
 
 test('Attack: down the lane picked (or each unit\'s own); on Classic down the single lane', () => {
   const g = mk('threelane'); sim.directControl(g, 0);

@@ -163,7 +163,7 @@ test('healing: at the base rally point and a held depot after being moved there,
 
 test('new units: gathering at the base rally point on Hold, each in its own space; a forward Barracks\' units wait beside it', { skip }, async () => {
   const { page, errors } = await openPage(browser, PHONE);
-  await start(page, 'twolane'); await page.evaluate(HELPERS);
+  await start(page, 'twolane'); await page.evaluate(HELPERS); await page.evaluate(() => { game.rw.b6hbody = false; }); // v2.98 (batch 6h): held b6hbody off (intended); counterpart in tests/switches-on-6h.test.js
   await page.evaluate(() => { const s = game.sides[0]; s.res.c = 1e5; s.res.e = 1e5; tryBuild(game, 0, 'barracks', 0); for (const b of game.ents) if (b.kind === 'b' && b.side === 0) { b.built = true; b.progress = 1; b.hp = b.maxHp; } refreshUI(true); });
   assert.strictEqual(await page.evaluate(() => document.querySelectorAll('#lanes .act').length), 0, 'no active lane');
   await page.click('.tabs [data-tab="train"]'); assert.strictEqual(await page.$('#trto'), null, 'no "Training to"');

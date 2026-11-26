@@ -509,7 +509,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
   <footer id="panel">
     <div class="tabs"><button data-tab="build" class="on">Build</button><button data-tab="train">Train</button></div>
     <div id="cards"></div>
-    <div id="cmdbar" class="hide" role="toolbar" aria-label="Orders for the selected units"><div class="seltag"><span><b id="selN">0</b> selected</span><button id="selX" aria-label="Clear the selection">×</button></div><button data-c="attack">Attack</button><button data-c="hold">Hold</button><button data-c="retreat">Retreat</button><button data-c="tunnel" class="hide" aria-label="Send the selected units through the tunnel">Tunnel</button><button data-c="rally6" class="hide" aria-label="Rally new units from your Larva Pits and Evolution Chambers to this Ruinmaw">Rally</button><span class="cmdhint">Tap the ground to move them there</span></div>
+    <div id="cmdbar" class="hide" role="toolbar" aria-label="Orders for the selected units"><div class="seltag"><span><b id="selN">0</b> selected</span><button id="selX" aria-label="Clear the selection">×</button></div><button data-c="attack">Attack</button><button data-c="hold">Hold</button><button data-c="retreat">Retreat</button><button data-c="tunnel" class="hide" aria-label="Send the selected units through the tunnel">Tunnel</button><button data-c="rally6" class="hide" aria-label="Send new units to this Ruinmaw">Rally</button><span class="cmdhint">Tap the ground to move them there</span></div>
     <div id="trBar" role="toolbar" aria-label="Test Range: what a tap places, and each side's orders"><button id="trTool"></button><div class="trseg" id="trBb"><span>Left</span><button data-m="attack">Attack</button><button data-m="hold">Hold</button><em>You</em></div><div class="trseg" id="trBr"><span>Right</span><button data-m="attack">Attack</button><button data-m="hold">Hold</button><em>Calm</em></div></div>
     <div id="grps" class="hide" role="group" aria-label="Control groups"><button data-g="0" aria-label="Group 1: tap to select, double-tap to jump there, hold to save the selection"><b>1</b><i>–</i></button><button data-g="1" aria-label="Group 2: tap to select, double-tap to jump there, hold to save the selection"><b>2</b><i>–</i></button><button data-g="2" aria-label="Group 3: tap to select, double-tap to jump there, hold to save the selection"><b>3</b><i>–</i></button></div>
   </footer>
@@ -7379,7 +7379,9 @@ function body6h(g, dt) {
         const A = a.e, B = b.e;
         if ((A.tgt === B.id && UDEF[A.type].melee) || (B.tgt === A.id && UDEF[B.type].melee)) continue;
         if (A.qm === B.id || B.qm === A.id) continue; // a Queen and her own Mites swarm through each other // a melee unit stops at its target's edge: no push between them
-        const du = B.u - A.u, dy2 = (B.v - A.v) * DY, d = Math.hypot(du, dy2), min = a.r + b.r - BODY6.allow;
+        let min = a.r + b.r - BODY6.allow;
+        if (A.side !== B.side) { const ma = UDEF[A.type].melee ? rwD(g, A.type).range * 0.8 : 1e9, mb = UDEF[B.type].melee ? rwD(g, B.type).range * 0.8 : 1e9; min = Math.min(min, ma, mb); } // a melee unit can always close to its reach on an enemy
+        const du = B.u - A.u, dy2 = (B.v - A.v) * DY, d = Math.hypot(du, dy2);
         if (d >= min) continue;
         let nx, ny;
         if (d > 1e-6) { nx = du / d; ny = dy2 / d; } else { const an = (A.id * 7 + B.id * 13) % 628 / 100; nx = Math.cos(an); ny = Math.sin(an); }
@@ -7398,6 +7400,7 @@ function body6h(g, dt) {
     if (it.air) { e.u = nu; e.v = nv; continue; }
     if (MAP_2D) { const H = MAP.size.h / 2 - 6; nv = clamp(nv, -H, H); if (NAV.on && navShut(nu, nv)) { if (!navShut(nu, e.v)) e.u = nu; else if (!navShut(e.u, nv)) e.v = nv; continue; } }
     else nv = clamp(nv, -LANE_V, LANE_V);
+    if (g.rdg && g.rdg.length && g.rdg.some(R => R.side !== e.side && R.t1 > g.t && rdgCross(R, e.u, e.v, nu, nv, 2))) continue; // never pushed through an enemy Worldbreaker ridge
     if (it.pm && !e.moving && !e.tgt && e.holdU !== undefined) { e.holdU += nu - e.u; e.holdV += nv - e.v; } // a standing unit pushed aside by one on the move makes way: its spot moves with it (it doesn't shove back)
     e.u = nu; e.v = nv;
   }
@@ -13414,9 +13417,9 @@ function dBrood6(c, T, u) {
   DRAW_U.queen = dQueen6; DRAW_U.broodback = dBrood6;
   DRAW_U.bulwark = (c, T, u) => art6h() ? dWarden6(c, T, u) : bul0(c, T, u);
   DRAW_U.mite = (c, T, u) => art6h() ? dMite6(c, T, u) : mite0(c, T, u);
-  SPR_BOX.queen = [-14, -50, 36, 52]; SPR_BOX.broodback = [-32, -40, 64, 42];
+  SPR_BOX.queen = [-18, -54, 48, 58]; SPR_BOX.broodback = [-38, -52, 72, 56];
   const swapGet = (o, k, on) => { const d = Object.getOwnPropertyDescriptor(o, k), off = d ? d.value : undefined; Object.defineProperty(o, k, { get: () => art6h() ? on : off, set: v => { Object.defineProperty(o, k, { value: v, writable: true, enumerable: true, configurable: true }); }, enumerable: true, configurable: true }); };
-  swapGet(SPR_BOX, 'bulwark', [-24, -54, 50, 56]); swapGet(SPR_BOX, 'mite', [-10, -12, 22, 14]);
+  swapGet(SPR_BOX, 'bulwark', [-28, -58, 58, 62]); swapGet(SPR_BOX, 'mite', [-14, -13, 30, 16]);
   Object.assign(SPR_STEP, { queen: [5, 6], broodback: [6, 6] }); if (!SPR_STEP.bulwark) SPR_STEP.bulwark = [5.5, 6];
   Object.assign(UVIS, { queen: { h: 46, w: 11 }, broodback: { h: 34, w: 21 } });
   swapGet(UVIS, 'bulwark', { h: 52, w: 18 }); swapGet(UVIS, 'mite', { h: 9, w: 7 });

@@ -21,7 +21,7 @@ test('the SALVAGE block holds every number: 10%, within 200, at most 200 credits
 });
 
 test('v2.39 balance pass (on in the game): Salvage 7%, the Salvage Yard 14%; a kill pays on the new costs; the Yard card says so; off restores 10% and 20%', () => {
-  const s2 = loadSim(), U2 = s2.UDEF; s2.REWORK.b6d = false; s2.REWORK.b6elane = false; s2.REWORK.b6e = false; s2.REWORK.b6fai = false; s2.REWORK.b6f = false; s2.REWORK.b6g = false; REWORK.b6h = false; REWORK.b6hbody = false; REWORK.b6hnode = false; /* v2.96 */ /* v2.95 */ /* v2.94: batch 6d's Yard share off */ s2.setBalance7c(false); // v2.43: the phase 7c layer changes the Bulwark's cost (tests/polish.test.js)
+  const s2 = loadSim(), U2 = s2.UDEF; s2.REWORK.b6d = false; s2.REWORK.b6elane = false; s2.REWORK.b6e = false; s2.REWORK.b6fai = false; s2.REWORK.b6f = false; s2.REWORK.b6g = false; s2.REWORK.b6h = false; s2.REWORK.b6hbody = false; s2.REWORK.b6hnode = false; /* v2.96 */ /* v2.95 */ /* v2.94: batch 6d's Yard share off */ s2.setBalance7c(false); // v2.43: the phase 7c layer changes the Bulwark's cost (tests/polish.test.js)
   assert.strictEqual(s2.BALANCE.on, true);
   assert.strictEqual(s2.SALVAGE.pct, 0.07); assert.strictEqual(s2.YARD.pct, 0.14);
   assert.deepStrictEqual({ ...U2.bulwark.cost }, { c: 150, e: 30 });

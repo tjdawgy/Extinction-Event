@@ -5,7 +5,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
-const { loadSim } = require('./load-sim');
+const { loadSim, pin6h } = require('./load-sim');
 const MAPDEF = require('./maps/twolane-test');
 
 const sim = loadSim({ map: MAPDEF }), classic = loadSim();
@@ -57,7 +57,7 @@ test('new units alternate between the lanes; each walks along its own lane to th
   for (const u of us) assert.ok(u.u >= 1050, 'made it past the split');
 });
 
-test('lane orders: setLane moves units and new ones; giveOrder can hold one lane while the other attacks', () => {
+test('lane orders: setLane moves units and new ones; giveOrder can hold one lane while the other attacks', pin6h(['b6hbody'], () => { // v2.98 (batch 6h): held b6hbody off (intended); counterpart in tests/switches-on-6h.test.js
   const g = quiet(); clear(g);
   const us = [0, 1, 2, 3].map(() => sim.spawnUnit(g, 0, 'rifle', 600, 0));
   let r = sim.setLane(g, 0, 'lane', 'south', 'north');
@@ -73,7 +73,7 @@ test('lane orders: setLane moves units and new ones; giveOrder can hold one lane
   const x0 = us.map(u => u.u); step(g, 4);
   assert.ok(Math.abs(us[0].u - x0[0]) < 5 && Math.abs(us[2].u - x0[2]) < 5, 'north holds');
   assert.ok(us[1].u > x0[1] + 100 && us[3].u > x0[3] + 100, 'south attacks');
-});
+}));
 
 test('node capture uses true distance: troops on the other lane at the node\'s x do not take it', () => {
   const g = quiet(); clear(g);

@@ -35,7 +35,7 @@ const clearToasts = page => page.evaluate(() => { for (const t of document.query
 
 for (const map of ['threelane', 'classic']) test(`${map}: new units gather at the base rally point, each in its own space; a moved group spreads out too`, { skip }, async () => {
   const { page, errors } = await openPage(browser, map === 'classic' ? NARROW : PHONE);
-  await start(page, map); await page.evaluate(HELPERS);
+  await start(page, map); await page.evaluate(HELPERS); await page.evaluate(() => { game.rw.b6hbody = false; }); // v2.98 (batch 6h): held b6hbody off (intended: bodies shift spots); counterpart in tests/switches-on-6h.test.js
   await page.evaluate(() => { const s = game.sides[0]; s.res.c = 1e5; s.res.e = 1e5; tryBuild(game, 0, 'barracks', 0); tryBuild(game, 0, 'barracks', 1); for (const b of game.ents) if (b.kind === 'b' && b.side === 0) { b.built = true; b.progress = 1; b.hp = b.maxHp; } refreshUI(true); });
   await page.click('.tabs [data-tab="train"]');
   for (let i = 0; i < 10; i++) await page.click('#cards .card[data-type="rifle"]');

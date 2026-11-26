@@ -4,7 +4,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const crypto = require('crypto');
-const { loadSim } = require('./load-sim');
+const { loadSim, pin6h } = require('./load-sim');
 
 const step = (s, g, sec) => { for (let i = 0; i < Math.round(sec * 60); i++) s.rangeStep(g); };
 const until = (s, g, f, sec = 20) => { for (let i = 0; i < sec * 60; i++) { if (f()) return true; s.rangeStep(g); } return f(); };
@@ -66,7 +66,7 @@ test('Part 0: Hydras, Interceptors and building guns track a hopping Wraithwing 
   assert.strictEqual(s.acquire(g, H, s.rwD(g, 'hydra'), foes).best, W, 'the Hydra keeps it'); assert.strictEqual(s.acquire(g, V, s.rwD(g, 'heavy'), foes).best, null, 'a Heavy waits');
 });
 
-test('Leviathan: a bombing run straight across its target, its carpet centred on it, on 120 beyond, a turn without bombs, back again', () => {
+test('Leviathan: a bombing run straight across its target, its carpet centred on it, on 120 beyond, a turn without bombs, back again', pin6h(['b6hbody'], () => { // v2.98 (batch 6h): held b6hbody off (intended); counterpart in tests/switches-on-6h.test.js
   const s = loadSim();
   const g = s.rangeGame({ factions: ['lastfist', 'bloomhost'] });
   const L = s.rangeUnit(g, 0, 'leviathan', 500, 0), B = s.rangeBuilding(g, 1, 'bloomhost', 'refinery', 680, 0); tough(L); B.hp = B.maxHp = 1e5; B.built = true;
@@ -90,7 +90,7 @@ test('Leviathan: a bombing run straight across its target, its carpet centred on
   const h = s.rangeGame({ factions: ['lastfist', 'lastfist'] }); h.sides[1].direct = false; h.sides[1].stance = 'hold';
   const L2 = s.rangeUnit(h, 1, 'leviathan', 900, 40), I2 = s.rangeUnit(h, 1, 'interceptor', 1300, -60); L2.po = I2.po = undefined;
   step(s, h, 8); assert.ok(Math.hypot(I2.u - L2.u, I2.v - L2.v) < 40, `the Interceptor flies with it (${Math.hypot(I2.u - L2.u, I2.v - L2.v).toFixed(0)})`);
-});
+}));
 
 test('Brood Tyrant: 40 to units (splash 24); 30 to a building and a pustule (up to 3, 6/s each); Repair clears them; a fall bursts them into Mites (2 each, up to 6)', () => {
   const s = loadSim();

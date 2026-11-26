@@ -3,12 +3,12 @@
 // (per game, g.rw.b3a). Played on Test Range games (the real SIM).
 const test = require('node:test');
 const assert = require('node:assert');
-const { loadSim } = require('./load-sim');
+const { loadSim, pin6h } = require('./load-sim');
 
 const step = (s, g, sec) => { for (let i = 0; i < Math.round(sec * 60); i++) s.rangeStep(g); };
 const until = (s, g, f, sec = 20) => { for (let i = 0; i < sec * 60; i++) { if (f()) return true; s.rangeStep(g); } return f(); };
 
-test('switch: per game; b3a off plays the v2.83 units (UDEF untouched), on plays the batch\'s definitions; saves', () => {
+test('switch: per game; b3a off plays the v2.83 units (UDEF untouched), on plays the batch\'s definitions; saves', pin6h(['b6h'], () => { // v2.98 (batch 6h): held b6h off (intended); counterpart in tests/switches-on-6h.test.js
   const s = loadSim();
   const on = s.rangeGame({ factions: ['axiarchs', 'bloomhost'] }), off = s.rangeGame({ factions: ['axiarchs', 'bloomhost'], rework: { b3a: false, b6e: false, b6fai: false, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false } }); // v2.95: b6e off too (its Riftstalker price and shields sit on top of any batch; tests/rework-6e.test.js)
   assert.ok(s.rwB3a(on) && !s.rwB3a(off));
@@ -25,7 +25,7 @@ test('switch: per game; b3a off plays the v2.83 units (UDEF untouched), on plays
   const h = s.rangeGame({ factions: ['bloomhost', 'lastfist'], rework: { b3a: false } });
   const r = s.rangeUnit(h, 0, 'ravager', 600, 0), v = s.rangeUnit(h, 1, 'rifle', 610, 0); s.damage(h, v, 1e4, 'maul', 0, r);
   assert.ok(r.frzT > h.t && !h.rem, 'b3a off: the v2.37 frenzy, no remains');
-});
+}));
 
 test('Leaper: leaps onto the big unit in reach (never aircraft or buildings), rides it, eats 10/s, slows it 30% (not stacking); 3 per host', () => {
   const s = loadSim(); s.REWORK.b6c = false; s.REWORK.b6ai = false; s.REWORK.b6d = false; s.REWORK.b6elane = false; s.REWORK.b6e = false; s.REWORK.b6fai = false; s.REWORK.b6f = false; s.REWORK.b6g = false; s.REWORK.b6h = false; s.REWORK.b6hbody = false; s.REWORK.b6hnode = false; /* v2.96 */ /* v2.95 */ /* v2.94 */ /* v2.93: v2.92's numbers (batch 6c's tuning, on by default, is tested in tests/rework-6c.test.js) */
@@ -150,7 +150,7 @@ test('Ravager: ground units leave remains for 6 s (not Mites or temporary Skitte
   step(s, g2, 3); assert.ok(!r2.rvS && !r2.dvT, 'busy fighting at full health: it keeps fighting');
 });
 
-test('AI: aims Leapers at big units, Riftstalkers at exposed ranged units, keeps Parallaxes beside its most expensive units; scores and tastes', () => {
+test('AI: aims Leapers at big units, Riftstalkers at exposed ranged units, keeps Parallaxes beside its most expensive units; scores and tastes', pin6h(['b6h'], () => { // v2.98 (batch 6h): held b6h off (intended); counterpart in tests/switches-on-6h.test.js
   const s = loadSim();
   const g = s.newGame('hard', { seed: 9, factions: ['bloomhost', 'axiarchs'] }); g.countdown = 0;
   for (const f of g.fog) { f.vis.fill(1); f.exp.fill(1); }
@@ -163,4 +163,4 @@ test('AI: aims Leapers at big units, Riftstalkers at exposed ranged units, keeps
   s.aiRework3a(g, 1, [rs]); assert.strictEqual(rs.ltAim, undefined); assert.strictEqual(rs.rsAim, sp2.id, 'the unguarded Spitter');
   const px = s.spawnUnit(g, 1, 'parallax', 800, 0), ev = s.spawnUnit(g, 1, 'eventide', 700, 0), sh = s.spawnUnit(g, 1, 'shardling', 760, 0);
   s.aiRework3a(g, 1, [px, ev, sh]); assert.strictEqual(px.pxG, ev.id, 'beside the Eventide (the most expensive)');
-});
+}));
