@@ -10,7 +10,7 @@ const game = (rework, o = {}) => sim.newGame(o.diff || 'hard', Object.assign({ s
 
 test('b6ai and b6d are on by default, saved per game, and left out of a save when off', () => {
   const r = sim.rwInit(); assert.ok(r.b6ai && r.b6d);
-  const on = JSON.parse(sim.serialize(game(), {})), off = JSON.parse(sim.serialize(game({ b6ai: false, b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false }), {}));
+  const on = JSON.parse(sim.serialize(game(), {})), off = JSON.parse(sim.serialize(game({ b6ai: false, b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false, b6g: false }), {}));
   assert.ok(on.rw.b6ai && on.rw.b6d);
   assert.ok(!('b6ai' in off.rw) && !('b6d' in off.rw), 'an off save is a v2.93 save');
   assert.ok(!sim.deserialize(JSON.stringify(off)).rw.b6ai && !sim.deserialize(JSON.stringify(off)).rw.b6d);
@@ -66,7 +66,7 @@ test('b6ai: the Economist spends past its cap; the Turtle attacks on army size, 
 });
 
 test('b6d: its four values play when on (Tank damage, Shardling health, Artillery salvo, the Salvage Yard share); off v2.93\'s; the Codex shows the game default', () => {
-  const on = game(), off = game({ b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false });
+  const on = game(), off = game({ b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false, b6g: false });
   assert.strictEqual(sim.rwD(on, 'tank').dmg, sim.B6D.unit.tank.dmg); assert.strictEqual(sim.rwD(off, 'tank').dmg, sim.UDEF.tank.dmg);
   assert.strictEqual(sim.rwD(on, 'artillery').dmg, sim.B6D.unit.artillery.dmg); assert.strictEqual(sim.rwD(off, 'artillery').dmg, sim.ART6.dmg, 'off: 6b\'s salvo');
   assert.ok(sim.rwD(on, 'artillery').deploy === sim.rwD(off, 'artillery').deploy && sim.rwD(on, 'artillery').range === sim.rwD(off, 'artillery').range, 'range and everything else unchanged');
@@ -82,7 +82,7 @@ test('b6d: its four values play when on (Tank damage, Shardling health, Artiller
 });
 
 test('b6d: a kill pays the Salvage Yard\'s batch 6d share', () => {
-  for (const [rw, pct] of [[undefined, sim.B6D.yard.pct], [{ b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false }, sim.YARD.pct]]) {
+  for (const [rw, pct] of [[undefined, sim.B6D.yard.pct], [{ b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false, b6g: false }, sim.YARD.pct]]) {
     const g = sim.newGame('hard', { seed: 3, factions: ['lastfist', 'axiarchs'], rework: rw }); g.countdown = 0;
     const s = g.sides[0]; s.res.c = s.res.e = 9e4; assert.ok(sim.tryBuild(g, 0, 'sigA').ok);
     const y = g.ents.find(e => e.type === 'sigA' && e.side === 0); y.built = true; y.hp = y.maxHp;

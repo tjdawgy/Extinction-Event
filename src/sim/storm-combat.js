@@ -91,6 +91,10 @@ function splashHit(g, p, hit, scale, falloffFloor) {
 }
 
 function impact(g, p, hit) {
+  if (p.by) { HIT6G.by = p.by; try { impact0(g, p, hit); } finally { HIT6G.by = 0; } return; } // v2.97 (b6g): who fired it, for the unit it hurts (hurt6g)
+  impact0(g, p, hit);
+}
+function impact0(g, p, hit) {
   if (p.dev) { DEV.on = true; DEV.sum = 0; impact1(g, p, hit); DEV.on = false; devour(g, p, DEV.sum); return; } // P11
   impact1(g, p, hit);
   if (p.pierce && hit) pierceLine(g, p, hit); // P4
@@ -232,6 +236,7 @@ function damage1(g, e, amt, weapon, fromSide, src) {
   e.hitT = 0.12;
   if (e.kind === 'u') {
     e.lastHurt = g.t;
+    if (rwB6g(g)) hurt6g(g, e, src); // v2.97 (b6g): who hurt it (src/sim/rework-6g.js)
     const ud = b3 ? ud3 : UDEF[e.type]; // v2.85: a batch 3b Dreadthorn has no spine burst
     if (ud.thorns && src && src.kind === 'u' && src.hp > 0 && effDist(src, e) <= ud.thorns.range) damage(g, src, dmg * ud.thorns.frac, 'thorns', e.side); // Thornback: no src, so no loop
     if (ud.burst && dmg >= ud.burst.trigger && weapon !== 'spines' && g.t >= e.burstCd && e.hp > 0) { // Dreadthorn: a spine burst on a big hit

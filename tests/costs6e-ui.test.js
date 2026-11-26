@@ -16,7 +16,7 @@ const OUT = process.env.EE_DOC_SHOTS ? path.join(__dirname, '..', 'docs', 'scree
 test('b6e (b6f off): the Codex and the info card show the converted Axiarch prices and changed values; off, v2.94\'s', { skip }, async () => {
   fs.mkdirSync(OUT, { recursive: true });
   const { page, errors } = await openPage(browser, PHONE);
-  await page.evaluate(() => { REWORK.b6f = false; }); // v2.96: b6f undoes the conversion (tests/rework-6f-ui.test.js)
+  await page.evaluate(() => { REWORK.b6f = false; REWORK.b6g = false; }); // v2.96: b6f undoes the conversion (tests/rework-6f-ui.test.js)
   const read = () => page.evaluate(() => {
     const card = t => document.getElementById('cx-u-' + t), row = t => $('cxTw').querySelector(`tbody tr[data-t="${t}"]`);
     return { lancerCard: card('lancer').textContent, lancerRow: row('lancer').textContent, rsCard: card('riftstalker').textContent, shCard: card('shardling').textContent, want: J(B6E) };

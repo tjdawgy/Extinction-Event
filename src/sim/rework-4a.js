@@ -137,7 +137,7 @@ function hopTo(g, u, d, nu, nv) {
   g.fx.push({ k: 'hop', side: u.side, u: nu, x: a.x, y: a.y, x2: b.x, y2: b.y, t: 0, life: 0.45, face: u.face });
   rw4Ev(g, u.side, 'hop', { u: nu, miss });
   // landing: one bolt at the best target in reach
-  const T = HOPG.foes ? acquire(g, u, d, HOPG.foes).best : null;
+  const T0 = HOPG.foes ? acquire(g, u, d, HOPG.foes).best : null, T = rwB6g(g) ? ww6g(g, u, d, T0) : T0; // v2.97 (b6g): its kept target first (src/sim/rework-6g.js)
   if (T) { u.tgt = T.id; if (Math.abs(T.u - u.u) > 1) u.face = T.u >= u.u ? 1 : -1; fire(g, u, T, d); u.cd = HOP.every; }
 }
 // In a fight: hop to a spot around its target (seeded), firing on landing

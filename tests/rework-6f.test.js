@@ -13,7 +13,7 @@ const AX = Object.keys(sim.UDEF).filter(t => sim.UDEF[t].fac === 'axiarchs' && s
 
 test('b6fai and b6f are on by default, saved per game, and left out of a save when off', () => {
   const r = sim.rwInit(); assert.ok(r.b6fai && r.b6f);
-  const on = JSON.parse(sim.serialize(game(), {})), off = JSON.parse(sim.serialize(game({ b6fai: false, b6f: false }), {}));
+  const on = JSON.parse(sim.serialize(game(), {})), off = JSON.parse(sim.serialize(game({ b6fai: false, b6f: false, b6g: false }), {}));
   assert.ok(on.rw.b6fai && on.rw.b6f);
   assert.ok(!('b6fai' in off.rw) && !('b6f' in off.rw), 'an off save is a v2.95 save');
   const b = sim.deserialize(JSON.stringify(off)); assert.ok(!b.rw.b6fai && !b.rw.b6f);
@@ -23,7 +23,7 @@ test('b6fai and b6f are on by default, saved per game, and left out of a save wh
 });
 
 test('b6f: every Axiarch unit costs v2.94\'s price again (UDEF); the Marine stays 48 and the Riftstalker\'s shields 160 (b6e)', () => {
-  const on = game(), off = game({ b6f: false });
+  const on = game(), off = game({ b6f: false, b6g: false });
   for (const t of AX) {
     same(sim.rwD(on, t).cost, sim.UDEF[t].cost, `${t}: v2.94's price`); same(sim.trainCost(on, t), sim.UDEF[t].cost, t);
     if (sim.B6E.cost[t]) same(sim.rwD(off, t).cost, sim.B6E.cost[t], `${t}: b6f off keeps b6e's conversion`);
@@ -35,7 +35,7 @@ test('b6f: every Axiarch unit costs v2.94\'s price again (UDEF); the Marine stay
   same(sim.rwShow(null, 'riftstalker').shp, 160); same(sim.rwShow(null, 'rifle').cost, { c: 48, e: 0 });
   same(sim.rwShow(off, 'lancer').cost, sim.B6E.cost.lancer, 'an info card shows its own game\'s price');
   // with b6e off, b6f changes nothing (v2.94's prices either way)
-  for (const t of [...AX, 'rifle']) same(sim.rwD(game({ b6e: false }), t).cost, sim.rwD(game({ b6e: false, b6f: false }), t).cost, t);
+  for (const t of [...AX, 'rifle']) same(sim.rwD(game({ b6e: false }), t).cost, sim.rwD(game({ b6e: false, b6f: false, b6g: false }), t).cost, t);
 });
 
 test('b6f: a sold queue refunds v2.94\'s price', () => {
@@ -76,7 +76,7 @@ test('b6fai: an AI\'s all-in base attack walks to the enemy HQ and 60 past it, n
 });
 
 test('b6fai off: Classic plays exactly as v2.95; on, it changes only what happens after a base attack starts', () => {
-  const a = hashRun({ b6fai: false }, 'classic', 200), b = hashRun({ b6fai: false, b6f: false }, 'classic', 200);
+  const a = hashRun({ b6fai: false }, 'classic', 200), b = hashRun({ b6fai: false, b6f: false, b6g: false }, 'classic', 200);
   assert.strictEqual(a.h, b.h, 'b6f has no effect on a Last Fist vs Bloomhost match (no Axiarchs, no player)');
 });
 
@@ -95,7 +95,7 @@ test('b6f (Part C): a player with no warp point of its own warps in beside the b
   assert.ok(d(p.w, near) < 60 && d(near, p.base) < d(p.front, p.base) - 150, `the field spot nearest the base rally point: ${JSON.stringify([p.w.u, p.w.v])}, rally ${JSON.stringify(p.base)}, front ${JSON.stringify(p.front)}`);
   assert.ok(sim.onField(p.g, 0, p.w.u, p.w.v));
   same([sim.warpAt(p.g, 0).u, sim.warpAt(p.g, 0).v].map(Math.round), [sim.warp6f(p.g, 0).u, sim.warp6f(p.g, 0).v].map(Math.round), 'the mark the player sees is that point');
-  const q = run({ b6f: false }, true);
+  const q = run({ b6f: false, b6g: false }, true);
   assert.ok(Math.hypot(q.w.u - q.front.u, q.w.v - q.front.v) < 60, 'b6f off: the field\'s front edge (v2.95)');
   const a = run(undefined, false);
   assert.ok(Math.hypot(a.w.u - a.front.u, a.w.v - a.front.v) < 60, 'an AI side keeps v2.95\'s default');

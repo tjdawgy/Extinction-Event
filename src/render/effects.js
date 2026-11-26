@@ -644,7 +644,7 @@ function drawAim(c, g) {
   if (!aim || !aim.placed) return;
   const A = ABIL[aim.k], w = P(aim.u, aim.v), col = aim.ok ? AB_COL[aim.k] : '#ff4d4d';
   if (aim.k === 'beam') { // v2.28: the strip it will sweep, and which way
-    const v = clamp(aim.v, -LANE_V, LANE_V), [u0, u1] = beamEnds({ u: aim.u, side: myS() }), y0 = P(0, v - A.w).y, y1 = P(0, v + A.w).y;
+    const v = beamV6g(g, aim.u, aim.v), [u0, u1] = beamEnds({ u: aim.u, side: myS() }), y0 = P(0, v - A.w).y, y1 = P(0, v + A.w).y;
     c.globalAlpha = 0.16; c.fillStyle = col; c.fillRect(Math.min(u0, u1), y0, Math.abs(u1 - u0), y1 - y0);
     c.globalAlpha = 1; c.strokeStyle = col; c.lineWidth = 2.4; c.setLineDash([8, 6]); c.strokeRect(Math.min(u0, u1), y0, Math.abs(u1 - u0), y1 - y0); c.setLineDash([]);
     c.globalAlpha = 0.5; c.lineWidth = 1.2; c.beginPath(); c.ellipse(w.x, w.y, A.r, A.r * DY, 0, 0, 7); c.stroke(); c.globalAlpha = 1; // tap inside to confirm

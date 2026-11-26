@@ -197,6 +197,7 @@ function navPath(u0, v0, u1, v1) { // A* over open cells; the cell centres from 
   return out.reverse();
 }
 function moveNav(u, d, tu, tv, dt, mul) {
+  if (NAV.g6 && navShut(tu, tv)) [tu, tv] = navOpen(tu, tv); // v2.97 (b6g): a ground unit sent at a closed cell (a wall, the ridge) heads for the nearest open one, so the path search never fails every tick
   if (Math.abs(tu - u.u) < 2 && Math.abs(tv - u.v) < 2) { u.moving = false; return false; }
   let wu = tu, wv = tv;
   if (!navClear(u.u, u.v, tu, tv)) {
@@ -290,6 +291,7 @@ function updateUnit(g, u, foes, dt) {
     if (!side.direct && !(cs && cs.want) && (best ? !d.lands || best.kind === 'b' : d.lands && !u.lnd && st !== 'retreat')) best = aim4b(g, u, d, best, foes); // an AI's Worldrender fights units in reach from the air, and picks the building it lands on
     if (rw4bStep(g, u, d, side, st, cs, best, A, dt, sp)) return;
   }
+  if ((u.r6 || u.hb6) && rwB6g(g) && fire6g(g, u, d, side, st, cs, po, best, home, dt, sp)) return; // v2.97 (b6g): under fire from beyond its reach: charge or pull back (src/sim/rework-6g.js)
   if (st === 'retreat' && Math.abs(home - u.u) > 12) {
     if (!RETREAT.fire) { u.tgt = 0; u.chT = 0; }
     else if (best && u.cd <= 0) { fire(g, u, best, d); u.cd = d.cd * rand(0.9, 1.1); } // the v2.34 rule, for the tests' fixed replays
@@ -304,6 +306,7 @@ function updateUnit(g, u, foes, dt) {
   if (d.trample && !pin && trampleGo(g, u, d, st, cs, foes, best, side)) return; // v2.85: a batch 3b Dreadthorn's charge
   if (d.barrier && !side.direct && u.bsG && !best && st !== 'retreat' && !(cs && cs.run) && bastionGuard(g, u, d, dt, sp)) return; // v2.85: an AI's Bastion screening its ranged units
   if (d.swap && !side.direct && u.pxG && !best && !A.prey && st !== 'retreat' && !(cs && cs.run) && pxGuard(g, u, d, dt, sp)) return; // v2.84: an AI's Parallax beside the unit it guards
+  if (d.blink && rwB6g(g) && !(cs && cs.want)) best = ww6g(g, u, d, best); // v2.97 (b6g): a Wraithwing keeps its target through its hops
   const act = !(u.phT > g.t) && !d.siege && !u.bur; // v2.82: a burrowed Gorebore doesn't fight // v2.37: a phased Wraithwing can't fire (P13); a Titan fires only when planted (P8)
   u.tgt = best && act ? best.id : 0;
   if (!best || best.id !== u.chTgt || !act) u.chT = 0; // the Astral Marksman's charge starts over on a new target (v2.27)
@@ -359,7 +362,8 @@ function updateUnit(g, u, foes, dt) {
   else if (st === 'attack') {
     // a field push spreads forward of its line; a siege spreads back from it, so nobody stands inside the enemy HQ's range
     const spread = side.pushMode === 'siege' ? -1 : 1;
-    const end = side.pushTo !== null ? side.pushTo - spread * u.rallyOff * dir * 0.6 : side.end6e != null ? side.end6e : rwB6fai(g) && !side.direct ? end6f(g, u.side) : (dir > 0 ? L : 0); // v2.96 (b6fai): every AI's base attack ends there too (end6f) // v2.95 (b6elane): an Axiarch AI's base attack on a lane map ends at the enemy HQ, not the map's edge behind it (side.end6e)
+    const e6g = side.pushTo === null && rwB6g(g) ? end6g(g, u) : null; // v2.97 (b6g): every all-in attack, the player's Attack order too, ends at the enemy HQ or what holds its shield (src/sim/rework-6g.js)
+    const end = side.pushTo !== null ? side.pushTo - spread * u.rallyOff * dir * 0.6 : e6g ? e6g.u : side.end6e != null ? side.end6e : rwB6fai(g) && !side.direct ? end6f(g, u.side) : (dir > 0 ? L : 0); // v2.96 (b6fai): every AI's base attack ends there too (end6f) // v2.95 (b6elane): an Axiarch AI's base attack on a lane map ends at the enemy HQ, not the map's edge behind it (side.end6e)
     if (u.id === side.spotter && side.spotU != null && (side.pushTo !== null || side.spotAny)) tu = side.spotU; // spotAny (v2.38): a Default AI spots for its long guns on any push
     else if (u.type === 'interceptor') { // escort the nearest of your Leviathans and Gunships; with none, wait behind the front
       let esc = null, ed = 1e9;
@@ -370,6 +374,7 @@ function updateUnit(g, u, foes, dt) {
     if (side.bbStage != null && !d.air) tu = side.bbStage - dir * u.rallyOff * 0.5; // v2.69 (a): mass at the edge of the HQ gun's range
     else if (side.bbLead != null && !d.air && !aiSiegeT(g, u.type) && dir * (u.u - side.bbLead) < 0) tu = side.bbLead - dir * u.rallyOff * 0.5; // the siege units go in first
     if (side.leash != null && !d.siege && !d.air) tu = dir > 0 ? Math.min(tu, side.leash) : Math.max(tu, side.leash); // v2.38: a Default AI's army stays within reach of its Titans while they plant
+    if (e6g && e6g.v != null && tu === end) { tv = e6g.v; if (!d.air && MAP_2D && NAV.on && navShut(tu, tv)) [tu, tv] = navOpen(tu, tv); } // v2.97 (b6g): straight at the building holding the shield
   }
   if (u.rmF) { const R = g.t < u.rmF.t ? ctlEnt(g, u.rmF.r) : null; if (R && ruinGate(R)) { tu = u.rmF.u; tv = u.rmF.v; } else u.rmF = undefined; } // v2.83: an AI's unit out of a Ruinmaw's mouth fights around it
   if (u.bkG && d.creepHold && st !== 'attack' && tu === home) tv = u.bkG[1]; // v2.85: its spot on the creep

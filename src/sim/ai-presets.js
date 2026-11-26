@@ -243,7 +243,7 @@ function aiStrikeTarget(g, s, kind, lvl, seen, ctx, k = 'strike') {
   const ground = seen.filter(e => e.kind === 'u' && !((spores || beam) && UDEF[e.type].air)); // v2.16: the Strike hits aircraft too; Corrosive Bloom (v2.20) and the Beam (v2.28) don't
   const known = spores ? [] : Object.values(f.ghosts).filter(gh => gh.side !== s && !(gh.type === 'hq' && f.lastHQ.shielded)); // the spores don't touch buildings
   const hit = (d, hp) => Math.min(1, (spores ? A.dps * A.dur * 0.6 : beam ? A.dmg : A.dmg - (A.dmg - A.edge) * Math.min(1, d / A.r)) / hp); // spores: they may walk out halfway; the Beam: the same damage all along its strip
-  const inStrip = (p, u, v, half) => Math.abs(u - p.u) - half <= A.len / 2 && Math.abs(v - clamp(p.v, -LANE_V, LANE_V)) - half <= A.w ? 0 : Infinity; // the Beam's strip (v2.28)
+  const inStrip = (p, u, v, half) => Math.abs(u - p.u) - half <= A.len / 2 && Math.abs(v - beamV6g(g, p.u, p.v)) - half <= A.w ? 0 : Infinity; // the Beam's strip (v2.28)
   const pts = ground.map(e => ({ u: e.u, v: e.v })).concat(known.map(gh => ({ u: gh.u, v: gh.v, b: gh })));
   let best = null, bs = [Infinity, 340, 300][lvl]; // Normal waits for a fatter target; Hard reacts at once to a good one
   for (const p of pts) {
@@ -275,7 +275,7 @@ function aiStrikeTarget(g, s, kind, lvl, seen, ctx, k = 'strike') {
       if (kind === 'turtle') w *= 0.4;
       sc += w * hit(d, live ? live.hp : bd.hp * hpMul(bd, gh.tier || 1));
     }
-    if (sc > bs) { bs = sc; best = { u: clamp(p.u, 0, L), v: beam ? clamp(p.v, -LANE_V, LANE_V) : clamp(p.v, -200, 200), def, score: sc / [Infinity, 340, 300][lvl] }; }
+    if (sc > bs) { bs = sc; best = { u: clamp(p.u, 0, L), v: beam ? beamV6g(g, p.u, p.v) : clamp(p.v, -200, 200), def, score: sc / [Infinity, 340, 300][lvl] }; }
   }
   return best;
 }

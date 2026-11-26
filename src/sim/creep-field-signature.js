@@ -140,7 +140,7 @@ function setWarp(g, s, u, v) {
 }
 // A spot is valid for a warp: on the lane, inside the field, clear of enemies, of every building and of other warps
 function warpOk(g, s, u, v, taken) {
-  if (u < 0 || u > L || Math.abs(v) > LANE_V || !onField(g, s, u, v)) return false;
+  if (u < 0 || u > L || (rwB6g(g) && MAP_2D ? Math.abs(v) > MAP.size.h / 2 - 12 || (NAV.on && navShut(u, v)) : Math.abs(v) > LANE_V) || !onField(g, s, u, v)) return false; // v2.97 (b6g): on a lane map anywhere on open ground (was the middle band, LANE_V)
   for (const e of g.ents) {
     if (e.hp <= 0) continue;
     if (e.kind === 'b') { if (Math.hypot(e.u - u, e.v - v) < e.half + 12) return false; }
@@ -162,7 +162,7 @@ function warpSpot(g, s, u, v, taken) {
 // for and counts toward supply until it arrives (popUsed).
 function startWarp(g, s, type, extra, b) { // extra: an echo's flags (v2.34); b (v2.96): the producing building
   RNG.g = g; // v2.50: roll from this match's stream (these can run from the UI, between ticks)
-  const w = warpAt(g, s, b), p = warpSpot(g, s, w.u, w.v); // v2.96 (b6f): a player with no warp point of its own: beside the base rally point (src/sim/rework-6f.js)
+  const w = rwB6g(g) ? warp6g(g, s, b) : warpAt(g, s, b), p = warpSpot(g, s, w.u, w.v); // v2.97 (b6g): a safe spot (src/sim/rework-6g.js) // v2.96 (b6f): a player with no warp point of its own: beside the base rally point (src/sim/rework-6f.js)
   g.warps.push(Object.assign({ side: s, type, u: p.u, v: p.v, t0: g.t, end: g.t + WARP.ch }, extra));
 }
 // Gravemantle aura and Eventide pulse (v2.27)
@@ -191,6 +191,7 @@ function updateWarps(g) {
   if (!done.length) return;
   g.warps = g.warps.filter(w => g.t < w.end);
   for (const w of done) {
+    if (rwB6g(g) && !w.fwd && !safe6g(g, w.side, w.u, w.v)) { const q = warp6g(g, w.side), r = warpSpot(g, w.side, q.u, q.v); w.u = r.u; w.v = r.v; } // v2.97 (b6g): its spot turned unsafe during the channel: the safe one now
     const p = w.fwd ? w : warpOk(g, w.side, w.u, w.v) ? w : warpSpot(g, w.side, w.u, w.v); // something moved onto the spot: the nearest valid one, else the Axis (v2.68: a forward Gate's unit arrives at its flag)
     const nu = spawnUnit(g, w.side, w.type, p.u, p.v); nu.laneV = clamp(p.v, -LANE_V, LANE_V); arriveOrders(g, nu);
     if (w.fwd) { nu.lane = w.fwd.lane; nu.fwdHome = { u: w.fwd.u, n: w.fwd.n }; nu.laneV = clamp(nu.v - w.fwd.v, -LANE_V, LANE_V); if (g.sides[w.side].direct) nu.fwdHome = undefined; } // v2.73: under direct control it holds where it arrived (arriveOrders)
@@ -312,6 +313,7 @@ function fire(g, src, t, def) {
   const p = { u: m.u, v: m.v, z: m.z, pu: m.u, pv: m.v, pz: m.z, tu: t.u, tv: t.v, tz: aimZ(t), target: t, side: src.side,
     weapon: def.weapon, dmg: def.dmg * mul * (sideBuff(g, src.side) ? NANO.dmg : 1) * (src.vet ? DRILL.dmg : 1) * outMul(g, src), splash: def.splash || 0, t: 0 }; // disrupted: less damage (v2.27)
   if (def.focus) p.fc = src.fcN; // drawn brighter as it builds (v2.37)
+  if (rwB6g(g) && src.id != null) p.by = src.id; // v2.97 (b6g): who fired it (hurt6g)
   if (def.pierce) { p.ou = m.u; p.ov = m.v; p.pierce = 1; } // P4: where the line starts
   if (def.suppress) p.pin = 1; if (def.marker) p.mark = 1; if (def.bilePool) p.own = src.id; // v2.86 (batch 4a): a Sniper's round pins infantry, a Marksman's shot marks, a Bilecaster's glob leaves its pool
   if (def.gsSalvo) { p.gs = 1; const o = ((src.msl || 0) % 2 ? 1 : -1) * SALVO.pod; p.v += o; p.pv += o; } // v2.86: a Gunship's missiles leave its two pods in turn
@@ -340,6 +342,7 @@ function volley(g, src, t, def, m) {
   const V = def.salvo || def.carpet, dmg = def.dmg * (sideBuff(g, src.side) ? NANO.dmg : 1) * outMul(g, src) / (def.salvo ? V.n : 1), dir = src.face || dirOf(src.side);
   for (let i = 0; i < V.n; i++) {
     const p = { u: m.u, v: m.v, z: m.z, pu: m.u, pv: m.v, pz: m.z, target: null, side: src.side, weapon: def.weapon, dmg, splash: def.splash || 0, t: 0, tz: 0 };
+    if (rwB6g(g) && src.id != null) p.by = src.id; // v2.97 (b6g): who fired it (hurt6g)
     if (def.salvo) {
       p.su = m.u; p.sv = m.v; p.sz = m.z; p.tu = t.u + rand(-V.spread, V.spread); p.tv = t.v + rand(-V.spread, V.spread) * 0.8;
       const dd = Math.hypot(p.tu - p.su, p.tv - p.sv); p.T = 0.7 + dd / 520 + i * V.gap; p.arc = 60 + dd * 0.3; p.salvo = 1;

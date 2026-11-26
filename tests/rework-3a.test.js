@@ -10,7 +10,7 @@ const until = (s, g, f, sec = 20) => { for (let i = 0; i < sec * 60; i++) { if (
 
 test('switch: per game; b3a off plays the v2.83 units (UDEF untouched), on plays the batch\'s definitions; saves', () => {
   const s = loadSim();
-  const on = s.rangeGame({ factions: ['axiarchs', 'bloomhost'] }), off = s.rangeGame({ factions: ['axiarchs', 'bloomhost'], rework: { b3a: false, b6e: false, b6fai: false, b6f: false } }); // v2.95: b6e off too (its Riftstalker price and shields sit on top of any batch; tests/rework-6e.test.js)
+  const on = s.rangeGame({ factions: ['axiarchs', 'bloomhost'] }), off = s.rangeGame({ factions: ['axiarchs', 'bloomhost'], rework: { b3a: false, b6e: false, b6fai: false, b6f: false, b6g: false } }); // v2.95: b6e off too (its Riftstalker price and shields sit on top of any batch; tests/rework-6e.test.js)
   assert.ok(s.rwB3a(on) && !s.rwB3a(off));
   for (const t of ['leaper', 'riftstalker', 'parallax', 'ravager']) assert.strictEqual(s.rwD(off, t), s.UDEF[t], `off: the plain UDEF entry (${t})`);
   assert.ok(!s.rwD(on, 'parallax').leap && s.UDEF.parallax.leap, 'the Parallax has no leap in b3a; UDEF keeps it');
@@ -28,7 +28,7 @@ test('switch: per game; b3a off plays the v2.83 units (UDEF untouched), on plays
 });
 
 test('Leaper: leaps onto the big unit in reach (never aircraft or buildings), rides it, eats 10/s, slows it 30% (not stacking); 3 per host', () => {
-  const s = loadSim(); s.REWORK.b6c = false; s.REWORK.b6ai = false; s.REWORK.b6d = false; s.REWORK.b6elane = false; s.REWORK.b6e = false; s.REWORK.b6fai = false; s.REWORK.b6f = false; /* v2.96 */ /* v2.95 */ /* v2.94 */ /* v2.93: v2.92's numbers (batch 6c's tuning, on by default, is tested in tests/rework-6c.test.js) */
+  const s = loadSim(); s.REWORK.b6c = false; s.REWORK.b6ai = false; s.REWORK.b6d = false; s.REWORK.b6elane = false; s.REWORK.b6e = false; s.REWORK.b6fai = false; s.REWORK.b6f = false; s.REWORK.b6g = false; /* v2.96 */ /* v2.95 */ /* v2.94 */ /* v2.93: v2.92's numbers (batch 6c's tuning, on by default, is tested in tests/rework-6c.test.js) */
   const g = s.rangeGame({ factions: ['bloomhost', 'lastfist'] });
   const L = [0, 1, 2, 3].map(i => s.rangeUnit(g, 0, 'leaper', 650, -15 + i * 10));
   const tank = s.rangeUnit(g, 1, 'tank', 760, 0), rifle = s.rangeUnit(g, 1, 'rifle', 720, 30), heli = s.rangeUnit(g, 1, 'aircraft', 700, 0);

@@ -3,7 +3,7 @@
 // offline, the cached copy plays. Icons, the manifest and the title art are served from the cache and refreshed in the
 // background. Only same-origin GET requests are touched. Paths are relative, so it works under a GitHub Pages project
 // path (https://<user>.github.io/<repo>/) as well as at a site root.
-const CACHE = 'extinction-event-v1';
+const CACHE = 'extinction-event-v2'; // v2.97: renamed so every installed copy drops the old cache once
 const CORE = ['./', './index.html', './manifest.json', './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png', './icons/apple-touch-icon.png', './assets/title-screen.jpg'];
 
 self.addEventListener('install', e => {
@@ -16,8 +16,10 @@ self.addEventListener('fetch', e => {
   const req = e.request, url = new URL(req.url);
   if (req.method !== 'GET' || url.origin !== self.location.origin) return;
   const page = req.mode === 'navigate' || url.pathname.endsWith('/') || url.pathname.endsWith('.html');
-  if (page) { // network first, cached copy offline
-    e.respondWith(fetch(req).then(r => { if (r.ok) { const copy = r.clone(); caches.open(CACHE).then(c => c.put('./index.html', copy)); } return r; })
+  if (page) { // network first, cached copy offline. v2.97: 'no-cache' revalidates with the server every time, so the phone's HTTP
+    // cache (GitHub Pages sends max-age=600) can't hand back an older index.html while online. A navigate request can't be
+    // copied with options, so the page is fetched by its URL.
+    e.respondWith(fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }).then(r => { if (r.ok) { const copy = r.clone(); caches.open(CACHE).then(c => c.put('./index.html', copy)); } return r; })
       .catch(() => caches.match('./index.html', { ignoreSearch: true }).then(r => r || caches.match('./'))));
     return;
   }

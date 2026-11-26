@@ -11,12 +11,13 @@
 //        instrumentation, the state hashed every 100 ticks: they must be identical (the counters change nothing).
 const { fork } = require('child_process'), fs = require('fs'), path = require('path'), crypto = require('crypto');
 const INSTR = require('./audit6a-instrument');
+const B6G = process.env.EE_B6G ? require('./b6g-instrument') : null, B6G_P = process.env.EE_B6G_PLAYER, B6G_F = process.env.EE_B6G_FORCE; // v2.97 (batch 6g): read-only counters; EE_B6G_PLAYER=<side> a scripted direct-control player; EE_B6G_FORCE=lfturret a Last Fist that turrets every pad (audit only)
 if (process.argv[2] === '--one') {
   const [map, f0, f1, seed, maxT, ident, rwArg, p0, p1] = process.argv.slice(3); // v2.93 (batch 6c): p0, p1 force each side's personality (audit only: newGame's autoPersona / persona options)
   const RW = {}; for (const kv of (rwArg || '').split(',').filter(Boolean)) { const [k, v] = kv.split('='); RW[k] = v !== '0' && v !== 'false'; } // v2.92 (batch 6b): --rw b6art=0 etc.
   const { loadSim } = require('./load');
   const play = instr => {
-    const S = loadSim(+seed, instr ? { instrument: INSTR } : {}); Object.assign(S.REWORK, RW); if (process.env.EE_B6C && S.B6C) Object.assign(S.B6C, JSON.parse(process.env.EE_B6C)); for (const [k, V] of [['EE_B6AI', S.B6AI], ['EE_B6D', S.B6D], ['EE_B6E', S.B6E]]) if (process.env[k] && V) { const o = JSON.parse(process.env[k]); for (const f in o) if (o[f] && typeof o[f] === 'object' && !Array.isArray(o[f]) && V[f]) Object.assign(V[f], o[f]); else V[f] = o[f]; } // v2.94: EE_B6AI='{"eco":{"cap":500}}' tries batch 6d values // v2.93: EE_B6C='{"latchDps":20}' tries batch 6c numbers
+    const S = loadSim(+seed, instr ? { instrument: INSTR + (B6G ? '\n' + B6G : '') } : {}); Object.assign(S.REWORK, RW); if (process.env.EE_B6C && S.B6C) Object.assign(S.B6C, JSON.parse(process.env.EE_B6C)); for (const [k, V] of [['EE_B6AI', S.B6AI], ['EE_B6D', S.B6D], ['EE_B6E', S.B6E]]) if (process.env[k] && V) { const o = JSON.parse(process.env[k]); for (const f in o) if (o[f] && typeof o[f] === 'object' && !Array.isArray(o[f]) && V[f]) Object.assign(V[f], o[f]); else V[f] = o[f]; } // v2.94: EE_B6AI='{"eco":{"cap":500}}' tries batch 6d values // v2.93: EE_B6C='{"latchDps":20}' tries batch 6c numbers
     const g = S.newGame('hard', { seed: +seed, map, autoPlayer: true, autoDiff: 'hard', factions: [f0, f1], autoPersona: p0 || undefined, persona: p1 || undefined }); g.countdown = 0;
     const R = { tier: [{}, {}], paths: [{}, {}], t3u: [null, null], t3air: [null, null], peakUnits: [0, 0] };
     let k = 0, err = null; const hs = [];
@@ -32,6 +33,7 @@ if (process.argv[2] === '--one') {
       while (!g.over && g.t < +maxT) {
         S.update(g, S.TICK);
         g.events.length = 0;
+        if (B6G && instr && (k + 1) % 60 === 0) b6gDrive(S, g);
         if (++k % 60 === 0) { // once a game second
           const n = [0, 0];
           for (const e of g.ents) {
@@ -72,6 +74,21 @@ if (process.argv[2] === '--one') {
     process.send({ map, f: [f0, f1], seed: +seed, t: a.g.t, winner: a.g.winner, checks: a.hs.length, same, err: a.err || b.err });
     process.exit(0);
   }
+  function b6gDrive(S, g) { // v2.97: once a game second (audit only)
+    S.b6g.tick(g); const H = S.b6gH;
+    if (B6G_P !== undefined && g.t > 1) { // a scripted player: the AI keeps its macro (builds, trains, picks its stance); the units obey direct orders like a person's
+      const s = +B6G_P, sd = g.sides[s]; if (!sd.direct) H.directControl(g, s);
+      if (Math.round(g.t) % 3 === 0) {
+        const mine = g.ents.filter(e => e.kind === 'u' && e.side === s && e.hp > 0);
+        if (sd.stance === 'attack') { const ids = mine.filter(e => !e.po || e.po.o !== 'attack').map(e => e.id); if (ids.length) H.command(g, s, ids, 'attack'); }
+        else { const ids = mine.filter(e => e.po && e.po.o === 'attack').map(e => e.id); if (ids.length) H.command(g, s, ids, 'retreat'); }
+      }
+    }
+    if (B6G_F === 'lfturret' && Math.round(g.t) % 2 === 0) for (let s = 0; s < 2; s++) { // Last Fist turrets every forward pad of every node it holds, as soon as it can pay
+      if (g.sides[s].faction !== 'lastfist') continue;
+      H.FWD_PADS().forEach((F, k) => { if (g.nodes[F.node].owner === s && !H.fwdAt(g, H.FWD_SLOT + k)) H.tryBuild(g, s, 'turret', H.FWD_SLOT + k); });
+    }
+  }
   const { S, g, R, err } = play(true);
   const A = S.a6, sides = [0, 1].map(s => {
     const tot = g.log.tot[s], fac = g.sides[s].faction, trained = tot.trained, spentBy = {};
@@ -83,7 +100,7 @@ if (process.argv[2] === '--one') {
       ser: Object.assign(R.ser[s], { strat: (g.stats.sides[s].strat || []), bBuilt: g.stats.sides[s].bBuilt, firstAttack: (g.sides[s].aiLog || {}).firstAttack ?? null, attacks: (g.sides[s].aiLog || {}).attacks || 0, c10: g.stats.sides[s].c, e10: g.stats.sides[s].e, army10: g.stats.sides[s].army }), paths0: g.sides[s].persona ? g.sides[s].persona.paths : null, bLost: tot.bLost };
   });
   (process.send ? process.send.bind(process) : m => console.log(JSON.stringify(m)))({ b6c: S.B6C ? Object.assign({}, S.B6C) : null, map, f: [f0, f1], seed: +seed, t: Math.round(g.t * 10) / 10, over: !!g.over, winner: g.over ? g.winner : null, how: g.result ? g.result.how : null,
-    by: g.result ? g.result.by || g.result.reason || null : null, err, ver: S.VERSION, rw: g.rw, sides });
+    by: g.result ? g.result.by || g.result.reason || null : null, err, ver: S.VERSION, rw: g.rw, sides, ...(B6G ? { b6g: S.b6g.sum(g), b6gP: B6G_P, b6gF: B6G_F } : {}) });
   process.exit(0);
 }
 const arg = (n, d) => { const i = process.argv.indexOf('--' + n); return i > 0 ? process.argv[i + 1] : d; };

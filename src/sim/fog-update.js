@@ -112,7 +112,7 @@ function update(g, dt) {
   updateGuards(g, foes, dt); // v2.71: the relic guards fire, and both sides may target them
   indexFoes(foes[0], dt); indexFoes(foes[1], dt); // v2.37: lane-sorted, so target searches look only near the searcher
   RDG.list = null; if (rwB2b(g)) update2b(g); if (rwB3a(g)) update3a(g); /* v2.84: remains */ if (rwB3b(g)) update3b(g, dt); /* v2.85: barriers, knocks, Bulwark regen */ if (rwB4a(g)) update4a(g); /* v2.86: marked targets */ if (rwB4b(g)) update4b(g, dt); if (rwB5b(g)) update5b(g); /* v2.88: swarm surge */ /* v2.87: pustules */ // v2.83: Titan cover, Worldbreaker cracks and ridges (RDG.list: this game's ridges, while its units move)
-  const n = g.ents.length; NAV.now = g.t; // v2.65: the clock the navigation paths age by
+  const n = g.ents.length; NAV.now = g.t; NAV.g6 = rwB6g(g); // v2.97 (b6g): moveNav's guard below // v2.65: the clock the navigation paths age by
   for (let i = 0; i < n; i++) {
     const e = g.ents[i];
     if (e.hp <= 0) continue;
@@ -267,7 +267,7 @@ function updateBuilding(g, b, foes, dt) {
       if (n === 2) b.queue.shift();
       for (let i = 0; i < n; i++) {
         const fr = fwdRally(g, b.side, b); // v2.68: a forward Barracks sends its units to its lane's Forward flag
-        if (facOf(b.fac) === 'axiarchs') { if (fr) g.warps.push({ side: b.side, type: ut, u: fr.u + rand(-12, 12), v: fr.v + rand(-20, 20), t0: g.t, end: g.t + WARP.ch, fwd: fr }); else startWarp(g, b.side, ut, undefined, b); continue; } // Axiarchs (v2.26): the unit warps in at the warp point instead
+        if (facOf(b.fac) === 'axiarchs') { if (fr && !rwB6g(g)) g.warps.push({ side: b.side, type: ut, u: fr.u + rand(-12, 12), v: fr.v + rand(-20, 20), t0: g.t, end: g.t + WARP.ch, fwd: fr }); else startWarp(g, b.side, ut, undefined, b); continue; } // Axiarchs (v2.26): the unit warps in at the warp point instead (v2.97, b6g: a forward Gate's too, at a safe spot)
         const nu = fr ? spawnUnit(g, b.side, ut, fr.u + rand(-12, 12), fr.v + rand(-20, 20)) : spawnUnit(g, b.side, ut, b.u + dirOf(b.side) * (b.half + 10), b.v + rand(-12, 12) + (br ? (i - 1.5) * 9 : i * 16));
         if (fr) { nu.lane = fr.lane; nu.fwdHome = { u: fr.u, n: fr.n }; nu.laneV = clamp(nu.v - fr.v, -LANE_V, LANE_V); }
         if (g.sides[b.side].direct) ctlTrained(g, nu, fr); // v2.73: to the base rally point (or beside a forward Barracks), each in its own space (v2.76), then Hold
@@ -357,7 +357,7 @@ function indexFoes(list, dt) {
 function ixScan(g, src, def, foes, R, AR, minR) {
   const X = foes.ix, vis = g.fog[src.side].vis, side = src.side, su = src.u, sv = src.v, maxR = Math.max(R, AR);
   let best = null, bs = 1e9, bi = -1, close = false;
-  const bbf = src.kind === 'u' && !!g.sides[side] && g.sides[side].bbOn; // v2.69 (a): an AI base attack aims at what holds the shield up
+  const bbf = src.kind === 'u' && !!g.sides[side] && (g.sides[side].bbOn || bbf6g(g, src)); // v2.97 (b6g): the player's attacking units too // v2.69 (a): an AI base attack aims at what holds the shield up
   const trk = aaTrack(src, def); // v2.87 (batch 4a, Part 0): anti-air specialists and building guns track a hopping Wraithwing
   const check = idx => {
     const e = foes[idx];
@@ -404,7 +404,7 @@ function acquire(g, src, def, foes, chase) {
     // prefer units over buildings, targets this weapon counters, and wounded targets
     const mult = DMG[def.weapon][e.kind === 'b' ? 'building' : e.lnd >= 2 ? LAND.armor : UDEF[e.type].armor];
     if (!mult) continue; // this weapon can't hurt it (e.g. Turret gatling vs buildings)
-    const sc = dist + (e.kind === 'b' ? 80 : 0) - (mult - 1) * 45 - (1 - e.hp / e.maxHp) * 25 - (air && def.preferAir ? 400 : 0) - (e.kind === 'b' && def.preferB ? 280 : 0) - (src.kind === 'u' && e.kind === 'b' && g.sides[src.side] && g.sides[src.side].bbOn ? bbFocus(e, g) : 0); // v2.69 (a) // the Hydra goes for aircraft first, the Leviathan for buildings
+    const sc = dist + (e.kind === 'b' ? 80 : 0) - (mult - 1) * 45 - (1 - e.hp / e.maxHp) * 25 - (air && def.preferAir ? 400 : 0) - (e.kind === 'b' && def.preferB ? 280 : 0) - (src.kind === 'u' && e.kind === 'b' && g.sides[src.side] && (g.sides[src.side].bbOn || bbf6g(g, src)) ? bbFocus(e, g) : 0); // v2.69 (a) // the Hydra goes for aircraft first, the Leviathan for buildings
     if (sc < bs) { bs = sc; best = e; }
   }
   return { best, close };

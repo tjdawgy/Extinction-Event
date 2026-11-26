@@ -58,7 +58,7 @@ function abilityCheck(g, s, k, u, v) {
     if (Math.abs(v) > LANE_V + 25) return { ok: false, msg: 'Emergency Brood needs open ground on the lane' };
     if (g.ents.some(e => e.kind === 'u' && e.side !== s && e.hp > 0 && !UDEF[e.type].air && visibleTo(g, s, e) && Math.hypot(e.u - u, e.v - v) < A.clear)) return { ok: false, msg: 'Emergency Brood needs ground clear of enemies' };
   }
-  if (k === 'beam' && Math.abs(v) > LANE_V + 25) return { ok: false, msg: 'Purification Beam needs a spot on the lane' }; // v2.28
+  if (k === 'beam' && (beamLane6g(g) ? !onLane6g(u, v) : Math.abs(v) > LANE_V + 25)) return { ok: false, msg: 'Purification Beam needs a spot on the lane' }; // v2.28 (v2.97, b6g: on a lane map, any lane)
   if (k === 'mwarp' && !mwarpPick(g, s, u, v).length) return { ok: false, msg: 'Mass Warp needs your units inside the circle' };
   return { ok: true };
 }
@@ -86,7 +86,7 @@ function useAbility(g, s, k, u, v) {
   } else if (k === 'mwarp') { // v2.28: the chosen units channel at once and arrive at the end (updateAbilities)
     const wp = warpAt(g, s); // v2.96 (b6f): the player's default beside the base rally point
     g.abil.push({ k, side: s, u, v, t0: g.t, end: g.t + A.ch, ids: mwarpPick(g, s, u, v).map(e => e.id), wu: wp.u, wv: wp.v });
-  } else if (k === 'beam') g.abil.push({ k, side: s, u, v: clamp(v, -LANE_V, LANE_V), t0: g.t, end: g.t + A.delay + A.sweep, at: 0, hit: [] }); // at: how far the sweep has gone (0-1)
+  } else if (k === 'beam') g.abil.push({ k, side: s, u, v: beamV6g(g, u, v), /* v2.97 (b6g): on any lane */ t0: g.t, end: g.t + A.delay + A.sweep, at: 0, hit: [] }); // at: how far the sweep has gone (0-1)
   else if (k === 'strike' || k === 'brood') g.abil.push({ k, side: s, u, v, t0: g.t, end: g.t + A.delay });
   else g.abil.push({ k, side: s, u, v, t0: g.t, end: g.t + A.dur });
   ev(g, { type: 'ability', side: s, k, u, v });
