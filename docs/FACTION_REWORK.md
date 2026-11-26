@@ -1730,6 +1730,24 @@ fewer Turrets to kill there. Raising pad kills further needs building damage (un
 A salvo kills no Skitterling (three shells of 15 against 50 HP); the spacing (the loose swarm and bodies) halves what one salvo takes
 off a group, and the Warden's aura takes off a further 17% of it.
 
+### Tests
+
+`npm test` 841/841 and `npm run test:slow` 26/26 on v2.98 (quiet machine; audit/logs-p1/b6h/fast-suite-v298.txt, slow-suite-v298.txt; the slow suite passed on its first run). The first fast run failed 44; fixed as regressions: a melee unit held off its target's edge by bodies (orders-weapons "every combat unit stops to fight"), a unit pushed through a Worldbreaker ridge, the new art outside its sprite boxes (browser "unit sprite cache"), the Rally button's aria-label naming Bloomhost buildings to a Last Fist player (bloomhost-ui "the enemy faction stays out of the UI"), a test edit of mine (salvage), and rework-6b's v2.91 mirror set now holding batch 6h off; held off as intended effects with `pin6h` (tests/load-sim.js) and checked with every switch on in tests/switches-on-6h.test.js (13 tests) or tests/rework-6h*.test.js: b6hbody (bodies move units off exact spots): abilities and 6c's "Orbital Strike", ax-abilities and 6c's "Mass Warp", bloomhost-sig "Rootheart T3", controls "new units gather" and "Retreat", controls-ui and controls-refine-ui gathering, micro's type-order, Regroup and save tests, multilane "lane orders", orders-weapons warp-in on Hold, rework-3b "Dreadthorn", rework-4b "Leviathan", rework-6g's brood counterpart, techlab "Interceptor rework"; b6h: bh-trees "Larva Pit and Evolution Chamber", bloomhost-sig "Mites" and "saves v29", rework-2b's two Ruinmaw tests, rework-3a's switch and AI tests, rework-5b's AI test, rework-6b's b6art test, bloomhost-ui's Train cards; b6h and b6hbody: rework-5b "swarm surge"; b6hnode: rework-6g's node-assault test. Six re-runs left switches-on-6c's list for the same reasons. FP_V297 and every older set match with the three off; FP_V298 recorded.
+
+### Departures
+
+- The Spitter keeps its internal id and stats; the Chitin Warden keeps the Bulwark's id (`bulwark`), the Mite its own; the Queen and
+  the Broodback are new ids, so a b6h-off game (old saves, replays) still has the Thornback and no Queen.
+- The Ruinmaw's rally is set for all your Larva Pits and Evolution Chambers at once from the Ruinmaw (one button, one tap on a
+  phone), not building by building; the SIM keeps it per building (`b.rm6`).
+- The loose swarm's extra spacing applies only between units of the same side; Pounce counts a target order as attacking.
+- The Leaper leaps only at what its side can see (its leap range, 260, is beyond its sight of 180).
+- The Queen's Mites guard a ring clear of her body, and she and her own Mites never push each other.
+- Part G's targets were not met; four behaviour-only versions were measured (Part G) and the brief's rule followed: no unit value
+  changed.
+- The bodies-off self-play ran on the build before the last one-line body change (the every-switch-on run replayed identically
+  across that change; the node scenario did not, reported both).
+
 ## Unchanged (already distinct)
 
 Marine, Heavy, Tank, Flame Tank, Hydra, Interceptor, Medevac, Recon Drone, Mite, Razorwing, Cloudwing, Thornback, Lancer,
