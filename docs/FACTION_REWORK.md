@@ -1458,7 +1458,8 @@ its Boomer against Turtles that fortify more. Read as ±10 points
   can't hurt it; orders-weapons' "every combat unit stops to fight" and its 6c twin), and an attacking unit passing beside the HQ
   pulled back from it; now nothing charges a shielded or untargetable enemy and an attacking unit never responds to a building.
   tests/rework-2a.test.js's switch list gains b6g.
-- Slow suite: see KNOWN_ISSUES.md "Batch 6g".
+- Slow suite: 26/26 after one bar change: tests/slow/ai-stats.test.js's Bloomhost Skitterlings 100% → 90% (95% over 20 matches with
+  b6g on and with it off: seed variance; audit/logs-p1/b6g/slow.md). `npm test` 815/815, `npm run test:slow` 26/26 on v2.97.
 
 ### Departures
 

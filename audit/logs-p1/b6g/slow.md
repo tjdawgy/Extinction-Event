@@ -11,3 +11,6 @@
   | off | 100% | 100% | 95% (seed 212 without) | 100% | 100% | 100% | 100% |
 
   The same rate either way: seed variance (b6g moved which seed of 200-209 has none). The bar is set to 90%; every other bar holds.
+
+Rerun after that change, clean tree, quiet machine: `npm run test:slow` 26 of 26 passed (34 min; slow-suite-v297.txt).
+`npm test` 815 of 815 passed on the same code (fast-suite-v297.txt).
