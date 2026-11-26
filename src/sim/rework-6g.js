@@ -168,10 +168,124 @@ const beamV6g = (g, u, v) => beamLane6g(g) ? v : clamp(v, -LANE_V, LANE_V);
    What was wrong: a batch 4a Wraithwing hops around its target and fires on landing, but every landing (hopTo) and every tick
    (updateUnit) took acquire's best target in reach afresh, which after each hop is often another unit: its bolts spread over
    the enemy group instead of finishing one. With b6g on, it keeps its target (u.wwK) through every hop while that target is
-   alive, in sight and within reach (ctlCanHit) when it lands; only then does it pick a new one. Hops, their timing and the
+   alive, in sight and within reach (ctlCanHit) when it lands; only then does it pick a new one (a player's target order sets
+   the one it keeps: before, its landing bolts went to whatever was best while its other shots went to the ordered target). Hops, their timing and the
    untargetable window after each are unchanged. */
 function ww6g(g, u, d, best) {
   const K = u.wwK ? ctlEnt(g, u.wwK) : null;
   if (K && K.hp > 0 && K.side !== u.side && visibleTo(g, u.side, K) && ctlCanHit(g, u, d, K)) return K;
   u.wwK = best ? best.id : 0; return best;
+}
+
+/* ---- 4. The Bloomhost AI contests nodes; 5. every AI fortifies the nodes it holds ----
+   What was wrong (audit/logs-p1/b6g/nodes.md): the AI's capture groups (aiCapture: up to 3 units, need = the enemy units it
+   knows near the node × 1.3 + 150) and raids (aiRaid: 4 fast units) never counted buildings: a turreted node was attacked by
+   3 Skitterlings and lost. They only go for the centre, the watchtowers, the depots and node 0/2 (Classic's own and enemy
+   node), so a lost outer node or forward pad was never a target of its own, and nothing aimed at the turrets.
+   Fix 4 (the Bloomhost AI, not Easy; aiNode6g, side.capN): every B6G4.every s, with no all-in attack on and no threat at home,
+   it picks an enemy-held node (a node it lost in the last B6G4.lost s first, then the nearest its base), counts what defends
+   it (defense6g: every enemy gun building it can see or remembers within B6G4.gunR, B6G4.gunVal × its cost × tier, plus the
+   enemy units it knows near the node × 1.3), and only goes when it can send B6G4.edge × that (at most B6G4.n units, its
+   best building-breakers first: the weapons that hit buildings hardest, so Gorebores, Ruinmaws, Bilecasters and Brood
+   Tyrants before Skitterlings). The group gathers out of the guns' reach (B6G4.gap short of it, up to B6G4.gather s), then
+   goes in; while it does, its units aim at gun buildings near the node first (u.n6f). It gives up hurt below B6G4.minHp,
+   after B6G4.dur s, or when an all-in attack or a threat at home comes; done once the node is its own and its guns are down.
+   Fix 5 (every faction's AI, Normal and Hard, lane maps: the only nodes a building fits are forward pads (turret or
+   barracks roles); Last Fist's bunkers on income nodes already come with its Fortification Depot, and Classic has no pad on
+   any node): aiFort6g replaces aiForward's turret choice. Every B6G5.every s, with no threat at home, it builds its turret
+   (Turret, Maw, Null Lance) on a free pad of a node it holds when the node is safe (no enemy unit it knows within B6G5.safe,
+   no enemy gun it knows reaching the pad) and it can pay with B6G5.reserve left over: contested and frontline nodes first
+   (an enemy seen near it in the last B6G5.hot s, then the nearest the enemy); per personality at most B6G5.per per node and
+   B6G5.total in all (the Turtle most, the Boomer least, the Boomer only on contested nodes; Normal at most aiForward's old
+   cap). aiForward's forward production building stays (one, on its own half, as before). */
+const B6G4 = { every: 5, lost: 240, gunR: 340, gunVal: 2.2, foeR: 320, edge: 1.4, n: 14, minArmy: 450, gap: 70, gather: 25, near: 130, dur: 110, minHp: 0.4, focus: 300 };
+const B6G5 = { every: 20, safe: 450, hot: 90, reserve: { boomer: 500, economist: 300, turtle: 150, def: 300 }, per: { boomer: 1, economist: 1, turtle: 2, def: 1 }, total: { boomer: 2, economist: 3, turtle: 5, def: 3 } };
+const pk6g = side => side.persona && side.persona.kind;
+// side.n6: the node memory every AI keeps under b6g (who held each node at its last look, when it lost one, when an enemy was seen near one)
+function nodeMem6g(g, s, theirs) {
+  const side = g.sides[s], N = side.n6 || (side.n6 = { t: -99, f: -99, own: [], lost: {}, hot: {} });
+  g.nodes.forEach((n, i) => {
+    if (N.own[i] === s && n.owner !== s) N.lost[i] = g.t;
+    N.own[i] = n.owner;
+    if (theirs.some(e => e.fresh && e.v !== undefined && Math.hypot(e.u - n.u, e.v - n.v) < 600)) N.hot[i] = g.t;
+  });
+  return N;
+}
+const gunOf6g = b => b.kind === 'b' && b.built && b.hp > 0 && bdOf(b).gun ? bdOf(b).gun[b.tier] : null;
+function defense6g(g, s, n, theirs) {
+  const f = g.fog[s], guns = [];
+  let gv = 0;
+  for (const b of g.ents) {
+    if (b.side !== 1 - s || b.kind !== 'b' || b.type === 'hq') continue;
+    const gn = gunOf6g(b); if (!gn || Math.hypot(b.u - n.u, b.v - n.v) > B6G4.gunR) continue;
+    if (!visibleTo(g, s, b) && !(f.ghosts && f.ghosts[b.id])) continue;
+    const c = bdOf(b).cost; gv += B6G4.gunVal * (c.c + c.e) * b.tier * powMul(g); guns.push(b);
+  }
+  const foe = armyValue(theirs.filter(e => e.fresh && e.v !== undefined && Math.hypot(e.u - n.u, e.v - n.v) < B6G4.foeR));
+  return { v: gv + foe * 1.3, guns, reach: guns.reduce((a, b) => Math.max(a, gunOf6g(b).range + b.half), 0) };
+}
+const bldMul6g = (g, t) => { const d = rwD(g, t); return d.weapon && DMG[d.weapon] ? DMG[d.weapon].building || 0 : 0; };
+function aiNode6g(g, s, D, mine, theirs, threat, myV) {
+  const side = g.sides[s], N = nodeMem6g(g, s, theirs), dir = dirOf(s);
+  if (side.capN) { // the assault under way
+    const T = side.capN, n = g.nodes[T.node], live = mine.filter(u => T.ids.includes(u.id));
+    const hp = live.reduce((a, u) => a + u.hp, 0), max = live.reduce((a, u) => a + u.maxHp, 0);
+    const guns = g.ents.filter(b => b.side === 1 - s && gunOf6g(b) && b.type !== 'hq' && Math.hypot(b.u - n.u, b.v - n.v) <= B6G4.gunR);
+    if (!live.length || hp < max * B6G4.minHp || g.t > T.end || threat || (side.stance === 'attack' && side.pushMode === 'all') || (n.owner === s && !guns.length)) {
+      for (const u of mine) if (u.n6f) u.n6f = 0; side.capN = null; N.t = g.t; return;
+    }
+    T.ids = live.map(u => u.id);
+    if (T.ph === 'gather' && (live.filter(u => Math.hypot(u.u - T.u, u.v - T.v) <= B6G4.near).length >= live.length * 0.8 || g.t - T.t0 > B6G4.gather)) { T.ph = 'go'; T.u = n.u; T.v = n.v; for (const u of live) u.n6f = 1; }
+    return;
+  }
+  if (facOf(side.faction) !== 'bloomhost' || D.label === 'Easy') return;
+  if (g.t - N.t < B6G4.every || threat || (side.stance === 'attack' && side.pushMode === 'all') || myV < B6G4.minArmy) return;
+  N.t = g.t;
+  const busy = new Set([side.scoutId, ...(side.raid ? side.raid.ids : []), ...(side.capT ? side.capT.ids : []), ...(side.capT2 ? side.capT2.ids : []), ...(side.relicG ? side.relicG.ids : [])]);
+  const pool = mine.filter(u => !busy.has(u.id) && !UDEF[u.type].air && !UDEF[u.type].support && !UDEF[u.type].noCap && !u.noCap && !u.temp && u.hp >= u.maxHp * 0.6)
+    .sort((a, b) => bldMul6g(g, b.type) - bldMul6g(g, a.type) || armyValue([b]) - armyValue([a]) || a.id - b.id);
+  const cand = g.nodes.map((n, i) => i).filter(i => g.nodes[i].owner === 1 - s && g.nodes[i].type !== 'relic')
+    .sort((a, b) => ((g.t - (N.lost[b] ?? -1e9) < B6G4.lost) - (g.t - (N.lost[a] ?? -1e9) < B6G4.lost)) || Math.abs(g.nodes[a].u - hqU(s)) - Math.abs(g.nodes[b].u - hqU(s)) || a - b);
+  for (const i of cand) {
+    const n = g.nodes[i], df = defense6g(g, s, n, theirs), need = df.v * B6G4.edge + 100;
+    const ids = []; let v = 0;
+    for (const u of pool) { if (ids.length >= B6G4.n || v >= need) break; ids.push(u.id); v += armyValue([u]); }
+    if (v < need) continue;
+    let su = clamp(n.u - dir * (df.reach + B6G4.gap), 0, L), sv = n.v;
+    if (MAP_2D && NAV.on && navShut(su, sv)) [su, sv] = navOpen(su, sv);
+    side.capN = { node: i, ids, u: su, v: sv, end: g.t + B6G4.dur, ph: df.guns.length ? 'gather' : 'go', t0: g.t, need: Math.round(need) };
+    if (!df.guns.length) { side.capN.u = n.u; side.capN.v = n.v; }
+    lg(g, s, 'G', 'node6g', i);
+    return;
+  }
+}
+function aiFort6g(g, s, D, threat) {
+  const side = g.sides[s], LA = side.la, F = LANE_AI.fwd, cap0 = (MAP.lanes.length > 2 ? F.max3 : F.max)[D.label] || 0, dir = dirOf(s), N = side.n6;
+  if (!cap0 || threat || !LA || g.t - (LA.f6 ?? -99) < B6G5.every || !hasBuilt(g, s, 'barracks')) return;
+  LA.f6 = g.t;
+  const k = pk6g(side), P = o => o[k] ?? o.def, have = g.ents.filter(e => e.kind === 'b' && e.side === s && e.hp > 0 && e.slot >= FWD_SLOT);
+  const tur = have.filter(b => b.type === 'turret'), total = D.label === 'Hard' ? P(B6G5.total) : Math.min(P(B6G5.total), cap0);
+  const td = bdS(g, s, 'turret');
+  if (tur.length < total && td && side.res.c >= td.cost.c + P(B6G5.reserve) && side.res.e >= td.cost.e) {
+    const f = g.fog[s], opts = [];
+    for (let j = 0; j < FWD_PADS.length; j++) {
+      const Fp = FWD_PADS[j], n = g.nodes[Fp.node], slot = FWD_SLOT + j;
+      if (n.owner !== s || fwdAt(g, slot) || !Fp.allow.includes('turret')) continue;
+      if (tur.filter(b => FWD_PADS[b.slot - FWD_SLOT].node === Fp.node).length >= P(B6G5.per)) continue;
+      const [pu, pv] = Fp.at;
+      if (Object.values(f.intel).some(m => g.t - m.t <= 15 && m.v !== undefined && Math.hypot(m.u - n.u, m.v - n.v) < B6G5.safe)) continue; // not safe: enemies near
+      if (g.ents.some(b => b.side === 1 - s && gunOf6g(b) && (visibleTo(g, s, b) || (f.ghosts && f.ghosts[b.id])) && Math.hypot(b.u - pu, b.v - pv) - b.half <= gunOf6g(b).range + 20)) continue; // an enemy gun reaches the pad
+      const hot = N && g.t - (N.hot[Fp.node] ?? -1e9) < B6G5.hot;
+      if (k === 'boomer' && !hot) continue; // the Boomer fortifies only where it is contested
+      opts.push({ slot, sc: (hot ? 1e4 : 0) + dir * (n.u - hqU(s)) });
+    }
+    opts.sort((a, b) => b.sc - a.sc || a.slot - b.slot);
+    for (const o of opts) if (tryBuild(g, s, 'turret', o.slot).ok) { LA.f6t = (LA.f6t || 0) + 1; return; }
+  }
+  // its forward production building, as aiForward builds it (one, on its own half, once it has a turret out there)
+  if (have.some(b => b.type === 'barracks') || !tur.length || side.res.c < F.bank) return;
+  for (let j = 0; j < FWD_PADS.length; j++) {
+    const Fp = FWD_PADS[j]; if (dir * (Fp.at[0] - L / 2) > 0 || g.nodes[Fp.node].owner !== s || fwdAt(g, FWD_SLOT + j)) continue;
+    if (tryBuild(g, s, 'barracks', FWD_SLOT + j).ok) return;
+  }
 }

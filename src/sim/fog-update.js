@@ -374,7 +374,7 @@ function ixScan(g, src, def, foes, R, AR, minR) {
     if (dist < minR) { close = true; return; }
     const mult = DMG[def.weapon][ud ? (e.lnd >= 2 ? LAND.armor : ud.armor) : 'building'];
     if (!mult) return;
-    const sc = dist + (e.kind === 'b' ? 80 : 0) - (mult - 1) * 45 - (1 - e.hp / e.maxHp) * 25 - (air && def.preferAir ? 400 : 0) - (e.kind === 'b' && def.preferB ? 280 : 0) - (bbf && e.kind === 'b' ? bbFocus(e, g) : 0);
+    const sc = dist + (e.kind === 'b' ? 80 : 0) - (mult - 1) * 45 - (1 - e.hp / e.maxHp) * 25 - (air && def.preferAir ? 400 : 0) - (e.kind === 'b' && def.preferB ? 280 : 0) - (bbf && e.kind === 'b' ? bbFocus(e, g) : 0) - (src.n6f && e.kind === 'b' && bdOf(e).gun ? B6G4.focus : 0); // v2.97 (b6g): a Bloomhost node assault aims at the guns
     if (sc < bs || (sc === bs && idx < bi)) { bs = sc; best = e; bi = idx; }
   };
   for (const idx of X.bs) check(idx);
@@ -404,7 +404,7 @@ function acquire(g, src, def, foes, chase) {
     // prefer units over buildings, targets this weapon counters, and wounded targets
     const mult = DMG[def.weapon][e.kind === 'b' ? 'building' : e.lnd >= 2 ? LAND.armor : UDEF[e.type].armor];
     if (!mult) continue; // this weapon can't hurt it (e.g. Turret gatling vs buildings)
-    const sc = dist + (e.kind === 'b' ? 80 : 0) - (mult - 1) * 45 - (1 - e.hp / e.maxHp) * 25 - (air && def.preferAir ? 400 : 0) - (e.kind === 'b' && def.preferB ? 280 : 0) - (src.kind === 'u' && e.kind === 'b' && g.sides[src.side] && (g.sides[src.side].bbOn || bbf6g(g, src)) ? bbFocus(e, g) : 0); // v2.69 (a) // the Hydra goes for aircraft first, the Leviathan for buildings
+    const sc = dist + (e.kind === 'b' ? 80 : 0) - (mult - 1) * 45 - (1 - e.hp / e.maxHp) * 25 - (air && def.preferAir ? 400 : 0) - (e.kind === 'b' && def.preferB ? 280 : 0) - (src.kind === 'u' && e.kind === 'b' && g.sides[src.side] && (g.sides[src.side].bbOn || bbf6g(g, src)) ? bbFocus(e, g) : 0) - (src.n6f && e.kind === 'b' && bdOf(e).gun ? B6G4.focus : 0); // v2.69 (a) // the Hydra goes for aircraft first, the Leviathan for buildings
     if (sc < bs) { bs = sc; best = e; }
   }
   return { best, close };

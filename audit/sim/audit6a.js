@@ -85,7 +85,9 @@ if (process.argv[2] === '--one') {
       }
     }
     if (B6G_F === 'lfturret' && Math.round(g.t) % 2 === 0) for (let s = 0; s < 2; s++) { // Last Fist turrets every forward pad of every node it holds, as soon as it can pay
-      if (g.sides[s].faction !== 'lastfist') continue;
+      if (g.sides[s].faction !== 'lastfist' || g.t < 90) continue;
+      const Lw = S.cur().L, dr = s === 0 ? 1 : -1; // its own half's nodes (income and forward pads) count as taken by the player whenever no enemy unit stands on them
+      g.nodes.forEach(n => { if ((n.type && n.type !== 'forwardPad') || dr * (n.u - Lw / 2) >= 0 || n.owner === s) return; if (g.ents.some(e => e.kind === 'u' && e.side === 1 - s && e.hp > 0 && Math.hypot(e.u - n.u, e.v - n.v) < (n.r || 70) + 30)) return; n.owner = s; n.prog = s === 0 ? 100 : -100; });
       H.FWD_PADS().forEach((F, k) => { if (g.nodes[F.node].owner === s && !H.fwdAt(g, H.FWD_SLOT + k)) H.tryBuild(g, s, 'turret', H.FWD_SLOT + k); });
     }
   }

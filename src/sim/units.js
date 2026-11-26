@@ -306,7 +306,7 @@ function updateUnit(g, u, foes, dt) {
   if (d.trample && !pin && trampleGo(g, u, d, st, cs, foes, best, side)) return; // v2.85: a batch 3b Dreadthorn's charge
   if (d.barrier && !side.direct && u.bsG && !best && st !== 'retreat' && !(cs && cs.run) && bastionGuard(g, u, d, dt, sp)) return; // v2.85: an AI's Bastion screening its ranged units
   if (d.swap && !side.direct && u.pxG && !best && !A.prey && st !== 'retreat' && !(cs && cs.run) && pxGuard(g, u, d, dt, sp)) return; // v2.84: an AI's Parallax beside the unit it guards
-  if (d.blink && rwB6g(g) && !(cs && cs.want)) best = ww6g(g, u, d, best); // v2.97 (b6g): a Wraithwing keeps its target through its hops
+  if (d.blink && rwB6g(g)) { if (cs && cs.want) u.wwK = cs.want.id; else best = ww6g(g, u, d, best); } // v2.97 (b6g): a Wraithwing keeps its target through its hops (a target order's target is the one it keeps)
   const act = !(u.phT > g.t) && !d.siege && !u.bur; // v2.82: a burrowed Gorebore doesn't fight // v2.37: a phased Wraithwing can't fire (P13); a Titan fires only when planted (P8)
   u.tgt = best && act ? best.id : 0;
   if (!best || best.id !== u.chTgt || !act) u.chT = 0; // the Astral Marksman's charge starts over on a new target (v2.27)
@@ -353,7 +353,7 @@ function updateUnit(g, u, foes, dt) {
   if (cs && cs.go) { if (!moveToward(u, d, cs.go[0], cs.go[1], dt, sp)) u.face = dir; return; } // v2.76: on its way (nothing to fight right here)
   let tu = home, tv = u.laneV;
   if (u.id === side.scoutId && side.scoutU != null && st !== 'retreat') tu = side.scoutU; // v2.38: a Default AI's scout
-  else if (st === 'run' && capBusy(side, u.id)) { const T = side.capT && side.capT.ids.includes(u.id) ? side.capT : side.capT2 && side.capT2.ids.includes(u.id) ? side.capT2 : side.relicG; tu = T.u + ((u.id * 37) % 5 - 2) * 10; tv = T.v + ((u.id * 53) % 5 - 2) * 8; } // v2.67: a capture group stands on its node (v2.70: either group)
+  else if (st === 'run' && capBusy(side, u.id)) { const T = side.capT && side.capT.ids.includes(u.id) ? side.capT : side.capT2 && side.capT2.ids.includes(u.id) ? side.capT2 : side.capN && side.capN.ids.includes(u.id) ? side.capN : side.relicG; /* v2.97: capN (b6g) */ tu = T.u + ((u.id * 37) % 5 - 2) * 10; tv = T.v + ((u.id * 53) % 5 - 2) * 8; } // v2.67: a capture group stands on its node (v2.70: either group)
   else if (st === 'run') tu = side.raid.u; // v2.60: a raider heads for its target (fighting what it meets on the way)
   else if (st === 'move') [tu, tv] = slotOf(u, ord); // Regroup: walk to the flag, then hold there
   else if (st === 'hold' && u.holdU !== undefined) { tu = u.holdU; tv = u.holdV; }

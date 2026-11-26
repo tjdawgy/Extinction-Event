@@ -495,6 +495,7 @@ function aiUpdate(g, s, dt) {
   }
   if (aiFix(P, 'raid') && D.raid) aiRaid(g, s, mine, myV, D.raid); // v2.60; v2.61: per difficulty (DIFF.raid)
   if (MAP_LANED) aiLanes(g, s, D, mine, theirs, threat, myV, thV); // v2.67: a lane map (never on Classic)
+  if (rwB6g(g)) aiNode6g(g, s, D, mine, theirs, threat, myV); // v2.97 (b6g): node memory; the Bloomhost AI's node assaults (src/sim/rework-6g.js)
   if (BREAK.ai.on) aiBreak(g, s, mine); // v2.69 (a)
   aiAbility(g, s, P, { mine, theirs, threat, myV, thV });
   aiMicro(g, s, D, mine);
@@ -763,7 +764,7 @@ function aiCapture3(g, s, mine, theirs, easy) {
   aiCapture(g, s, mine, theirs, easy, 'capT', 'capAt', side.capT2);
   if (!easy && !lane6eOn(g, s)) aiCapture(g, s, mine, theirs, easy, 'capT2', 'capAt2', side.capT); // v2.95 (b6elane): an Axiarch army keeps one capture group
 }
-const capBusy = (side, id) => (side.capT && side.capT.ids.includes(id)) || (side.capT2 && side.capT2.ids.includes(id)) || (side.relicG && side.relicG.ids.includes(id)); // v2.71: or the relic group
+const capBusy = (side, id) => (side.capT && side.capT.ids.includes(id)) || (side.capT2 && side.capT2.ids.includes(id)) || (side.relicG && side.relicG.ids.includes(id)) || (side.capN && side.capN.ids.includes(id)); // v2.97 (b6g): or a Bloomhost node assault (capN, never set with b6g off) // v2.71: or the relic group
 // v2.71 (Proposal E): a guarded relic. With no push on, nothing threatening at home and nothing it knows of near the relic,
 // and its army at least RELIC_AI.edge × the guards, a group worth RELIC_AI.group × the guards (its nearest ground units)
 // goes to kill them and stand on the relic; it gives up when hurt to half, after RELIC_AI.dur seconds, or when the army attacks.
@@ -793,6 +794,7 @@ function aiRelic(g, s, mine, theirs, threat, easy) {
   }
 } // in a capture group (v2.70: either)
 function aiForward(g, s, D, threat) {
+  if (rwB6g(g)) return aiFort6g(g, s, D, threat); // v2.97 (b6g): every AI fortifies the nodes it holds (src/sim/rework-6g.js)
   const side = g.sides[s], LA = side.la, F = LANE_AI.fwd, max = (MAP.lanes.length > 2 ? F.max3 : F.max)[D.label] || 0, dir = dirOf(s);
   if (!max || threat || g.t - LA.fw < F.every || side.res.c < F.bank || !hasBuilt(g, s, 'barracks')) return;
   const have = g.ents.filter(e => e.kind === 'b' && e.side === s && e.hp > 0 && e.slot >= FWD_SLOT);

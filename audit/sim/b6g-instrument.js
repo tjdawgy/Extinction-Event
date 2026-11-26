@@ -6,7 +6,7 @@
 //   sum(g): the per-side summary
 module.exports = `
 (function () {
-  const R = this.__sim.b6g = { warps: [], fpb: new Map(), spells: [], open: {}, last: {}, caps: [], ctl: [], fort: [{}, {}] };
+  const R = this.__sim.b6g = { warps: [], fpb: new Map(), spells: [], open: {}, last: {}, caps: [], ctl: [], fort: [{}, {}], grp: [], gl: [{}, {}] };
   const H = this.__sim.b6gH = { directControl, command, FWD_PADS: () => FWD_PADS, FWD_SLOT, tryBuild, fwdAt, setWarp: typeof setWarp === 'function' ? setWarp : null };
   const uw = updateWarps;
   updateWarps = function (g) {
@@ -39,6 +39,20 @@ module.exports = `
       const cur = R.open[i];
       if (cur && !cur.fort) for (const e of g.ents) if (e.kind === 'b' && e.hp > 0 && e.side === cur.s && fpNode(e) === i && !e.bunker && e.type !== 'bunker' && e.built) { cur.fort = true; break; }
     });
+    // capture and assault groups (capT, capT2, raid, and 6g's capN): when each starts, what it is worth against what defends its node, how it ends
+    for (let s = 0; s < 2; s++) { const sd = g.sides[s];
+      for (const key of ['capT', 'capT2', 'capN', 'raid']) {
+        const T = sd[key], L0 = R.gl[s][key];
+        if (L0 && L0.obj !== T) { L0.rec.end = g.t; const n = g.nodes[L0.rec.node]; L0.rec.won = n ? n.owner === s : null; L0.rec.left = g.ents.filter(e => e.kind === 'u' && e.hp > 0 && L0.rec.ids.includes(e.id)).length; R.gl[s][key] = null; }
+        if (T && !R.gl[s][key]) {
+          const ni = T.node != null ? T.node : g.nodes.findIndex(n => Math.abs(n.u - T.u) < 5), n = g.nodes[ni];
+          const us = g.ents.filter(e => e.kind === 'u' && e.hp > 0 && T.ids.includes(e.id)), v = armyValue(us);
+          const guns = n ? g.ents.filter(e => e.kind === 'b' && e.side === 1 - s && e.hp > 0 && e.built && bdOf(e).gun && Math.hypot(e.u - n.u, e.v - n.v) < 320) : [];
+          const foes = n ? armyValue(g.ents.filter(e => e.kind === 'u' && e.side === 1 - s && e.hp > 0 && Math.hypot(e.u - n.u, e.v - n.v) < 320)) : 0;
+          const rec = { s, key, t: g.t, node: ni, type: n ? n.type || 'income' : null, n: us.length, v, guns: guns.length, gunHp: guns.reduce((a, b) => a + b.hp, 0), foes, ids: T.ids.slice(), types: us.map(e => e.type).join(' ') };
+          R.grp.push(rec); R.gl[s][key] = { obj: T, rec };
+        }
+      } }
     if (Math.round(g.t) % 60 === 0) { const c = [0, 0]; for (const n of g.nodes) if (n.owner === 0 || n.owner === 1) c[n.owner]++; R.ctl.push(c); }
   };
   R.sum = g => {
@@ -53,6 +67,7 @@ module.exports = `
         fpKilled: FE.filter(b => b.dead !== null).length, // enemy pad buildings destroyed (or sold)
         caps: R.caps.filter(c => c.s === s && c.type !== 'watchtower').length, retakes: R.caps.filter(c => c.s === s && c.retake && c.type !== 'watchtower').length,
         spellsF: sp.filter(x => x.fort).length, holdF: dur(sp.filter(x => x.fort)), spellsU: sp.filter(x => !x.fort).length, holdU: dur(sp.filter(x => !x.fort)),
+        grp: R.grp.filter(x => x.s === s).map(x => ({ key: x.key, t: Math.round(x.t), node: x.node, type: x.type, n: x.n, v: x.v, guns: x.guns, gunHp: Math.round(x.gunHp), foes: x.foes, won: x.won, left: x.left, dur: x.end != null ? Math.round(x.end - x.t) : null, types: x.types })),
         ctl: R.ctl.map(c => c[s]), wl: W.map(w => [Math.round(w.t), w.u, w.v, w.fwd ? 1 : 0, w.d15, w.ne, w.inR, w.hq]),
       };
     });
