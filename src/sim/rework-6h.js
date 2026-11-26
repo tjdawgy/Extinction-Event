@@ -200,7 +200,7 @@ function qMite6h(g, u, d, A, dt, sp) {
   if (!T) { const p = A.best || A.prey; if (p && Math.hypot(p.u - Q.u, p.v - Q.v) <= R) T = p; }
   if (T) { if (effDist(u, T) <= d.range) return false; u.tgt = 0; moveToward(u, d, T.u, T.v, dt, sp); return true; }
   if (A.best) return false;
-  const a = u.id * 2.39996, gu = clamp(Q.u + Math.cos(a) * 28, 0, L), gv = Q.v + Math.sin(a) * 22;
+  const a = u.id * 2.39996, gu = clamp(Q.u + Math.cos(a) * 34, 0, L), gv = Q.v + Math.sin(a) * 34 / DY; // a ring around her, clear of her body
   u.tgt = 0; if (!moveToward(u, d, gu, gv, dt, sp)) u.face = Q.face;
   return true;
 }
@@ -354,7 +354,7 @@ function body6h(g, dt) {
     let r = on ? (air ? BODY6H_AIR[cl] : BODY6H_R[cl]) : 4;
     if (loose && !air && LOOSE6H[e.type] && !atk) r += B6H.loose / 2;
     const m = (air ? 1 : BODY6H_M[cl]) * (atk ? BODY6.hold : e.moving ? 1 : BODY6.yieldK); // fighting units hold their line; standing ones make way for units on the move
-    const it = { e, air, r, m, pu: 0, pv: 0 }, gx = Math.floor(e.u / C), gy = Math.floor(e.v * DY / C) + (air ? 100000 : 0), key = gx * 400003 + gy;
+    const it = { e, air, r, m, cm: air ? 1 : BODY6H_M[cl], pu: 0, pv: 0 }, gx = Math.floor(e.u / C), gy = Math.floor(e.v * DY / C) + (air ? 100000 : 0), key = gx * 400003 + gy;
     it.gx = gx; it.gy = gy;
     let cell = G.get(key); if (!cell) G.set(key, cell = []); cell.push(it); list.push(it);
   }
@@ -368,13 +368,15 @@ function body6h(g, dt) {
         if (a.air !== b.air) continue;
         if (!on && a.e.side !== b.e.side) continue; // the loose swarm alone spaces only its own side
         const A = a.e, B = b.e;
-        if ((A.tgt === B.id && UDEF[A.type].melee) || (B.tgt === A.id && UDEF[B.type].melee)) continue; // a melee unit stops at its target's edge: no push between them
+        if ((A.tgt === B.id && UDEF[A.type].melee) || (B.tgt === A.id && UDEF[B.type].melee)) continue;
+        if (A.qm === B.id || B.qm === A.id) continue; // a Queen and her own Mites swarm through each other // a melee unit stops at its target's edge: no push between them
         const du = B.u - A.u, dy2 = (B.v - A.v) * DY, d = Math.hypot(du, dy2), min = a.r + b.r - BODY6.allow;
         if (d >= min) continue;
         let nx, ny;
         if (d > 1e-6) { nx = du / d; ny = dy2 / d; } else { const an = (A.id * 7 + B.id * 13) % 628 / 100; nx = Math.cos(an); ny = Math.sin(an); }
         const o = (min - d) * (a.air ? BODY6.kAir : BODY6.k), wa = b.m / (a.m + b.m), wb = a.m / (a.m + b.m);
         a.pu -= nx * o * wa; a.pv -= ny * o * wa; b.pu += nx * o * wb; b.pv += ny * o * wb;
+        if (B.moving && b.cm >= a.cm) a.pm = 1; if (A.moving && a.cm >= b.cm) b.pm = 1; // pushed by a unit on the move (a standing one makes way for it)
       }
     }
   }
@@ -387,7 +389,7 @@ function body6h(g, dt) {
     if (it.air) { e.u = nu; e.v = nv; continue; }
     if (MAP_2D) { const H = MAP.size.h / 2 - 6; nv = clamp(nv, -H, H); if (NAV.on && navShut(nu, nv)) { if (!navShut(nu, e.v)) e.u = nu; else if (!navShut(e.u, nv)) e.v = nv; continue; } }
     else nv = clamp(nv, -LANE_V, LANE_V);
-    if (!e.moving && !e.tgt && e.holdU !== undefined) { e.holdU += nu - e.u; e.holdV += nv - e.v; } // a standing unit pushed aside makes way: its spot moves with it (it doesn't shove back)
+    if (it.pm && !e.moving && !e.tgt && e.holdU !== undefined) { e.holdU += nu - e.u; e.holdV += nv - e.v; } // a standing unit pushed aside by one on the move makes way: its spot moves with it (it doesn't shove back)
     e.u = nu; e.v = nv;
   }
 }
@@ -472,4 +474,71 @@ function ruinSpot6h(g, s, R) {
   let u = best.u - dirOf(s) * 60, v = best.v; if (!MAP_2D) v = clamp(v, -LANE_V + 8, LANE_V - 8);
   if (NAV.on && navShut(u, v)) [u, v] = navOpen(u, v);
   return { spot: [clamp(u, 0, L), v], score: bs };
+}
+
+/* ---- b6hnode: the Bloomhost AI's node contest (Normal and Hard) ----
+   Diagnosis (audit/logs-p1/b6h/nodes-diag/, node.md: the forced-turret scenario at v2.97's rules, 36 matches): 6g's assault
+   (aiNode6g) almost never went (the force it could send was a median 0.29 of the 1.4 × defence it asked for, with every turret
+   valued at 4 × its cost × tier: about 1 % of its checks launched one), and when it went, a threat seen near home or an all-in
+   attack called it off before it arrived; meanwhile the capture groups and raids (3-4 units) kept walking into the guns one
+   group at a time and died (about 5 % took the node). The fix (behaviour only, no unit value):
+   - no capture group or raid at a node an enemy gun it knows of covers (nodeGuarded6h): those are the assault's;
+   - the assault weighs fighting power as the AI does elsewhere (aiPower: damage per second × health; the guns' own dps and
+     health, a forward pad it can't see as the enemy's turret, the enemy units near the node) and goes with its whole ground
+     army when that is NODE6.edge × the defence's: a group too small to win never goes;
+   - it is called off only by danger inside its own base (enemies within NODE6.home of its HQ), heavy losses (NODE6.minHp), a
+     time limit, or a win; a threat near home, or an all-in attack starting, no longer recalls it half way;
+   - its Ruinmaw, if it has one, surfaces beside the node (erupting into the defence) and the army on its creep tunnels there,
+     production rallied to it; Wardens, Broodbacks and Queens go with the army (the whole army goes). */
+const NODE6 = { edge: 1.5, home: 430, minHp: 0.35, dur: 150, every: 5, maxN: 40, minArmy: 450, gather: 20 };
+function nodeGuarded6h(g, s, n) {
+  const f = g.fog[s];
+  for (const b of g.ents) {
+    if (b.side !== 1 - s || b.kind !== 'b' || b.type === 'hq') continue;
+    const gn = gunOf6g(b); if (!gn || (!visibleTo(g, s, b) && !(f.ghosts && f.ghosts[b.id]))) continue;
+    if (Math.hypot(b.u - n.u, b.v - n.v) - b.half <= gn.range + (n.r || NODE_R)) return true;
+  }
+  return false;
+}
+function defPow6h(g, s, n, theirs) { // the defence's fighting power at node n, as side s knows it
+  const df = defense6g(g, s, n, theirs), guns = df.guns.map(b => { const gn = gunOf6g(b); return { dps: gn.dmg / gn.cd * (gn.split || 1) * powMul(g), hp: b.hp + (b.shp || 0) }; });
+  const td = BD(g.sides[1 - s].faction, 'turret');
+  for (let i = 0; i < df.guess; i++) if (td && td.gun) guns.push({ dps: td.gun[1].dmg / td.gun[1].cd * powMul(g), hp: td.hp });
+  const foes = theirs.filter(e => e.fresh && e.v !== undefined && Math.hypot(e.u - n.u, e.v - n.v) < B6G4.foeR);
+  return { pow: aiPower(foes, guns), df };
+}
+function aiNode6h(g, s, D, mine, theirs, N) {
+  const side = g.sides[s], dir = dirOf(s);
+  if (facOf(side.faction) !== 'bloomhost' || D.label === 'Easy') return;
+  const danger = theirs.some(e => e.fresh && Math.abs(e.u - hqU(s)) < NODE6.home && (e.v === undefined || !MAP_2D || Math.hypot(e.u - hqU(s), e.v - MAP.bases[s].hq[1]) < NODE6.home));
+  if (g.t - N.t < NODE6.every || danger || armyValue(mine) < NODE6.minArmy) return;
+  N.t = g.t;
+  const busy = new Set([side.scoutId, ...(side.raid ? side.raid.ids : []), ...(side.relicG ? side.relicG.ids : [])]);
+  const pool = mine.filter(u => !busy.has(u.id) && !UDEF[u.type].air && !UDEF[u.type].support && !u.temp && UDEF[u.type].weapon && u.hp >= u.maxHp * 0.5 && !u.tn)
+    .sort((a, b) => bldMul6g(g, b.type) - bldMul6g(g, a.type) || armyValue([b]) - armyValue([a]) || a.id - b.id).slice(0, NODE6.maxN);
+  const myPow = aiPower(pool);
+  const cand = g.nodes.map((n, i) => i).filter(i => g.nodes[i].owner === 1 - s && g.nodes[i].type !== 'relic')
+    .sort((a, b) => ((g.t - (N.lost[b] ?? -1e9) < B6G4.lost) - (g.t - (N.lost[a] ?? -1e9) < B6G4.lost)) || Math.abs(g.nodes[a].u - hqU(s)) - Math.abs(g.nodes[b].u - hqU(s)) || a - b);
+  for (const i of cand) {
+    const n = g.nodes[i], { pow, df } = defPow6h(g, s, n, theirs), armed = df.guns.length + df.guess > 0;
+    if (!armed && !(MAP_LANED && i !== 1 && g.t - (N.lost[i] ?? -1e9) < B6G4.lost)) continue; // unguarded: the capture groups and raids (v2.96's rules)
+    const go = pool.length >= B6G4.minN && myPow >= pow * NODE6.edge;
+    if (NODE6H.log) NODE6H.log(g, { k: 'eval', s, node: i, guns: df.guns.length, guess: df.guess, def: Math.round(Math.sqrt(pow)), need: Math.round(Math.sqrt(pow * NODE6.edge)), have: Math.round(Math.sqrt(myPow)), poolV: Math.round(armyValue(pool)), n: pool.length, go });
+    if (!go) continue;
+    const ids = pool.map(u => u.id);
+    let su = clamp(n.u - dir * (df.reach + B6G4.gap), 0, L), sv = n.v;
+    if (MAP_2D && NAV.on && navShut(su, sv)) [su, sv] = navOpen(su, sv);
+    side.capN = { node: i, ids, u: armed ? su : n.u, v: armed ? sv : n.v, end: g.t + NODE6.dur, ph: armed ? 'gather' : 'go', t0: g.t, h6: 1, hp0: pool.reduce((a, u) => a + u.hp, 0), need: Math.round(Math.sqrt(pow)) };
+    const R = mine.find(u => u.type === 'ruinmaw' && !u.rmHome); // its Ruinmaw surfaces beside the node (aiRework2b sends the army on its creep through, aiRuin6h rallies production there)
+    if (R && rwB6h(g)) { let ru = clamp(n.u - dir * 40, 0, L), rv = n.v + (R.id % 2 ? 30 : -30); if (MAP_2D && NAV.on && navShut(ru, rv)) [ru, rv] = navOpen(ru, rv); R.rmGo = [ru, rv]; R.rmSince = g.t; R.rmAt = 0; }
+    lg(g, s, 'G', 'node6h', i);
+    if (NODE6H.log) NODE6H.log(g, { k: 'go', s, node: i, ids: ids.slice(), types: pool.map(u => u.type), v: Math.round(armyValue(pool)), need: Math.round(Math.sqrt(pow)) });
+    return;
+  }
+}
+// The assault under way with b6hnode: true when it ends now (danger at home, heavy losses, time, or a win)
+function capN6hEnd(g, s, T, live, guns, theirs) {
+  const n = g.nodes[T.node], hp = live.reduce((a, u) => a + u.hp, 0);
+  const danger = theirs.some(e => e.fresh && Math.abs(e.u - hqU(s)) < NODE6.home && (e.v === undefined || !MAP_2D || Math.hypot(e.u - hqU(s), e.v - MAP.bases[s].hq[1]) < NODE6.home));
+  return !live.length ? 'dead' : hp < T.hp0 * NODE6.minHp ? 'hurt' : g.t > T.end ? 'time' : danger ? 'threat' : n.owner === s && !guns.length ? 'won' : null;
 }
