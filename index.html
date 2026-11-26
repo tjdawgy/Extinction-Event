@@ -6842,7 +6842,8 @@ function ww6g(g, u, d, best) {
    3 Skitterlings and lost. They only go for the centre, the watchtowers, the depots and node 0/2 (Classic's own and enemy
    node), so a lost outer node or forward pad was never a target of its own, and nothing aimed at the turrets.
    Fix 4 (the Bloomhost AI, not Easy; aiNode6g, side.capN): every B6G4.every s, with no all-in attack on and no threat at home,
-   it picks an enemy-held node (a node it lost in the last B6G4.lost s first, then the nearest its base), counts what defends
+   it picks an enemy-held node that an enemy gun guards (or, on a lane map, an outer node it lost in the last B6G4.lost s; the
+   other unguarded nodes stay with v2.96's capture groups and raids): a node it lost recently first, then the nearest its base. It counts what defends
    it (defense6g: every enemy gun building it can see or remembers within B6G4.gunR, B6G4.gunVal × its cost × tier; a forward
    pad of the node out of its sight with nothing it knows of counted as the enemy's turret; plus the enemy units it knows near
    the node × 1.3), and only goes when it can send B6G4.edge × that, at least B6G4.floor and B6G4.minN units (at most B6G4.n, its
@@ -6917,6 +6918,7 @@ function aiNode6g(g, s, D, mine, theirs, threat, myV) {
     .sort((a, b) => ((g.t - (N.lost[b] ?? -1e9) < B6G4.lost) - (g.t - (N.lost[a] ?? -1e9) < B6G4.lost)) || Math.abs(g.nodes[a].u - hqU(s)) - Math.abs(g.nodes[b].u - hqU(s)) || a - b);
   for (const i of cand) {
     const n = g.nodes[i], df = defense6g(g, s, n, theirs), need = Math.max(B6G4.floor, df.v * B6G4.edge + 100);
+    if (!(df.guns.length + df.guess) && !(MAP_LANED && i !== 1 && g.t - (N.lost[i] ?? -1e9) < B6G4.lost)) continue; // an unguarded node: the capture groups and raids take those (v2.96's rules), except an outer node it lost on a lane map
     const ids = []; let v = 0;
     for (const u of pool) { if (ids.length >= B6G4.n || (v >= need && ids.length >= B6G4.minN)) break; ids.push(u.id); v += armyValue([u]); }
     if (v < need || ids.length < B6G4.minN) continue;
