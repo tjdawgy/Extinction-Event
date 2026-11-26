@@ -58,6 +58,12 @@ const SC = {
     tick: (R, g, U, t, st) => { st.mx = Math.max(st.mx || 0, g.ents.filter(e => e.side === 0 && e.type === 'mite' && e.hp > 0).length); },
     done: (g, U) => alive(g, U.b) === 0 || alive(g, U.q) === 0,
     read: (g, U, t, st) => { const h = g.sides[0].h6 || {}; return { t: Math.round(t), queen: alive(g, U.q), qHp: Math.round(Math.max(0, U.q[0].hp)), mites: h.qMites || 0, mitesMax: st.mx || 0, marines: alive(g, U.b) }; } },
+  // 5b) the same Queen holding, the 8 Marines attacking her
+  queenVs: { f: ['bloomhost', 'lastfist'], m0: 'hold', m1: 'attack', T: 60,
+    place: (R, g) => ({ q: R.rangeUnits(g, 0, 'queen', 600, 0, 1), b: R.rangeUnits(g, 1, 'rifle', 770, 0, 8) }),
+    tick: (R, g, U, t, st) => { st.mx = Math.max(st.mx || 0, g.ents.filter(e => e.side === 0 && e.type === 'mite' && e.hp > 0).length); },
+    done: (g, U) => alive(g, U.b) === 0 || alive(g, U.q) === 0,
+    read: (g, U, t, st) => { const h = g.sides[0].h6 || {}; return { t: Math.round(t), queen: alive(g, U.q), mites: h.qMites || 0, mitesMax: st.mx || 0, marines: alive(g, U.b) }; } },
   // 6) a Ruinmaw surfaces beside 6 Marines (the eruption), then 10 Skitterlings on creep (a Bloomhost Refinery's, grown 15 s) tunnel to it
   ruin: { f: ['bloomhost', 'lastfist'], m0: 'hold', m1: 'hold', T: 50, manual: [0],
     place: (R, g) => { const ref = R.rangeBuilding(g, 0, 'bloomhost', 'refinery', 220, 0); return { ref, r: R.rangeUnits(g, 0, 'ruinmaw', 900, 0, 1), k: R.rangeUnits(g, 0, 'skitterling', 230, 0, 10), b: R.rangeUnits(g, 1, 'rifle', 1010, 0, 6) }; },
@@ -78,6 +84,7 @@ for (let s = 1; s <= N; s++) {
   if (want('leap')) { rows.push(run('leap', {}, 6300 + s, SC.leap)); rows.push(run('leap', OFF, 6300 + s, SC.leap)); }
   if (want('brood')) rows.push(run('brood', {}, 6400 + s, SC.brood));
   if (want('queen')) rows.push(run('queen', {}, 6500 + s, SC.queen));
+  if (want('queenVs')) rows.push(run('queenVs', {}, 6550 + s, SC.queenVs));
   if (want('ruin')) rows.push(run('ruin', {}, 6600 + s, SC.ruin));
 }
 const by = {}; for (const r of rows) (by[r.name + ' ' + r.rw] || (by[r.name + ' ' + r.rw] = [])).push(r);

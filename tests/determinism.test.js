@@ -282,3 +282,12 @@ test('v2.97: modern matches with every switch on (FP_V297)', () => {
   assert.deepStrictEqual(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: true, b6f: true, b6g: true, b6h: false, b6hbody: false, b6hnode: false }), FP_V297);
 });
 if (require.main === module && process.argv[2] === '--print6g') console.log(JSON.stringify(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: true, b6f: true, b6g: true })));
+
+// v2.98 (batch 6h: the Bloomhost ground rework REWORK.b6h, unit bodies REWORK.b6hbody, the Bloomhost node fix REWORK.b6hnode,
+// src/sim/rework-6h.js). Every set above holds all three off and matches as before (with all three off the game is v2.97). The
+// same two modern matches with every switch on: FP_V298.
+const FP_V298 = ['b8498657e5f6bb968b906110bea4ff028485e02f688bb0e11a3f787eeb90cac1', '08adb9a2438d12d6608d0ff03bf88096fce00e3f49df1f8a85eabb61d019290d']; // every switch on (the new-game default)
+test('v2.98: modern matches with every switch on (FP_V298)', () => {
+  assert.deepStrictEqual(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: true, b6f: true, b6g: true, b6h: true, b6hbody: true, b6hnode: true }), FP_V298);
+});
+if (require.main === module && process.argv[2] === '--print6h') console.log(JSON.stringify(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: true, b6f: true, b6g: true, b6h: true, b6hbody: true, b6hnode: true })));

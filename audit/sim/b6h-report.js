@@ -7,7 +7,7 @@
 const fs = require('fs'), path = require('path');
 const dir = process.argv[2], oi = process.argv.indexOf('--out');
 const M = fs.readFileSync(path.join(dir, 'matches.jsonl'), 'utf8').split('\n').filter(Boolean).map(JSON.parse);
-const out = [], say = s => out.push(s), avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0, f1 = x => x.toFixed(1);
+const out = [], say = (...a) => out.push(...a), avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0, f1 = x => x.toFixed(1);
 const B = [];
 for (const m of M) m.sides.forEach((sd, i) => { if (sd.fac === 'bloomhost') B.push({ m, sd, i, h: ((m.b6h || [])[i] || {}).h6 || {}, d: ((m.b6h || [])[i] || {}).dmg || { melee: 0, other: 0 } }); });
 say(`## Batch 6h swarm metrics: ${path.basename(dir)} (${M.length} matches, ${B.length} Bloomhost sides)`, '');
