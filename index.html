@@ -3427,7 +3427,7 @@ function updateWarps(g) {
   if (!done.length) return;
   g.warps = g.warps.filter(w => g.t < w.end);
   for (const w of done) {
-    if (rwB6g(g) && !w.fwd && !safe6g(g, w.side, w.u, w.v)) { const q = warp6g(g, w.side), r = warpSpot(g, w.side, q.u, q.v); w.u = r.u; w.v = r.v; } // v2.97 (b6g): its spot turned unsafe during the channel: the safe one now
+    if (rwB6g(g) && !w.fwd && !safe6g(g, w.side, w.u, w.v)) { /* the player's berth: a spot the AI chose by its wider one stays unless it turned unsafe by this one */ const q = warp6g(g, w.side), r = warpSpot(g, w.side, q.u, q.v); w.u = r.u; w.v = r.v; } // v2.97 (b6g): its spot turned unsafe during the channel: the safe one now
     const p = w.fwd ? w : warpOk(g, w.side, w.u, w.v) ? w : warpSpot(g, w.side, w.u, w.v); // something moved onto the spot: the nearest valid one, else the Axis (v2.68: a forward Gate's unit arrives at its flag)
     const nu = spawnUnit(g, w.side, w.type, p.u, p.v); nu.laneV = clamp(p.v, -LANE_V, LANE_V); arriveOrders(g, nu);
     if (w.fwd) { nu.lane = w.fwd.lane; nu.fwdHome = { u: w.fwd.u, n: w.fwd.n }; nu.laneV = clamp(nu.v - w.fwd.v, -LANE_V, LANE_V); if (g.sides[w.side].direct) nu.fwdHome = undefined; } // v2.73: under direct control it holds where it arrived (arriveOrders)
@@ -6667,28 +6667,31 @@ const rwB6g = g => !!(g && g.rw && g.rw.b6g);
    With b6g on, every new Axiarch unit from any gate (base pads and forward pads alike; echoes too) warps in at warp6g's point:
    - the AI: the field spot nearest the rear of its main army (rear6g: the densest group of its ground fighters, the fifth
      rearmost of them, B6G.back further home), the nearest one that is safe (safe6g: no enemy unit it can see within
-     B6G.safe, no enemy weapon it can see or remembers reaching it, plus B6G.margin); with no army, or no safe spot within
-     B6G.near of that rear, the safe field spot nearest its base rally point;
-   - a player with no warp point of its own: the field spot nearest the base rally point (b6f's warp6f), under the same rule;
+     B6G.aiSafe, no enemy weapon it can see or remembers reaching it, plus B6G.aiMargin: its units then walk to the fight
+     rather than arrive in it); with no army, or no safe spot within B6G.near of that rear, the safe field spot nearest its base
+     rally point (with the player's narrower berth, B6G.safe and B6G.margin, if none is safe by the AI's); its reinforcement
+     gathering point (side.backU, aiSmartArmy's Axiarch rule) is this point too;
+   - a player with no warp point of its own: the field spot nearest the base rally point (b6f's warp6f), safe by B6G.safe
+     (no enemy unit it can see within 150) and B6G.margin;
    - a player's own warp point: kept for every gate, unless that spot is unsafe when the unit warps in: then the safe field
      spot nearest it.
    The point is checked when the channel starts and again when the unit arrives (updateWarps). While a Phase Beacon bubble
    stands the old point is kept for the AI and for a player without a point of its own (the Beacon's purpose is warping in at
    the front). On the lane maps warp spots may lie anywhere on open ground (warpOk: the map's own bounds and walls). */
-const B6G = { safe: 150, margin: 20, back: 40, group: 450, near: 600, minArmy: 2 };
-function safe6g(g, s, u, v) {
-  const f = g.fog && g.fog[s];
+const B6G = { safe: 150, margin: 20, aiSafe: 240, aiMargin: 60, back: 80, group: 450, near: 600, minArmy: 2 };
+function safe6g(g, s, u, v, ai) { // ai: the AI's wider berth (B6G.aiSafe, B6G.aiMargin): its units need the walk to the fight to be a walk
+  const f = g.fog && g.fog[s], R0 = ai ? B6G.aiSafe : B6G.safe, M = ai ? B6G.aiMargin : B6G.margin;
   for (const e of g.ents) {
     if (e.side === s || e.hp <= 0 || e.gone) continue;
     if (e.kind === 'u') {
       if (!visibleTo(g, s, e)) continue;
       const d = rwD(g, e.type), dd = Math.hypot(e.u - u, e.v - v);
-      if (dd < B6G.safe) return false;
-      if (d.dmg && d.hitsGround !== false && dd <= (d.range || 0) + B6G.margin) return false;
+      if (dd < R0) return false;
+      if (d.dmg && d.hitsGround !== false && dd <= (d.range || 0) + M) return false;
     } else if (e.kind === 'b' && e.built) {
       const gn = bdOf(e).gun && bdOf(e).gun[e.tier]; if (!gn) continue;
       if (!visibleTo(g, s, e) && !(f && f.ghosts && f.ghosts[e.id])) continue;
-      if (Math.hypot(e.u - u, e.v - v) - e.half <= gn.range + B6G.margin) return false;
+      if (Math.hypot(e.u - u, e.v - v) - e.half <= gn.range + M) return false;
     }
   }
   return true;
@@ -6705,9 +6708,9 @@ function cands6g(g, s) {
   return out;
 }
 // The safe candidate nearest (u, v) within max (null: none)
-function near6g(g, s, u, v, max = 1e9) {
+function near6g(g, s, u, v, max = 1e9, ai = false) {
   let best = null, bd = max;
-  for (const [cu, cv] of cands6g(g, s)) { const d = Math.hypot(cu - u, cv - v); if (d < bd && safe6g(g, s, cu, cv)) { bd = d; best = { u: cu, v: cv }; } }
+  for (const [cu, cv] of cands6g(g, s)) { const d = Math.hypot(cu - u, cv - v); if (d < bd && safe6g(g, s, cu, cv, ai)) { bd = d; best = { u: cu, v: cv }; } }
   return best;
 }
 // The rear of side s's main army (the AI's): null with fewer than B6G.minArmy ground fighters
@@ -6728,8 +6731,8 @@ function warp6g(g, s, b) {
   if (own) return safe6g(g, s, own.u, own.v) ? own : near6g(g, s, own.u, own.v) || own;
   const R = ctlBase(s);
   if (sd.direct) { const p = warp6f(g, s, b) || warpPoint(g, s); return safe6g(g, s, p.u, p.v) ? p : near6g(g, s, p.u, p.v) || p; }
-  const r = rear6g(g, s), p = r && near6g(g, s, r.u, r.v, B6G.near);
-  return p || near6g(g, s, R.u, R.v) || warp6f(g, s, b) || warpPoint(g, s);
+  const r = rear6g(g, s), p = r && near6g(g, s, r.u, r.v, B6G.near, true);
+  return p || near6g(g, s, R.u, R.v, 1e9, true) || near6g(g, s, R.u, R.v) || warp6f(g, s, b) || warpPoint(g, s);
 }
 
 /* ---- 2. Attack orders stop at the enemy HQ (the player and every AI) ----
@@ -6840,8 +6843,9 @@ function ww6g(g, u, d, best) {
    node), so a lost outer node or forward pad was never a target of its own, and nothing aimed at the turrets.
    Fix 4 (the Bloomhost AI, not Easy; aiNode6g, side.capN): every B6G4.every s, with no all-in attack on and no threat at home,
    it picks an enemy-held node (a node it lost in the last B6G4.lost s first, then the nearest its base), counts what defends
-   it (defense6g: every enemy gun building it can see or remembers within B6G4.gunR, B6G4.gunVal × its cost × tier, plus the
-   enemy units it knows near the node × 1.3), and only goes when it can send B6G4.edge × that (at most B6G4.n units, its
+   it (defense6g: every enemy gun building it can see or remembers within B6G4.gunR, B6G4.gunVal × its cost × tier; a forward
+   pad of the node out of its sight with nothing it knows of counted as the enemy's turret; plus the enemy units it knows near
+   the node × 1.3), and only goes when it can send B6G4.edge × that, at least B6G4.floor and B6G4.minN units (at most B6G4.n, its
    best building-breakers first: the weapons that hit buildings hardest, so Gorebores, Ruinmaws, Bilecasters and Brood
    Tyrants before Skitterlings). The group gathers out of the guns' reach (B6G4.gap short of it, up to B6G4.gather s), then
    goes in; while it does, its units aim at gun buildings near the node first (u.n6f). It gives up hurt below B6G4.minHp,
@@ -6854,7 +6858,7 @@ function ww6g(g, u, d, best) {
    (an enemy seen near it in the last B6G5.hot s, then the nearest the enemy); per personality at most B6G5.per per node and
    B6G5.total in all (the Turtle most, the Boomer least, the Boomer only on contested nodes; Normal at most aiForward's old
    cap). aiForward's forward production building stays (one, on its own half, as before). */
-const B6G4 = { every: 5, lost: 240, gunR: 340, gunVal: 2.2, foeR: 320, edge: 1.4, n: 14, minArmy: 450, gap: 70, gather: 25, near: 130, dur: 110, minHp: 0.4, focus: 300 };
+const B6G4 = { floor: 450, minN: 4, every: 5, lost: 240, gunR: 340, gunVal: 2.2, foeR: 320, edge: 1.4, n: 14, minArmy: 450, gap: 70, gather: 25, near: 130, dur: 110, minHp: 0.4, focus: 300 };
 const B6G5 = { every: 20, safe: 450, hot: 90, reserve: { boomer: 500, economist: 300, turtle: 150, def: 300 }, per: { boomer: 1, economist: 1, turtle: 2, def: 1 }, total: { boomer: 2, economist: 3, turtle: 5, def: 3 } };
 const pk6g = side => side.persona && side.persona.kind;
 // side.n6: the node memory every AI keeps under b6g (who held each node at its last look, when it lost one, when an enemy was seen near one)
@@ -6877,8 +6881,17 @@ function defense6g(g, s, n, theirs) {
     if (!visibleTo(g, s, b) && !(f.ghosts && f.ghosts[b.id])) continue;
     const c = bdOf(b).cost; gv += B6G4.gunVal * (c.c + c.e) * b.tier * powMul(g); guns.push(b);
   }
+  // a forward pad of the node it can't see now and holds nothing it knows of: counted as a turret (the enemy's own, T1)
+  let reach = guns.reduce((a, b) => Math.max(a, gunOf6g(b).range + b.half), 0), guess = 0;
+  const ni = g.nodes.indexOf(n), td = BD(g.sides[1 - s].faction, 'turret');
+  FWD_PADS.forEach((F, j) => {
+    if (F.node !== ni || !td || !td.gun) return;
+    const [pu, pv] = F.at, k = FWD_SLOT + j;
+    if (guns.some(b => b.slot === k) || cellsLit(f.vis, pu, 20, pv)) return;
+    gv += B6G4.gunVal * (td.cost.c + td.cost.e) * powMul(g); guess++; reach = Math.max(reach, td.gun[1].range + 24);
+  });
   const foe = armyValue(theirs.filter(e => e.fresh && e.v !== undefined && Math.hypot(e.u - n.u, e.v - n.v) < B6G4.foeR));
-  return { v: gv + foe * 1.3, guns, reach: guns.reduce((a, b) => Math.max(a, gunOf6g(b).range + b.half), 0) };
+  return { v: gv + foe * 1.3, guns, guess, reach };
 }
 const bldMul6g = (g, t) => { const d = rwD(g, t); return d.weapon && DMG[d.weapon] ? DMG[d.weapon].building || 0 : 0; };
 function aiNode6g(g, s, D, mine, theirs, threat, myV) {
@@ -6903,14 +6916,15 @@ function aiNode6g(g, s, D, mine, theirs, threat, myV) {
   const cand = g.nodes.map((n, i) => i).filter(i => g.nodes[i].owner === 1 - s && g.nodes[i].type !== 'relic')
     .sort((a, b) => ((g.t - (N.lost[b] ?? -1e9) < B6G4.lost) - (g.t - (N.lost[a] ?? -1e9) < B6G4.lost)) || Math.abs(g.nodes[a].u - hqU(s)) - Math.abs(g.nodes[b].u - hqU(s)) || a - b);
   for (const i of cand) {
-    const n = g.nodes[i], df = defense6g(g, s, n, theirs), need = df.v * B6G4.edge + 100;
+    const n = g.nodes[i], df = defense6g(g, s, n, theirs), need = Math.max(B6G4.floor, df.v * B6G4.edge + 100);
     const ids = []; let v = 0;
-    for (const u of pool) { if (ids.length >= B6G4.n || v >= need) break; ids.push(u.id); v += armyValue([u]); }
-    if (v < need) continue;
+    for (const u of pool) { if (ids.length >= B6G4.n || (v >= need && ids.length >= B6G4.minN)) break; ids.push(u.id); v += armyValue([u]); }
+    if (v < need || ids.length < B6G4.minN) continue;
     let su = clamp(n.u - dir * (df.reach + B6G4.gap), 0, L), sv = n.v;
     if (MAP_2D && NAV.on && navShut(su, sv)) [su, sv] = navOpen(su, sv);
-    side.capN = { node: i, ids, u: su, v: sv, end: g.t + B6G4.dur, ph: df.guns.length ? 'gather' : 'go', t0: g.t, need: Math.round(need) };
-    if (!df.guns.length) { side.capN.u = n.u; side.capN.v = n.v; }
+    const armed = df.guns.length + df.guess > 0;
+    side.capN = { node: i, ids, u: su, v: sv, end: g.t + B6G4.dur, ph: armed ? 'gather' : 'go', t0: g.t, need: Math.round(need) };
+    if (!armed) { side.capN.u = n.u; side.capN.v = n.v; }
     lg(g, s, 'G', 'node6g', i);
     return;
   }
@@ -7839,7 +7853,7 @@ function aiSmartArmy(g, s, mine, dl, P) {
   // v2.40 (axf): an Axiarch unit with its shields gone and its health low steps back into the power field (the warp point,
   // the field's front edge) to recharge at the field's rate instead of dying outside it
   if (aiFix(P, 'axf') && facOf(side.faction) === 'axiarchs') {
-    const wp = warpPoint(g, s); side.backU = wp.u;
+    const wp = rwB6g(g) ? warp6g(g, s) : warpPoint(g, s); side.backU = wp.u; // v2.97 (b6g): its safe warp point (src/sim/rework-6g.js)
     for (const u of mine) if (u.maxShp && !UDEF[u.type].air && !u.siege && u.shp < u.maxShp * 0.1 && u.hp < u.maxHp * 0.55 && !onField(g, s, u.u, u.v) && Math.abs(u.u - wp.u) < 400 && !(u.aiBack > g.t)) u.aiBack = g.t + 2.5;
   }
   // v2.40 (mass): an attacking army moves as one. Ground fighters more than 120 ahead of the army's median hold (they fight

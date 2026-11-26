@@ -890,7 +890,7 @@ function aiSmartArmy(g, s, mine, dl, P) {
   // v2.40 (axf): an Axiarch unit with its shields gone and its health low steps back into the power field (the warp point,
   // the field's front edge) to recharge at the field's rate instead of dying outside it
   if (aiFix(P, 'axf') && facOf(side.faction) === 'axiarchs') {
-    const wp = warpPoint(g, s); side.backU = wp.u;
+    const wp = rwB6g(g) ? warp6g(g, s) : warpPoint(g, s); side.backU = wp.u; // v2.97 (b6g): its safe warp point (src/sim/rework-6g.js)
     for (const u of mine) if (u.maxShp && !UDEF[u.type].air && !u.siege && u.shp < u.maxShp * 0.1 && u.hp < u.maxHp * 0.55 && !onField(g, s, u.u, u.v) && Math.abs(u.u - wp.u) < 400 && !(u.aiBack > g.t)) u.aiBack = g.t + 2.5;
   }
   // v2.40 (mass): an attacking army moves as one. Ground fighters more than 120 ahead of the army's median hold (they fight

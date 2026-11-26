@@ -191,7 +191,7 @@ function updateWarps(g) {
   if (!done.length) return;
   g.warps = g.warps.filter(w => g.t < w.end);
   for (const w of done) {
-    if (rwB6g(g) && !w.fwd && !safe6g(g, w.side, w.u, w.v)) { const q = warp6g(g, w.side), r = warpSpot(g, w.side, q.u, q.v); w.u = r.u; w.v = r.v; } // v2.97 (b6g): its spot turned unsafe during the channel: the safe one now
+    if (rwB6g(g) && !w.fwd && !safe6g(g, w.side, w.u, w.v)) { /* the player's berth: a spot the AI chose by its wider one stays unless it turned unsafe by this one */ const q = warp6g(g, w.side), r = warpSpot(g, w.side, q.u, q.v); w.u = r.u; w.v = r.v; } // v2.97 (b6g): its spot turned unsafe during the channel: the safe one now
     const p = w.fwd ? w : warpOk(g, w.side, w.u, w.v) ? w : warpSpot(g, w.side, w.u, w.v); // something moved onto the spot: the nearest valid one, else the Axis (v2.68: a forward Gate's unit arrives at its flag)
     const nu = spawnUnit(g, w.side, w.type, p.u, p.v); nu.laneV = clamp(p.v, -LANE_V, LANE_V); arriveOrders(g, nu);
     if (w.fwd) { nu.lane = w.fwd.lane; nu.fwdHome = { u: w.fwd.u, n: w.fwd.n }; nu.laneV = clamp(nu.v - w.fwd.v, -LANE_V, LANE_V); if (g.sides[w.side].direct) nu.fwdHome = undefined; } // v2.73: under direct control it holds where it arrived (arriveOrders)
