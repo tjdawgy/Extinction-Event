@@ -289,3 +289,5 @@ function aiFort6g(g, s, D, threat) {
     if (tryBuild(g, s, 'barracks', FWD_SLOT + j).ok) return;
   }
 }
+// The warp mark the player sees (render): where its next unit would warp in, refreshed every quarter of a game second
+const warpMark6g = (g, s) => { const c = g._wm6 || (g._wm6 = { t: -1, s: -1, p: null }); if (c.s !== s || Math.abs(g.t - c.t) >= 0.25 || !c.p) { c.t = g.t; c.s = s; c.p = warp6g(g, s); } return c.p; };

@@ -6943,6 +6943,8 @@ function aiFort6g(g, s, D, threat) {
     if (tryBuild(g, s, 'barracks', FWD_SLOT + j).ok) return;
   }
 }
+// The warp mark the player sees (render): where its next unit would warp in, refreshed every quarter of a game second
+const warpMark6g = (g, s) => { const c = g._wm6 || (g._wm6 = { t: -1, s: -1, p: null }); if (c.s !== s || Math.abs(g.t - c.t) >= 0.25 || !c.p) { c.t = g.t; c.s = s; c.p = warp6g(g, s); } return c.p; };
 /* ---------- Enemy AI: same economy, same rules, same upgrades as the player ---------- */
 // Known base defenses: the enemy HQ gun plus remembered Turrets, each at its last-seen tier
 const HQ_VAL = 400, TURRET_VAL = 300;
@@ -13763,7 +13765,7 @@ function drawField(c, g, F) {
 }
 // The player's warp point: a glyph on the ground, brighter when the player placed it (the default sits at the field's front)
 function drawWarpMark(c, g) {
-  const wp = warpAt(g, myS()), w = P(wp.u, wp.v), /* v2.96: warpAt (b6f: the default beside the base rally point) */ set = !!g.sides[myS()].warp, k = 0.6 + 0.4 * Math.sin(VFX.lastT * 3);
+  const wp = rwB6g(g) ? warpMark6g(g, myS()) : warpAt(g, myS()), w = P(wp.u, wp.v), /* v2.97 (b6g): the safe spot its next unit takes */ /* v2.96: warpAt (b6f: the default beside the base rally point) */ set = !!g.sides[myS()].warp, k = 0.6 + 0.4 * Math.sin(VFX.lastT * 3);
   c.strokeStyle = `rgba(159,232,255,${(set ? 0.8 : 0.45) * k})`; c.lineWidth = set ? 1.8 : 1.2;
   c.beginPath(); c.moveTo(w.x - 12, w.y); c.lineTo(w.x, w.y - 6); c.lineTo(w.x + 12, w.y); c.lineTo(w.x, w.y + 6); c.closePath(); c.stroke();
   c.beginPath(); c.moveTo(w.x - 6, w.y); c.lineTo(w.x, w.y - 3); c.lineTo(w.x + 6, w.y); c.lineTo(w.x, w.y + 3); c.closePath(); c.stroke();

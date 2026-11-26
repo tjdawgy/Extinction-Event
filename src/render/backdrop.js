@@ -331,7 +331,7 @@ function drawField(c, g, F) {
 }
 // The player's warp point: a glyph on the ground, brighter when the player placed it (the default sits at the field's front)
 function drawWarpMark(c, g) {
-  const wp = warpAt(g, myS()), w = P(wp.u, wp.v), /* v2.96: warpAt (b6f: the default beside the base rally point) */ set = !!g.sides[myS()].warp, k = 0.6 + 0.4 * Math.sin(VFX.lastT * 3);
+  const wp = rwB6g(g) ? warpMark6g(g, myS()) : warpAt(g, myS()), w = P(wp.u, wp.v), /* v2.97 (b6g): the safe spot its next unit takes */ /* v2.96: warpAt (b6f: the default beside the base rally point) */ set = !!g.sides[myS()].warp, k = 0.6 + 0.4 * Math.sin(VFX.lastT * 3);
   c.strokeStyle = `rgba(159,232,255,${(set ? 0.8 : 0.45) * k})`; c.lineWidth = set ? 1.8 : 1.2;
   c.beginPath(); c.moveTo(w.x - 12, w.y); c.lineTo(w.x, w.y - 6); c.lineTo(w.x + 12, w.y); c.lineTo(w.x, w.y + 6); c.closePath(); c.stroke();
   c.beginPath(); c.moveTo(w.x - 6, w.y); c.lineTo(w.x, w.y - 3); c.lineTo(w.x + 6, w.y); c.lineTo(w.x, w.y + 3); c.closePath(); c.stroke();
