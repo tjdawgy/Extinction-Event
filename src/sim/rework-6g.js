@@ -255,7 +255,7 @@ function aiNode6g(g, s, D, mine, theirs, threat, myV) {
     }
     T.ids = live.map(u => u.id);
     if (T.ph === 'gather' && (live.filter(u => Math.hypot(u.u - T.u, u.v - T.v) <= B6G4.near).length >= live.length * 0.8 || g.t - T.t0 > B6G4.gather)) {
-      if (T.h6 ? aiPower(live) < defPow6h(g, s, n, theirs).pow * 1.1 : armyValue(live) < defense6g(g, s, n, theirs).v * B6G4.go) { /* v2.98 (b6hnode): its own measure */ if (NODE6H.log) NODE6H.log(g, { k: 'end', s, node: T.node, won: false, left: live.length, why: 'calledOff', ph: T.ph }); for (const u of mine) if (u.n6f) u.n6f = 0; side.capN = null; N.t = g.t; return; } // the defence grew while it gathered: not now
+      if (T.h6 ? (dp6 => myPow6h(g, live, dp6.gunShare) < dp6.pow)(defPow6h(g, s, n, theirs)) : armyValue(live) < defense6g(g, s, n, theirs).v * B6G4.go) { /* v2.98 (b6hnode): its own measure */ if (NODE6H.log) NODE6H.log(g, { k: 'end', s, node: T.node, won: false, left: live.length, why: 'calledOff', ph: T.ph }); for (const u of mine) if (u.n6f) u.n6f = 0; side.capN = null; N.t = g.t; return; } // the defence grew while it gathered: not now
       T.ph = 'go'; T.u = n.u; T.v = n.v; for (const u of live) u.n6f = 1;
     }
     return;

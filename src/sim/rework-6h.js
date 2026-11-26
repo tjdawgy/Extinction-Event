@@ -108,34 +108,39 @@ const sw6h = (g, s) => g.sides[s].h6 || (g.sides[s].h6 = { ward: 0, pounce: 0, m
 
 /* ---- the tick (before the units move) ---- */
 function update6h(g, dt) {
-  // Warden auras
-  const W = g.ents.filter(e => e.kind === 'u' && e.type === 'bulwark' && e.hp > 0 && !e.gone);
-  if (W.length) for (const e of g.ents) {
-    if (e.kind !== 'u' || e.hp <= 0 || UDEF[e.type].fac !== 'bloomhost') continue;
-    for (const w of W) if (w.side === e.side && Math.hypot(w.u - e.u, w.v - e.v) <= B6H.ward.r) { e.wd6 = g.t; break; }
+  // one pass over the entities: Wardens, Queens, swallowed units, Bloomhost units (for the auras and the peak count)
+  const W = [], Q = [], SW = [], BH = [], cnt = [0, 0];
+  for (const e of g.ents) {
+    if (e.kind !== 'u' || e.hp <= 0) continue;
+    if (e.sw6) { SW.push(e); continue; }
+    if (UDEF[e.type].fac !== 'bloomhost') continue;
+    BH.push(e); if (e.side === 0 || e.side === 1) cnt[e.side]++;
+    if (e.gone) continue;
+    if (e.type === 'bulwark') W.push(e); else if (e.type === 'queen') Q.push(e);
   }
+  // Warden auras
+  if (W.length) for (const e of BH) for (const w of W) if (w.side === e.side && Math.abs(w.u - e.u) <= B6H.ward.r && Math.hypot(w.u - e.u, w.v - e.v) <= B6H.ward.r) { e.wd6 = g.t; break; }
   // Bile Blooms
   if (g.bp6 && g.bp6.length) {
     g.bp6 = g.bp6.filter(p => p.end > g.t);
     for (const p of g.bp6) for (const e of g.ents) {
-      if (e.kind !== 'u' || e.hp <= 0 || e.gone || UDEF[e.type].air) continue;
+      if (e.kind !== 'u' || e.hp <= 0 || e.gone || UDEF[e.type].air || Math.abs(e.u - p.u) > B6H.brood.r) continue;
       if (Math.hypot(e.u - p.u, (e.v - p.v) * 0.6) > B6H.brood.r) continue;
       if (e.side === p.side) { if (UDEF[e.type].fac === 'bloomhost') e.bb6 = g.t; }
       else damage(g, e, B6H.brood.dps * dt, 'bloom6', p.side);
     }
   }
   // Swallowed units: digested inside a surfaced Ruinmaw, spat out at the end
-  for (const e of g.ents) if (e.sw6 && e.hp > 0) {
+  for (const e of SW) {
     const R = ctlEnt(g, e.sw6.r);
     if (!R || R.hp <= 0 || R.dead || R.bur || g.t >= e.sw6.end) { spit6h(g, e, R); continue; }
     damage1(g, e, B6H.ruin.swDps * dt, 'swallow6', R.side, null);
   }
   // Queens: a Mite every queen.every s while an enemy is near, up to queen.own of hers and the side's cap
   let mites = null;
-  for (const q of g.ents) {
-    if (q.kind !== 'u' || q.type !== 'queen' || q.hp <= 0 || q.gone || g.sides[q.side].hush) continue;
-    if (g.t < (q.qsT || 0)) continue;
-    const near = g.ents.some(e => e.side !== q.side && e.side !== NEUTRAL && e.hp > 0 && !e.gone && (e.kind === 'u' || bdOf(e).gun) && Math.hypot(e.u - q.u, e.v - q.v) <= B6H.queen.near && visibleTo(g, q.side, e));
+  for (const q of Q) {
+    if (g.t < (q.qsT || 0) || g.sides[q.side].hush) continue;
+    const near = g.ents.some(e => e.side !== q.side && e.side !== NEUTRAL && e.hp > 0 && !e.gone && Math.abs(e.u - q.u) <= B6H.queen.near && (e.kind === 'u' || bdOf(e).gun) && Math.hypot(e.u - q.u, e.v - q.v) <= B6H.queen.near && visibleTo(g, q.side, e));
     if (!near) continue;
     if (!mites) mites = [miteCount6h(g, 0), miteCount6h(g, 1)];
     const own = g.ents.filter(e => e.kind === 'u' && e.hp > 0 && e.qm === q.id).length;
@@ -147,7 +152,7 @@ function update6h(g, dt) {
     const w = P(q.u, q.v, 10); g.fx.push({ k: 'qbirth6', side: q.side, u: q.u, x: w.x, y: w.y, x2: P(k.u, k.v, 0).x, y2: P(k.u, k.v, 0).y, t: 0, life: 0.7 });
   }
   if (!rwB3b(g)) updateKnocks(g, dt); // the eruption's knock (batch 3b runs it otherwise)
-  for (let s = 0; s < 2; s++) { let n = 0; for (const e of g.ents) if (e.kind === 'u' && e.side === s && e.hp > 0 && UDEF[e.type].fac === 'bloomhost') n++; const S = g.sides[s].h6; if (n && (S || n > 0)) { const T = sw6h(g, s); if (n > T.peak) T.peak = n; } }
+  for (let s = 0; s < 2; s++) if (cnt[s]) { const T = sw6h(g, s); if (cnt[s] > T.peak) T.peak = cnt[s]; } // the peak of Bloomhost units alive
 }
 const miteCount6h = (g, s) => { let n = 0; for (const e of g.ents) if (e.kind === 'u' && e.side === s && e.type === 'mite' && e.hp > 0) n++; return n; };
 function spawnMite6h(g, s, u, v, src) {
@@ -408,7 +413,7 @@ function aiOpen6h(g, s) {
   const side = g.sides[s]; if (side.op6h) return side.op6h;
   const k = side.persona && side.persona.kind, W = OPEN6H.w[k] || OPEN6H.w.def; let r = simRnd() * (W[0] + W[1] + W[2]), i = 0;
   while (i < 2 && r >= W[i]) { r -= W[i]; i++; }
-  side.op6h = OPEN6H.kinds[i]; lg(g, s, 'G', 'open6h', i);
+  side.op6h = OPEN6H.kinds[i]; lg(g, s, 'G', 'open6h', i); sw6h(g, s).open = side.op6h;
   return side.op6h;
 }
 function aiScores6h(g, s, sc, c) {
@@ -500,12 +505,21 @@ function nodeGuarded6h(g, s, n) {
   }
   return false;
 }
+// Its own power against a defence: each unit's damage per second counted at its weapon's rate against buildings for the guns'
+// share of the defence's health (Skitterlings barely scratch a Turret), at full rate for the rest
+function myPow6h(g, us, gunShare) {
+  let dps = 0, hp = 0;
+  for (const x of us) { const d = rwD(g, x.type); if (!d || d.support) continue; const w = gunShare * (d.weapon && DMG[d.weapon] ? DMG[d.weapon].building || 0 : 0) + (1 - gunShare); dps += (d.dmg || 0) / (d.cd || 1) * w; hp += x.hp + (x.shp || 0); }
+  return dps * hp;
+}
+const padsAt6h = (g, s, i) => g.ents.filter(b => b.kind === 'b' && b.side === 1 - s && b.hp > 0 && b.slot >= FWD_SLOT && FWD_PADS[b.slot - FWD_SLOT] && FWD_PADS[b.slot - FWD_SLOT].node === i);
 function defPow6h(g, s, n, theirs) { // the defence's fighting power at node n, as side s knows it
   const df = defense6g(g, s, n, theirs), guns = df.guns.map(b => { const gn = gunOf6g(b); return { dps: gn.dmg / gn.cd * (gn.split || 1) * powMul(g), hp: b.hp + (b.shp || 0) }; });
   const td = BD(g.sides[1 - s].faction, 'turret');
   for (let i = 0; i < df.guess; i++) if (td && td.gun) guns.push({ dps: td.gun[1].dmg / td.gun[1].cd * powMul(g), hp: td.hp });
   const foes = theirs.filter(e => e.fresh && e.v !== undefined && Math.hypot(e.u - n.u, e.v - n.v) < B6G4.foeR);
-  return { pow: aiPower(foes, guns), df };
+  const gh = guns.reduce((a, b) => a + b.hp, 0), fh = foes.reduce((a, e) => a + (UDEF[e.type].hp + (UDEF[e.type].shp || 0)) * (e.w ?? 1), 0);
+  return { pow: aiPower(foes, guns), df, gunShare: gh + fh > 0 ? gh / (gh + fh) : 0 };
 }
 function aiNode6h(g, s, D, mine, theirs, N) {
   const side = g.sides[s], dir = dirOf(s);
@@ -516,11 +530,10 @@ function aiNode6h(g, s, D, mine, theirs, N) {
   const busy = new Set([side.scoutId, ...(side.raid ? side.raid.ids : []), ...(side.relicG ? side.relicG.ids : [])]);
   const pool = mine.filter(u => !busy.has(u.id) && !UDEF[u.type].air && !UDEF[u.type].support && !u.temp && UDEF[u.type].weapon && u.hp >= u.maxHp * 0.5 && !u.tn)
     .sort((a, b) => bldMul6g(g, b.type) - bldMul6g(g, a.type) || armyValue([b]) - armyValue([a]) || a.id - b.id).slice(0, NODE6.maxN);
-  const myPow = aiPower(pool);
   const cand = g.nodes.map((n, i) => i).filter(i => g.nodes[i].owner === 1 - s && g.nodes[i].type !== 'relic')
     .sort((a, b) => ((g.t - (N.lost[b] ?? -1e9) < B6G4.lost) - (g.t - (N.lost[a] ?? -1e9) < B6G4.lost)) || Math.abs(g.nodes[a].u - hqU(s)) - Math.abs(g.nodes[b].u - hqU(s)) || a - b);
   for (const i of cand) {
-    const n = g.nodes[i], { pow, df } = defPow6h(g, s, n, theirs), armed = df.guns.length + df.guess > 0;
+    const n = g.nodes[i], { pow, df, gunShare } = defPow6h(g, s, n, theirs), armed = df.guns.length + df.guess > 0, myPow = myPow6h(g, pool, gunShare);
     if (!armed && !(MAP_LANED && i !== 1 && g.t - (N.lost[i] ?? -1e9) < B6G4.lost)) continue; // unguarded: the capture groups and raids (v2.96's rules)
     const go = pool.length >= B6G4.minN && myPow >= pow * NODE6.edge;
     if (NODE6H.log) NODE6H.log(g, { k: 'eval', s, node: i, guns: df.guns.length, guess: df.guess, def: Math.round(Math.sqrt(pow)), need: Math.round(Math.sqrt(pow * NODE6.edge)), have: Math.round(Math.sqrt(myPow)), poolV: Math.round(armyValue(pool)), n: pool.length, go });
@@ -540,5 +553,6 @@ function aiNode6h(g, s, D, mine, theirs, N) {
 function capN6hEnd(g, s, T, live, guns, theirs) {
   const n = g.nodes[T.node], hp = live.reduce((a, u) => a + u.hp, 0);
   const danger = theirs.some(e => e.fresh && Math.abs(e.u - hqU(s)) < NODE6.home && (e.v === undefined || !MAP_2D || Math.hypot(e.u - hqU(s), e.v - MAP.bases[s].hq[1]) < NODE6.home));
-  return !live.length ? 'dead' : hp < T.hp0 * NODE6.minHp ? 'hurt' : g.t > T.end ? 'time' : danger ? 'threat' : n.owner === s && !guns.length ? 'won' : null;
+  for (const u of live) if (!u.n6f && guns.length && Math.hypot(u.u - n.u, u.v - n.v) < B6G4.gunR + 80) u.n6f = 1; // near the guns: they come first, all the way
+  return !live.length ? 'dead' : hp < T.hp0 * NODE6.minHp ? 'hurt' : g.t > T.end ? 'time' : danger ? 'threat' : n.owner === s && !guns.length && !padsAt6h(g, s, T.node).length ? 'won' : null; // won: the node, its guns and its pad buildings
 }
