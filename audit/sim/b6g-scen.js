@@ -1,8 +1,8 @@
 // Batch 6g (v2.97): the scenario runs behind the before/after numbers (audit/logs-p1/b6g/). Each match runs through
 // audit/sim/audit6a.js --one with the batch 6g counters (EE_B6G, audit/sim/b6g-instrument.js).
 //   node audit/sim/b6g-scen.js --set nodes  [--rw b6g=0] [--out dir] [--jobs 3]   Last Fist vs Bloomhost on Two-Lane and Three-Lane,
-//        both sides, every personality pair (36): the Last Fist side takes its own half's nodes and turrets every forward pad it
-//        holds as soon as it can pay (EE_B6G_FORCE=lfturret, audit only; the Last Fist AI's own logic is untouched)
+//        both sides, every personality pair (36): the Last Fist side takes its own half's nodes until 5:00 and turrets every forward
+//        pad it holds as soon as it can pay, all match (EE_B6G_FORCE=lfturret, audit only; the Last Fist AI's own logic is untouched)
 //   node audit/sim/b6g-scen.js --set player [--rw b6g=0] ...   an Axiarch scripted player (EE_B6G_PLAYER: the AI's macro, the
 //        units under direct control: Attack when the AI attacks, Retreat when it stops) on the left against Last Fist and
 //        Bloomhost on every map and every enemy personality (18)

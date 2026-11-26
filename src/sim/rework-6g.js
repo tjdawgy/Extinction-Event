@@ -195,7 +195,7 @@ function ww6g(g, u, d, best) {
    the node × 1.3), and only goes when it can send B6G4.edge × that, at least B6G4.floor and B6G4.minN units (at most B6G4.n, its
    best building-breakers first: the weapons that hit buildings hardest, so Gorebores, Ruinmaws, Bilecasters and Brood
    Tyrants before Skitterlings). The group gathers out of the guns' reach (B6G4.gap short of it, up to B6G4.gather s), then
-   goes in; while it does, its units aim at gun buildings near the node first (u.n6f). It gives up hurt below B6G4.minHp,
+   goes in if it is still worth B6G4.go × the defence it knows of then (else it calls it off); while it does, its units aim at gun buildings near the node first (u.n6f). It gives up hurt below B6G4.minHp,
    after B6G4.dur s, or when an all-in attack or a threat at home comes; done once the node is its own and its guns are down.
    Fix 5 (every faction's AI, Normal and Hard, lane maps: the only nodes a building fits are forward pads (turret or
    barracks roles); Last Fist's bunkers on income nodes already come with its Fortification Depot, and Classic has no pad on
@@ -205,7 +205,7 @@ function ww6g(g, u, d, best) {
    (an enemy seen near it in the last B6G5.hot s, then the nearest the enemy); per personality at most B6G5.per per node and
    B6G5.total in all (the Turtle most, the Boomer least, the Boomer only on contested nodes; Normal at most aiForward's old
    cap). aiForward's forward production building stays (one, on its own half, as before). */
-const B6G4 = { floor: 450, minN: 4, every: 5, lost: 240, gunR: 340, gunVal: 2.2, foeR: 320, edge: 1.4, n: 14, minArmy: 450, gap: 70, gather: 25, near: 130, dur: 110, minHp: 0.4, focus: 300 };
+const B6G4 = { go: 1.2, floor: 450, minN: 4, every: 5, lost: 240, gunR: 340, gunVal: 4, foeR: 320, edge: 1.4, n: 14, minArmy: 450, gap: 70, gather: 25, near: 130, dur: 110, minHp: 0.4, focus: 300 };
 const B6G5 = { every: 20, safe: 450, hot: 90, reserve: { boomer: 500, economist: 300, turtle: 150, def: 300 }, per: { boomer: 1, economist: 1, turtle: 2, def: 1 }, total: { boomer: 2, economist: 3, turtle: 5, def: 3 } };
 const pk6g = side => side.persona && side.persona.kind;
 // side.n6: the node memory every AI keeps under b6g (who held each node at its last look, when it lost one, when an enemy was seen near one)
@@ -251,7 +251,10 @@ function aiNode6g(g, s, D, mine, theirs, threat, myV) {
       for (const u of mine) if (u.n6f) u.n6f = 0; side.capN = null; N.t = g.t; return;
     }
     T.ids = live.map(u => u.id);
-    if (T.ph === 'gather' && (live.filter(u => Math.hypot(u.u - T.u, u.v - T.v) <= B6G4.near).length >= live.length * 0.8 || g.t - T.t0 > B6G4.gather)) { T.ph = 'go'; T.u = n.u; T.v = n.v; for (const u of live) u.n6f = 1; }
+    if (T.ph === 'gather' && (live.filter(u => Math.hypot(u.u - T.u, u.v - T.v) <= B6G4.near).length >= live.length * 0.8 || g.t - T.t0 > B6G4.gather)) {
+      if (armyValue(live) < defense6g(g, s, n, theirs).v * B6G4.go) { for (const u of mine) if (u.n6f) u.n6f = 0; side.capN = null; N.t = g.t; return; } // the defence grew while it gathered: not now
+      T.ph = 'go'; T.u = n.u; T.v = n.v; for (const u of live) u.n6f = 1;
+    }
     return;
   }
   if (facOf(side.faction) !== 'bloomhost' || D.label === 'Easy') return;

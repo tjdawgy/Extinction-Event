@@ -199,7 +199,7 @@ test('b6g: the Bloomhost AI sends a group worth more than a turreted node\'s def
   sim.aiNode6g(g, 0, D, mine(), [], false, sim.armyValue(mine()));
   assert.ok(!g.sides[0].capN, 'too small an army: no assault');
   for (let i = 0; i < 8; i++) sim.spawnUnit(g, 0, 'skitterling', 500, -200);
-  for (let i = 0; i < 6; i++) sim.spawnUnit(g, 0, 'gorebore', 500, -200);
+  for (let i = 0; i < 10; i++) sim.spawnUnit(g, 0, 'gorebore', 500, -200);
   g.sides[0].n6.t = -99;
   const df = sim.defense6g(g, 0, n, []); assert.strictEqual(df.guns.length + df.guess, 2, 'the known turret, and the pad it can\'t see counted as one');
   sim.aiNode6g(g, 0, D, mine(), [], false, sim.armyValue(mine()));
