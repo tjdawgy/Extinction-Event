@@ -7387,7 +7387,7 @@ function body6h(g, dt) {
         if (d > 1e-6) { nx = du / d; ny = dy2 / d; } else { const an = (A.id * 7 + B.id * 13) % 628 / 100; nx = Math.cos(an); ny = Math.sin(an); }
         const o = (min - d) * (a.air ? BODY6.kAir : BODY6.k), wa = b.m / (a.m + b.m), wb = a.m / (a.m + b.m);
         a.pu -= nx * o * wa; a.pv -= ny * o * wa; b.pu += nx * o * wb; b.pv += ny * o * wb;
-        if (B.moving && b.cm >= a.cm) a.pm = 1; if (A.moving && a.cm >= b.cm) b.pm = 1; // pushed by a unit on the move (a standing one makes way for it)
+        if (B.moving) a.pm = 1; if (A.moving) b.pm = 1; // pushed by a unit on the move (a standing one makes way for it)
       }
     }
   }

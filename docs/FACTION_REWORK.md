@@ -1476,10 +1476,251 @@ its Boomer against Turtles that fortify more. Read as ±10 points
   with the forcing limited to the first 5:00, as "early" asks.
 
 
+## Batch 6h: the Bloomhost ground rework, unit bodies, the Bloomhost node fix
+
+**Batch 6h (v2.98).** Three switches in src/sim/rework-6h.js, per game in `g.rw`, on by default, saved only when on, each with a
+Test Range switch ("Batch 6h Bloomhost", "Batch 6h bodies", "Batch 6h nodes"): `REWORK.b6h` (parts A-D, F), `REWORK.b6hbody`
+(part E), `REWORK.b6hnode` (part G). All three off: v2.97 exactly (FP_V297 and every older set match; the forced-turret scenario
+at v2.97's rules reproduces 6g's numbers to the match: 94 retakes, 1,059 pad buildings destroyed, 1-30-5). Recorded: FP_V298
+(every switch on). Art: src/render/units-rework-6h.js. Tests: tests/rework-6h.test.js, tests/rework-6h-ui.test.js. Measurement
+scripts: audit/sim/b6h-range.js (Test Range), b6h-choke.js (chokes and cost), b6h-bodies.js (the body table), b6h-instrument.js
+and b6h-node-report.js (node decisions, `EE_B6H=1`), b6h-report.js (swarm metrics). Logs: audit/logs-p1/b6h/.
+
+### Step 0
+
+- GitHub Pages: "pages build and deployment" run 107 built f0bb5a9 (v2.97) and succeeded (2026-11-26 12:47 UTC).
+- The roster in the code matched the brief, with one source of Mites the brief doesn't list: a Brood Tyrant's pustules burst into
+  Mites when the building dies (batch 4b). They count toward the new cap of 30 and use the new Mite.
+
+### The roster with b6h on
+
+| building | start | path A (T2 / T3) | path B (T2 / T3) |
+|---|---|---|---|
+| Larva Pit | Skitterling, **Spitter** | Predatory Evolution: Leaper (reworked) / Ravager (+Pounce) | Acidic Evolution: **Queen** (new) / Bilecaster |
+| Evolution Chamber | **Chitin Warden** (the Bulwark reworked) | Burrowing Evolution: Gorebore (+Pounce) / Ruinmaw (reworked) | **Behemoth Evolution**: **Broodback** (new, replaces the Thornback) / Dreadthorn (+Pounce) |
+| Bloomspire | Razorwing | Swarm Bloom: Needlewing / Cloudwing | Apex Bloom: Brood Tyrant / Worldrender |
+| Brood Mound | Mite (free; the Queen and pustules make them too) | | |
+
+### Part A: faction-wide (b6h)
+
+- **Pounce** (`pounce6h`, `B6H.pounce`): the Ravager, the Chitin Warden, the Broodback, a surfaced Gorebore and a Dreadthorn whose
+  charge is recovering lunge at an enemy ground unit within 90 they are not yet in contact with (nothing in reach), while
+  attacking, attack-moving, on a target order or engaged on Hold (within the Hold reach of their spot): 2.5× speed for 0.4 s,
+  every 4 s (`u.pcT`, `u.pcCd`). Never on a move order (a player's 'go', a Regroup) or a retreat. Visual: the unit crouches and
+  stretches forward while it lunges, a streak in its side's colour behind it, a dust puff where it started.
+- **The loose swarm** (`LOOSE6H`, `B6H.loose`): Skitterlings, Spitters, Leapers, Queens and Mites keep 10 px more between them
+  while moving or idle (5 px each on top of the body), normal body spacing once they fight. Passive spacing only: nothing reads
+  shells. With b6hbody off it runs as its own light separation among those five (radius 4 + 5).
+- **The Mite** (`B6H.mite`; the one type, `UDEF.mite` played through rwD): **30 HP, speed 64, bite 4 every 0.6 s (range 20)**;
+  its bite corrodes like the Spitter's acid (the Spitter's own corrode: +12% damage taken for 5 s; same strongest-wins,
+  second-slot rules, never past the 25% cap); lives **10 s**; no supply, outside the 60-alive limit, never captures. At most
+  **30** alive per side from every source (the Brood Mound at its unchanged rate, the Queen, pustules); at the cap the Mound's
+  Mites wait (owed, `m.mq`, at most one spawn's worth) and the Queen's timer waits; pustules burst into what fits. New art: a
+  tick under a big carapace in its side's colour with a green corrosive bite.
+
+### Part B: the Larva Pit (b6h)
+
+- **The Spitter** is trained from T1 with no path (`canMake`; its stats unchanged: 70/20, 110 HP, quill volleys, anti-air).
+- **The Queen** (new, `queen`, Acidic Evolution T2 where the Spitter was): **150/50, army 3, 260 HP, speed 26, bile bolt range
+  150, 10 every 1.4 s, air and ground, corrodes** (the Spitter's corrode). While an enemy (a unit or a gun building) she can see
+  is within 300 she births a Mite every 2.5 s, up to 6 of her own alive (within the side's 30): a bile arc from her hand to the
+  new Mite. Her Mites (`u.qm`) fight her target or enemies within 250 of her, never stray past 250, and guard a ring around her
+  when there is nothing to fight (a player's own order for a Mite comes first). The AI keeps Queens behind the melee on the
+  attack and pulls one back for 3 s when she loses 20% of her health in 3 s. No limit on Queens.
+- **The Leaper** (Predatory T2): leap range **140 → 260**, cooldown **7 → 10 s**; targets in order Artillery and deployed siege,
+  then ranged units (range 100+), then vehicles, walkers and big units, then any other ground unit (`latchTier6h`); airborne it
+  passes over bodies; landing stuns every enemy ground unit within 40 for **0.6 s** (the Dreadthorn's daze, `u.dzT`; stars over
+  them); it latches onto any ground unit, eating **55/s** on vehicles, walkers and big units and **30/s** on small ones. Kept:
+  3 per host, the 30% host slow, Skitterlings hatching when a host dies. It leaps only at what its side can see.
+- **The Ravager and the Bilecaster**: unchanged; the Ravager gets Pounce.
+
+### Part C: the Evolution Chamber (b6h)
+
+- **The Chitin Warden** (the Bulwark, id `bulwark` kept; name, description and art follow b6h): 140/25, 840 HP, brace and creep
+  regeneration kept, Pounce. **Aura, radius 140: Bloomhost units inside take 40% less area damage; a second Warden adds
+  nothing** (`u.wd6`, `ward6hCut` in damage1). A faint plate shimmer over units inside it. New art: an upright guardian behind a
+  wall of overlapping team plates with two shield-like forelimbs (the Dreadthorn is a long, low charger).
+- **Area damage** (`AREA6H`): splash on anyone but the primary target (splashHit and its variants), plus every attack whose effect
+  is an area. Every source in the game:
+  splash on others than the target hit (splashHit): the Tank's cannon (26), the Titan's siege gun (34), the Bilecaster's dart
+  (b4a off: its glob), the Ruinmaw's v2.82 acid hit, the Brood Tyrant's glob (24; batch 4b's splash on ground units too), the Rift
+  Mortar's shot; whole-area shots (every unit hit counts): Artillery shells (each salvo shell, splash 40), the Bile Lobber's lob, the
+  Leviathan's bombs and carpet (40), the Worldrender's crush (70), the Astral Sovereign's falling mass (b4b off), the Rift Mortar's
+  rift; the Flame Tank's strip; the Purification Beam's sweep; the Orbital Strike; meteors; the Worldbreaker's crack (rupture); the
+  Severance's rift orb (exile); the Bilecaster's bile glob and pools; the Ruinmaw's v2.82 acid pools and the Worldbreaker's
+  distortion zones (acidpool); Spore Cloud (spores); the Gorebore's eruption; the Dreadthorn's spine burst (b3b off) and trample;
+  the Mound's Mite acid burst; batch 6h's eruption and Bile Bloom; the Sniper's pierce through the units behind its target; the
+  Shardstorm's chain jumps (not its first target). Not area: every single-target shot, beam and bite (Marines, Heavies, Null
+  Lance and Axis lance, Lancer, Marksman, the judgement beam, melee), a Leaper's latch, pustules (buildings only).
+- **The Broodback** (new, `broodback`, Behemoth Evolution T2; the path renamed from Predator Evolution; the Thornback is gone with
+  b6h): **180/40, army 3, 520 HP, speed 22 (80% of the Thornback's 28), bite 12 every 1.2 s (range 30), Pounce**. Dying it bursts
+  into **3 Skitterlings** (fewer at the 60-alive limit) that take its order (a player's order copied; an AI's hold spot), and
+  leaves a **Bile Bloom** (radius 50, 6 s): enemies inside take **10/s** (area damage), Bloomhost units inside attack **+20%**
+  faster and move **+15%** faster. The AI's Broodbacks lead a push: the swarm waits behind the frontmost.
+- **The Ruinmaw** (400/150, 1,500 HP unchanged): surfacing erupts: **120 damage to enemy ground units within 70, knocked 30
+  aside**; it can dive again **15 s** after surfacing; every **8 s** surfaced it swallows an adjacent enemy ground unit (never a
+  huge one) for **3 s at 80/s**, spat out alive at the end or when it dives or dies. **Tunnel**: the Tunnel button (Bloomhost
+  ground units selected, a Ruinmaw surfaced): the selected units standing on their own creep burrow where they stand and travel to
+  it at **300 px/s, at least 2 s**, coming out of its mouth **two a second**; units off creep stay ("N not on creep stayed"). If
+  it dives or dies with units inside, they come up where they went down. **Rally**: select a surfaced Ruinmaw alone and tap Rally:
+  every Larva Pit and Evolution Chamber of yours sends its new ground units into the tunnel from the building (`b.rm6`; tap again
+  to rally home); while the Ruinmaw is down (moving) new units appear at the building as usual. A dirt trail runs from where each
+  unit went down to the Ruinmaw while it travels; nothing is instant.
+- **The Gorebore and the Dreadthorn**: unchanged, with Pounce (the Gorebore surfaced only, the Dreadthorn only while its charge
+  recovers).
+
+### Part D: the Bloomhost AI (b6h, every personality and difficulty)
+
+Openers rolled once a match by personality (`aiOpen6h`, `OPEN6H`: swarm / Spitters / mixed; Boomer 45/25/30%, Economist
+30/35/35%, Turtle 20/50/30%), leaning the first 5:00 of its scores; Queens scored for anti-air and infantry (fewer once there is one
+per 8 swarm units) and kept behind the melee, pulling back when focused; Chitin Wardens wanted whenever the enemy fields area
+damage (one per 12 army supply); Broodbacks scored as the push's front and leading it; Leapers dive the backline (siege and ranged
+first; the AI aims them at tier 0-1 targets); the Ruinmaw also surfaces beside the enemy-held node its guns cover least, the army
+on its creep tunnels through, and production rallies to it while it holds its spot (`aiRuin6h`); the Thornback's scores became
+the Broodback's (`thornback` in the flood rule too); the Larva Pit no longer takes Acidic Evolution just for anti-air (the Spitter
+is there from the start).
+
+Measured over the 162-match self-play with every switch on (audit/logs-p1/selfplay6h-on/b6h.md; per Bloomhost side and match):
+Queens 4.1 (Boomer 2.0, Economist 4.6, Turtle 5.8), Broodbacks 4.9, Chitin Wardens 27.5, Leapers 12.8, Spitters 27.2, Skitterlings
+56.7 (broods count 4), Gorebores 2.9, Ruinmaws 0.8; Tunnel trips 18.2 units a match (a Tunnel in 30 of 108 Bloomhost sides: Boomer
+13, Economist 9, Turtle 8), 7.9 units rallied to a Ruinmaw, 3.6 eruptions, 0.5 swallows; Queens pulled back when focused 5.9 times.
+Openers (Boomer / Economist / Turtle): swarm 20 / 6 / 4, Spitters 10 / 16 / 14, mixed 6 / 14 / 18. The Thornback is never trained.
+
+### Part E: unit bodies (b6hbody, every faction)
+
+Every ground unit has a body from its drawn footprint (audit/sim/b6h-bodies.js reads the render's shadow radius and sprite box:
+footprint = max(shadow radius, 0.3 × box width), classes small ≤ 11.5, medium ≤ 16, large ≤ 22, huge above), radius in screen px
+small 7, medium 10, large 14, huge 20, mass 1 / 2 / 4 / 9 (`BODY6H`). Each tick (`body6h`, after the units move) ground units
+closer than the sum of their radii less 2 px (allies and enemies alike) are pushed apart by half the overlap, shared by mass, at
+most 70 px/s: soft, so movement stays smooth. A unit fighting from where it stands holds its line (mass × 3); a standing unit
+makes way for one on the move (mass × 0.5, and its hold spot moves with the push, so it doesn't shove back). A melee unit and its
+target are never pushed apart, so melee stops at the target's edge. Aircraft separate lightly from each other (15%) and fly over
+ground units; burrowed, exiled, tunnelling, leaping and latched units have no body. Buildings unchanged. A spatial grid (40 px
+cells) keeps the cost flat. A unit on a move whose spot bodies keep it from (within 3 body radii, no closer for 1.5 s) has arrived
+(`bodyNear6h`). Formations (ctlPack, so Test Range placement and every player's move) space units by at least their bodies.
+
+The body table (audit/sim/b6h-bodies.js; art units; radius in screen px):
+
+| unit | shadow radius | sprite box width | footprint | class | radius px | in BODY6H |
+|---|---|---|---|---|---|---|
+| Marine | 9 | 26 | 9 | small | 7 | small |
+| Mite | 7 | 30 | 9 | small | 7 | small |
+| Sniper | 9 | 33 | 9.9 | small | 7 | small |
+| Shardling | 8 | 36 | 10.8 | small | 7 | small |
+| Skitterling | 9 | 38 | 11.4 | small | 7 | small |
+| Lancer | 10 | 38 | 11.4 | small | 7 | small |
+| Heavy | 12 | 28 | 12 | medium | 10 | medium |
+| Leaper | 11 | 42 | 12.6 | medium | 10 | medium |
+| Riftstalker | 9 | 42 | 12.6 | medium | 10 | medium |
+| Parallax | 12 | 42 | 12.6 | medium | 10 | medium |
+| Astral Marksman | 9 | 42 | 12.6 | medium | 10 | medium |
+| Spitter | 11 | 44 | 13.2 | medium | 10 | medium |
+| Severance | 10 | 48 | 14.4 | medium | 10 | medium |
+| Queen | 11 | 48 | 14.4 | medium | 7 | small (differs) |
+| Bilecaster | 15 | 41 | 15 | medium | 10 | medium |
+| Gorebore | 12.6 | 50 | 15 | medium | 10 | medium |
+| Flame Tank | 12.6 | 52 | 15.6 | medium | 10 | medium |
+| Bastion | 15 | 52 | 15.6 | medium | 10 | medium |
+| Gravemantle | 17 | 50 | 17 | large | 14 | large |
+| Tank | 14 | 57 | 17.1 | large | 14 | large |
+| Chitin Warden | 18 | 58 | 18 | large | 14 | large |
+| Eventide | 18 | 48 | 18 | large | 14 | large |
+| Hydra | 15 | 63 | 18.9 | large | 14 | large |
+| Worldbreaker | 20 | 56 | 20 | large | 14 | large |
+| Artillery | 12.6 | 68 | 20.4 | large | 14 | large |
+| Ravager | 17 | 68 | 20.4 | large | 14 | large |
+| Broodback | 21 | 72 | 21.6 | large | 14 | large |
+| Titan | 19 | 94 | 28.2 | huge | 20 | huge |
+| Dreadthorn | 26 | 106 | 31.8 | huge | 20 | huge |
+| Ruinmaw | 28 | 112 | 33.6 | huge | 20 | huge |
+
+@@CHOKE@@
+
+### Part G: the Bloomhost node contest (b6hnode)
+
+**Diagnosis** (audit/logs-p1/b6h/node.md, the forced-turret scenario at v2.97's rules: every Bloomhost node-assault decision logged
+through the read-only `NODE6H.log` hook, what killed each unit; 36 matches, reproducing 6g's 94 retakes, 1,059 pad buildings
+destroyed and 1-30-5 exactly):
+- 6g's assault (aiNode6g) almost never went: 88 launches in 9,558 checks (0.9%); the force it could send was a median 0.26 of
+  what its rule asked (1.4 × a defence that values each Turret at 4 × its cost × tier; quartiles 0.15 / 0.26 / 0.40);
+- the few that went were mostly recalled before they arrived: by a threat seen near home (38) or an all-in attack starting (24),
+  or called off at the gathering point (17); 4 won;
+- meanwhile the capture groups and raids (3-4 units) kept walking into the guns one group at a time: 1,037 groups at a gun-covered
+  node, 5.0% took it (mean group value 289 against about 3,100 health of guns there);
+- what killed the assault units: Turrets 48, units 74 (Titans, Heavies, Tanks).
+The main cause: the threshold is rarely met, so what does reach a guarded node is piecemeal.
+
+**The fix tried, four ways** (36 matches each; every other switch on; retakes / enemy pad buildings destroyed / Bloomhost W-L-D):
+
+| run | b6hnode | retakes | pad buildings destroyed | Bloomhost |
+|---|---|---|---|---|
+| v2.97 (all off) | - | 94 | 1,059 | 1-30-5 |
+| b6h and b6hbody on, b6hnode off | off | 146 (+55%) | 1,039 (-2%) | 3-23-10 |
+| v1: the whole army by fighting power, no capture groups or raids at guarded nodes | on | 129 | 824 | 3-27-6 |
+| v2: v1, its own damage counted at its weapons' building rate | on | 138 | 904 | 3-29-4 |
+| v3: a strike group (building-breakers first, 1.2 × the defence), building-breaker scores | on | 97 | 937 | 0-29-7 |
+| **v4 (shipped): v2's assault, v3's scores, capture groups and raids allowed** | on | **144 (+53%)** | **988 (-7%)** | 2-28-6 |
+
+Shipped (`aiNode6h`, `NODE6`): every 5 s, with no danger inside its own base, a Normal or Hard Bloomhost AI weighs each enemy-held
+node an enemy gun guards by fighting power (damage per second × health, aiPower; the guns it sees or remembers and a forward pad it
+can't see as a Turret, the enemy units near the node) against its own army's, its damage counted at its weapons' building rate for
+the guns' share of the defence (`myPow6h`), and sends its whole available ground army (up to 40, building-breakers first) when it
+out-powers the defence 1.5 times; the army gathers out of the guns' reach, goes in only if it still out-powers them, focuses the
+guns once within reach, and stays until the node, its guns and its pad buildings are down; only danger inside its base, losing 65%
+of its health, or 150 s call it off (a threat near home or an all-in attack no longer recall it). Its Ruinmaw surfaces beside the
+node and the army on its creep tunnels there. With two or more enemy Turrets known at enemy-held nodes its unit scores lean to
+building-breakers (Gorebore +0.6, Ruinmaw +0.4, Bilecaster +0.3, Broodback +0.2). Capture groups and raids are unchanged.
+
+**Target not met**: retakes +53% (met) but pad buildings destroyed -7% (asked: +50%). Why: the unit rework itself already raised
+retakes (146 with b6hnode off) and none of the behaviour fixes raised pad kills above the b6hnode-off run; Turrets killed 1,137 of
+the 2,121 units the v4 assaults lost; the reworked army is Spitters, Skitterlings and Wardens (assault units by type: Spitter 1,834,
+Warden 1,314, Skitterling 1,173), whose weapons do little to buildings (the scores' lean to building-breakers raised Gorebores and
+Broodbacks but not enough); and the forced Last Fist rebuilds every pad Turret as soon as it can pay, so holding a node also leaves
+fewer Turrets to kill there. Raising pad kills further needs building damage (unit numbers), which this batch doesn't tune.
+
+
+### Part F: art, Codex, tips (b6h)
+
+- Art (src/render/units-rework-6h.js, cached as poses): the **Queen** (a standing, hunched, plague-ridden woman in rags under a team
+  shawl; one swollen bile hand glowing in her side's colour; Mites crawling down her rags), the **Mite** (a tick under a big team
+  carapace, a green corrosive bite), the **Chitin Warden** (an upright guardian behind a wall of overlapping team plates, two
+  shield-like forelimbs, raised while bracing; nothing like the Dreadthorn's long, low charger), the **Broodback** (a hunched beast
+  with translucent egg sacs in its side's colour, a curled Skitterling in each). The Warden's and the Mite's art follows the game's
+  b6h (the pose cache key carries which). Effects: Pounce (crouch and stretch, a team-coloured streak, a dust puff), the Leaper's
+  landing stun (a dust ring, stars over the stunned), the Bile Bloom (a bubbling pool with a dashed rim in the side's colour), the
+  eruption (a heaving ring of earth and chunks), the swallow and the spit, the tunnel (a dirt line from where each unit went down to
+  the Ruinmaw while it travels, a burst where it comes up), the Queen's births (a bile arc to the new Mite), the Warden's aura (a
+  faint plate shimmer over units inside it), the Queen's bile bolt. Screenshots at 667×375: docs/screenshots/rework6h-queen,
+  -pounce-warden, -leap-stun, -brood, -ruinmaw, -bodies, -codex.
+- Codex (follows the new-game default): the Spitter listed as a Larva Pit unit "from the start" (its T1 node: "Spawns Skitterlings
+  (in broods) and Spitters"), Acidic Evolution's T2 the Queen, Behemoth Evolution (Broodback, Dreadthorn), the Chitin Warden's name
+  and description, the Mite's and the Leaper's descriptions; the Thornback is gone from it. With b6h off it shows v2.97's.
+- Tips (UNIT_TIPS, numbers read live): Pounce (on the Warden, Ravager, Gorebore, Dreadthorn), the Warden's aura, the Broodback,
+  the Queen, the Ruinmaw's Tunnel and Rally, the Mite, the Leaper, the Spitter from the start; the tutorial's Tunnel line.
+- UI: the Tunnel button sends only units on your creep and says how many stayed; a **Rally** button appears with one surfaced
+  Ruinmaw selected (every Larva Pit and Evolution Chamber of yours sends its new ground units through the tunnel to it; again to
+  rally home). The command bar fits four buttons at 667 wide.
+
+### Part H: Test Range (audit/sim/b6h-range.js, 20 seeds each; audit/logs-p1/b6h/range.md)
+
+| scene | b6h, b6hbody on | switches off (v2.97) |
+|---|---|---|
+| One Artillery salvo into 20 Skitterlings (standing still) | 0 killed, 66 HP lost | 0 killed, 141 HP lost |
+| the same with a Chitin Warden among them | 0 killed, 55 HP lost (9 taken off by the aura) | - |
+| 28 Tanks against 19 Bastions (both attacking), 12 s in | nearest neighbour 25.7 px (Tanks), 17.9 (Bastions); the Tanks cover 116 × 115 px; all Tanks dead at 51 s | 7.1 and 1.1 px; 48 × 65 px; 44 s |
+| 3 Leapers sent at 6 Marines with an Artillery behind them | every Leaper's first host the Artillery (3 of 3, 20 of 20 seeds); 1 stunned on landing | every first host a Marine |
+| 2 Broodbacks and 4 Skitterlings attacking 12 Marines | 3 Skitterlings burst out, 1 Bile Bloom; the Marines all dead at 35 s | - |
+| a Queen attacking 8 Marines holding 170 away | she outranges them (150 against 120): 24 Mites born, 6.9 Marines killed in 60 s, she survives 18 of 20 | - |
+| the same Queen holding, the 8 Marines attacking her | she dies in 6 s, 3 Mites born, no Marine killed | - |
+| a Ruinmaw surfacing beside 6 Marines, then 10 Skitterlings on creep tunnelling | the eruption killed all 6 (120 against 70 HP); the 10 out of its mouth 7.1 s after the order | - |
+
+A salvo kills no Skitterling (three shells of 15 against 50 HP); the spacing (the loose swarm and bodies) halves what one salvo takes
+off a group, and the Warden's aura takes off a further 17% of it.
+
 ## Unchanged (already distinct)
 
 Marine, Heavy, Tank, Flame Tank, Hydra, Interceptor, Medevac, Recon Drone, Mite, Razorwing, Cloudwing, Thornback, Lancer,
-Gravemantle, Eventide, Prismwing, Shardstorm. (Every one of them is now drawn in the new style: Last Fist in batch 5a, the Bloomhost ones
+Gravemantle, Eventide, Prismwing, Shardstorm. (Batch 6h, with b6h on: the Mite reworked and redrawn, the Thornback replaced by the Broodback.) (Every one of them is now drawn in the new style: Last Fist in batch 5a, the Bloomhost ones
 in 5b, the Axiarch five in 5c; their mechanics are unchanged.) (The Skitterling, Spitter and Needlewing changed in batch 5b, the swarm pass; the Mite,
 Razorwing, Cloudwing and Thornback kept their mechanics there but were redrawn, and gained swarm surge and kill frenzy.)
 
@@ -1539,6 +1780,9 @@ buildings: batch 5d, v2.91, with team colour on their largest surfaces).
    personality fix (`b6ai`) and four faction values (`b6d`). Batch 6e (v2.95): Axiarch lane play (`b6elane`), the Axiarch
    energy costs, the Riftstalker's shields and the Marine's price (`b6e`). Batch 6f (v2.96): base attacks for every AI and the press
    rule's base defences (`b6fai`), the Axiarch prices undone and the player's warp-in (`b6f`). Batch 6g (v2.97): the playtest fixes
-   (`b6g`): smart warp-in, attack orders, units under fire, node play, the Purification Beam, the Wraithwing.
+   (`b6g`): smart warp-in, attack orders, units under fire, node play, the Purification Beam, the Wraithwing. Batch 6h (v2.98): the Bloomhost
+   ground rework (`b6h`: Pounce, the loose swarm, the Mite, the Spitter from the start, the Queen, the Leaper, the Chitin Warden,
+   the Broodback, the Ruinmaw and its Tunnel, the AI), unit bodies for every faction (`b6hbody`), the Bloomhost node contest
+   (`b6hnode`). Next: batch 6i, the Bloomhost air rework; then Bloomhost's balance.
 
 Then: the paused balance pass, with all three factions reworked.
