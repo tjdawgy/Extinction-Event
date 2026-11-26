@@ -2,7 +2,7 @@
 
 Runs: nodes-diag = v2.97 (all three 6h switches off; the same 36 matches 6g measured); nodes-nofix = b6h and b6hbody on, b6hnode off;
 nodes-after = b6hnode v1 (whole-army assault, raw power, no capture groups at guarded nodes); nodes-v2 = v1 with its power at building rate;
-nodes-v3 = a strike group, building-breakers first, edge 1.2, building-breaker scores; nodes-v4 (shipped) = v2 with v3's scores and the capture groups and raids allowed again.
+nodes-v3 = a strike group, building-breakers first, edge 1.2, building-breaker scores; nodes-v4-prebuild = v2 with v3's scores and the capture groups and raids allowed again, on the build before the last body change; nodes-v4 = the same rules on the final (shipped) build.
 Tables: audit/sim/b6h-node-report.js.
 
 ## audit/logs-p1/b6h/nodes-diag (36 matches)
@@ -50,7 +50,7 @@ Tables: audit/sim/b6h-node-report.js.
 - Assault units killed: 1317 (by guns 674, by units 643, other 0); top killers: gun:turret 674, tank 141, rifle 108, sniper 105, flame 60, heavy 57, titan 50, artillery 46.
 - Every group sent at a gun-covered node (capture groups, raids, assaults): 696, 73 took it (10.5%); mean group value 763, mean gun health there 2360.
 
-## audit/logs-p1/b6h/nodes-v4 (36 matches)
+## audit/logs-p1/b6h/nodes-v4-prebuild (36 matches)
 
 - Results for Bloomhost (won-lost-drawn): 2-28-6; retakes 144; enemy pad buildings destroyed 988.
 - Assault decisions (6g's aiNode6g, or 6h's): 9187 candidate checks, 486 launched (5.3%); held back: 8690 short of force, 11 too few units. Force it could send ÷ force needed (quartiles): 0.29 / 0.47 / 0.68.
@@ -58,4 +58,13 @@ Tables: audit/sim/b6h-node-report.js.
 - Assault units by type: spitter 1834, bulwark 1314, skitterling 1173, broodback 265, leaper 213, gorebore 190, queen 187, bilecaster 185, dreadthorn 45, ravager 28, ruinmaw 17.
 - Assault units killed: 2121 (by guns 1147, by units 974, other 0); top killers: gun:turret 1137, sniper 217, tank 185, rifle 149, artillery 87, heavy 81, aircraft 80, flame 71.
 - Every group sent at a gun-covered node (capture groups, raids, assaults): 1500, 105 took it (7.0%); mean group value 581, mean gun health there 3043.
+
+## audit/logs-p1/b6h/nodes-v4 (36 matches)
+
+- Results for Bloomhost (won-lost-drawn): 3-29-4; retakes 126; enemy pad buildings destroyed 1008.
+- Assault decisions (6g's aiNode6g, or 6h's): 9059 candidate checks, 435 launched (4.8%); held back: 8614 short of force, 10 too few units. Force it could send ÷ force needed (quartiles): 0.27 / 0.44 / 0.65.
+- Assault outcomes: calledOff 141, hurt 150, threat 109, won 33, time 1.
+- Assault units by type: spitter 1201, skitterling 1162, bulwark 1118, broodback 281, bilecaster 222, queen 160, gorebore 127, leaper 124, dreadthorn 72, ruinmaw 21, ravager 21.
+- Assault units killed: 1984 (by guns 1150, by units 834, other 0); top killers: gun:turret 1145, tank 182, sniper 157, rifle 117, artillery 78, heavy 75, flame 62, aircraft 47.
+- Every group sent at a gun-covered node (capture groups, raids, assaults): 1500, 101 took it (6.7%); mean group value 547, mean gun health there 3032.
 

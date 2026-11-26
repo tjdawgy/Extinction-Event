@@ -948,3 +948,102 @@ Bloomhost's Boomer 10-25-1 (28%) → 7-29-0 (19%).
 2. **The Boomer** (33%; Bloomhost's 19%): Turtles now fortify forward pads (4.7 turrets a match). *Lever:* B6G5's Turtle cap.
 3. **Last Fist on Classic** (33%; 22% against the Axiarchs there): the Axiarchs' Classic warp-in deaths fell from 43% to 26%.
 4. **Sensitivity**: one 162-match run; read as ±10 points (6f: up to 14 points between seed sets).
+
+## 16. After batch 6h (v2.98): the Bloomhost ground rework, unit bodies, the Bloomhost node fix
+
+Persona-balanced self-play (audit/sim/selfplay-6c.js, 162 Hard vs Hard matches, seeds 600+, 0 errors each, with the batch 6h
+counters `EE_B6H=1`): every switch on (audit/logs-p1/selfplay6h-on/), and every switch on but bodies (`--rw b6hbody=0`,
+audit/logs-p1/selfplay6h-nobody/); against 6g's run on the same seeds (selfplay6g-after/, v2.97). The every-switch-on run was played twice, on the build
+before the last one-line body change and on the final build: all 162 matches identical in winner and length. report6c.md in each (95% Wilson
+intervals), b6h.md (audit/sim/b6h-report.js: swarm metrics, the new units, openers, units trained per type). **No unit value was
+tuned in this batch** (Bloomhost balance waits for batch 6i, the air rework). Values and departures: docs/FACTION_REWORK.md
+"Batch 6h". One 162-match run moves about ±10 points between seed sets.
+
+### 16.1 Factions
+
+| faction | v2.97 (6g) | every switch on | bodies off (b6h, b6hnode on) |
+|---|---|---|---|
+| Last Fist | 47-44-17, 44% (35-53) | 36-55-17, 33% (25-43) | 39-51-18, 36% (28-46) |
+| Bloomhost | 40-58-10, 37% (29-46) | 58-39-11, 54% (44-63) | 57-39-12, 53% (43-62) |
+| Axiarchs | 56-41-11, 52% (43-61) | 49-49-10, 45% (36-55) | 45-51-12, 42% (33-51) |
+
+Per map (Classic / Two-Lane / Three-Lane):
+
+| faction | v2.97 | every switch on | bodies off |
+|---|---|---|---|
+| Last Fist | 33 / 44 / 53% | 28 (16-44) / 31 (18-47) / 42 (27-58)% | 25 (14-41) / 42 (27-58) / 42 (27-58)% |
+| Bloomhost | 53 / 31 / 28% | 53 (37-68) / 56 (40-70) / 53 (37-68)% | 64 (48-78) / 53 (37-68) / 42 (27-58)% |
+| Axiarchs | 56 / 56 / 44% | 64 (48-78) / 42 (27-58) / 31 (18-47)% | 53 (37-68) / 39 (25-55) / 33 (20-50)% |
+
+Pairings (first named), every switch on: Last Fist vs Bloomhost 16-29-9, 30% (19-43); Last Fist vs the Axiarchs 20-26-8, 37%
+(25-50); Bloomhost vs the Axiarchs 29-23-2, 54% (41-66) (v2.97: 50 / 37 / 39%). Bloomhost vs the Axiarchs on Two-Lane 10-6-2, 56%
+(34-75). Side 1's share of decided 48% (40-56). Median length 14:32 (v2.97 16:02; Classic 9:42, Two-Lane 17:38, Three-Lane 17:57),
+draws 19, ended by an HQ 88%.
+Bodies off: Last Fist vs Bloomhost 19-26-9, 35% (24-49); Last Fist vs the Axiarchs 20-25-9, 37% (25-50); Bloomhost vs the Axiarchs
+31-20-3, 57% (44-70); median 15:52, draws 21, ended by an HQ 87%. **What bodies alone shift** (on against off, every other switch on):
+Last Fist -3 points, Bloomhost +1, the Axiarchs +3 overall, all inside one run's noise; on the maps, bodies help Bloomhost on the lane
+maps (Three-Lane 42 → 53%) and cost it on Classic (64 → 53%), cost Last Fist on Two-Lane (42 → 31%), help the Axiarchs on Classic (53 →
+64%). The bodies-off run was measured on the build before the last one-line body change (a standing unit makes way for any unit on
+the move, not only an equal or heavier one; it touches the loose swarm's spacing only, with bodies off).
+
+### 16.2 Personalities
+
+| personality | v2.97 | every switch on | bodies off |
+|---|---|---|---|
+| Boomer | 36-61-11, 33% (25-43) | 46-54-8, 43% (34-52) | 41-53-14, 38% (29-47) |
+| Economist | 53-45-10, 49% (40-58) | 54-44-10, 50% (41-59) | 55-42-11, 51% (42-60) |
+| Turtle | 54-37-17, 50% (41-59) | 43-45-20, 40% (31-49) | 45-46-17, 42% (33-51) |
+
+Per faction, every switch on: Last Fist 33 / 47 / 19% (Boomer / Economist / Turtle), Bloomhost 44 / 64 / 53%, the Axiarchs 50 / 39 /
+47%.
+
+### 16.3 The swarm (per Bloomhost side and match, every switch on; audit/logs-p1/selfplay6h-on/b6h.md)
+
+| metric | every switch on | bodies off |
+|---|---|---|
+| peak Bloomhost units alive | 37.4 | 37.0 |
+| Bloomhost damage dealt by melee units | 61.4% | 64.9% |
+| Mites spawned (Brood Mound, Queens, pustules) | 165.4 (164.1 by Queens) | 162.6 (161.7) |
+| damage the Wardens' auras took off | 2,991 | 4,565 |
+| Pounces | 96.2 | 85.2 |
+| Tunnel trips (units) | 18.2 | 17.8 |
+
+Units trained per Bloomhost side and match (every switch on): Skitterling 56.7, Chitin Warden 27.5, Spitter 27.2, Leaper 12.8,
+Razorwing 11.6, Bilecaster 9.5, Needlewing 8.0, Broodback 4.9, Queen 4.1, Gorebore 2.9, Ravager 1.4, Dreadthorn 1.2, Ruinmaw 0.8,
+Cloudwing 0.4, Brood Tyrant 0.2, Worldrender 0.1; every faction's in b6h.md.
+
+### 16.4 Reference targets (reported, not tuned toward)
+
+| target | every switch on | met |
+|---|---|---|
+| every faction 42-58% | 33 / 54 / 45% | no: Last Fist 33% (25-43) |
+| Bloomhost 42%+ against Last Fist | 54% (29 of 54; 16-29-9) | yes |
+| Bloomhost 40%+ on Two-Lane, on Three-Lane, and against the Axiarchs on Two-Lane | 56%, 53%, 56% | yes |
+| every faction 35-65% on each map | 28-64% | no: Last Fist 28% Classic, 31% Two-Lane; the Axiarchs 31% Three-Lane |
+| personalities 40-60% | 43 / 50 / 40% | yes (the Turtle at the floor) |
+
+### 16.5 Bug bar
+
+- No faction below 30% or above 70% overall (33 / 54 / 45%).
+- Every new or reworked unit is built by the AI (16.3), none wins absurdly in the Test Range (docs/FACTION_REWORK.md "Batch 6h", Part
+  H: a Queen beats 8 Marines that hold out of her reach, and dies in 6 s to 8 that attack her).
+- Found and fixed while measuring (mechanics, not values): melee units held off their target's edge by bodies (a Skitterling
+  never reached a Heavy: melee may now close to 80% of its reach on an enemy), units pushed through an enemy Worldbreaker ridge,
+  holders shoved out of their spots by their own side's moving units (a Queen pushed away by her own Mites), units stalled short of
+  their spot in a crowd (they arrive when blocked within three body radii for 1.5 s), the Rally button's label naming Bloomhost
+  buildings to a Last Fist player.
+- Bodies and Flame Tanks: a swarm attacking a line that Flame Tanks hold arrives as a column and burns in their 190-long strip
+  before it reaches them (the Test Range's heavy scene: 90 Skitterlings and Mites killed nothing against 40 Last Fist units with 4
+  Flame Tanks at the front, against 17 killed with bodies off; without the Flame Tanks the swarm does better with bodies). Big
+  units holding a line is the point of bodies; reported, not changed.
+
+### 16.6 Flags (reported, not fixed)
+
+1. **Last Fist 33%** (Classic 28%, Two-Lane 31%; against Bloomhost 30%; its Turtle 19%). The Bloomhost rework's swarm (Wardens
+   halving its splash, Pounce, Queens' Mites) is on the Last Fist pairing's side most (16-29-9).
+2. **The Boomer** 43% (33% in 6g): no longer under 40%.
+3. **Spitter openers**: Bloomhost won 40% (Boomer), 75% (Economist) and 71% (Turtle) of the matches it opened with Spitters (10 /
+   16 / 14 sides): a lean toward the Spitter opening for the Economist and the Turtle, not a rush that decides matches early (no
+   match under 5:00).
+4. **The Axiarchs on Three-Lane** 31% (44% in 6g).
+5. **The node scenario**: pad buildings destroyed short of the +50% asked (docs/FACTION_REWORK.md "Batch 6h", Part G).

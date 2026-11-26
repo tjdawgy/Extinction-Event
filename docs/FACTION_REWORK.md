@@ -1634,7 +1634,18 @@ The body table (audit/sim/b6h-bodies.js; art units; radius in screen px):
 | Dreadthorn | 26 | 106 | 31.8 | huge | 20 | huge |
 | Ruinmaw | 28 | 112 | 33.6 | huge | 20 | huge |
 
-@@CHOKE@@
+**Chokes** (audit/sim/b6h-choke.js, audit/logs-p1/b6h/bodies.md; 30 mixed ground units: 10 Skitterlings, 6 Marines, 6 Tanks, 4
+Wardens, 2 Titans, 2 Dreadthorns, one move order through each map's narrowest passage: Classic along its lane, Two-Lane across the
+ridge's only crossing, Three-Lane through the north wall's gap; 30 s; 3 seeds): with bodies 0 stuck on every map (arrived 28-29 /
+27-29 / 29 of 30, the rest slow Titans and Wardens still walking); without, 30 of 30. The first version left 1-2 units stuck in the
+lane maps' gaps (standing units shoving back, and units circling a spot others held): standing units now make way for units on
+the move, and a unit blocked within three body radii of its spot for 1.5 s has arrived.
+
+**Cost** (the same script; a Test Range fight of 60 Skitterlings and 30 Mites against 40 Last Fist units, the SIM's time per tick
+over 20 s, 5 runs each, Node on this machine, not an iPhone): whole tick 0.944 ms bodies off, 0.514 ms on (the fight itself
+differs: with bodies the swarm reaches the line a few at a time, against Flame Tanks it burns before contact, so fewer units fight
+at once); the body pass alone, timed on the state reached (130 units): **0.089 ms a tick, 9.4% of a bodies-off tick** (target: no
+more than 25%). This is the first swarm-scene frame-time measurement; the render's cost on a phone was not measured.
 
 ### Part G: the Bloomhost node contest (b6hnode)
 
@@ -1659,7 +1670,8 @@ The main cause: the threshold is rarely met, so what does reach a guarded node i
 | v1: the whole army by fighting power, no capture groups or raids at guarded nodes | on | 129 | 824 | 3-27-6 |
 | v2: v1, its own damage counted at its weapons' building rate | on | 138 | 904 | 3-29-4 |
 | v3: a strike group (building-breakers first, 1.2 × the defence), building-breaker scores | on | 97 | 937 | 0-29-7 |
-| **v4 (shipped): v2's assault, v3's scores, capture groups and raids allowed** | on | **144 (+53%)** | **988 (-7%)** | 2-28-6 |
+| v4: v2's assault, v3's scores, capture groups and raids allowed | on | 144 (+53%) | 988 (-7%) | 2-28-6 |
+| **v4 on the final build (shipped; one body rule changed after: standing units make way for any unit on the move)** | on | **126 (+34%)** | **1,008 (-5%)** | 3-29-4 |
 
 Shipped (`aiNode6h`, `NODE6`): every 5 s, with no danger inside its own base, a Normal or Hard Bloomhost AI weighs each enemy-held
 node an enemy gun guards by fighting power (damage per second × health, aiPower; the guns it sees or remembers and a forward pad it
@@ -1671,7 +1683,8 @@ of its health, or 150 s call it off (a threat near home or an all-in attack no l
 node and the army on its creep tunnels there. With two or more enemy Turrets known at enemy-held nodes its unit scores lean to
 building-breakers (Gorebore +0.6, Ruinmaw +0.4, Bilecaster +0.3, Broodback +0.2). Capture groups and raids are unchanged.
 
-**Target not met**: retakes +53% (met) but pad buildings destroyed -7% (asked: +50%). Why: the unit rework itself already raised
+**Target not met**: on the final build retakes +34% (+53% on the build before the last body change: the same rules, 18 retakes
+apart, about the scenario's noise) and pad buildings destroyed -5% (asked: +50% each). Why: the unit rework itself already raised
 retakes (146 with b6hnode off) and none of the behaviour fixes raised pad kills above the b6hnode-off run; Turrets killed 1,137 of
 the 2,121 units the v4 assaults lost; the reworked army is Spitters, Skitterlings and Wardens (assault units by type: Spitter 1,834,
 Warden 1,314, Skitterling 1,173), whose weapons do little to buildings (the scores' lean to building-breakers raised Gorebores and
