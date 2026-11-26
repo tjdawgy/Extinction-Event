@@ -882,3 +882,69 @@ Per faction (final): Bloomhost's Boomer 36% (26-48) and Economist 38% against it
    two seed sets differ by up to 14 points a faction (the Axiarchs 45% → 38%). Read single 162-match runs as ±10 points.
 Done in 6f: every faction 42-58%, every faction-map 35-65%, every pairing and personality in band (324 matches); the base-attack
 end fixed for every AI; the Axiarch conversion undone; the player's default warp point beside the base.
+
+## 15. After batch 6g (v2.97): the playtest fixes
+
+Persona-balanced self-play (audit/sim/selfplay-6c.js, 162 Hard vs Hard matches, seeds 600+, 0 errors each): the v2.96 build with
+the batch 6g counters (audit/logs-p1/selfplay6g-base/: identical in winner and length to 6f's seeds-600 run in all 162) and the
+v2.97 build with every switch on (selfplay6g-after/). report6c.md in each (95% Wilson intervals; the after report carries the
+before for comparison); the batch 6g tables in audit/logs-p1/b6g/selfplay.md (audit/sim/b6g-report.js). These are behaviour fixes:
+no unit value was tuned. Values and departures: docs/FACTION_REWORK.md "Batch 6g".
+
+### 15.1 Factions
+
+| faction | v2.96 | b6g on | 6f's 324 (seeds 600+ and 1000+) |
+|---|---|---|---|
+| Last Fist | 52-43-13, 48% (39-57) | 47-44-17, 44% (35-53) | 108-81-27, 50% (43-57) |
+| Bloomhost | 46-54-8, 43% (34-52) | 40-58-10, 37% (29-46) | 93-104-19, 43% (37-50) |
+| Axiarchs | 49-50-9, 45% (36-55) | 56-41-11, 52% (43-61) | 90-106-20, 42% (35-48) |
+
+Per map, b6g on (Classic / Two-Lane / Three-Lane, intervals in report6c.md):
+
+| faction | v2.96 | b6g on |
+|---|---|---|
+| Last Fist | 42 / 53 / 50% | 33 (20-50) / 44 (30-60) / 53 (37-68)% |
+| Bloomhost | 50 / 36 / 42% | 53 (37-68) / 31 (18-47) / 28 (16-44)% |
+| Axiarchs | 53 / 42 / 42% | 56 (40-70) / 56 (40-70) / 44 (30-60)% |
+
+Pairings (first named), b6g on: Last Fist vs Bloomhost 27-19-8, 50% (37-63); Last Fist vs the Axiarchs 20-25-9, 37% (25-50);
+Bloomhost vs the Axiarchs 21-31-2, 39% (27-52) (v2.96: 52 / 44 / 48%). Side 1's share of decided 45% (38-54). Median length 16:02
+(v2.96 15:05), draws 19 (15), ended by an HQ 88% (91%).
+
+### 15.2 Personalities
+
+| personality | v2.96 | b6g on |
+|---|---|---|
+| Boomer | 42-60-6, 39% (30-48) | 36-61-11, 33% (25-43) |
+| Economist | 50-49-9, 46% (37-56) | 53-45-10, 49% (40-58) |
+| Turtle | 55-38-15, 51% (42-60) | 54-37-17, 50% (41-59) |
+
+Bloomhost's Boomer 10-25-1 (28%) → 7-29-0 (19%).
+
+### 15.3 What the fixes changed in play (audit/logs-p1/b6g/)
+
+- Axiarch AI warp-ins dying within 15 s: 23.5% → 18.2% (Classic 43.0 → 25.8%, Two-Lane 16.1 → 19.0%, Three-Lane 17.8 → 12.6%);
+  arriving inside an enemy weapon's reach 34.5 → 16.6%; a scripted Axiarch player 22.2 → 14.6% (player.md).
+- Forward-pad turrets a side and match (lane maps): Last Fist 1.74 → 4.56, Bloomhost 1.25 → 3.76, the Axiarchs 1.17 → 2.44; Turtle
+  4.69, Economist 3.56, Boomer 2.51.
+- Bloomhost groups at a guarded node: 156 → 391 a run, 2 → 3 taking it; in the forced-turret scenario (nodes.md) retakes 87 → 94
+  and Bloomhost 1-32-3 → 1-30-5.
+- Units under fire, the Wraithwing: audit/logs-p1/b6g/range.md.
+
+### 15.4 Targets
+
+| target | b6g on (162) | met |
+|---|---|---|
+| every faction 40-60% (this batch's request) | 44 / 37 / 52% | no: Bloomhost 37% (29-46) |
+| every faction 35-65% on each map | 28-56% | no: Bloomhost 31% on Two-Lane and 28% on Three-Lane, Last Fist 33% on Classic |
+| no pairing beyond 35-65% | 37-50% | yes |
+| every personality 40-60% | 33 / 49 / 50% | no: the Boomer 33% |
+
+### 15.5 Ranked list, updated
+
+1. **Bloomhost on the lane maps** (31% Two-Lane, 28% Three-Lane; 39% against the Axiarchs). *Likely cause:* the
+   Axiarchs' warp-ins now survive (their Two-Lane rate 42 → 56%), and Bloomhost's node assault and fortifying take army and credits
+   from a faction that wins by volume. *Lever:* the assault's edge (1.4) and the Bloomhost reserve for turrets, before any value.
+2. **The Boomer** (33%; Bloomhost's 19%): Turtles now fortify forward pads (4.7 turrets a match). *Lever:* B6G5's Turtle cap.
+3. **Last Fist on Classic** (33%; 22% against the Axiarchs there): the Axiarchs' Classic warp-in deaths fell from 43% to 26%.
+4. **Sensitivity**: one 162-match run; read as ±10 points (6f: up to 14 points between seed sets).

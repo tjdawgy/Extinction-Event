@@ -1277,6 +1277,204 @@ target is met on its point estimate; the Axiarchs sit at the 42% floor (38% on t
 - Part D: one change ships, not two. The first tried was measured and removed; the second's gains are not concentrated on the
   matchup it targets (Last Fist vs the Turtle on Classic 2-10), so part of its effect is the reshuffle any AI rule causes.
 
+## Batch 6g: playtest fixes (smart warp-in, attack orders, units under fire, node play, the Purification Beam, the Wraithwing)
+
+**Batch 6g (v2.97): seven fixes from the owner's iPhone playtest against Hard (8 matches, every faction and map).** One switch,
+`REWORK.b6g` (src/sim/rework-6g.js), per game in `g.rw`, on by default, saved only when on, with a Test Range switch ("Batch 6g
+fixes"). With it off the game is v2.96 exactly: every pinned set matches under its own switches (the old sets, FP_V296A, FP_V296;
+every older set now holds b6g off), and the v2.96 build's own self-play replays tick for tick (audit/logs-p1/selfplay6g-base/:
+162 of 162 matches identical in winner and length to 6f's seeds-600 run). Recorded: FP_V297 (every switch on),
+tests/determinism.test.js. No unit value changed. Measured with read-only counters (audit/sim/b6g-instrument.js, through
+audit/sim/audit6a.js with `EE_B6G=1`), scenario runs (audit/sim/b6g-scen.js), Test Range runs (audit/sim/b6g-range.js) and 6c's
+persona-balanced self-play; tables from audit/sim/b6g-report.js. Logs: audit/logs-p1/b6g/, selfplay6g-base/, selfplay6g-after/.
+Tests: tests/rework-6g.test.js, tests/rework-6g-ui.test.js.
+
+### The live build and phone caching
+
+GitHub Pages' last deployment ("pages build and deployment" run 106) built cb32198, v2.96 (this session can't reach
+tjdawgy.github.io itself: the host is outside its network policy; the run was read from the GitHub API). One way a phone could keep
+an older version: the service worker (sw.js) fetched the page network-first, but through the browser's HTTP cache, and GitHub
+Pages serves index.html with `max-age=600`, so for up to 10 minutes after a deploy an online phone could be handed the previous
+copy, and the service worker then cached that copy. Fixed: the page is fetched with `cache: 'no-cache'` (revalidated with the
+server every time; a navigation request can't be copied with options, so it is fetched by URL), and the cache is renamed
+(`extinction-event-v2`) so every installed copy drops the old one once. Not fixable from the page: an installed app that stays
+open in the background keeps the version it loaded until it is closed and reopened (the version label on the title screen shows
+which one is running).
+
+### 1. Smart warp-in (the Axiarchs, the AI and the player)
+
+Where new Axiarch units appeared at v2.96 (traced in every match of the v2.96 self-play; audit/logs-p1/b6g/warp.md): every unit
+from a base Gate warped in at its side's warp point (startWarp → warpAt): for the AI v2.94's front edge of the frontmost field
+patch, or on the lane maps under b6elane a field spot beside the middle of its army on its focus lane; for a human player with no
+point of its own the field spot nearest the base rally point (6f), else the point set with the Train tab's card. A Genesis Gate on
+a forward pad skipped all of that: its units warped in at the pad's forward flag (fwdRally), the AI's and the player's alike: the
+owner's "units spawn at the gate instead of my warp point". And on the lane maps a warp spot had to lie within LANE_V (115) of the
+map's middle line (warpOk), so a point in an outer lane slid along rings toward the middle or fell back to the Axis.
+Measured in every match of the v2.96 self-play (162 Hard vs Hard; audit/logs-p1/b6g/selfplay.md): of 9,738 Axiarch AI warp-ins,
+2,291 (23.5%) died within 15 s; 27.5% arrived within 150 of an enemy unit and 34.5% inside an enemy weapon's reach. Classic was
+worst (43.0% dead within 15 s, 65.9% in reach: the front edge of the field is the fight on the short map); Two-Lane 16.1%,
+Three-Lane 17.8%, where forward Gates' units died 61 of 288 (21%). A scripted Axiarch player (the AI's macro, its units under
+direct control with no warp point set, 18 matches, audit/logs-p1/b6g/player.md): 22.2% dead within 15 s, 27.5% in reach.
+
+Changed (b6g, `warp6g`, used by startWarp for every Gate, base or forward, and for echoes): the AI's units warp in at the field
+spot nearest the rear of its main army (`rear6g`: the densest group of its ground fighters, the fifth rearmost of them, 80 further
+home) that is safe (`safe6g`: no enemy unit it can see within 240 (`B6G.aiSafe`), no enemy weapon it can see or remembers
+reaching the spot plus 60); with no army (under 2 ground fighters) or no safe spot within 600 of that rear, the safe spot nearest
+its base rally point. Its reinforcement gathering point (aiSmartArmy's Axiarch `backU`) is the same point. A player's units warp in
+at the player's own warp point for every Gate, forward pads included, unless an enemy it can see stands within 150 (`B6G.safe`)
+or an enemy weapon reaches the spot (+20): then at the nearest safe field spot; with no point set, at 6f's spot beside the base
+rally point under the same rule. The spot is checked again when the 2 s channel ends. A Phase Beacon bubble keeps v2.96's point
+for the AI and for a player without a point of its own. On the lane maps a warp spot may lie anywhere on open ground. The warp
+mark the player sees shows the spot the next unit takes (`warpMark6g`).
+After (b6g on, the same 162 matches): 18.2% died within 15 s (Classic 43.0 → 25.8%, Two-Lane 16.1 → 19.0%, Three-Lane 17.8 →
+12.6%); arriving within 150 of an enemy 27.5 → 9.4%, in an enemy weapon's reach 34.5 → 16.6%; forward-Gate arrivals 393 → 0. The
+scripted player: 22.2 → 14.6% dead within 15 s, in reach 27.5 → 12.9%, within 150 of an enemy 21.6 → 6.5%. Two-Lane's death share
+did not fall: fewer arrive in the fight (in reach 25.2 → 17.7%), but units warping in beside the army's rear on the outer lanes (now
+allowed) walk into its fight within the 15 s. tests/rework-6g.test.js: a unit from a Genesis Gate on a forward pad appears at the
+player's warp point (b6g off: at the pad's flag); a set point is kept until an enemy stands within 150, then the nearest safe spot;
+the AI's spot is 150+ clear of a Marine near its army (screenshots rework6g-warp-behind, rework6g-node-gate).
+
+### 2. Attack orders stop at the enemy HQ (the player and every AI)
+
+At v2.96 the player's Attack order walked each unit down its lane to the map's edge (units.js: `L` or 0; 6f's `end6f` covered the
+AI only), and an army that did stop at the HQ (6e's `end6e`, 6f's `end6f`) stood beside an HQ it couldn't hurt while its shield
+was up, with the buildings holding it on pads out of reach. Changed (`end6g`, every all-in attack: the player's Attack order and
+an AI's base attack with no push line): while the enemy HQ's shield is down, the attack ends at the HQ plus 60 (6f's spot); while
+it is up, at the building holding it that the side knows of (in sight or remembered from the fog) nearest each unit; none known,
+the HQ. The player's attacking units also take the HQ and the shield's holders first (`bbFocus`, as the AI's base attack does).
+Every AI path was checked again: raids, capture groups, the relic group and scouts aim at their own spots; field and siege pushes
+stop at a line short of the base; the base attack's staging point is outside the HQ gun; breakthroughs and the late commit are
+all-in attacks with no push line (`end6g`). The one remaining case was the shielded HQ with its holders behind it, fixed above.
+6f's edge counters: no side stood past the enemy HQ at v2.96 (6f's fix); with b6g one side of 324 (an Axiarch side on Two-Lane, 347 s),
+fighting shield holders on the base's back pads with enemies in sight all the time, the case end6g sends it to. tests/rework-6g.test.js: on Classic, Two-Lane and Three-Lane, six Tanks given Attack just outside
+the enemy base never pass the HQ by more than 140 and hit the HQ (unshielded) or the building holding its shield; with b6g off on
+the lane maps they walk past a shielded HQ to the edge (screenshot rework6g-attack-hq).
+
+### 3. Units under fire respond (every faction, the AI and the player)
+
+At v2.96 a standing or attack-moving unit did nothing about an enemy shooting it from beyond its reach: melee units chase only
+within their chase range (150-160) and, on Hold, only within 80 of their spot, so Marines (range 120) and Artillery (440) behind a
+screen shot Bloomhost melee to pieces. Changed (`hurt6g`, `fire6g`): every hit records who dealt it (projectiles carry their
+shooter, `p.by`). A unit that is holding (the player's Hold, an AI on Hold or on Retreat at home) or attacking down a lane with
+nothing in reach (the player's Attack once on its lane, an AI's attack stance), hit in the last 0.6 s by an enemy it can't hit
+from where it stands: charges it if its weapon can hurt it and it is in sight within 250 of where the unit stood (gives up after
+8 s or 310 from that spot, and fights whatever comes into reach first); otherwise pulls back toward its rally point holding fire,
+until it is 40 beyond that enemy's reach or 6 s pass, then waits 5 s before it pulls back again. Then it takes up its order again.
+Never on a move, target or retreat order, never siege-locked, deployed, burrowed or support units; an attacking unit never pulls
+back from a building ahead of it (the HQ gun outranges every unit; pulling back from it would undo every base attack). Test Range
+(audit/sim/b6g-range.js, 20 seeds each; audit/logs-p1/b6g/range.md): 6 Skitterlings and 2 Bulwarks on Hold with 6 Marines on Hold 115 away: Marines left after 30 s 2 → 0 (b6g off / on); the same
+melee under 2 Artillery 400 away behind 4 Marines: they pull back out of the Artillery's 440 and return to their spot, health left
+1,366 → 1,391 of 1,560 (a small gain: each return walks them back into its reach, as the rule says; held units that stayed back
+would lose their spot) (screenshot rework6g-melee-charge).
+
+### 4. The Bloomhost AI contests nodes
+
+Diagnosis (audit/logs-p1/b6g/nodes-before/: Last Fist vs Bloomhost on Two-Lane and Three-Lane, both sides, every personality
+pair, 36 matches; the Last Fist side takes its own half's nodes and turrets every forward pad it holds as soon as it can pay,
+audit-only forcing, `EE_B6G_FORCE=lfturret`; the Last Fist AI's own logic untouched): the Bloomhost AI had no rule of its own for a guarded node: its capture groups (aiCapture: 3 units, need = the enemy
+units it knows near the node × 1.3 + 150) and raids (aiRaid: 4 fast units) never count buildings; they only go for the centre,
+the watchtowers, the depots and Classic's node 0/2, so a lost outer node or forward pad was never a target of its own, and nothing
+aimed at the turrets. Of 935 groups it sent at a node an enemy gun covered, 45 (4.8%) took it; mean group value 218 against
+3,137 of gun health there (2 Turrets). Army size: 2-4 units; target choice: whatever node the capture rule names, turrets last
+(units score first); timing: every 15 s from 2:30, whatever the guns. Bloomhost lost 32 of 36 (1-32-3).
+Changed (`aiNode6g`, Normal and Hard): see the code comment in src/sim/rework-6g.js; in short, an assault (`side.capN`) at a node an
+enemy gun guards (or an outer node it lost on a lane map), only when it can send 1.4× the defence it knows or presumes (every gun
+it can see or remembers within 340, 2.2 × its cost × tier; a forward pad it can't see counted as a turret; plus the enemy units
+near it × 1.3), at least 450 and 4 units, building-breakers first (the weapons with the highest building multiplier); the group
+gathers out of the guns' reach, then goes in aiming at the guns (`u.n6f`). A node it lost comes first.
+Measured on the same 36 matches (audit/logs-p1/b6g/nodes.md): Bloomhost retook a node in 26 → 29 of 36 matches (87 → 94 retakes in
+all), destroyed pad buildings in 35 of 36 either way (1,170 → 1,059; 32.5 → 29.4 a match; the forced Last Fist rebuilds them as fast
+as it can pay), and went 1-32-3 → 1-30-5. Its groups at a guarded node: 935 → 1,037, 4.8% → 5.0% taking it (mean value 218 → 289).
+The assault rarely fires (the Bloomhost army is seldom 1.4× a two-Turret node with Last Fist's army near), so the fix changes
+what it attempts more than what it achieves here; this forced scenario (every own-half node and pad held and turreted from the
+start) is far harder than the owner's own play. Not met: a clear rise in retakes and turret kills.
+
+### 5. Every AI fortifies the nodes it holds
+
+What each AI built on nodes at v2.96: on the lane maps `aiForward` (Normal and Hard) put its faction's turret (Turret, Maw, Null
+Lance) and then its production building (Barracks, Larva Pit, Genesis Gate) on forward pads of nodes it held on its own half,
+every 90 s with 1,000 banked, at most 1 (Normal) or 2 (Hard; 2 and 3 on Three-Lane) in all; Last Fist's node bunkers come with
+its Fortification Depot on every income node it holds; Classic has no pad on any node, so nothing else can be built there.
+Changed (`aiFort6g` replaces aiForward's turret choice): every 20 s, no threat at home, its turret on a free pad of a node it holds
+when the node is safe (no enemy unit it knows within 450 in the last 15 s, no enemy gun it knows reaching the pad) and it can pay
+with a reserve left (Boomer 500, Economist 300, Turtle 150): contested nodes first (an enemy seen near it in the last 90 s), then
+the nearest the enemy; per personality at most 1 / 1 / 2 per node and 2 / 3 / 5 in all (Boomer / Economist / Turtle; the Boomer only
+on contested nodes; Normal capped at aiForward's old total); its one forward production building stays as before.
+Measured (lane maps, 108 matches each way; audit/logs-p1/b6g/selfplay.md): forward-pad turrets a side and match, Last Fist 1.74 →
+4.56, Bloomhost 1.25 → 3.76, the Axiarchs 1.17 → 2.44; nodes fortified a side and match 0.99 / 0.75 / 0.64 → 1.68 / 1.40 / 1.07; by
+personality, turrets Boomer 1.17 → 2.51, Economist 1.40 → 3.56, Turtle 1.58 → 4.69. A hold of a node lasted 472-494 s when fortified
+and 240-293 s when not (448-474 and 232-281 at v2.96: holds that get fortified are longer, before and after). Nodes held at 6 / 10 /
+14 minutes: Last Fist 4.2 / 4.8 / 5.7 → 4.1 / 5.1 / 5.6, Bloomhost 4.3 / 5.9 / 7.1 → 4.7 / 6.1 / 6.5, the Axiarchs 3.6 / 3.5 / 3.1 →
+3.8 / 3.6 / 3.8 (screenshot rework6g-fortified-node).
+
+### 6. The Purification Beam on any lane
+
+What limited it: its strip had to be centred within LANE_V + 25 of the map's middle line (abilityCheck: "needs a spot on the lane")
+and its centre was clamped to ±LANE_V (useAbility, the AI's aiStrikeTarget, the aiming strip). LANE_V is half the width of the map's
+first lane (115): right for Classic's one lane; on Three-Lane only the centre lane lies there (the outer lanes run at up to ±400),
+and on Two-Lane neither lane does away from the bases. Its range was never the limit (any explored ground). Changed: on a lane map
+the strip may be centred anywhere within a lane's half width + 25 of any lane's centre line and stays where it was aimed (same
+strip, damage and sweep); the AI scores and aims it on every lane (`beamV6g`). Classic unchanged. tests: aimed at the north lane on
+Three-Lane, a Tank there takes the full 240; with b6g off, refused (screenshot rework6g-beam-lane).
+
+### 7. The Wraithwing keeps its target
+
+At v2.96 a Wraithwing (batch 4a: hops every 0.9 s, a bolt on each landing) took acquire's best target afresh every tick and at every
+landing, and its landing bolts ignored a player's target order. Changed (`ww6g`): it keeps its target (`u.wwK`) through every hop
+while it is alive, in sight and in reach when it lands; a target order sets the kept target. Hops, timing and the 0.4 s untargetable
+window are unchanged. Test Range: 4 Wraithwings attacking 8 Marines (target orders): all 8 dead in 7.8 → 7.6 s (mean, 20 seeds); on Hold beside them (each
+picking its own targets, as in a match) 8.2 → 7.8 s. The kill time was already short in a clean Test Range fight; the kept target
+mostly removes the spread of bolts over the group (tests: at most 2 switches from a living target in 20 s, b6g on).
+
+### Measured: persona-balanced self-play (audit/logs-p1/selfplay6g-after/, against selfplay6g-base/ (v2.96, b6g off); 162 each, 0 errors)
+
+| faction | v2.96 (seeds 600+) | b6g on | 6f's 324 |
+|---|---|---|---|
+| Last Fist | 52-43-13, 48% (39-57) | 47-44-17, 44% (35-53) | 50% (43-57) |
+| Bloomhost | 46-54-8, 43% (34-52) | 40-58-10, 37% (29-46) | 43% (37-50) |
+| Axiarchs | 49-50-9, 45% (36-55) | 56-41-11, 52% (43-61) | 42% (35-48) |
+
+Per map (Classic / Two-Lane / Three-Lane), b6g on: Last Fist 33 / 44 / 53%, Bloomhost 53 / 31 / 28%, the Axiarchs 56 / 56 / 44%.
+Pairings: Last Fist vs Bloomhost 50%, Last Fist vs the Axiarchs 37%, Bloomhost vs the Axiarchs 39%. Personalities: Boomer 33%
+(25-43), Economist 49%, Turtle 50% (v2.96: 39 / 46 / 51%); Bloomhost's Boomer 7-29 (19%; 28% at v2.96). Median length 16:02 (v2.96
+15:05; Classic 11:32 → 9:58), draws 15 → 19, ended by an HQ 91 → 88%. Bloomhost (37%) is under 40%: its losses come on the lane
+maps (Two-Lane 36 → 31%, Three-Lane 42 → 28%), mostly to the Axiarchs (26-26-2 → 21-31-2), whose warp-ins now survive, and from
+its Boomer against Turtles that fortify more. Read as ±10 points
+(single 162-match runs moved up to 14 points between seed sets in 6f). No unit value was tuned.
+
+### Tests after b6g
+
+- Fast suite: every pinned older switch set now also holds b6g off (determinism, rework tests and others; FP_V296 and every older
+  set match). Failing with b6g on, each a deterministic scenario (one run decides it, no seed variance), each an intended effect,
+  held b6g off with a counterpart in tests/rework-6g.test.js that checks the same intent with it on: tests/axiarchs-field.test.js's
+  three warp-point tests (an AI side warps in at the safe spot, not the field's front edge); tests/controls.test.js's "a target"
+  (the other Marine, shot at from beyond its reach, charges; one Tank is still re-spacing 3 s after the kill: Hold after 8 s);
+  tests/orders-weapons.test.js's Emergency Brood test (the enemy Tank, shot by a Cloudwing it can't hit, pulls back and the offspring
+  follow it: counterpart with a Hydra, which can shoot back); the forward-pad tests in tests/twolane-ai.test.js and
+  tests/threelane.test.js (aiFort6g's caps by personality: counterpart checks Easy none, Normal within the old cap, Hard by
+  personality, one forward production building on its own half); twolane-ai's forward-Barracks test for the Axiarchs (a forward
+  Gate's unit warps in at a safe spot: counterpart). tests/rework-6f.test.js's b6fai-off and b6f-off cases hold b6g off too (b6g's
+  end6g and warp6g supersede them). Two regressions found by the suite and fixed: a unit hit by a shielded enemy HQ charged it (it
+  can't hurt it; orders-weapons' "every combat unit stops to fight" and its 6c twin), and an attacking unit passing beside the HQ
+  pulled back from it; now nothing charges a shielded or untargetable enemy and an attacking unit never responds to a building.
+  tests/rework-2a.test.js's switch list gains b6g.
+- Slow suite: see KNOWN_ISSUES.md "Batch 6g".
+
+### Departures
+
+- Fix 4 is in and tested (an assault only with 1.4× the defence it knows or presumes, building-breakers first, lost nodes first,
+  aimed at the guns), but in the forced-turret scenario it barely moves the outcome: retakes 87 → 94, pad buildings destroyed
+  1,170 → 1,059, Bloomhost 1-32-3 → 1-30-5. Tried along the way and replaced: turrets weighed at 2.2× their cost (assaults of 8
+  units against 2 Turrets, lost), assaults at undefended nodes too (split the army on Classic: matches 700 → 1,100 s).
+- Fix 3 follows the rule as written, so a unit on Hold pulled out of an Artillery's reach walks back into it after 5 s; an
+  attacking unit is exempt from pulling back from a building ahead of it (the HQ gun would otherwise turn back every base attack).
+- Fix 7 is real but small in the Test Range (8 Marines: 8.2 → 7.8 s on Hold); the owner's "takes forever" was not reproduced there.
+- The AI's warp spot keeps a wider berth than the player's (240 and weapon reach + 60, against 150 and + 20), after the first
+  measurement left Two-Lane warp-in deaths up (16 → 19%); the narrower rule is the spec's floor, and both meet it.
+- The forced-turret scenario first let Last Fist re-take its nodes all match (every Bloomhost retake undone at once); it was rerun
+  with the forcing limited to the first 5:00, as "early" asks.
+
+
 ## Unchanged (already distinct)
 
 Marine, Heavy, Tank, Flame Tank, Hydra, Interceptor, Medevac, Recon Drone, Mite, Razorwing, Cloudwing, Thornback, Lancer,
@@ -1339,6 +1537,7 @@ buildings: batch 5d, v2.91, with team colour on their largest surfaces).
    (`b6art`). Batch 6c (v2.93): the HQ shield rule (`b6hq`) and the first unit tuning (`b6c`). Batch 6d (v2.94): the AI
    personality fix (`b6ai`) and four faction values (`b6d`). Batch 6e (v2.95): Axiarch lane play (`b6elane`), the Axiarch
    energy costs, the Riftstalker's shields and the Marine's price (`b6e`). Batch 6f (v2.96): base attacks for every AI and the press
-   rule's base defences (`b6fai`), the Axiarch prices undone and the player's warp-in (`b6f`).
+   rule's base defences (`b6fai`), the Axiarch prices undone and the player's warp-in (`b6f`). Batch 6g (v2.97): the playtest fixes
+   (`b6g`): smart warp-in, attack orders, units under fire, node play, the Purification Beam, the Wraithwing.
 
 Then: the paused balance pass, with all three factions reworked.
