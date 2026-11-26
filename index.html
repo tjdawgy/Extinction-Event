@@ -509,7 +509,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
   <footer id="panel">
     <div class="tabs"><button data-tab="build" class="on">Build</button><button data-tab="train">Train</button></div>
     <div id="cards"></div>
-    <div id="cmdbar" class="hide" role="toolbar" aria-label="Orders for the selected units"><div class="seltag"><span><b id="selN">0</b> selected</span><button id="selX" aria-label="Clear the selection">×</button></div><button data-c="attack">Attack</button><button data-c="hold">Hold</button><button data-c="retreat">Retreat</button><button data-c="tunnel" class="hide" aria-label="Send the selected units through the tunnel">Tunnel</button><span class="cmdhint">Tap the ground to move them there</span></div>
+    <div id="cmdbar" class="hide" role="toolbar" aria-label="Orders for the selected units"><div class="seltag"><span><b id="selN">0</b> selected</span><button id="selX" aria-label="Clear the selection">×</button></div><button data-c="attack">Attack</button><button data-c="hold">Hold</button><button data-c="retreat">Retreat</button><button data-c="tunnel" class="hide" aria-label="Send the selected units through the tunnel">Tunnel</button><button data-c="rally6" class="hide" aria-label="Rally new units from your Larva Pits and Evolution Chambers to this Ruinmaw">Rally</button><span class="cmdhint">Tap the ground to move them there</span></div>
     <div id="trBar" role="toolbar" aria-label="Test Range: what a tap places, and each side's orders"><button id="trTool"></button><div class="trseg" id="trBb"><span>Left</span><button data-m="attack">Attack</button><button data-m="hold">Hold</button><em>You</em></div><div class="trseg" id="trBr"><span>Right</span><button data-m="attack">Attack</button><button data-m="hold">Hold</button><em>Calm</em></div></div>
     <div id="grps" class="hide" role="group" aria-label="Control groups"><button data-g="0" aria-label="Group 1: tap to select, double-tap to jump there, hold to save the selection"><b>1</b><i>–</i></button><button data-g="1" aria-label="Group 2: tap to select, double-tap to jump there, hold to save the selection"><b>2</b><i>–</i></button><button data-g="2" aria-label="Group 3: tap to select, double-tap to jump there, hold to save the selection"><b>3</b><i>–</i></button></div>
   </footer>
@@ -3221,7 +3221,8 @@ function ctlStep(g, u, d) {
   const po = u.po, settle = () => { ctlHere(g, u); return u.po.o === 'go' ? { go: [u.po.u, u.po.v] } : null; };
   if (po.o === 'retreat') {
     if (po.u == null) { const B = ctlBase(u.side); po.u = B.u; po.v = B.v; }
-    if (Math.hypot(po.u - u.u, po.v - u.v) > CTRL.arrive) return { run: [po.u, po.v] };
+    if (Math.hypot(po.u - u.u, po.v - u.v) > CTRL.arrive && !(rwB6hbody(g) && bodyNear6h(g, u, po))) return { run: [po.u, po.v] };
+    if (rwB6hbody(g) && Math.hypot(po.u - u.u, po.v - u.v) > CTRL.arrive) { ctlHold(u, u.u, u.v); return null; }
     ctlHold(u, po.u, po.v); return null;
   }
   if (po.o === 'attack') { // v2.76: crossing over to the lane picked, fighting what it meets; then down it
@@ -3230,7 +3231,8 @@ function ctlStep(g, u, d) {
   }
   if (po.o === 'tunnel') { if (!u.tn) ctlHere(g, u); return null; } // v2.83: tunnelStep moves it; without a tunnel left, it holds
   if (po.o === 'go') {
-    if (Math.hypot(po.u - u.u, po.v - u.v) > CTRL.arrive) return po.back ? { run: [po.u, po.v] } : { go: [po.u, po.v] };
+    if (Math.hypot(po.u - u.u, po.v - u.v) > CTRL.arrive && !(rwB6hbody(g) && bodyNear6h(g, u, po))) return po.back ? { run: [po.u, po.v] } : { go: [po.u, po.v] }; // v2.98 (b6hbody): or close and blocked by bodies
+    if (rwB6hbody(g) && Math.hypot(po.u - u.u, po.v - u.v) > CTRL.arrive) { ctlHold(u, u.u, u.v); return null; }
     ctlHold(u, po.u, po.v); return null;
   }
   if (po.o === 'target') {
@@ -7076,6 +7078,7 @@ rw6hText(TREES_BH.factory.B.steps[2], 'short', 'Broodbacks'); rw6hText(TREES_BH.
 rw6hText(TREES_BH.factory.B.steps[2], 'unlock', ['broodback']);
 rw6hText(TREES_BH.barracks.B.steps[2], 'short', 'Queens'); rw6hText(TREES_BH.barracks.B.steps[2], 'txt', 'Unlocks Queens: brood mothers whose bile bolts hit air and ground and who birth Mites in a fight');
 rw6hText(TREES_BH.barracks.B.steps[2], 'unlock', ['queen']);
+{ const B = BDEFS && BDEFS.bloomhost && BDEFS.bloomhost.barracks; if (B && B.tiers) rw6hText(B.tiers, 1, 'Spawns Skitterlings (in broods) and Spitters'); }
 rw6hText(UDEF.mite, 'desc', 'Tiny, short-lived biter from the Brood Mound and the Queen. Its bite corrodes like Spitter acid, so everything it touches takes more damage. Fragile; it never captures nodes.');
 rw6hText(UDEF.leaper, 'desc', 'Parasite that leaps far over the fight onto Artillery, siege and ranged units, stunning everything where it lands, then latches on and eats its host. Shoot it off; if the host dies with Leapers on it, Skitterlings hatch.');
 
@@ -7332,7 +7335,14 @@ const BODY6H = {
 const BODY6H_AIR = { small: 7, medium: 10, large: 15, huge: 20 }, BODY6H_A = { aircraft: 'medium', interceptor: 'small', leviathan: 'huge', medic: 'medium', drone: 'small', razorwing: 'small', needlewing: 'small', cloudwing: 'medium', broodtyrant: 'large', worldrender: 'huge', wraithwing: 'small', prismwing: 'small', shardstorm: 'medium', voidcarrier: 'large', sovereign: 'huge' };
 const body6hR = t => UDEF[t] && UDEF[t].air ? BODY6H_AIR[bodyClass6h(t)] : BODY6H_R[bodyClass6h(t)] + (LOOSE6H[t] ? B6H.loose / 2 : 0); // the spacing a formation gives it (Test Range placement, ctlPack)
 const bodyClass6h = t => UDEF[t] && UDEF[t].air ? BODY6H_A[t] || 'medium' : BODY6H[t] || 'medium';
-const BODY6 = { cell: 40, allow: 2, k: 0.5, kAir: 0.15, max: 70, hold: 3 };
+// A unit on its way to a spot of its own (a move, a retreat) that bodies keep from it: within its body's reach of the spot (BODY6.near
+// × its radius) and no closer for BODY6.stall s, it has arrived (it holds where it stands)
+function bodyNear6h(g, u, po) {
+  const d = Math.hypot(po.u - u.u, po.v - u.v);
+  if (!u.bn6 || u.bn6.u !== po.u || u.bn6.v !== po.v || d < u.bn6.d - 2) { u.bn6 = { u: po.u, v: po.v, d, t: g.t }; return false; }
+  return d <= CTRL.arrive + BODY6.near * body6hR(u.type) && g.t - u.bn6.t >= BODY6.stall;
+}
+const BODY6 = { near: 3, stall: 1.5, yieldK: 0.5, cell: 40, allow: 2, k: 0.5, kAir: 0.15, max: 70, hold: 3 };
 const B6GRID = new Map();
 function body6h(g, dt) {
   const on = rwB6hbody(g), loose = rwB6h(g); if (!on && !loose) return;
@@ -7345,7 +7355,7 @@ function body6h(g, dt) {
     const cl = bodyClass6h(e.type), atk = !!(e.tgt && !e.moving);
     let r = on ? (air ? BODY6H_AIR[cl] : BODY6H_R[cl]) : 4;
     if (loose && !air && LOOSE6H[e.type] && !atk) r += B6H.loose / 2;
-    const m = (air ? 1 : BODY6H_M[cl]) * (atk ? BODY6.hold : 1);
+    const m = (air ? 1 : BODY6H_M[cl]) * (atk ? BODY6.hold : e.moving ? 1 : BODY6.yieldK); // fighting units hold their line; standing ones make way for units on the move
     const it = { e, air, r, m, pu: 0, pv: 0 }, gx = Math.floor(e.u / C), gy = Math.floor(e.v * DY / C) + (air ? 100000 : 0), key = gx * 400003 + gy;
     it.gx = gx; it.gy = gy;
     let cell = G.get(key); if (!cell) G.set(key, cell = []); cell.push(it); list.push(it);
@@ -7379,6 +7389,7 @@ function body6h(g, dt) {
     if (it.air) { e.u = nu; e.v = nv; continue; }
     if (MAP_2D) { const H = MAP.size.h / 2 - 6; nv = clamp(nv, -H, H); if (NAV.on && navShut(nu, nv)) { if (!navShut(nu, e.v)) e.u = nu; else if (!navShut(e.u, nv)) e.v = nv; continue; } }
     else nv = clamp(nv, -LANE_V, LANE_V);
+    if (!e.moving && !e.tgt && e.holdU !== undefined) { e.holdU += nu - e.u; e.holdV += nv - e.v; } // a standing unit pushed aside makes way: its spot moves with it (it doesn't shove back)
     e.u = nu; e.v = nv;
   }
 }
@@ -16366,6 +16377,20 @@ const UNIT_TIPS = {
   get broodtyrant() { const u = UDEF.broodtyrant; if (REWORK.b4b) return [`Bases: its glob (range ${txN(TYR.range)}, every ${txN(TYR.cd)} s) does ${txN(TYR.dmg)} to ground units (splash ${txN(TYR.splash)}) or ${txN(TYR.bdmg)} to a building and sticks a pustule on it (up to ${PUS.max}, ${txN(PUS.dps)} damage/s each); a building that falls with pustules bursts into ${PUS.mites} Mites per pustule`, "Paid Repair clears the pustules; Interceptors, Heavies, Hydras, Turrets; it can't hit aircraft"]; return [`Buildings first, then ground units, with heavy globs from ${txN(u.range)} range`, "Interceptors, Heavies, Hydras, Turrets; it can't hit aircraft"]; },
   get worldrender() { const u = UDEF.worldrender; if (REWORK.b4b) return [`Buildings: it lands on one (${txN(LAND.t)} s) and bites it for ${txN(LAND.dmg)} every ${txN(LAND.every)} s, healing ${txP(LAND.frac)} of the damage (at most ${txN(LAND.cap)} HP/s); it takes off when the building falls or it drops below ${txP(LAND.off)} health`, "Landed it is a heavy ground target: Tanks, infantry and every ground gun can hit it (anti-air-only units can't); burst it before it lands"]; return [`Buildings above all, from right above them: it heals for ${txP(u.devour?.frac)} of the damage it does to buildings (at most ${txN(u.devour?.cap)} HP/s)`, "Burst anti-air before it starts feeding; it can't hit aircraft"]; }, // v2.37
 };
+// v2.98 (batch 6h, REWORK.b6h, the new-game default): the reworked and new Bloomhost ground units' tips (numbers read live)
+{
+  const T0 = {}; for (const k of ['mite', 'bulwark', 'leaper', 'ravager', 'gorebore', 'dreadthorn', 'ruinmaw', 'spitter']) T0[k] = Object.getOwnPropertyDescriptor(UNIT_TIPS, k).get;
+  const P6 = B6H.pounce, pounce = `Pounce: it lunges at an enemy within ${txN(P6.r)} at ${txX(P6.mul)} speed for ${txN(P6.dur)} s, every ${txN(P6.cd)} s (never on a move order or a retreat)`;
+  const def = (k, f) => Object.defineProperty(UNIT_TIPS, k, { get: f, enumerable: true, configurable: true });
+  def('mite', () => REWORK.b6h ? [`Wearing targets down for free: from the Brood Mound (every ${txN(MOUND.every)} s) and the Queen; its bite corrodes like Spitter acid (+${txP(rw6hUnit({ rw: REWORK }, 'mite').corrode.amt)} damage taken for ${txN(rw6hUnit({ rw: REWORK }, 'mite').corrode.dur)} s); it lives ${txN(B6H.mite.life)} s, at most ${txN(B6H.mite.cap)} per side`, "Splash, anything at all: very little HP; it can't hit aircraft or capture nodes"] : T0.mite());
+  def('bulwark', () => REWORK.b6h ? [`Shielding the swarm from area damage: Bloomhost units within ${txN(B6H.ward.r)} of a Chitin Warden take ${txP(B6H.ward.cut)} less from splash, shells, bombs, flames, beams and blasts (a second Warden doesn't add). It braces, regenerates on its creep, and ${pounce.toLowerCase()}`, ...T0.bulwark().slice(1)] : T0.bulwark());
+  def('leaper', () => REWORK.b6h ? [`The backline: it leaps up to ${txN(B6H.leaper.range)} over everything in between (every ${txN(B6H.leaper.cd)} s), Artillery and deployed siege first, then ranged units, then big ones; landing stuns enemy ground units within ${txN(B6H.leaper.stunR)} for ${txN(B6H.leaper.stun)} s; latched on any ground unit it eats ${txN(latchDps({ rw: REWORK }))} health a second (${txN(B6H.leaper.small)} on small units) and slows it ${txP(LATCH.slow)}`, ...T0.leaper().slice(1)] : T0.leaper());
+  for (const k of ['ravager', 'gorebore', 'dreadthorn']) def(k, () => REWORK.b6h ? [`${T0[k]()[0]}. ${pounce}${k === 'dreadthorn' ? ', only while its charge recovers' : k === 'gorebore' ? ', only while surfaced' : ''}`, ...T0[k]().slice(1)] : T0[k]());
+  def('spitter', () => REWORK.b6h ? [`${T0.spitter()[0]}. Trained from the start at the Larva Pit: anti-air from minute one`, ...T0.spitter().slice(1)] : T0.spitter());
+  def('ruinmaw', () => REWORK.b6h ? [`Moving your army unseen: surfacing erupts (${txN(B6H.ruin.eDmg)} to enemy ground units within ${txN(B6H.ruin.eR)}, knocked aside). Tunnel: selected Bloomhost ground units on your creep burrow where they stand and come out of its mouth (${txN(B6H.ruin.speed)} a second underground, at least ${txN(B6H.ruin.min)} s; two a second); Rally sends new units there. Every ${txN(B6H.ruin.swCd)} s it swallows an adjacent enemy (not a huge one) for ${txN(B6H.ruin.swDur)} s at ${txN(B6H.ruin.swDps)} a second. It can dive again ${txN(B6H.ruin.dive)} s after surfacing; diving or dying, the units inside come up where they went down`, ...T0.ruinmaw().slice(1)] : T0.ruinmaw());
+  def('queen', () => [`Holding a fight: her bile bolt hits air and ground (range ${txN(UDEF.queen.range)}) and corrodes; while an enemy is within ${txN(B6H.queen.near)} she births a Mite every ${txN(B6H.queen.every)} s (up to ${txN(B6H.queen.own)} of hers), which fight around her and stay within ${txN(B6H.queen.leash)}`, 'Divers and anything that reaches her: she is slow and fragile; splash kills her Mites']);
+  def('broodback', () => [`Leading a push: a weak bite and Pounce; when it dies it bursts into ${txN(B6H.brood.n)} Skitterlings that carry on its order and leaves a Bile Bloom for ${txN(B6H.brood.life)} s (enemies inside take ${txN(B6H.brood.dps)} a second; Bloomhost units inside attack ${txP(B6H.brood.atk - 1)} faster and move ${txP(B6H.brood.move - 1)} faster)`, 'Kill it where its brood is no use: at range, and away from your units']);
+}
 const pFac = () => game ? game.sides[myS()].faction : DEFAULT_FACTION; // the player's faction (cards, panel and info)
 const stat = (label, val) => `<div><small>${label}</small><b>${val}</b></div>`;
 function showInfo(kind, type) {
@@ -16738,8 +16763,19 @@ const unitLane = e => { if (!MAP_LANED || dirOf(myS()) * (e.u - ctlBase(myS()).u
 const selLane = k => selSet(myUnits().filter(e => unitLane(e) === k), true);
 function selClear() { SELN.clear(); closePick(); refreshCtl(); }
 // An order for the selection; it clears afterwards
+// v2.98 (b6h): the Ruinmaw rally: every Larva Pit and Evolution Chamber of yours rallies its new units to it (or back to base)
+const rally6Bld = () => game.ents.filter(b => b.kind === 'b' && b.side === myS() && b.hp > 0 && (b.type === 'barracks' || b.type === 'factory') && facOf(b.fac) === 'bloomhost');
+const rally6On = R => rally6Bld().some(b => b.rm6 === R.id);
+function rally6Issue() {
+  const R = selLive()[0]; if (!R) return;
+  const on = !rally6On(R), bs = rally6Bld();
+  if (!bs.length) { toast('No Larva Pit or Evolution Chamber to rally', 'bad'); return; }
+  for (const b of bs) setRally6h(game, myS(), b.id, on ? R.id : 0);
+  toast(on ? `New units from ${bs.length} building${bs.length === 1 ? '' : 's'} tunnel to the Ruinmaw` : 'New units gather at the base again', 'ok'); refreshCtl();
+}
 function issue(o, u, v) {
   if (!ctlOn()) return;
+  if (o === 'rally6') { rally6Issue(); return; }
   const ids = selLive().map(e => e.id);
   const r = command(game, myS(), ids, o, u, v);
   toast(r.msg, r.ok ? (o === 'attack' ? 'warn' : 'ok') : 'bad');
@@ -16850,6 +16886,8 @@ function refreshCtl() {
   const sl = selLive(), m = sl.length;
   bar.classList.toggle('hide', !m); document.body.classList.toggle('selecting', !!m); if (!m) closePick();
   if (m) setHTML($('selN'), String(m));
+  const rb = bar.querySelector('[data-c="rally6"]'), rm = m === 1 && sl[0].type === 'ruinmaw' && rwB6h(game) && ruinGate(sl[0]) ? sl[0] : null; // v2.98 (b6h): one surfaced Ruinmaw selected: Rally (production tunnels to it)
+  if (rb) { rb.classList.toggle('hide', !rm); if (rm) setHTML(rb, rally6On(rm) ? 'Rally off' : 'Rally'); }
   const tb = bar.querySelector('[data-c="tunnel"]'); tb.classList.toggle('hide', !(m && rwB2b(game) && sl.some(tunnelOk) && tunnelGate(game, myS()))); // v2.83: Tunnel, while a Ruinmaw of yours is surfaced and Bloomhost ground units are selected
 }
 for (const b of document.querySelectorAll('#cmdbar [data-c]')) b.addEventListener('click', () => { if (paused) return; if (b.dataset.c === 'attack' && MAP_LANED) { TUT.sig.pick = true; openPick(); } else issue(b.dataset.c); }); // v2.77: on a lane map, Attack asks which lane
@@ -17979,18 +18017,20 @@ function cxRoles(fac) {
 }
 // A faction's units: by building (Barracks, Factory, Tech Lab, then the rest), then path, then tier
 function cxUnits(fac) {
-  const bi = t => { const i = CX_PROD.indexOf(UDEF[t].from); return i < 0 ? 9 : i; }, pi = t => UNIT_PATH[t] ? UNIT_PATH[t].p : '';
+  const bi = t => { const i = CX_PROD.indexOf(UDEF[t].from); return i < 0 ? 9 : i; }, pi = t => cxPath(t) ? cxPath(t).p : '';
   return Object.keys(UDEF).filter(t => (UDEF[t].fac || DEFAULT_FACTION) === fac && rwShown(t)) // v2.82: the units a new match has (Gorebore or Bile Lobber, …)
-    .sort((a, b) => bi(a) - bi(b) || pi(a).localeCompare(pi(b)) || UDEF[a].tier - UDEF[b].tier || UNIT_ORDER.indexOf(a) - UNIT_ORDER.indexOf(b));
+    .sort((a, b) => bi(a) - bi(b) || pi(a).localeCompare(pi(b)) || cxTier(a) - cxTier(b) || UNIT_ORDER.indexOf(a) - UNIT_ORDER.indexOf(b));
 }
+// v2.98 (batch 6h): with b6h the Spitter is a Larva Pit unit from the start (no path, T1)
+const cxPath = t => t === 'spitter' && REWORK.b6h ? null : UNIT_PATH[t], cxTier = t => t === 'spitter' && REWORK.b6h ? 1 : UDEF[t].tier;
 // The units a building tier opens without a path (T1 units, or a building without a tree)
-const cxTierUnits = (fac, type, t) => cxUnits(fac).filter(u => UDEF[u].from === type && UDEF[u].tier === t && !UNIT_PATH[u] && !UDEF[u].noTrain);
+const cxTierUnits = (fac, type, t) => cxUnits(fac).filter(u => UDEF[u].from === type && cxTier(u) === t && !cxPath(u) && !UDEF[u].noTrain);
 const cxUnitLinks = list => list.length ? `<span class="cxco">Troops: ${list.map(u => cxLink('u:' + u, UDEF[u].name)).join(', ')}</span>` : '';
 function cxUnlock(fac, t) {
-  const d = UDEF[t], b = BD(fac, d.from), q = UNIT_PATH[t], bl = cxLink((q ? 't:' : 'b:') + d.from, b.name);
+  const d = UDEF[t], b = BD(fac, d.from), q = cxPath(t), bl = cxLink((q ? 't:' : 'b:') + d.from, b.name);
   if (d.noTrain || d.spawned) return `Spawned free by the ${bl}${d.tier > 1 ? ` at T${d.tier}` : ''}`;
   if (q) return `${bl} T${d.tier}, ${cxEsc(q.path.name)} path`;
-  return `${bl}${d.tier > 1 ? ` T${d.tier}` : ', from the start'}`;
+  return `${bl}${cxTier(t) > 1 ? ` T${d.tier}` : ', from the start'}`;
 }
 const cxMechFacts = {
   lastfist: () => SALVAGE.pct > 0 ? `Now: ${cxPct(SALVAGE.pct)} of the credit cost, for kills within ${SALVAGE.r} of your units or buildings, at most ${SALVAGE.cap} credits a minute.` : 'Salvage is switched off.',
@@ -18636,7 +18676,7 @@ const TUT_CH = [
       { txt: () => 'Tap a group\'s slot to select that group; tap it again right away to jump the camera there. Its count shows how many are left: new units are never added on their own.', hi: () => tEl('#grps') },
       { txt: () => 'With units selected, tap an enemy unit or building to attack it. They fight what they meet on the way, then hold where they are once it is destroyed. Moving units always stop to fight; only Retreat ignores enemies.' },
       { txt: () => 'Retreat brings them back to the rally point without firing. Units heal at the rally point, and at repair depots you hold, but only when you move them there: nothing goes home on its own.', hi: tFlag },
-      { txt: () => `Playing Bloomhost, a Tunnel button joins these while one of your ${UDEF.ruinmaw.name}s is surfaced: it sends the selected ground units into the tunnel at your Hive, and ${RUIN.transit} s later they pour out of the ${UDEF.ruinmaw.name}'s mouth.` }, // v2.83
+      { txt: () => REWORK.b6h ? `Playing Bloomhost, a Tunnel button joins these while one of your ${UDEF.ruinmaw.name}s is surfaced: the selected ground units standing on your creep burrow where they are and pour out of the ${UDEF.ruinmaw.name}'s mouth, two a second (units off your creep stay). Select the ${UDEF.ruinmaw.name} alone and tap Rally to send new units there too.` : `Playing Bloomhost, a Tunnel button joins these while one of your ${UDEF.ruinmaw.name}s is surfaced: it sends the selected ground units into the tunnel at your Hive, and ${RUIN.transit} s later they pour out of the ${UDEF.ruinmaw.name}'s mouth.` }, // v2.83 (v2.98, batch 6h: from the creep, and the Rally)
       { txt: () => 'On a lane map the column on the left lists each lane with its unit count: tap a lane to select the units in it. There, Attack asks which lane to attack down, with the lane nearest your units highlighted.', hi: () => tEl('#lanes') },
     ] },
   { key: 'upgrades', name: 'Upgrades', blurb: 'Upgrade tiers, paths and what they unlock',

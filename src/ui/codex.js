@@ -23,18 +23,20 @@ function cxRoles(fac) {
 }
 // A faction's units: by building (Barracks, Factory, Tech Lab, then the rest), then path, then tier
 function cxUnits(fac) {
-  const bi = t => { const i = CX_PROD.indexOf(UDEF[t].from); return i < 0 ? 9 : i; }, pi = t => UNIT_PATH[t] ? UNIT_PATH[t].p : '';
+  const bi = t => { const i = CX_PROD.indexOf(UDEF[t].from); return i < 0 ? 9 : i; }, pi = t => cxPath(t) ? cxPath(t).p : '';
   return Object.keys(UDEF).filter(t => (UDEF[t].fac || DEFAULT_FACTION) === fac && rwShown(t)) // v2.82: the units a new match has (Gorebore or Bile Lobber, …)
-    .sort((a, b) => bi(a) - bi(b) || pi(a).localeCompare(pi(b)) || UDEF[a].tier - UDEF[b].tier || UNIT_ORDER.indexOf(a) - UNIT_ORDER.indexOf(b));
+    .sort((a, b) => bi(a) - bi(b) || pi(a).localeCompare(pi(b)) || cxTier(a) - cxTier(b) || UNIT_ORDER.indexOf(a) - UNIT_ORDER.indexOf(b));
 }
+// v2.98 (batch 6h): with b6h the Spitter is a Larva Pit unit from the start (no path, T1)
+const cxPath = t => t === 'spitter' && REWORK.b6h ? null : UNIT_PATH[t], cxTier = t => t === 'spitter' && REWORK.b6h ? 1 : UDEF[t].tier;
 // The units a building tier opens without a path (T1 units, or a building without a tree)
-const cxTierUnits = (fac, type, t) => cxUnits(fac).filter(u => UDEF[u].from === type && UDEF[u].tier === t && !UNIT_PATH[u] && !UDEF[u].noTrain);
+const cxTierUnits = (fac, type, t) => cxUnits(fac).filter(u => UDEF[u].from === type && cxTier(u) === t && !cxPath(u) && !UDEF[u].noTrain);
 const cxUnitLinks = list => list.length ? `<span class="cxco">Troops: ${list.map(u => cxLink('u:' + u, UDEF[u].name)).join(', ')}</span>` : '';
 function cxUnlock(fac, t) {
-  const d = UDEF[t], b = BD(fac, d.from), q = UNIT_PATH[t], bl = cxLink((q ? 't:' : 'b:') + d.from, b.name);
+  const d = UDEF[t], b = BD(fac, d.from), q = cxPath(t), bl = cxLink((q ? 't:' : 'b:') + d.from, b.name);
   if (d.noTrain || d.spawned) return `Spawned free by the ${bl}${d.tier > 1 ? ` at T${d.tier}` : ''}`;
   if (q) return `${bl} T${d.tier}, ${cxEsc(q.path.name)} path`;
-  return `${bl}${d.tier > 1 ? ` T${d.tier}` : ', from the start'}`;
+  return `${bl}${cxTier(t) > 1 ? ` T${d.tier}` : ', from the start'}`;
 }
 const cxMechFacts = {
   lastfist: () => SALVAGE.pct > 0 ? `Now: ${cxPct(SALVAGE.pct)} of the credit cost, for kills within ${SALVAGE.r} of your units or buildings, at most ${SALVAGE.cap} credits a minute.` : 'Salvage is switched off.',

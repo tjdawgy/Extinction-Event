@@ -76,6 +76,7 @@ rw6hText(TREES_BH.factory.B.steps[2], 'short', 'Broodbacks'); rw6hText(TREES_BH.
 rw6hText(TREES_BH.factory.B.steps[2], 'unlock', ['broodback']);
 rw6hText(TREES_BH.barracks.B.steps[2], 'short', 'Queens'); rw6hText(TREES_BH.barracks.B.steps[2], 'txt', 'Unlocks Queens: brood mothers whose bile bolts hit air and ground and who birth Mites in a fight');
 rw6hText(TREES_BH.barracks.B.steps[2], 'unlock', ['queen']);
+{ const B = BDEFS && BDEFS.bloomhost && BDEFS.bloomhost.barracks; if (B && B.tiers) rw6hText(B.tiers, 1, 'Spawns Skitterlings (in broods) and Spitters'); }
 rw6hText(UDEF.mite, 'desc', 'Tiny, short-lived biter from the Brood Mound and the Queen. Its bite corrodes like Spitter acid, so everything it touches takes more damage. Fragile; it never captures nodes.');
 rw6hText(UDEF.leaper, 'desc', 'Parasite that leaps far over the fight onto Artillery, siege and ranged units, stunning everything where it lands, then latches on and eats its host. Shoot it off; if the host dies with Leapers on it, Skitterlings hatch.');
 
@@ -332,7 +333,14 @@ const BODY6H = {
 const BODY6H_AIR = { small: 7, medium: 10, large: 15, huge: 20 }, BODY6H_A = { aircraft: 'medium', interceptor: 'small', leviathan: 'huge', medic: 'medium', drone: 'small', razorwing: 'small', needlewing: 'small', cloudwing: 'medium', broodtyrant: 'large', worldrender: 'huge', wraithwing: 'small', prismwing: 'small', shardstorm: 'medium', voidcarrier: 'large', sovereign: 'huge' };
 const body6hR = t => UDEF[t] && UDEF[t].air ? BODY6H_AIR[bodyClass6h(t)] : BODY6H_R[bodyClass6h(t)] + (LOOSE6H[t] ? B6H.loose / 2 : 0); // the spacing a formation gives it (Test Range placement, ctlPack)
 const bodyClass6h = t => UDEF[t] && UDEF[t].air ? BODY6H_A[t] || 'medium' : BODY6H[t] || 'medium';
-const BODY6 = { cell: 40, allow: 2, k: 0.5, kAir: 0.15, max: 70, hold: 3 };
+// A unit on its way to a spot of its own (a move, a retreat) that bodies keep from it: within its body's reach of the spot (BODY6.near
+// × its radius) and no closer for BODY6.stall s, it has arrived (it holds where it stands)
+function bodyNear6h(g, u, po) {
+  const d = Math.hypot(po.u - u.u, po.v - u.v);
+  if (!u.bn6 || u.bn6.u !== po.u || u.bn6.v !== po.v || d < u.bn6.d - 2) { u.bn6 = { u: po.u, v: po.v, d, t: g.t }; return false; }
+  return d <= CTRL.arrive + BODY6.near * body6hR(u.type) && g.t - u.bn6.t >= BODY6.stall;
+}
+const BODY6 = { near: 3, stall: 1.5, yieldK: 0.5, cell: 40, allow: 2, k: 0.5, kAir: 0.15, max: 70, hold: 3 };
 const B6GRID = new Map();
 function body6h(g, dt) {
   const on = rwB6hbody(g), loose = rwB6h(g); if (!on && !loose) return;
@@ -345,7 +353,7 @@ function body6h(g, dt) {
     const cl = bodyClass6h(e.type), atk = !!(e.tgt && !e.moving);
     let r = on ? (air ? BODY6H_AIR[cl] : BODY6H_R[cl]) : 4;
     if (loose && !air && LOOSE6H[e.type] && !atk) r += B6H.loose / 2;
-    const m = (air ? 1 : BODY6H_M[cl]) * (atk ? BODY6.hold : 1);
+    const m = (air ? 1 : BODY6H_M[cl]) * (atk ? BODY6.hold : e.moving ? 1 : BODY6.yieldK); // fighting units hold their line; standing ones make way for units on the move
     const it = { e, air, r, m, pu: 0, pv: 0 }, gx = Math.floor(e.u / C), gy = Math.floor(e.v * DY / C) + (air ? 100000 : 0), key = gx * 400003 + gy;
     it.gx = gx; it.gy = gy;
     let cell = G.get(key); if (!cell) G.set(key, cell = []); cell.push(it); list.push(it);
@@ -379,6 +387,7 @@ function body6h(g, dt) {
     if (it.air) { e.u = nu; e.v = nv; continue; }
     if (MAP_2D) { const H = MAP.size.h / 2 - 6; nv = clamp(nv, -H, H); if (NAV.on && navShut(nu, nv)) { if (!navShut(nu, e.v)) e.u = nu; else if (!navShut(e.u, nv)) e.v = nv; continue; } }
     else nv = clamp(nv, -LANE_V, LANE_V);
+    if (!e.moving && !e.tgt && e.holdU !== undefined) { e.holdU += nu - e.u; e.holdV += nv - e.v; } // a standing unit pushed aside makes way: its spot moves with it (it doesn't shove back)
     e.u = nu; e.v = nv;
   }
 }

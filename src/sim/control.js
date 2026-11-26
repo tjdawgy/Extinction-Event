@@ -261,7 +261,8 @@ function ctlStep(g, u, d) {
   const po = u.po, settle = () => { ctlHere(g, u); return u.po.o === 'go' ? { go: [u.po.u, u.po.v] } : null; };
   if (po.o === 'retreat') {
     if (po.u == null) { const B = ctlBase(u.side); po.u = B.u; po.v = B.v; }
-    if (Math.hypot(po.u - u.u, po.v - u.v) > CTRL.arrive) return { run: [po.u, po.v] };
+    if (Math.hypot(po.u - u.u, po.v - u.v) > CTRL.arrive && !(rwB6hbody(g) && bodyNear6h(g, u, po))) return { run: [po.u, po.v] };
+    if (rwB6hbody(g) && Math.hypot(po.u - u.u, po.v - u.v) > CTRL.arrive) { ctlHold(u, u.u, u.v); return null; }
     ctlHold(u, po.u, po.v); return null;
   }
   if (po.o === 'attack') { // v2.76: crossing over to the lane picked, fighting what it meets; then down it
@@ -270,7 +271,8 @@ function ctlStep(g, u, d) {
   }
   if (po.o === 'tunnel') { if (!u.tn) ctlHere(g, u); return null; } // v2.83: tunnelStep moves it; without a tunnel left, it holds
   if (po.o === 'go') {
-    if (Math.hypot(po.u - u.u, po.v - u.v) > CTRL.arrive) return po.back ? { run: [po.u, po.v] } : { go: [po.u, po.v] };
+    if (Math.hypot(po.u - u.u, po.v - u.v) > CTRL.arrive && !(rwB6hbody(g) && bodyNear6h(g, u, po))) return po.back ? { run: [po.u, po.v] } : { go: [po.u, po.v] }; // v2.98 (b6hbody): or close and blocked by bodies
+    if (rwB6hbody(g) && Math.hypot(po.u - u.u, po.v - u.v) > CTRL.arrive) { ctlHold(u, u.u, u.v); return null; }
     ctlHold(u, po.u, po.v); return null;
   }
   if (po.o === 'target') {

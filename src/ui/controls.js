@@ -44,8 +44,19 @@ const unitLane = e => { if (!MAP_LANED || dirOf(myS()) * (e.u - ctlBase(myS()).u
 const selLane = k => selSet(myUnits().filter(e => unitLane(e) === k), true);
 function selClear() { SELN.clear(); closePick(); refreshCtl(); }
 // An order for the selection; it clears afterwards
+// v2.98 (b6h): the Ruinmaw rally: every Larva Pit and Evolution Chamber of yours rallies its new units to it (or back to base)
+const rally6Bld = () => game.ents.filter(b => b.kind === 'b' && b.side === myS() && b.hp > 0 && (b.type === 'barracks' || b.type === 'factory') && facOf(b.fac) === 'bloomhost');
+const rally6On = R => rally6Bld().some(b => b.rm6 === R.id);
+function rally6Issue() {
+  const R = selLive()[0]; if (!R) return;
+  const on = !rally6On(R), bs = rally6Bld();
+  if (!bs.length) { toast('No Larva Pit or Evolution Chamber to rally', 'bad'); return; }
+  for (const b of bs) setRally6h(game, myS(), b.id, on ? R.id : 0);
+  toast(on ? `New units from ${bs.length} building${bs.length === 1 ? '' : 's'} tunnel to the Ruinmaw` : 'New units gather at the base again', 'ok'); refreshCtl();
+}
 function issue(o, u, v) {
   if (!ctlOn()) return;
+  if (o === 'rally6') { rally6Issue(); return; }
   const ids = selLive().map(e => e.id);
   const r = command(game, myS(), ids, o, u, v);
   toast(r.msg, r.ok ? (o === 'attack' ? 'warn' : 'ok') : 'bad');
@@ -156,6 +167,8 @@ function refreshCtl() {
   const sl = selLive(), m = sl.length;
   bar.classList.toggle('hide', !m); document.body.classList.toggle('selecting', !!m); if (!m) closePick();
   if (m) setHTML($('selN'), String(m));
+  const rb = bar.querySelector('[data-c="rally6"]'), rm = m === 1 && sl[0].type === 'ruinmaw' && rwB6h(game) && ruinGate(sl[0]) ? sl[0] : null; // v2.98 (b6h): one surfaced Ruinmaw selected: Rally (production tunnels to it)
+  if (rb) { rb.classList.toggle('hide', !rm); if (rm) setHTML(rb, rally6On(rm) ? 'Rally off' : 'Rally'); }
   const tb = bar.querySelector('[data-c="tunnel"]'); tb.classList.toggle('hide', !(m && rwB2b(game) && sl.some(tunnelOk) && tunnelGate(game, myS()))); // v2.83: Tunnel, while a Ruinmaw of yours is surfaced and Bloomhost ground units are selected
 }
 for (const b of document.querySelectorAll('#cmdbar [data-c]')) b.addEventListener('click', () => { if (paused) return; if (b.dataset.c === 'attack' && MAP_LANED) { TUT.sig.pick = true; openPick(); } else issue(b.dataset.c); }); // v2.77: on a lane map, Attack asks which lane
