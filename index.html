@@ -7334,8 +7334,8 @@ function rally6h(g, b, nu) { // a unit just trained at b
 // audit/sim/b6h-bodies.js): the radius in screen px (u, and v × DY), and a mass for pushes (a big unit holds its line).
 const BODY6H_R = { small: 7, medium: 10, large: 14, huge: 20 }, BODY6H_M = { small: 1, medium: 2, large: 4, huge: 9 };
 const BODY6H = {
-  rifle: 'small', sniper: 'small', shardling: 'small', skitterling: 'small', lancer: 'small', mite: 'small',
-  heavy: 'medium', leaper: 'medium', riftstalker: 'medium', parallax: 'medium', marksman: 'medium', spitter: 'medium', queen: 'medium', severance: 'medium', bilecaster: 'medium', gorebore: 'medium', flame: 'medium', bastion: 'medium', riftmortar: 'medium', bilelobber: 'medium',
+  rifle: 'small', sniper: 'small', shardling: 'small', skitterling: 'small', lancer: 'small', mite: 'small', queen: 'small',
+  heavy: 'medium', leaper: 'medium', riftstalker: 'medium', parallax: 'medium', marksman: 'medium', spitter: 'medium', severance: 'medium', bilecaster: 'medium', gorebore: 'medium', flame: 'medium', bastion: 'medium', riftmortar: 'medium', bilelobber: 'medium',
   gravemantle: 'large', tank: 'large', eventide: 'large', hydra: 'large', worldbreaker: 'large', artillery: 'large', ravager: 'large', bulwark: 'large', broodback: 'large', thornback: 'large',
   titan: 'huge', dreadthorn: 'huge', ruinmaw: 'huge',
 };
@@ -7429,6 +7429,7 @@ function aiScores6h(g, s, sc, c) {
   sc.broodback = 1.2 + comp.light * 0.8 + comp.heavy * 0.5 + spl * 0.4 - comp.air * 0.8;
   if (sc.bulwark !== undefined && spl > 0) sc.bulwark = Math.max(sc.bulwark, nW < wantW ? 1.6 + spl * 1.5 : 0.9);
   if (sc.leaper !== undefined) sc.leaper += aiRangedShare(theirs) * 0.5 + aiFarShare(theirs) * 0.8;
+  if (rwB6hnode(g) && fortGuns6h(g, s) >= NODE6.fort) for (const [t, k] of [['gorebore', 0.6], ['ruinmaw', 0.4], ['bilecaster', 0.3], ['broodback', 0.2]]) if (sc[t] !== undefined) sc[t] += k; // b6hnode: fortified enemy nodes call for building-breakers
   if (g.t < OPEN6H.until) {
     const op = aiOpen6h(g, s);
     if (op === 'spit') { if (sc.spitter !== undefined) sc.spitter *= 1.8; if (sc.skitterling !== undefined) sc.skitterling *= 0.7; }
@@ -7493,13 +7494,16 @@ function ruinSpot6h(g, s, R) {
    group at a time and died (about 5 % took the node). The fix (behaviour only, no unit value):
    - no capture group or raid at a node an enemy gun it knows of covers (nodeGuarded6h): those are the assault's;
    - the assault weighs fighting power as the AI does elsewhere (aiPower: damage per second × health; the guns' own dps and
-     health, a forward pad it can't see as the enemy's turret, the enemy units near the node) and goes with its whole ground
-     army when that is NODE6.edge × the defence's: a group too small to win never goes;
+     health, a forward pad it can't see as the enemy's turret, the enemy units near the node), its own damage counted at its
+     weapons' building rate for the guns' share (myPow6h); it sends a strike group, building-breakers first, just big enough to
+     out-power the defence NODE6.edge times (a group too small to win never goes; the rest of the army keeps playing);
+   - with NODE6.fort or more enemy turrets known at enemy-held nodes, its unit scores lean to building-breakers (Gorebores,
+     Ruinmaws, Bilecasters, Broodbacks);
    - it is called off only by danger inside its own base (enemies within NODE6.home of its HQ), heavy losses (NODE6.minHp), a
      time limit, or a win; a threat near home, or an all-in attack starting, no longer recalls it half way;
    - its Ruinmaw, if it has one, surfaces beside the node (erupting into the defence) and the army on its creep tunnels there,
      production rallied to it; Wardens, Broodbacks and Queens go with the army (the whole army goes). */
-const NODE6 = { edge: 1.5, home: 430, minHp: 0.35, dur: 150, every: 5, maxN: 40, minArmy: 450, gather: 20 };
+const NODE6 = { edge: 1.5, home: 430, minHp: 0.35, dur: 150, every: 5, maxN: 40, minArmy: 450, gather: 20, fort: 2, whole: true, groups: true }; // whole: the whole available army goes (else a strike group); groups: capture groups and raids may still go at guarded nodes
 function nodeGuarded6h(g, s, n) {
   const f = g.fog[s];
   for (const b of g.ents) {
@@ -7516,6 +7520,7 @@ function myPow6h(g, us, gunShare) {
   for (const x of us) { const d = rwD(g, x.type); if (!d || d.support) continue; const w = gunShare * (d.weapon && DMG[d.weapon] ? DMG[d.weapon].building || 0 : 0) + (1 - gunShare); dps += (d.dmg || 0) / (d.cd || 1) * w; hp += x.hp + (x.shp || 0); }
   return dps * hp;
 }
+const fortGuns6h = (g, s) => Object.values(g.fog[s].ghosts).filter(gh => gh.side === 1 - s && gh.type === 'turret' && g.nodes.some(n => n.owner === 1 - s && Math.hypot(gh.u - n.u, gh.v - n.v) < B6G4.gunR)).length; // enemy turrets it knows of at nodes the enemy holds
 const padsAt6h = (g, s, i) => g.ents.filter(b => b.kind === 'b' && b.side === 1 - s && b.hp > 0 && b.slot >= FWD_SLOT && FWD_PADS[b.slot - FWD_SLOT] && FWD_PADS[b.slot - FWD_SLOT].node === i);
 function defPow6h(g, s, n, theirs) { // the defence's fighting power at node n, as side s knows it
   const df = defense6g(g, s, n, theirs), guns = df.guns.map(b => { const gn = gunOf6g(b); return { dps: gn.dmg / gn.cd * (gn.split || 1) * powMul(g), hp: b.hp + (b.shp || 0) }; });
@@ -7539,17 +7544,19 @@ function aiNode6h(g, s, D, mine, theirs, N) {
   for (const i of cand) {
     const n = g.nodes[i], { pow, df, gunShare } = defPow6h(g, s, n, theirs), armed = df.guns.length + df.guess > 0, myPow = myPow6h(g, pool, gunShare);
     if (!armed && !(MAP_LANED && i !== 1 && g.t - (N.lost[i] ?? -1e9) < B6G4.lost)) continue; // unguarded: the capture groups and raids (v2.96's rules)
-    const go = pool.length >= B6G4.minN && myPow >= pow * NODE6.edge;
-    if (NODE6H.log) NODE6H.log(g, { k: 'eval', s, node: i, guns: df.guns.length, guess: df.guess, def: Math.round(Math.sqrt(pow)), need: Math.round(Math.sqrt(pow * NODE6.edge)), have: Math.round(Math.sqrt(myPow)), poolV: Math.round(armyValue(pool)), n: pool.length, go });
+    // a strike group, not the whole army: building-breakers first (the pool's order) until it out-powers the defence by NODE6.edge
+    const grp = NODE6.whole ? pool : []; let gp = NODE6.whole ? myPow : 0; if (!NODE6.whole) for (const u of pool) { grp.push(u); gp = myPow6h(g, grp, gunShare); if (gp >= pow * NODE6.edge && grp.length >= B6G4.minN) break; }
+    const go = grp.length >= B6G4.minN && gp >= pow * NODE6.edge;
+    if (NODE6H.log) NODE6H.log(g, { k: 'eval', s, node: i, guns: df.guns.length, guess: df.guess, def: Math.round(Math.sqrt(pow)), need: Math.round(Math.sqrt(pow * NODE6.edge)), have: Math.round(Math.sqrt(gp)), poolV: Math.round(armyValue(pool)), n: grp.length, go });
     if (!go) continue;
-    const ids = pool.map(u => u.id);
+    const ids = grp.map(u => u.id);
     let su = clamp(n.u - dir * (df.reach + B6G4.gap), 0, L), sv = n.v;
     if (MAP_2D && NAV.on && navShut(su, sv)) [su, sv] = navOpen(su, sv);
-    side.capN = { node: i, ids, u: armed ? su : n.u, v: armed ? sv : n.v, end: g.t + NODE6.dur, ph: armed ? 'gather' : 'go', t0: g.t, h6: 1, hp0: pool.reduce((a, u) => a + u.hp, 0), need: Math.round(Math.sqrt(pow)) };
+    side.capN = { node: i, ids, u: armed ? su : n.u, v: armed ? sv : n.v, end: g.t + NODE6.dur, ph: armed ? 'gather' : 'go', t0: g.t, h6: 1, hp0: grp.reduce((a, u) => a + u.hp, 0), need: Math.round(Math.sqrt(pow)) };
     const R = mine.find(u => u.type === 'ruinmaw' && !u.rmHome); // its Ruinmaw surfaces beside the node (aiRework2b sends the army on its creep through, aiRuin6h rallies production there)
     if (R && rwB6h(g)) { let ru = clamp(n.u - dir * 40, 0, L), rv = n.v + (R.id % 2 ? 30 : -30); if (MAP_2D && NAV.on && navShut(ru, rv)) [ru, rv] = navOpen(ru, rv); R.rmGo = [ru, rv]; R.rmSince = g.t; R.rmAt = 0; }
     lg(g, s, 'G', 'node6h', i);
-    if (NODE6H.log) NODE6H.log(g, { k: 'go', s, node: i, ids: ids.slice(), types: pool.map(u => u.type), v: Math.round(armyValue(pool)), need: Math.round(Math.sqrt(pow)) });
+    if (NODE6H.log) NODE6H.log(g, { k: 'go', s, node: i, ids: ids.slice(), types: grp.map(u => u.type), v: Math.round(armyValue(grp)), need: Math.round(Math.sqrt(pow)) });
     return;
   }
 }
@@ -8310,7 +8317,7 @@ function aiCapture(g, s, mine, theirs, easy, key = 'capT', atKey = 'capAt', othe
   if (g.t < (hasCond(g, 'richCenter') ? COND.richCenter.capFrom : C.from) || g.t - (side[atKey] ?? -99) < C.gap || (side.stance === 'attack' && side.pushMode === 'all')) return;
   const myV = armyValue(mine); if (myV < C.minArmy) return;
   const near = n => armyValue(theirs.filter(e => e.fresh && e.v !== undefined && Math.hypot(e.u - n.u, e.v - n.v) < 260));
-  const g6 = rwB6hnode(g) && facOf(side.faction) === 'bloomhost' && !easy; // v2.98 (b6hnode): never a capture group at a node an enemy gun covers (the assault's)
+  const g6 = rwB6hnode(g) && !NODE6.groups && facOf(side.faction) === 'bloomhost' && !easy; // v2.98 (b6hnode): never a capture group at a node an enemy gun covers (the assault's)
   const cand = g.nodes.map((n, i) => i).filter(i => !(g6 && nodeGuarded6h(g, s, g.nodes[i])) && g.nodes[i].owner !== s && (i === 1 || (!easy && (g.nodes[i].type === 'watchtower' || g.nodes[i].type === 'repair' || (g.nodes[i].type === 'relic' && SPECIAL.on && SPECIAL.relic && !g.nodes[i].spent && !relicGuarded(g, g.nodes[i]))))) && near(g.nodes[i]) < myV * C.odds && !(other && other.node === i));
   if (!cand.length) return;
   cand.sort((a, b) => near(g.nodes[a]) - near(g.nodes[b]) || a - b);
@@ -8404,7 +8411,7 @@ function aiRaid(g, s, mine, myV, dr) {
   if (side.stance === 'attack' || g.t < R.at || g.t - (side.raidT ?? -1e9) < R.every) return;
   const theirNode = g.nodes[s === 0 ? 2 : 0], tgt = theirNode.owner === s ? g.nodes[1] : theirNode;
   if (tgt.owner === s) return;
-  if (rwB6hnode(g) && facOf(side.faction) === 'bloomhost' && nodeGuarded6h(g, s, tgt)) { side.raidT = g.t; return; } // v2.98 (b6hnode): no raid into guns
+  if (rwB6hnode(g) && !NODE6.groups && facOf(side.faction) === 'bloomhost' && nodeGuarded6h(g, s, tgt)) { side.raidT = g.t; return; } // v2.98 (b6hnode): no raid into guns
   const fast = mine.filter(u => { const d = UDEF[u.type]; return !d.air && !d.support && !d.siege && !d.noCap && !u.temp && u.id !== side.scoutId; }).sort((a, b) => UDEF[b.type].speed - UDEF[a.type].speed);
   const ids = []; let v = 0, hp0 = 0;
   for (const u of fast) { const c = UDEF[u.type].cost.c + UDEF[u.type].cost.e; if (ids.length >= R.n || v + c > myV * R.share) continue; ids.push(u.id); v += c; hp0 += u.hp; }

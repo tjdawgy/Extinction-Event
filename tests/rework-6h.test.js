@@ -110,10 +110,17 @@ test('bodies: ground units stop overlapping; air flies over them; burrowed units
   assert.strictEqual(sim.bodyClass6h('titan'), 'huge'); assert.strictEqual(sim.bodyClass6h('rifle'), 'small');
 });
 
-test('b6hnode: the Bloomhost AI sends no capture group or raid at a node an enemy gun covers', () => {
-  const g = sim.newGame('hard', { seed: 11, map: 'twolane', factions: ['bloomhost', 'lastfist'], autoPlayer: true, autoDiff: 'hard' }); g.countdown = 0;
-  const n = g.nodes[1]; n.owner = 1; const t = sim.mkBuilding(g, 1, 'turret', -1); t.u = n.u + 40; t.v = n.v; t.built = true; t.progress = 1; t.hp = t.maxHp;
-  sim.spawnUnit(g, 0, 'drone', n.u, n.v); sim.updateVision(g); // a spotter overhead: the turret is in sight
-  assert.ok(sim.nodeGuarded6h(g, 0, n), 'the centre is guarded');
-  for (let i = 0; i < 60 * 400 && !g.over; i++) { sim.update(g, sim.TICK); g.events.length = 0; const T = g.sides[0].capT; if (T && t.hp > 0) assert.notStrictEqual(T.node, 1, 'no capture group at the guarded centre'); }
+test('b6hnode: the Bloomhost AI assaults a guarded node only with the power to win it (its damage at building rate), with its army', () => {
+  const setup = (n0) => {
+    const g = sim.newGame('hard', { seed: 11, map: 'twolane', factions: ['bloomhost', 'lastfist'], autoPlayer: true, autoDiff: 'hard' }); g.countdown = 0; g.t = 400;
+    const n = g.nodes[1]; n.owner = 1; const t = sim.mkBuilding(g, 1, 'turret', -1); t.u = n.u + 40; t.v = n.v; t.built = true; t.progress = 1; t.hp = t.maxHp;
+    sim.spawnUnit(g, 0, 'drone', n.u, n.v); sim.updateVision(g);
+    const mine = []; for (let i = 0; i < n0; i++) mine.push(sim.spawnUnit(g, 0, i % 3 ? 'skitterling' : 'gorebore', sim.hqU(0) + 200, (i % 5 - 2) * 20));
+    g.sides[0].n6 = { t: -99, f: -99, own: [], lost: {}, hot: {} };
+    sim.aiNode6g(g, 0, { label: 'Hard' }, g.ents.filter(e => e.kind === 'u' && e.side === 0 && e.hp > 0), [], false, 3000);
+    return { g, n, side: g.sides[0] };
+  };
+  assert.ok(sim.nodeGuarded6h(setup(0).g, 0, setup(0).n), 'the centre is guarded');
+  const big = setup(30); assert.ok(big.side.capN && big.side.capN.h6 && big.side.capN.node === 1, 'a strong army goes'); assert.ok(big.side.capN.ids.length >= 20, 'with its army');
+  const small = setup(5); assert.ok(!small.side.capN, 'too weak: it waits');
 });

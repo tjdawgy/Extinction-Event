@@ -748,7 +748,7 @@ function aiCapture(g, s, mine, theirs, easy, key = 'capT', atKey = 'capAt', othe
   if (g.t < (hasCond(g, 'richCenter') ? COND.richCenter.capFrom : C.from) || g.t - (side[atKey] ?? -99) < C.gap || (side.stance === 'attack' && side.pushMode === 'all')) return;
   const myV = armyValue(mine); if (myV < C.minArmy) return;
   const near = n => armyValue(theirs.filter(e => e.fresh && e.v !== undefined && Math.hypot(e.u - n.u, e.v - n.v) < 260));
-  const g6 = rwB6hnode(g) && facOf(side.faction) === 'bloomhost' && !easy; // v2.98 (b6hnode): never a capture group at a node an enemy gun covers (the assault's)
+  const g6 = rwB6hnode(g) && !NODE6.groups && facOf(side.faction) === 'bloomhost' && !easy; // v2.98 (b6hnode): never a capture group at a node an enemy gun covers (the assault's)
   const cand = g.nodes.map((n, i) => i).filter(i => !(g6 && nodeGuarded6h(g, s, g.nodes[i])) && g.nodes[i].owner !== s && (i === 1 || (!easy && (g.nodes[i].type === 'watchtower' || g.nodes[i].type === 'repair' || (g.nodes[i].type === 'relic' && SPECIAL.on && SPECIAL.relic && !g.nodes[i].spent && !relicGuarded(g, g.nodes[i]))))) && near(g.nodes[i]) < myV * C.odds && !(other && other.node === i));
   if (!cand.length) return;
   cand.sort((a, b) => near(g.nodes[a]) - near(g.nodes[b]) || a - b);
@@ -842,7 +842,7 @@ function aiRaid(g, s, mine, myV, dr) {
   if (side.stance === 'attack' || g.t < R.at || g.t - (side.raidT ?? -1e9) < R.every) return;
   const theirNode = g.nodes[s === 0 ? 2 : 0], tgt = theirNode.owner === s ? g.nodes[1] : theirNode;
   if (tgt.owner === s) return;
-  if (rwB6hnode(g) && facOf(side.faction) === 'bloomhost' && nodeGuarded6h(g, s, tgt)) { side.raidT = g.t; return; } // v2.98 (b6hnode): no raid into guns
+  if (rwB6hnode(g) && !NODE6.groups && facOf(side.faction) === 'bloomhost' && nodeGuarded6h(g, s, tgt)) { side.raidT = g.t; return; } // v2.98 (b6hnode): no raid into guns
   const fast = mine.filter(u => { const d = UDEF[u.type]; return !d.air && !d.support && !d.siege && !d.noCap && !u.temp && u.id !== side.scoutId; }).sort((a, b) => UDEF[b.type].speed - UDEF[a.type].speed);
   const ids = []; let v = 0, hp0 = 0;
   for (const u of fast) { const c = UDEF[u.type].cost.c + UDEF[u.type].cost.e; if (ids.length >= R.n || v + c > myV * R.share) continue; ids.push(u.id); v += c; hp0 += u.hp; }
