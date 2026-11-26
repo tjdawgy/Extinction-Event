@@ -220,6 +220,7 @@ function command(g, s, ids, o, a, b) {
 // through the surfaced Ruinmaw nearest the enemy (tunnelGate); the rest of the selection is left as it was
 function ctlTunnel(g, s, us) {
   if (!rwB2b(g)) return { ok: false, msg: 'Unknown order' };
+  if (rwB6h(g)) return ctlTunnel6h(g, s, us); // v2.98 (b6h): on creep, down where they stand (src/sim/rework-6h.js)
   const R = tunnelGate(g, s); if (!R) return { ok: false, msg: 'No Ruinmaw is surfaced' };
   const go = us.filter(tunnelOk); if (!go.length) return { ok: false, msg: 'Only Bloomhost ground units can use the tunnel' };
   for (const e of go) { e.po = { o: 'tunnel', r: R.id }; e.tn = { r: R.id, ph: 0 }; e.holdU = undefined; e.holdV = undefined; }

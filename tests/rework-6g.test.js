@@ -5,7 +5,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { loadSim } = require('./load-sim');
 const sim = loadSim();
-const off = { b6g: false };
+const off = { b6g: false, b6h: false, b6hbody: false, b6hnode: false };
 const quiet = g => { g.countdown = 0; for (const sd of g.sides) sd.aiT = 1e9; return g; }; // both AIs idle
 const run = (g, secs) => { for (let i = 0; i < 60 * secs && !g.over; i++) { sim.update(g, sim.TICK); g.events.length = 0; } };
 const finish = g => { for (const e of g.ents) if (e.kind === 'b') { e.built = true; e.progress = 1; e.hp = e.maxHp; } };

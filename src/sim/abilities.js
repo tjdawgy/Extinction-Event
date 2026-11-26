@@ -166,6 +166,7 @@ function updateMounds(g) {
   for (let s = 0; s < 2; s++) {
     const m = moundOf(g, s);
     if (!m) continue;
+    if (rwB6h(g)) { mound6h(g, s, m); continue; } // v2.98 (b6h): the side's cap of Mites; owed Mites wait
     if (m.mt === undefined) m.mt = g.t + MOUND.every;
     if (g.t < m.mt) continue;
     m.mt = g.t + MOUND.every;

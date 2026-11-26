@@ -54,7 +54,7 @@ test('a capture group takes the centre node (off both lanes), then the watchtowe
 
 test('forward pads: Hard builds a Turret, then a Barracks, on pads it holds on its own half; Easy never', () => { // v2.97: b6g off (aiFort6g: tests/rework-6g.test.js)
   for (const diff of ['hard', 'normal', 'easy']) {
-    const g = setup(diff, { b6g: false }), side = g.sides[1];
+    const g = setup(diff, { b6g: false, b6h: false, b6hbody: false, b6hnode: false }), side = g.sides[1];
     side.res.c = 5000; side.res.e = 5000;
     const bar = sim.tryBuild(g, 1, 'barracks'); assert.ok(bar.ok); const b = g.ents.find(x => x.side === 1 && x.type === 'barracks'); b.built = true; b.hp = b.maxHp;
     for (const n of g.nodes) if (n.type === 'forwardPad') { n.owner = 1; n.prog = -100; }
@@ -98,7 +98,7 @@ test('Classic: the lane layer never runs', () => {
 // v2.68 (Two-Lane draw fix)
 test('a: units trained at a forward Barracks (each faction\'s) start at that lane\'s Forward flag and gather there while the post is held', () => {
   for (const fac of ['lastfist', 'bloomhost', 'axiarchs']) {
-    const g = setup('hard', fac === 'axiarchs' ? { b6g: false } : undefined); g.sides[0].faction = fac; // v2.97: with b6g an Axiarch forward Gate's unit warps in at a safe spot (tests/rework-6g.test.js) g.ents = g.ents.filter(e => e.kind !== 'b' || e.type === 'hq');
+    const g = setup('hard', fac === 'axiarchs' ? { b6g: false, b6h: false, b6hbody: false, b6hnode: false } : undefined); g.sides[0].faction = fac; // v2.97: with b6g an Axiarch forward Gate's unit warps in at a safe spot (tests/rework-6g.test.js) g.ents = g.ents.filter(e => e.kind !== 'b' || e.type === 'hq');
     const side = g.sides[0]; side.res.c = side.res.e = 9000;
     const F = sim.cur().FWD_PADS, k = F.findIndex(f => f.at[0] === 820 && f.at[1] === 280), post = g.nodes[F[k].node]; post.owner = 0; post.prog = 100;
     for (const n of g.nodes) if (n !== post) { n.owner = null; n.prog = 0; }

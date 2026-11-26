@@ -83,6 +83,9 @@ function updateProjs(g, dt) {
 }
 
 function splashHit(g, p, hit, scale, falloffFloor) {
+  AREA6H.on++; try { splashHit0(g, p, hit, scale, falloffFloor); } finally { AREA6H.on--; } // v2.98 (b6h): splash is area damage (the Chitin Warden's aura)
+}
+function splashHit0(g, p, hit, scale, falloffFloor) {
   for (const e of g.ents) {
     if (e === hit || e.side === p.side || e.hp <= 0 || (e.kind === 'u' && UDEF[e.type].air && !(e.lnd >= 2))) continue; // v2.87: a landed Worldrender takes splash
     const dx = Math.max(0, Math.hypot(e.u - p.u, (e.v - p.v) * 0.6) - (e.kind === 'b' ? e.half : 0));
@@ -125,7 +128,7 @@ function pierceLine(g, p, hit) {
   }
   list.sort((a, b) => a[0] - b[0] || a[1].id - b[1].id);
   let dmg = p.dmg;
-  for (const [, e] of list.slice(0, K.n)) { dmg *= K.fall; damage(g, e, dmg, p.weapon, p.side); if (p.pin) pinHit(g, e, p.side); } // v2.86: each one it goes through is pinned too
+  AREA6H.on++; try { for (const [, e] of list.slice(0, K.n)) { dmg *= K.fall; damage(g, e, dmg, p.weapon, p.side); if (p.pin) pinHit(g, e, p.side); } } finally { AREA6H.on--; } // v2.98: the units behind the target take area damage // v2.86: each one it goes through is pinned too
   const a = P(hit.u, hit.v, aimZ(hit)), b = P(hit.u + ux * K.len, hit.v + vy * K.len, aimZ(hit));
   g.fx.push({ k: 'pierce', u: hit.u, x: a.x, y: a.y, x2: b.x, y2: b.y, t: 0, life: 0.25 });
 }
@@ -208,6 +211,7 @@ function damage1(g, e, amt, weapon, fromSide, src) {
   if (b3 && ud3.parry && amt > 0 && parryHit(g, e, weapon, src)) return; // v2.85: a Shardling's parry negates the hit
   let dmg = amt * mult * (sideBuff(g, e.side) ? NANO.cut : 1) * (1 + corrNow(e, g.t)); // corroded: takes more (v2.19; v2.37 the second slot)
   if (e.mkT > g.t) dmg *= markBonus(g, e, fromSide); // v2.86: marked by a batch 4a Astral Marksman
+  if (e.wd6 === g.t && e.kind === 'u' && area6h(weapon)) dmg = ward6hCut(g, e, dmg); // v2.98 (b6h): a Chitin Warden's aura
   if (e.cov && !noCover(weapon)) dmg *= 1 - TITAN.cover; // v2.83: Last Fist infantry in a Titan's cover take less from ranged attacks
   const br = e.kind === 'u' && (b3 ? ud3 : UDEF[e.type]).brace, pre = dmg; // v2.85: a batch 3b Bastion has none
   if (br) { // the Bulwark braces on the first hit after its cooldown (v2.17)
@@ -275,7 +279,8 @@ function kill(g, e, by, weapon) {
     salvage(g, e, w);
     if (e.tSrc === 'mite') miteBurst(g, e); // v2.33: killed, never expired (expiry doesn't come through kill)
     echoStore(g, e); // v2.34: an Axiarch T2/T3 unit's echo
-    if (e.type === 'ruinmaw' && rwB2b(g)) ruinCollapse(g, e, by); // v2.83: its tunnel collapses on whoever is inside
+    if (e.type === 'ruinmaw' && rwB2b(g)) ruinCollapse(g, e, by); // v2.83
+    if (d.brood6 && rwB6h(g)) brood6hDie(g, e); // v2.98 (b6h): a Broodback bursts: its tunnel collapses on whoever is inside
     if (rwB5b(g)) kfKill(g, e); // v2.88: Bloomhost units nearby go into a kill frenzy
     if (rwB3a(g)) kill3a(g, e); // v2.84: Leapers on it hatch Skitterlings; it leaves remains
     fxBoom(g, w.x, w.y, e.type === 'sovereign' ? 44 : e.type === 'voidcarrier' ? 28 : e.type === 'prismwing' ? 10 : e.type === 'shardstorm' ? 14 : e.type === 'riftstalker' || e.type === 'lancer' || e.type === 'marksman' ? 10 : e.type === 'parallax' ? 12 : e.type === 'shardling' ? 8 : e.type === 'bastion' ? 20 : e.type === 'wraithwing' ? 14 : e.type === 'skitterling' ? 6 : e.type === 'bulwark' || e.type === 'ruinmaw' || e.type === 'dreadthorn' || e.type === 'thornback' ? 18 : d.fac === 'bloomhost' && !d.air ? 10 : d.air ? (e.type === 'razorwing' || e.type === 'cloudwing' ? 12 : e.type === 'needlewing' ? 8 : e.type === 'worldrender' ? 44 : 28) : e.type === 'rifle' || e.type === 'sniper' ? 9 : e.type === 'heavy' ? 15 : e.type === 'titan' ? 46 : 30);

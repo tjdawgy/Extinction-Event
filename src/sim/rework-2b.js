@@ -135,12 +135,14 @@ const inTunnel = (g, R) => g.ents.filter(e => e.kind === 'u' && e.hp > 0 && e.tn
 function ruinDig(g, u) { // it moves: underground, and the gate closes (whoever is inside comes back out at the entrance)
   if (u.bur) return;
   u.bur = 1; u.gone = 1; u.tgt = 0;
+  if (rwB6h(g)) { for (const e of inTunnel(g, u)) resurface6h(g, e); const V = u.swV && ctlEnt(g, u.swV); if (V && V.sw6) spit6h(g, V, u); ev(g, { type: 'burrow', u: u.u, v: u.v, side: u.side }); return; } // v2.98 (b6h): up where they went down; a swallowed unit spat out
   const E = tunnelEntrance(g, u.side); let k = 0;
   for (const e of inTunnel(g, u)) { e.tn = undefined; e.gone = 0; e.u = E.u + ((k % 3) - 1) * 10; e.v = E.v + (Math.floor(k / 3) % 3 - 1) * 10; k++; tunnelOut(g, e, E.u, E.v); }
   ev(g, { type: 'burrow', u: u.u, v: u.v, side: u.side });
 }
 function ruinUp(g, u) { // it stops: up it comes, and the gate opens
   u.bur = 0; u.gone = 0; u.gateT = g.t; u.outT = g.t;
+  if (rwB6h(g)) erupt6h(g, u); // v2.98 (b6h): the eruption; it can dive again B6H.ruin.dive s later
   const w = P(u.u, u.v, 0); g.fx.push({ k: 'erupt', side: u.side, u: u.u, x: w.x, y: w.y, t: 0, life: 0.9, r: 36 });
   ev(g, { type: 'surface', u: u.u, v: u.v, side: u.side });
 }
@@ -164,10 +166,12 @@ function ruinEmit(g, R) { // the gate: the next unit whose transit is done comes
   const w = P(u, v, 0); g.fx.push({ k: 'emerge', side: e.side, u, x: w.x, y: w.y, t: 0, life: 0.6 });
 }
 function ruinCollapse(g, R, by) { // killed: the tunnel collapses on whoever is inside
+  if (rwB6h(g)) { for (const e of inTunnel(g, R)) resurface6h(g, e); for (const e of g.ents) if (e.sw6 && e.sw6.r === R.id && e.hp > 0) spit6h(g, e, R); return; } // v2.98 (b6h): they come up where they went down
   for (const e of inTunnel(g, R)) { e.tn = undefined; e.gone = 0; e.u = R.u; e.v = R.v; e.hp = 0; kill(g, e, by, 'tunnel'); }
 }
 // Surfaced: a bite at a unit beside it, a chew at a building beside it
 function ruinFight(g, u) {
+  if (rwB6h(g)) swallow6h(g, u); // v2.98 (b6h)
   const mul = (sideBuff(g, u.side) ? NANO.dmg : 1) * outMul(g, u);
   if (g.t >= (u.bcd || 0)) {
     let T = null, bd = 1e9;
@@ -188,6 +192,7 @@ function ruinFight(g, u) {
 const ruinReach = e => e.kind === 'b' ? RUIN.chewR : RUIN.biteR - 2; // close enough to bite (a unit) or chew (a building)
 const ruinFoe = (g, u) => g.ents.some(e => e.side !== u.side && e.side !== NEUTRAL && e.hp > 0 && !e.gone && !e.shielded && !(e.kind === 'u' && UDEF[e.type].air) && effDist(u, e) <= ruinReach(e) && visibleTo(g, u.side, e));
 function ruinStep(g, u, d, side, dt, st, cs) {
+  if (!u.bur && u.dvCd > g.t && rwB6h(g)) { u.moving = false; ruinFight(g, u); ruinEmit(g, u); if (!side.direct && u.rmGo) u.rmAt = Math.hypot(u.rmGo[0] - u.u, u.rmGo[1] - u.v) <= 4 ? 1 : u.rmAt; return true; } // v2.98 (b6h): it can't dive again yet: it stays up and fights
   if (!side.direct && u.rmGo) {
     const [tu, tv] = u.rmGo;
     if (Math.hypot(tu - u.u, tv - u.v) > 4) { ruinDig(g, u); u.tgt = 0; if (!moveToward(u, d, tu, tv, dt, 1)) { u.u = tu; u.v = tv; } u.moving = true; return true; }
@@ -209,6 +214,7 @@ function tunnelStep(g, u, d, side, dt, sp) {
   if (T.ph === 1) { u.moving = false; u.tgt = 0; u.chT = 0; return true; } // inside: off the field
   const R = ctlEnt(g, T.r);
   if (!R || R.hp <= 0 || R.dead || R.type !== 'ruinmaw') { u.tn = undefined; if (side.direct && u.po && u.po.o === 'tunnel') ctlHere(g, u); return false; }
+  if (rwB6h(g) && ruinGate(R) && onCreep(g, u.side, u.u, u.v)) { burrow6h(g, u, R); return true; } // v2.98 (b6h): down where it stands, on its creep
   const E = tunnelEntrance(g, u.side);
   u.tgt = 0; u.chT = 0;
   if (Math.hypot(E.u - u.u, E.v - u.v) > RUIN.enter) { moveToward(u, d, E.u, E.v, dt, sp); return true; }

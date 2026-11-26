@@ -36,7 +36,7 @@ const UNIT_PATH = {}; // unit type → { b: building type, p: path, path: the pa
 for (const fac in TREE_SETS) { const S = TREE_SETS[fac]; for (const bt in S) for (const p in S[bt]) for (const st of S[bt][p].steps) if (st && st.unlock) for (const u of st.unlock) UNIT_PATH[u] = { b: bt, p, path: S[bt][p] }; }
 const pathMod = (b, mod) => { const T = treeOf(b.fac, b.type); if (!T || !b.path || !b.built) return false; const st = T[b.path].steps; for (let t = 2; t <= b.tier; t++) if (st[t] && st[t].mod === mod) return true; return false; };
 // Can this building train this unit now? (type, finished, tier, and the path that unlocks it)
-const canMake = (b, type, g) => { const d = UDEF[type], q = UNIT_PATH[type]; return !d.noTrain && rwHas(g, type) && b.kind === 'b' && b.type === d.from && facOf(b.fac) === (d.fac || DEFAULT_FACTION) && b.built && b.hp > 0 && b.tier >= d.tier && (!q || b.path === q.p); };
+const canMake = (b, type, g) => { const d = UDEF[type], s6 = type === 'spitter' && rwB6h(g), q = s6 ? null : UNIT_PATH[type]; return !d.noTrain && rwHas(g, type) && b.kind === 'b' && b.type === d.from && facOf(b.fac) === (d.fac || DEFAULT_FACTION) && b.built && b.hp > 0 && b.tier >= (s6 ? 1 : d.tier) && (!q || b.path === q.p); }; // v2.98 (b6h): the Spitter from T1, no path
 const canTrain = (g, s, type) => g.ents.some(e => e.side === s && canMake(e, type, g)); // v2.82: g decides which units its trees unlock (rwHas)
 
 const UDEF = {

@@ -999,7 +999,7 @@ const UNIT_PATH = {}; // unit type → { b: building type, p: path, path: the pa
 for (const fac in TREE_SETS) { const S = TREE_SETS[fac]; for (const bt in S) for (const p in S[bt]) for (const st of S[bt][p].steps) if (st && st.unlock) for (const u of st.unlock) UNIT_PATH[u] = { b: bt, p, path: S[bt][p] }; }
 const pathMod = (b, mod) => { const T = treeOf(b.fac, b.type); if (!T || !b.path || !b.built) return false; const st = T[b.path].steps; for (let t = 2; t <= b.tier; t++) if (st[t] && st[t].mod === mod) return true; return false; };
 // Can this building train this unit now? (type, finished, tier, and the path that unlocks it)
-const canMake = (b, type, g) => { const d = UDEF[type], q = UNIT_PATH[type]; return !d.noTrain && rwHas(g, type) && b.kind === 'b' && b.type === d.from && facOf(b.fac) === (d.fac || DEFAULT_FACTION) && b.built && b.hp > 0 && b.tier >= d.tier && (!q || b.path === q.p); };
+const canMake = (b, type, g) => { const d = UDEF[type], s6 = type === 'spitter' && rwB6h(g), q = s6 ? null : UNIT_PATH[type]; return !d.noTrain && rwHas(g, type) && b.kind === 'b' && b.type === d.from && facOf(b.fac) === (d.fac || DEFAULT_FACTION) && b.built && b.hp > 0 && b.tier >= (s6 ? 1 : d.tier) && (!q || b.path === q.p); }; // v2.98 (b6h): the Spitter from T1, no path
 const canTrain = (g, s, type) => g.ents.some(e => e.side === s && canMake(e, type, g)); // v2.82: g decides which units its trees unlock (rwHas)
 
 const UDEF = {
@@ -2018,6 +2018,7 @@ function spawnUnit(g, s, type, u, v) {
   if (rwB5b(g)) rw5bSpawn(g, unit); // v2.88: a batch 5b Skitterling's health
   if (rwB6d(g)) rw6dSpawn(g, unit); // v2.94: batch 6d's health and shields
   if (rwB6e(g)) rw6eSpawn(g, unit); // v2.95: batch 6e's Riftstalker shields
+  if (rwB6h(g)) rw6hSpawn(g, unit); // v2.98: a batch 6h Mite's health
   if (rwB2b(g)) rw2bSpawn(g, unit); // v2.83: a batch 2b Ruinmaw's health and armour
   if (MAP_LANED) unit.lane = laneNew(g.sides[s]); // v2.63: the lane it walks (Classic: no lane key at all)
   if (NAV.on && !d.air && navShut(unit.u, unit.v)) [unit.u, unit.v] = navOpen(unit.u, unit.v); // v2.66: a ground unit never appears on closed ground (a warp-in or brood on the ridge)
@@ -2204,6 +2205,7 @@ function update(g, dt) {
   updateGuards(g, foes, dt); // v2.71: the relic guards fire, and both sides may target them
   indexFoes(foes[0], dt); indexFoes(foes[1], dt); // v2.37: lane-sorted, so target searches look only near the searcher
   RDG.list = null; if (rwB2b(g)) update2b(g); if (rwB3a(g)) update3a(g); /* v2.84: remains */ if (rwB3b(g)) update3b(g, dt); /* v2.85: barriers, knocks, Bulwark regen */ if (rwB4a(g)) update4a(g); /* v2.86: marked targets */ if (rwB4b(g)) update4b(g, dt); if (rwB5b(g)) update5b(g); /* v2.88: swarm surge */ /* v2.87: pustules */ // v2.83: Titan cover, Worldbreaker cracks and ridges (RDG.list: this game's ridges, while its units move)
+  if (rwB6h(g)) update6h(g, dt); // v2.98 (batch 6h): Warden auras, Bile Blooms, swallowed units, Queens' Mites (src/sim/rework-6h.js)
   const n = g.ents.length; NAV.now = g.t; NAV.g6 = rwB6g(g); // v2.97 (b6g): moveNav's guard below // v2.65: the clock the navigation paths age by
   for (let i = 0; i < n; i++) {
     const e = g.ents[i];
@@ -2211,6 +2213,7 @@ function update(g, dt) {
     if (e.kind === 'b') updateBuilding(g, e, foes[e.side], dt); else { updateUnit(g, e, foes[e.side], dt); if (NAV.on && e.hp > 0 && !UDEF[e.type].air && !e.leaping && navShut(e.u, e.v)) navEject(e); } // v2.65: never inside a wall
   }
   RDG.list = null;
+  if (rwB6hbody(g) || rwB6h(g)) body6h(g, dt); // v2.98 (batch 6h): unit bodies and the loose swarm (src/sim/rework-6h.js)
   updateProjs(g, dt);
   if (g.mk) updateMarks(g); // v2.82: telegraphed shells' markers
   updateMedics(g, dt);
@@ -2362,7 +2365,8 @@ function updateBuilding(g, b, foes, dt) {
         if (facOf(b.fac) === 'axiarchs') { if (fr && !rwB6g(g)) g.warps.push({ side: b.side, type: ut, u: fr.u + rand(-12, 12), v: fr.v + rand(-20, 20), t0: g.t, end: g.t + WARP.ch, fwd: fr }); else startWarp(g, b.side, ut, undefined, b); continue; } // Axiarchs (v2.26): the unit warps in at the warp point instead (v2.97, b6g: a forward Gate's too, at a safe spot)
         const nu = fr ? spawnUnit(g, b.side, ut, fr.u + rand(-12, 12), fr.v + rand(-20, 20)) : spawnUnit(g, b.side, ut, b.u + dirOf(b.side) * (b.half + 10), b.v + rand(-12, 12) + (br ? (i - 1.5) * 9 : i * 16));
         if (fr) { nu.lane = fr.lane; nu.fwdHome = { u: fr.u, n: fr.n }; nu.laneV = clamp(nu.v - fr.v, -LANE_V, LANE_V); }
-        if (g.sides[b.side].direct) ctlTrained(g, nu, fr); // v2.73: to the base rally point (or beside a forward Barracks), each in its own space (v2.76), then Hold
+        if (b.rm6 && rwB6h(g)) rally6h(g, b, nu); // v2.98 (b6h): its rally is on a surfaced Ruinmaw: the unit tunnels there
+        if (g.sides[b.side].direct && !nu.tn) ctlTrained(g, nu, fr); // v2.73: to the base rally point (or beside a forward Barracks), each in its own space (v2.76), then Hold
         if (ut === 'rifle' && pathMod(b, 'drill')) { nu.vet = 1; nu.maxHp = nu.hp = UDEF.rifle.hp * DRILL.hp; } // Drilled Marines
         if (g.log) { logAdd(g.log.tot[b.side].trained, ut); lgUnit(g, b.side, 'T', ut); }
       }
@@ -2408,7 +2412,7 @@ function chainBeam(g, src, first, def) {
     if (!next) break;
     mul *= C.fall; hit.push(next);
     const a = P(cur.u, cur.v, aimZ(cur)), b = P(next.u, next.v, aimZ(next));
-    damage(g, next, def.dmg * mul * (sideBuff(g, src.side) ? NANO.dmg : 1) * outMul(g, src), def.weapon, src.side, src);
+    AREA6H.on++; try { damage(g, next, def.dmg * mul * (sideBuff(g, src.side) ? NANO.dmg : 1) * outMul(g, src), def.weapon, src.side, src); } finally { AREA6H.on--; } // v2.98: a chain jump is area damage
     g.fx.push({ k: 'beam', x: a.x, y: a.y, x2: b.x, y2: b.y, t: 0, life: 0.2, w: 1.6 * mul });
     cur = next;
   }
@@ -2737,10 +2741,11 @@ const RETREAT = { fire: false }; // v2.35 (audit): retreating units hold their f
 function updateUnit(g, u, foes, dt) {
   const d = rwD(g, u.type); // v2.83: a batch 2b unit plays by its own definition in a game with b2b on (else UDEF's)
   if (u.exT) { if (g.t < u.exT) { u.moving = false; u.tgt = 0; return; } exileEnd(g, u); } // v2.82: exiled by a Severance: frozen until it snaps back
+  if (u.sw6) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // v2.98 (b6h): inside a Ruinmaw
   if (u.rsBrk) { rsHome(g, u); return; } // v2.84: a batch 3a Riftstalker's shields broke out on a strike: straight home
   u.anim += dt;
   const frz = u.frzT > g.t; // Frenzy Bloom (v2.20): faster attacks and movement
-  if (u.cd > 0) u.cd -= dt * (frz ? ABIL.frenzy.rate : 1) * (u.kfT > g.t ? KFRENZY.rate : 1); // v2.88: a batch 5b kill frenzy (never set with b5b off)
+  if (u.cd > 0) u.cd -= dt * (frz ? ABIL.frenzy.rate : 1) * (u.kfT > g.t ? KFRENZY.rate : 1) * (u.bb6 === g.t ? B6H.brood.atk : 1); // v2.98 (b6h): a Bile Bloom // v2.88: a batch 5b kill frenzy (never set with b5b off)
   if (u.recoil > 0) u.recoil = Math.max(0, u.recoil - dt * 5);
   if (u.hitT > 0) u.hitT -= dt;
   if (u.crg) { trampleStep(g, u, d, dt); return; } // v2.85: a batch 3b Dreadthorn charging
@@ -2758,7 +2763,8 @@ function updateUnit(g, u, foes, dt) {
   const A = d.weapon ? acquire(g, u, d, foes, d.chase) : NO_TARGET; let { best, close } = A; // Medevacs and Recon Drones carry no weapon; melee: the chase search in the same pass (v2.37)
   const cs = po && po.o !== 'hold' && (po.o !== 'attack' || po.ju != null) ? ctlStep(g, u, d) : null; // v2.76: heading somewhere (go, target), or retreating
   if (po) st = cs && cs.go ? 'adv' : cs && cs.run ? 'retreat' : (u.po || HOLD_PO).o; // 'adv': on the way, stopping to fight what it meets (a Titan plants for it)
-  const sp = u.bur ? (d.bore ? BORE.speed / d.speed : 1) : (d.fac === 'bloomhost' && !d.air && onCreep(g, u.side, u.u, u.v) ? CREEP.speed : 1) * (frz ? ABIL.frenzy.speed : 1) * (u.slowT > g.t ? 1 - u.slow : 1) * (u.snT > g.t ? 0 : 1) * (u.ltT > g.t ? 1 - LATCH.slow : 1) * (pin ? 0 : 1) * (u.sgN ? surgeMul(u) : 1); // v2.88: batch 5b swarm surge (sgN never set with b5b off) // v2.86: pinned; v2.84: Leapers latched on it // creep (v2.18), Frenzy Bloom (v2.20), a Gravemantle's slow (v2.27), a Rootheart's snare (v2.33)
+  if (d.pounce && rwB6h(g)) pounce6h(g, u, d, st, cs, A); // v2.98 (b6h): a lunge into contact (src/sim/rework-6h.js)
+  const sp = u.bur ? (d.bore ? BORE.speed / d.speed : 1) : (d.fac === 'bloomhost' && !d.air && onCreep(g, u.side, u.u, u.v) ? CREEP.speed : 1) * (frz ? ABIL.frenzy.speed : 1) * (u.slowT > g.t ? 1 - u.slow : 1) * (u.snT > g.t ? 0 : 1) * (u.ltT > g.t ? 1 - LATCH.slow : 1) * (pin ? 0 : 1) * (u.sgN ? surgeMul(u) : 1) * (u.pcT > g.t ? B6H.pounce.mul : 1) * (u.bb6 === g.t ? B6H.brood.move : 1); // v2.98 (b6h): Pounce, a Bile Bloom // v2.88: batch 5b swarm surge (sgN never set with b5b off) // v2.86: pinned; v2.84: Leapers latched on it // creep (v2.18), Frenzy Bloom (v2.20), a Gravemantle's slow (v2.27), a Rootheart's snare (v2.33)
   if (d.latch && (u.ltH || u.lt) && latchRide(g, u, d, side, dt)) return; // v2.84: a batch 3a Leaper in flight onto its host, or riding it
   if (u.leaping) { // mid-leap (v2.19): fly to the landing spot, nothing else
     const du = u.lu - u.u, dv = u.lv - u.v, dd = Math.hypot(du, dv), st = d.leap.speed * dt;
@@ -2767,7 +2773,8 @@ function updateUnit(g, u, foes, dt) {
     u.moving = true; return;
   }
   if (u.tn && tunnelStep(g, u, d, side, dt, sp)) return; // v2.83: walking to the tunnel entrance, or inside it
-  if (side.hush) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // v2.81: a Test Range side told not to fight back stands still (never set in a match)
+  if (side.hush) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // v2.81
+  if (u.qm && qMite6h(g, u, d, A, dt, sp)) return; // v2.98 (b6h): a Queen's Mite stays by her (src/sim/rework-6h.js): a Test Range side told not to fight back stands still (never set in a match)
   if (d.swap && !pin && pxStep(g, u, side)) return; // v2.84: a batch 3a Parallax swapped places with a wounded ally
   if (d.devour3 && ravStep(g, u, d, side, st, cs, best, A.prey, dt, sp)) return; // v2.84: a batch 3a Ravager devouring remains (or an AI's going to feed)
   if (d.bore && rwB2a(g) && boreStep(g, u, d, st, cs, foes, dt)) return;
@@ -3173,6 +3180,7 @@ function command(g, s, ids, o, a, b) {
 // through the surfaced Ruinmaw nearest the enemy (tunnelGate); the rest of the selection is left as it was
 function ctlTunnel(g, s, us) {
   if (!rwB2b(g)) return { ok: false, msg: 'Unknown order' };
+  if (rwB6h(g)) return ctlTunnel6h(g, s, us); // v2.98 (b6h): on creep, down where they stand (src/sim/rework-6h.js)
   const R = tunnelGate(g, s); if (!R) return { ok: false, msg: 'No Ruinmaw is surfaced' };
   const go = us.filter(tunnelOk); if (!go.length) return { ok: false, msg: 'Only Bloomhost ground units can use the tunnel' };
   for (const e of go) { e.po = { o: 'tunnel', r: R.id }; e.tn = { r: R.id, ph: 0 }; e.holdU = undefined; e.holdV = undefined; }
@@ -3522,6 +3530,7 @@ function meleeHit(g, src, t, def) {
   mul *= outMul(g, src); // disrupted (v2.27), a Beacon T3 warp-in (v2.34)
   damage(g, t, def.dmg * mul, def.weapon, src.side, src);
   if (def.disrupt) disrupt(g, t, def.disrupt); // the Parallax's blows (v2.27)
+  if (def.biteCorr) corrode(g, t, def.corrode); // v2.98 (b6h): a Mite's bite corrodes like Spitter acid
   if (src.kind === 'u') src.recoil = 1;
 }
 function fire(g, src, t, def) {
@@ -3757,6 +3766,7 @@ function updateMounds(g) {
   for (let s = 0; s < 2; s++) {
     const m = moundOf(g, s);
     if (!m) continue;
+    if (rwB6h(g)) { mound6h(g, s, m); continue; } // v2.98 (b6h): the side's cap of Mites; owed Mites wait
     if (m.mt === undefined) m.mt = g.t + MOUND.every;
     if (g.t < m.mt) continue;
     m.mt = g.t + MOUND.every;
@@ -3923,6 +3933,9 @@ function updateProjs(g, dt) {
 }
 
 function splashHit(g, p, hit, scale, falloffFloor) {
+  AREA6H.on++; try { splashHit0(g, p, hit, scale, falloffFloor); } finally { AREA6H.on--; } // v2.98 (b6h): splash is area damage (the Chitin Warden's aura)
+}
+function splashHit0(g, p, hit, scale, falloffFloor) {
   for (const e of g.ents) {
     if (e === hit || e.side === p.side || e.hp <= 0 || (e.kind === 'u' && UDEF[e.type].air && !(e.lnd >= 2))) continue; // v2.87: a landed Worldrender takes splash
     const dx = Math.max(0, Math.hypot(e.u - p.u, (e.v - p.v) * 0.6) - (e.kind === 'b' ? e.half : 0));
@@ -3965,7 +3978,7 @@ function pierceLine(g, p, hit) {
   }
   list.sort((a, b) => a[0] - b[0] || a[1].id - b[1].id);
   let dmg = p.dmg;
-  for (const [, e] of list.slice(0, K.n)) { dmg *= K.fall; damage(g, e, dmg, p.weapon, p.side); if (p.pin) pinHit(g, e, p.side); } // v2.86: each one it goes through is pinned too
+  AREA6H.on++; try { for (const [, e] of list.slice(0, K.n)) { dmg *= K.fall; damage(g, e, dmg, p.weapon, p.side); if (p.pin) pinHit(g, e, p.side); } } finally { AREA6H.on--; } // v2.98: the units behind the target take area damage // v2.86: each one it goes through is pinned too
   const a = P(hit.u, hit.v, aimZ(hit)), b = P(hit.u + ux * K.len, hit.v + vy * K.len, aimZ(hit));
   g.fx.push({ k: 'pierce', u: hit.u, x: a.x, y: a.y, x2: b.x, y2: b.y, t: 0, life: 0.25 });
 }
@@ -4048,6 +4061,7 @@ function damage1(g, e, amt, weapon, fromSide, src) {
   if (b3 && ud3.parry && amt > 0 && parryHit(g, e, weapon, src)) return; // v2.85: a Shardling's parry negates the hit
   let dmg = amt * mult * (sideBuff(g, e.side) ? NANO.cut : 1) * (1 + corrNow(e, g.t)); // corroded: takes more (v2.19; v2.37 the second slot)
   if (e.mkT > g.t) dmg *= markBonus(g, e, fromSide); // v2.86: marked by a batch 4a Astral Marksman
+  if (e.wd6 === g.t && e.kind === 'u' && area6h(weapon)) dmg = ward6hCut(g, e, dmg); // v2.98 (b6h): a Chitin Warden's aura
   if (e.cov && !noCover(weapon)) dmg *= 1 - TITAN.cover; // v2.83: Last Fist infantry in a Titan's cover take less from ranged attacks
   const br = e.kind === 'u' && (b3 ? ud3 : UDEF[e.type]).brace, pre = dmg; // v2.85: a batch 3b Bastion has none
   if (br) { // the Bulwark braces on the first hit after its cooldown (v2.17)
@@ -4115,7 +4129,8 @@ function kill(g, e, by, weapon) {
     salvage(g, e, w);
     if (e.tSrc === 'mite') miteBurst(g, e); // v2.33: killed, never expired (expiry doesn't come through kill)
     echoStore(g, e); // v2.34: an Axiarch T2/T3 unit's echo
-    if (e.type === 'ruinmaw' && rwB2b(g)) ruinCollapse(g, e, by); // v2.83: its tunnel collapses on whoever is inside
+    if (e.type === 'ruinmaw' && rwB2b(g)) ruinCollapse(g, e, by); // v2.83
+    if (d.brood6 && rwB6h(g)) brood6hDie(g, e); // v2.98 (b6h): a Broodback bursts: its tunnel collapses on whoever is inside
     if (rwB5b(g)) kfKill(g, e); // v2.88: Bloomhost units nearby go into a kill frenzy
     if (rwB3a(g)) kill3a(g, e); // v2.84: Leapers on it hatch Skitterlings; it leaves remains
     fxBoom(g, w.x, w.y, e.type === 'sovereign' ? 44 : e.type === 'voidcarrier' ? 28 : e.type === 'prismwing' ? 10 : e.type === 'shardstorm' ? 14 : e.type === 'riftstalker' || e.type === 'lancer' || e.type === 'marksman' ? 10 : e.type === 'parallax' ? 12 : e.type === 'shardling' ? 8 : e.type === 'bastion' ? 20 : e.type === 'wraithwing' ? 14 : e.type === 'skitterling' ? 6 : e.type === 'bulwark' || e.type === 'ruinmaw' || e.type === 'dreadthorn' || e.type === 'thornback' ? 18 : d.fac === 'bloomhost' && !d.air ? 10 : d.air ? (e.type === 'razorwing' || e.type === 'cloudwing' ? 12 : e.type === 'needlewing' ? 8 : e.type === 'worldrender' ? 44 : 28) : e.type === 'rifle' || e.type === 'sniper' ? 9 : e.type === 'heavy' ? 15 : e.type === 'titan' ? 46 : 30);
@@ -4344,14 +4359,18 @@ function meteorDodge(g, u) {
      exiles a weak bolt (its UDEF weapon).
    New internal ids rather than renamed ones: a game with b2a off still has Bile Lobbers and Rift Mortars, and saves, match
    history and tests keep naming them. */
-const REWORK = { b2a: true, artDeploy: true, artTelegraph: true, b2b: true, b3a: true, b3b: true, b4a: true, b4b: true, b5b: true, b5c: true, b6side: true, b6art: true, b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: true, b6f: true, b6g: true }; // b6g (v2.97): batch 6g playtest fixes, src/sim/rework-6g.js; // b6fai, b6f (v2.96): base attacks for every AI and the Axiarch conversion undone, src/sim/rework-6f.js; // b6elane, b6e (v2.95): Axiarch lane play and the Axiarch energy costs, src/sim/rework-6e.js; b6ai, b6d (v2.94): the AI personality fix and the faction balance, src/sim/rework-6d.js; b6hq, b6c (v2.93): the HQ shield rule and the first unit tuning, src/sim/rework-6c.js; b6side (v2.92): the side-bias fix, b6art (v2.92): Artillery counterplay, both src/sim/rework-6b.js; b5c (v2.90): the Needlewing AI fix (the Bloomspire roll), src/sim/rework-5c.js; b5b (v2.88): the Bloomhost swarm pass, src/sim/rework-5b.js; b4b (v2.87): batch 4b, src/sim/rework-4b.js; b4a (v2.86): batch 4a, src/sim/rework-4a.js; b2b (v2.83): batch 2b, src/sim/rework-2b.js; b3a (v2.84): batch 3a, src/sim/rework-3a.js; b3b (v2.85): batch 3b, src/sim/rework-3b.js
-const RW_KEYS = ['b2a', 'artDeploy', 'artTelegraph', 'b2b', 'b3a', 'b3b', 'b4a', 'b4b', 'b5b', 'b5c', 'b6side', 'b6art', 'b6hq', 'b6c', 'b6ai', 'b6d', 'b6elane', 'b6e', 'b6fai', 'b6f', 'b6g'];
+const REWORK = { b2a: true, artDeploy: true, artTelegraph: true, b2b: true, b3a: true, b3b: true, b4a: true, b4b: true, b5b: true, b5c: true, b6side: true, b6art: true, b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: true, b6f: true, b6g: true, b6h: true, b6hbody: true, b6hnode: true }; // b6h, b6hbody, b6hnode (v2.98): batch 6h, src/sim/rework-6h.js; // b6g (v2.97): batch 6g playtest fixes, src/sim/rework-6g.js; // b6fai, b6f (v2.96): base attacks for every AI and the Axiarch conversion undone, src/sim/rework-6f.js; // b6elane, b6e (v2.95): Axiarch lane play and the Axiarch energy costs, src/sim/rework-6e.js; b6ai, b6d (v2.94): the AI personality fix and the faction balance, src/sim/rework-6d.js; b6hq, b6c (v2.93): the HQ shield rule and the first unit tuning, src/sim/rework-6c.js; b6side (v2.92): the side-bias fix, b6art (v2.92): Artillery counterplay, both src/sim/rework-6b.js; b5c (v2.90): the Needlewing AI fix (the Bloomspire roll), src/sim/rework-5c.js; b5b (v2.88): the Bloomhost swarm pass, src/sim/rework-5b.js; b4b (v2.87): batch 4b, src/sim/rework-4b.js; b4a (v2.86): batch 4a, src/sim/rework-4a.js; b2b (v2.83): batch 2b, src/sim/rework-2b.js; b3a (v2.84): batch 3a, src/sim/rework-3a.js; b3b (v2.85): batch 3b, src/sim/rework-3b.js
+const RW_KEYS = ['b2a', 'artDeploy', 'artTelegraph', 'b2b', 'b3a', 'b3b', 'b4a', 'b4b', 'b5b', 'b5c', 'b6side', 'b6art', 'b6hq', 'b6c', 'b6ai', 'b6d', 'b6elane', 'b6e', 'b6fai', 'b6f', 'b6g', 'b6h', 'b6hbody', 'b6hnode'];
 const rwInit = o => { const r = Object.assign({}, REWORK, o || {}), out = {}; for (const k of RW_KEYS) out[k] = !!r[k]; return out; };
 const rwB2a = g => !!(g && g.rw && g.rw.b2a);
 const rwDep = g => rwB2a(g) && !!g.rw.artDeploy;
 const rwTel = g => rwB2a(g) && !!g.rw.artTelegraph;
 const RW_SWAP = { bilelobber: 'gorebore', riftmortar: 'severance' }, RW_BACK = { gorebore: 'bilelobber', severance: 'riftmortar' };
-const rwType = (g, t) => rwB2a(g) ? (RW_SWAP[t] || t) : (RW_BACK[t] || t); // the unit that fills this slot in game g
+// v2.98 (batch 6h): the switches live here (rwType reads b6h at load-time-safe points; src/sim/rework-6h.js has the rest)
+const rwB6h = g => !!(g && g.rw && g.rw.b6h), rwB6hbody = g => !!(g && g.rw && g.rw.b6hbody), rwB6hnode = g => !!(g && g.rw && g.rw.b6hnode);
+const RW6H_SWAP = { thornback: 'broodback', queen: 'queen' }, RW6H_BACK = { broodback: 'thornback', queen: 'spitter' }; // b6h: the Broodback fills the Thornback's slot; the Queen exists only with b6h (off: her slot is the Spitter's)
+const rwType0 = (g, t) => rwB2a(g) ? (RW_SWAP[t] || t) : (RW_BACK[t] || t);
+const rwType = (g, t) => { const r = rwType0(g, t); return rwB6h(g) ? (RW6H_SWAP[r] || r) : (RW6H_BACK[r] || r); }; // the unit that fills this slot in game g (v2.98: and batch 6h's)
 const rwHas = (g, t) => rwType(g, t) === t; // game g has this unit type
 const rwShown = t => rwType({ rw: REWORK }, t) === t; // the UI's Codex and lists, which follow the new-game default
 
@@ -4678,12 +4697,14 @@ const inTunnel = (g, R) => g.ents.filter(e => e.kind === 'u' && e.hp > 0 && e.tn
 function ruinDig(g, u) { // it moves: underground, and the gate closes (whoever is inside comes back out at the entrance)
   if (u.bur) return;
   u.bur = 1; u.gone = 1; u.tgt = 0;
+  if (rwB6h(g)) { for (const e of inTunnel(g, u)) resurface6h(g, e); const V = u.swV && ctlEnt(g, u.swV); if (V && V.sw6) spit6h(g, V, u); ev(g, { type: 'burrow', u: u.u, v: u.v, side: u.side }); return; } // v2.98 (b6h): up where they went down; a swallowed unit spat out
   const E = tunnelEntrance(g, u.side); let k = 0;
   for (const e of inTunnel(g, u)) { e.tn = undefined; e.gone = 0; e.u = E.u + ((k % 3) - 1) * 10; e.v = E.v + (Math.floor(k / 3) % 3 - 1) * 10; k++; tunnelOut(g, e, E.u, E.v); }
   ev(g, { type: 'burrow', u: u.u, v: u.v, side: u.side });
 }
 function ruinUp(g, u) { // it stops: up it comes, and the gate opens
   u.bur = 0; u.gone = 0; u.gateT = g.t; u.outT = g.t;
+  if (rwB6h(g)) erupt6h(g, u); // v2.98 (b6h): the eruption; it can dive again B6H.ruin.dive s later
   const w = P(u.u, u.v, 0); g.fx.push({ k: 'erupt', side: u.side, u: u.u, x: w.x, y: w.y, t: 0, life: 0.9, r: 36 });
   ev(g, { type: 'surface', u: u.u, v: u.v, side: u.side });
 }
@@ -4707,10 +4728,12 @@ function ruinEmit(g, R) { // the gate: the next unit whose transit is done comes
   const w = P(u, v, 0); g.fx.push({ k: 'emerge', side: e.side, u, x: w.x, y: w.y, t: 0, life: 0.6 });
 }
 function ruinCollapse(g, R, by) { // killed: the tunnel collapses on whoever is inside
+  if (rwB6h(g)) { for (const e of inTunnel(g, R)) resurface6h(g, e); for (const e of g.ents) if (e.sw6 && e.sw6.r === R.id && e.hp > 0) spit6h(g, e, R); return; } // v2.98 (b6h): they come up where they went down
   for (const e of inTunnel(g, R)) { e.tn = undefined; e.gone = 0; e.u = R.u; e.v = R.v; e.hp = 0; kill(g, e, by, 'tunnel'); }
 }
 // Surfaced: a bite at a unit beside it, a chew at a building beside it
 function ruinFight(g, u) {
+  if (rwB6h(g)) swallow6h(g, u); // v2.98 (b6h)
   const mul = (sideBuff(g, u.side) ? NANO.dmg : 1) * outMul(g, u);
   if (g.t >= (u.bcd || 0)) {
     let T = null, bd = 1e9;
@@ -4731,6 +4754,7 @@ function ruinFight(g, u) {
 const ruinReach = e => e.kind === 'b' ? RUIN.chewR : RUIN.biteR - 2; // close enough to bite (a unit) or chew (a building)
 const ruinFoe = (g, u) => g.ents.some(e => e.side !== u.side && e.side !== NEUTRAL && e.hp > 0 && !e.gone && !e.shielded && !(e.kind === 'u' && UDEF[e.type].air) && effDist(u, e) <= ruinReach(e) && visibleTo(g, u.side, e));
 function ruinStep(g, u, d, side, dt, st, cs) {
+  if (!u.bur && u.dvCd > g.t && rwB6h(g)) { u.moving = false; ruinFight(g, u); ruinEmit(g, u); if (!side.direct && u.rmGo) u.rmAt = Math.hypot(u.rmGo[0] - u.u, u.rmGo[1] - u.v) <= 4 ? 1 : u.rmAt; return true; } // v2.98 (b6h): it can't dive again yet: it stays up and fights
   if (!side.direct && u.rmGo) {
     const [tu, tv] = u.rmGo;
     if (Math.hypot(tu - u.u, tv - u.v) > 4) { ruinDig(g, u); u.tgt = 0; if (!moveToward(u, d, tu, tv, dt, 1)) { u.u = tu; u.v = tv; } u.moving = true; return true; }
@@ -4752,6 +4776,7 @@ function tunnelStep(g, u, d, side, dt, sp) {
   if (T.ph === 1) { u.moving = false; u.tgt = 0; u.chT = 0; return true; } // inside: off the field
   const R = ctlEnt(g, T.r);
   if (!R || R.hp <= 0 || R.dead || R.type !== 'ruinmaw') { u.tn = undefined; if (side.direct && u.po && u.po.o === 'tunnel') ctlHere(g, u); return false; }
+  if (rwB6h(g) && ruinGate(R) && onCreep(g, u.side, u.u, u.v)) { burrow6h(g, u, R); return true; } // v2.98 (b6h): down where it stands, on its creep
   const E = tunnelEntrance(g, u.side);
   u.tgt = 0; u.chT = 0;
   if (Math.hypot(E.u - u.u, E.v - u.v) > RUIN.enter) { moveToward(u, d, E.u, E.v, dt, sp); return true; }
@@ -5004,7 +5029,7 @@ const latchN = (g, H) => { let n = 0; for (const e of g.ents) if (e.kind === 'u'
 function latchRank(g, u, H, R) { // [tier, -weight, distance] or null (not a host in reach)
   if (!hostOk(g, u, H)) return null;
   const k = effDist(u, H); if (k > R) return null;
-  return [latchBig(H) ? 0 : 1, -latchW(H), k];
+  return [rwB6h(g) ? latchTier6h(g, H) : latchBig(H) ? 0 : 1, -latchW(H), k]; // v2.98 (b6h): Artillery and siege, then ranged, then big, then the rest
 }
 const rankLess = (a, b, ea, eb) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2] || ea.id - eb.id;
 function latchPick(g, u, foes, R, only) {
@@ -5043,6 +5068,7 @@ function latchRide(g, u, d, side, dt) {
     const du = u.lu - u.u, dv = u.lv - u.v, dd = Math.hypot(du, dv), st = d.leap.speed * dt;
     if (dd <= st) {
       u.u = u.lu; u.v = u.lv; u.z = 0; u.leaping = 0; u.leapCd = g.t + d.leap.cd; u.ltH = 0;
+      if (rwB6h(g)) stun6h(g, u); // v2.98 (b6h): the landing stuns
       if (ok && latchN(g, H) < LATCH.max) {
         u.lt = H.id; u.ltN = g.t + LATCH.tick; u.ltF = 0; H.ltT = g.t + 0.1;
         const w = P(u.u, u.v, UDEF[H.type].h * 0.6 * US); g.fx.push({ k: 'latch', side: u.side, u: u.u, x: w.x, y: w.y, t: 0, life: 0.5 });
@@ -5058,7 +5084,7 @@ function latchRide(g, u, d, side, dt) {
   H.ltT = g.t + 0.1;
   if (g.t >= u.ltN) {
     u.ltN += LATCH.tick;
-    if (!side.hush) { damage(g, H, latchDps(g) * LATCH.tick * (sideBuff(g, u.side) ? NANO.dmg : 1) * outMul(g, u), 'latch', u.side, u); u.lastAct = g.t; u.ltF = Math.min(8, (u.ltF || 0) + 1); }
+    if (!side.hush) { damage(g, H, (rwB6h(g) ? latchDps6h(g, H) : latchDps(g)) * LATCH.tick * (sideBuff(g, u.side) ? NANO.dmg : 1) * outMul(g, u), 'latch', u.side, u); u.lastAct = g.t; u.ltF = Math.min(8, (u.ltF || 0) + 1); }
   }
   return true;
 }
@@ -5254,7 +5280,7 @@ function aiRework3a(g, s, mine) {
   for (const u of mine) {
     if (u.type === 'leaper' && !u.lt && !u.ltH) {
       let best = null, br = null;
-      for (const H of foes) { const r = latchRank(g, u, H, LATCH.aim); if (r && r[0] === 0 && latchN(g, H) < LATCH.max && (!best || rankLess(r, br, H, best) < 0)) { best = H; br = r; } }
+      for (const H of foes) { const r = latchRank(g, u, H, LATCH.aim); if (r && r[0] <= (rwB6h(g) ? 1 : 0) && latchN(g, H) < LATCH.max && (!best || rankLess(r, br, H, best) < 0)) { best = H; br = r; } }
       const A6 = art6Pick(g, u, foes, u.u, u.v, LATCH.aim, H => !!latchRank(g, u, H, LATCH.aim) && latchN(g, H) < LATCH.max); if (A6) best = A6; // v2.92 (batch 6b): a deployed Artillery first
       u.ltAim = best ? best.id : 0;
     } else if (u.type === 'riftstalker' && !u.rsH) {
@@ -5924,7 +5950,7 @@ function tyrImpact(g, p, hit) {
 function splashUnits(g, p, hit, scale) { // the glob's splash on ground units only (when it struck a building)
   for (const e of g.ents) {
     if (e === hit || e.kind !== 'u' || e.side === p.side || e.hp <= 0 || (UDEF[e.type].air && !(e.lnd >= 2))) continue;
-    const dx = Math.hypot(e.u - p.u, (e.v - p.v) * 0.6); if (dx < p.splash) damage(g, e, p.dmg * scale * (1 - dx / p.splash), p.weapon, p.side);
+    const dx = Math.hypot(e.u - p.u, (e.v - p.v) * 0.6); if (dx < p.splash) { AREA6H.on++; try { damage(g, e, p.dmg * scale * (1 - dx / p.splash), p.weapon, p.side); } finally { AREA6H.on--; } } // v2.98: area damage (the Warden's aura)
   }
 }
 function updatePus(g, dt) {
@@ -5940,10 +5966,11 @@ function pusClear(g, b) {
   rw4bEv(g, b.side, 'pusclear', { u: b.u, n: b.pus }); b.pus = 0; b.puS = undefined;
 }
 function pusBurst(g, b) { // the building fell with pustules on it: each bursts into Mites for their side
-  const s = b.puS, n = Math.min(PUS.cap, b.pus * PUS.mites);
+  const s = b.puS, n = Math.min(PUS.cap, b.pus * PUS.mites, rwB6h(g) && s >= 0 && s < 2 ? Math.max(0, B6H.mite.cap - miteCount6h(g, s)) : 99); // v2.98 (b6h): within the side's cap of Mites
   if (!(s >= 0 && s < 2) || !n) return;
   for (let i = 0; i < n; i++) {
     const a = i / n * Math.PI * 2 + 0.4, r = b.half + 8;
+    if (rwB6h(g)) { spawnMite6h(g, s, b.u + Math.cos(a) * r, b.v + Math.sin(a) * r * 0.6, 'pus'); continue; } // v2.98 (b6h): the one Mite (B6H.mite)
     const k = spawnUnit(g, s, 'mite', clamp(b.u + Math.cos(a) * r, 0, L), b.v + Math.sin(a) * r * 0.6);
     Object.assign(k, { temp: g.t + MOUND.life, tLife: MOUND.life, tSrc: 'pus' }); k.laneV = clamp(k.v, -LANE_V, LANE_V); arriveOrders(g, k);
   }
@@ -6519,7 +6546,7 @@ B6E.unit = { riftstalker: { shp: 160 } };
 const rw6eUnit = (g, t) => rwB6e(g) && B6E.unit[t] ? B6E.unit[t] : null;
 function rw6eSpawn(g, u) { const o = B6E.unit[u.type]; if (o && o.shp !== undefined) { u.shp = u.maxShp = o.shp; } }
 // Batch 6d's and 6e's per-game values for type t together (rwD's overlay), or null
-function rwOver6(g, t) { const a = rw6dUnit(g, t), c = rw6eCost(g, t), o = rw6eUnit(g, t); return c || o ? Object.assign({}, a || {}, o || {}, c ? { cost: c } : {}) : a; }
+function rwOver6(g, t) { const a = rw6dUnit(g, t), c = rw6eCost(g, t), o = rw6eUnit(g, t), h = rw6hUnit(g, t); /* v2.98: batch 6h's (src/sim/rework-6h.js) */ return c || o || h ? Object.assign({}, a || {}, o || {}, c ? { cost: c } : {}, h || {}) : a; }
 const unitCost6 = (g, t) => rw6eCost(g, t) || UDEF[t].cost; // what a unit of type t costs in game g (a brood aside: trainCost)
 
 /* ---- b6elane: one army, one lane ---- */
@@ -6966,6 +6993,390 @@ function aiFort6g(g, s, D, threat) {
 }
 // The warp mark the player sees (render): where its next unit would warp in, refreshed every quarter of a game second
 const warpMark6g = (g, s) => { const c = g._wm6 || (g._wm6 = { t: -1, s: -1, p: null }); if (c.s !== s || Math.abs(g.t - c.t) >= 0.25 || !c.p) { c.t = g.t; c.s = s; c.p = warp6g(g, s); } return c.p; };
+/* ---------- Batch 6h (v2.98, docs/FACTION_REWORK.md "Batch 6h"): the Bloomhost ground rework, unit bodies, the Bloomhost node fix ----------
+   Three switches, stored per game in g.rw, on by default, each with a Test Range switch. All three off: v2.97 exactly (nothing
+   below runs, nothing new is saved). rwB6h, rwB6hbody, rwB6hnode are defined in src/sim/rework.js (rwType reads b6h).
+   - REWORK.b6h: the Bloomhost ground rework.
+     Pounce (B6H.pounce): the Ravager, Chitin Warden, Broodback, a surfaced Gorebore and a Dreadthorn whose charge is on cooldown
+       lunge at an enemy ground unit within pounce.r they are not yet in contact with, while attacking, attack-moving or engaged
+       on Hold: pounce.mul × speed for pounce.dur s, every pounce.cd s (u.pcT, u.pcCd). Never on a move order or a retreat.
+     The loose swarm (B6H.loose): Skitterlings, Spitters, Leapers, Queens and Mites keep loose px more spacing between them while
+       moving or idle, normal body spacing while attacking (body6h; with b6hbody off a light separation of their own).
+     The Mite: one type (the Brood Mound's, the Queen's, a Brood Tyrant pustule's), B6H.mite: its bite corrodes like the
+       Spitter's acid (same amount, length and stacking rules), it lives mite.life s, no supply, no cap of 60, never captures;
+       at most mite.cap alive per side from every source; at the cap new spawns wait (the Mound's owed Mites, the Queen's timer).
+     The Spitter: trained at the Larva Pit from T1 with no path (canMake); its stats unchanged.
+     The Queen (new, 'queen', Acidic Evolution T2, where the Spitter was): a bile bolt at air and ground that corrodes; while
+       an enemy is within queen.near she births a Mite every queen.every s, up to queen.own of her own alive (u.qm on the Mite):
+       they fight her target or enemies near her and stay within queen.leash of her; with nothing to fight they guard her.
+     The Leaper (B6H.leaper): leap range 260, cooldown 10 s; it aims at Artillery and deployed siege first, then ranged units,
+       then vehicles, walkers and big ground units, then anything else on the ground; airborne it passes over bodies; landing
+       it stuns enemy ground units within leaper.stunR for leaper.stun s (u.dzT, the Dreadthorn's daze); it latches onto any
+       ground unit (55/s on big hosts, leaper.small/s on small ones).
+     The Chitin Warden (the Bulwark, id 'bulwark' kept): Bloomhost units within ward.r of a Warden take ward.cut less AREA
+       damage (AREA6H: splash on anyone but the primary target, and every attack whose effect is an area; never stacking).
+     The Broodback (new, 'broodback', replaces the Thornback; Behemoth Evolution T2): a weak bite and Pounce; dying it bursts
+       into brood.n Skitterlings (fewer at the limit of 60) that take its order, and leaves a Bile Bloom (g.bp6) for
+       brood.life s: enemies inside take brood.dps, Bloomhost units inside attack brood.atk× and move brood.move× faster.
+     The Ruinmaw (B6H.ruin): surfacing erupts (ruin.eDmg to enemy ground units within ruin.eR, knocked ruin.knock aside); it can
+       dive again ruin.dive s after surfacing; every ruin.swCd s surfaced it swallows one adjacent enemy ground unit (never a
+       huge one) for ruin.swDur s at ruin.swDps (spat out alive at the end, or when it dives or dies). The Tunnel: selected
+       Bloomhost ground units standing on their own creep burrow where they stand and travel to the surfaced Ruinmaw at
+       ruin.speed (at least ruin.min s), coming out of its mouth two a second; units off creep stay. If it dives or dies with
+       units inside, they come up where they went down. A production building's rally can be set on it (b.rm6): its new units
+       tunnel from the building.
+   - REWORK.b6hbody: unit bodies (BODY6H), every faction; see body6h.
+   - REWORK.b6hnode: the Bloomhost AI's node-contest fix; see aiNode6h. */
+const B6H = {
+  pounce: { r: 90, mul: 2.5, dur: 0.4, cd: 4 },
+  loose: 10,
+  mite: { hp: 30, dmg: 4, cd: 0.6, speed: 64, life: 10, cap: 30 },
+  queen: { every: 2.5, near: 300, own: 6, leash: 250 },
+  leaper: { range: 260, cd: 10, speed: 340, stunR: 40, stun: 0.6, small: 30 },
+  ward: { r: 140, cut: 0.4 },
+  brood: { n: 3, r: 50, life: 6, dps: 10, atk: 1.2, move: 1.15 },
+  ruin: { eR: 70, eDmg: 120, knock: 30, speed: 300, min: 2, swCd: 8, swDur: 3, swDps: 80, dive: 15 },
+};
+const LOOSE6H = { skitterling: 1, spitter: 1, leaper: 1, queen: 1, mite: 1 };
+const POUNCE6H = { ravager: 1, bulwark: 1, broodback: 1, gorebore: 1, dreadthorn: 1 };
+
+/* ---- the two new units ---- */
+Object.assign(UDEF, {
+  queen: { name: 'Queen', desc: 'Hunched, plague-ridden brood mother. Her bile bolt hits air and ground and corrodes, and while enemies are near she births Mites that fight around her. Slow and fragile up close: keep her behind the swarm.', fac: 'bloomhost', from: 'barracks', tier: 2, cost: { c: 150, e: 50 }, pop: 3, hp: 260, dmg: 10, cd: 1.4, range: 150, speed: 26, hitsAir: true, armor: 'light', weapon: 'bilebolt', time: 9, h: 20, corrode: { amt: 0.12, dur: 5 }, queen6: true },
+  broodback: { name: 'Broodback', desc: 'Hunched beast carrying egg sacs on its back. A weak bite and a lunge; when it dies it bursts into Skitterlings and leaves a Bile Bloom that burns enemies and quickens the swarm. Lead a push with it.', fac: 'bloomhost', from: 'factory', tier: 2, cost: { c: 180, e: 40 }, pop: 3, hp: 520, dmg: 12, cd: 1.2, range: 30, speed: 22, hitsAir: false, armor: 'heavy', weapon: 'gore', time: 11, h: 20, melee: true, chase: 150, pounce: true, brood6: true },
+});
+Object.assign(DMG, {
+  bilebolt: { light: 1.0, heavy: 1.0, vehicle: 0.9, air: 1.0, building: 0.5 }, // the Queen's bolt
+  erupt6:   { light: 1.0, heavy: 1.0, vehicle: 1.0, air: 0, building: 0 },     // the Ruinmaw's eruption (units)
+  bloom6:   { light: 1.0, heavy: 1.0, vehicle: 1.0, air: 0, building: 0 },     // a Bile Bloom's burn
+  swallow6: { light: 1.0, heavy: 1.0, vehicle: 1.0, air: 0, building: 0 },     // inside a Ruinmaw
+});
+PSPEED.bilebolt = 300;
+Object.assign(MUZ, { queen: [12, 22], broodback: [18, 10] });
+Object.assign(SIGHT, { queen: 210, broodback: 190 });
+Object.assign(PLURAL, { queen: 'Queens', broodback: 'Broodbacks' });
+UGROUPS.inf.push('queen'); GROUP_OF.queen = 'inf'; UGROUPS.arm.push('broodback'); GROUP_OF.broodback = 'arm';
+UNIT_ORDER.splice(UNIT_ORDER.indexOf('spitter') + 1, 0, 'queen');
+UNIT_ORDER.splice(UNIT_ORDER.indexOf('thornback') + 1, 0, 'broodback');
+UNIT_PATH.queen = UNIT_PATH.spitter; UNIT_PATH.broodback = UNIT_PATH.thornback;
+AI_TWIN.queen = 'heavy'; AI_TWIN.broodback = 'tank';
+
+// The names and texts the player sees follow the new-game default (REWORK.b6h): the Chitin Warden, Behemoth Evolution, the Queen's step
+const rw6hText = (o, k, on) => { const d = Object.getOwnPropertyDescriptor(o, k), off = d.get ? d.get() : d.value; Object.defineProperty(o, k, { get: () => REWORK.b6h ? on : (d.get ? d.get() : off), enumerable: true, configurable: true }); };
+rw6hText(UDEF.bulwark, 'name', 'Chitin Warden');
+rw6hText(UDEF.bulwark, 'desc', 'Armoured chitin guardian that braces when hit, regenerates on its creep and lunges at enemies close by. Bloomhost units near it take much less area damage: bring one wherever shells, flames and blasts land.');
+rw6hText(PLURAL, 'bulwark', 'Chitin Wardens');
+rw6hText(TREES_BH.factory.B, 'name', 'Behemoth Evolution'); rw6hText(TREES_BH.factory.B, 'short', 'BEHEMOTH');
+rw6hText(TREES_BH.factory.B.steps[2], 'short', 'Broodbacks'); rw6hText(TREES_BH.factory.B.steps[2], 'txt', 'Unlocks Broodbacks: lunging beasts that burst into Skitterlings and a Bile Bloom when they die');
+rw6hText(TREES_BH.factory.B.steps[2], 'unlock', ['broodback']);
+rw6hText(TREES_BH.barracks.B.steps[2], 'short', 'Queens'); rw6hText(TREES_BH.barracks.B.steps[2], 'txt', 'Unlocks Queens: brood mothers whose bile bolts hit air and ground and who birth Mites in a fight');
+rw6hText(TREES_BH.barracks.B.steps[2], 'unlock', ['queen']);
+rw6hText(UDEF.mite, 'desc', 'Tiny, short-lived biter from the Brood Mound and the Queen. Its bite corrodes like Spitter acid, so everything it touches takes more damage. Fragile; it never captures nodes.');
+rw6hText(UDEF.leaper, 'desc', 'Parasite that leaps far over the fight onto Artillery, siege and ranged units, stunning everything where it lands, then latches on and eats its host. Shoot it off; if the host dies with Leapers on it, Skitterlings hatch.');
+
+/* ---- per-game values (rwD's overlay through rwOver6) ---- */
+function rw6hUnit(g, t) {
+  if (!rwB6h(g)) return null;
+  switch (t) {
+    case 'mite': return { hp: B6H.mite.hp, dmg: B6H.mite.dmg, cd: B6H.mite.cd, speed: B6H.mite.speed, corrode: (rwB5b(g) ? RW5B_D.spitter(g) : UDEF.spitter).corrode, biteCorr: true };
+    case 'leaper': return { leap: Object.assign({}, UDEF.leaper.leap, { range: B6H.leaper.range, cd: B6H.leaper.cd, speed: B6H.leaper.speed }), latch: true, chase: 170 };
+    case 'bulwark': return { pounce: true, ward: true };
+    case 'ravager': case 'gorebore': case 'dreadthorn': return { pounce: true };
+    case 'spitter': return { tier: 1 };
+  }
+  return null;
+}
+function rw6hSpawn(g, u) { if (u.type === 'mite') { u.hp = u.maxHp = B6H.mite.hp; } }
+
+/* ---- area damage (the Warden's aura) ---- */
+// AREA6H.on is set while a splash or an area effect deals its damage (splashHit, a Brood Tyrant's splash, a Sniper's pierce, a
+// Shardstorm's chain jumps); AREA6H_W: weapons whose every hit is an area effect. damage1 reads both for a unit inside a
+// Warden's aura (u.wd6 === g.t, set in update6h).
+const AREA6H = { on: 0 };
+const AREA6H_W = { beam: 1, flame: 1, orbital: 1, meteor: 1, rupture: 1, exile: 1, acidpool: 1, spores: 1, erupt: 1, erupt6: 1, spines: 1, trample: 1, miteacid: 1, bloom6: 1, bileglob: 1, shell: 1, lob: 1, rift: 1, bomb: 1, crush: 1 };
+const area6h = w => AREA6H.on > 0 || !!AREA6H_W[w];
+function ward6hCut(g, e, dmg) { // the share of an area hit a Warden's aura takes off
+  const cut = dmg * B6H.ward.cut, S = sw6h(g, e.side); S.ward += cut; return dmg - cut;
+}
+const sw6h = (g, s) => g.sides[s].h6 || (g.sides[s].h6 = { ward: 0, pounce: 0, mites: 0, qMites: 0, burst: 0, blooms: 0, tunnel: 0, swallow: 0, erupt: 0, stun: 0, peak: 0 });
+
+/* ---- the tick (before the units move) ---- */
+function update6h(g, dt) {
+  // Warden auras
+  const W = g.ents.filter(e => e.kind === 'u' && e.type === 'bulwark' && e.hp > 0 && !e.gone);
+  if (W.length) for (const e of g.ents) {
+    if (e.kind !== 'u' || e.hp <= 0 || UDEF[e.type].fac !== 'bloomhost') continue;
+    for (const w of W) if (w.side === e.side && Math.hypot(w.u - e.u, w.v - e.v) <= B6H.ward.r) { e.wd6 = g.t; break; }
+  }
+  // Bile Blooms
+  if (g.bp6 && g.bp6.length) {
+    g.bp6 = g.bp6.filter(p => p.end > g.t);
+    for (const p of g.bp6) for (const e of g.ents) {
+      if (e.kind !== 'u' || e.hp <= 0 || e.gone || UDEF[e.type].air) continue;
+      if (Math.hypot(e.u - p.u, (e.v - p.v) * 0.6) > B6H.brood.r) continue;
+      if (e.side === p.side) { if (UDEF[e.type].fac === 'bloomhost') e.bb6 = g.t; }
+      else damage(g, e, B6H.brood.dps * dt, 'bloom6', p.side);
+    }
+  }
+  // Swallowed units: digested inside a surfaced Ruinmaw, spat out at the end
+  for (const e of g.ents) if (e.sw6 && e.hp > 0) {
+    const R = ctlEnt(g, e.sw6.r);
+    if (!R || R.hp <= 0 || R.dead || R.bur || g.t >= e.sw6.end) { spit6h(g, e, R); continue; }
+    damage1(g, e, B6H.ruin.swDps * dt, 'swallow6', R.side, null);
+  }
+  // Queens: a Mite every queen.every s while an enemy is near, up to queen.own of hers and the side's cap
+  let mites = null;
+  for (const q of g.ents) {
+    if (q.kind !== 'u' || q.type !== 'queen' || q.hp <= 0 || q.gone || g.sides[q.side].hush) continue;
+    if (g.t < (q.qsT || 0)) continue;
+    const near = g.ents.some(e => e.side !== q.side && e.side !== NEUTRAL && e.hp > 0 && !e.gone && (e.kind === 'u' || bdOf(e).gun) && Math.hypot(e.u - q.u, e.v - q.v) <= B6H.queen.near && visibleTo(g, q.side, e));
+    if (!near) continue;
+    if (!mites) mites = [miteCount6h(g, 0), miteCount6h(g, 1)];
+    const own = g.ents.filter(e => e.kind === 'u' && e.hp > 0 && e.qm === q.id).length;
+    if (own >= B6H.queen.own || mites[q.side] >= B6H.mite.cap) continue; // waits (the timer is not reset)
+    const a = (q.id * 7 + (q.qn || 0) * 2.39996), du = Math.cos(a) * 12 + q.face * 6, dv = Math.sin(a) * 10;
+    const k = spawnMite6h(g, q.side, q.u + du, q.v + dv, 'queen'); k.qm = q.id; k.face = q.face;
+    q.qn = (q.qn || 0) + 1; q.qsT = g.t + B6H.queen.every; q.qbT = g.t; mites[q.side]++;
+    sw6h(g, q.side).qMites++;
+    const w = P(q.u, q.v, 10); g.fx.push({ k: 'qbirth6', side: q.side, u: q.u, x: w.x, y: w.y, x2: P(k.u, k.v, 0).x, y2: P(k.u, k.v, 0).y, t: 0, life: 0.7 });
+  }
+  if (!rwB3b(g)) updateKnocks(g, dt); // the eruption's knock (batch 3b runs it otherwise)
+  for (let s = 0; s < 2; s++) { let n = 0; for (const e of g.ents) if (e.kind === 'u' && e.side === s && e.hp > 0 && UDEF[e.type].fac === 'bloomhost') n++; const S = g.sides[s].h6; if (n && (S || n > 0)) { const T = sw6h(g, s); if (n > T.peak) T.peak = n; } }
+}
+const miteCount6h = (g, s) => { let n = 0; for (const e of g.ents) if (e.kind === 'u' && e.side === s && e.type === 'mite' && e.hp > 0) n++; return n; };
+function spawnMite6h(g, s, u, v, src) {
+  if (!MAP_2D) v = clamp(v, -LANE_V, LANE_V);
+  const k = spawnUnit(g, s, 'mite', clamp(u, 0, L), v);
+  Object.assign(k, { temp: g.t + B6H.mite.life, tLife: B6H.mite.life, tSrc: src, noCap: 1 }); k.laneV = clamp(k.v, -LANE_V, LANE_V); arriveOrders(g, k);
+  sw6h(g, s).mites++;
+  return k;
+}
+// The Brood Mound with b6h: its rate unchanged; its Mites live mite.life s; at the side's cap the ones owed wait (m.mq)
+function mound6h(g, s, m) {
+  if (m.mt === undefined) m.mt = g.t + MOUND.every;
+  if (g.t >= m.mt) { m.mt = g.t + MOUND.every; m.mq = (m.mq || 0) + MOUND.n[m.tier]; m.mi = 0; }
+  if (!m.mq) return;
+  let room = Math.min(MOUND.max - g.ents.filter(e => e.kind === 'u' && e.side === s && e.tSrc === 'mite' && e.hp > 0).length, B6H.mite.cap - miteCount6h(g, s));
+  const dir = dirOf(s);
+  while (m.mq > 0 && room > 0) {
+    const i = m.mi || 0, k = spawnMite6h(g, s, m.u + dir * (m.half + 8 + i * 6), m.v + ((i % 3) - 1) * 14, 'mite');
+    if (g.log) logAdd(g.log.tot[s].mites || (g.log.tot[s].mites = {}), 'n');
+    m.mq--; m.mi = i + 1; room--;
+  }
+  if (room <= 0 && m.mq > MOUND.n[m.tier]) m.mq = MOUND.n[m.tier]; // never more owed than one spawn's worth
+}
+
+/* ---- Pounce ---- */
+function pounce6h(g, u, d, st, cs, A) {
+  if (!d.pounce || u.pcT > g.t || g.t < (u.pcCd || 0)) return;
+  if (st === 'retreat' || st === 'move' || (cs && (cs.run || (cs.go && !cs.chase && !cs.want)))) return; // never on a move order or a retreat
+  if (u.bur || u.gone || u.dzT > g.t || u.pinT > g.t || u.snT > g.t || u.crg) return;
+  if (d.trample && !(u.crCd > g.t)) return; // a Dreadthorn only while its charge is on cooldown
+  if (A.best) return; // already in contact with something
+  const T = cs && cs.chase && cs.chase.kind === 'u' ? cs.chase : A.prey;
+  if (!T || T.kind !== 'u' || (UDEF[T.type].air && !(T.lnd >= 2))) return;
+  const k = effDist(u, T); if (k > B6H.pounce.r || k <= d.range) return;
+  if (st === 'hold' && u.holdU !== undefined && Math.hypot(T.u - u.holdU, T.v - u.holdV) > MECH7C.holdR + d.range) return;
+  u.pcT = g.t + B6H.pounce.dur; u.pcCd = g.t + B6H.pounce.cd; u.pcU = u.u; u.pcV = u.v;
+  sw6h(g, u.side).pounce++;
+  const w = P(u.u, u.v, 4); g.fx.push({ k: 'pounce6', side: u.side, u: u.u, x: w.x, y: w.y, face: T.u >= u.u ? 1 : -1, t: 0, life: 0.45 });
+}
+
+/* ---- the Queen's Mites ---- */
+function qMite6h(g, u, d, A, dt, sp) {
+  const Q = ctlEnt(g, u.qm);
+  if (!Q || Q.hp <= 0 || Q.dead || Q.type !== 'queen') { u.qm = 0; return false; }
+  const side = g.sides[u.side]; if (side.direct && u.po && u.po.o !== 'hold') return false; // a player's own order for it comes first
+  const R = B6H.queen.leash, dq = Math.hypot(Q.u - u.u, Q.v - u.v);
+  if (dq > R) { u.tgt = 0; moveToward(u, d, Q.u, Q.v, dt, sp); return true; }
+  let T = Q.tgt ? ctlEnt(g, Q.tgt) : null;
+  if (T && (T.hp <= 0 || T.gone || T.side === u.side || (T.kind === 'u' && UDEF[T.type].air && !(T.lnd >= 2)) || Math.hypot(T.u - Q.u, T.v - Q.v) > R)) T = null;
+  if (!T) { const p = A.best || A.prey; if (p && Math.hypot(p.u - Q.u, p.v - Q.v) <= R) T = p; }
+  if (T) { if (effDist(u, T) <= d.range) return false; u.tgt = 0; moveToward(u, d, T.u, T.v, dt, sp); return true; }
+  if (A.best) return false;
+  const a = u.id * 2.39996, gu = clamp(Q.u + Math.cos(a) * 28, 0, L), gv = Q.v + Math.sin(a) * 22;
+  u.tgt = 0; if (!moveToward(u, d, gu, gv, dt, sp)) u.face = Q.face;
+  return true;
+}
+
+/* ---- the Leaper ---- */
+const SIEGE6H = { artillery: 1, bilelobber: 1, riftmortar: 1, severance: 1, worldbreaker: 1 };
+function latchTier6h(g, H) { // 0: Artillery and deployed siege, 1: ranged, 2: big, 3: anything else on the ground
+  const d = rwD(g, H.type);
+  if (SIEGE6H[H.type] || H.dep === 2 || H.siege === 2) return 0;
+  if (d.weapon && !d.melee && (d.range || 0) >= 100) return 1;
+  return latchBig(H) ? 2 : 3;
+}
+function stun6h(g, u) { // a Leaper landing: enemy ground units within stunR stunned (buildings unaffected)
+  let n = 0;
+  for (const e of g.ents) {
+    if (e.kind !== 'u' || e.side === u.side || e.side === NEUTRAL || e.hp <= 0 || e.gone || UDEF[e.type].air || e.lt || e.ltH) continue;
+    if (Math.hypot(e.u - u.u, (e.v - u.v) * DV_W) > B6H.leaper.stunR) continue;
+    e.dzT = Math.max(e.dzT || 0, g.t + B6H.leaper.stun); e.st6 = g.t + B6H.leaper.stun; n++;
+  }
+  sw6h(g, u.side).stun += n;
+  const w = P(u.u, u.v, 0); g.fx.push({ k: 'stun6', side: u.side, u: u.u, x: w.x, y: w.y, t: 0, life: 0.6, r: B6H.leaper.stunR });
+}
+const latchDps6h = (g, H) => latchBig(H) ? latchDps(g) : B6H.leaper.small;
+
+/* ---- the Broodback ---- */
+function brood6hDie(g, e) {
+  const s = e.side, side = g.sides[s], max = (UDEF.skitterling.max || 60);
+  let room = max - g.ents.filter(x => x.kind === 'u' && x.side === s && x.type === 'skitterling' && x.hp > 0 && !x.temp).length, n = 0;
+  for (let i = 0; i < B6H.brood.n && room > 0; i++, room--) {
+    const a = i * 2.0944 + e.id, k = spawnUnit(g, s, 'skitterling', clamp(e.u + Math.cos(a) * 12, 0, L), e.v + Math.sin(a) * 9);
+    if (!MAP_2D) k.v = clamp(k.v, -LANE_V, LANE_V);
+    k.laneV = clamp(k.v, -LANE_V, LANE_V); if (e.lane != null) k.lane = e.lane;
+    if (side.direct) { if (e.po && e.po.o !== 'hold') k.po = Object.assign({}, e.po); else ctlHere(g, k); }
+    else { k.holdU = e.holdU !== undefined ? k.u : undefined; k.holdV = e.holdU !== undefined ? k.v : undefined; k.rmF = e.rmF; }
+    n++;
+  }
+  (g.bp6 || (g.bp6 = [])).push({ side: s, u: e.u, v: e.v, end: g.t + B6H.brood.life, t0: g.t });
+  const S = sw6h(g, s); S.burst += n; S.blooms++;
+  const w = P(e.u, e.v, 6); g.fx.push({ k: 'brood6', side: s, u: e.u, x: w.x, y: w.y, t: 0, life: 0.8, n });
+  ev(g, { type: 'brood6', u: e.u, v: e.v, side: s, n });
+}
+
+/* ---- the Ruinmaw ---- */
+function erupt6h(g, R) { // surfacing: enemy ground units within eR take eDmg and are knocked aside
+  const C = B6H.ruin; let n = 0;
+  for (const e of g.ents) {
+    if (e.kind !== 'u' || e.side === R.side || e.side === NEUTRAL || e.hp <= 0 || e.gone || UDEF[e.type].air) continue;
+    const du = e.u - R.u, dv = e.v - R.v, dd = Math.hypot(du, dv * DV_W); if (dd > C.eR) continue;
+    damage(g, e, C.eDmg * (sideBuff(g, R.side) ? NANO.dmg : 1), 'erupt6', R.side);
+    n++;
+    if (e.hp > 0 && !e.lt && !e.gone) { const l = Math.hypot(du, dv) || 1, nu = dd ? du / l : (e.id % 2 ? 1 : -1), nv = dd ? dv / l : 0; (g.kn || (g.kn = [])).push({ id: e.id, du: nu, dv: nv, left: C.knock }); }
+  }
+  R.dvCd = g.t + C.dive; sw6h(g, R.side).erupt++;
+  const w = P(R.u, R.v, 0); g.fx.push({ k: 'erupt6', side: R.side, u: R.u, x: w.x, y: w.y, t: 0, life: 0.9, r: C.eR, n });
+  g.shake = Math.max(g.shake || 0, 3);
+}
+function swallow6h(g, R) { // surfaced: one adjacent enemy ground unit (never a huge one) every swCd s
+  if (g.t < (R.swCd || 0) || R.swV && ctlEnt(g, R.swV) && ctlEnt(g, R.swV).sw6) return;
+  let T = null, bd = 1e9;
+  for (const e of g.ents) {
+    if (e.kind !== 'u' || e.side === R.side || e.side === NEUTRAL || e.hp <= 0 || e.gone || e.lt || e.ltH || e.leaping || UDEF[e.type].air || bodyClass6h(e.type) === 'huge' || !visibleTo(g, R.side, e)) continue;
+    const k = effDist(R, e); if (k <= RUIN.biteR + 8 && (k < bd || (k === bd && e.id < T.id))) { bd = k; T = e; }
+  }
+  if (!T) return;
+  R.swCd = g.t + B6H.ruin.swCd; R.swV = T.id; R.recoil = 1;
+  T.sw6 = { r: R.id, end: g.t + B6H.ruin.swDur }; T.gone = 4; T.moving = false; T.tgt = 0; T.u = R.u; T.v = R.v;
+  sw6h(g, R.side).swallow++;
+  const w = P(R.u, R.v, 8); g.fx.push({ k: 'swallow6', side: R.side, u: R.u, x: w.x, y: w.y, t: 0, life: 0.6 });
+  ev(g, { type: 'swallow6', u: R.u, side: R.side, prey: T.type });
+}
+function spit6h(g, e, R) { // out it comes (alive), in front of the Ruinmaw's mouth (or where it stood)
+  e.sw6 = undefined; e.gone = 0;
+  if (R) { const [u, v] = ruinMouth(R, e.id); e.u = u; e.v = v; if (R.swV === e.id) R.swV = 0; }
+  if (MAP_LANED && !UDEF[e.type].air) e.lane = laneAt(e.u, e.v);
+  e.nav = undefined;
+  const w = P(e.u, e.v, 4); g.fx.push({ k: 'spit6', side: R ? R.side : 1 - e.side, u: e.u, x: w.x, y: w.y, t: 0, life: 0.5 });
+}
+const tunnelT6h = (u, v, R) => Math.max(B6H.ruin.min, Math.hypot(R.u - u, R.v - v) / B6H.ruin.speed);
+function burrow6h(g, e, R) { // a unit goes down where it stands (on its creep) and travels to the Ruinmaw
+  e.tn = { r: R.id, ph: 1, at: g.t + tunnelT6h(e.u, e.v, R), eu: e.u, ev: e.v, t0: g.t };
+  e.gone = 3; e.rmF = undefined; e.moving = false; e.tgt = 0; e.holdU = undefined; e.holdV = undefined;
+  sw6h(g, e.side).tunnel++;
+  (g.tn6 || (g.tn6 = [])).push({ side: e.side, u0: e.u, v0: e.v, u1: R.u, v1: R.v, t0: g.t, end: e.tn.at });
+  if (g.tn6.length > 40) g.tn6.shift();
+  const w = P(e.u, e.v, 0); g.fx.push({ k: 'emerge', side: e.side, u: e.u, x: w.x, y: w.y, t: 0, life: 0.45, inn: 1 });
+}
+function resurface6h(g, e) { // the Ruinmaw dove or died with it inside: up where it went down
+  const T = e.tn; e.tn = undefined; e.gone = 0;
+  if (T && T.eu != null) { e.u = T.eu; e.v = T.ev; }
+  tunnelOut(g, e, e.u, e.v);
+  if (g.sides[e.side].direct && e.po && e.po.o === 'tunnel') ctlHere(g, e);
+  const w = P(e.u, e.v, 0); g.fx.push({ k: 'emerge', side: e.side, u: e.u, x: w.x, y: w.y, t: 0, life: 0.6 });
+}
+// The Tunnel order with b6h: the selection's Bloomhost ground units on their own creep burrow where they stand
+function ctlTunnel6h(g, s, us) {
+  const R = tunnelGate(g, s); if (!R) return { ok: false, msg: 'No Ruinmaw is surfaced' };
+  const ok = us.filter(tunnelOk); if (!ok.length) return { ok: false, msg: 'Only Bloomhost ground units can use the tunnel' };
+  const go = ok.filter(e => onCreep(g, s, e.u, e.v) && !e.tn && !e.gone), off = ok.length - go.length;
+  if (!go.length) return { ok: false, msg: 'Units must stand on your creep to tunnel' };
+  for (const e of go) { e.po = { o: 'tunnel', r: R.id }; burrow6h(g, e, R); }
+  lg(g, s, 'O', 'sel', go.length, 'tunnel');
+  return { ok: true, n: go.length, msg: `${go.length} unit${go.length === 1 ? '' : 's'}: into the tunnel${off ? ` (${off} not on creep stayed)` : ''}` };
+}
+// A production building's rally on a surfaced Ruinmaw (b.rm6): set with on, cleared without
+function setRally6h(g, s, bid, rid) {
+  const b = ctlEnt(g, bid);
+  if (!rwB6h(g) || !b || b.kind !== 'b' || b.side !== s || !['barracks', 'factory'].includes(b.type) || facOf(b.fac) !== 'bloomhost') return { ok: false, msg: 'Only a Larva Pit or Evolution Chamber can rally to a Ruinmaw' };
+  if (!rid) { b.rm6 = 0; return { ok: true, msg: `${bdOf(b).name}: rally back to base` }; }
+  const R = ctlEnt(g, rid); if (!R || R.type !== 'ruinmaw' || R.side !== s || R.hp <= 0) return { ok: false, msg: 'No such Ruinmaw' };
+  b.rm6 = R.id; return { ok: true, msg: `${bdOf(b).name}: new units tunnel to the Ruinmaw` };
+}
+function rally6h(g, b, nu) { // a unit just trained at b
+  const R = ctlEnt(g, b.rm6);
+  if (!R || R.hp <= 0 || R.dead || R.type !== 'ruinmaw') { b.rm6 = 0; return; }
+  if (!ruinGate(R) || !tunnelOk(nu)) return; // down (moving): it comes out at the building as usual
+  if (g.sides[nu.side].direct) nu.po = { o: 'tunnel', r: R.id };
+  burrow6h(g, nu, R);
+}
+
+/* ---- unit bodies (b6hbody) and the loose swarm (b6h) ---- */
+// Body classes from each unit's drawn footprint (docs/FACTION_REWORK.md "Batch 6h", the table measured by
+// audit/sim/b6h-bodies.js): the radius in screen px (u, and v × DY), and a mass for pushes (a big unit holds its line).
+const BODY6H_R = { small: 6, medium: 9, large: 13, huge: 18 }, BODY6H_M = { small: 1, medium: 2, large: 4, huge: 9 };
+const BODY6H = {
+  rifle: 'small', heavy: 'medium', sniper: 'small', tank: 'large', artillery: 'large', titan: 'huge', flame: 'large', hydra: 'huge',
+  skitterling: 'small', mite: 'small', leaper: 'small', spitter: 'small', queen: 'medium', ravager: 'medium', bilecaster: 'medium',
+  bulwark: 'large', thornback: 'large', broodback: 'large', dreadthorn: 'huge', bilelobber: 'large', gorebore: 'medium', ruinmaw: 'huge',
+  shardling: 'small', riftstalker: 'medium', parallax: 'medium', lancer: 'medium', marksman: 'medium', bastion: 'large',
+  riftmortar: 'large', severance: 'large', worldbreaker: 'huge', gravemantle: 'large', eventide: 'large',
+};
+const BODY6H_AIR = { small: 7, medium: 10, large: 15, huge: 20 }, BODY6H_A = { aircraft: 'medium', interceptor: 'small', leviathan: 'huge', medic: 'medium', drone: 'small', razorwing: 'small', needlewing: 'small', cloudwing: 'medium', broodtyrant: 'large', worldrender: 'huge', wraithwing: 'small', prismwing: 'small', shardstorm: 'medium', voidcarrier: 'large', sovereign: 'huge' };
+const bodyClass6h = t => UDEF[t] && UDEF[t].air ? BODY6H_A[t] || 'medium' : BODY6H[t] || 'medium';
+const BODY6 = { cell: 40, allow: 2, k: 0.5, kAir: 0.15, max: 70, hold: 3 };
+const B6GRID = new Map();
+function body6h(g, dt) {
+  const on = rwB6hbody(g), loose = rwB6h(g); if (!on && !loose) return;
+  const C = BODY6.cell, G = B6GRID; G.clear();
+  const list = [];
+  for (const e of g.ents) {
+    if (e.kind !== 'u' || e.hp <= 0 || e.gone || e.leaping || e.lt || e.ltH || e.crg || e.side === NEUTRAL) continue;
+    const air = !!UDEF[e.type].air && !(e.lnd >= 2);
+    if (!on && (air || !LOOSE6H[e.type])) continue;
+    const cl = bodyClass6h(e.type), atk = !!(e.tgt && !e.moving);
+    let r = on ? (air ? BODY6H_AIR[cl] : BODY6H_R[cl]) : 4;
+    if (loose && !air && LOOSE6H[e.type] && !atk) r += B6H.loose / 2;
+    const m = (air ? 1 : BODY6H_M[cl]) * (atk ? BODY6.hold : 1);
+    const it = { e, air, r, m, pu: 0, pv: 0 }, gx = Math.floor(e.u / C), gy = Math.floor(e.v * DY / C) + (air ? 100000 : 0), key = gx * 400003 + gy;
+    it.gx = gx; it.gy = gy;
+    let cell = G.get(key); if (!cell) G.set(key, cell = []); cell.push(it); list.push(it);
+  }
+  if (list.length < 2) return;
+  for (const a of list) {
+    for (let dx = 0; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+      if (dx === 0 && dy < 0) continue;
+      const cell = G.get((a.gx + dx) * 400003 + a.gy + dy); if (!cell) continue;
+      for (const b of cell) {
+        if (b === a || (dx === 0 && dy === 0 && b.e.id <= a.e.id && cell.indexOf(b) <= cell.indexOf(a))) continue;
+        if (a.air !== b.air) continue;
+        if (!on && a.e.side !== b.e.side) continue; // the loose swarm alone spaces only its own side
+        const A = a.e, B = b.e;
+        if ((A.tgt === B.id && UDEF[A.type].melee) || (B.tgt === A.id && UDEF[B.type].melee)) continue; // a melee unit stops at its target's edge: no push between them
+        const du = B.u - A.u, dy2 = (B.v - A.v) * DY, d = Math.hypot(du, dy2), min = a.r + b.r - BODY6.allow;
+        if (d >= min) continue;
+        let nx, ny;
+        if (d > 1e-6) { nx = du / d; ny = dy2 / d; } else { const an = (A.id * 7 + B.id * 13) % 628 / 100; nx = Math.cos(an); ny = Math.sin(an); }
+        const o = (min - d) * (a.air ? BODY6.kAir : BODY6.k), wa = b.m / (a.m + b.m), wb = a.m / (a.m + b.m);
+        a.pu -= nx * o * wa; a.pv -= ny * o * wa; b.pu += nx * o * wb; b.pv += ny * o * wb;
+      }
+    }
+  }
+  // Each list built the same way in every tick of every copy of a match (g.ents' order, b6side's seeded shuffle), so this stays deterministic
+  const cap = BODY6.max * dt;
+  for (const it of list) {
+    if (!it.pu && !it.pv) continue;
+    let pu = it.pu, pv = it.pv; const l = Math.hypot(pu, pv); if (l > cap) { pu *= cap / l; pv *= cap / l; }
+    const e = it.e, nu = clamp(e.u + pu, 0, L); let nv = e.v + pv / DY;
+    if (it.air) { e.u = nu; e.v = nv; continue; }
+    if (MAP_2D) { const H = MAP.size.h / 2 - 6; nv = clamp(nv, -H, H); if (NAV.on && navShut(nu, nv)) { if (!navShut(nu, e.v)) e.u = nu; else if (!navShut(e.u, nv)) e.v = nv; continue; } }
+    else nv = clamp(nv, -LANE_V, LANE_V);
+    e.u = nu; e.v = nv;
+  }
+}
 /* ---------- Enemy AI: same economy, same rules, same upgrades as the player ---------- */
 // Known base defenses: the enemy HQ gun plus remembered Turrets, each at its last-seen tier
 const HQ_VAL = 400, TURRET_VAL = 300;
@@ -8081,7 +8492,7 @@ function serialize(g, extra) {
   const projs = g.projs.map(p => Object.assign({}, p, { target: p.target ? p.target.id : null }));
   const sides = g.sides.map(sd => Object.assign({}, sd, { hq: sd.hq.id, slots: sd.slots.map(b => b ? b.id : null), res: Object.assign({}, sd.res), stats: Object.assign({}, sd.stats), salv: Object.assign({}, sd.salv) }));
   const fog = g.fog.map(f => ({ exp: Array.from(f.exp).join(''), seen: Array.from(f.seen).join(''), ghosts: f.ghosts, creep: f.creep, field: f.field, intel: f.intel, lastHQ: f.lastHQ, lastSpot: f.lastSpot, seenUnits: f.seenUnits }));
-  return JSON.stringify({ v: SAVE_VER, map: { id: MAP.id, v: MAP.v }, ...(g.me ? { me: 1 } : {}), /* v2.93: the player's side, only when it is 1 (the right-hand start) */ ...(extraTc(g)), t: g.t, nid: g.nid, diffKey: g.diffKey, ents, projs, sides, nodes: g.nodes, fog, abil: g.abil, endHold: g.endHold || null, log: g.log, creep: g.creep, field: g.field, warps: g.warps, acid: g.acid, stats: g.stats, ...(g.guards && g.guards.length ? { guards: g.guards } : {}), ...(g.cond && Object.keys(g.cond).length ? { cond: g.cond, meteor: g.meteor || null } : {}), ...(rwB2a(g) || rwB2b(g) || rwB3a(g) || rwB3b(g) || rwB4a(g) || rwB5b(g) || rwB5c(g) || rwB6side(g) || rwB6art(g) || rwB6hq(g) || rwB6c(g) || rwB6ai(g) || rwB6d(g) || rwB6elane(g) || rwB6e(g) || rwB6fai(g) || rwB6f(g) || rwB6g(g) ? { rw: Object.fromEntries(Object.entries(g.rw).filter(([k]) => (k !== 'b3a' || rwB3a(g)) && (k !== 'b3b' || rwB3b(g)) && (k !== 'b4a' || rwB4a(g)) && (k !== 'b4b' || rwB4b(g)) && (k !== 'b5b' || rwB5b(g)) && (k !== 'b5c' || rwB5c(g)) && (k !== 'b6side' || rwB6side(g)) && (k !== 'b6art' || rwB6art(g)) && (k !== 'b6hq' || rwB6hq(g)) && (k !== 'b6c' || rwB6c(g)) && (k !== 'b6ai' || rwB6ai(g)) && (k !== 'b6d' || rwB6d(g)) && (k !== 'b6elane' || rwB6elane(g)) && (k !== 'b6e' || rwB6e(g)) && (k !== 'b6fai' || rwB6fai(g)) && (k !== 'b6f' || rwB6f(g)) && (k !== 'b6g' || rwB6g(g)))), /* v2.97: b6g saved only when on (an off save is a v2.96 save) */ /* v2.96: b6fai and b6f saved only when on (an off save is a v2.95 save) */ /* v2.95: b6elane and b6e saved only when on (an off save is a v2.94 save) */ /* v2.94: b6ai and b6d saved only when on (an off save is a v2.93 save) */ /* v2.93: b6hq and b6c saved only when on (an off save is a v2.92 save) */ /* v2.92: b6side saved only when on (a b6side-off save is a v2.91 save) */ /* v2.90: b5c saved only when on (a b5c-off save is a v2.89 save) */ mk: g.mk || [] } : {}), /* v2.84: b3a saved only when on (a b3a-off save is a v2.83 save); v2.85: b3b the same way (a b3b-off save is a v2.84 save) */ ...(rwB3a(g) && g.rem && g.rem.length ? { rem: g.rem } : {}), ...(rwB3b(g) && g.kn && g.kn.length ? { kn: g.kn } : {}), ...(rwB2b(g) && ((g.rup && g.rup.length) || (g.rdg && g.rdg.length)) ? { rup: g.rup || [], rdg: g.rdg || [] } : {}), seed: g.seed, rs: g.rs, fs: g.fs, ...(rwB6side(g) ? { os: g.os, ar: g.ar.slice() } : {}), extra }); // os, ar (v2.92, batch 6b): the order stream and each AI's own stream, only when b6side is on // rw, mk (v2.82): the rework's switches and shell markers, only when batch 2a is on (older saves and b2a-off games stay as they were) // seed/rs/fs (v2.50): the random streams, so a resumed match rolls on where it stopped
+  return JSON.stringify({ v: SAVE_VER, map: { id: MAP.id, v: MAP.v }, ...(g.me ? { me: 1 } : {}), /* v2.93: the player's side, only when it is 1 (the right-hand start) */ ...(extraTc(g)), t: g.t, nid: g.nid, diffKey: g.diffKey, ents, projs, sides, nodes: g.nodes, fog, abil: g.abil, endHold: g.endHold || null, log: g.log, creep: g.creep, field: g.field, warps: g.warps, acid: g.acid, stats: g.stats, ...(g.guards && g.guards.length ? { guards: g.guards } : {}), ...(g.cond && Object.keys(g.cond).length ? { cond: g.cond, meteor: g.meteor || null } : {}), ...(rwB2a(g) || rwB2b(g) || rwB3a(g) || rwB3b(g) || rwB4a(g) || rwB5b(g) || rwB5c(g) || rwB6side(g) || rwB6art(g) || rwB6hq(g) || rwB6c(g) || rwB6ai(g) || rwB6d(g) || rwB6elane(g) || rwB6e(g) || rwB6fai(g) || rwB6f(g) || rwB6g(g) || rwB6h(g) || rwB6hbody(g) || rwB6hnode(g) ? { rw: Object.fromEntries(Object.entries(g.rw).filter(([k]) => (k !== 'b3a' || rwB3a(g)) && (k !== 'b3b' || rwB3b(g)) && (k !== 'b4a' || rwB4a(g)) && (k !== 'b4b' || rwB4b(g)) && (k !== 'b5b' || rwB5b(g)) && (k !== 'b5c' || rwB5c(g)) && (k !== 'b6side' || rwB6side(g)) && (k !== 'b6art' || rwB6art(g)) && (k !== 'b6hq' || rwB6hq(g)) && (k !== 'b6c' || rwB6c(g)) && (k !== 'b6ai' || rwB6ai(g)) && (k !== 'b6d' || rwB6d(g)) && (k !== 'b6elane' || rwB6elane(g)) && (k !== 'b6e' || rwB6e(g)) && (k !== 'b6fai' || rwB6fai(g)) && (k !== 'b6f' || rwB6f(g)) && (k !== 'b6g' || rwB6g(g)) && (k !== 'b6h' || rwB6h(g)) && (k !== 'b6hbody' || rwB6hbody(g)) && (k !== 'b6hnode' || rwB6hnode(g)))), /* v2.98: b6h, b6hbody, b6hnode saved only when on (an off save is a v2.97 save) */ /* v2.97: b6g saved only when on (an off save is a v2.96 save) */ /* v2.96: b6fai and b6f saved only when on (an off save is a v2.95 save) */ /* v2.95: b6elane and b6e saved only when on (an off save is a v2.94 save) */ /* v2.94: b6ai and b6d saved only when on (an off save is a v2.93 save) */ /* v2.93: b6hq and b6c saved only when on (an off save is a v2.92 save) */ /* v2.92: b6side saved only when on (a b6side-off save is a v2.91 save) */ /* v2.90: b5c saved only when on (a b5c-off save is a v2.89 save) */ mk: g.mk || [] } : {}), /* v2.84: b3a saved only when on (a b3a-off save is a v2.83 save); v2.85: b3b the same way (a b3b-off save is a v2.84 save) */ ...(rwB3a(g) && g.rem && g.rem.length ? { rem: g.rem } : {}), ...(rwB3b(g) && g.kn && g.kn.length ? { kn: g.kn } : {}), ...(rwB2b(g) && ((g.rup && g.rup.length) || (g.rdg && g.rdg.length)) ? { rup: g.rup || [], rdg: g.rdg || [] } : {}), seed: g.seed, rs: g.rs, fs: g.fs, ...(rwB6side(g) ? { os: g.os, ar: g.ar.slice() } : {}), extra }); // os, ar (v2.92, batch 6b): the order stream and each AI's own stream, only when b6side is on // rw, mk (v2.82): the rework's switches and shell markers, only when batch 2a is on (older saves and b2a-off games stay as they were) // seed/rs/fs (v2.50): the random streams, so a resumed match rolls on where it stopped
 }
 function deserialize(str) {
   const o = JSON.parse(str);
@@ -8093,7 +8504,7 @@ function deserialize(str) {
   if (o.tc) g.tc = o.tc.slice(); // v2.93: the match's team colours (never read by the SIM)
   if (o.rs !== undefined && !RNG.legacy) { g.seed = o.seed >>> 0; g.rs = o.rs | 0; g.fs = o.fs | 0; } // v2.50: an older save keeps the fresh seed newGame drew
   g.t = o.t; g.nid = o.nid; g.ents = o.ents; g.nodes = o.nodes; g.guards = o.guards || []; g.cond = o.cond || {}; g.meteor = o.meteor || null; // v2.72: battlefield conditions // v2.71: relic guards (a save from before has none)
-  g.rw = rwInit(o.rw ? Object.assign({ b2b: false, b3a: false, b3b: false, b4a: false, b4b: false, b5b: false, b5c: false, b6side: false, b6art: false, b6hq: false, b6c: false, b6ai: false, b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false, b6g: false }, o.rw) : { b2a: false, artDeploy: false, artTelegraph: false, b2b: false, b3a: false, b3b: false, b4a: false, b4b: false, b5b: false, b5c: false, b6side: false, b6art: false, b6hq: false, b6c: false, b6ai: false, b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false, b6g: false }); /* v2.92: a v2.91 save resumes with batch 6b off */ /* v2.90: a v2.89 save resumes with batch 5c off */ /* v2.88: a v2.87 save resumes with batch 5b off */ /* v2.87: a v2.86 save resumes with batch 4b off */ /* v2.86: a v2.85 save resumes with batch 4a off */ if (o.rem) g.rem = o.rem; if (o.kn) g.kn = o.kn; /* v2.85: a v2.84 save resumes with batch 3b off; knocks */ /* v2.84: a v2.83 save resumes with batch 3a off; remains */ if (o.mk) g.mk = o.mk; // v2.82: a save without the rework's switches plays as before it (v2.83: a v2.82 save without b2b too)
+  g.rw = rwInit(o.rw ? Object.assign({ b2b: false, b3a: false, b3b: false, b4a: false, b4b: false, b5b: false, b5c: false, b6side: false, b6art: false, b6hq: false, b6c: false, b6ai: false, b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false }, o.rw) : { b2a: false, artDeploy: false, artTelegraph: false, b2b: false, b3a: false, b3b: false, b4a: false, b4b: false, b5b: false, b5c: false, b6side: false, b6art: false, b6hq: false, b6c: false, b6ai: false, b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false }); /* v2.92: a v2.91 save resumes with batch 6b off */ /* v2.90: a v2.89 save resumes with batch 5c off */ /* v2.88: a v2.87 save resumes with batch 5b off */ /* v2.87: a v2.86 save resumes with batch 4b off */ /* v2.86: a v2.85 save resumes with batch 4a off */ if (o.rem) g.rem = o.rem; if (o.kn) g.kn = o.kn; /* v2.85: a v2.84 save resumes with batch 3b off; knocks */ /* v2.84: a v2.83 save resumes with batch 3a off; remains */ if (o.mk) g.mk = o.mk; // v2.82: a save without the rework's switches plays as before it (v2.83: a v2.82 save without b2b too)
   if (rwB6side(g) && o.ar) { g.os = o.os | 0; g.ar = o.ar.map(x => x | 0); } else { delete g.os; delete g.ar; } // v2.92 (batch 6b): the order stream and the AIs' own streams
   if (o.rup) g.rup = o.rup; if (o.rdg) g.rdg = o.rdg; // v2.83: Worldbreaker cracks and ridges
   g.stats = o.stats && o.stats.v === 1 ? o.stats : newStats(o.t); // v2.51: an older save starts its record now
@@ -17439,9 +17850,9 @@ function trVfxUse(k) {
 }
 
 // v2.82: a row's rework switches (REWORK's for a setup saved before them)
-const TR_RW = [['b2a', 'Batch 2a'], ['artDeploy', 'Deploy'], ['artTelegraph', 'Telegraph'], ['b2b', 'Batch 2b'], ['b3a', 'Batch 3a'], ['b3b', 'Batch 3b'], ['b4a', 'Batch 4a'], ['b4b', 'Batch 4b'], ['b5b', 'Batch 5b'], ['b5c', 'Batch 5c'], ['b6side', 'Batch 6b side'], ['b6art', 'Batch 6b Artillery'], ['b6hq', 'Batch 6c HQ shield'], ['b6c', 'Batch 6c tuning'], ['b6ai', 'Batch 6d AI'], ['b6d', 'Batch 6d balance'], ['b6elane', 'Batch 6e lanes'], ['b6e', 'Batch 6e costs'], ['b6fai', 'Batch 6f AI'], ['b6f', 'Batch 6f prices'], ['b6g', 'Batch 6g fixes']]; // b6g (v2.97); // b6fai, b6f (v2.96); // b6elane, b6e (v2.95); // b6ai, b6d (v2.94); // b6hq, b6c (v2.93); // b5c (v2.90); b5b (v2.88); b4b (v2.87); b2b (v2.83), b3a (v2.84), b3b (v2.85), b4a (v2.86)
+const TR_RW = [['b2a', 'Batch 2a'], ['artDeploy', 'Deploy'], ['artTelegraph', 'Telegraph'], ['b2b', 'Batch 2b'], ['b3a', 'Batch 3a'], ['b3b', 'Batch 3b'], ['b4a', 'Batch 4a'], ['b4b', 'Batch 4b'], ['b5b', 'Batch 5b'], ['b5c', 'Batch 5c'], ['b6side', 'Batch 6b side'], ['b6art', 'Batch 6b Artillery'], ['b6hq', 'Batch 6c HQ shield'], ['b6c', 'Batch 6c tuning'], ['b6ai', 'Batch 6d AI'], ['b6d', 'Batch 6d balance'], ['b6elane', 'Batch 6e lanes'], ['b6e', 'Batch 6e costs'], ['b6fai', 'Batch 6f AI'], ['b6f', 'Batch 6f prices'], ['b6g', 'Batch 6g fixes'], ['b6h', 'Batch 6h Bloomhost'], ['b6hbody', 'Batch 6h bodies'], ['b6hnode', 'Batch 6h nodes']]; // b6h, b6hbody, b6hnode (v2.98); // b6g (v2.97); // b6fai, b6f (v2.96); // b6elane, b6e (v2.95); // b6ai, b6d (v2.94); // b6hq, b6c (v2.93); // b5c (v2.90); b5b (v2.88); b4b (v2.87); b2b (v2.83), b3a (v2.84), b3b (v2.85), b4a (v2.86)
 function trRw(k) { const S = TR.set; if (!Array.isArray(S.rw)) S.rw = []; return S.rw[k] || (S.rw[k] = rwInit()); }
-const trRwTag = k => { const r = trRw(k), a = !r.b2a ? 'pre-2a' : r.artDeploy && r.artTelegraph ? '2a' : `2a${r.artDeploy ? ' deploy' : ''}${r.artTelegraph ? ' telegraph' : ''}${!r.artDeploy && !r.artTelegraph ? ' (no Artillery switches)' : ''}`; return `${a}, ${r.b2b ? '2b' : 'pre-2b'}, ${r.b3a ? '3a' : 'pre-3a'}, ${r.b3b ? '3b' : 'pre-3b'}, ${r.b4a ? '4a' : 'pre-4a'}, ${r.b4b ? '4b' : 'pre-4b'}, ${r.b5b ? '5b' : 'pre-5b'}, ${r.b5c ? '5c' : 'pre-5c'}, ${r.b6side ? '6b side' : 'pre-6b side'}, ${r.b6art ? '6b Artillery' : 'pre-6b Artillery'}, ${r.b6hq ? '6c HQ shield' : 'pre-6c HQ shield'}, ${r.b6c ? '6c tuning' : 'pre-6c tuning'}, ${r.b6ai ? '6d AI' : 'pre-6d AI'}, ${r.b6d ? '6d balance' : 'pre-6d balance'}, ${r.b6elane ? '6e lanes' : 'pre-6e lanes'}, ${r.b6e ? '6e costs' : 'pre-6e costs'}, ${r.b6fai ? '6f AI' : 'pre-6f AI'}, ${r.b6f ? '6f prices' : 'pre-6f prices'}, ${r.b6g ? '6g fixes' : 'pre-6g fixes'}`; }; // v2.97: and 6g // v2.96: and 6f // v2.95: and 6e // v2.90: and 5c; v2.88: and 5b; v2.87: and 4b; // v2.86: and 4a; v2.83: and batch 2b; v2.84: and 3a; v2.85: and 3b
+const trRwTag = k => { const r = trRw(k), a = !r.b2a ? 'pre-2a' : r.artDeploy && r.artTelegraph ? '2a' : `2a${r.artDeploy ? ' deploy' : ''}${r.artTelegraph ? ' telegraph' : ''}${!r.artDeploy && !r.artTelegraph ? ' (no Artillery switches)' : ''}`; return `${a}, ${r.b2b ? '2b' : 'pre-2b'}, ${r.b3a ? '3a' : 'pre-3a'}, ${r.b3b ? '3b' : 'pre-3b'}, ${r.b4a ? '4a' : 'pre-4a'}, ${r.b4b ? '4b' : 'pre-4b'}, ${r.b5b ? '5b' : 'pre-5b'}, ${r.b5c ? '5c' : 'pre-5c'}, ${r.b6side ? '6b side' : 'pre-6b side'}, ${r.b6art ? '6b Artillery' : 'pre-6b Artillery'}, ${r.b6hq ? '6c HQ shield' : 'pre-6c HQ shield'}, ${r.b6c ? '6c tuning' : 'pre-6c tuning'}, ${r.b6ai ? '6d AI' : 'pre-6d AI'}, ${r.b6d ? '6d balance' : 'pre-6d balance'}, ${r.b6elane ? '6e lanes' : 'pre-6e lanes'}, ${r.b6e ? '6e costs' : 'pre-6e costs'}, ${r.b6fai ? '6f AI' : 'pre-6f AI'}, ${r.b6f ? '6f prices' : 'pre-6f prices'}, ${r.b6g ? '6g fixes' : 'pre-6g fixes'}, ${r.b6h ? '6h Bloomhost' : 'pre-6h Bloomhost'}, ${r.b6hbody ? '6h bodies' : 'pre-6h bodies'}, ${r.b6hnode ? '6h nodes' : 'pre-6h nodes'}`; }; // v2.98: and 6h // v2.97: and 6g // v2.96: and 6f // v2.95: and 6e // v2.90: and 5c; v2.88: and 5b; v2.87: and 4b; // v2.86: and 4a; v2.83: and batch 2b; v2.84: and 3a; v2.85: and 3b
 // v2.93 (batch 6c, Part C3): each row's team colours ([side 0, side 1] palette keys or 'random'; Blue and Red by default). The
 // sides were named Blue and Red in the Test Range's texts until v2.94 (now Left and Right, TR_SIDE); Random rolls from the UI's own dice each time the rows are built
 function trTc(k) { const S = TR.set; if (!Array.isArray(S.tc)) S.tc = []; return S.tc[k] || (S.tc[k] = ['blue', 'red']); }
@@ -17750,7 +18161,7 @@ function trUI() { // every UI refresh: the readouts, the clock, the info card, t
     const R = rangeRead(g), T = trView(k), el = box.children[k];
     const who = s => { const c = {}; for (const e of g.ents) if (e.side === s && e.hp > 0) { const nm = e.kind === 'u' ? UDEF[e.type].name : bdOf(e).name; c[nm] = (c[nm] || 0) + 1; } const a = Object.entries(c).sort((x, y) => y[1] - x[1]); return a.length ? a.slice(0, 2).map(([nm, m]) => `${cxEsc(nm)} ×${m}`).join(', ') + (a.length > 2 ? ' …' : '') : 'none'; };
     const w = R.wipe ? ` · <b class="w">${TR_SIDE[R.wipe.side]} wiped out at ${fmtTime(R.wipe.t)}</b>` : '';
-    setHTML(el, `${n > 1 ? `<b>Row ${k + 1}</b> <i class="rw">${cxEsc(trRwTag(k))}</i> ` : trRw(0).b2a && trRw(0).artDeploy && trRw(0).artTelegraph && trRw(0).b2b && trRw(0).b3a && trRw(0).b3b && trRw(0).b4a && trRw(0).b4b && trRw(0).b5b && trRw(0).b5c && trRw(0).b6side && trRw(0).b6art && trRw(0).b6hq && trRw(0).b6c && trRw(0).b6ai && trRw(0).b6d && trRw(0).b6elane && trRw(0).b6e && trRw(0).b6fai && trRw(0).b6f && trRw(0).b6g ? '' : `<i class="rw">${cxEsc(trRwTag(0))}</i> `}<span class="b">${who(0)}</span> vs <span class="r">${who(1)}</span> · damage <span class="b">${txN(Math.round(R.dmg[0]))}</span> / <span class="r">${txN(Math.round(R.dmg[1]))}</span> · kills <span class="b">${R.kills[0]}</span> / <span class="r">${R.kills[1]}</span>${w}`);
+    setHTML(el, `${n > 1 ? `<b>Row ${k + 1}</b> <i class="rw">${cxEsc(trRwTag(k))}</i> ` : trRw(0).b2a && trRw(0).artDeploy && trRw(0).artTelegraph && trRw(0).b2b && trRw(0).b3a && trRw(0).b3b && trRw(0).b4a && trRw(0).b4b && trRw(0).b5b && trRw(0).b5c && trRw(0).b6side && trRw(0).b6art && trRw(0).b6hq && trRw(0).b6c && trRw(0).b6ai && trRw(0).b6d && trRw(0).b6elane && trRw(0).b6e && trRw(0).b6fai && trRw(0).b6f && trRw(0).b6g && trRw(0).b6h && trRw(0).b6hbody && trRw(0).b6hnode ? '' : `<i class="rw">${cxEsc(trRwTag(0))}</i> `}<span class="b">${who(0)}</span> vs <span class="r">${who(1)}</span> · damage <span class="b">${txN(Math.round(R.dmg[0]))}</span> / <span class="r">${txN(Math.round(R.dmg[1]))}</span> · kills <span class="b">${R.kills[0]}</span> / <span class="r">${R.kills[1]}</span>${w}`);
     el.style.left = (T.F.l + 6) + 'px'; el.style.top = (n > 1 ? T.y0 + 2 : T.y1 - 20) + 'px'; // one row: the bottom (toasts show at the top); Compare: each strip's top, above its units el.style.maxWidth = (T.F.r - T.F.l - 12) + 'px';
   });
 }

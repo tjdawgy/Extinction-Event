@@ -286,6 +286,7 @@ function meleeHit(g, src, t, def) {
   mul *= outMul(g, src); // disrupted (v2.27), a Beacon T3 warp-in (v2.34)
   damage(g, t, def.dmg * mul, def.weapon, src.side, src);
   if (def.disrupt) disrupt(g, t, def.disrupt); // the Parallax's blows (v2.27)
+  if (def.biteCorr) corrode(g, t, def.corrode); // v2.98 (b6h): a Mite's bite corrodes like Spitter acid
   if (src.kind === 'u') src.recoil = 1;
 }
 function fire(g, src, t, def) {

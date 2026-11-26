@@ -136,7 +136,7 @@ function tyrImpact(g, p, hit) {
 function splashUnits(g, p, hit, scale) { // the glob's splash on ground units only (when it struck a building)
   for (const e of g.ents) {
     if (e === hit || e.kind !== 'u' || e.side === p.side || e.hp <= 0 || (UDEF[e.type].air && !(e.lnd >= 2))) continue;
-    const dx = Math.hypot(e.u - p.u, (e.v - p.v) * 0.6); if (dx < p.splash) damage(g, e, p.dmg * scale * (1 - dx / p.splash), p.weapon, p.side);
+    const dx = Math.hypot(e.u - p.u, (e.v - p.v) * 0.6); if (dx < p.splash) { AREA6H.on++; try { damage(g, e, p.dmg * scale * (1 - dx / p.splash), p.weapon, p.side); } finally { AREA6H.on--; } } // v2.98: area damage (the Warden's aura)
   }
 }
 function updatePus(g, dt) {
@@ -152,10 +152,11 @@ function pusClear(g, b) {
   rw4bEv(g, b.side, 'pusclear', { u: b.u, n: b.pus }); b.pus = 0; b.puS = undefined;
 }
 function pusBurst(g, b) { // the building fell with pustules on it: each bursts into Mites for their side
-  const s = b.puS, n = Math.min(PUS.cap, b.pus * PUS.mites);
+  const s = b.puS, n = Math.min(PUS.cap, b.pus * PUS.mites, rwB6h(g) && s >= 0 && s < 2 ? Math.max(0, B6H.mite.cap - miteCount6h(g, s)) : 99); // v2.98 (b6h): within the side's cap of Mites
   if (!(s >= 0 && s < 2) || !n) return;
   for (let i = 0; i < n; i++) {
     const a = i / n * Math.PI * 2 + 0.4, r = b.half + 8;
+    if (rwB6h(g)) { spawnMite6h(g, s, b.u + Math.cos(a) * r, b.v + Math.sin(a) * r * 0.6, 'pus'); continue; } // v2.98 (b6h): the one Mite (B6H.mite)
     const k = spawnUnit(g, s, 'mite', clamp(b.u + Math.cos(a) * r, 0, L), b.v + Math.sin(a) * r * 0.6);
     Object.assign(k, { temp: g.t + MOUND.life, tLife: MOUND.life, tSrc: 'pus' }); k.laneV = clamp(k.v, -LANE_V, LANE_V); arriveOrders(g, k);
   }

@@ -112,6 +112,7 @@ function update(g, dt) {
   updateGuards(g, foes, dt); // v2.71: the relic guards fire, and both sides may target them
   indexFoes(foes[0], dt); indexFoes(foes[1], dt); // v2.37: lane-sorted, so target searches look only near the searcher
   RDG.list = null; if (rwB2b(g)) update2b(g); if (rwB3a(g)) update3a(g); /* v2.84: remains */ if (rwB3b(g)) update3b(g, dt); /* v2.85: barriers, knocks, Bulwark regen */ if (rwB4a(g)) update4a(g); /* v2.86: marked targets */ if (rwB4b(g)) update4b(g, dt); if (rwB5b(g)) update5b(g); /* v2.88: swarm surge */ /* v2.87: pustules */ // v2.83: Titan cover, Worldbreaker cracks and ridges (RDG.list: this game's ridges, while its units move)
+  if (rwB6h(g)) update6h(g, dt); // v2.98 (batch 6h): Warden auras, Bile Blooms, swallowed units, Queens' Mites (src/sim/rework-6h.js)
   const n = g.ents.length; NAV.now = g.t; NAV.g6 = rwB6g(g); // v2.97 (b6g): moveNav's guard below // v2.65: the clock the navigation paths age by
   for (let i = 0; i < n; i++) {
     const e = g.ents[i];
@@ -119,6 +120,7 @@ function update(g, dt) {
     if (e.kind === 'b') updateBuilding(g, e, foes[e.side], dt); else { updateUnit(g, e, foes[e.side], dt); if (NAV.on && e.hp > 0 && !UDEF[e.type].air && !e.leaping && navShut(e.u, e.v)) navEject(e); } // v2.65: never inside a wall
   }
   RDG.list = null;
+  if (rwB6hbody(g) || rwB6h(g)) body6h(g, dt); // v2.98 (batch 6h): unit bodies and the loose swarm (src/sim/rework-6h.js)
   updateProjs(g, dt);
   if (g.mk) updateMarks(g); // v2.82: telegraphed shells' markers
   updateMedics(g, dt);
@@ -270,7 +272,8 @@ function updateBuilding(g, b, foes, dt) {
         if (facOf(b.fac) === 'axiarchs') { if (fr && !rwB6g(g)) g.warps.push({ side: b.side, type: ut, u: fr.u + rand(-12, 12), v: fr.v + rand(-20, 20), t0: g.t, end: g.t + WARP.ch, fwd: fr }); else startWarp(g, b.side, ut, undefined, b); continue; } // Axiarchs (v2.26): the unit warps in at the warp point instead (v2.97, b6g: a forward Gate's too, at a safe spot)
         const nu = fr ? spawnUnit(g, b.side, ut, fr.u + rand(-12, 12), fr.v + rand(-20, 20)) : spawnUnit(g, b.side, ut, b.u + dirOf(b.side) * (b.half + 10), b.v + rand(-12, 12) + (br ? (i - 1.5) * 9 : i * 16));
         if (fr) { nu.lane = fr.lane; nu.fwdHome = { u: fr.u, n: fr.n }; nu.laneV = clamp(nu.v - fr.v, -LANE_V, LANE_V); }
-        if (g.sides[b.side].direct) ctlTrained(g, nu, fr); // v2.73: to the base rally point (or beside a forward Barracks), each in its own space (v2.76), then Hold
+        if (b.rm6 && rwB6h(g)) rally6h(g, b, nu); // v2.98 (b6h): its rally is on a surfaced Ruinmaw: the unit tunnels there
+        if (g.sides[b.side].direct && !nu.tn) ctlTrained(g, nu, fr); // v2.73: to the base rally point (or beside a forward Barracks), each in its own space (v2.76), then Hold
         if (ut === 'rifle' && pathMod(b, 'drill')) { nu.vet = 1; nu.maxHp = nu.hp = UDEF.rifle.hp * DRILL.hp; } // Drilled Marines
         if (g.log) { logAdd(g.log.tot[b.side].trained, ut); lgUnit(g, b.side, 'T', ut); }
       }
@@ -316,7 +319,7 @@ function chainBeam(g, src, first, def) {
     if (!next) break;
     mul *= C.fall; hit.push(next);
     const a = P(cur.u, cur.v, aimZ(cur)), b = P(next.u, next.v, aimZ(next));
-    damage(g, next, def.dmg * mul * (sideBuff(g, src.side) ? NANO.dmg : 1) * outMul(g, src), def.weapon, src.side, src);
+    AREA6H.on++; try { damage(g, next, def.dmg * mul * (sideBuff(g, src.side) ? NANO.dmg : 1) * outMul(g, src), def.weapon, src.side, src); } finally { AREA6H.on--; } // v2.98: a chain jump is area damage
     g.fx.push({ k: 'beam', x: a.x, y: a.y, x2: b.x, y2: b.y, t: 0, life: 0.2, w: 1.6 * mul });
     cur = next;
   }

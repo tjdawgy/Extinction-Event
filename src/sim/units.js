@@ -233,10 +233,11 @@ const RETREAT = { fire: false }; // v2.35 (audit): retreating units hold their f
 function updateUnit(g, u, foes, dt) {
   const d = rwD(g, u.type); // v2.83: a batch 2b unit plays by its own definition in a game with b2b on (else UDEF's)
   if (u.exT) { if (g.t < u.exT) { u.moving = false; u.tgt = 0; return; } exileEnd(g, u); } // v2.82: exiled by a Severance: frozen until it snaps back
+  if (u.sw6) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // v2.98 (b6h): inside a Ruinmaw
   if (u.rsBrk) { rsHome(g, u); return; } // v2.84: a batch 3a Riftstalker's shields broke out on a strike: straight home
   u.anim += dt;
   const frz = u.frzT > g.t; // Frenzy Bloom (v2.20): faster attacks and movement
-  if (u.cd > 0) u.cd -= dt * (frz ? ABIL.frenzy.rate : 1) * (u.kfT > g.t ? KFRENZY.rate : 1); // v2.88: a batch 5b kill frenzy (never set with b5b off)
+  if (u.cd > 0) u.cd -= dt * (frz ? ABIL.frenzy.rate : 1) * (u.kfT > g.t ? KFRENZY.rate : 1) * (u.bb6 === g.t ? B6H.brood.atk : 1); // v2.98 (b6h): a Bile Bloom // v2.88: a batch 5b kill frenzy (never set with b5b off)
   if (u.recoil > 0) u.recoil = Math.max(0, u.recoil - dt * 5);
   if (u.hitT > 0) u.hitT -= dt;
   if (u.crg) { trampleStep(g, u, d, dt); return; } // v2.85: a batch 3b Dreadthorn charging
@@ -254,7 +255,8 @@ function updateUnit(g, u, foes, dt) {
   const A = d.weapon ? acquire(g, u, d, foes, d.chase) : NO_TARGET; let { best, close } = A; // Medevacs and Recon Drones carry no weapon; melee: the chase search in the same pass (v2.37)
   const cs = po && po.o !== 'hold' && (po.o !== 'attack' || po.ju != null) ? ctlStep(g, u, d) : null; // v2.76: heading somewhere (go, target), or retreating
   if (po) st = cs && cs.go ? 'adv' : cs && cs.run ? 'retreat' : (u.po || HOLD_PO).o; // 'adv': on the way, stopping to fight what it meets (a Titan plants for it)
-  const sp = u.bur ? (d.bore ? BORE.speed / d.speed : 1) : (d.fac === 'bloomhost' && !d.air && onCreep(g, u.side, u.u, u.v) ? CREEP.speed : 1) * (frz ? ABIL.frenzy.speed : 1) * (u.slowT > g.t ? 1 - u.slow : 1) * (u.snT > g.t ? 0 : 1) * (u.ltT > g.t ? 1 - LATCH.slow : 1) * (pin ? 0 : 1) * (u.sgN ? surgeMul(u) : 1); // v2.88: batch 5b swarm surge (sgN never set with b5b off) // v2.86: pinned; v2.84: Leapers latched on it // creep (v2.18), Frenzy Bloom (v2.20), a Gravemantle's slow (v2.27), a Rootheart's snare (v2.33)
+  if (d.pounce && rwB6h(g)) pounce6h(g, u, d, st, cs, A); // v2.98 (b6h): a lunge into contact (src/sim/rework-6h.js)
+  const sp = u.bur ? (d.bore ? BORE.speed / d.speed : 1) : (d.fac === 'bloomhost' && !d.air && onCreep(g, u.side, u.u, u.v) ? CREEP.speed : 1) * (frz ? ABIL.frenzy.speed : 1) * (u.slowT > g.t ? 1 - u.slow : 1) * (u.snT > g.t ? 0 : 1) * (u.ltT > g.t ? 1 - LATCH.slow : 1) * (pin ? 0 : 1) * (u.sgN ? surgeMul(u) : 1) * (u.pcT > g.t ? B6H.pounce.mul : 1) * (u.bb6 === g.t ? B6H.brood.move : 1); // v2.98 (b6h): Pounce, a Bile Bloom // v2.88: batch 5b swarm surge (sgN never set with b5b off) // v2.86: pinned; v2.84: Leapers latched on it // creep (v2.18), Frenzy Bloom (v2.20), a Gravemantle's slow (v2.27), a Rootheart's snare (v2.33)
   if (d.latch && (u.ltH || u.lt) && latchRide(g, u, d, side, dt)) return; // v2.84: a batch 3a Leaper in flight onto its host, or riding it
   if (u.leaping) { // mid-leap (v2.19): fly to the landing spot, nothing else
     const du = u.lu - u.u, dv = u.lv - u.v, dd = Math.hypot(du, dv), st = d.leap.speed * dt;
@@ -263,7 +265,8 @@ function updateUnit(g, u, foes, dt) {
     u.moving = true; return;
   }
   if (u.tn && tunnelStep(g, u, d, side, dt, sp)) return; // v2.83: walking to the tunnel entrance, or inside it
-  if (side.hush) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // v2.81: a Test Range side told not to fight back stands still (never set in a match)
+  if (side.hush) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // v2.81
+  if (u.qm && qMite6h(g, u, d, A, dt, sp)) return; // v2.98 (b6h): a Queen's Mite stays by her (src/sim/rework-6h.js): a Test Range side told not to fight back stands still (never set in a match)
   if (d.swap && !pin && pxStep(g, u, side)) return; // v2.84: a batch 3a Parallax swapped places with a wounded ally
   if (d.devour3 && ravStep(g, u, d, side, st, cs, best, A.prey, dt, sp)) return; // v2.84: a batch 3a Ravager devouring remains (or an AI's going to feed)
   if (d.bore && rwB2a(g) && boreStep(g, u, d, st, cs, foes, dt)) return;

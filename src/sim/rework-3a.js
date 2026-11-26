@@ -58,7 +58,7 @@ const latchN = (g, H) => { let n = 0; for (const e of g.ents) if (e.kind === 'u'
 function latchRank(g, u, H, R) { // [tier, -weight, distance] or null (not a host in reach)
   if (!hostOk(g, u, H)) return null;
   const k = effDist(u, H); if (k > R) return null;
-  return [latchBig(H) ? 0 : 1, -latchW(H), k];
+  return [rwB6h(g) ? latchTier6h(g, H) : latchBig(H) ? 0 : 1, -latchW(H), k]; // v2.98 (b6h): Artillery and siege, then ranged, then big, then the rest
 }
 const rankLess = (a, b, ea, eb) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2] || ea.id - eb.id;
 function latchPick(g, u, foes, R, only) {
@@ -97,6 +97,7 @@ function latchRide(g, u, d, side, dt) {
     const du = u.lu - u.u, dv = u.lv - u.v, dd = Math.hypot(du, dv), st = d.leap.speed * dt;
     if (dd <= st) {
       u.u = u.lu; u.v = u.lv; u.z = 0; u.leaping = 0; u.leapCd = g.t + d.leap.cd; u.ltH = 0;
+      if (rwB6h(g)) stun6h(g, u); // v2.98 (b6h): the landing stuns
       if (ok && latchN(g, H) < LATCH.max) {
         u.lt = H.id; u.ltN = g.t + LATCH.tick; u.ltF = 0; H.ltT = g.t + 0.1;
         const w = P(u.u, u.v, UDEF[H.type].h * 0.6 * US); g.fx.push({ k: 'latch', side: u.side, u: u.u, x: w.x, y: w.y, t: 0, life: 0.5 });
@@ -112,7 +113,7 @@ function latchRide(g, u, d, side, dt) {
   H.ltT = g.t + 0.1;
   if (g.t >= u.ltN) {
     u.ltN += LATCH.tick;
-    if (!side.hush) { damage(g, H, latchDps(g) * LATCH.tick * (sideBuff(g, u.side) ? NANO.dmg : 1) * outMul(g, u), 'latch', u.side, u); u.lastAct = g.t; u.ltF = Math.min(8, (u.ltF || 0) + 1); }
+    if (!side.hush) { damage(g, H, (rwB6h(g) ? latchDps6h(g, H) : latchDps(g)) * LATCH.tick * (sideBuff(g, u.side) ? NANO.dmg : 1) * outMul(g, u), 'latch', u.side, u); u.lastAct = g.t; u.ltF = Math.min(8, (u.ltF || 0) + 1); }
   }
   return true;
 }
@@ -308,7 +309,7 @@ function aiRework3a(g, s, mine) {
   for (const u of mine) {
     if (u.type === 'leaper' && !u.lt && !u.ltH) {
       let best = null, br = null;
-      for (const H of foes) { const r = latchRank(g, u, H, LATCH.aim); if (r && r[0] === 0 && latchN(g, H) < LATCH.max && (!best || rankLess(r, br, H, best) < 0)) { best = H; br = r; } }
+      for (const H of foes) { const r = latchRank(g, u, H, LATCH.aim); if (r && r[0] <= (rwB6h(g) ? 1 : 0) && latchN(g, H) < LATCH.max && (!best || rankLess(r, br, H, best) < 0)) { best = H; br = r; } }
       const A6 = art6Pick(g, u, foes, u.u, u.v, LATCH.aim, H => !!latchRank(g, u, H, LATCH.aim) && latchN(g, H) < LATCH.max); if (A6) best = A6; // v2.92 (batch 6b): a deployed Artillery first
       u.ltAim = best ? best.id : 0;
     } else if (u.type === 'riftstalker' && !u.rsH) {

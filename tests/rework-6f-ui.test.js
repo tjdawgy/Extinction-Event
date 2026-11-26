@@ -23,7 +23,7 @@ test('b6f: the Codex and the info card show v2.94\'s Axiarch prices; with b6f of
   assert.ok(on.row.includes('120') && on.row.includes('45'), 'Lancer stats row');
   const info = await page.evaluate(() => { closeCodex && closeCodex(); showInfo('u', 'marksman'); return document.getElementById('info').textContent; });
   assert.ok(info.includes('240 credits, 110 energy'), `info card: ${info.slice(0, 200)}`);
-  await page.evaluate(() => { REWORK.b6f = false; REWORK.b6g = false; const i = document.getElementById('info'); if (i) i.classList.remove('show'); openCodex('axiarchs', 'unit:lancer'); });
+  await page.evaluate(() => { REWORK.b6f = false; REWORK.b6g = false; REWORK.b6h = false; REWORK.b6hbody = false; REWORK.b6hnode = false; const i = document.getElementById('info'); if (i) i.classList.remove('show'); openCodex('axiarchs', 'unit:lancer'); });
   await page.waitForTimeout(200);
   const off = await read(), L = await page.evaluate(() => B6E.cost.lancer);
   assert.ok(off.card.includes(String(L.c)) && off.card.includes(String(L.e)), 'b6f off: b6e\'s converted price');
@@ -72,7 +72,7 @@ test('b6f (Part C): a human Axiarch player\'s trained unit warps in beside the b
   const set = await trainOne(null, { du: -20, dv: 10 }), sp = await set.page.evaluate(() => game.sides[0].warp);
   assert.match(set.card, /Moved/); assert.ok(d(set.w, sp) < 60, `the set point: ${JSON.stringify([set.w, sp])}`);
   assert.deepStrictEqual(set.errors, []); await set.page.close();
-  const off = await trainOne({ b6f: false, b6g: false });
+  const off = await trainOne({ b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false });
   assert.match(off.card, /Front/); assert.ok(d(off.w, off.front) < 60, `b6f off: the front edge: ${JSON.stringify({ w: off.w, front: off.front })}`);
   assert.deepStrictEqual(off.errors, []); await off.page.close();
 });

@@ -14,7 +14,7 @@ const finish = (g, s, k) => { assert.ok(sim.tryBuild(g, s, k).ok, k); const b = 
 const put = (g, s, t, u, v = 0) => { const e = sim.spawnUnit(g, s, t, u, v); e.holdU = u; e.holdV = v; e.cd = 1e6; return e; };
 const patch = (g, k, s = 0) => g.field[s].find(p => p.k === k);
 const grown = g => { step(g, 60); return g; };
-const q6 = () => quiet('axiarchs', 'lastfist', { b6g: false }); // v2.97: the three warp-point tests below hold b6g off (with it, an AI side warps in at a safe spot, rear6g/warp6g; tests/rework-6g.test.js checks the same intent with it on)
+const q6 = () => quiet('axiarchs', 'lastfist', { b6g: false, b6h: false, b6hbody: false, b6hnode: false }); // v2.97: the three warp-point tests below hold b6g off (with it, an AI side warps in at a safe spot, rear6g/warp6g; tests/rework-6g.test.js checks the same intent with it on)
 const arrive = g => { for (let i = 0; i < 30 * 10 && g.warps.length; i++) sim.update(g, 1 / 30); }; // to the frame the last warp lands
 const units = (g, t) => g.ents.filter(e => e.kind === 'u' && e.side === 0 && e.type === t);
 

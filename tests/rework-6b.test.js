@@ -70,7 +70,7 @@ test('b6side: in a mirrored fight, the side listed first no longer wins every ti
 test('b6art: on by default, per game, saved only when on; the Artillery plays by its per-game definition (UDEF untouched)', () => {
   const s = loadSim();
   assert.strictEqual(s.rwInit().b6art, true);
-  const on = s.rangeGame({ factions: ['lastfist', 'lastfist'], rework: { b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false, b6g: false } }), off = s.rangeGame({ factions: ['lastfist', 'lastfist'], rework: { b6art: false, b6hq: false, b6c: false, b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false, b6g: false } }); // v2.94: batch 6d off (its Artillery salvo, tests/rework-6d.test.js)
+  const on = s.rangeGame({ factions: ['lastfist', 'lastfist'], rework: { b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false } }), off = s.rangeGame({ factions: ['lastfist', 'lastfist'], rework: { b6art: false, b6hq: false, b6c: false, b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false } }); // v2.94: batch 6d off (its Artillery salvo, tests/rework-6d.test.js)
   assert.strictEqual(s.rwD(on, 'artillery').dmg, s.ART6.dmg); assert.strictEqual(s.rwD(on, 'artillery').cd, s.ART6.cd);
   assert.strictEqual(s.rwD(off, 'artillery').dmg, 60); assert.strictEqual(s.rwD(off, 'artillery').cd, 3.2);
   assert.strictEqual(s.UDEF.artillery.dmg, 60, 'UDEF untouched'); assert.strictEqual(s.UDEF.artillery.minRange, 110, 'its minimum range kept');

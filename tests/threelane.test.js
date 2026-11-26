@@ -108,7 +108,7 @@ test('the centre and both watchtowers at once: two capture groups on Hard, the c
 
 test('forward pads in three lanes: Hard up to 3, Normal 2, Easy none, all on its own half', () => { // v2.97: b6g off (b6g's aiFort6g caps turrets by personality and fortifies held pads anywhere: tests/rework-6g.test.js)
   for (const [diff, want] of [['hard', 3], ['normal', 2], ['easy', 0]]) {
-    const g = setup(diff, { b6g: false }), side = g.sides[1]; side.res.c = side.res.e = 9000;
+    const g = setup(diff, { b6g: false, b6h: false, b6hbody: false, b6hnode: false }), side = g.sides[1]; side.res.c = side.res.e = 9000;
     assert.ok(sim.tryBuild(g, 1, 'barracks').ok); const b = g.ents.find(x => x.side === 1 && x.type === 'barracks'); b.built = true; b.hp = b.maxHp;
     for (const n of g.nodes) if (n.type === 'forwardPad') { n.owner = 1; n.prog = -100; }
     for (let k = 0; k < 5; k++) { side.la = Object.assign(side.la || {}, { fw: -99, t: -99 }); sim.aiLanes(g, 1, D(g, 1), [], [], false); }
