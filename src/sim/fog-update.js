@@ -372,11 +372,11 @@ function ixScan(g, src, def, foes, R, AR, minR) {
     if (du * du + dv * dv > lim * lim) return; // safely beyond reach (the exact distance is taken below)
     if (e.side !== side) { if (MAP_2D) { if (!cellsLit(vis, e.u, bh, e.v)) return; } else { let lit = false; for (let c = cellOf(e.u - bh), c1 = cellOf(e.u + bh); c <= c1; c++) if (vis[c]) { lit = true; break; } if (!lit) return; } } // visibleTo
     const ud = e.kind === 'u' ? UDEF[e.type] : null, air = !!(ud && ud.air) && !(e.lnd >= 2); // v2.87: a landed batch 4b Worldrender is a ground target
-    if (air ? !def.hitsAir : def.hitsGround === false) return;
+    if (air ? !def.hitsAir && !gnLow6i(e, def) : def.hitsGround === false) return; // v2.99 (b6i): a low Gnatcloud
     const dist = effDist(src, e);
     if (dist > (air && AR ? AR : R)) return;
     if (dist < minR) { close = true; return; }
-    const mult = DMG[def.weapon][ud ? (e.lnd >= 2 ? LAND.armor : ud.armor) : 'building'];
+    const mult = DMG[def.weapon][ud ? (e.lnd >= 2 ? LAND.armor : e.type === 'gnatcloud' ? gnArm6i(def.weapon) : ud.armor) : 'building'];
     if (!mult) return;
     const sc = dist + (e.kind === 'b' ? 80 : 0) - (mult - 1) * 45 - (1 - e.hp / e.maxHp) * 25 - (air && def.preferAir ? 400 : 0) - (e.kind === 'b' && def.preferB ? 280 : 0) - (bbf && e.kind === 'b' ? bbFocus(e, g) : 0) - (src.n6f && e.kind === 'b' && bdOf(e).gun ? B6G4.focus : 0); // v2.97 (b6g): a Bloomhost node assault aims at the guns
     if (sc < bs || (sc === bs && idx < bi)) { bs = sc; best = e; bi = idx; }
@@ -401,12 +401,12 @@ function acquire(g, src, def, foes, chase) {
     if (e.hp <= 0 || e.shielded || e.phT > g.t || e.gone || (e.wwT > g.t && !aaTrack(src, def))) continue; // v2.87: anti-air specialists and building guns track it; v2.86: a Wraithwing just after a hop; don't waste shots on a shielded HQ (or a phased Wraithwing, v2.37)
     if (!visibleTo(g, src.side, e)) continue; // auto-target only what your side can see (spotters needed beyond sight)
     const air = e.kind === 'u' && !!UDEF[e.type].air && !(e.lnd >= 2); // v2.87: a landed Worldrender
-    if (air ? !def.hitsAir : def.hitsGround === false) continue;
+    if (air ? !def.hitsAir && !gnLow6i(e, def) : def.hitsGround === false) continue; // v2.99 (b6i): ground splash and flame can hit a low Gnatcloud
     const dist = effDist(src, e);
     if (dist > (air && def.airRange ? def.airRange : def.range)) continue;
     if (dist < minR) { close = true; continue; }
     // prefer units over buildings, targets this weapon counters, and wounded targets
-    const mult = DMG[def.weapon][e.kind === 'b' ? 'building' : e.lnd >= 2 ? LAND.armor : UDEF[e.type].armor];
+    const mult = DMG[def.weapon][e.kind === 'b' ? 'building' : e.lnd >= 2 ? LAND.armor : e.type === 'gnatcloud' ? gnArm6i(def.weapon) : UDEF[e.type].armor];
     if (!mult) continue; // this weapon can't hurt it (e.g. Turret gatling vs buildings)
     const sc = dist + (e.kind === 'b' ? 80 : 0) - (mult - 1) * 45 - (1 - e.hp / e.maxHp) * 25 - (air && def.preferAir ? 400 : 0) - (e.kind === 'b' && def.preferB ? 280 : 0) - (src.kind === 'u' && e.kind === 'b' && g.sides[src.side] && (g.sides[src.side].bbOn || bbf6g(g, src)) ? bbFocus(e, g) : 0) - (src.n6f && e.kind === 'b' && bdOf(e).gun ? B6G4.focus : 0); // v2.69 (a) // the Hydra goes for aircraft first, the Leviathan for buildings
     if (sc < bs) { bs = sc; best = e; }

@@ -1004,6 +1004,7 @@ function render(c, g, time, sel, selPad) {
     const a = P(p.pu, p.pv, p.pz), b = P(p.u, p.v, p.z), wp = p.weapon;
     if (wp === 'exile') { drawOrb(c, g, p, b); continue; } // v2.82: a Severance's rift orb
     if (p.gs) { drawGsMissile(c, p, a, b); continue; } // v2.86: a Gunship's salvo missile
+    if (wp === 'spew6') { drawSpew6(c, p, a, b); continue; } // v2.99: a Skywyrm's acid spew (batch 6i)
     if (wp === 'bilebolt') { drawBileBolt6(c, p, a, b); continue; } // v2.98: a Queen's bolt (batch 6h)
     if (wp === 'quill') { drawQuill5(c, p, a, b); continue; } // v2.88: a Spitter's quill (batch 5b)
     if (wp === 'vbolt') { drawVBolt(c, p, a, b); continue; } // v2.87: a Voidcarrier's bolt

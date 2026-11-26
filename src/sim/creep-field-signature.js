@@ -242,7 +242,7 @@ const FLAME = { aim: true };
 function flameBurst(g, src, def, t) {
   const dir = src.face || dirOf(src.side), dmg = def.dmg * (sideBuff(g, src.side) ? NANO.dmg : 1) * outMul(g, src), cv = FLAME.aim && t ? t.v : src.v;
   for (const e of g.ents) {
-    if (e.side === src.side || e.hp <= 0 || (e.kind === 'u' && UDEF[e.type].air && !(e.lnd >= 2)) || e.shielded) continue; // v2.87: a landed Worldrender burns
+    if (e.side === src.side || e.hp <= 0 || (e.kind === 'u' && UDEF[e.type].air && !(e.lnd >= 2) && e.type !== 'gnatcloud') || e.shielded) continue; // v2.99 (b6i): a Gnatcloud hangs low enough to burn // v2.87: a landed Worldrender burns
     const ahead = (e.u - src.u) * dir, reach = def.range + (e.kind === 'b' ? e.half : 0);
     if (ahead < -6 || ahead > reach || Math.abs(e.v - cv) > def.strip + (e.kind === 'b' ? e.half : 0)) continue;
     damage(g, e, dmg, 'flame', src.side, src);

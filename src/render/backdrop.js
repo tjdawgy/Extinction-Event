@@ -645,12 +645,13 @@ function drawFog(c, F) {
 function drawUnit(c, u) {
   const d = UDEF[u.type], w = P(u.u, u.v), bob = d.air && !u.lnd ? Math.sin(u.anim * 2.2) * 3 : 0; // v2.87: a landing Worldrender doesn't bob
   if (u.gone === 3) return; // v2.83: inside a Ruinmaw's tunnel: off the field
+  if (u.sn6) return; // v2.99 (b6i): in a Talonmaw's talons (drawn there, drawUnit6i)
   if (u.bur) { if (VFX.g) noteBurrow(VFX.g, u); (u.type === 'ruinmaw' ? drawBurrowedBig : drawBurrowed)(c, u, w, VFX.lastT); return; } // v2.82: a burrowed Gorebore is only a moving hump of earth (v2.83: a Ruinmaw a wider one)
   const b2b = VFX.g && rwB2b(VFX.g);
   if (b2b && u.type === 'titan') drawCoverRing(c, u, w, VFX.lastT); // v2.83: the reach of its cover
   const ex = u.exT > VFX.lastT; // v2.82: exiled: faded, washed out, a violet shimmer and a ring for the time left
   c.fillStyle = d.air ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.32)';
-  const big = u.type === 'leviathan' || u.type === 'worldrender' || u.type === 'sovereign' ? 2.4 : u.type === 'broodtyrant' || u.type === 'voidcarrier' ? 1.6 : u.type === 'drone' || u.type === 'needlewing' || u.type === 'prismwing' ? 0.5 : 1; // a Leviathan's shadow is seen coming
+  const big = u.type === 'leviathan' || u.type === 'worldrender' || u.type === 'sovereign' || u.type === 'skywyrm' ? 2.4 : u.type === 'broodtyrant' || u.type === 'voidcarrier' || u.type === 'talonmaw' ? 1.6 : u.type === 'razor6' ? 0.6 : u.type === 'drone' || u.type === 'needlewing' || u.type === 'prismwing' ? 0.5 : 1; // a Leviathan's shadow is seen coming
   const lift = u.lt && VFX.g ? latchLift(VFX.g, u) : 0, rk = rvScale(u); // v2.84: a latched Leaper rides on its host's back (no shadow of its own); a Ravager's stacks make it bigger
   if (!lift) { c.beginPath(); c.ellipse(w.x, w.y, (d.air ? 16 * big : UVIS[u.type] ? UVIS[u.type].w * rk : Math.max(8, d.h * 0.7)) * US, (d.air ? 3.5 * big : 2.6) * US, 0, 0, 7); c.fill(); }
   if (u.sgN) drawSurge5(c, u, w, VFX.lastT); // v2.88: a batch 5b swarm's motion streak at high surge
@@ -660,6 +661,7 @@ function drawUnit(c, u) {
   if (u.hopS !== undefined && VFX.lastT - u.hopS < 0.35) drawHopTrail(c, u, VFX.lastT); // v2.86: a Wraithwing's afterimages just after a hop
   if (u.type === 'medic' && VFX.g) drawHealBeams(c, VFX.g, u, w);
   if (u.siege) drawSiegeLock(c, u, w); // P8 (v2.37): a Titan's stabilisers, under it
+  if (VFX.g && rwB6i(VFX.g)) drawUnit6i(c, VFX.g, u, w, VFX.lastT); // v2.99 (batch 6i): prey in the talons, tendrils, Blight, Rend, a Gnatcloud's haze
   const b6h = VFX.g && rwB6h(VFX.g); if (b6h) drawUnit6h(c, u, w, VFX.lastT); // v2.98 (batch 6h): Pounce's streak, the Warden's aura shimmer
   c.save(); c.translate(w.x + (lift ? (RIDE.get(u) || 0) * 8 * US : 0), w.y - u.z + bob - lift + (lift ? Math.abs(RIDE.get(u) || 0) * 2 * US : 0)); c.scale(u.face * US * (u.kid ? 0.75 : 1), US * (u.kid ? 0.75 : 1)); // a Cloudwing's offspring is smaller (v2.21)
   if (b6h && u.pcT > VFX.lastT) { const k = pounceSquash6h(u, VFX.lastT); c.scale(1 + 0.2 * k, 1 - 0.16 * k); } // v2.98 (b6h): crouched and stretched in its lunge

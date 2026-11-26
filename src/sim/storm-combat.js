@@ -87,7 +87,7 @@ function splashHit(g, p, hit, scale, falloffFloor) {
 }
 function splashHit0(g, p, hit, scale, falloffFloor) {
   for (const e of g.ents) {
-    if (e === hit || e.side === p.side || e.hp <= 0 || (e.kind === 'u' && UDEF[e.type].air && !(e.lnd >= 2))) continue; // v2.87: a landed Worldrender takes splash
+    if (e === hit || e.side === p.side || e.hp <= 0 || (e.kind === 'u' && UDEF[e.type].air && !(e.lnd >= 2) && e.type !== 'gnatcloud')) continue; // v2.99 (b6i): a Gnatcloud hangs low: splash tears through it // v2.87: a landed Worldrender takes splash
     const dx = Math.max(0, Math.hypot(e.u - p.u, (e.v - p.v) * 0.6) - (e.kind === 'b' ? e.half : 0));
     if (dx < p.splash) { damage(g, e, p.dmg * scale * (1 - falloffFloor * dx / p.splash), p.weapon, p.side); if (p.corr) corrode(g, e, p.corr); }
   }
@@ -205,7 +205,7 @@ function damage(g, e, amt, weapon, fromSide, src) {
   damage1(g, e, amt, weapon, fromSide, src);
 }
 function damage1(g, e, amt, weapon, fromSide, src) {
-  const armor = e.kind === 'b' ? 'building' : e.arm || UDEF[e.type].armor; // e.arm (v2.83): a unit's own armour (a batch 2b Ruinmaw's)
+  const armor = e.kind === 'b' ? 'building' : e.arm || (e.type === 'gnatcloud' ? gnArm6i(weapon) : UDEF[e.type].armor); // v2.99 (b6i): a Gnatcloud is light to ground splash and flame // e.arm (v2.83): a unit's own armour (a batch 2b Ruinmaw's)
   const mult = DMG[weapon][armor];
   if (!mult) return;
   const b3 = e.kind === 'u' && rwB3b(g), ud3 = b3 ? rwD(g, e.type) : null; // v2.85: a batch 3b unit plays by its own definition

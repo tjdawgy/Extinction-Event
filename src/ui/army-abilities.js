@@ -124,6 +124,7 @@ function refreshUI(force) {
       const prods = alive(game, myS(), d.from).filter(b => canMake(b, type, game));
       if (type === 'rifle') setHTML(el.querySelector('.pr'), prods.some(b => pathMod(b, 'pairs')) ? 'MASS ×2' : '');
       if (type === 'skitterling') setHTML(el.querySelector('.pr'), rwB5b(game) ? `BROOD ×${BROOD.n}` : ''); // v2.88: a brood (batch 5b)
+      if (type === 'razor6') setHTML(el.querySelector('.pr'), `FLOCK ×${B6I.razor.n}`); // v2.99: a Razorwing flock (batch 6i)
       const mx = el.querySelector('.mx'); if (mx) { const n = unitCount(game, myS(), type); setHTML(mx, `${n}/${d.max}`); mx.classList.toggle('full', n >= d.max); }
       locked = !prods.length;
       const tc = trainCost(game, type), tp = trainPop(game, type); // v2.88: a brood's cost and supply (batch 5b)

@@ -32,7 +32,7 @@ function rangeGame(o = {}) { // o: { seed, factions: [blue, red], rework: this r
 function rangeUnits(g, s, type, u, v, n = 1) {
   RNG.g = g; type = rwType(g, type); // v2.82: the unit that fills this slot in this row (a Bile Lobber or a Gorebore, …)
   const us = [];
-  for (let i = 0; i < n; i++) us.push(spawnUnit(g, s, type, u, v));
+  for (let i = 0; i < n * flockN6i(type); i++) us.push(spawnUnit(g, s, type, u, v)); // v2.99 (b6i): a Razorwing is placed as a flock of three
   const P_ = ctlPack(g, s, us, u, v, false);
   for (const e of us) { const p = P_.get(e.id); e.u = p[0]; e.v = p[1]; ctlHold(e, p[0], p[1]); }
   return us;

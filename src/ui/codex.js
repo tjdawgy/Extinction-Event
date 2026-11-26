@@ -70,7 +70,7 @@ function cxTree(fac, type) {
 }
 function cxTroop(fac, t) {
   const d = rwShow(null, t), tip = UNIT_TIPS[t];
-  const facts = [`Cost ${cxCost(d.cost)}`, d.pop ? `Army size <b>${fmtPop(d.pop)}</b>` : '', `HP <b>${cxN(d.hp)}</b>`, d.shp ? `Shields <b>${cxN(d.shp)}</b>` : ''].filter(Boolean);
+  const facts = [d.flock6 ? `Cost ${cxCost(B6I.razor.cost)} for a flock of <b>${B6I.razor.n}</b>` : `Cost ${cxCost(d.cost)}`, d.pop ? `Army size <b>${fmtPop(d.pop)}</b>${d.flock6 ? ' each' : ''}` : '', /* v2.99 (b6i): the Razorwing is trained as a flock */ `HP <b>${cxN(d.hp)}</b>`, d.shp ? `Shields <b>${cxN(d.shp)}</b>` : ''].filter(Boolean);
   return `<article class="cxcard" id="cx-u-${t}"><canvas class="cxi u" data-k="u" data-f="${fac}" data-t="${t}"></canvas><div class="cxt"><h3>${cxEsc(d.name)}</h3><p>${cxEsc(d.desc || '')}</p>
     <div class="cxfacts"><span>Unlock: ${cxUnlock(fac, t)}</span>${facts.map(x => `<span>${x}</span>`).join('')}</div>
     ${tip ? `<div class="cxtip"><em>Strong against</em> ${cxEsc(tip[0])}</div><div class="cxtip"><em>Weak against</em> ${cxEsc(tip[1])}</div>` : ''}</div></article>`;
@@ -86,7 +86,7 @@ const CX_COLS = [
   { k: 'dps', h: 'Dmg/s', v: d => d.weapon ? d.dmg / d.cd : 0, f: v => v ? cxN(Math.round(v * 10) / 10) : '–' },
   { k: 'range', h: 'Range', v: d => d.range, f: (v, d) => v ? cxN(v) + (d.minRange ? ` (min ${d.minRange})` : '') : '–' },
   { k: 'speed', h: 'Speed', v: d => d.speed },
-  { k: 'cost', h: 'Cost', v: d => d.cost.c + d.cost.e, f: (v, d) => cxCost(d.cost) },
+  { k: 'cost', h: 'Cost', v: d => d.cost.c + d.cost.e, f: (v, d) => d.flock6 ? `${cxCost(B6I.razor.cost)} / ${B6I.razor.n}` : cxCost(d.cost) }, // v2.99: a flock's price for its three
   { k: 'pop', h: 'Army size', v: d => d.pop, f: v => fmtPop(v) },
   { k: 'time', h: 'Build (s)', v: d => d.time, f: (v, d) => d.noTrain ? 'spawned' : cxN(v) + ' s' },
 ];

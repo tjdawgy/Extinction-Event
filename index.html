@@ -2466,11 +2466,11 @@ function ixScan(g, src, def, foes, R, AR, minR) {
     if (du * du + dv * dv > lim * lim) return; // safely beyond reach (the exact distance is taken below)
     if (e.side !== side) { if (MAP_2D) { if (!cellsLit(vis, e.u, bh, e.v)) return; } else { let lit = false; for (let c = cellOf(e.u - bh), c1 = cellOf(e.u + bh); c <= c1; c++) if (vis[c]) { lit = true; break; } if (!lit) return; } } // visibleTo
     const ud = e.kind === 'u' ? UDEF[e.type] : null, air = !!(ud && ud.air) && !(e.lnd >= 2); // v2.87: a landed batch 4b Worldrender is a ground target
-    if (air ? !def.hitsAir : def.hitsGround === false) return;
+    if (air ? !def.hitsAir && !gnLow6i(e, def) : def.hitsGround === false) return; // v2.99 (b6i): a low Gnatcloud
     const dist = effDist(src, e);
     if (dist > (air && AR ? AR : R)) return;
     if (dist < minR) { close = true; return; }
-    const mult = DMG[def.weapon][ud ? (e.lnd >= 2 ? LAND.armor : ud.armor) : 'building'];
+    const mult = DMG[def.weapon][ud ? (e.lnd >= 2 ? LAND.armor : e.type === 'gnatcloud' ? gnArm6i(def.weapon) : ud.armor) : 'building'];
     if (!mult) return;
     const sc = dist + (e.kind === 'b' ? 80 : 0) - (mult - 1) * 45 - (1 - e.hp / e.maxHp) * 25 - (air && def.preferAir ? 400 : 0) - (e.kind === 'b' && def.preferB ? 280 : 0) - (bbf && e.kind === 'b' ? bbFocus(e, g) : 0) - (src.n6f && e.kind === 'b' && bdOf(e).gun ? B6G4.focus : 0); // v2.97 (b6g): a Bloomhost node assault aims at the guns
     if (sc < bs || (sc === bs && idx < bi)) { bs = sc; best = e; bi = idx; }
@@ -2495,12 +2495,12 @@ function acquire(g, src, def, foes, chase) {
     if (e.hp <= 0 || e.shielded || e.phT > g.t || e.gone || (e.wwT > g.t && !aaTrack(src, def))) continue; // v2.87: anti-air specialists and building guns track it; v2.86: a Wraithwing just after a hop; don't waste shots on a shielded HQ (or a phased Wraithwing, v2.37)
     if (!visibleTo(g, src.side, e)) continue; // auto-target only what your side can see (spotters needed beyond sight)
     const air = e.kind === 'u' && !!UDEF[e.type].air && !(e.lnd >= 2); // v2.87: a landed Worldrender
-    if (air ? !def.hitsAir : def.hitsGround === false) continue;
+    if (air ? !def.hitsAir && !gnLow6i(e, def) : def.hitsGround === false) continue; // v2.99 (b6i): ground splash and flame can hit a low Gnatcloud
     const dist = effDist(src, e);
     if (dist > (air && def.airRange ? def.airRange : def.range)) continue;
     if (dist < minR) { close = true; continue; }
     // prefer units over buildings, targets this weapon counters, and wounded targets
-    const mult = DMG[def.weapon][e.kind === 'b' ? 'building' : e.lnd >= 2 ? LAND.armor : UDEF[e.type].armor];
+    const mult = DMG[def.weapon][e.kind === 'b' ? 'building' : e.lnd >= 2 ? LAND.armor : e.type === 'gnatcloud' ? gnArm6i(def.weapon) : UDEF[e.type].armor];
     if (!mult) continue; // this weapon can't hurt it (e.g. Turret gatling vs buildings)
     const sc = dist + (e.kind === 'b' ? 80 : 0) - (mult - 1) * 45 - (1 - e.hp / e.maxHp) * 25 - (air && def.preferAir ? 400 : 0) - (e.kind === 'b' && def.preferB ? 280 : 0) - (src.kind === 'u' && e.kind === 'b' && g.sides[src.side] && (g.sides[src.side].bbOn || bbf6g(g, src)) ? bbFocus(e, g) : 0) - (src.n6f && e.kind === 'b' && bdOf(e).gun ? B6G4.focus : 0); // v2.69 (a) // the Hydra goes for aircraft first, the Leviathan for buildings
     if (sc < bs) { bs = sc; best = e; }
@@ -3494,7 +3494,7 @@ const FLAME = { aim: true };
 function flameBurst(g, src, def, t) {
   const dir = src.face || dirOf(src.side), dmg = def.dmg * (sideBuff(g, src.side) ? NANO.dmg : 1) * outMul(g, src), cv = FLAME.aim && t ? t.v : src.v;
   for (const e of g.ents) {
-    if (e.side === src.side || e.hp <= 0 || (e.kind === 'u' && UDEF[e.type].air && !(e.lnd >= 2)) || e.shielded) continue; // v2.87: a landed Worldrender burns
+    if (e.side === src.side || e.hp <= 0 || (e.kind === 'u' && UDEF[e.type].air && !(e.lnd >= 2) && e.type !== 'gnatcloud') || e.shielded) continue; // v2.99 (b6i): a Gnatcloud hangs low enough to burn // v2.87: a landed Worldrender burns
     const ahead = (e.u - src.u) * dir, reach = def.range + (e.kind === 'b' ? e.half : 0);
     if (ahead < -6 || ahead > reach || Math.abs(e.v - cv) > def.strip + (e.kind === 'b' ? e.half : 0)) continue;
     damage(g, e, dmg, 'flame', src.side, src);
@@ -3947,7 +3947,7 @@ function splashHit(g, p, hit, scale, falloffFloor) {
 }
 function splashHit0(g, p, hit, scale, falloffFloor) {
   for (const e of g.ents) {
-    if (e === hit || e.side === p.side || e.hp <= 0 || (e.kind === 'u' && UDEF[e.type].air && !(e.lnd >= 2))) continue; // v2.87: a landed Worldrender takes splash
+    if (e === hit || e.side === p.side || e.hp <= 0 || (e.kind === 'u' && UDEF[e.type].air && !(e.lnd >= 2) && e.type !== 'gnatcloud')) continue; // v2.99 (b6i): a Gnatcloud hangs low: splash tears through it // v2.87: a landed Worldrender takes splash
     const dx = Math.max(0, Math.hypot(e.u - p.u, (e.v - p.v) * 0.6) - (e.kind === 'b' ? e.half : 0));
     if (dx < p.splash) { damage(g, e, p.dmg * scale * (1 - falloffFloor * dx / p.splash), p.weapon, p.side); if (p.corr) corrode(g, e, p.corr); }
   }
@@ -4065,7 +4065,7 @@ function damage(g, e, amt, weapon, fromSide, src) {
   damage1(g, e, amt, weapon, fromSide, src);
 }
 function damage1(g, e, amt, weapon, fromSide, src) {
-  const armor = e.kind === 'b' ? 'building' : e.arm || UDEF[e.type].armor; // e.arm (v2.83): a unit's own armour (a batch 2b Ruinmaw's)
+  const armor = e.kind === 'b' ? 'building' : e.arm || (e.type === 'gnatcloud' ? gnArm6i(weapon) : UDEF[e.type].armor); // v2.99 (b6i): a Gnatcloud is light to ground splash and flame // e.arm (v2.83): a unit's own armour (a batch 2b Ruinmaw's)
   const mult = DMG[weapon][armor];
   if (!mult) return;
   const b3 = e.kind === 'u' && rwB3b(g), ud3 = b3 ? rwD(g, e.type) : null; // v2.85: a batch 3b unit plays by its own definition
@@ -7445,7 +7445,7 @@ function aiScores6h(g, s, sc, c) {
   const sup = popUsed(g, s), wantW = Math.max(1, Math.round(sup / WARD6H.per));
   sc.queen = 1.1 + comp.light * 0.6 + air * 1.2 + comp.heavy * 0.3 - (nQ >= Math.max(1, nG / 8) ? 0.7 : 0);
   sc.broodback = 1.2 + comp.light * 0.8 + comp.heavy * 0.5 + spl * 0.4 - comp.air * 0.8;
-  if (rwB6i(g)) ward6i(g, s, sc, spl); // v2.99 (b6i, Part D): the quota counted right (src/sim/rework-6i.js)
+  if (rwB6i(g) && B6I.wardFix) ward6i(g, s, sc, spl); // v2.99 (b6i, Part D): the quota counted right (src/sim/rework-6i.js)
   else if (sc.bulwark !== undefined && spl > 0) sc.bulwark = Math.max(sc.bulwark, nW < wantW ? 1.6 + spl * 1.5 : 0.9);
   if (sc.leaper !== undefined) sc.leaper += aiRangedShare(theirs) * 0.5 + aiFarShare(theirs) * 0.8;
   if (rwB6hnode(g) && fortGuns6h(g, s) >= NODE6.fort) for (const [t, k] of [['gorebore', 0.6], ['ruinmaw', 0.4], ['bilecaster', 0.3], ['broodback', 0.2]]) if (sc[t] !== undefined) sc[t] += k; // b6hnode: fortified enemy nodes call for building-breakers
@@ -7619,6 +7619,7 @@ const B6I = {
   blight: { range: 120, deg: 50, dmg: 15, dur: 8, mites: 2 },
   talon: { sCd: 8, sDps: 40, drop: 0.25, stun: 0.5, heal: 0.5, cap: 0.25, rCd: 6, rDmg: 60, rDur: 6, amp: 0.15, dive: 2, diveR: 150, hunt: 220 },
   wyrm: { bmul: 2.5, tCd: 6, tR: 180, pull: 1.5, bite: 70, jDmg: 30, jCd: 1, jR: 45 },
+  wardFix: true, // Part D (an audit can switch it off to measure the old rule; always on in a game)
   resp: { near: 80, melee: 100, hold: 100, attack: 250, charge: 8 },
 };
 /* ---- the five units (UDEF; their slots in rwType) ---- */
@@ -7662,7 +7663,7 @@ const rw6iText = (o, k, on) => { const d = Object.getOwnPropertyDescriptor(o, k)
   rw6iText(A[3], 'short', 'Blightwings'); rw6iText(A[3], 'txt', 'Unlocks Blightwings: spore moths whose blighted victims burst into Mites'); rw6iText(A[3], 'unlock', ['blightwing']);
   rw6iText(B[2], 'short', 'Talonmaws'); rw6iText(B[2], 'txt', 'Unlocks Talonmaws: raptors that snatch small units and rend big ones'); rw6iText(B[2], 'unlock', ['talonmaw']);
   rw6iText(B[3], 'short', 'Skywyrms'); rw6iText(B[3], 'txt', 'Unlocks Skywyrms: sky serpents whose acid wrecks buildings and whose tendrils drag down aircraft'); rw6iText(B[3], 'unlock', ['skywyrm']);
-  const T = BDEFS && BDEFS.bloomhost && BDEFS.bloomhost.techlab; if (T && T.tiers && typeof T.tiers[1] === 'string') rw6iText(T.tiers, 1, 'Grows Razorwing flocks'); }
+  const T = BDEFS && BDEFS.bloomhost && BDEFS.bloomhost.techlab; if (T && T.tiers && typeof T.tiers[1] === 'string') rw6iText(T.tiers, 1, 'Grows Razorwing flocks'); if (T) rw6iText(T, 'desc', 'Grows flyers that hit air and ground. Its bloom chooses swarm flyers (Gnatclouds, Blightwings) or apex hunters (Talonmaws, Skywyrms).'); }
 
 /* ---- the Razorwing flock: one order, B6I.razor.n birds ---- */
 const flockN6i = t => t === 'razor6' ? B6I.razor.n : 1; // birds per order (only the batch 6i Razorwing flocks)
@@ -7737,6 +7738,9 @@ function gnat6i(g, u, d, best, A, side, st, cs, dt, sp) {
 }
 // Damage it takes: single-target hits are cut; area damage (AREA6H) and a splash shell's own target take full
 const A6I = { sp: 0 };
+// It hangs low over its target: ground weapons with splash or flame can target it, and it takes their hits as light armour
+function gnLow6i(e, def) { return e.type === 'gnatcloud' && def.hitsGround !== false && !!(def.splash > 0 || def.weapon === 'flame' || def.salvo || def.carpet); }
+function gnArm6i(weapon) { const m = DMG[weapon]; return m && m.air ? 'air' : 'light'; }
 const gnatCut6i = (e, weapon) => e.kind === 'u' && e.type === 'gnatcloud' && !area6h(weapon) && !A6I.sp;
 
 /* ---- the Blightwing ---- */
@@ -9215,7 +9219,7 @@ function rangeGame(o = {}) { // o: { seed, factions: [blue, red], rework: this r
 function rangeUnits(g, s, type, u, v, n = 1) {
   RNG.g = g; type = rwType(g, type); // v2.82: the unit that fills this slot in this row (a Bile Lobber or a Gorebore, …)
   const us = [];
-  for (let i = 0; i < n; i++) us.push(spawnUnit(g, s, type, u, v));
+  for (let i = 0; i < n * flockN6i(type); i++) us.push(spawnUnit(g, s, type, u, v)); // v2.99 (b6i): a Razorwing is placed as a flock of three
   const P_ = ctlPack(g, s, us, u, v, false);
   for (const e of us) { const p = P_.get(e.id); e.u = p[0]; e.v = p[1]; ctlHold(e, p[0], p[1]); }
   return us;
@@ -13886,6 +13890,198 @@ const FX6H = {
   swallow6: (c, f) => { const k = f.t / f.life; c.save(); c.globalAlpha = 0.8 * (1 - k); c.strokeStyle = '#3b1f2b'; c.lineWidth = 3; c.beginPath(); c.arc(f.x, f.y, 14 * (1 - k) + 2, 0, 7); c.stroke(); c.restore(); },
   spit6: (c, f) => { const k = f.t / f.life; c.save(); c.globalAlpha = 0.8 * (1 - k); c.fillStyle = '#9be15d'; for (let i = 0; i < 6; i++) { const a = i * 1.05; c.beginPath(); c.arc(f.x + Math.cos(a) * (4 + k * 12), f.y + Math.sin(a) * (2 + k * 6) - 4, 1.8, 0, 7); c.fill(); } c.restore(); },
 };
+/* ---------- Batch 6i art (v2.99, docs/FACTION_REWORK.md "Batch 6i"; the Bloomhost style of batches 5b and 6h, strong team colour) ----------
+   The Razorwing flock bird (the liked batch 5b bat-wing Razorwing, smaller, its wing membranes in its side's colour), the Gnatcloud
+   (particles: a churning cloud of specks, a share in its side's colour, a glowing heart; drawn live, a few dozen dots), the
+   Blightwing (a bloated moth with team eye-spots and glowing team spore sacs), the Talonmaw (a big raptor with team wing membranes
+   and hooked talons) and the Skywyrm (a huge serpent: team plates down its back, tendrils, an acid-dripping maw). Flock birds,
+   Blightwings and Talonmaws are cached as aircraft poses (AIR_CYC, AIR_BOX); the Gnatcloud and the Skywyrm draw live.
+   Effects: the Snatch (the prey hanging in the talons, shrinking as it is eaten), the drop, Rend (three slashes and a team scar on
+   the target while it lasts), Blight (green spores drifting up from a blighted unit; Mites bursting out), the spore cone, the
+   tendril drag (a writhing tendril from the jaws to the aircraft), the Skywyrm's acid spew (a lobbed glob, a splash). */
+const W6_FLESH = ['#9a6a7c', '#64394f', '#361c2b'], W6_MOTH = ['#b39a7a', '#7d6650', '#45362a'];
+
+/* ---- the Razorwing flock bird ---- */
+function dRazor6(c, T, u) {
+  const t = u.anim || 0, fl = Math.sin(t * 15), dive = u.recoil || 0;
+  c.save(); c.scale(0.72, 0.72);
+  const wing = (near) => {
+    const a = near ? fl : -fl * 0.8, sh = [2, -3], el = [-6, -12 - a * 5], tips = [[-20, -18 - a * 9], [-24, -10 - a * 6], [-21, -2 - a * 2]];
+    c.fillStyle = near ? lgrad(c, 0, -18, -20, 0, [T.light, T.main, T.hull]) : T.hull;
+    c.globalAlpha = near ? 0.95 : 0.8;
+    c.beginPath(); c.moveTo(sh[0], sh[1]); c.lineTo(el[0], el[1]); c.lineTo(tips[0][0], tips[0][1]); c.quadraticCurveTo(-19, -14 - a * 7, tips[1][0], tips[1][1]); c.quadraticCurveTo(-18, -7 - a * 4, tips[2][0], tips[2][1]); c.quadraticCurveTo(-8, -2, sh[0], sh[1] + 3); c.closePath(); c.fill(); outline(c, 0.7);
+    c.globalAlpha = 1;
+    c.strokeStyle = SW_BONE; c.lineWidth = near ? 1.2 : 0.9; c.beginPath(); c.moveTo(sh[0], sh[1]); c.lineTo(el[0], el[1]); for (const p of tips) { c.moveTo(el[0], el[1]); c.lineTo(p[0], p[1]); } c.stroke();
+  };
+  wing(false);
+  c.fillStyle = lgrad(c, 0, -5, 0, 4, [W6_FLESH[0], W6_FLESH[2]]); c.beginPath(); c.moveTo(14, -1); c.quadraticCurveTo(6, -6, -8, -3); c.quadraticCurveTo(-16, -1, -22, 2); c.quadraticCurveTo(-12, 3, -2, 3.4); c.quadraticCurveTo(8, 3, 14, -1); c.fill(); outline(c, 0.8);
+  c.fillStyle = lgrad(c, 0, -6, 0, -1, [T.light, T.main, T.hull]); c.beginPath(); c.moveTo(12, -2); c.quadraticCurveTo(4, -7, -14, -2.4); c.quadraticCurveTo(0, -3, 12, -2); c.fill(); outline(c, 0.6);
+  const tx = 4 + dive * 6, ty = 6 + dive * 2;
+  swLeg(c, [[0, 2], [2 + dive * 3, 5], [tx, ty]], 1.3, W6_FLESH[1]);
+  c.strokeStyle = SW_BONE; c.lineWidth = 1; for (const k of [-1.2, 0, 1.2]) { c.beginPath(); c.moveTo(tx, ty); c.quadraticCurveTo(tx + 2.5, ty + k - 0.5, tx + 3, ty + k + 1.5); c.stroke(); }
+  c.fillStyle = W6_FLESH[1]; c.beginPath(); c.ellipse(14, -1.2, 3.2, 2.2, 0.1, 0, 7); c.fill(); outline(c, 0.6);
+  c.fillStyle = T.main; poly(c, [[12, -3], [9, -7.5], [13.5, -3.4]]); c.fill(); outline(c, 0.4);
+  c.fillStyle = SW_BONE; poly(c, [[16.5, -0.6], [20 + dive * 2, 0.6], [16.4, 0.8]]); c.fill();
+  swGlow(c, T, 15, -1.8, 0.8, 1);
+  wing(true);
+  c.restore();
+}
+
+/* ---- the Gnatcloud: particles ---- */
+const GN6_N = 46;
+function dGnat6(c, T, u) {
+  const t = (u.anim || 0) + (u.id || 0) * 0.37, R = 21, hot = u.gnT6 != null && VFX.g && VFX.g.t - u.gnT6 < 0.2;
+  c.save(); c.globalCompositeOperation = 'lighter';
+  const gr = c.createRadialGradient(0, -6, 1, 0, -6, R * 0.9); gr.addColorStop(0, `rgba(${T.glow},${hot ? 0.38 : 0.26})`); gr.addColorStop(1, `rgba(${T.glow},0)`);
+  c.fillStyle = gr; c.beginPath(); c.ellipse(0, -6, R, R * 0.6, 0, 0, 7); c.fill();
+  c.globalCompositeOperation = 'source-over';
+  for (let i = 0; i < GN6_N; i++) { // each speck orbits its own small loop inside the cloud
+    const a = i * 2.39996, r0 = R * Math.sqrt((i + 0.5) / GN6_N), sp = 2.2 + (i % 5) * 0.6, ph = t * sp + i;
+    const x = Math.cos(a) * r0 + Math.cos(ph) * 3.2, y = -6 + Math.sin(a) * r0 * 0.58 + Math.sin(ph * 1.3) * 2.4;
+    c.fillStyle = i % 3 === 0 ? T.light : i % 3 === 1 ? T.main : '#20141b';
+    const s = i % 4 === 0 ? 1.5 : 1.05; c.fillRect(x - s / 2, y - s / 2, s, s);
+  }
+  c.restore();
+}
+
+/* ---- the Blightwing: a bloated spore moth ---- */
+function dBlight6(c, T, u) {
+  const t = u.anim || 0, fl = Math.sin(t * 7), pulse = 0.7 + 0.3 * Math.sin(t * 3), rec = u.recoil || 0;
+  const wing = (near, hind) => {
+    const a = (near ? fl : -fl * 0.7) * (hind ? 0.7 : 1), x0 = hind ? -6 : 0, len = hind ? 15 : 20, ty = -8 - a * 8 - (hind ? 0 : 6);
+    c.fillStyle = near ? lgrad(c, x0, ty, x0 - len, -4, [W6_MOTH[0], W6_MOTH[1]]) : W6_MOTH[2]; c.globalAlpha = near ? 0.95 : 0.8;
+    c.beginPath(); c.moveTo(x0 + 2, -6); c.quadraticCurveTo(x0 - len * 0.4, ty - 6, x0 - len, ty + 2); c.quadraticCurveTo(x0 - len * 0.9, -2, x0 - 2, -3); c.closePath(); c.fill(); outline(c, 0.7); c.globalAlpha = 1;
+    if (near) { // a team eye-spot on the wing
+      const ex = x0 - len * 0.55, ey = (ty - 6) * 0.5 - 1; c.fillStyle = T.hull; c.beginPath(); c.ellipse(ex, ey, 3.6, 2.6, 0.3, 0, 7); c.fill();
+      c.fillStyle = T.main; c.beginPath(); c.ellipse(ex, ey, 2.6, 1.8, 0.3, 0, 7); c.fill(); swGlow(c, T, ex, ey, 0.9, 0.8 * pulse);
+    }
+  };
+  wing(false, true); wing(false, false);
+  // the bloated abdomen with spore sacs in its side's colour
+  c.fillStyle = lgrad(c, 0, -14, 0, 6, [W6_FLESH[0], W6_FLESH[1], W6_FLESH[2]]); c.beginPath(); c.ellipse(-8, -2, 12 + rec, 7.5, 0.12, 0, 7); c.fill(); outline(c, 1);
+  for (const [x, y, r] of [[-14, 1, 3], [-8, 3.5, 3.4], [-2, 2, 2.6], [-11, -4, 2.2]]) {
+    c.fillStyle = lgrad(c, x, y - r, x, y + r, [T.light, T.main, T.hull]); c.beginPath(); c.arc(x, y, r * (0.9 + 0.1 * pulse), 0, 7); c.fill(); outline(c, 0.5);
+    swGlow(c, T, x - r * 0.3, y - r * 0.3, r * 0.35, 0.7 * pulse);
+  }
+  // the furry thorax and head
+  c.fillStyle = lgrad(c, 4, -10, 4, 2, [W6_MOTH[0], W6_MOTH[2]]); c.beginPath(); c.ellipse(5, -4, 6.5, 5.5, 0, 0, 7); c.fill(); outline(c, 0.8);
+  c.fillStyle = W6_MOTH[1]; c.beginPath(); c.ellipse(11, -4, 3.6, 3.2, 0, 0, 7); c.fill(); outline(c, 0.6);
+  swGlow(c, T, 12.6, -5, 0.9, 1);
+  c.strokeStyle = W6_MOTH[2]; c.lineWidth = 0.8; c.beginPath(); c.moveTo(12, -7); c.quadraticCurveTo(15, -13, 19, -12); c.moveTo(11, -7); c.quadraticCurveTo(12, -14, 15, -15); c.stroke(); // feathered antennae
+  // a spore puff from its mouth when it fires
+  if (rec > 0.05) { c.fillStyle = `rgba(170,230,110,${0.6 * rec})`; for (let i = 0; i < 4; i++) { c.beginPath(); c.arc(15 + i * 3 * (1 + rec), -3 + Math.sin(i * 2) * 2, 1.8 + i * 0.4, 0, 7); c.fill(); } }
+  wing(true, true); wing(true, false);
+}
+
+/* ---- the Talonmaw: a raptor of the swarm ---- */
+function dTalon6(c, T, u) {
+  const t = u.anim || 0, fl = Math.sin(t * 8), rec = u.recoil || 0, dive = Math.max(rec, u.tdv6 != null && VFX.g && u.tdv6 > VFX.g.t ? 0.7 : 0);
+  const wing = (near) => {
+    const a = near ? fl : -fl * 0.8, sh = [4, -6], el = [-8, -20 - a * 8 + dive * 6], tip = [-34, -26 - a * 12 + dive * 10], tip2 = [-38, -12 - a * 6 + dive * 4], tip3 = [-28, -2 - a * 2];
+    c.fillStyle = near ? lgrad(c, 0, -26, -34, -2, [T.light, T.main, T.hull]) : T.hull; c.globalAlpha = near ? 0.96 : 0.8;
+    c.beginPath(); c.moveTo(sh[0], sh[1]); c.lineTo(el[0], el[1]); c.lineTo(tip[0], tip[1]); c.quadraticCurveTo(-30, -18 - a * 9, tip2[0], tip2[1]); c.quadraticCurveTo(-30, -8 - a * 3, tip3[0], tip3[1]); c.quadraticCurveTo(-12, -2, sh[0], sh[1] + 4); c.closePath(); c.fill(); outline(c, 0.9);
+    c.globalAlpha = 1;
+    c.strokeStyle = SW_BONE; c.lineWidth = near ? 1.6 : 1.1; c.beginPath(); c.moveTo(sh[0], sh[1]); c.lineTo(el[0], el[1]); c.lineTo(tip[0], tip[1]); c.moveTo(el[0], el[1]); c.lineTo(tip2[0], tip2[1]); c.moveTo(el[0], el[1]); c.lineTo(tip3[0], tip3[1]); c.stroke();
+    c.fillStyle = SW_BONE; poly(c, [[el[0], el[1]], [el[0] + 3, el[1] - 4], [el[0] + 2, el[1] + 1]]); c.fill(); // a wing claw
+  };
+  wing(false);
+  // tail feathers of chitin
+  c.fillStyle = T.hull; poly(c, [[-14, -3], [-30, -6], [-28, 1], [-31, 5], [-14, 3]]); c.fill(); outline(c, 0.7);
+  // the body: a lean, muscled torso; team carapace down the back
+  c.fillStyle = lgrad(c, 0, -10, 0, 6, [W6_FLESH[0], W6_FLESH[1], W6_FLESH[2]]); c.beginPath(); c.moveTo(16, -5); c.quadraticCurveTo(6, -12, -14, -4); c.quadraticCurveTo(-6, 6, 10, 4); c.quadraticCurveTo(16, 1, 16, -5); c.fill(); outline(c, 1);
+  swPlate(c, T, -12, -2, -4, 4.6, 0.7); swPlate(c, T, -4, 6, -6, 5, 0.7); swPlate(c, T, 4, 13, -6.5, 4, 0.7);
+  // hooked talons, thrust forward in a dive
+  const tx = 8 + dive * 8, ty = 10 + dive * 2;
+  swLeg(c, [[2, 3], [5 + dive * 4, 8], [tx, ty]], 2, W6_FLESH[1]); swLeg(c, [[-3, 3], [-1 + dive * 3, 9], [tx - 5, ty + 1]], 1.8, W6_FLESH[2]);
+  c.strokeStyle = SW_BONE; c.lineWidth = 1.3; c.lineCap = 'round';
+  for (const [x, y] of [[tx, ty], [tx - 5, ty + 1]]) for (const k of [-1.6, 0, 1.6]) { c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + 4, y + k - 1, x + 3.4, y + k + 3); c.stroke(); }
+  c.lineCap = 'butt';
+  // the head: a hooked beak, a crest in its side's colour, glowing eyes
+  c.fillStyle = W6_FLESH[1]; c.beginPath(); c.ellipse(19, -7, 5, 4, -0.2, 0, 7); c.fill(); outline(c, 0.8);
+  c.fillStyle = T.main; poly(c, [[16, -10], [9, -16], [12, -9.5], [7, -12], [15, -8]]); c.fill(); outline(c, 0.5);
+  c.fillStyle = SW_BONE; c.beginPath(); c.moveTo(22, -9); c.quadraticCurveTo(29 + rec * 2, -8, 27, -3); c.quadraticCurveTo(25, -5, 22, -5); c.closePath(); c.fill(); outline(c, 0.5);
+  swGlow(c, T, 20.5, -8, 1.1, 1);
+  wing(true);
+}
+
+/* ---- the Skywyrm: a huge serpent ---- */
+function dWyrm6(c, T, u) {
+  const t = u.anim || 0, rec = u.recoil || 0, jaw = Math.max(rec, u.jwT6 != null && VFX.g && VFX.g.t - u.jwT6 < 0.3 ? 1 - (VFX.g.t - u.jwT6) / 0.3 : 0);
+  const N = 11, pts = [];
+  for (let i = 0; i <= N; i++) { const k = i / N, x = 26 - k * 84, y = -10 + Math.sin(t * 2 - k * 5) * 6 * (0.3 + k); pts.push([x, y, 9 - k * 6.5]); }
+  // the tendrils hanging from its throat, writhing
+  c.lineCap = 'round';
+  for (let j = 0; j < 4; j++) { const x0 = 18 - j * 6, w = Math.sin(t * 3 + j * 1.7); c.strokeStyle = OUTL; c.lineWidth = 2.6; c.beginPath(); c.moveTo(x0, -4); c.quadraticCurveTo(x0 - 4 + w * 4, 8, x0 + w * 6, 18 + j * 2); c.stroke(); c.strokeStyle = j % 2 ? W6_FLESH[1] : T.hull; c.lineWidth = 1.4; c.stroke(); }
+  // the body from the tail forward: segments, a team plate on each
+  for (let i = N; i >= 1; i--) {
+    const [x, y, r] = pts[i], [x2, y2] = pts[i - 1];
+    c.fillStyle = lgrad(c, x, y - r, x, y + r, [W6_FLESH[0], W6_FLESH[1], W6_FLESH[2]]); c.beginPath(); c.ellipse((x + x2) / 2, (y + y2) / 2, 5.4 + r * 0.3, r, Math.atan2(y2 - y, x2 - x), 0, 7); c.fill(); outline(c, 0.8);
+    c.fillStyle = lgrad(c, x, y - r - 2, x, y, [T.light, T.main, T.hull]); c.beginPath(); c.ellipse((x + x2) / 2, (y + y2) / 2 - r * 0.45, 4.6 + r * 0.2, r * 0.55, Math.atan2(y2 - y, x2 - x), Math.PI, 0); c.fill(); outline(c, 0.5);
+    if (i % 2) swGlow(c, T, (x + x2) / 2, (y + y2) / 2 + r * 0.3, 0.9, 0.7);
+  }
+  // fins along its back
+  for (let i = 2; i < N; i += 2) { const [x, y, r] = pts[i]; c.fillStyle = T.main; poly(c, [[x + 3, y - r * 0.8], [x - 2, y - r - 7 - Math.sin(t * 3 + i) * 1.5], [x - 4, y - r * 0.7]]); c.fill(); outline(c, 0.5); }
+  // the head: a wide maw with fangs, acid dripping
+  const [hx, hy] = pts[0], o = 2 + jaw * 5;
+  c.fillStyle = lgrad(c, hx, hy - 12, hx, hy + 6, [W6_FLESH[0], W6_FLESH[2]]); c.beginPath(); c.moveTo(hx - 8, hy - 9); c.quadraticCurveTo(hx + 8, hy - 15, hx + 22, hy - 4 - o * 0.5); c.lineTo(hx + 6, hy - 1); c.quadraticCurveTo(hx - 2, hy + 4, hx - 8, hy + 6); c.closePath(); c.fill(); outline(c, 1);
+  c.fillStyle = W6_FLESH[1]; c.beginPath(); c.moveTo(hx + 4, hy + 1); c.quadraticCurveTo(hx + 14, hy + 2 + o, hx + 20, hy + o); c.quadraticCurveTo(hx + 8, hy + 8 + o, hx - 6, hy + 6); c.closePath(); c.fill(); outline(c, 0.8);
+  c.fillStyle = 'rgba(160,235,90,0.85)'; c.beginPath(); c.moveTo(hx + 6, hy - 1); c.lineTo(hx + 20, hy - 3 - o * 0.4); c.lineTo(hx + 19, hy + o); c.closePath(); c.fill(); // the acid in its maw
+  c.fillStyle = SW_BONE; for (let i = 0; i < 4; i++) { const x = hx + 7 + i * 3.4; poly(c, [[x, hy - 2.5 - i * 0.4], [x + 1.2, hy + 1.5], [x + 2.2, hy - 2.8 - i * 0.4]]); c.fill(); poly(c, [[x, hy + o + 0.5], [x + 1.2, hy - 2 + o], [x + 2.2, hy + o + 0.4]]); c.fill(); }
+  c.fillStyle = T.main; poly(c, [[hx - 6, hy - 9], [hx - 14, hy - 17], [hx - 2, hy - 11], [hx - 6, hy - 19], [hx + 2, hy - 12]]); c.fill(); outline(c, 0.5); // a team crest
+  swGlow(c, T, hx + 6, hy - 8, 1.4, 1);
+  const dr = (t * 1.6) % 1; c.fillStyle = `rgba(170,240,100,${0.9 - dr * 0.6})`; c.beginPath(); c.ellipse(hx + 14, hy + 3 + o + dr * 9, 0.9, 1.6, 0, 0, 7); c.fill(); // a drip of acid
+  c.lineCap = 'butt';
+}
+
+/* ---- registration ---- */
+Object.assign(DRAW_U, { razor6: dRazor6, gnatcloud: dGnat6, blightwing: (c, T, u) => { c.save(); c.scale(1.3, 1.3); dBlight6(c, T, u); c.restore(); }, talonmaw: dTalon6, skywyrm: dWyrm6 });
+Object.assign(AIR_CYC, { razor6: [15, 8], blightwing: [7, 10], talonmaw: [8, 10] });
+Object.assign(AIR_BOX, { razor6: [-21, -24, 40, 34], blightwing: [-34, -31, 64, 48], talonmaw: [-42, -46, 76, 66] });
+Object.assign(UVIS, { razor6: { h: 8, w: 9 }, gnatcloud: { h: 14, w: 20 }, blightwing: { h: 12, w: 14 }, talonmaw: { h: 16, w: 18 }, skywyrm: { h: 22, w: 34 } });
+
+/* ---- projectiles: the Skywyrm's acid spew ---- */
+function drawSpew6(c, p, a, b) {
+  const T = TEAM[p.side];
+  c.save(); c.globalCompositeOperation = 'lighter'; c.strokeStyle = 'rgba(150,230,80,0.45)'; c.lineWidth = 3 * US; c.lineCap = 'round'; c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
+  c.globalCompositeOperation = 'source-over'; c.fillStyle = '#a6e35a'; c.beginPath(); c.arc(b.x, b.y, 3.4 * US, 0, 7); c.fill(); outline(c, 0.6);
+  c.fillStyle = T.light; c.beginPath(); c.arc(b.x - 1, b.y - 1, 1.3 * US, 0, 7); c.fill();
+  c.restore();
+}
+
+/* ---- on a unit (drawUnit): the prey in a Talonmaw's talons, a tendril, Blight's spores, a Rend scar, a Gnatcloud's ground haze ---- */
+function drawUnit6i(c, g, u, w, t) {
+  if (u.type === 'gnatcloud') { const T = TEAM[u.side]; c.save(); c.globalAlpha = 0.14; c.fillStyle = T.main; c.beginPath(); c.ellipse(w.x, w.y, B6I.gnat.r * US, B6I.gnat.r * DY * US, 0, 0, 7); c.fill(); c.restore(); }
+  if (u.snV6) { const V = ctlEnt(g, u.snV6); if (V && V.sn6 && V.hp > 0) { // the prey hanging in the talons, shrinking as it is eaten
+    const k = Math.max(0.35, V.hp / V.maxHp), y = w.y - u.z + 10 * US;
+    c.save(); c.translate(w.x + u.face * 8 * US, y); c.rotate(u.face * 0.5 + Math.sin(t * 9 + u.id) * 0.15); c.scale(u.face * US * 0.65 * (0.6 + 0.4 * k), US * 0.65 * (0.6 + 0.4 * k)); c.translate(0, 12);
+    drawUnitArt(c, V, TEAM[V.side]); c.restore();
+    c.save(); c.fillStyle = 'rgba(150,20,30,0.7)'; for (let i = 0; i < 2; i++) { const dr = (t * 2 + i * 0.5) % 1; c.beginPath(); c.arc(w.x + u.face * 8 * US, y + 8 * US + dr * 16, 1.1, 0, 7); c.fill(); } c.restore(); } }
+  if (u.drV6) { const V = ctlEnt(g, u.drV6); if (V && V.dr6) { // a tendril from the jaws to the dragged aircraft
+    const a = P(u.u + u.face * 22, u.v, u.z - 4), b = P(V.u, V.v, V.z), T = TEAM[u.side], mx = (a.x + b.x) / 2 + Math.sin(t * 12) * 6, my = (a.y + b.y) / 2 + 14;
+    c.save(); c.lineCap = 'round'; c.strokeStyle = OUTL; c.lineWidth = 3.6; c.beginPath(); c.moveTo(a.x, a.y); c.quadraticCurveTo(mx, my, b.x, b.y); c.stroke(); c.strokeStyle = W6_FLESH[0]; c.lineWidth = 2.2; c.stroke();
+    c.strokeStyle = T.main; c.lineWidth = 1; c.setLineDash([3, 4]); c.stroke(); c.restore(); } }
+  if (u.bl6T > t) { // blighted: green spores drifting up
+    const h = (UVIS[u.type] ? UVIS[u.type].h : UDEF[u.type].h) * US;
+    c.save(); for (let i = 0; i < 5; i++) { const k = ((t * 0.7 + i * 0.2 + u.id * 0.13) % 1), x = w.x + Math.sin(i * 2.1 + t * 2 + u.id) * 6 * US, y = w.y - u.z - h * 0.4 - k * 18 * US; c.globalAlpha = 0.75 * (1 - k); c.fillStyle = i % 2 ? '#b8f070' : '#7cc94a'; c.beginPath(); c.arc(x, y, (1.1 + k * 1.3) * US, 0, 7); c.fill(); } c.restore();
+  }
+  if (u.rn6T > t) { // rent: a raw scar in the Talonmaw side's colour
+    const h = (UVIS[u.type] ? UVIS[u.type].h : UDEF[u.type].h) * US, T = TEAM[1 - u.side] || TEAM[0];
+    c.save(); c.globalAlpha = 0.5 + 0.2 * Math.sin(t * 8); c.strokeStyle = T.light; c.lineWidth = 1.4; for (let i = 0; i < 3; i++) { c.beginPath(); c.moveTo(w.x - 5 * US + i * 3 * US, w.y - u.z - h * 0.8); c.lineTo(w.x - 1 * US + i * 3 * US, w.y - u.z - h * 0.35); c.stroke(); } c.restore();
+  }
+}
+
+/* ---- one-shot effects (g.fx), drawn through FX6H ---- */
+Object.assign(FX6H, {
+  cone6i: (c, f) => { const k = f.t / f.life, R = f.r * US * (0.4 + 0.6 * k); c.save(); c.globalAlpha = 0.45 * (1 - k); const gr = c.createRadialGradient(f.x, f.y, 2, f.x, f.y, R); gr.addColorStop(0, 'rgba(190,245,120,0.9)'); gr.addColorStop(1, 'rgba(110,180,60,0)'); c.fillStyle = gr; c.beginPath(); c.moveTo(f.x, f.y); c.arc(f.x, f.y, R, f.a - f.half, f.a + f.half); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(210,255,150,0.8)'; for (let i = 0; i < 10; i++) { const a = f.a - f.half + (i / 9) * f.half * 2, r = R * (0.5 + ((i * 37) % 10) / 20); c.beginPath(); c.arc(f.x + Math.cos(a) * r, f.y + Math.sin(a) * r, 1.4, 0, 7); c.fill(); } c.restore(); },
+  blightpop6i: (c, f) => { const k = f.t / f.life, T = TEAM[f.side]; c.save(); c.globalAlpha = 1 - k; for (let i = 0; i < 8; i++) { const a = i * 0.785, r = 3 + k * 16; c.fillStyle = i % 2 ? T.light : '#a6e35a'; c.beginPath(); c.arc(f.x + Math.cos(a) * r, f.y + Math.sin(a) * r * 0.6, 2 * (1 - k) + 0.6, 0, 7); c.fill(); } c.restore(); },
+  snatch6i: (c, f) => { const k = f.t / f.life; c.save(); c.globalAlpha = 0.7 * (1 - k); c.fillStyle = '#b8a68a'; for (let i = 0; i < 6; i++) { const a = i * 1.05; c.beginPath(); c.arc(f.x + Math.cos(a) * (4 + k * 12), f.y + Math.sin(a) * (2 + k * 5), 2.2 * (1 - k) + 0.5, 0, 7); c.fill(); } c.restore(); },
+  drop6i: (c, f) => { const k = f.t / f.life; c.save(); c.globalAlpha = 0.7 * (1 - k); c.strokeStyle = '#d8c8a8'; c.lineWidth = 2; c.beginPath(); c.ellipse(f.x, f.y, 6 + k * 14, (6 + k * 14) * DY, 0, 0, 7); c.stroke(); c.restore(); },
+  rend6i: (c, f) => { const k = f.t / f.life, T = TEAM[f.side]; c.save(); c.globalAlpha = 1 - k; c.strokeStyle = T.light; c.lineWidth = 2.2; c.lineCap = 'round'; for (let i = 0; i < 3; i++) { const x = f.x + (i - 1) * 4; c.beginPath(); c.moveTo(x - f.face * 6, f.y - 8); c.lineTo(x + f.face * 6, f.y + 6); c.stroke(); } c.restore(); },
+  bite6i: (c, f) => { const k = f.t / f.life; c.save(); c.globalAlpha = 0.9 * (1 - k); c.strokeStyle = '#f2e6c8'; c.lineWidth = 2; c.beginPath(); c.arc(f.x, f.y, 6 + k * 6, -0.8, 0.8); c.stroke(); c.beginPath(); c.arc(f.x, f.y, 6 + k * 6, Math.PI - 0.8, Math.PI + 0.8); c.stroke(); c.restore(); },
+  spew6i: (c, f) => { const k = f.t / f.life, R = f.r * US * (0.5 + 0.5 * k); c.save(); c.globalAlpha = 0.6 * (1 - k); const gr = c.createRadialGradient(f.x, f.y, 1, f.x, f.y, R); gr.addColorStop(0, 'rgba(200,255,120,0.95)'); gr.addColorStop(0.6, 'rgba(120,200,60,0.6)'); gr.addColorStop(1, 'rgba(60,120,30,0)'); c.fillStyle = gr; c.beginPath(); c.ellipse(f.x, f.y, R, R * DY, 0, 0, 7); c.fill();
+    const T = TEAM[f.side]; c.strokeStyle = T.main; c.lineWidth = 1.2; c.setLineDash([4, 4]); c.beginPath(); c.ellipse(f.x, f.y, R * 0.9, R * DY * 0.9, 0, 0, 7); c.stroke(); c.restore(); },
+});
 /* ---------- Faction rework art, batch 5d (v2.91; docs/FACTION_REWORK.md "Batch 5d"): every building redrawn ----------
    Every building of all three factions redrawn to match the reworked units, with the team colour on its largest surfaces so
    a base reads as blue or red at a glance. Art only: footprints, health, heights (BDEF h, which the SIM aims at) and the gun
@@ -15319,12 +15515,13 @@ function drawFog(c, F) {
 function drawUnit(c, u) {
   const d = UDEF[u.type], w = P(u.u, u.v), bob = d.air && !u.lnd ? Math.sin(u.anim * 2.2) * 3 : 0; // v2.87: a landing Worldrender doesn't bob
   if (u.gone === 3) return; // v2.83: inside a Ruinmaw's tunnel: off the field
+  if (u.sn6) return; // v2.99 (b6i): in a Talonmaw's talons (drawn there, drawUnit6i)
   if (u.bur) { if (VFX.g) noteBurrow(VFX.g, u); (u.type === 'ruinmaw' ? drawBurrowedBig : drawBurrowed)(c, u, w, VFX.lastT); return; } // v2.82: a burrowed Gorebore is only a moving hump of earth (v2.83: a Ruinmaw a wider one)
   const b2b = VFX.g && rwB2b(VFX.g);
   if (b2b && u.type === 'titan') drawCoverRing(c, u, w, VFX.lastT); // v2.83: the reach of its cover
   const ex = u.exT > VFX.lastT; // v2.82: exiled: faded, washed out, a violet shimmer and a ring for the time left
   c.fillStyle = d.air ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.32)';
-  const big = u.type === 'leviathan' || u.type === 'worldrender' || u.type === 'sovereign' ? 2.4 : u.type === 'broodtyrant' || u.type === 'voidcarrier' ? 1.6 : u.type === 'drone' || u.type === 'needlewing' || u.type === 'prismwing' ? 0.5 : 1; // a Leviathan's shadow is seen coming
+  const big = u.type === 'leviathan' || u.type === 'worldrender' || u.type === 'sovereign' || u.type === 'skywyrm' ? 2.4 : u.type === 'broodtyrant' || u.type === 'voidcarrier' || u.type === 'talonmaw' ? 1.6 : u.type === 'razor6' ? 0.6 : u.type === 'drone' || u.type === 'needlewing' || u.type === 'prismwing' ? 0.5 : 1; // a Leviathan's shadow is seen coming
   const lift = u.lt && VFX.g ? latchLift(VFX.g, u) : 0, rk = rvScale(u); // v2.84: a latched Leaper rides on its host's back (no shadow of its own); a Ravager's stacks make it bigger
   if (!lift) { c.beginPath(); c.ellipse(w.x, w.y, (d.air ? 16 * big : UVIS[u.type] ? UVIS[u.type].w * rk : Math.max(8, d.h * 0.7)) * US, (d.air ? 3.5 * big : 2.6) * US, 0, 0, 7); c.fill(); }
   if (u.sgN) drawSurge5(c, u, w, VFX.lastT); // v2.88: a batch 5b swarm's motion streak at high surge
@@ -15334,6 +15531,7 @@ function drawUnit(c, u) {
   if (u.hopS !== undefined && VFX.lastT - u.hopS < 0.35) drawHopTrail(c, u, VFX.lastT); // v2.86: a Wraithwing's afterimages just after a hop
   if (u.type === 'medic' && VFX.g) drawHealBeams(c, VFX.g, u, w);
   if (u.siege) drawSiegeLock(c, u, w); // P8 (v2.37): a Titan's stabilisers, under it
+  if (VFX.g && rwB6i(VFX.g)) drawUnit6i(c, VFX.g, u, w, VFX.lastT); // v2.99 (batch 6i): prey in the talons, tendrils, Blight, Rend, a Gnatcloud's haze
   const b6h = VFX.g && rwB6h(VFX.g); if (b6h) drawUnit6h(c, u, w, VFX.lastT); // v2.98 (batch 6h): Pounce's streak, the Warden's aura shimmer
   c.save(); c.translate(w.x + (lift ? (RIDE.get(u) || 0) * 8 * US : 0), w.y - u.z + bob - lift + (lift ? Math.abs(RIDE.get(u) || 0) * 2 * US : 0)); c.scale(u.face * US * (u.kid ? 0.75 : 1), US * (u.kid ? 0.75 : 1)); // a Cloudwing's offspring is smaller (v2.21)
   if (b6h && u.pcT > VFX.lastT) { const k = pounceSquash6h(u, VFX.lastT); c.scale(1 + 0.2 * k, 1 - 0.16 * k); } // v2.98 (b6h): crouched and stretched in its lunge
@@ -16448,6 +16646,7 @@ function render(c, g, time, sel, selPad) {
     const a = P(p.pu, p.pv, p.pz), b = P(p.u, p.v, p.z), wp = p.weapon;
     if (wp === 'exile') { drawOrb(c, g, p, b); continue; } // v2.82: a Severance's rift orb
     if (p.gs) { drawGsMissile(c, p, a, b); continue; } // v2.86: a Gunship's salvo missile
+    if (wp === 'spew6') { drawSpew6(c, p, a, b); continue; } // v2.99: a Skywyrm's acid spew (batch 6i)
     if (wp === 'bilebolt') { drawBileBolt6(c, p, a, b); continue; } // v2.98: a Queen's bolt (batch 6h)
     if (wp === 'quill') { drawQuill5(c, p, a, b); continue; } // v2.88: a Spitter's quill (batch 5b)
     if (wp === 'vbolt') { drawVBolt(c, p, a, b); continue; } // v2.87: a Voidcarrier's bolt
@@ -16878,6 +17077,13 @@ const UNIT_TIPS = {
   def('spitter', () => REWORK.b6h ? [`${T0.spitter()[0]}. Trained from the start at the Larva Pit: anti-air from minute one`, ...T0.spitter().slice(1)] : T0.spitter());
   def('ruinmaw', () => REWORK.b6h ? [`Moving your army unseen: surfacing erupts (${txN(B6H.ruin.eDmg)} to enemy ground units within ${txN(B6H.ruin.eR)}, knocked aside). Tunnel: selected Bloomhost ground units on your creep burrow where they stand and come out of its mouth (${txN(B6H.ruin.speed)} a second underground, at least ${txN(B6H.ruin.min)} s; two a second); Rally sends new units there. Every ${txN(B6H.ruin.swCd)} s it swallows an adjacent enemy (not a huge one) for ${txN(B6H.ruin.swDur)} s at ${txN(B6H.ruin.swDps)} a second. It can dive again ${txN(B6H.ruin.dive)} s after surfacing; diving or dying, the units inside come up where they went down`, ...T0.ruinmaw().slice(1)] : T0.ruinmaw());
   def('queen', () => [`Holding a fight: her bile bolt hits air and ground (range ${txN(UDEF.queen.range)}) and corrodes; while an enemy is within ${txN(B6H.queen.near)} she births a Mite every ${txN(B6H.queen.every)} s (up to ${txN(B6H.queen.own)} of hers), which fight around her and stay within ${txN(B6H.queen.leash)}`, 'Divers and anything that reaches her: she is slow and fragile; splash kills her Mites']);
+  // v2.99 (batch 6i, REWORK.b6i): the Bloomspire's five (numbers read live)
+  const I = B6I;
+  def('razor6', () => [`Aircraft and raids: one order is a flock of ${I.razor.n} (${I.razor.cost.c} credits, ${I.razor.cost.e} energy); each bird dives on ground units and aircraft (${txX(DMG.talon6.air)} damage to aircraft) and flies ${txP(I.razor.per)} faster for every other Razorwing near it, up to +${txP(I.razor.max)}`, 'Splash anti-air, Turrets and Maws; one bird alone dies fast']);
+  def('gnatcloud', () => [`Clumps and aircraft: it settles over its target and every enemy inside its ${txN(I.gnat.r)} radius (units, aircraft and buildings) takes ${txN(I.gnat.dps)} a second; clouds stack; single-target shots do ${txP(I.gnat.cut)} less to it`, 'Area damage: splash, flames, blasts, chain beams']);
+  def('blightwing', () => [`Behind the army: every ${txN(UDEF.blightwing.cd)} s a spore cone (range ${txN(I.blight.range)}, ${txN(I.blight.deg)}°) does ${txN(I.blight.dmg)} to enemy ground units, aircraft and buildings and blights the units for ${txN(I.blight.dur)} s; a blighted enemy that dies bursts into ${txN(I.blight.mites)} Mites for you (within the cap of ${txN(B6H.mite.cap)})`, 'Fast anti-air that reaches it; it is slow to fire']);
+  def('talonmaw', () => [`Small units and vehicles: Snatch (every ${txN(I.talon.sCd)} s) lifts a small ground unit out of the fight and eats it (${txN(I.talon.sDps)} a second; a kill heals it up to ${txP(I.talon.cap)} of its health; ${txP(I.talon.drop)} of its health in damage makes it drop the prey, stunned); Rend (every ${txN(I.talon.rCd)} s) dives on a bigger unit for ${txN(I.talon.rDmg)} and it takes ${txP(I.talon.amp)} more from Bloomhost for ${txN(I.talon.rDur)} s`, 'Focused anti-air; it must close to claw']);
+  def('skywyrm', () => [`Sieges and aircraft: its lobbed acid spew (range ${txN(UDEF.skywyrm.range)}, every ${txN(UDEF.skywyrm.cd)} s) does ${txN(UDEF.skywyrm.dmg)} in a ${txN(UDEF.skywyrm.splash)} radius, ${txX(I.wyrm.bmul)} to buildings and Turrets; every ${txN(I.wyrm.tCd)} s a tendril drags an aircraft within ${txN(I.wyrm.tR)} to its jaws for ${txN(I.wyrm.bite)}; its jaws bite anything beside it for ${txN(I.wyrm.jDmg)} a second`, 'Interceptors and massed anti-air; it is slow: escort it']);
   def('broodback', () => [`Leading a push: a weak bite and Pounce; when it dies it bursts into ${txN(B6H.brood.n)} Skitterlings that carry on its order and leaves a Bile Bloom for ${txN(B6H.brood.life)} s (enemies inside take ${txN(B6H.brood.dps)} a second; Bloomhost units inside attack ${txP(B6H.brood.atk - 1)} faster and move ${txP(B6H.brood.move - 1)} faster)`, 'Kill it where its brood is no use: at range, and away from your units']);
 }
 const pFac = () => game ? game.sides[myS()].faction : DEFAULT_FACTION; // the player's faction (cards, panel and info)
@@ -16890,7 +17096,7 @@ function showInfo(kind, type) {
     name = d.name; sub = d.spawned ? `Spawned by the ${BD(d.fac, d.from).name} · free, temporary` : `${BD(d.fac, d.from).name} T${d.tier}`; // v2.33: the Mite
     body = `<div class="istats">${stat('HP', d.hp)}${d.shp ? stat('Shields', d.shp) : ''}${d.weapon ? stat('Damage/s', Math.round(d.dmg / d.cd)) + stat('Range', d.range + (d.minRange ? ` (min ${d.minRange})` : '')) : d.heal ? stat('Heals', `${d.heal * 100}%/s`) + stat('Radius', d.healR) : stat('Sight', SIGHT[type]) + stat('Max', d.max)}${stat('Speed', d.speed)}
       ${stat('Armor', arm)}${stat('Shoots', hits)}${stat('Army size', d.pop)}${d.spawned ? stat('Lifespan', MOUND.life + 's') : stat('Build time', d.time + 's')}</div>
-      <div class="irow"><em>Cost</em> ${d.spawned ? 'None: spawned free' : d.brood ? `${d.brood.c} credits for a brood of ${d.brood.n} (${txN(d.brood.c / d.brood.n)} each)` : `${d.cost.c} credits${d.cost.e ? `, ${d.cost.e} energy` : ''}`}${d.splash ? ', splash damage' : ''}</div>
+      <div class="irow"><em>Cost</em> ${d.spawned ? 'None: spawned free' : d.brood ? `${d.brood.c} credits for a brood of ${d.brood.n} (${txN(d.brood.c / d.brood.n)} each)` : d.flock6 ? `${B6I.razor.cost.c} credits, ${B6I.razor.cost.e} energy for a flock of ${B6I.razor.n} (${txN(B6I.razor.cost.c / B6I.razor.n)} and ${txN(B6I.razor.cost.e / B6I.razor.n)} each)` : `${d.cost.c} credits${d.cost.e ? `, ${d.cost.e} energy` : ''}`}${d.splash ? ', splash damage' : ''}</div>
       <div class="irow"><em>Strong against</em> ${UNIT_TIPS[type][0]}</div>
       <div class="irow"><em>Weak against</em> ${UNIT_TIPS[type][1]}</div>`;
   } else if (kind === 'a') {
@@ -16951,7 +17157,7 @@ function buildCards() {
     el.addEventListener('animationend', () => el.classList.remove('shake'));
     if (tab === 'train' && UNIT_PATH[type]) el.insertAdjacentHTML('beforeend', `<span class="path">${UNIT_PATH[type].path.short}</span>`);
     if (tab === 'build' && d.sig && sigPadOn()) el.insertAdjacentHTML('beforeend', '<span class="path sg">★ SIG PAD</span>'); // v2.43: builds on the signature pad
-    if (tab === 'train' && (type === 'rifle' || type === 'skitterling')) el.insertAdjacentHTML('beforeend', '<span class="path pr"></span>');
+    if (tab === 'train' && (type === 'rifle' || type === 'skitterling' || type === 'razor6')) el.insertAdjacentHTML('beforeend', '<span class="path pr"></span>');
     if (tab === 'train' && d.max) el.insertAdjacentHTML('beforeend', '<span class="path mx"></span>'); // how many of a limited unit you have (v2.37)
     wrap.appendChild(el);
   }
@@ -17170,6 +17376,7 @@ function refreshUI(force) {
       const prods = alive(game, myS(), d.from).filter(b => canMake(b, type, game));
       if (type === 'rifle') setHTML(el.querySelector('.pr'), prods.some(b => pathMod(b, 'pairs')) ? 'MASS ×2' : '');
       if (type === 'skitterling') setHTML(el.querySelector('.pr'), rwB5b(game) ? `BROOD ×${BROOD.n}` : ''); // v2.88: a brood (batch 5b)
+      if (type === 'razor6') setHTML(el.querySelector('.pr'), `FLOCK ×${B6I.razor.n}`); // v2.99: a Razorwing flock (batch 6i)
       const mx = el.querySelector('.mx'); if (mx) { const n = unitCount(game, myS(), type); setHTML(mx, `${n}/${d.max}`); mx.classList.toggle('full', n >= d.max); }
       locked = !prods.length;
       const tc = trainCost(game, type), tp = trainPop(game, type); // v2.88: a brood's cost and supply (batch 5b)
@@ -18553,7 +18760,7 @@ function cxTree(fac, type) {
 }
 function cxTroop(fac, t) {
   const d = rwShow(null, t), tip = UNIT_TIPS[t];
-  const facts = [`Cost ${cxCost(d.cost)}`, d.pop ? `Army size <b>${fmtPop(d.pop)}</b>` : '', `HP <b>${cxN(d.hp)}</b>`, d.shp ? `Shields <b>${cxN(d.shp)}</b>` : ''].filter(Boolean);
+  const facts = [d.flock6 ? `Cost ${cxCost(B6I.razor.cost)} for a flock of <b>${B6I.razor.n}</b>` : `Cost ${cxCost(d.cost)}`, d.pop ? `Army size <b>${fmtPop(d.pop)}</b>${d.flock6 ? ' each' : ''}` : '', /* v2.99 (b6i): the Razorwing is trained as a flock */ `HP <b>${cxN(d.hp)}</b>`, d.shp ? `Shields <b>${cxN(d.shp)}</b>` : ''].filter(Boolean);
   return `<article class="cxcard" id="cx-u-${t}"><canvas class="cxi u" data-k="u" data-f="${fac}" data-t="${t}"></canvas><div class="cxt"><h3>${cxEsc(d.name)}</h3><p>${cxEsc(d.desc || '')}</p>
     <div class="cxfacts"><span>Unlock: ${cxUnlock(fac, t)}</span>${facts.map(x => `<span>${x}</span>`).join('')}</div>
     ${tip ? `<div class="cxtip"><em>Strong against</em> ${cxEsc(tip[0])}</div><div class="cxtip"><em>Weak against</em> ${cxEsc(tip[1])}</div>` : ''}</div></article>`;
@@ -18569,7 +18776,7 @@ const CX_COLS = [
   { k: 'dps', h: 'Dmg/s', v: d => d.weapon ? d.dmg / d.cd : 0, f: v => v ? cxN(Math.round(v * 10) / 10) : '–' },
   { k: 'range', h: 'Range', v: d => d.range, f: (v, d) => v ? cxN(v) + (d.minRange ? ` (min ${d.minRange})` : '') : '–' },
   { k: 'speed', h: 'Speed', v: d => d.speed },
-  { k: 'cost', h: 'Cost', v: d => d.cost.c + d.cost.e, f: (v, d) => cxCost(d.cost) },
+  { k: 'cost', h: 'Cost', v: d => d.cost.c + d.cost.e, f: (v, d) => d.flock6 ? `${cxCost(B6I.razor.cost)} / ${B6I.razor.n}` : cxCost(d.cost) }, // v2.99: a flock's price for its three
   { k: 'pop', h: 'Army size', v: d => d.pop, f: v => fmtPop(v) },
   { k: 'time', h: 'Build (s)', v: d => d.time, f: (v, d) => d.noTrain ? 'spawned' : cxN(v) + ' s' },
 ];
@@ -18693,9 +18900,9 @@ function trVfxUse(k) {
 }
 
 // v2.82: a row's rework switches (REWORK's for a setup saved before them)
-const TR_RW = [['b2a', 'Batch 2a'], ['artDeploy', 'Deploy'], ['artTelegraph', 'Telegraph'], ['b2b', 'Batch 2b'], ['b3a', 'Batch 3a'], ['b3b', 'Batch 3b'], ['b4a', 'Batch 4a'], ['b4b', 'Batch 4b'], ['b5b', 'Batch 5b'], ['b5c', 'Batch 5c'], ['b6side', 'Batch 6b side'], ['b6art', 'Batch 6b Artillery'], ['b6hq', 'Batch 6c HQ shield'], ['b6c', 'Batch 6c tuning'], ['b6ai', 'Batch 6d AI'], ['b6d', 'Batch 6d balance'], ['b6elane', 'Batch 6e lanes'], ['b6e', 'Batch 6e costs'], ['b6fai', 'Batch 6f AI'], ['b6f', 'Batch 6f prices'], ['b6g', 'Batch 6g fixes'], ['b6h', 'Batch 6h Bloomhost'], ['b6hbody', 'Batch 6h bodies'], ['b6hnode', 'Batch 6h nodes']]; // b6h, b6hbody, b6hnode (v2.98); // b6g (v2.97); // b6fai, b6f (v2.96); // b6elane, b6e (v2.95); // b6ai, b6d (v2.94); // b6hq, b6c (v2.93); // b5c (v2.90); b5b (v2.88); b4b (v2.87); b2b (v2.83), b3a (v2.84), b3b (v2.85), b4a (v2.86)
+const TR_RW = [['b2a', 'Batch 2a'], ['artDeploy', 'Deploy'], ['artTelegraph', 'Telegraph'], ['b2b', 'Batch 2b'], ['b3a', 'Batch 3a'], ['b3b', 'Batch 3b'], ['b4a', 'Batch 4a'], ['b4b', 'Batch 4b'], ['b5b', 'Batch 5b'], ['b5c', 'Batch 5c'], ['b6side', 'Batch 6b side'], ['b6art', 'Batch 6b Artillery'], ['b6hq', 'Batch 6c HQ shield'], ['b6c', 'Batch 6c tuning'], ['b6ai', 'Batch 6d AI'], ['b6d', 'Batch 6d balance'], ['b6elane', 'Batch 6e lanes'], ['b6e', 'Batch 6e costs'], ['b6fai', 'Batch 6f AI'], ['b6f', 'Batch 6f prices'], ['b6g', 'Batch 6g fixes'], ['b6h', 'Batch 6h Bloomhost'], ['b6hbody', 'Batch 6h bodies'], ['b6hnode', 'Batch 6h nodes'], ['b6i', 'Batch 6i air'], ['b6iresp', 'Batch 6i response']]; // b6i, b6iresp (v2.99); // b6h, b6hbody, b6hnode (v2.98); // b6g (v2.97); // b6fai, b6f (v2.96); // b6elane, b6e (v2.95); // b6ai, b6d (v2.94); // b6hq, b6c (v2.93); // b5c (v2.90); b5b (v2.88); b4b (v2.87); b2b (v2.83), b3a (v2.84), b3b (v2.85), b4a (v2.86)
 function trRw(k) { const S = TR.set; if (!Array.isArray(S.rw)) S.rw = []; return S.rw[k] || (S.rw[k] = rwInit()); }
-const trRwTag = k => { const r = trRw(k), a = !r.b2a ? 'pre-2a' : r.artDeploy && r.artTelegraph ? '2a' : `2a${r.artDeploy ? ' deploy' : ''}${r.artTelegraph ? ' telegraph' : ''}${!r.artDeploy && !r.artTelegraph ? ' (no Artillery switches)' : ''}`; return `${a}, ${r.b2b ? '2b' : 'pre-2b'}, ${r.b3a ? '3a' : 'pre-3a'}, ${r.b3b ? '3b' : 'pre-3b'}, ${r.b4a ? '4a' : 'pre-4a'}, ${r.b4b ? '4b' : 'pre-4b'}, ${r.b5b ? '5b' : 'pre-5b'}, ${r.b5c ? '5c' : 'pre-5c'}, ${r.b6side ? '6b side' : 'pre-6b side'}, ${r.b6art ? '6b Artillery' : 'pre-6b Artillery'}, ${r.b6hq ? '6c HQ shield' : 'pre-6c HQ shield'}, ${r.b6c ? '6c tuning' : 'pre-6c tuning'}, ${r.b6ai ? '6d AI' : 'pre-6d AI'}, ${r.b6d ? '6d balance' : 'pre-6d balance'}, ${r.b6elane ? '6e lanes' : 'pre-6e lanes'}, ${r.b6e ? '6e costs' : 'pre-6e costs'}, ${r.b6fai ? '6f AI' : 'pre-6f AI'}, ${r.b6f ? '6f prices' : 'pre-6f prices'}, ${r.b6g ? '6g fixes' : 'pre-6g fixes'}, ${r.b6h ? '6h Bloomhost' : 'pre-6h Bloomhost'}, ${r.b6hbody ? '6h bodies' : 'pre-6h bodies'}, ${r.b6hnode ? '6h nodes' : 'pre-6h nodes'}`; }; // v2.98: and 6h // v2.97: and 6g // v2.96: and 6f // v2.95: and 6e // v2.90: and 5c; v2.88: and 5b; v2.87: and 4b; // v2.86: and 4a; v2.83: and batch 2b; v2.84: and 3a; v2.85: and 3b
+const trRwTag = k => { const r = trRw(k), a = !r.b2a ? 'pre-2a' : r.artDeploy && r.artTelegraph ? '2a' : `2a${r.artDeploy ? ' deploy' : ''}${r.artTelegraph ? ' telegraph' : ''}${!r.artDeploy && !r.artTelegraph ? ' (no Artillery switches)' : ''}`; return `${a}, ${r.b2b ? '2b' : 'pre-2b'}, ${r.b3a ? '3a' : 'pre-3a'}, ${r.b3b ? '3b' : 'pre-3b'}, ${r.b4a ? '4a' : 'pre-4a'}, ${r.b4b ? '4b' : 'pre-4b'}, ${r.b5b ? '5b' : 'pre-5b'}, ${r.b5c ? '5c' : 'pre-5c'}, ${r.b6side ? '6b side' : 'pre-6b side'}, ${r.b6art ? '6b Artillery' : 'pre-6b Artillery'}, ${r.b6hq ? '6c HQ shield' : 'pre-6c HQ shield'}, ${r.b6c ? '6c tuning' : 'pre-6c tuning'}, ${r.b6ai ? '6d AI' : 'pre-6d AI'}, ${r.b6d ? '6d balance' : 'pre-6d balance'}, ${r.b6elane ? '6e lanes' : 'pre-6e lanes'}, ${r.b6e ? '6e costs' : 'pre-6e costs'}, ${r.b6fai ? '6f AI' : 'pre-6f AI'}, ${r.b6f ? '6f prices' : 'pre-6f prices'}, ${r.b6g ? '6g fixes' : 'pre-6g fixes'}, ${r.b6h ? '6h Bloomhost' : 'pre-6h Bloomhost'}, ${r.b6hbody ? '6h bodies' : 'pre-6h bodies'}, ${r.b6hnode ? '6h nodes' : 'pre-6h nodes'}, ${r.b6i ? '6i air' : 'pre-6i air'}, ${r.b6iresp ? '6i response' : 'pre-6i response'}`; }; // v2.98: and 6h // v2.97: and 6g // v2.96: and 6f // v2.95: and 6e // v2.90: and 5c; v2.88: and 5b; v2.87: and 4b; // v2.86: and 4a; v2.83: and batch 2b; v2.84: and 3a; v2.85: and 3b
 // v2.93 (batch 6c, Part C3): each row's team colours ([side 0, side 1] palette keys or 'random'; Blue and Red by default). The
 // sides were named Blue and Red in the Test Range's texts until v2.94 (now Left and Right, TR_SIDE); Random rolls from the UI's own dice each time the rows are built
 function trTc(k) { const S = TR.set; if (!Array.isArray(S.tc)) S.tc = []; return S.tc[k] || (S.tc[k] = ['blue', 'red']); }
@@ -19004,7 +19211,7 @@ function trUI() { // every UI refresh: the readouts, the clock, the info card, t
     const R = rangeRead(g), T = trView(k), el = box.children[k];
     const who = s => { const c = {}; for (const e of g.ents) if (e.side === s && e.hp > 0) { const nm = e.kind === 'u' ? UDEF[e.type].name : bdOf(e).name; c[nm] = (c[nm] || 0) + 1; } const a = Object.entries(c).sort((x, y) => y[1] - x[1]); return a.length ? a.slice(0, 2).map(([nm, m]) => `${cxEsc(nm)} ×${m}`).join(', ') + (a.length > 2 ? ' …' : '') : 'none'; };
     const w = R.wipe ? ` · <b class="w">${TR_SIDE[R.wipe.side]} wiped out at ${fmtTime(R.wipe.t)}</b>` : '';
-    setHTML(el, `${n > 1 ? `<b>Row ${k + 1}</b> <i class="rw">${cxEsc(trRwTag(k))}</i> ` : trRw(0).b2a && trRw(0).artDeploy && trRw(0).artTelegraph && trRw(0).b2b && trRw(0).b3a && trRw(0).b3b && trRw(0).b4a && trRw(0).b4b && trRw(0).b5b && trRw(0).b5c && trRw(0).b6side && trRw(0).b6art && trRw(0).b6hq && trRw(0).b6c && trRw(0).b6ai && trRw(0).b6d && trRw(0).b6elane && trRw(0).b6e && trRw(0).b6fai && trRw(0).b6f && trRw(0).b6g && trRw(0).b6h && trRw(0).b6hbody && trRw(0).b6hnode ? '' : `<i class="rw">${cxEsc(trRwTag(0))}</i> `}<span class="b">${who(0)}</span> vs <span class="r">${who(1)}</span> · damage <span class="b">${txN(Math.round(R.dmg[0]))}</span> / <span class="r">${txN(Math.round(R.dmg[1]))}</span> · kills <span class="b">${R.kills[0]}</span> / <span class="r">${R.kills[1]}</span>${w}`);
+    setHTML(el, `${n > 1 ? `<b>Row ${k + 1}</b> <i class="rw">${cxEsc(trRwTag(k))}</i> ` : trRw(0).b2a && trRw(0).artDeploy && trRw(0).artTelegraph && trRw(0).b2b && trRw(0).b3a && trRw(0).b3b && trRw(0).b4a && trRw(0).b4b && trRw(0).b5b && trRw(0).b5c && trRw(0).b6side && trRw(0).b6art && trRw(0).b6hq && trRw(0).b6c && trRw(0).b6ai && trRw(0).b6d && trRw(0).b6elane && trRw(0).b6e && trRw(0).b6fai && trRw(0).b6f && trRw(0).b6g && trRw(0).b6h && trRw(0).b6hbody && trRw(0).b6hnode && trRw(0).b6i && trRw(0).b6iresp ? '' : `<i class="rw">${cxEsc(trRwTag(0))}</i> `}<span class="b">${who(0)}</span> vs <span class="r">${who(1)}</span> · damage <span class="b">${txN(Math.round(R.dmg[0]))}</span> / <span class="r">${txN(Math.round(R.dmg[1]))}</span> · kills <span class="b">${R.kills[0]}</span> / <span class="r">${R.kills[1]}</span>${w}`);
     el.style.left = (T.F.l + 6) + 'px'; el.style.top = (n > 1 ? T.y0 + 2 : T.y1 - 20) + 'px'; // one row: the bottom (toasts show at the top); Compare: each strip's top, above its units el.style.maxWidth = (T.F.r - T.F.l - 12) + 'px';
   });
 }

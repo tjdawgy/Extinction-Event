@@ -31,6 +31,7 @@ const B6I = {
   blight: { range: 120, deg: 50, dmg: 15, dur: 8, mites: 2 },
   talon: { sCd: 8, sDps: 40, drop: 0.25, stun: 0.5, heal: 0.5, cap: 0.25, rCd: 6, rDmg: 60, rDur: 6, amp: 0.15, dive: 2, diveR: 150, hunt: 220 },
   wyrm: { bmul: 2.5, tCd: 6, tR: 180, pull: 1.5, bite: 70, jDmg: 30, jCd: 1, jR: 45 },
+  wardFix: true, // Part D (an audit can switch it off to measure the old rule; always on in a game)
   resp: { near: 80, melee: 100, hold: 100, attack: 250, charge: 8 },
 };
 /* ---- the five units (UDEF; their slots in rwType) ---- */
@@ -74,7 +75,7 @@ const rw6iText = (o, k, on) => { const d = Object.getOwnPropertyDescriptor(o, k)
   rw6iText(A[3], 'short', 'Blightwings'); rw6iText(A[3], 'txt', 'Unlocks Blightwings: spore moths whose blighted victims burst into Mites'); rw6iText(A[3], 'unlock', ['blightwing']);
   rw6iText(B[2], 'short', 'Talonmaws'); rw6iText(B[2], 'txt', 'Unlocks Talonmaws: raptors that snatch small units and rend big ones'); rw6iText(B[2], 'unlock', ['talonmaw']);
   rw6iText(B[3], 'short', 'Skywyrms'); rw6iText(B[3], 'txt', 'Unlocks Skywyrms: sky serpents whose acid wrecks buildings and whose tendrils drag down aircraft'); rw6iText(B[3], 'unlock', ['skywyrm']);
-  const T = BDEFS && BDEFS.bloomhost && BDEFS.bloomhost.techlab; if (T && T.tiers && typeof T.tiers[1] === 'string') rw6iText(T.tiers, 1, 'Grows Razorwing flocks'); }
+  const T = BDEFS && BDEFS.bloomhost && BDEFS.bloomhost.techlab; if (T && T.tiers && typeof T.tiers[1] === 'string') rw6iText(T.tiers, 1, 'Grows Razorwing flocks'); if (T) rw6iText(T, 'desc', 'Grows flyers that hit air and ground. Its bloom chooses swarm flyers (Gnatclouds, Blightwings) or apex hunters (Talonmaws, Skywyrms).'); }
 
 /* ---- the Razorwing flock: one order, B6I.razor.n birds ---- */
 const flockN6i = t => t === 'razor6' ? B6I.razor.n : 1; // birds per order (only the batch 6i Razorwing flocks)
@@ -149,6 +150,9 @@ function gnat6i(g, u, d, best, A, side, st, cs, dt, sp) {
 }
 // Damage it takes: single-target hits are cut; area damage (AREA6H) and a splash shell's own target take full
 const A6I = { sp: 0 };
+// It hangs low over its target: ground weapons with splash or flame can target it, and it takes their hits as light armour
+function gnLow6i(e, def) { return e.type === 'gnatcloud' && def.hitsGround !== false && !!(def.splash > 0 || def.weapon === 'flame' || def.salvo || def.carpet); }
+function gnArm6i(weapon) { const m = DMG[weapon]; return m && m.air ? 'air' : 'light'; }
 const gnatCut6i = (e, weapon) => e.kind === 'u' && e.type === 'gnatcloud' && !area6h(weapon) && !A6I.sp;
 
 /* ---- the Blightwing ---- */

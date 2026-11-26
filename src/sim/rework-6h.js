@@ -426,7 +426,7 @@ function aiScores6h(g, s, sc, c) {
   const sup = popUsed(g, s), wantW = Math.max(1, Math.round(sup / WARD6H.per));
   sc.queen = 1.1 + comp.light * 0.6 + air * 1.2 + comp.heavy * 0.3 - (nQ >= Math.max(1, nG / 8) ? 0.7 : 0);
   sc.broodback = 1.2 + comp.light * 0.8 + comp.heavy * 0.5 + spl * 0.4 - comp.air * 0.8;
-  if (rwB6i(g)) ward6i(g, s, sc, spl); // v2.99 (b6i, Part D): the quota counted right (src/sim/rework-6i.js)
+  if (rwB6i(g) && B6I.wardFix) ward6i(g, s, sc, spl); // v2.99 (b6i, Part D): the quota counted right (src/sim/rework-6i.js)
   else if (sc.bulwark !== undefined && spl > 0) sc.bulwark = Math.max(sc.bulwark, nW < wantW ? 1.6 + spl * 1.5 : 0.9);
   if (sc.leaper !== undefined) sc.leaper += aiRangedShare(theirs) * 0.5 + aiFarShare(theirs) * 0.8;
   if (rwB6hnode(g) && fortGuns6h(g, s) >= NODE6.fort) for (const [t, k] of [['gorebore', 0.6], ['ruinmaw', 0.4], ['bilecaster', 0.3], ['broodback', 0.2]]) if (sc[t] !== undefined) sc[t] += k; // b6hnode: fortified enemy nodes call for building-breakers
