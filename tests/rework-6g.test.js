@@ -3,7 +3,7 @@
 // the nodes it holds, the Purification Beam on any lane, the Wraithwing keeping its target. FP_V297 is in tests/determinism.test.js.
 const test = require('node:test');
 const assert = require('node:assert');
-const { loadSim, pin6h } = require('./load-sim');
+const { loadSim, pin6h, pin6i } = require('./load-sim');
 const sim = loadSim();
 const off = { b6g: false, b6h: false, b6hbody: false, b6hnode: false };
 const quiet = g => { g.countdown = 0; for (const sd of g.sides) sd.aiT = 1e9; return g; }; // both AIs idle
@@ -108,20 +108,20 @@ function rangeRun(rework, place, secs) {
   return Object.assign(U, { g, seen });
 }
 const alive = (g, us) => us.filter(e => e.hp > 0 && g.ents.includes(e)).length;
-test('b6g: Bloomhost melee on Hold under fire from Marines out of their reach charge them (b6g off: they stand)', () => {
+test('b6g: Bloomhost melee on Hold under fire from Marines out of their reach charge them (b6g off: they stand)', pin6i(['b6iresp'], () => { // v2.99 (batch 6i): held b6iresp off: 6g's rule (beyond reach + 80 they now stand; counterpart: tests/rework-6i.test.js and switches-on-6i)
   const place = g => ({ a: sim.rangeUnits(g, 0, 'skitterling', 600, 0, 6).concat(sim.rangeUnits(g, 0, 'bulwark', 600, 0, 2)), b: sim.rangeUnits(g, 1, 'rifle', 715, 0, 6) });
   const on = rangeRun(undefined, place, 30), o = rangeRun(off, place, 30);
   assert.ok(on.seen.c > 0 && o.seen.c === 0 && o.seen.p === 0);
   assert.ok(alive(on.g, on.b) < alive(o.g, o.b), `Marines left: ${alive(on.g, on.b)} with b6g, ${alive(o.g, o.b)} without`);
-});
-test('b6g: under Artillery fire from beyond the leash (behind a screen) they pull back out of its reach, then return to their spot', () => {
+}));
+test('b6g: under Artillery fire from beyond the leash (behind a screen) they pull back out of its reach, then return to their spot', pin6i(['b6iresp'], () => { // v2.99 (batch 6i): held b6iresp off: 6g's pull-back, removed by b6iresp (counterpart: tests/rework-6i.test.js)
   const place = g => ({ a: sim.rangeUnits(g, 0, 'skitterling', 600, 0, 6), b: sim.rangeUnits(g, 1, 'artillery', 1000, 0, 2).concat(sim.rangeUnits(g, 1, 'rifle', 880, 0, 4)) });
   const g = sim.rangeGame({ seed: 77, factions: ['bloomhost', 'lastfist'] }), U = place(g);
   let backed = false, min = 1e9, back = false; const was = new Set();
   for (let i = 0; i < 60 * 25; i++) { sim.rangeStep(g); for (const e of U.a) if (e.hp > 0) { if (e.r6 && e.r6.m === 'p') { backed = true; was.add(e.id); } min = Math.min(min, e.u); if (was.has(e.id) && !e.r6 && Math.abs(e.u - 600) < 40) back = true; } }
   assert.ok(backed, 'a pull back'); assert.ok(min <= 1000 - 440 - 20, `out of the Artillery's 440 (${Math.round(1000 - min)} from it)`);
   assert.ok(back, 'back at its spot afterwards');
-});
+}));
 test('b6g: the response never overrides a move order', () => {
   const g = sim.rangeGame({ seed: 5, factions: ['bloomhost', 'lastfist'] });
   const a = sim.rangeUnits(g, 0, 'skitterling', 600, 0, 4); sim.rangeUnits(g, 1, 'artillery', 1000, 0, 2);

@@ -764,7 +764,7 @@ MAPS.threelane = (() => {
   };
 })();
 'use strict';
-const GAME_NAME = 'Extinction Event', VERSION = '2.98'; // bump VERSION with every change
+const GAME_NAME = 'Extinction Event', VERSION = '2.99'; // bump VERSION with every change
 /* =====================================================================
    SIM — rules, economy, combat and AI. Positions live on a flat plane:
    u runs left to right along the battle lane, v is depth (back → front).
@@ -7624,7 +7624,7 @@ const B6I = {
 };
 /* ---- the five units (UDEF; their slots in rwType) ---- */
 Object.assign(UDEF, {
-  razor6: { name: 'Razorwing', desc: 'A flock of three fast flyers that dive on ground units and aircraft, hitting aircraft harder. The more fly together, the faster they go. Fragile one by one.', fac: 'bloomhost', from: 'techlab', tier: 1, cost: { c: B6I.razor.cost.c / B6I.razor.n, e: B6I.razor.cost.e / B6I.razor.n }, pop: 1, hp: 90, dmg: 6, cd: 0.75, range: 50, speed: 95, hitsAir: true, armor: 'air', air: true, weapon: 'talon6', time: 10, h: 10, melee: true, chase: 200, flock6: true },
+  razor6: { name: 'Razorwing', desc: 'A flock of fast flyers that dive on ground units and aircraft, hitting aircraft harder. The more fly together, the faster they go. Fragile one by one.', fac: 'bloomhost', from: 'techlab', tier: 1, cost: { c: B6I.razor.cost.c / B6I.razor.n, e: B6I.razor.cost.e / B6I.razor.n }, pop: 1, hp: 90, dmg: 6, cd: 0.75, range: 50, speed: 95, hitsAir: true, armor: 'air', air: true, weapon: 'talon6', time: 10, h: 10, melee: true, chase: 200, flock6: true },
   gnatcloud: { name: 'Gnatcloud', desc: 'A buzzing cloud of countless insects that settles over its target: every enemy inside it, on the ground, in the air or a building, is eaten slowly, and clouds stack. Shots barely thin it; blasts and splash tear through it.', fac: 'bloomhost', from: 'techlab', tier: 2, cost: { c: 120, e: 40 }, pop: 2, hp: 220, dmg: B6I.gnat.dps, cd: 1, range: 14, speed: 55, hitsAir: true, armor: 'air', air: true, weapon: 'gnat6', time: 9, h: 10, melee: true, chase: 220, gn6: true },
   blightwing: { name: 'Blightwing', desc: 'Bloated spore moth. Its spore cone hits ground units, aircraft and buildings and blights the units: a blighted enemy that dies bursts into Mites for you. Keep it behind your army.', fac: 'bloomhost', from: 'techlab', tier: 3, cost: { c: 220, e: 90 }, pop: 3, hp: 320, dmg: B6I.blight.dmg, cd: 3, range: B6I.blight.range, speed: 60, hitsAir: true, armor: 'air', air: true, weapon: 'spore6', time: 12, h: 12, cone6: true },
   talonmaw: { name: 'Talonmaw', desc: 'Fast raptor of the swarm. Its claws hit air and ground; it snatches small ground units out of the fight and eats them, healing on the kill, and rends bigger ones so the swarm hits them harder.', fac: 'bloomhost', from: 'techlab', tier: 2, cost: { c: 200, e: 70 }, pop: 3, hp: 480, dmg: 20, cd: 1, range: 40, speed: 90, hitsAir: true, armor: 'air', air: true, weapon: 'claw6', time: 12, h: 14, melee: true, chase: 220, tm6: true },
@@ -7641,7 +7641,8 @@ Object.assign(DMG, {
   jaws6:   { light: 1.0, heavy: 1.0, vehicle: 1.0, air: 1.0, building: 0 },              // its jaws
   tendril6: { light: 1.0, heavy: 1.0, vehicle: 1.0, air: 1.0, building: 0 },             // the bite at the end of a tendril drag
 });
-for (const w of ['gnat6', 'spore6', 'spew6']) AREA6H_W[w] = 1; // area effects (the Chitin Warden's aura, the Gnatcloud's own toughness)
+for (const w of ['gnat6', 'spore6', 'spew6']) AREA6H_W[w] = 1;
+PSPEED.spore6 = 420; // never flown (the cone lands at once); the weapon table's rule that every ranged weapon has a speed // area effects (the Chitin Warden's aura, the Gnatcloud's own toughness)
 Object.assign(MUZ, { razor6: [10, -4], gnatcloud: [0, 0], blightwing: [14, -2], talonmaw: [16, 2], skywyrm: [30, -4] }); // src/render/units-rework-6i.js
 Object.assign(SIGHT, { razor6: 220, gnatcloud: 190, blightwing: 220, talonmaw: 240, skywyrm: 260 });
 Object.assign(PLURAL, { razor6: 'Razorwings', gnatcloud: 'Gnatclouds', blightwing: 'Blightwings', talonmaw: 'Talonmaws', skywyrm: 'Skywyrms' });

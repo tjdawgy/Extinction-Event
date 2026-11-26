@@ -3,7 +3,7 @@
 // faction in the fog, the match log, and the AI playing a whole match as Bloomhost. SIM only (Node).
 const test = require('node:test');
 const assert = require('node:assert');
-const { loadSim } = require('./load-sim');
+const { loadSim, pin6i } = require('./load-sim');
 
 const sim = loadSim();
 const step = (g, secs) => { for (let i = 0; i < Math.round(secs * 30); i++) sim.update(g, 1 / 30); };
@@ -31,7 +31,7 @@ test('the eight Bloomhost buildings fill the Last Fist roles; the Hive keeps the
   assert.deepStrictEqual({ ...sim.income(g, 0) }, { c: 3 + 4, e: 1 + 2 });
 });
 
-test('each faction trains only its own units; every production building picks a path (v2.19: Larva Pit and Evolution Chamber; v2.21: Bloomspire); the rest upgrade', () => {
+test('each faction trains only its own units; every production building picks a path (v2.19: Larva Pit and Evolution Chamber; v2.21: Bloomspire); the rest upgrade', pin6i(['b6i'], () => { // v2.99 (batch 6i): held b6i off: it lists the old Razorwing (counterpart: tests/switches-on-6i.test.js)
   const g = quiet(); g.countdown = 0;
   const pit = finish(g, 0, 'barracks'), evo = finish(g, 0, 'factory'), spire = finish(g, 0, 'techlab'), gore = finish(g, 0, 'refinery'), maw = finish(g, 0, 'turret');
   finish(g, 0, 'habitat'); finish(g, 1, 'barracks');
@@ -42,7 +42,7 @@ test('each faction trains only its own units; every production building picks a 
   assert.ok(sim.tryUpgrade(g, 0, gore).ok); assert.ok(sim.tryUpgrade(g, 0, maw).ok); assert.ok(sim.tryUpgrade(g, 0, g.sides[0].hq).ok);
   step(g, 30);
   assert.strictEqual(gore.tier, 2); assert.strictEqual(sim.income(g, 0).c >= 3 + 6, true);
-});
+}));
 
 test('each faction uses only its own three abilities (v2.20: Bloomhost has Frenzy Bloom, Emergency Brood, Corrosive Bloom)', () => {
   const g = quiet(); g.countdown = 0; g.t = 300;

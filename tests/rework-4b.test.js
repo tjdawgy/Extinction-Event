@@ -4,7 +4,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const crypto = require('crypto');
-const { loadSim, pin6h } = require('./load-sim');
+const { loadSim, pin6h, pin6i } = require('./load-sim');
 
 const step = (s, g, sec) => { for (let i = 0; i < Math.round(sec * 60); i++) s.rangeStep(g); };
 const until = (s, g, f, sec = 20) => { for (let i = 0; i < sec * 60; i++) { if (f()) return true; s.rangeStep(g); } return f(); };
@@ -30,7 +30,7 @@ test('switch: per game; b4b off plays the v2.86 units (UDEF untouched), on the b
 function skirm(s, kind, rw) {
   const S = kind === 'e' ? { f: ['lastfist', 'bloomhost'], b: [[0, 'lastfist', 'refinery', 420, 0], [1, 'bloomhost', 'refinery', 1020, 0]], u: [['leviathan', 600, -20, 1], ['interceptor', 580, 30, 2], ['rifle', 640, 20, 4], ['heavy', 620, -40, 2]], v: [['broodtyrant', 840, -10, 2], ['worldrender', 880, 20, 1], ['skitterling', 800, 20, 4], ['spitter', 860, 30, 2]] }
     : { f: ['axiarchs', 'lastfist'], b: [[1, 'lastfist', 'barracks', 1020, 0]], u: [['voidcarrier', 560, -20, 1], ['sovereign', 520, 10, 1], ['lancer', 620, 20, 3], ['shardling', 640, -30, 3]], v: [['tank', 840, -10, 2], ['rifle', 800, 20, 5], ['heavy', 820, 40, 3], ['hydra', 880, 0, 1]] };
-  const g = s.rangeGame({ seed: 17, factions: S.f, rework: Object.assign({ b5c: false, b6side: false, b6art: false, b6hq: false, b6c: false, b6ai: false, b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false }, rw) }) /* v2.90: pinned before batch 5c (its key would be saved) */;
+  const g = s.rangeGame({ seed: 17, factions: S.f, rework: Object.assign({ b5c: false, b6side: false, b6art: false, b6hq: false, b6c: false, b6ai: false, b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false, b6i: false, b6iresp: false }, rw) }) /* v2.90: pinned before batch 5c (its key would be saved) */;
   for (const [k, f, r, u, v] of S.b) s.rangeBuilding(g, k, f, r, u, v);
   for (const [t, u, v, n] of S.u) for (let i = 0; i < n; i++) s.rangeUnit(g, 0, t, u + (i % 3) * 14, v + Math.floor(i / 3) * 16);
   for (const [t, u, v, n] of S.v) for (let i = 0; i < n; i++) s.rangeUnit(g, 1, t, u + (i % 3) * 14, v + Math.floor(i / 3) * 16);
@@ -92,7 +92,7 @@ test('Leviathan: a bombing run straight across its target, its carpet centred on
   step(s, h, 8); assert.ok(Math.hypot(I2.u - L2.u, I2.v - L2.v) < 40, `the Interceptor flies with it (${Math.hypot(I2.u - L2.u, I2.v - L2.v).toFixed(0)})`);
 }));
 
-test('Brood Tyrant: 40 to units (splash 24); 30 to a building and a pustule (up to 3, 6/s each); Repair clears them; a fall bursts them into Mites (2 each, up to 6)', () => {
+test('Brood Tyrant: 40 to units (splash 24); 30 to a building and a pustule (up to 3, 6/s each); Repair clears them; a fall bursts them into Mites (2 each, up to 6)', pin6i(['b6i'], () => { // v2.99 (batch 6i): held b6i off: the Brood Tyrant is gone with it (counterpart: tests/switches-on-6i.test.js)
   const s = loadSim();
   const g = s.rangeGame({ factions: ['bloomhost', 'lastfist'] });
   const T = s.rangeUnit(g, 0, 'broodtyrant', 500, 0), B = s.rangeBuilding(g, 1, 'lastfist', 'barracks', 640, 0); tough(T); B.built = true; B.hp = B.maxHp = 1e5;
@@ -111,9 +111,9 @@ test('Brood Tyrant: 40 to units (splash 24); 30 to a building and a pustule (up 
   s.rangeMode(g3, 0, 'attack'); assert.ok(until(s, g3, () => B3.pus === 3, 15)); B3.hp = 5; T3.cd = 1e9;
   assert.ok(until(s, g3, () => B3.hp <= 0, 5));
   const M = g3.ents.filter(e => e.type === 'mite' && e.side === 0 && e.hp > 0); assert.strictEqual(M.length, 6); assert.ok(M.every(m => m.temp && m.tSrc === 'pus'));
-});
+}));
 
-test('Worldrender: lands on the building it attacks (1.5 s), bites 120 every 2 s healing 30% (at most 40/s), a heavy ground target while down; takes off below 35%', () => {
+test('Worldrender: lands on the building it attacks (1.5 s), bites 120 every 2 s healing 30% (at most 40/s), a heavy ground target while down; takes off below 35%', pin6i(['b6i'], () => { // v2.99 (batch 6i): held b6i off: the Worldrender is gone with it (counterpart: tests/switches-on-6i.test.js)
   const s = loadSim();
   const g = s.rangeGame({ factions: ['bloomhost', 'lastfist'] });
   const W = s.rangeUnit(g, 0, 'worldrender', 560, 0), B = s.rangeBuilding(g, 1, 'lastfist', 'barracks', 620, 0); B.built = true; B.hp = B.maxHp = 1e5;
@@ -130,7 +130,7 @@ test('Worldrender: lands on the building it attacks (1.5 s), bites 120 every 2 s
   assert.ok(bit >= 358 && bit <= 362, `a bite at touchdown, then one every 2 s: three of 120 in 4 s (${bit.toFixed(0)})`); assert.ok(W.hp > 1000 && W.hp <= 1000 + 40 * 4.1, `healed ${(W.hp - 1000).toFixed(0)}`);
   W.hp = W.maxHp * 0.3; s.rangeStep(g); assert.strictEqual(W.lnd, 3, 'takes off below 35%');
   assert.ok(until(s, g, () => !W.lnd, 2)); assert.ok(!W.arm && W.z > 50, 'airborne again');
-});
+}));
 
 test('Voidcarrier: power node kept; a light bolt (18, 1.4 s, range 140) at air and ground; no splash, no building preference', () => {
   const s = loadSim();

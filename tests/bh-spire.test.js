@@ -4,7 +4,7 @@
 // and skip a shielded Hive or HQ; saves v21 with the v20 migration; the AI's path mapping. SIM only (Node).
 const test = require('node:test');
 const assert = require('node:assert');
-const { loadSim } = require('./load-sim');
+const { loadSim, pin6i } = require('./load-sim');
 
 const sim = loadSim();
 sim.BREAK.prod.on = false; // v2.69: these tests shield an HQ with any finished building (the rule before v2.69); tests/base-break.test.js covers the production rule
@@ -17,7 +17,7 @@ const put = (g, s, t, u, v = 0) => { const e = sim.spawnUnit(g, s, t, u, v); e.h
 const seeAll = g => { for (const f of g.fog) { f.vis.fill(1); f.exp.fill(1); } };
 const kids = (g, s = 0) => g.ents.filter(e => e.side === s && e.tSrc === 'cloud' && e.hp > 0);
 
-test('Bloomspire: Swarm Bloom or Apex Bloom at T2 locks the building; T3 deepens it; Razorwings on both; selling resets', () => {
+test('Bloomspire: Swarm Bloom or Apex Bloom at T2 locks the building; T3 deepens it; Razorwings on both; selling resets', pin6i(['b6i'], () => { // v2.99 (batch 6i): held b6i off: it trains the Needlewing and the Brood Tyrant (counterpart: tests/switches-on-6i.test.js)
   const g = quiet();
   finish(g, 0, 'barracks'); const spire = finish(g, 0, 'techlab'); finish(g, 0, 'habitat'); finish(g, 0, 'habitat');
   assert.strictEqual(sim.TREES_BH.techlab.A.name, 'Swarm Bloom'); assert.strictEqual(sim.TREES_BH.techlab.B.name, 'Apex Bloom');
@@ -32,7 +32,7 @@ test('Bloomspire: Swarm Bloom or Apex Bloom at T2 locks the building; T3 deepens
   assert.ok(s2.path === null && s2.tier === 1, 'a rebuilt Bloomspire is undecided again');
   upTo(g, s2, 'B', 3); assert.ok(sim.tryTrain(g, 0, 'broodtyrant').ok && sim.tryTrain(g, 0, 'worldrender').ok && sim.tryTrain(g, 0, 'razorwing').ok);
   assert.ok(!sim.tryTrain(g, 0, 'needlewing').ok);
-});
+}));
 
 test('none of the four hits aircraft (Brood Tyrant and Worldrender included); all four hit ground units', () => {
   const g = quiet(); seeAll(g);
@@ -132,7 +132,7 @@ test('the AI maps its Tech Lab taste onto the Bloomspire: Air Power → Apex Blo
   assert.strictEqual(sim.aiPathTo('lastfist', 'techlab', 'A'), 'A');
 });
 
-test('the AI trains every unit on its Bloomspire path (a prepared T3 Bloomspire on each path)', () => {
+test('the AI trains every unit on its Bloomspire path (a prepared T3 Bloomspire on each path)', pin6i(['b6i'], () => { // v2.99 (batch 6i): held b6i off: the old four (counterpart: tests/switches-on-6i.test.js)
   const mul = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
   for (const [path, want] of [['A', ['needlewing', 'cloudwing']], ['B', ['broodtyrant', 'worldrender']]]) {
     const sim = loadSim({ random: mul(7) }); // seeded (v2.22): unseeded, Skitterlings sometimes filled the supply first
@@ -145,7 +145,7 @@ test('the AI trains every unit on its Bloomspire path (a prepared T3 Bloomspire 
     step(g, 90);
     for (const t of want) assert.ok(side.aiLog.trained[t] > 0, `path ${path}: trained ${JSON.stringify(side.aiLog.trained)}`);
   }
-});
+}));
 
 // v2.38 (audit phase 4): "in a seeded Hard match the Bloomhost AI picks a Bloomspire path through its Tech Lab taste and trains its units" was one seeded match, re-seeded whenever a rule change moved it.
 // It is now a statistical test over N seeded matches on the current rules: tests/slow/ai-stats.test.js.
