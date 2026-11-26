@@ -362,7 +362,8 @@ function aiRework2b(g, s, mine) {
   for (const R of mine.filter(u => u.type === 'ruinmaw')) {
     if (R.rmGo && R.hp < R.maxHp * RUIN.back && !R.rmHome) { R.rmGo = [rallyU(s), MAP.bases[s].rally[1]]; R.rmHome = 1; continue; } // badly hurt: home, underground
     if (R.rmHome) { if (R.rmAt && R.hp >= R.maxHp * 0.8) { R.rmGo = null; R.rmHome = 0; } continue; }
-    const spot = R.rmGo ? null : ruinSpot(g, s, R);
+    let spot = R.rmGo ? null : ruinSpot(g, s, R);
+    if (!R.rmGo && rwB6h(g)) { const n6 = ruinSpot6h(g, s, R); if (n6 && (!spot || n6.score < 250)) spot = n6.spot; } // v2.98 (b6h): or beside an enemy-held node its guns cover least
     if (spot) { R.rmGo = spot; R.rmSince = g.t; continue; }
     if (R.rmGo && R.rmAt) {
       const busy = g.ents.some(b => b.kind === 'b' && b.side === opp && b.hp > 0 && effDist(R, b) <= 150) || g.ents.some(e => e.tn && e.tn.r === R.id);

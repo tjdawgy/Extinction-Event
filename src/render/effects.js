@@ -959,6 +959,7 @@ function render(c, g, time, sel, selPad) {
   for (const n of g.nodes) drawNodeZone(c, n, time, lit(n.u, n.v));
   for (const b of g.ents) if (b.type === 'bunker' && b.hp > 0 && b.tier >= 2 && seen(b)) drawHealRing(c, b, time); // v2.32: Depot T2
   for (const a of g.acid) if (lit(a.u, a.v)) drawAcidPool(c, a, g.t);
+  if (rwB6h(g)) drawGround6h(c, g, lit, time); // v2.98 (batch 6h): Bile Blooms, tunnel trails
   drawDecals(c);
   drawMeteor(c, g, time); // v2.72: a meteor's warning circle, then its fall
   drawMarks(c, g, lit); drawTrails(c, g, lit); // v2.82: telegraphed shells' markers, Gorebore burrow trails
@@ -1003,6 +1004,7 @@ function render(c, g, time, sel, selPad) {
     const a = P(p.pu, p.pv, p.pz), b = P(p.u, p.v, p.z), wp = p.weapon;
     if (wp === 'exile') { drawOrb(c, g, p, b); continue; } // v2.82: a Severance's rift orb
     if (p.gs) { drawGsMissile(c, p, a, b); continue; } // v2.86: a Gunship's salvo missile
+    if (wp === 'bilebolt') { drawBileBolt6(c, p, a, b); continue; } // v2.98: a Queen's bolt (batch 6h)
     if (wp === 'quill') { drawQuill5(c, p, a, b); continue; } // v2.88: a Spitter's quill (batch 5b)
     if (wp === 'vbolt') { drawVBolt(c, p, a, b); continue; } // v2.87: a Voidcarrier's bolt
     if (wp === 'bomb' && p.carpet) { drawLvBomb(c, p, b); continue; } // v2.87: a Leviathan's carpet bomb, drawn larger
@@ -1079,6 +1081,7 @@ function render(c, g, time, sel, selPad) {
   if (rwB3b(g)) drawBarriers(c, g, lit, time); // v2.85: Bastion barriers, over the units they screen
   if (rwB4a(g)) for (const e of g.ents) if (e.mkT > g.t && e.hp > 0 && seen(e) && !e.gone) drawMarked(c, e, P(e.u, e.v), g.t); // v2.86: marked targets' sigils
   for (const f of g.fx) { // the SIM's blasts (its muzzle flashes are replaced by the per-weapon ones in drawVfx)
+    if (FX6H[f.k]) { if (lit(f.u, f.y / DY) || (f.side === myS() && f.k === 'qbirth6')) FX6H[f.k](c, f); continue; } // v2.98 (batch 6h)
     if (f.k === 'beam') { if (lit(f.x, f.y / DY) || lit(f.x2, (f.y2 ?? f.y) / DY)) drawBeam(c, f); continue; } // Null Lance beams (v2.25), only where the player can see
     if (f.k === 'pull') { if (lit(f.x, f.y / DY)) drawPull(c, f); continue; } // Eventide pulses (v2.27)
     if (f.k === 'scrap') { if (scrapShown(g, f, myS())) drawScrap(c, f); continue; }

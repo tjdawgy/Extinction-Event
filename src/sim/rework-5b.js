@@ -142,7 +142,7 @@ const aiAirSignal5b = (g, s, type, theirs) => aiAirShare(theirs) >= AI5B.air || 
 function aiPath5b(g, s, b, theirs) {
   if (facOf(g.sides[s].faction) !== 'bloomhost') return null;
   if (!aiAirSignal5b(g, s, b.type, theirs)) return null; // the Bloomspire also reads what it has seen of the enemy's air production
-  const want = b.type === 'barracks' ? 'B' : b.type === 'techlab' ? 'A' : null;
+  const want = b.type === 'barracks' ? (rwB6h(g) ? null : 'B') : b.type === 'techlab' ? 'A' : null; // v2.98 (b6h): Spitters come from the start; no path needed for anti-air
   if (!want) return null;
   const have = g.ents.some(e => e !== b && e.side === s && e.type === b.type && e.hp > 0 && (e.path || e.upPath) === want);
   return have ? null : want;

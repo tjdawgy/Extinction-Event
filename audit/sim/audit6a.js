@@ -11,13 +11,14 @@
 //        instrumentation, the state hashed every 100 ticks: they must be identical (the counters change nothing).
 const { fork } = require('child_process'), fs = require('fs'), path = require('path'), crypto = require('crypto');
 const INSTR = require('./audit6a-instrument');
+const B6H = process.env.EE_B6H ? require('./b6h-instrument') : null; // v2.98 (batch 6h): read-only node-assault and swarm counters
 const B6G = process.env.EE_B6G ? require('./b6g-instrument') : null, B6G_P = process.env.EE_B6G_PLAYER, B6G_F = process.env.EE_B6G_FORCE; // v2.97 (batch 6g): read-only counters; EE_B6G_PLAYER=<side> a scripted direct-control player; EE_B6G_FORCE=lfturret a Last Fist that turrets every pad (audit only)
 if (process.argv[2] === '--one') {
   const [map, f0, f1, seed, maxT, ident, rwArg, p0, p1] = process.argv.slice(3); // v2.93 (batch 6c): p0, p1 force each side's personality (audit only: newGame's autoPersona / persona options)
   const RW = {}; for (const kv of (rwArg || '').split(',').filter(Boolean)) { const [k, v] = kv.split('='); RW[k] = v !== '0' && v !== 'false'; } // v2.92 (batch 6b): --rw b6art=0 etc.
   const { loadSim } = require('./load');
   const play = instr => {
-    const S = loadSim(+seed, instr ? { instrument: INSTR + (B6G ? '\n' + B6G : '') } : {}); Object.assign(S.REWORK, RW); if (process.env.EE_B6C && S.B6C) Object.assign(S.B6C, JSON.parse(process.env.EE_B6C)); for (const [k, V] of [['EE_B6AI', S.B6AI], ['EE_B6D', S.B6D], ['EE_B6E', S.B6E]]) if (process.env[k] && V) { const o = JSON.parse(process.env[k]); for (const f in o) if (o[f] && typeof o[f] === 'object' && !Array.isArray(o[f]) && V[f]) Object.assign(V[f], o[f]); else V[f] = o[f]; } // v2.94: EE_B6AI='{"eco":{"cap":500}}' tries batch 6d values // v2.93: EE_B6C='{"latchDps":20}' tries batch 6c numbers
+    const S = loadSim(+seed, instr ? { instrument: INSTR + (B6G ? '\n' + B6G : '') + (B6H ? '\n' + B6H : '') } : {}); Object.assign(S.REWORK, RW); if (process.env.EE_B6C && S.B6C) Object.assign(S.B6C, JSON.parse(process.env.EE_B6C)); for (const [k, V] of [['EE_B6AI', S.B6AI], ['EE_B6D', S.B6D], ['EE_B6E', S.B6E]]) if (process.env[k] && V) { const o = JSON.parse(process.env[k]); for (const f in o) if (o[f] && typeof o[f] === 'object' && !Array.isArray(o[f]) && V[f]) Object.assign(V[f], o[f]); else V[f] = o[f]; } // v2.94: EE_B6AI='{"eco":{"cap":500}}' tries batch 6d values // v2.93: EE_B6C='{"latchDps":20}' tries batch 6c numbers
     const g = S.newGame('hard', { seed: +seed, map, autoPlayer: true, autoDiff: 'hard', factions: [f0, f1], autoPersona: p0 || undefined, persona: p1 || undefined }); g.countdown = 0;
     const R = { tier: [{}, {}], paths: [{}, {}], t3u: [null, null], t3air: [null, null], peakUnits: [0, 0] };
     let k = 0, err = null; const hs = [];
@@ -102,7 +103,7 @@ if (process.argv[2] === '--one') {
       ser: Object.assign(R.ser[s], { strat: (g.stats.sides[s].strat || []), bBuilt: g.stats.sides[s].bBuilt, firstAttack: (g.sides[s].aiLog || {}).firstAttack ?? null, attacks: (g.sides[s].aiLog || {}).attacks || 0, c10: g.stats.sides[s].c, e10: g.stats.sides[s].e, army10: g.stats.sides[s].army }), paths0: g.sides[s].persona ? g.sides[s].persona.paths : null, bLost: tot.bLost };
   });
   (process.send ? process.send.bind(process) : m => console.log(JSON.stringify(m)))({ b6c: S.B6C ? Object.assign({}, S.B6C) : null, map, f: [f0, f1], seed: +seed, t: Math.round(g.t * 10) / 10, over: !!g.over, winner: g.over ? g.winner : null, how: g.result ? g.result.how : null,
-    by: g.result ? g.result.by || g.result.reason || null : null, err, ver: S.VERSION, rw: g.rw, sides, ...(B6G ? { b6g: S.b6g.sum(g), b6gP: B6G_P, b6gF: B6G_F } : {}) });
+    by: g.result ? g.result.by || g.result.reason || null : null, err, ver: S.VERSION, rw: g.rw, sides, ...(B6G ? { b6g: S.b6g.sum(g), b6gP: B6G_P, b6gF: B6G_F } : {}), ...(B6H ? { b6h: S.b6h.sum(g) } : {}) });
   process.exit(0);
 }
 const arg = (n, d) => { const i = process.argv.indexOf('--' + n); return i > 0 ? process.argv[i + 1] : d; };

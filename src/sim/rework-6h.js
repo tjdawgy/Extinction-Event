@@ -57,7 +57,7 @@ Object.assign(DMG, {
   swallow6: { light: 1.0, heavy: 1.0, vehicle: 1.0, air: 0, building: 0 },     // inside a Ruinmaw
 });
 PSPEED.bilebolt = 300;
-Object.assign(MUZ, { queen: [12, 22], broodback: [18, 10] });
+Object.assign(MUZ, { queen: [16, 27], broodback: [22, 12] }); // the Queen's bile hand, the Broodback's jaw (src/render/units-rework-6h.js)
 Object.assign(SIGHT, { queen: 210, broodback: 190 });
 Object.assign(PLURAL, { queen: 'Queens', broodback: 'Broodbacks' });
 UGROUPS.inf.push('queen'); GROUP_OF.queen = 'inf'; UGROUPS.arm.push('broodback'); GROUP_OF.broodback = 'arm';
@@ -316,21 +316,21 @@ function rally6h(g, b, nu) { // a unit just trained at b
   if (!R || R.hp <= 0 || R.dead || R.type !== 'ruinmaw') { b.rm6 = 0; return; }
   if (!ruinGate(R) || !tunnelOk(nu)) return; // down (moving): it comes out at the building as usual
   if (g.sides[nu.side].direct) nu.po = { o: 'tunnel', r: R.id };
-  burrow6h(g, nu, R);
+  burrow6h(g, nu, R); sw6h(g, nu.side).rallyU = (sw6h(g, nu.side).rallyU || 0) + 1;
 }
 
 /* ---- unit bodies (b6hbody) and the loose swarm (b6h) ---- */
 // Body classes from each unit's drawn footprint (docs/FACTION_REWORK.md "Batch 6h", the table measured by
 // audit/sim/b6h-bodies.js): the radius in screen px (u, and v × DY), and a mass for pushes (a big unit holds its line).
-const BODY6H_R = { small: 6, medium: 9, large: 13, huge: 18 }, BODY6H_M = { small: 1, medium: 2, large: 4, huge: 9 };
+const BODY6H_R = { small: 7, medium: 10, large: 14, huge: 20 }, BODY6H_M = { small: 1, medium: 2, large: 4, huge: 9 };
 const BODY6H = {
-  rifle: 'small', heavy: 'medium', sniper: 'small', tank: 'large', artillery: 'large', titan: 'huge', flame: 'large', hydra: 'huge',
-  skitterling: 'small', mite: 'small', leaper: 'small', spitter: 'small', queen: 'medium', ravager: 'medium', bilecaster: 'medium',
-  bulwark: 'large', thornback: 'large', broodback: 'large', dreadthorn: 'huge', bilelobber: 'large', gorebore: 'medium', ruinmaw: 'huge',
-  shardling: 'small', riftstalker: 'medium', parallax: 'medium', lancer: 'medium', marksman: 'medium', bastion: 'large',
-  riftmortar: 'large', severance: 'large', worldbreaker: 'huge', gravemantle: 'large', eventide: 'large',
+  rifle: 'small', sniper: 'small', shardling: 'small', skitterling: 'small', lancer: 'small', mite: 'small',
+  heavy: 'medium', leaper: 'medium', riftstalker: 'medium', parallax: 'medium', marksman: 'medium', spitter: 'medium', queen: 'medium', severance: 'medium', bilecaster: 'medium', gorebore: 'medium', flame: 'medium', bastion: 'medium', riftmortar: 'medium', bilelobber: 'medium',
+  gravemantle: 'large', tank: 'large', eventide: 'large', hydra: 'large', worldbreaker: 'large', artillery: 'large', ravager: 'large', bulwark: 'large', broodback: 'large', thornback: 'large',
+  titan: 'huge', dreadthorn: 'huge', ruinmaw: 'huge',
 };
 const BODY6H_AIR = { small: 7, medium: 10, large: 15, huge: 20 }, BODY6H_A = { aircraft: 'medium', interceptor: 'small', leviathan: 'huge', medic: 'medium', drone: 'small', razorwing: 'small', needlewing: 'small', cloudwing: 'medium', broodtyrant: 'large', worldrender: 'huge', wraithwing: 'small', prismwing: 'small', shardstorm: 'medium', voidcarrier: 'large', sovereign: 'huge' };
+const body6hR = t => UDEF[t] && UDEF[t].air ? BODY6H_AIR[bodyClass6h(t)] : BODY6H_R[bodyClass6h(t)] + (LOOSE6H[t] ? B6H.loose / 2 : 0); // the spacing a formation gives it (Test Range placement, ctlPack)
 const bodyClass6h = t => UDEF[t] && UDEF[t].air ? BODY6H_A[t] || 'medium' : BODY6H[t] || 'medium';
 const BODY6 = { cell: 40, allow: 2, k: 0.5, kAir: 0.15, max: 70, hold: 3 };
 const B6GRID = new Map();
@@ -381,4 +381,86 @@ function body6h(g, dt) {
     else nv = clamp(nv, -LANE_V, LANE_V);
     e.u = nu; e.v = nv;
   }
+}
+
+/* ---- the Bloomhost AI (b6h): every personality on every difficulty ----
+   Openers (side.op6h, rolled once per match from the AI's own stream, by personality, OPEN6H): 'swarm' (broods first), 'spit'
+   (Spitters first) or 'mixed'; for the first OPEN6H.until s the scores lean that way. Queens behind the front, pulling back when
+   focused; Chitin Wardens wanted whenever the enemy fields area damage (about one per WARD6H.per supply of the army); Broodbacks
+   lead a push (the swarm waits behind the frontmost); Leapers dive the backline (latchTier6h: siege and ranged first); the
+   Ruinmaw surfaces behind the enemy line, at enemy economy or beside an enemy-held node, tunnels the army through and takes the
+   production rally (aiRuin6h). */
+const OPEN6H = { until: 300, w: { boomer: [0.45, 0.25, 0.3], aggressor: [0.45, 0.25, 0.3], economist: [0.3, 0.35, 0.35], turtle: [0.2, 0.5, 0.3], def: [0.34, 0.33, 0.33] }, kinds: ['swarm', 'spit', 'mixed'] };
+const WARD6H = { per: 12 };
+const RW6H_TASTE = { queen: { boomer: 0.9, aggressor: 0.9, economist: 1.1, turtle: 1.2, trickster: 1.1 }, broodback: { boomer: 1.2, aggressor: 1.2, economist: 1.0, turtle: 0.9, trickster: 1.0 } };
+function aiOpen6h(g, s) {
+  const side = g.sides[s]; if (side.op6h) return side.op6h;
+  const k = side.persona && side.persona.kind, W = OPEN6H.w[k] || OPEN6H.w.def; let r = simRnd() * (W[0] + W[1] + W[2]), i = 0;
+  while (i < 2 && r >= W[i]) { r -= W[i]; i++; }
+  side.op6h = OPEN6H.kinds[i]; lg(g, s, 'G', 'open6h', i);
+  return side.op6h;
+}
+function aiScores6h(g, s, sc, c) {
+  if (facOf(g.sides[s].faction) !== 'bloomhost') return;
+  const { comp, theirs, mine } = c, air = aiAirShare(theirs), spl = aiSplashShare(theirs);
+  const nG = mine.filter(u => isSwarmG(UDEF[u.type]) && !u.temp).length, nQ = mine.filter(u => u.type === 'queen').length, nW = mine.filter(u => u.type === 'bulwark').length;
+  const sup = popUsed(g, s), wantW = Math.max(1, Math.round(sup / WARD6H.per));
+  sc.queen = 1.1 + comp.light * 0.6 + air * 1.2 + comp.heavy * 0.3 - (nQ >= Math.max(1, nG / 8) ? 0.7 : 0);
+  sc.broodback = 1.2 + comp.light * 0.8 + comp.heavy * 0.5 + spl * 0.4 - comp.air * 0.8;
+  if (sc.bulwark !== undefined && spl > 0) sc.bulwark = Math.max(sc.bulwark, nW < wantW ? 1.6 + spl * 1.5 : 0.9);
+  if (sc.leaper !== undefined) sc.leaper += aiRangedShare(theirs) * 0.5 + aiFarShare(theirs) * 0.8;
+  if (g.t < OPEN6H.until) {
+    const op = aiOpen6h(g, s);
+    if (op === 'spit') { if (sc.spitter !== undefined) sc.spitter *= 1.8; if (sc.skitterling !== undefined) sc.skitterling *= 0.7; }
+    else if (op === 'swarm') { if (sc.skitterling !== undefined) sc.skitterling *= 1.4; if (sc.spitter !== undefined) sc.spitter *= 0.6; }
+    else { if (sc.spitter !== undefined) sc.spitter *= 1.25; }
+  }
+}
+const QUEEN6H = { focus: 0.2, win: 3, back: 3, behind: 70 };
+function aiRework6h(g, s, mine) {
+  const side = g.sides[s], dir = dirOf(s);
+  if (facOf(side.faction) !== 'bloomhost') return;
+  // Queens: behind the swarm on the attack; focused (QUEEN6H.focus of her health lost in QUEEN6H.win s): she pulls back
+  for (const q of mine) if (q.type === 'queen') {
+    const H = q.h6h || (q.h6h = []); H.push([g.t, q.hp]); while (H.length && g.t - H[0][0] > QUEEN6H.win) H.shift();
+    if (H.length && H[0][1] - q.hp >= q.maxHp * QUEEN6H.focus && !(q.aiBack > g.t)) { q.aiBack = g.t + QUEEN6H.back; sw6h(g, s).qBack = (sw6h(g, s).qBack || 0) + 1; }
+  }
+  if (side.stance === 'attack') {
+    const grp = mine.filter(u => isSwarmG(UDEF[u.type]) && !u.gone && !u.temp && UDEF[u.type].weapon && u.id !== side.scoutId && !capBusy(side, u.id) && !u.tn && u.type !== 'ruinmaw');
+    const bb = grp.filter(u => u.type === 'broodback');
+    if (bb.length && grp.length >= 4) { // Broodbacks lead: the rest of the swarm waits behind the frontmost (within 400 of it)
+      const lead = bb.reduce((a, u) => dir * u.u > dir * a.u ? u : a, bb[0]);
+      for (const u of grp) if (u.type !== 'broodback' && Math.abs(u.u - lead.u) < 400 && dir * (u.u - lead.u) > 20 && !u.qm) u.aiWait = g.t + 1.5;
+    }
+    const front = grp.filter(u => UDEF[u.type].melee); if (front.length) {
+      const xs = front.map(u => dir * u.u).sort((a, b) => a - b), med = xs[xs.length >> 1];
+      for (const q of grp) if (q.type === 'queen' && dir * q.u > med - QUEEN6H.behind) q.aiWait = g.t + 1.5;
+    }
+  }
+  aiRuin6h(g, s, mine);
+}
+// The Ruinmaw with b6h: production rallies to it while it holds its spot (b.rm6); aiRework2b keeps choosing the spot and sending
+// the army through (units on creep burrow where they stand)
+function aiRuin6h(g, s, mine) {
+  const R = mine.find(u => u.type === 'ruinmaw' && u.rmGo && u.rmAt && !u.rmHome && ruinGate(u));
+  for (const b of g.ents) if (b.kind === 'b' && b.side === s && b.hp > 0 && (b.type === 'barracks' || b.type === 'factory')) {
+    const want = R ? R.id : 0;
+    if ((b.rm6 || 0) !== want) { b.rm6 = want; if (want) sw6h(g, s).rally = (sw6h(g, s).rally || 0) + 1; }
+  }
+}
+// Where an AI's Ruinmaw surfaces with b6h: beside the enemy's economy (as before) or beside an enemy-held node, the one its guns
+// cover least; null to keep batch 2b's rule (ruinSpot)
+function ruinSpot6h(g, s, R) {
+  const opp = 1 - s, f = g.fog[s];
+  const guns = Object.values(f.ghosts).filter(gh => gh.side === opp && (gh.type === 'turret' || gh.type === 'hq' || gh.type === 'bunker'));
+  let best = null, bs = 1e9;
+  g.nodes.forEach((n, i) => {
+    if (n.owner !== opp || n.type === 'relic') return;
+    const cover = guns.filter(x => Math.hypot(x.u - n.u, x.v - n.v) < 320).length, sc = cover * 400 + Math.hypot(n.u - R.u, n.v - R.v) * 0.5 - 150;
+    if (sc < bs) { bs = sc; best = { u: n.u, v: n.v, half: 30, id: -1 - i }; }
+  });
+  if (!best) return null;
+  let u = best.u - dirOf(s) * 60, v = best.v; if (!MAP_2D) v = clamp(v, -LANE_V + 8, LANE_V - 8);
+  if (NAV.on && navShut(u, v)) [u, v] = navOpen(u, v);
+  return { spot: [clamp(u, 0, L), v], score: bs };
 }

@@ -205,6 +205,7 @@ function ww6g(g, u, d, best) {
    (an enemy seen near it in the last B6G5.hot s, then the nearest the enemy); per personality at most B6G5.per per node and
    B6G5.total in all (the Turtle most, the Boomer least, the Boomer only on contested nodes; Normal at most aiForward's old
    cap). aiForward's forward production building stays (one, on its own half, as before). */
+const NODE6H = { log: null }; // v2.98 (batch 6h): an audit's read-only hook for the node-assault decisions (audit/sim/b6h-instrument.js; never set in a game)
 const B6G4 = { go: 1.2, floor: 450, minN: 4, every: 5, lost: 240, gunR: 340, gunVal: 4, foeR: 320, edge: 1.4, n: 14, minArmy: 450, gap: 70, gather: 25, near: 130, dur: 110, minHp: 0.4, focus: 300 };
 const B6G5 = { every: 20, safe: 450, hot: 90, reserve: { boomer: 500, economist: 300, turtle: 150, def: 300 }, per: { boomer: 1, economist: 1, turtle: 2, def: 1 }, total: { boomer: 2, economist: 3, turtle: 5, def: 3 } };
 const pk6g = side => side.persona && side.persona.kind;
@@ -248,11 +249,12 @@ function aiNode6g(g, s, D, mine, theirs, threat, myV) {
     const hp = live.reduce((a, u) => a + u.hp, 0), max = live.reduce((a, u) => a + u.maxHp, 0);
     const guns = g.ents.filter(b => b.side === 1 - s && gunOf6g(b) && b.type !== 'hq' && Math.hypot(b.u - n.u, b.v - n.v) <= B6G4.gunR);
     if (!live.length || hp < max * B6G4.minHp || g.t > T.end || threat || (side.stance === 'attack' && side.pushMode === 'all') || (n.owner === s && !guns.length)) {
+      if (NODE6H.log) NODE6H.log(g, { k: 'end', s, node: T.node, won: n.owner === s && !guns.length, left: live.length, hp: Math.round(hp), max: Math.round(max), why: !live.length ? 'dead' : hp < max * B6G4.minHp ? 'hurt' : g.t > T.end ? 'time' : threat ? 'threat' : n.owner === s ? 'won' : 'allin', ph: T.ph, guns: guns.length });
       for (const u of mine) if (u.n6f) u.n6f = 0; side.capN = null; N.t = g.t; return;
     }
     T.ids = live.map(u => u.id);
     if (T.ph === 'gather' && (live.filter(u => Math.hypot(u.u - T.u, u.v - T.v) <= B6G4.near).length >= live.length * 0.8 || g.t - T.t0 > B6G4.gather)) {
-      if (armyValue(live) < defense6g(g, s, n, theirs).v * B6G4.go) { for (const u of mine) if (u.n6f) u.n6f = 0; side.capN = null; N.t = g.t; return; } // the defence grew while it gathered: not now
+      if (armyValue(live) < defense6g(g, s, n, theirs).v * B6G4.go) { if (NODE6H.log) NODE6H.log(g, { k: 'end', s, node: T.node, won: false, left: live.length, why: 'calledOff', ph: T.ph }); for (const u of mine) if (u.n6f) u.n6f = 0; side.capN = null; N.t = g.t; return; } // the defence grew while it gathered: not now
       T.ph = 'go'; T.u = n.u; T.v = n.v; for (const u of live) u.n6f = 1;
     }
     return;
@@ -270,6 +272,7 @@ function aiNode6g(g, s, D, mine, theirs, threat, myV) {
     if (!(df.guns.length + df.guess) && !(MAP_LANED && i !== 1 && g.t - (N.lost[i] ?? -1e9) < B6G4.lost)) continue; // an unguarded node: the capture groups and raids take those (v2.96's rules), except an outer node it lost on a lane map
     const ids = []; let v = 0;
     for (const u of pool) { if (ids.length >= B6G4.n || (v >= need && ids.length >= B6G4.minN)) break; ids.push(u.id); v += armyValue([u]); }
+    if (NODE6H.log) NODE6H.log(g, { k: 'eval', s, node: i, guns: df.guns.length, guess: df.guess, def: Math.round(df.v), need: Math.round(need), have: Math.round(v), poolV: Math.round(armyValue(pool)), myV: Math.round(myV), n: ids.length, go: v >= need && ids.length >= B6G4.minN });
     if (v < need || ids.length < B6G4.minN) continue;
     let su = clamp(n.u - dir * (df.reach + B6G4.gap), 0, L), sv = n.v;
     if (MAP_2D && NAV.on && navShut(su, sv)) [su, sv] = navOpen(su, sv);
@@ -277,6 +280,7 @@ function aiNode6g(g, s, D, mine, theirs, threat, myV) {
     side.capN = { node: i, ids, u: su, v: sv, end: g.t + B6G4.dur, ph: armed ? 'gather' : 'go', t0: g.t, need: Math.round(need) };
     if (!armed) { side.capN.u = n.u; side.capN.v = n.v; }
     lg(g, s, 'G', 'node6g', i);
+    if (NODE6H.log) NODE6H.log(g, { k: 'go', s, node: i, ids: ids.slice(), types: ids.map(id => ctlEnt(g, id).type), v: Math.round(v), need: Math.round(need) });
     return;
   }
 }

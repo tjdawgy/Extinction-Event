@@ -328,8 +328,9 @@ function aiUpdate(g, s, dt) {
       sc.voidcarrier = 1.0 + (nVc ? -0.7 : 0.6) + Math.min(1, mine.filter(u => UDEF[u.type].fac === 'axiarchs').length / 10) * 0.5 - antiAir * 0.6;
       sc.sovereign = 1.4 + comp.vehicle * 0.6 + comp.heavy * 0.3 + (turtle ? 0.8 : 0.2) - antiAir * 1.0 - comp.air * 0.6;
     }
-    if (rwB5b(g)) aiScores5b(g, s, sc, { comp, theirs, mine }); // v2.88 (rework batch 5b): broods are the swarm's backbone; Spitters and Needlewings answer aircraft
-    if (!threat) for (const t of types) { const b = P.bias[t] || (rwB4b(g) && RW4B_TASTE[t] ? RW4B_TASTE[t][P.kind] : rwB4a(g) && RW4A_TASTE[t] ? RW4A_TASTE[t][P.kind] : rwB3b(g) && RW3B_TASTE[t] ? RW3B_TASTE[t][P.kind] : rwB3a(g) && RW3A_TASTE[t] ? RW3A_TASTE[t][P.kind] : rwB2b(g) && RW2B_TASTE[t] ? RW2B_TASTE[t][P.kind] : P.bias[AI_TWIN[t]]); if (b && sc[t] > 0) sc[t] *= b; } // v2.84: batch 3a's four have tastes of their own; // v2.83: the Ruinmaw and Worldbreaker have tastes of their own in batch 2b // the personality's taste in units (threats are answered on merit)
+    if (rwB5b(g)) aiScores5b(g, s, sc, { comp, theirs, mine });
+    if (rwB6h(g)) aiScores6h(g, s, sc, { comp, theirs, mine }); // v2.98 (batch 6h): openers, Queens, Broodbacks, Wardens against area damage (src/sim/rework-6h.js) // v2.88 (rework batch 5b): broods are the swarm's backbone; Spitters and Needlewings answer aircraft
+    if (!threat) for (const t of types) { const b = P.bias[t] || (rwB6h(g) && RW6H_TASTE[t] ? RW6H_TASTE[t][P.kind] : rwB4b(g) && RW4B_TASTE[t] ? RW4B_TASTE[t][P.kind] : rwB4a(g) && RW4A_TASTE[t] ? RW4A_TASTE[t][P.kind] : rwB3b(g) && RW3B_TASTE[t] ? RW3B_TASTE[t][P.kind] : rwB3a(g) && RW3A_TASTE[t] ? RW3A_TASTE[t][P.kind] : rwB2b(g) && RW2B_TASTE[t] ? RW2B_TASTE[t][P.kind] : P.bias[AI_TWIN[t]]); if (b && sc[t] > 0) sc[t] *= b; } // v2.84: batch 3a's four have tastes of their own; // v2.83: the Ruinmaw and Worldbreaker have tastes of their own in batch 2b // the personality's taste in units (threats are answered on merit)
     for (const t of types) if (dl.comp[t] !== undefined) sc[t] *= dl.comp[t]; // the composition dial (v2.38; legacy has none)
     if (smart) aiSmartScores(g, s, sc, types, { comp, antiAir, theirs, mine, nFront, turtle, log, threat, P }); // v2.38: the Default AI values v2.37 roles
     if (holdEarly) for (const t of types) { if (t === 'tank' || t === 'bulwark' || t === 'bastion') sc[t] *= 1.6; if (t === 'shardling' || t === 'skitterling') sc[t] *= 0.6; } // v2.40 (hold)
@@ -343,7 +344,7 @@ function aiUpdate(g, s, dt) {
     if (aiFix(P, 'counter')) for (const t of types) {
       const d = UDEF[t];
       if (d.hitsGround === false && !d.support && comp.air <= 0.12) sc[t] = 0.05;
-      else if (comp.light >= (dl.flood || 0.55) && theirs.length >= 5) { /* v2.42: the flood share is a dial (flood; v2.41 0.55) */ if (d.splash || d.weapon === 'flame' || t === 'thornback' || t === 'gravemantle') sc[t] *= 1.4; else if (t === 'rifle' || t === 'skitterling' || t === 'shardling') sc[t] *= 0.7; }
+      else if (comp.light >= (dl.flood || 0.55) && theirs.length >= 5) { /* v2.42: the flood share is a dial (flood; v2.41 0.55) */ if (d.splash || d.weapon === 'flame' || t === 'thornback' || t === 'broodback' || t === 'gravemantle') sc[t] *= 1.4; else if (t === 'rifle' || t === 'skitterling' || t === 'shardling') sc[t] *= 0.7; }
     }
     const spend = aiFix(P, 'spend'), noAA = aiFix(P, 'counter') && comp.air <= 0.12;
     const fits = t => used + trainPop(g, t) <= cap * fillNow && (freeProducer(g, s, t) || (spend && side.res.c > 900 && g.ents.some(e => e.side === s && canMake(e, t, g) && e.queue.length < 3))); // v2.38 (Default): rich, it queues up to 3
@@ -506,6 +507,7 @@ function aiUpdate(g, s, dt) {
   if (rwB4a(g)) aiRework4a(g, s, mine); // v2.86: Wraithwings raid economy buildings
   if (rwB4b(g)) aiRework4b(g, s, mine); // v2.87: Voidcarriers over the army near its front
   if (rwB5b(g)) aiRework5b(g, s, mine); // v2.88: the swarm attacks as a pack, Spitters with it
+  if (rwB6h(g)) aiRework6h(g, s, mine); // v2.98 (batch 6h): Queens behind, Broodbacks lead, the Ruinmaw's rally (src/sim/rework-6h.js)
 }
 // Spotters: siege guns can't fire at what their side can't see, so while sieging, one unit walks up until
 // its sight reaches the front of the enemy base (as far as this side knows where that is). Seeing the base

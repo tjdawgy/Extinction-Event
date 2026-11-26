@@ -660,7 +660,9 @@ function drawUnit(c, u) {
   if (u.hopS !== undefined && VFX.lastT - u.hopS < 0.35) drawHopTrail(c, u, VFX.lastT); // v2.86: a Wraithwing's afterimages just after a hop
   if (u.type === 'medic' && VFX.g) drawHealBeams(c, VFX.g, u, w);
   if (u.siege) drawSiegeLock(c, u, w); // P8 (v2.37): a Titan's stabilisers, under it
+  const b6h = VFX.g && rwB6h(VFX.g); if (b6h) drawUnit6h(c, u, w, VFX.lastT); // v2.98 (batch 6h): Pounce's streak, the Warden's aura shimmer
   c.save(); c.translate(w.x + (lift ? (RIDE.get(u) || 0) * 8 * US : 0), w.y - u.z + bob - lift + (lift ? Math.abs(RIDE.get(u) || 0) * 2 * US : 0)); c.scale(u.face * US * (u.kid ? 0.75 : 1), US * (u.kid ? 0.75 : 1)); // a Cloudwing's offspring is smaller (v2.21)
+  if (b6h && u.pcT > VFX.lastT) { const k = pounceSquash6h(u, VFX.lastT); c.scale(1 + 0.2 * k, 1 - 0.16 * k); } // v2.98 (b6h): crouched and stretched in its lunge
   const ph = u.phT > VFX.lastT; // P13 (v2.37): a phased Wraithwing is a faint violet ghost
   if (ph) c.globalAlpha = 0.25 + 0.1 * Math.sin(VFX.lastT * 40);
   if (ex) c.globalAlpha = 0.45 + 0.08 * Math.sin(VFX.lastT * 12 + u.id);
@@ -673,6 +675,7 @@ function drawUnit(c, u) {
   if (u.braceT > VFX.lastT && u.type !== 'bulwark') { c.globalAlpha = 0.55; c.strokeStyle = TEAM[u.side].light; c.lineWidth = 1.6; c.beginPath(); c.moveTo(-21, -7); c.bezierCurveTo(-19, -30, 12, -32, 19, -13); c.stroke(); } // a bracing Bulwark: its plates lock and glow
   c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
   c.restore();
+  if (b6h && u.st6 > VFX.lastT) drawUnitOver6h(c, u, w, VFX.lastT); // v2.98 (b6h): stunned by a Leaper's landing
   if (ex) drawExiled(c, u, w, VFX.lastT);
   if (u.cov && b2b) drawCovered(c, u, w, VFX.lastT); // v2.83: in a Titan's cover
   if (u.dzT > VFX.lastT) drawDazed(c, u, w, VFX.lastT); // v2.85: a Dreadthorn dazed after its charge

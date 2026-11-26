@@ -10,7 +10,7 @@
 const { fork } = require('child_process'), fs = require('fs'), path = require('path');
 const arg = (n, d) => { const i = process.argv.indexOf('--' + n); return i > 0 ? process.argv[i + 1] : d; };
 const set = arg('set', 'nodes'), rw = arg('rw', ''), J = +arg('jobs', '3'), P = ['boomer', 'economist', 'turtle'];
-const out = arg('out', path.join(__dirname, '..', 'logs-p1', 'b6g', set + (rw.includes('b6g=0') ? '-before' : '-after')));
+const out = arg('out', path.join(__dirname, '..', 'logs-p1', 'b6g', set + (rw.includes('b6g=0') ? '-before' : '-after'))); // v2.98: batch 6h passes --out (audit/logs-p1/b6h/), and its counters (EE_B6H) ride along
 fs.mkdirSync(out, { recursive: true });
 const jobs = [];
 if (set === 'nodes') { let k = 0; for (const map of ['twolane', 'threelane']) for (const lfSide of [0, 1]) for (const pl of P) for (const pb of P) { const seed = 700 + (k++ % 18); jobs.push({ map, f0: lfSide ? 'bloomhost' : 'lastfist', f1: lfSide ? 'lastfist' : 'bloomhost', p0: lfSide ? pb : pl, p1: lfSide ? pl : pb, seed, env: { EE_B6G_FORCE: 'lfturret' } }); } }
@@ -24,7 +24,7 @@ let next = 0, n = 0, live = 0; const t0 = Date.now();
 (function go() {
   while (live < J && next < todo.length) {
     const j = todo[next++]; live++;
-    const c = fork(path.join(__dirname, 'audit6a.js'), ['--one', j.map, j.f0, j.f1, String(j.seed), '1700', '0', rw, j.p0, j.p1], { env: Object.assign({}, process.env, { EE_B6G: '1' }, j.env) });
+    const c = fork(path.join(__dirname, 'audit6a.js'), ['--one', j.map, j.f0, j.f1, String(j.seed), '1700', '0', rw, j.p0, j.p1], { env: Object.assign({}, process.env, { EE_B6G: '1', EE_B6H: '1' }, j.env) });
     c.on('message', m => { m.set = set; fs.appendFileSync(file, JSON.stringify(m) + '\n'); n++; console.log(`${n}/${todo.length} ${((Date.now() - t0) / 60000).toFixed(1)} min ${m.map} ${m.f.join(' vs ')} seed ${m.seed}: ${m.t} s, winner ${m.winner == null || m.winner < 0 ? 'none' : m.f[m.winner]}${m.err ? ' ERROR ' + m.err.slice(0, 200) : ''}`); });
     c.on('exit', () => { live--; go(); });
   }

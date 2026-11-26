@@ -23,7 +23,7 @@ const ctlBase = s => ({ u: rallyU0(s), v: MAP.bases[s].rally[1] }); // v2.76: th
 const ctlHold = (e, u, v) => { e.po = { o: 'hold' }; e.holdU = u; e.holdV = v; };
 // Spacing (v2.76). A unit's footprint (its body's half width, from its type's height) and the spots a side's units hold or
 // are heading for, in cells of the screen's metric (x = u, y = v * DY), aircraft and ground apart.
-const ctlFoot = t => clamp(UDEF[t].h * CTRL.foot, CTRL.footMin, CTRL.footMax);
+const ctlFoot = (t, g) => g && rwB6hbody(g) ? Math.max(clamp(UDEF[t].h * CTRL.foot, CTRL.footMin, CTRL.footMax), body6hR(t)) : clamp(UDEF[t].h * CTRL.foot, CTRL.footMin, CTRL.footMax); // v2.98 (b6hbody): at least its body
 const ctlSpot = e => !e.po ? null : e.po.o === 'hold' ? (e.holdU !== undefined ? [e.holdU, e.holdV] : null) : (e.po.o === 'go' || e.po.o === 'retreat') && e.po.u != null ? [e.po.u, e.po.v] : null;
 function ctlTaken(g, s, skip) {
   const C = 48, M = [new Map(), new Map()], key = (x, y) => Math.floor(x / C) * 100003 + Math.floor(y / C);
@@ -36,7 +36,7 @@ function ctlTaken(g, s, skip) {
     }
     return false;
   };
-  for (const e of g.ents) if (e.kind === 'u' && e.side === s && e.hp > 0 && !skip.has(e.id)) { const p = ctlSpot(e); if (p) add(p[0], p[1], !!UDEF[e.type].air, ctlFoot(e.type)); }
+  for (const e of g.ents) if (e.kind === 'u' && e.side === s && e.hp > 0 && !skip.has(e.id)) { const p = ctlSpot(e); if (p) add(p[0], p[1], !!UDEF[e.type].air, ctlFoot(e.type, g)); }
   return { add, clash };
 }
 const ctlOpen = (u, v, air) => u >= 8 && u <= L - 8 && Math.abs(v) <= (MAP_2D ? MAP.size.h / 2 - 16 : LANE_V - 6) && (air || !NAV.on || !navShut(u, v));
@@ -57,7 +57,7 @@ function ctlPack(g, s, us, cu, cv, own) {
   const list = own ? us.slice().sort((a, b) => a.id - b.id) : us.slice().sort((a, b) => Math.hypot(a.u - cu, a.v - cv) - Math.hypot(b.u - cu, b.v - cv) || a.id - b.id);
   if (!own && NAV.on && navShut(cu, cv)) [cu, cv] = navOpen(cu, cv);
   for (const e of list) {
-    const air = !!UDEF[e.type].air, r = ctlFoot(e.type);
+    const air = !!UDEF[e.type].air, r = ctlFoot(e.type, g);
     const p = ctlFree(T, air, r, own ? e.u : cu, own ? e.v : cv, undefined, rwB6side(g) ? dirOf(s) : 1); // v2.92: mirrored per side (batch 6b)
     T.add(p[0], p[1], air, r); out.set(e.id, p);
   }
@@ -91,7 +91,7 @@ function ctlFollow(g, s, id) {
   // the nearest the base go first, so the cluster forms from the back
   us.sort((a, b) => (b.u - a.u) * back || a.id - b.id);
   for (const e of us) {
-    const air = !!UDEF[e.type].air, r = ctlFoot(e.type), ok = (u, v) => !guns.some(b => ctlReach(b, e.type, u, v, CTRL.safe + r));
+    const air = !!UDEF[e.type].air, r = ctlFoot(e.type, g), ok = (u, v) => !guns.some(b => ctlReach(b, e.type, u, v, CTRL.safe + r));
     let p0 = null;
     const ln = MAP_LANED && !air ? MAP.lanes[e.lane != null ? e.lane : laneAt(e.u, e.v)] : null, off = ln ? clamp(e.v - laneY(ln, e.u), -ln.width / 2, ln.width / 2) : 0;
     for (let k = 0; k <= 400; k++) { // step back toward the base along the lane it is in, keeping its place across the lane
