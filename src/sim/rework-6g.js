@@ -112,6 +112,7 @@ const bbf6g = (g, src) => rwB6g(g) && src.kind === 'u' && !!src.po && src.po.o =
      it closes, fights whatever comes in reach first, and gives up after B6G3.charge s or B6G3.leash + B6G3.slack from its spot;
    - otherwise pulls back (u.r6.m 'p') toward its rally point (the player's: the base rally point) holding fire, until it is
      B6G3.clear beyond that enemy's reach or B6G3.back s pass; then B6G3.cd s before it pulls back again.
+   An attacking unit never pulls back from a building ahead of it (it is on its way there; an HQ gun outranges every unit).
    Either way it then takes up its order again. A new order, an AI stance change or the enemy's death ends it. Never on the
    player's move, target or retreat orders (or a forward unit's crossing), nor siege-locked, deployed, burrowed or support units. */
 const HIT6G = { by: 0 }; // the shooter of the projectile landing now (impact)
@@ -144,6 +145,7 @@ function fire6g(g, u, d, side, st, cs, po, best, home, dt, sp) {
   else if (!(st === 'attack' || st === 'hold' || (st === 'retreat' && Math.abs(home - u.u) <= B6G3.home)) || u.aiBack > g.t) return false;
   const T = ctlEnt(g, u.hb6); if (!T || T.hp <= 0 || T.gone || T.side === u.side) return false;
   const o = po ? po.o : side.stance;
+  if (o === 'attack' && T.kind === 'b' && dirOf(u.side) * (T.u - u.u) > 0) return false; // a building ahead of an attack: it is on its way there (the HQ gun outranges everything; pulling back from it would undo every base attack)
   if (hits6g(g, d, T) && visibleTo(g, u.side, T) && Math.hypot(T.u - u.u, T.v - u.v) <= B6G3.leash) {
     u.r6 = { m: 'c', id: T.id, t0: g.t, au: u.u, av: u.v, o }; go6g(u, d, T.u, T.v, dt, sp); return true;
   }
