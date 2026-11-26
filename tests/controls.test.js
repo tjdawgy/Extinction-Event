@@ -11,7 +11,7 @@ const { loadSim } = require('./load-sim');
 
 const sim = loadSim();
 test.afterEach(() => sim.useMap('classic'));
-const mk = (map = 'classic', fac = 'lastfist') => { const g = sim.newGame('normal', { map, seed: 7, factions: [fac, 'lastfist'] }); g.countdown = 0; for (const s of g.sides) s.aiT = 1e9; return g; };
+const mk = (map = 'classic', fac = 'lastfist', rework) => { const g = sim.newGame('normal', { map, seed: 7, factions: [fac, 'lastfist'], rework }); g.countdown = 0; for (const s of g.sides) s.aiT = 1e9; return g; };
 const step = (g, secs) => { for (let i = 0; i < Math.round(secs * 60); i++) sim.update(g, sim.TICK); };
 const ids = us => us.map(u => u.id);
 const near = (u, x, y, r) => Math.hypot(u.u - x, u.v - y) <= r;
@@ -127,7 +127,7 @@ test('Attack: down the lane picked (or each unit\'s own); on Classic down the si
 });
 
 test('a target: they go and attack it (fighting what they meet), then hold where they are; only enemies you can see', () => {
-  const g = mk(); sim.directControl(g, 0);
+  const g = mk('classic', 'lastfist', { b6g: false }); sim.directControl(g, 0); // v2.97: b6g off (with it the other Marine, shot at, charges in and the Tanks re-space a little longer; tests/rework-6g.test.js checks the same with it on)
   const us = [0, 1, 2].map(i => sim.spawnUnit(g, 0, 'tank', 600 + i * 8, 0));
   const t = sim.spawnUnit(g, 1, 'rifle', 820, 40); g.sides[1].stance = 'hold'; t.holdU = 900; t.holdV = 40; t.dmg = 0;
   const other = sim.spawnUnit(g, 1, 'rifle', 900, -40); other.holdU = 900; other.holdV = -40;

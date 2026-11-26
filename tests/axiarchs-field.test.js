@@ -9,11 +9,12 @@ const { loadSim } = require('./load-sim');
 const sim = loadSim();
 const U = sim.UDEF, F = sim.FIELD, W = sim.WARP;
 const step = (g, secs) => { for (let i = 0; i < Math.round(secs * 30); i++) sim.update(g, 1 / 30); };
-const quiet = (f0 = 'axiarchs', f1 = 'lastfist') => { const g = sim.newGame('normal', { factions: [f0, f1] }); g.countdown = 0; for (const s of g.sides) { s.aiT = 1e9; s.res.c = s.res.e = 9000; } sim.setStance(g, 0, 'hold'); sim.setStance(g, 1, 'hold'); return g; };
+const quiet = (f0 = 'axiarchs', f1 = 'lastfist', rework) => { const g = sim.newGame('normal', { factions: [f0, f1], rework }); g.countdown = 0; for (const s of g.sides) { s.aiT = 1e9; s.res.c = s.res.e = 9000; } sim.setStance(g, 0, 'hold'); sim.setStance(g, 1, 'hold'); return g; };
 const finish = (g, s, k) => { assert.ok(sim.tryBuild(g, s, k).ok, k); const b = g.ents.filter(e => e.side === s && e.type === k).at(-1); b.built = true; b.progress = 1; b.hp = b.maxHp; b.shp = b.maxShp; return b; };
 const put = (g, s, t, u, v = 0) => { const e = sim.spawnUnit(g, s, t, u, v); e.holdU = u; e.holdV = v; e.cd = 1e6; return e; };
 const patch = (g, k, s = 0) => g.field[s].find(p => p.k === k);
 const grown = g => { step(g, 60); return g; };
+const q6 = () => quiet('axiarchs', 'lastfist', { b6g: false }); // v2.97: the three warp-point tests below hold b6g off (with it, an AI side warps in at a safe spot, rear6g/warp6g; tests/rework-6g.test.js checks the same intent with it on)
 const arrive = g => { for (let i = 0; i < 30 * 10 && g.warps.length; i++) sim.update(g, 1 / 30); }; // to the frame the last warp lands
 const units = (g, t) => g.ents.filter(e => e.kind === 'u' && e.side === 0 && e.type === t);
 
@@ -42,7 +43,7 @@ test('shields recharge faster inside the friendly field', () => {
 });
 
 test('a trained unit warps in at the warp point after a visible channel: paid once, counted in supply, never duplicated', () => {
-  const g = grown(quiet());
+  const g = grown(q6());
   const gate = finish(g, 0, 'barracks'), c0 = g.sides[0].res.c;
   assert.ok(sim.tryTrain(g, 0, 'shardling').ok); assert.strictEqual(g.sides[0].res.c, c0 - U.shardling.cost.c, 'paid on tap');
   const pop = sim.popUsed(g, 0);
@@ -62,7 +63,7 @@ test('a trained unit warps in at the warp point after a visible channel: paid on
 });
 
 test('Set warp point: only inside the field; units go there; it snaps back to the default when its field is lost', () => {
-  const g = grown(quiet()); finish(g, 0, 'barracks');
+  const g = grown(q6()); finish(g, 0, 'barracks');
   assert.match(sim.setWarp(g, 0, 1400, 0).msg, /inside your power field/); assert.match(sim.setWarp(g, 0, g.sides[0].hq.u + 50, 400).msg, /inside your power field/, 'off the lane');
   const n = g.nodes[0]; n.owner = 0; n.prog = 100; step(g, 120);
   assert.ok(sim.setWarp(g, 0, n.u + 30, 20).ok); const set = g.sides[0].warp;
@@ -76,7 +77,7 @@ test('Set warp point: only inside the field; units go there; it snaps back to th
 });
 
 test('units never warp onto enemies, buildings or invalid ground: the nearest valid spot, else the Axis', () => {
-  const g = grown(quiet()); finish(g, 0, 'barracks');
+  const g = grown(q6()); finish(g, 0, 'barracks');
   const wp = sim.warpPoint(g, 0);
   const foes = [put(g, 1, 'tank', wp.u, wp.v), put(g, 1, 'rifle', wp.u + 12, wp.v + 10)];
   sim.startWarp(g, 0, 'shardling'); const w = g.warps[0];
@@ -87,7 +88,7 @@ test('units never warp onto enemies, buildings or invalid ground: the nearest va
   const s = units(g, 'shardling')[0]; assert.ok(Math.hypot(s.u - late.u, s.v - late.v) >= W.clear, 'it shifts to the nearest valid spot on arrival');
   sim.startWarp(g, 0, 'shardling'); const w2 = g.warps.at(-1); assert.ok(Math.hypot(w2.u - s.u, w2.v - s.v) > 0 && g.warps.every((x, i, a) => a.every((y, j) => i === j || Math.hypot(x.u - y.u, x.v - y.v) >= W.step)), 'two warps never share a spot');
   // no valid spot at all: the field covered in enemies
-  const g2 = grown(quiet()); for (let u = 0; u < 700; u += 20) for (let v = -100; v <= 100; v += 20) put(g2, 1, 'rifle', u, v);
+  const g2 = grown(q6()); for (let u = 0; u < 700; u += 20) for (let v = -100; v <= 100; v += 20) put(g2, 1, 'rifle', u, v);
   for (const e of g2.ents) if (e.side === 1 && e.kind === 'u') e.hp = e.maxHp = 1e6;
   sim.startWarp(g2, 0, 'bastion'); const hq = g2.sides[0].hq;
   assert.ok(Math.abs(g2.warps[0].u - (hq.u + hq.half + 12)) < 1, 'none valid: it warps in at the Axis');

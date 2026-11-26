@@ -209,3 +209,29 @@ test('b6g: the Bloomhost AI sends a group worth more than a turreted node\'s def
   assert.strictEqual(T.ph, 'gather');
   sim.useMap('classic');
 });
+
+// Counterparts of tests pinned to b6g off (tests/axiarchs-field.test.js, tests/controls.test.js), the same intent with it on
+test('b6g (counterpart of axiarchs-field): a trained unit warps in at the safe point after a visible channel, paid once, counted in supply, never onto enemies', () => {
+  const g = quiet(sim.newGame('normal', { factions: ['axiarchs', 'lastfist'] })); for (const sd of g.sides) sd.res.c = sd.res.e = 9000;
+  sim.setStance(g, 0, 'hold'); sim.setStance(g, 1, 'hold'); run(g, 60);
+  assert.ok(sim.tryBuild(g, 0, 'barracks').ok); finish(g);
+  const c0 = g.sides[0].res.c; assert.ok(sim.tryTrain(g, 0, 'shardling').ok); assert.strictEqual(g.sides[0].res.c, c0 - sim.UDEF.shardling.cost.c);
+  const pop = sim.popUsed(g, 0); run(g, sim.UDEF.shardling.time + 0.1);
+  assert.strictEqual(g.warps.length, 1, 'channelling'); assert.strictEqual(sim.popUsed(g, 0), pop, 'counted in supply');
+  const w = g.warps[0], p = sim.warp6g(g, 0); assert.ok(Math.hypot(w.u - p.u, w.v - p.v) < 4 * sim.WARP.step, 'at the safe point'); assert.ok(sim.safe6g(g, 0, w.u, w.v));
+  for (let i = 0; i < 60 * 10 && g.warps.length; i++) sim.update(g, sim.TICK);
+  assert.strictEqual(g.ents.filter(e => e.kind === 'u' && e.side === 0 && e.type === 'shardling').length, 1, 'exactly one unit');
+  const foe = sim.spawnUnit(g, 1, 'tank', p.u, p.v); foe.holdU = p.u; foe.holdV = p.v; sim.updateVision(g);
+  sim.startWarp(g, 0, 'shardling'); const w2 = g.warps.at(-1);
+  assert.ok(Math.hypot(w2.u - foe.u, w2.v - foe.v) >= sim.B6G.safe, 'away from the enemy standing on the old point');
+});
+test('b6g (counterpart of controls "a target"): they attack the target first, kill it, then hold where they are, not past it', () => {
+  const g = quiet(sim.newGame('normal', { map: 'classic', seed: 7, factions: ['lastfist', 'lastfist'] })); sim.directControl(g, 0);
+  const us = [0, 1, 2].map(i => sim.spawnUnit(g, 0, 'tank', 600 + i * 8, 0));
+  const t = sim.spawnUnit(g, 1, 'rifle', 820, 40); g.sides[1].stance = 'hold'; t.holdU = 900; t.holdV = 40; t.dmg = 0;
+  const other = sim.spawnUnit(g, 1, 'rifle', 900, -40); other.holdU = 900; other.holdV = -40; sim.updateVision(g);
+  assert.ok(sim.command(g, 0, us.map(u => u.id), 'target', t.id).ok);
+  let first = null; for (let i = 0; i < 60 * 30 && t.hp > 0; i++) { sim.update(g, sim.TICK); if (!first && us.some(u => u.tgt)) first = us.find(u => u.tgt).tgt; }
+  assert.strictEqual(first, t.id, 'the target first'); assert.ok(t.hp <= 0, 'killed');
+  run(g, 8); for (const u of us) { assert.strictEqual(u.po.o, 'hold', 'then Hold'); assert.ok(u.u < 820, 'where they are, not on past it'); }
+});
