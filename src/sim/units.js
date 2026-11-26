@@ -234,6 +234,7 @@ function updateUnit(g, u, foes, dt) {
   const d = rwD(g, u.type); // v2.83: a batch 2b unit plays by its own definition in a game with b2b on (else UDEF's)
   if (u.exT) { if (g.t < u.exT) { u.moving = false; u.tgt = 0; return; } exileEnd(g, u); } // v2.82: exiled by a Severance: frozen until it snaps back
   if (u.sw6) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // v2.98 (b6h): inside a Ruinmaw
+  if (u.sn6 || u.dr6) { u.moving = false; u.tgt = 0; u.chT = 0; return; } // v2.99 (b6i): in a Talonmaw's talons, or dragged by a Skywyrm's tendril
   if (u.rsBrk) { rsHome(g, u); return; } // v2.84: a batch 3a Riftstalker's shields broke out on a strike: straight home
   u.anim += dt;
   const frz = u.frzT > g.t; // Frenzy Bloom (v2.20): faster attacks and movement
@@ -256,7 +257,7 @@ function updateUnit(g, u, foes, dt) {
   const cs = po && po.o !== 'hold' && (po.o !== 'attack' || po.ju != null) ? ctlStep(g, u, d) : null; // v2.76: heading somewhere (go, target), or retreating
   if (po) st = cs && cs.go ? 'adv' : cs && cs.run ? 'retreat' : (u.po || HOLD_PO).o; // 'adv': on the way, stopping to fight what it meets (a Titan plants for it)
   if (d.pounce && rwB6h(g)) pounce6h(g, u, d, st, cs, A); // v2.98 (b6h): a lunge into contact (src/sim/rework-6h.js)
-  const sp = u.bur ? (d.bore ? BORE.speed / d.speed : 1) : (d.fac === 'bloomhost' && !d.air && onCreep(g, u.side, u.u, u.v) ? CREEP.speed : 1) * (frz ? ABIL.frenzy.speed : 1) * (u.slowT > g.t ? 1 - u.slow : 1) * (u.snT > g.t ? 0 : 1) * (u.ltT > g.t ? 1 - LATCH.slow : 1) * (pin ? 0 : 1) * (u.sgN ? surgeMul(u) : 1) * (u.pcT > g.t ? B6H.pounce.mul : 1) * (u.bb6 === g.t ? B6H.brood.move : 1); // v2.98 (b6h): Pounce, a Bile Bloom // v2.88: batch 5b swarm surge (sgN never set with b5b off) // v2.86: pinned; v2.84: Leapers latched on it // creep (v2.18), Frenzy Bloom (v2.20), a Gravemantle's slow (v2.27), a Rootheart's snare (v2.33)
+  const sp = u.bur ? (d.bore ? BORE.speed / d.speed : 1) : (d.fac === 'bloomhost' && !d.air && onCreep(g, u.side, u.u, u.v) ? CREEP.speed : 1) * (frz ? ABIL.frenzy.speed : 1) * (u.slowT > g.t ? 1 - u.slow : 1) * (u.snT > g.t ? 0 : 1) * (u.ltT > g.t ? 1 - LATCH.slow : 1) * (pin ? 0 : 1) * (u.sgN ? surgeMul(u) : 1) * (u.pcT > g.t ? B6H.pounce.mul : 1) * (u.bb6 === g.t ? B6H.brood.move : 1) * (u.fl6N ? 1 + Math.min(B6I.razor.max, u.fl6N * B6I.razor.per) : 1); // v2.99 (b6i): a Razorwing flock's speed // v2.98 (b6h): Pounce, a Bile Bloom // v2.88: batch 5b swarm surge (sgN never set with b5b off) // v2.86: pinned; v2.84: Leapers latched on it // creep (v2.18), Frenzy Bloom (v2.20), a Gravemantle's slow (v2.27), a Rootheart's snare (v2.33)
   if (d.latch && (u.ltH || u.lt) && latchRide(g, u, d, side, dt)) return; // v2.84: a batch 3a Leaper in flight onto its host, or riding it
   if (u.leaping) { // mid-leap (v2.19): fly to the landing spot, nothing else
     const du = u.lu - u.u, dv = u.lv - u.v, dd = Math.hypot(du, dv), st = d.leap.speed * dt;
@@ -294,7 +295,7 @@ function updateUnit(g, u, foes, dt) {
     if (!side.direct && !(cs && cs.want) && (best ? !d.lands || best.kind === 'b' : d.lands && !u.lnd && st !== 'retreat')) best = aim4b(g, u, d, best, foes); // an AI's Worldrender fights units in reach from the air, and picks the building it lands on
     if (rw4bStep(g, u, d, side, st, cs, best, A, dt, sp)) return;
   }
-  if ((u.r6 || u.hb6) && rwB6g(g) && fire6g(g, u, d, side, st, cs, po, best, home, dt, sp)) return; // v2.97 (b6g): under fire from beyond its reach: charge or pull back (src/sim/rework-6g.js)
+  if ((u.r6 || u.hb6) && rwB6g(g) && (rwB6iresp(g) ? fire6i(g, u, d, side, st, cs, po, best, home, dt, sp) : fire6g(g, u, d, side, st, cs, po, best, home, dt, sp))) return; // v2.99 (b6iresp): the reworked response (src/sim/rework-6i.js) // v2.97 (b6g): under fire from beyond its reach: charge or pull back (src/sim/rework-6g.js)
   if (st === 'retreat' && Math.abs(home - u.u) > 12) {
     if (!RETREAT.fire) { u.tgt = 0; u.chT = 0; }
     else if (best && u.cd <= 0) { fire(g, u, best, d); u.cd = d.cd * rand(0.9, 1.1); } // the v2.34 rule, for the tests' fixed replays
@@ -310,6 +311,8 @@ function updateUnit(g, u, foes, dt) {
   if (d.barrier && !side.direct && u.bsG && !best && st !== 'retreat' && !(cs && cs.run) && bastionGuard(g, u, d, dt, sp)) return; // v2.85: an AI's Bastion screening its ranged units
   if (d.swap && !side.direct && u.pxG && !best && !A.prey && st !== 'retreat' && !(cs && cs.run) && pxGuard(g, u, d, dt, sp)) return; // v2.84: an AI's Parallax beside the unit it guards
   if (d.blink && rwB6g(g)) { if (cs && cs.want) u.wwK = cs.want.id; else best = ww6g(g, u, d, best); } // v2.97 (b6g): a Wraithwing keeps its target through its hops (a target order's target is the one it keeps)
+  if (d.tm6 && talon6i(g, u, d, best, A, side, st, cs, dt, sp)) return; // v2.99 (b6i): a Talonmaw's Snatch, Rend and dive (src/sim/rework-6i.js)
+  if (d.gn6 && gnat6i(g, u, d, best, A, side, st, cs, dt, sp)) return; // v2.99 (b6i): a Gnatcloud flies onto its target (its cloud does the damage)
   const act = !(u.phT > g.t) && !d.siege && !u.bur; // v2.82: a burrowed Gorebore doesn't fight // v2.37: a phased Wraithwing can't fire (P13); a Titan fires only when planted (P8)
   u.tgt = best && act ? best.id : 0;
   if (!best || best.id !== u.chTgt || !act) u.chT = 0; // the Astral Marksman's charge starts over on a new target (v2.27)
@@ -379,6 +382,7 @@ function updateUnit(g, u, foes, dt) {
     if (side.leash != null && !d.siege && !d.air) tu = dir > 0 ? Math.min(tu, side.leash) : Math.max(tu, side.leash); // v2.38: a Default AI's army stays within reach of its Titans while they plant
     if (e6g && e6g.v != null && tu === end) { tv = e6g.v; if (!d.air && MAP_2D && NAV.on && navShut(tu, tv)) [tu, tv] = navOpen(tu, tv); } // v2.97 (b6g): straight at the building holding the shield
   }
+  if (u.ag6 && !po && st !== 'retreat') { tu = u.ag6[0]; tv = u.ag6[1]; } // v2.99 (b6i): an AI's Razorwing flock on a raid
   if (u.rmF) { const R = g.t < u.rmF.t ? ctlEnt(g, u.rmF.r) : null; if (R && ruinGate(R)) { tu = u.rmF.u; tv = u.rmF.v; } else u.rmF = undefined; } // v2.83: an AI's unit out of a Ruinmaw's mouth fights around it
   if (u.bkG && d.creepHold && st !== 'attack' && tu === home) tv = u.bkG[1]; // v2.85: its spot on the creep
   if (MAP_LANED && tv === u.laneV) tv = laneTv(u, tu); // v2.63: the lane's depth there (Classic: unchanged)

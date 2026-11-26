@@ -293,6 +293,8 @@ function fire(g, src, t, def) {
   RNG.g = g; // v2.50: roll from this match's stream (these can run from the UI, between ticks)
   if (src.kind === 'u') src.lastAct = g.t; // in combat (creep regen waits, v2.18)
   if (def.weapon === 'flame') { flameBurst(g, src, def, t); return; }
+  if (def.cone6) { cone6i(g, src, t, def); return; } // v2.99 (b6i): a Blightwing's spore cone
+  if (def.gn6) return; // v2.99 (b6i): a Gnatcloud's cloud does its damage (update6i)
   if (def.melee) { meleeHit(g, src, t, def); return; }
   if (def.rupture) { ruptureFire(g, src, t); return; } // v2.83: a Worldbreaker's crack (batch 2b)
   if (def.beam) { // the Null Lance (v2.25): the beam lands at once; the SIM leaves a short beam mark for the renderer

@@ -59,7 +59,7 @@ function updateProjs(g, dt) {
   for (const p of g.projs) {
     p.t += dt;
     p.pu = p.u; p.pv = p.v; p.pz = p.z;
-    if (p.weapon === 'shell' || p.weapon === 'lob' || p.weapon === 'rift' || p.weapon === 'bileglob') { // the Rift Mortar's shot arcs like a shell (v2.27); a batch 4a Bilecaster's glob too (v2.86)
+    if (p.weapon === 'shell' || p.weapon === 'lob' || p.weapon === 'rift' || p.weapon === 'bileglob' || p.weapon === 'spew6') { // v2.99: a Skywyrm's acid spew // the Rift Mortar's shot arcs like a shell (v2.27); a batch 4a Bilecaster's glob too (v2.86)
       const k = Math.min(1, p.t / p.T);
       p.u = lerp(p.su, p.tu, k); p.v = lerp(p.sv, p.tv, k);
       p.z = lerp(p.sz, 0, k) + p.arc * 4 * k * (1 - k);
@@ -139,8 +139,9 @@ function impact1(g, p, hit) {
   if (p.inf) { tyrImpact(g, p, hit); return; } // v2.87: a batch 4b Brood Tyrant's glob (pustules on buildings)
   if (p.weapon === 'bileglob') { bileImpact(g, p); return; } // v2.86: a batch 4a Bilecaster's glob and its pool
   if (p.weapon === 'shell' || p.weapon === 'lob' || p.weapon === 'rift') { splashHit(g, p, null, 1, 0.5); fxBoom(g, w.x, w.y, 30); return; }
+  if (p.weapon === 'spew6') { splashHit(g, p, null, 1, 0.5); g.fx.push({ k: 'spew6i', side: p.side, u: p.u, x: w.x, y: w.y, t: 0, life: 0.7, r: p.splash }); if (g.sides[p.side]) sw6i(g, p.side).spewB++; return; } // v2.99 (b6i): a Skywyrm's acid spew lands (area: units and buildings)
   if (p.weapon === 'bomb' || p.weapon === 'crush' || p.weapon === 'sovereign') { splashHit(g, p, null, 1, 0.5); fxBoom(g, w.x, w.y, p.weapon === 'bomb' ? 40 : 48); return; } // the Astral Sovereign too (v2.29) // full damage at the centre, half at the edge (the Worldrender too, v2.21)
-  if (hit && hit.hp > 0) { damage(g, hit, p.dmg, p.weapon, p.side); if (p.corr) corrode(g, hit, p.corr); if (p.pin) pinHit(g, hit, p.side); if (p.mark) markHit(g, hit, p.side); } // v2.86: pinned, marked (batch 4a)
+  if (hit && hit.hp > 0) { A6I.sp = p.splash > 0 ? 1 : 0; damage(g, hit, p.dmg, p.weapon, p.side); A6I.sp = 0; if (p.corr) corrode(g, hit, p.corr); if (p.pin) pinHit(g, hit, p.side); if (p.mark) markHit(g, hit, p.side); } // v2.86: pinned, marked (batch 4a)
   if (p.splash > 0) splashHit(g, p, hit, 0.5, 1);
   if (p.acid) addAcid(g, p.side, p.u, p.v, p.acid === 'dist' ? 'dist' : undefined);
   if (p.weapon === 'rifle' || p.weapon === 'rail' || p.weapon === 'gatling') {
@@ -212,6 +213,8 @@ function damage1(g, e, amt, weapon, fromSide, src) {
   let dmg = amt * mult * (sideBuff(g, e.side) ? NANO.cut : 1) * (1 + corrNow(e, g.t)); // corroded: takes more (v2.19; v2.37 the second slot)
   if (e.mkT > g.t) dmg *= markBonus(g, e, fromSide); // v2.86: marked by a batch 4a Astral Marksman
   if (e.wd6 === g.t && e.kind === 'u' && area6h(weapon)) dmg = ward6hCut(g, e, dmg); // v2.98 (b6h): a Chitin Warden's aura
+  if (e.rn6T > g.t) dmg *= rendAmp6i(g, e, fromSide); // v2.99 (b6i): rent by a Talonmaw: more from Bloomhost
+  if (e.type === 'gnatcloud' && gnatCut6i(e, weapon)) dmg *= 1 - B6I.gnat.cut; // v2.99 (b6i): a single-target hit barely thins a Gnatcloud
   if (e.cov && !noCover(weapon)) dmg *= 1 - TITAN.cover; // v2.83: Last Fist infantry in a Titan's cover take less from ranged attacks
   const br = e.kind === 'u' && (b3 ? ud3 : UDEF[e.type]).brace, pre = dmg; // v2.85: a batch 3b Bastion has none
   if (br) { // the Bulwark braces on the first hit after its cooldown (v2.17)
@@ -280,6 +283,7 @@ function kill(g, e, by, weapon) {
     if (e.tSrc === 'mite') miteBurst(g, e); // v2.33: killed, never expired (expiry doesn't come through kill)
     echoStore(g, e); // v2.34: an Axiarch T2/T3 unit's echo
     if (e.type === 'ruinmaw' && rwB2b(g)) ruinCollapse(g, e, by); // v2.83
+    if (rwB6i(g)) kill6i(g, e); // v2.99 (b6i): a blighted unit's Mites, a Talonmaw's prey dropped, a tendril let go
     if (d.brood6 && rwB6h(g)) brood6hDie(g, e); // v2.98 (b6h): a Broodback bursts: its tunnel collapses on whoever is inside
     if (rwB5b(g)) kfKill(g, e); // v2.88: Bloomhost units nearby go into a kill frenzy
     if (rwB3a(g)) kill3a(g, e); // v2.84: Leapers on it hatch Skitterlings; it leaves remains

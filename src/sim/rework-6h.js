@@ -426,7 +426,8 @@ function aiScores6h(g, s, sc, c) {
   const sup = popUsed(g, s), wantW = Math.max(1, Math.round(sup / WARD6H.per));
   sc.queen = 1.1 + comp.light * 0.6 + air * 1.2 + comp.heavy * 0.3 - (nQ >= Math.max(1, nG / 8) ? 0.7 : 0);
   sc.broodback = 1.2 + comp.light * 0.8 + comp.heavy * 0.5 + spl * 0.4 - comp.air * 0.8;
-  if (sc.bulwark !== undefined && spl > 0) sc.bulwark = Math.max(sc.bulwark, nW < wantW ? 1.6 + spl * 1.5 : 0.9);
+  if (rwB6i(g)) ward6i(g, s, sc, spl); // v2.99 (b6i, Part D): the quota counted right (src/sim/rework-6i.js)
+  else if (sc.bulwark !== undefined && spl > 0) sc.bulwark = Math.max(sc.bulwark, nW < wantW ? 1.6 + spl * 1.5 : 0.9);
   if (sc.leaper !== undefined) sc.leaper += aiRangedShare(theirs) * 0.5 + aiFarShare(theirs) * 0.8;
   if (rwB6hnode(g) && fortGuns6h(g, s) >= NODE6.fort) for (const [t, k] of [['gorebore', 0.6], ['ruinmaw', 0.4], ['bilecaster', 0.3], ['broodback', 0.2]]) if (sc[t] !== undefined) sc[t] += k; // b6hnode: fortified enemy nodes call for building-breakers
   if (g.t < OPEN6H.until) {
@@ -536,7 +537,7 @@ function aiNode6h(g, s, D, mine, theirs, N) {
   if (g.t - N.t < NODE6.every || danger || armyValue(mine) < NODE6.minArmy) return;
   N.t = g.t;
   const busy = new Set([side.scoutId, ...(side.raid ? side.raid.ids : []), ...(side.relicG ? side.relicG.ids : [])]);
-  const pool = mine.filter(u => !busy.has(u.id) && !UDEF[u.type].air && !UDEF[u.type].support && !u.temp && UDEF[u.type].weapon && u.hp >= u.maxHp * 0.5 && !u.tn)
+  const pool = mine.filter(u => !busy.has(u.id) && (!UDEF[u.type].air || u.type === 'skywyrm') && /* v2.99 (b6i): the Skywyrm joins the assault (its building rate sorts it first) */ !UDEF[u.type].support && !u.temp && UDEF[u.type].weapon && u.hp >= u.maxHp * 0.5 && !u.tn)
     .sort((a, b) => bldMul6g(g, b.type) - bldMul6g(g, a.type) || armyValue([b]) - armyValue([a]) || a.id - b.id).slice(0, NODE6.maxN);
   const cand = g.nodes.map((n, i) => i).filter(i => g.nodes[i].owner === 1 - s && g.nodes[i].type !== 'relic')
     .sort((a, b) => ((g.t - (N.lost[b] ?? -1e9) < B6G4.lost) - (g.t - (N.lost[a] ?? -1e9) < B6G4.lost)) || Math.abs(g.nodes[a].u - hqU(s)) - Math.abs(g.nodes[b].u - hqU(s)) || a - b);

@@ -196,7 +196,7 @@ function popUsed(g, s) {
   for (const e of g.ents) {
     if (e.side !== s || e.hp <= 0) continue;
     if (e.kind === 'u') { if (!e.temp) p += UDEF[e.type].pop; } // temporary units use no supply (v2.20)
-    else for (const q of e.queue) p += q === 'skitterling' && rwB5b(g) ? UDEF[q].pop * BROOD.n : UDEF[q].pop; // v2.88: a queued brood (batch 5b)
+    else for (const q of e.queue) p += q === 'skitterling' && rwB5b(g) ? UDEF[q].pop * BROOD.n : UDEF[q].pop * flockN6i(q); // v2.99 (b6i): a queued Razorwing flock // v2.88: a queued brood (batch 5b)
   }
   for (const w of g.warps) if (w.side === s) p += UDEF[w.type].pop; // paid for, still warping in (v2.26)
   return p;
@@ -287,7 +287,7 @@ function tryUpgrade(g, s, b, path) { // path: 'A' or 'B' when a building with a 
 }
 
 // How many of a unit type side s has: alive (temporary ones included) plus queued in its buildings (the d.max limit)
-const unitCount = (g, s, type) => g.ents.reduce((a, e) => a + (e.side !== s ? 0 : e.kind === 'u' ? (e.type === type && e.hp > 0 ? 1 : 0) : e.queue ? e.queue.filter(q => q === type).length * (type === 'skitterling' && rwB5b(g) ? BROOD.n : 1) : 0), 0); // v2.88: a queued brood counts its four (batch 5b)
+const unitCount = (g, s, type) => g.ents.reduce((a, e) => a + (e.side !== s ? 0 : e.kind === 'u' ? (e.type === type && e.hp > 0 ? 1 : 0) : e.queue ? e.queue.filter(q => q === type).length * (type === 'skitterling' && rwB5b(g) ? BROOD.n : flockN6i(type)) : 0), 0); // v2.99: a queued flock its three // v2.88: a queued brood counts its four (batch 5b)
 function tryTrain(g, s, type) {
   const d = UDEF[type], side = g.sides[s];
   if (g.over) return { ok: false, msg: 'The match is over' };
@@ -295,6 +295,7 @@ function tryTrain(g, s, type) {
   const prods = g.ents.filter(e => e.side === s && canMake(e, type, g));
   if (!prods.length) return { ok: false, msg: unitLockMsg(d) };
   if (type === 'skitterling' && rwB5b(g)) return broodTrain(g, s, d, prods); // v2.88 (batch 5b): one order is a brood of four
+  if (type === 'razor6') return flockTrain6i(g, s, d, prods); // v2.99 (batch 6i): one order is a flock of three Razorwings
   if (d.max && unitCount(g, s, type) >= d.max)
     return { ok: false, msg: `At most ${d.max} ${PLURAL[type]} at a time` }; // the Recon Drone (v2.15), counting those in training; Skitterlings (S1, v2.37)
   // Marines go to a Mass Deployment Barracks first, where an order is a pair trained together
