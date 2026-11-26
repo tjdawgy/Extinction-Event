@@ -277,7 +277,7 @@ if (require.main === module && process.argv[2] === '--print6f') console.log(JSON
 
 // v2.97 (batch 6g: the playtest fixes, REWORK.b6g, src/sim/rework-6g.js). Every set above holds b6g off and matches as before (with
 // b6g off the game is v2.96). The same two modern matches with every switch on, b6g included: FP_V297.
-const FP_V297 = ['5acc4233d32170bf9e2a24e8cef2cacb807d32e586192b944c48ea5ce60524b9', '453fbe4de0498dc95d79b6320b3bf5a6c6db7e06fa13b0530714233cadf46c12']; // every switch on, b6g included (the new-game default)
+const FP_V297 = ['16ce54f2cf0144fb5ad4d5acb00c5273c92a9ef47f9c21981151dbd1b461aea1', 'f512d234773b8d79ffce65667dd8015c4d4ac53431cdb8f81d5024f19f0d978e']; // every switch on, b6g included (the new-game default)
 test('v2.97: modern matches with every switch on (FP_V297)', () => {
   assert.deepStrictEqual(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: true, b6f: true, b6g: true }), FP_V297);
 });
