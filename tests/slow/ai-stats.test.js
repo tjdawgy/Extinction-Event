@@ -49,7 +49,7 @@ test('Bloomhost AI (Turtle vs a Last Fist Aggressor): economy, Maws, all three b
     (g, S, st) => { st.b = st.b || new Set(); for (const e of g.ents) if (e.side === 1 && e.kind === 'b') st.b.add(e.type); },
     (g, S, st) => ({ built: st.b, tr: g.sides[1].aiLog.trained, node: g.log.tot[1].nodeCap > 0, att: g.sides[1].aiLog.attacks > 0, ended: g.over }));
   check('Bloomhost base AI', rows, [['its whole base (7 roles)', r => B.every(k => r.built.has(k)), 0.2], ['a Maw', r => r.built.has('turret'), 0.7], // 40%, 100%
-    ['Skitterlings', r => r.tr.skitterling > 0, 1], ['Bulwarks', r => r.tr.bulwark > 0, 0.7], ['Razorwings', r => r.tr.razorwing > 0, 0.15], // 100%, 100%, 35% (the Turtle builds its Bloomspire last)
+    ['Skitterlings', r => r.tr.skitterling > 0, 0.9], /* v2.97: 1 → 0.9: measured over 20 (seeds 200-219) 95% with b6g on and 95% with it off (one match each without them, seeds 208 and 212: seed variance; audit/logs-p1/b6g/slow.md) */ ['Bulwarks', r => r.tr.bulwark > 0, 0.7], ['Razorwings', r => r.tr.razorwing > 0, 0.15], // 100%, 100%, 35% (the Turtle builds its Bloomspire last)
     ['a node captured', r => r.node, 0.5], ['an attack', r => r.att, 0.8]]); // 80%, 100%
 });
 
