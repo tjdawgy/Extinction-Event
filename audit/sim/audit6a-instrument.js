@@ -13,7 +13,8 @@ module.exports = `
   const A = this.__sim.a6 = { dmg: [{}, {}], kills: [{}, {}], kval: [{}, {}], dmgB: [{}, {}], unk: [{}, {}], mat: [{}, {}] }; // mat (v2.94, batch 6d B1): damage by dealer type, then by target type (B:<type> a building)
   const WEAP = { thorns: 'thornback', parry: 'shardling', blade: 'shardling', pustule: 'broodtyrant', tyrglob: 'broodtyrant', bile: 'bilecaster',
     bileglob: 'bilecaster', acidpool: 'acid pools', miteacid: 'mite', exile: 'severance', sever: 'severance', erupt: 'gorebore', gorebite: 'gorebore',
-    ruinbite: 'ruinmaw', ruinchew: 'ruinmaw', latch: 'leaper', trample: 'dreadthorn', landmaw: 'worldrender', rupture: 'worldbreaker', meteor: 'meteor', hqgun: 'B:hq', hqbeam: 'B:hq' };
+    ruinbite: 'ruinmaw', ruinchew: 'ruinmaw', latch: 'leaper', trample: 'dreadthorn', landmaw: 'worldrender', rupture: 'worldbreaker', meteor: 'meteor', hqgun: 'B:hq', hqbeam: 'B:hq',
+    gnat6: 'gnatcloud', bloom6: 'broodback', jaws6: 'skywyrm', tendril6: 'skywyrm' }; // v3.00 (batch 6j): batch 6h/6i damage dealt outside updateUnit (a Gnatcloud's cloud, a Broodback's Bile Bloom, a Skywyrm's jaws and tendrils)
   const TAG = new WeakMap(); // projectile -> the type that fired it (kept outside the SIM's state)
   let CUR = null; // { t: type tag, s: side }
   const tagOf = e => e.kind === 'b' ? 'B:' + e.type : e.type;
