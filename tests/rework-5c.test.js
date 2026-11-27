@@ -3,7 +3,7 @@
 // redrawn Axiarch units (art only) and the Medevac rename (text only; the id stays 'medic').
 const test = require('node:test');
 const assert = require('node:assert');
-const { loadSim, readHtml } = require('./load-sim');
+const { loadSim, readHtml, pin6i } = require('./load-sim');
 const HTML = readHtml();
 
 test('switch: per game, on by default; a b5c-off save leaves the key out; a v2.89 save resumes with it off', () => {
@@ -29,7 +29,7 @@ function rolls(s, foe, persona, n, rework, theirs = [], prep) {
   return swarm / n;
 }
 
-test('AI: the Bloomspire leans to Swarm Bloom (75%) when enemy air is expected, the persona\'s 60/40 otherwise; Apex Bloom still comes up', () => {
+test('AI: the Bloomspire leans to Swarm Bloom (75%) when enemy air is expected, the persona\'s 60/40 otherwise; Apex Bloom still comes up', pin6i(['b6i'], () => { // v2.99 (batch 6i): held b6i off: every Bloomspire unit hits aircraft, so the lean is gone (counterpart: tests/switches-on-6i.test.js)
   const s = loadSim(), N = 300;
   assert.strictEqual(s.AI5C.lean, 0.75);
   const lf = rolls(s, 'lastfist', 'A', N), ax = rolls(s, 'axiarchs', 'A', N), axB = rolls(s, 'axiarchs', 'B', N);
@@ -44,9 +44,9 @@ test('AI: the Bloomspire leans to Swarm Bloom (75%) when enemy air is expected, 
   assert.ok(air > 0.68 && air < 0.82 && air < 1, `aircraft known now: a 75% lean, not batch 5b's every time: ${air}`);
   // off: batch 4a's roll and batch 5b's rule exactly as before (aircraft known: always Swarm Bloom)
   assert.strictEqual(rolls(s, 'axiarchs', 'A', 60, { b5c: false }, [{ type: 'wraithwing', w: 1 }]), 1);
-});
+}));
 
-test('AI: the roll is kept for the match; a second Bloomspire takes the other path; an enemy aircraft seen is remembered', () => {
+test('AI: the roll is kept for the match; a second Bloomspire takes the other path; an enemy aircraft seen is remembered', pin6i(['b6i'], () => { // v2.99 (batch 6i): held b6i off: it counts air expected (counterpart: tests/switches-on-6i.test.js)
   const s = loadSim();
   const g = s.newGame('hard', { seed: 9, factions: ['lastfist', 'bloomhost'], countdown: 0 });
   const a = s.rangeBuilding(g, 1, 'bloomhost', 'techlab', 1500, 60), p = s.aiPickPath(g, 1, a, { paths: { techlab: 'A' } }, []);
@@ -59,7 +59,7 @@ test('AI: the roll is kept for the match; a second Bloomspire takes the other pa
   const off = s.newGame('hard', { seed: 9, factions: ['lastfist', 'bloomhost'], countdown: 0, rework: { b5c: false } });
   for (let i = 0; i < 60 * 120; i++) s.update(off, s.TICK);
   assert.ok(!off.sides.some(d => 'air5c' in d || 'sw5c' in d), 'off: nothing of batch 5c is set');
-});
+}));
 
 test('art: the five Axiarch units drawn by batch 5c; both flyers cached; the SIM muzzles unchanged', () => {
   for (const [t, f] of [['lancer', 'dLancer5'], ['gravemantle', 'dGrave5'], ['eventide', 'dEventide5'], ['prismwing', 'dPrism5'], ['shardstorm', 'dShardstorm5']])

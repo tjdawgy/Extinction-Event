@@ -122,7 +122,7 @@ test('the Bloomhost air AI trains the new units and never the cut ones', () => {
     for (const [t, n] of Object.entries(g.log.tot[0].trained)) tr[t] = (tr[t] || 0) + n;
   }
   for (const t of ['razorwing', 'needlewing', 'cloudwing', 'broodtyrant', 'worldrender']) assert.ok(!tr[t], t + ' never trained');
-  assert.ok(tr.razor6 > 0 && tr.gnatcloud > 0, 'Razorwing flocks and Gnatclouds trained');
+  assert.ok(tr.razor6 > 0 && (tr.gnatcloud > 0 || tr.talonmaw > 0), `Razorwing flocks and a Bloomspire T2 unit trained: ${JSON.stringify(tr)}`);
 });
 
 test('Part D: the Warden quota counts the Wardens queued too and stops at one per 12 supply', () => {

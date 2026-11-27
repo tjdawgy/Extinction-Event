@@ -82,3 +82,34 @@ test('on (rework-6g): Bloomhost melee on Hold under fire from Marines close by (
   assert.ok(near.m > 30 && near.left < 2, `close: charged (${JSON.stringify(near)})`);
   assert.ok(far.m <= 30 || far.left < 2, `${JSON.stringify(far)}`);
 });
+
+// rework-5c's two roll tests and rework-5b's AI test, with b6i on: the Bloomspire roll is the persona's 60/40 whatever air is expected
+// (every Bloomspire unit hits aircraft), it is kept for the match and a second Bloomspire takes the other path; 5b's rule leaves the
+// Bloomspire's path to the roll
+function rolls(s, foe, persona, n, theirs = []) {
+  let swarm = 0;
+  for (let i = 0; i < n; i++) {
+    const g = s.newGame('hard', { seed: 100 + i, factions: [foe, 'bloomhost'], countdown: 0 });
+    const spire = s.rangeBuilding(g, 1, 'bloomhost', 'techlab', 1500, 60);
+    if (s.aiPickPath(g, 1, spire, { paths: { techlab: persona } }, theirs) === 'A') swarm++;
+  }
+  return swarm / n;
+}
+test('on (rework-5c): the Bloomspire roll is the persona\'s 60/40, with or without enemy air; Apex Bloom comes up', () => {
+  const s = loadSim(), N = 300;
+  const lf = rolls(s, 'lastfist', 'A', N), ax = rolls(s, 'axiarchs', 'A', N), axB = rolls(s, 'axiarchs', 'B', N), air = rolls(s, 'axiarchs', 'A', N, [{ type: 'wraithwing', w: 1 }]);
+  assert.ok(lf > 0.33 && lf < 0.47, `against Last Fist: Swarm Bloom ${lf} (no lean)`);
+  assert.ok(ax > 0.33 && ax < 0.47 && air > 0.33 && air < 0.47, `persona Apex: Swarm Bloom ${ax}, aircraft known ${air}`);
+  assert.ok(axB > 0.53 && axB < 0.67, `persona Swarm: Swarm Bloom ${axB}`);
+});
+test('on (rework-5c, rework-5b): the roll is kept for the match, a second Bloomspire takes the other path; 5b\'s rule leaves the Bloomspire to it', () => {
+  const s = loadSim();
+  const g = s.newGame('hard', { seed: 9, factions: ['lastfist', 'bloomhost'], countdown: 0 });
+  const a = s.rangeBuilding(g, 1, 'bloomhost', 'techlab', 1500, 60), p = s.aiPickPath(g, 1, a, { paths: { techlab: 'A' } }, []);
+  assert.strictEqual(s.aiPickPath(g, 1, a, { paths: { techlab: 'A' } }, []), p, 'the same roll');
+  a.path = p; a.tier = 2;
+  const b = s.rangeBuilding(g, 1, 'bloomhost', 'techlab', 1500, 160);
+  assert.strictEqual(s.aiPickPath(g, 1, b, { paths: { techlab: 'A' } }, []), p === 'A' ? 'B' : 'A');
+  assert.ok(!g.sides[1].sw5c.airExp, 'air expected is no longer counted');
+  assert.strictEqual(s.aiPath5b(g, 1, a, [{ type: 'aircraft', w: 1 }, { type: 'aircraft', w: 1 }]), null, 'aircraft: no Bloomspire lean');
+});

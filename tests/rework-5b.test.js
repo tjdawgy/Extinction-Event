@@ -114,7 +114,7 @@ test('Needlewing: hits aircraft too (swarm bonus kept); with b5b off it can\'t',
   }
 }));
 
-test('AI: Bloomhost scores broods up and answers aircraft with Spitters and Needlewings; its anti-air paths; the pack waits for its median', pin6h(['b6h'], () => { // v2.98 (batch 6h): held b6h off (intended); counterpart in tests/switches-on-6h.test.js
+test('AI: Bloomhost scores broods up and answers aircraft with Spitters and Needlewings; its anti-air paths; the pack waits for its median', pin6h(['b6h', 'b6i'], () => { // v2.98 (batch 6h): held b6h off (intended); counterpart in tests/switches-on-6h.test.js // v2.99 (batch 6i): held b6i off: the Needlewing and the Bloomspire's anti-air path (counterpart: tests/switches-on-6i.test.js)
   const s = loadSim();
   const g = s.newGame('hard', { seed: 4, factions: ['bloomhost', 'lastfist'], countdown: 0 });
   const theirs = [{ type: 'aircraft', w: 1 }, { type: 'aircraft', w: 1 }, { type: 'rifle', w: 1 }];
