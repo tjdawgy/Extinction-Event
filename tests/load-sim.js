@@ -43,4 +43,5 @@ function pin6h(keys, fn) {
   };
 }
 const pin6i = pin6h; // v2.99 (batch 6i): the same helper (an intended change of batch 6i; its counterpart in tests/switches-on-6i.test.js)
-module.exports = { loadSim, readHtml, HTML_PATH, pin6h, pin6i, PIN };
+const pin6j = pin6h; // v3.00 (batch 6j): the same helper (an intended change of batch 6j; its counterpart in tests/switches-on-6j.test.js)
+module.exports = { loadSim, readHtml, HTML_PATH, pin6h, pin6i, pin6j, PIN };

@@ -906,7 +906,21 @@ function drawFacProj(c, g, p, a, b, wp, time) {
   }
   return false;
 }
+// v3.00 (batch 6j, A1; drawing only, no switch): an aircraft is drawn no higher than the field's top row under the top bar, so
+// none hides behind the HUD ribbon at any phone size. zVis is the height it is drawn at (taps use it too); render() lowers each
+// aircraft's z to it for the frame and puts the SIM's value back afterwards (try/finally), so a match never sees it.
+const AIRV = { pad: 15 }; // room above the art: the health bar (9) and the bob (3)
+function zVis(e) {
+  const z = e.z || 0; if (!z || e.kind !== 'u' || !UDEF[e.type] || !UDEF[e.type].air || e.lnd || !V.S) return z;
+  const top = (V.ft - V.A) / V.S + YB(), max = e.v * DY - top - (visH(e.type) * US + AIRV.pad);
+  return Math.max(Math.min(z, 6), Math.min(z, max));
+}
 function render(c, g, time, sel, selPad) {
+  const low = [];
+  if (g && V.cw && V.S) for (const e of g.ents) if (e.kind === 'u' && e.z > 0) { const z = zVis(e); if (z !== e.z) { low.push(e, e.z); e.z = z; } }
+  try { render0(c, g, time, sel, selPad); } finally { for (let i = 0; i < low.length; i += 2) low[i].z = low[i + 1]; }
+}
+function render0(c, g, time, sel, selPad) {
   const { cw, ch, dpr, S, A } = V;
   if (!cw) return;
   setTeams(g && g.tc); // v2.93 (batch 6c): this match's team colours (Blue and Red without any)

@@ -19,7 +19,7 @@ function selLive() { // the selected units still alive (the dead drop out of the
   return out;
 }
 // A unit's body on screen (its middle, aircraft at their height) and its feet
-const uScreen = e => { const w = P(e.u, e.v), h = visH(e.type) * US; return { x: (w.x - cam.x) * V.S + V.cw / 2, y: (w.y - e.z - h * 0.45 - YB()) * V.S + V.A, fy: (w.y - YB()) * V.S + V.A }; };
+const uScreen = e => { const w = P(e.u, e.v), h = visH(e.type) * US; return { x: (w.x - cam.x) * V.S + V.cw / 2, y: (w.y - zVis(e) - h * 0.45 - YB()) * V.S + V.A, fy: (w.y - YB()) * V.S + V.A }; };
 function unitHit(x, y, list) { // the nearest unit of list under a tap: within CT.hitPx of its body or its feet (generous for a thumb), and how far
   let best = null, bd = CT.hitPx;
   for (const e of list) {
@@ -104,7 +104,7 @@ function ctlFieldTap(x, y) {
   if (!ctlOn()) return false;
   const live = SELN.size && selLive().length;
   if (!live && foeBldAt(x, y)) return false; // a tap on an enemy building selects nothing (not the units fighting beside it)
-  const mine = unitHit(x, y, myUnits()), foe = live ? foeUnitHit(x, y) : null, now = performance.now();
+  const mine = unitHit(x, y, live && rwB6jfix(game) ? myUnits().filter(e => e.type !== 'mite') : myUnits()), foe = live // v3.00 (b6jfix, A2): with units selected, a tap never lands on your Mites (it targets the enemy or moves the selection) ? foeUnitHit(x, y) : null, now = performance.now();
   if (foe && (!mine || foe.d < mine.d)) { ctlTap.t = 0; issue('target', foe.e.id); return true; }
   if (live && (!mine || mine.d > CT.onBld)) { const b = foeBldAt(x, y); if (b) { ctlTap.t = 0; issue('target', b.id); return true; } }
   const e = mine && mine.e;

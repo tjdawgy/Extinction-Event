@@ -145,8 +145,8 @@ function update6h(g, dt) {
     if (!mites) mites = [miteCount6h(g, 0), miteCount6h(g, 1)];
     const own = g.ents.filter(e => e.kind === 'u' && e.hp > 0 && e.qm === q.id).length;
     if (own >= B6H.queen.own || mites[q.side] >= B6H.mite.cap) continue; // waits (the timer is not reset)
-    const a = (q.id * 7 + (q.qn || 0) * 2.39996), du = Math.cos(a) * 12 + q.face * 6, dv = Math.sin(a) * 10;
-    const k = spawnMite6h(g, q.side, q.u + du, q.v + dv, 'queen'); k.qm = q.id; k.face = q.face;
+    const a = (q.id * 7 + (q.qn || 0) * 2.39996), du = Math.cos(a) * 12 + q.face * 6, dv = Math.sin(a) * 10, J = rwB6jfix(g) ? queenSpot6j(g, q) : null; // v3.00 (b6jfix): in front of her, clear of her body
+    const k = J ? spawnMite6h(g, q.side, J.u, J.v, 'queen') : spawnMite6h(g, q.side, q.u + du, q.v + dv, 'queen'); k.qm = q.id; k.face = q.face;
     q.qn = (q.qn || 0) + 1; q.qsT = g.t + B6H.queen.every; q.qbT = g.t; mites[q.side]++;
     sw6h(g, q.side).qMites++;
     const w = P(q.u, q.v, 10); g.fx.push({ k: 'qbirth6', side: q.side, u: q.u, x: w.x, y: w.y, x2: P(k.u, k.v, 0).x, y2: P(k.u, k.v, 0).y, t: 0, life: 0.7 });
@@ -381,9 +381,9 @@ function body6h(g, dt) {
         if (d >= min) continue;
         let nx, ny;
         if (d > 1e-6) { nx = du / d; ny = dy2 / d; } else { const an = (A.id * 7 + B.id * 13) % 628 / 100; nx = Math.cos(an); ny = Math.sin(an); }
-        const o = (min - d) * (a.air ? BODY6.kAir : BODY6.k), wa = b.m / (a.m + b.m), wb = a.m / (a.m + b.m);
+        const mp = mitePush6j(g, A, B), o = (min - d) * (a.air ? BODY6.kAir : BODY6.k), wa = mp ? (mp === 1 ? 1 : 0) : b.m / (a.m + b.m), wb = mp ? (mp === 2 ? 1 : 0) : a.m / (a.m + b.m); // v3.00 (b6jfix): a Mite takes the whole push from its own side
         a.pu -= nx * o * wa; a.pv -= ny * o * wa; b.pu += nx * o * wb; b.pv += ny * o * wb;
-        if (B.moving) a.pm = 1; if (A.moving) b.pm = 1; // pushed by a unit on the move (a standing one makes way for it)
+        if (!mp) { if (B.moving) a.pm = 1; if (A.moving) b.pm = 1; } // pushed by a unit on the move (a standing one makes way for it)
       }
     }
   }

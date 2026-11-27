@@ -56,7 +56,7 @@ function endAim() { // ends ability targeting and Set warp point (v2.76: base fl
 }
 $('aimX').addEventListener('click', endAim);
 function aimTap(x, y) {
-  const w = toWorld(x, y), u = clamp(w.x, -40, L + 40), v = clamp(w.y / DY, -240, 240), A = ABIL[aim.k];
+  const w = toWorld(x, y), vh = aimV6j(game), u = clamp(w.x, -40, L + 40), v = clamp(w.y / DY, -vh, vh), A = ABIL[aim.k]; // v3.00 (b6jfix, A3): the whole depth of a lane map (Three-Lane's outer lanes lie beyond ±240)
   if (aim.placed && Math.hypot(u - aim.u, v - aim.v) <= A.r) { // second tap inside the circle: confirm
     const r = useAbility(game, myS(), aim.k, aim.u, aim.v);
     toast(r.msg, r.ok ? 'ok' : 'bad');

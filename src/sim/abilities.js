@@ -55,7 +55,7 @@ function abilityCheck(g, s, k, u, v) {
   const explored = k === 'strike' || k === 'corrosive' || k === 'beam'; // the area attacks need explored ground; the rest, ground in view
   if (explored ? !f.exp[c] : !f.vis[c]) return { ok: false, msg: explored ? `${A.name} needs explored ground` : `${A.name} needs ground you can see` };
   if (k === 'brood') { // a pod lands only on open lane ground, clear of the enemies this side can see (v2.20)
-    if (Math.abs(v) > LANE_V + 25) return { ok: false, msg: 'Emergency Brood needs open ground on the lane' };
+    if (brood6j(g) ? !onLane6g(u, v) : Math.abs(v) > LANE_V + 25) return { ok: false, msg: 'Emergency Brood needs open ground on the lane' }; // v3.00 (b6jfix): on a lane map, any lane
     if (g.ents.some(e => e.kind === 'u' && e.side !== s && e.hp > 0 && !UDEF[e.type].air && visibleTo(g, s, e) && Math.hypot(e.u - u, e.v - v) < A.clear)) return { ok: false, msg: 'Emergency Brood needs ground clear of enemies' };
   }
   if (k === 'beam' && (beamLane6g(g) ? !onLane6g(u, v) : Math.abs(v) > LANE_V + 25)) return { ok: false, msg: 'Purification Beam needs a spot on the lane' }; // v2.28 (v2.97, b6g: on a lane map, any lane)
