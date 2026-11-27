@@ -1,0 +1,10 @@
+faction persona | W-L-D win% | TechLab built / TL path / tier3 | turrets refineries | first attack, attacks | army 6/9/12 min | credits/10s 3/6/9 | upgrades spent | sig | top units per side
+axiarchs boomer | 18-14-4 50% | 21/36 16 36 | 1.5 3.3 | 147 s, 20.3 | 2055 2850 2425 | 250 250 290 | 5849 | 34 | shardling 38.6, lancer 13.0, riftstalker 9.2, bastion 6.9, wraithwing 3.4, prismwing 2.5, parallax 2.5
+axiarchs economist | 20-15-1 56% | 24/36 19 36 | 2.9 3.3 | 147 s, 18.7 | 1690 1905 1595 | 279 290 260 | 6882 | 29 | shardling 46.9, lancer 10.4, bastion 7.5, riftstalker 7.0, prismwing 2.8, gravemantle 2.6, marksman 1.8
+axiarchs turtle | 20-12-4 56% | 20/36 18 36 | 2.8 3.2 | 111 s, 30.6 | 1590 2450 2160 | 290 303 270 | 7681 | 33 | shardling 51.8, lancer 16.4, marksman 14.3, riftstalker 13.9, bastion 5.0, wraithwing 3.9, prismwing 3.4
+bloomhost boomer | 14-20-2 39% | 36/36 33 36 | 4.8 3.5 | 163 s, 18.7 | 1548 2185 1930 | 210 250 280 | 6122 | 34 | skitterling 67.1, spitter 32.6, razor6 32.5, bulwark 13.9, leaper 9.4, gnatcloud 6.0, broodback 5.4
+bloomhost economist | 17-19-0 47% | 32/36 31 36 | 4.2 3.1 | 154 s, 27.2 | 2230 2040 2387 | 212 311 279 | 6997 | 34 | skitterling 56.0, spitter 29.4, razor6 25.8, bulwark 16.9, leaper 13.6, broodback 7.8, gnatcloud 4.8
+bloomhost turtle | 15-13-8 42% | 18/36 17 36 | 5.4 3.1 | 170 s, 32.3 | 1380 2255 2062 | 210 345 330 | 8056 | 35 | skitterling 56.3, spitter 37.6, bulwark 26.0, leaper 18.3, broodback 8.6, bilecaster 8.2, gnatcloud 8.2
+lastfist boomer | 17-18-1 47% | 32/36 28 36 | 1.9 3.2 | 167 s, 17.2 | 2290 2930 2910 | 250 308 308 | 6157 | 34 | rifle 92.3, heavy 15.9, tank 13.4, flame 8.8, aircraft 8.6, artillery 6.5, sniper 5.4
+lastfist economist | 16-16-4 44% | 28/36 27 36 | 2.9 3.2 | 162 s, 23.9 | 2180 2765 2340 | 240 367 314 | 7423 | 35 | rifle 102.1, heavy 19.0, flame 15.2, tank 8.1, aircraft 8.0, sniper 6.5, artillery 3.8
+lastfist turtle | 10-20-6 28% | 12/36 11 36 | 5.0 3.1 | 169 s, 24.2 | 2065 2505 2630 | 247 381 298 | 7076 | 36 | rifle 98.1, heavy 20.9, tank 13.4, flame 11.4, sniper 6.4, artillery 6.2, drone 1.5
