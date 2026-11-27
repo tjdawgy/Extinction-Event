@@ -238,9 +238,9 @@ const FP_V292M = ['6a0a377251985b7370df356ed62745aef818e5a2ad702900d014e1f8cbad6
 const FP_V293H = ['d9797f62612636b81cb84040f67e8e7ebfc56eee562c5ce430410b962344338c', '3bb7596c848c90ea4375fcf52a7be3df3075447aa5bc09b6742e9ff2bcfc4866']; // b6hq on, b6c off
 const FP_V293 = ['befa62f5a80c0a846d48d2e8eb66e98817cb57019f58145389bc5d128501534f', 'a3bdd8829f759087e08b53cc166107d9ba33791bca824d250fcd8bc08e0d3db9']; // b6hq and b6c on (the new-game default)
 test('v2.93: modern matches: b6hq and b6c off play as v2.92 (FP_V292M); b6hq on (FP_V293H); both on (FP_V293)', () => {
-  assert.deepStrictEqual(modern({ b6hq: false, b6c: false, b6ai: false, b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false, b6i: false, b6iresp: false }), FP_V292M);
-  assert.deepStrictEqual(modern({ b6hq: true, b6c: false, b6ai: false, b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false, b6i: false, b6iresp: false }), FP_V293H);
-  assert.deepStrictEqual(modern({ b6hq: true, b6c: true, b6ai: false, b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false, b6i: false, b6iresp: false }), FP_V293);
+  assert.deepStrictEqual(modern({ b6hq: false, b6c: false, b6ai: false, b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false, b6i: false, b6iresp: false, b6jfix: false, b6j: false }), FP_V292M);
+  assert.deepStrictEqual(modern({ b6hq: true, b6c: false, b6ai: false, b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false, b6i: false, b6iresp: false, b6jfix: false, b6j: false }), FP_V293H);
+  assert.deepStrictEqual(modern({ b6hq: true, b6c: true, b6ai: false, b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false, b6i: false, b6iresp: false, b6jfix: false, b6j: false }), FP_V293);
 });
 // v2.94 (batch 6d: the AI personality fix REWORK.b6ai and the faction balance REWORK.b6d, src/sim/rework-6d.js). Every set above
 // holds both off and matches as before (with both off the game is v2.93). The same two modern matches: FP_V294A with b6ai on and
@@ -248,8 +248,8 @@ test('v2.93: modern matches: b6hq and b6c off play as v2.92 (FP_V292M); b6hq on 
 const FP_V294A = ['33e2c927354d44df021aad3ea88aaa31df5d510cf29ff8621c584d842a15cd86', '9cbfa97d72ac5ad3161fde6b9ec2d8c00b50a28a74772727c5b8d6b64c5663a6']; // b6ai on, b6d off
 const FP_V294 = ['202d5518eaec619ef00f5b6b6cf0b9154d0b0affaa3c689a6877d99a7aa028ac', '03029dbdbfc520696334e26a250ac5dabec936c340be78d5c4edc679f7658f00']; // b6ai and b6d on (every switch on)
 test('v2.94: modern matches: b6ai on, b6d off (FP_V294A); both on (FP_V294)', () => {
-  assert.deepStrictEqual(modern({ b6hq: true, b6c: true, b6ai: true, b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false, b6i: false, b6iresp: false }), FP_V294A);
-  assert.deepStrictEqual(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: false, b6e: false, b6fai: false, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false, b6i: false, b6iresp: false }), FP_V294);
+  assert.deepStrictEqual(modern({ b6hq: true, b6c: true, b6ai: true, b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false, b6i: false, b6iresp: false, b6jfix: false, b6j: false }), FP_V294A);
+  assert.deepStrictEqual(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: false, b6e: false, b6fai: false, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false, b6i: false, b6iresp: false, b6jfix: false, b6j: false }), FP_V294);
 });
 // v2.95 (batch 6e: Axiarch lane play REWORK.b6elane and the Axiarch costs, Riftstalker shields and Marine price REWORK.b6e,
 // src/sim/rework-6e.js). Every set above holds both off and matches as before (with both off the game is v2.94). The same two
@@ -258,10 +258,10 @@ test('v2.94: modern matches: b6ai on, b6d off (FP_V294A); both on (FP_V294)', ()
 const FP_V295A = ['a0f8a4123046213fa1655437da0673a644220e0de0a455b10359c4d3430e63ef', 'e14cdec3c16e4f4985bdd5c1a78685b0b14cda90e01563f9f7fe2601ffdccc7f']; // b6elane on, b6e off
 const FP_V295 = ['012addf30a06e1628cf4f3d61dffe2e8d88b1355650646401735e6eed7bd8181', '3f05e80b540beb27a11906dd37ea7b2411e3065228b89df600fc46d43c4135a7']; // b6elane and b6e on (every switch on)
 test('v2.95: modern matches: b6elane on, b6e off (FP_V295A); both on (FP_V295)', () => {
-  assert.deepStrictEqual(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: false, b6fai: false, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false, b6i: false, b6iresp: false }), FP_V295A);
-  assert.deepStrictEqual(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: false, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false, b6i: false, b6iresp: false }), FP_V295);
+  assert.deepStrictEqual(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: false, b6fai: false, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false, b6i: false, b6iresp: false, b6jfix: false, b6j: false }), FP_V295A);
+  assert.deepStrictEqual(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: false, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false, b6i: false, b6iresp: false, b6jfix: false, b6j: false }), FP_V295);
 });
-if (require.main === module && process.argv[2] === '--print6e') console.log(JSON.stringify(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: false, b6fai: false, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false, b6i: false, b6iresp: false })), JSON.stringify(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: false, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false, b6i: false, b6iresp: false })));
+if (require.main === module && process.argv[2] === '--print6e') console.log(JSON.stringify(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: false, b6fai: false, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false, b6i: false, b6iresp: false, b6jfix: false, b6j: false })), JSON.stringify(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: false, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false, b6i: false, b6iresp: false, b6jfix: false, b6j: false })));
 // (rw 'k', b6hq on with v2.68's rules, plays the same match as 'j' but its save carries the b6hq key, so its hash differs by that key alone; not pinned)
 if (require.main === module && process.argv[2] === '--print6c') console.log(JSON.stringify(modern({ b6hq: true, b6c: true })), fingerprint(false, false, true, true, 'l'), bhAx(true, true, 'l'), lfBh('l'));
 // v2.96 (batch 6f: base attacks for every AI and the press rule's base defences REWORK.b6fai; the Axiarch prices undone and the
@@ -270,16 +270,16 @@ if (require.main === module && process.argv[2] === '--print6c') console.log(JSON
 const FP_V296A = ['3a2c5d5d97bf5035bcb787fe40198e9a15edf363efb39594b88f374ad4c5c228', '2072979de61d332d254d331ba9639fd37c927821cc848a59ceffe5e47eca4d6a']; // b6fai on, b6f off
 const FP_V296 = ['83bdf7d6667ebf2693be23c7cde2b9ae114536bae47fd6b3ff46c9733b200d93', 'fe38b5d31c1e775dff1a8bd2f7247c58aa3faa394cffab1d3286fe19eed6bc0c']; // b6fai and b6f on (every switch on; the Classic match differs from FP_V296A by the save's b6f key alone)
 test('v2.96: modern matches: b6fai on, b6f off (FP_V296A); both on (FP_V296)', () => {
-  assert.deepStrictEqual(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: true, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false, b6i: false, b6iresp: false }), FP_V296A);
-  assert.deepStrictEqual(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: true, b6f: true, b6g: false, b6h: false, b6hbody: false, b6hnode: false, b6i: false, b6iresp: false }), FP_V296);
+  assert.deepStrictEqual(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: true, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false, b6i: false, b6iresp: false, b6jfix: false, b6j: false }), FP_V296A);
+  assert.deepStrictEqual(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: true, b6f: true, b6g: false, b6h: false, b6hbody: false, b6hnode: false, b6i: false, b6iresp: false, b6jfix: false, b6j: false }), FP_V296);
 });
-if (require.main === module && process.argv[2] === '--print6f') console.log(JSON.stringify(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: true, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false, b6i: false, b6iresp: false })), JSON.stringify(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: true, b6f: true, b6g: true })));
+if (require.main === module && process.argv[2] === '--print6f') console.log(JSON.stringify(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: true, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false, b6i: false, b6iresp: false, b6jfix: false, b6j: false })), JSON.stringify(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: true, b6f: true, b6g: true })));
 
 // v2.97 (batch 6g: the playtest fixes, REWORK.b6g, src/sim/rework-6g.js). Every set above holds b6g off and matches as before (with
 // b6g off the game is v2.96). The same two modern matches with every switch on, b6g included: FP_V297.
 const FP_V297 = ['8e2ed0741411af8277a4b1449fe71895d48cd170a015b926e71a72a502b321d6', '55ef3682d0cfe08ad57b1761c4faab5abc76bc4cd085e4296b977ac22622d7a6']; // every switch on, b6g included (the new-game default)
 test('v2.97: modern matches with every switch on (FP_V297)', () => {
-  assert.deepStrictEqual(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: true, b6f: true, b6g: true, b6h: false, b6hbody: false, b6hnode: false, b6i: false, b6iresp: false }), FP_V297);
+  assert.deepStrictEqual(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: true, b6f: true, b6g: true, b6h: false, b6hbody: false, b6hnode: false, b6i: false, b6iresp: false, b6jfix: false, b6j: false }), FP_V297);
 });
 if (require.main === module && process.argv[2] === '--print6g') console.log(JSON.stringify(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: true, b6f: true, b6g: true })));
 
@@ -288,16 +288,25 @@ if (require.main === module && process.argv[2] === '--print6g') console.log(JSON
 // same two modern matches with every switch on: FP_V298.
 const FP_V298 = ['b8498657e5f6bb968b906110bea4ff028485e02f688bb0e11a3f787eeb90cac1', '08adb9a2438d12d6608d0ff03bf88096fce00e3f49df1f8a85eabb61d019290d']; // every switch on (the new-game default)
 test('v2.98: modern matches with every switch on (FP_V298)', () => {
-  assert.deepStrictEqual(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: true, b6f: true, b6g: true, b6h: true, b6hbody: true, b6hnode: true, b6i: false, b6iresp: false }), FP_V298);
+  assert.deepStrictEqual(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: true, b6f: true, b6g: true, b6h: true, b6hbody: true, b6hnode: true, b6i: false, b6iresp: false, b6jfix: false, b6j: false }), FP_V298);
 });
-if (require.main === module && process.argv[2] === '--print6h') console.log(JSON.stringify(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: true, b6f: true, b6g: true, b6h: true, b6hbody: true, b6hnode: true, b6i: false, b6iresp: false })));
+if (require.main === module && process.argv[2] === '--print6h') console.log(JSON.stringify(modern({ b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: true, b6f: true, b6g: true, b6h: true, b6hbody: true, b6hnode: true, b6i: false, b6iresp: false, b6jfix: false, b6j: false })));
 
 // v2.99 (batch 6i: the Bloomhost air rework REWORK.b6i, the under-fire response rework REWORK.b6iresp, src/sim/rework-6i.js).
 // Every set above holds both off and matches as before (with both off the game is v2.98). The same two modern matches with every
 // switch on: FP_V299.
-const RW_ALL6I = { b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: true, b6f: true, b6g: true, b6h: true, b6hbody: true, b6hnode: true, b6i: true, b6iresp: true };
+const RW_ALL6I = { b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: true, b6f: true, b6g: true, b6h: true, b6hbody: true, b6hnode: true, b6i: true, b6iresp: true, b6jfix: false, b6j: false };
 const FP_V299 = ['651d408afac44a42c168c83c387b0aea682e70c9b0053ce83cdb2957d4c211bd', '86c3805340131a9f62baa5f327fed5c5726940cc2485fd0dae342517e729530f']; // every switch on (the new-game default)
 test('v2.99: modern matches with every switch on (FP_V299)', () => {
   assert.deepStrictEqual(modern(RW_ALL6I), FP_V299);
 });
 if (require.main === module && process.argv[2] === '--print6i') console.log(JSON.stringify(modern(RW_ALL6I)));
+// v3.00 (batch 6j: the playtest fixes REWORK.b6jfix, the AI fixes and balance REWORK.b6j, src/sim/rework-6j.js). Every set
+// above holds both off and matches as before (with both off the game is v2.99). The same two modern matches with every switch
+// on: FP_V300.
+const RW_ALL6J = Object.assign({}, RW_ALL6I, { b6jfix: true, b6j: true });
+const FP_V300 = ['TBD', 'TBD']; // every switch on (the new-game default)
+test('v3.00: modern matches with every switch on (FP_V300)', () => {
+  assert.deepStrictEqual(modern(RW_ALL6J), FP_V300);
+});
+if (require.main === module && process.argv[2] === '--print6j') console.log(JSON.stringify(modern(RW_ALL6J)));

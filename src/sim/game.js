@@ -253,7 +253,7 @@ function trySell(g, s, b) {
   if (b.hp <= 0) return { ok: false, msg: 'That building is gone' };
   const r = sellValue(b);
   side.res.c += r.c; side.res.e += r.e;
-  for (const q of b.queue) { const k = q === 'razor6' ? trainCost(g, q) : unitCost6(g, q); /* v2.99 (b6i): a queued Razorwing flock is refunded whole */ side.res.c += k.c; side.res.e += k.e; logSpend(g, s, 'u', -k.c, -k.e); } // queued units are refunded: never spent (v2.95: at batch 6e's price, unitCost6)
+  for (const q of b.queue) { const k = q === 'razor6' || (q === 'skitterling' && rwB6jfix(g)) ? trainCost(g, q) : unitCost6(g, q); /* v3.00 (b6jfix, A5): a queued brood too */ /* v2.99 (b6i): a queued Razorwing flock is refunded whole */ side.res.c += k.c; side.res.e += k.e; logSpend(g, s, 'u', -k.c, -k.e); } // queued units are refunded: never spent (v2.95: at batch 6e's price, unitCost6)
   if (g.log) { const T = g.log.tot[s]; T.sold[0] += r.c; T.sold[1] += r.e; T.bSold++; lg(g, s, 'S', b.type, b.tier); }
   b.queue.length = 0; b.hp = 0; b.dead = true; b.sold = true;
   if (b.slot >= 0 && side.slots[b.slot] === b) side.slots[b.slot] = null;

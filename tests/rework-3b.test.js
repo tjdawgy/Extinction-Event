@@ -12,7 +12,7 @@ const seenEv = (g, set, types) => { for (const e of g.events) if (!set.has(e)) {
 
 test('switch: per game; b3b off plays the v2.84 units (UDEF untouched), on plays the batch\'s definitions; saves', () => {
   const s = loadSim();
-  const on = s.rangeGame({ factions: ['bloomhost', 'axiarchs'], rework: { b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false, b6i: false, b6iresp: false } }), off = s.rangeGame({ factions: ['bloomhost', 'axiarchs'], rework: { b3b: false, b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false, b6i: false, b6iresp: false } }); // v2.94: batch 6d off (its Shardling health, tests/rework-6d.test.js)
+  const on = s.rangeGame({ factions: ['bloomhost', 'axiarchs'], rework: { b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false, b6i: false, b6iresp: false, b6jfix: false, b6j: false } }), off = s.rangeGame({ factions: ['bloomhost', 'axiarchs'], rework: { b3b: false, b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false, b6i: false, b6iresp: false, b6jfix: false, b6j: false } }); // v2.94: batch 6d off (its Shardling health, tests/rework-6d.test.js)
   assert.ok(s.rwB3b(on) && !s.rwB3b(off));
   for (const t of ['dreadthorn', 'bastion', 'shardling', 'bulwark']) assert.strictEqual(s.rwD(off, t), s.UDEF[t], `off: the plain UDEF entry (${t})`);
   assert.ok(s.rwD(on, 'dreadthorn').trample && !s.rwD(on, 'dreadthorn').burst && s.UDEF.dreadthorn.burst, 'no spine burst in b3b; UDEF keeps it');
@@ -37,7 +37,7 @@ test('switch: per game; b3b off plays the v2.84 units (UDEF untouched), on plays
 function skirm(s, kind, rw) {
   const S = kind === 'a' ? { f: ['axiarchs', 'lastfist'], u: [['riftstalker', 600, -20, 3], ['lancer', 560, 10, 3]], v: [['sniper', 820, -20, 3], ['artillery', 900, 20, 2], ['heavy', 780, 30, 3], ['rifle', 760, -40, 4]] }
     : { f: ['bloomhost', 'axiarchs'], u: [['dreadthorn', 560, 0, 2], ['bulwark', 600, -30, 3], ['skitterling', 580, 30, 6]], v: [['bastion', 800, -10, 2], ['shardling', 760, 20, 5], ['lancer', 860, 0, 4], ['marksman', 900, -30, 2]] };
-  const g = s.rangeGame({ seed: 11, factions: S.f, rework: Object.assign({ b5c: false, b6side: false, b6art: false, b6hq: false, b6c: false, b6ai: false, b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false, b6i: false, b6iresp: false }, rw) }) /* v2.90: pinned before batch 5c (its key would be saved) */;
+  const g = s.rangeGame({ seed: 11, factions: S.f, rework: Object.assign({ b5c: false, b6side: false, b6art: false, b6hq: false, b6c: false, b6ai: false, b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false, b6i: false, b6iresp: false, b6jfix: false, b6j: false }, rw) }) /* v2.90: pinned before batch 5c (its key would be saved) */;
   if (kind === 'b') s.rangeBuilding(g, 0, 'bloomhost', 'refinery', 520, 0);
   for (const [t, u, v, n] of S.u) for (let i = 0; i < n; i++) s.rangeUnit(g, 0, t, u + (i % 3) * 14, v + Math.floor(i / 3) * 16);
   for (const [t, u, v, n] of S.v) for (let i = 0; i < n; i++) s.rangeUnit(g, 1, t, u + (i % 3) * 14, v + Math.floor(i / 3) * 16);

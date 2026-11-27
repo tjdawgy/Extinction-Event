@@ -298,6 +298,8 @@ buildAbil();
 resize();
 homeCamera();
 showStart();
+// v3.00 (batch 6j, Step 0): the version, small in the title screen's corner, so a player can tell which build the phone runs
+$('title').insertAdjacentHTML('beforeend', `<i class="tver">v${VERSION}</i>`);
 // Title screen covers the main menu on load; a tap (click, so no ghost tap reaches the menu) fades it away
 $('title').addEventListener('click', () => { const t = $('title'); t.classList.add('out'); setTimeout(() => t.remove(), 400); });
 requestAnimationFrame(frame);

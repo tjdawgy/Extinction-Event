@@ -5,7 +5,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { loadSim } = require('./load-sim');
 const sim = loadSim();
-const ON = { b6i: true, b6iresp: true }, OFF = { b6i: false, b6iresp: false };
+const ON = { b6i: true, b6iresp: true, b6jfix: false, b6j: false }, OFF = { b6i: false, b6iresp: false, b6jfix: false, b6j: false };
 const range = (rw, f = ['bloomhost', 'lastfist'], seed = 77) => sim.rangeGame({ seed, factions: f, rework: Object.assign({}, sim.REWORK, rw) });
 const step = (g, s) => { for (let i = 0; i < Math.round(s * 60); i++) sim.rangeStep(g); };
 const alive = us => us.filter(e => e.hp > 0 && !e.dead).length;
@@ -136,7 +136,7 @@ test('Part D: the Warden quota counts the Wardens queued too and stops at one pe
 // Part E: units under fire
 const moved = (g, us, s) => { const p = us.map(e => [e.u, e.v]); let m = 0; for (let i = 0; i < Math.round(s * 60); i++) { sim.rangeStep(g); us.forEach((e, k) => { if (e.hp > 0) m = Math.max(m, Math.hypot(e.u - p[k][0], e.v - p[k][1])); }); } return m; };
 test('response: Tanks on Hold hit by aircraft they can\'t shoot stay put (6g pulled them back)', () => {
-  for (const [rw, still] of [[ON, true], [{ b6iresp: false }, false]]) {
+  for (const [rw, still] of [[ON, true], [{ b6iresp: false, b6jfix: false, b6j: false }, false]]) {
     const g = range(rw, ['lastfist', 'axiarchs']); const ts = sim.rangeUnits(g, 0, 'tank', 600, 0, 4); sim.rangeUnits(g, 1, 'prismwing', 860, 0, 2);
     g.sides[0].mode = 'hold'; g.sides[1].mode = 'attack'; const m = moved(g, ts, 15);
     if (still) assert.ok(m < 25, `moved ${m.toFixed(0)}`); else assert.ok(m > 25, `6g: pulled back ${m.toFixed(0)}`);

@@ -195,6 +195,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 #ov.hide{display:none}
 #title{position:fixed;inset:0;z-index:60;display:flex;align-items:flex-end;justify-content:center;background:#05070d url('assets/title-screen.jpg') center/cover no-repeat;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 7vh);cursor:pointer;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;transition:opacity .35s}
 #title.out{opacity:0;pointer-events:none}
+#title .tver{position:absolute;right:calc(env(safe-area-inset-right,0px) + 3vw);bottom:calc(env(safe-area-inset-bottom,0px) + 1.5vh);font-style:normal;font-size:11px;color:rgba(255,255,255,.6);text-shadow:0 1px 4px rgba(0,0,0,.9);font-variant-numeric:tabular-nums;pointer-events:none} /* v3.00: the build's version */
 #title h1{position:absolute;top:calc(env(safe-area-inset-top,0px) + 1.5vh);left:calc(env(safe-area-inset-left,0px) + 3vw);margin:0;font-size:clamp(20px,6vmin,44px);line-height:1;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#fff;text-shadow:0 3px 14px rgba(0,0,0,.95),0 0 28px rgba(255,60,40,.5)}
 #title h1 span{color:#ff5a3c}
 @media (orientation:portrait){#title{background-position:82% center}#title h1{top:calc(env(safe-area-inset-top,0px) + 3vh);left:0;right:0;text-align:center;font-size:clamp(30px,11vw,56px);line-height:.95}#title h1 span{display:block}}

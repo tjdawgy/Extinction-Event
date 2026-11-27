@@ -91,7 +91,7 @@ function aiUpdate(g, s, dt) {
   // Under real pressure every personality drops its style and plays the standard defense (the safety floor)
   const pressed = threat && (infantryRush || myV < thV * 0.8);
   const sig = SIG.on && bdS(g, s, 'sigA') ? (dl.sig || (P.kind === 'aggressor' || P.kind === 'trickster' ? 'sigA' : 'sigB')) : null; // v2.43: a preset can name its signature building (dial sig)
-  const sigLate = aiFix(P, 'sig'), planBase = pressed ? AI_PLAN : rwB6i(g) ? plan6i(g, s, P) : P.plan; // v2.99 (b6i): a Bloomhost Turtle grows a Bloomspire too (plan6i) // v2.40 (sig): the plan keeps its economy; the signature building comes later
+  const sigLate = aiFix(P, 'sig'), planBase = pressed ? AI_PLAN : rwB6i(g) || turtleFac6j(g, s) ? plan6i(g, s, P) : P.plan; // v2.99 (b6i): a Bloomhost Turtle grows a Bloomspire too (plan6i) // v2.40 (sig): the plan keeps its economy; the signature building comes later
   const sigPad = sigPadOn(); // v2.43: the signature building has its own pad: no plan pad given up for it
   const plan = sigLate || sigPad ? planBase : aiPlanWith(planBase, sig);
   const sigDup = sigLate && sig ? planBase[aiPlanWith(planBase, '#').indexOf('#')] : null; // the duplicate it trades for the signature building once that pays
@@ -194,7 +194,7 @@ function aiUpdate(g, s, dt) {
   const tf = dl.tech || (aiFix(P, 'tech') ? AI_TECH[P.kind] : null), techFocus = tf ? [[tf, 2], [tf, 3]] : []; // v2.40 (tech): its strategy's building goes to T3 right after T2 (the tech dial: the Hard preset's searched order)
   if (g.t >= D.upStart + P.upShift - (ecoMood ? 30 : 0) && (!upgrading || rich2) && (buildDone || floating) && (!(calm || defend) || floating || b6aiCalmUp(g, P)) && !(punishOn && !floating) && !(D.maxTier < 3 && simRnd() < 0.5)) {
     const energyShort = (side.res.e < 120 && side.res.c > 800) || starved; // v2.41 (power): starved, the Reactor upgrade first
-    for (const [type, tier] of [...(energyShort ? [['reactor', 2], ['reactor', 3]] : []), ...(rich2 ? [['habitat', 2], ['habitat', 3], ['reactor', 2], ['reactor', 3]] : []), ...P.upgFirst, ...techFocus, ...AI_UPG]) {
+    for (const [type, tier] of [...(energyShort ? [['reactor', 2], ['reactor', 3]] : []), ...(rich2 ? [['habitat', 2], ['habitat', 3], ['reactor', 2], ['reactor', 3]] : []), ...air6j(g, s), ...P.upgFirst, ...techFocus, ...AI_UPG]) { // v3.00 (b6j): tier-3 air first when it can (air6j)
       if (rich2 && upgrading && alive(g, s, type).some(x => x.upgrading)) continue;
       if (tier > D.maxTier) continue;
       if (type === 'reactor' && side.res.e > ENERGY_PLENTY) continue;
@@ -386,7 +386,7 @@ function aiUpdate(g, s, dt) {
   // 4) Strategy: hold the near node, take the field, siege just outside the enemy guns, or go all in
   const hqGun = BDEF.hq.gun[oppTier], hqVal = knownDefense(g, s);
   const rich = side.res.c > dl.bank;
-  const nSiege = mine.filter(u => aiSiegeT(g, u.type)).length; // v2.83: not a batch 2b Ruinmaw
+  const nSiege = siegeN6j(g, s, mine, hqU(opp) - dir * (hqGun.range + 25), mine.filter(u => aiSiegeT(g, u.type)).length); // v2.83: not a batch 2b Ruinmaw; v3.00 (b6j): Artillery that reach a known building from the siege line (siegeN6j)
   const ae = P.attackEdge * (ecoMood ? 1.2 : 1); // how much of an edge this personality wants before a base attack
   const wave = Math.min(3600, 400 + g.t * 4) * D.wave * P.wave * (ecoMood ? 1.3 : 1) * (hasCond(g, 'scarce') ? COND.scarce.army : 1) * (rwB5b(g) && facOf(side.faction) === 'bloomhost' ? AI5B.wave : 1); // v2.88: a batch 5b swarm waits for a bigger wave; v2.72: scarce: smaller armies
   const full = used >= cap * fill - 2, since = g.t - side.stanceAt; // full by its own army limit
@@ -508,6 +508,7 @@ function aiUpdate(g, s, dt) {
   if (rwB4a(g)) aiRework4a(g, s, mine); // v2.86: Wraithwings raid economy buildings
   if (rwB4b(g)) aiRework4b(g, s, mine); // v2.87: Voidcarriers over the army near its front
   if (rwB5b(g)) aiRework5b(g, s, mine); // v2.88: the swarm attacks as a pack, Spitters with it
+  if (rwB6j(g)) aiRework6j(g, s, mine); // v3.00 (batch 6j): the Last Fist Turtle's late Tech Lab (src/sim/rework-6j.js)
   if (rwB6i(g)) aiRework6i(g, s, mine); // v2.99 (batch 6i): Blightwings behind, Razorwing raids (src/sim/rework-6i.js)
   if (rwB6h(g)) aiRework6h(g, s, mine); // v2.98 (batch 6h): Queens behind, Broodbacks lead, the Ruinmaw's rally (src/sim/rework-6h.js)
 }

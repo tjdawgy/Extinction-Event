@@ -58,11 +58,29 @@ function drawIcon(cvs, kind, type, fac) {
   if (kind === 'b') {
     const d = BDEF[type], s = Math.min(54 / (d.half * 3.6), 31 / (d.half * 2 + d.h + 4));
     c.translate(W / 2, H - 1 - d.half * s); c.scale(s, s); drawBOf(fac)[type](c, TEAM[myS()], 1.2, null, 1);
-  } else {
-    const d = UDEF[type], s = d.air ? 1.1 : Math.min(1.45, 28 / (visH(type) + 4));
-    c.translate(W / 2 - (type === 'artillery' || type === 'titan' ? 3 : 0), d.air ? H / 2 : H - 2); c.scale(s, s);
-    DRAW_U[type](c, TEAM[myS()], { anim: 0, moving: false, recoil: 0 });
+  } else fitUnitIcon(c, type, W, H, TEAM[myS()]);
+}
+// v3.00 (batch 6j, A4; drawing only): a unit's card picture keeps its old scale and place unless its art would cross the card's
+// edge (the top or sides; a ground unit may stand on the bottom edge): then it shrinks to fit and is centred. artBB measures the
+// art's drawn extent about its origin once per type (alpha over 24 on a scratch canvas at 2×).
+const ART_BB = {};
+function artBB(type) {
+  if (ART_BB[type] !== undefined) return ART_BB[type];
+  const SW = 640, SH = 480, Z = 2, sc = document.createElement('canvas'); sc.width = SW; sc.height = SH;
+  const c = sc.getContext('2d'); c.translate(SW / 2, SH / 2); c.scale(Z, Z);
+  try { DRAW_U[type](c, TEAM[0], { anim: 0, moving: false, recoil: 0 }); } catch (e) { return (ART_BB[type] = null); }
+  const px = c.getImageData(0, 0, SW, SH).data; let x0 = SW, y0 = SH, x1 = -1, y1 = -1;
+  for (let y = 0; y < SH; y++) for (let x = 0; x < SW; x++) if (px[(y * SW + x) * 4 + 3] > 24) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  return (ART_BB[type] = x1 < 0 ? null : { x0: (x0 - SW / 2) / Z, x1: (x1 + 1 - SW / 2) / Z, y0: (y0 - SH / 2) / Z, y1: (y1 + 1 - SH / 2) / Z });
+}
+function fitUnitIcon(c, type, W, H, T) {
+  const d = UDEF[type], b = artBB(type), pad = 1;
+  let s = d.air ? 1.1 : Math.min(1.45, 28 / (visH(type) + 4)), ox = W / 2 - (type === 'artillery' || type === 'titan' ? 3 : 0), oy = d.air ? H / 2 : H - 2;
+  if (b && (ox + b.x0 * s < pad || ox + b.x1 * s > W - pad || oy + b.y0 * s < pad || (d.air && oy + b.y1 * s > H - pad))) {
+    s = Math.min(s, (W - 2 * pad) / (b.x1 - b.x0), (H - 2 * pad) / (b.y1 - b.y0));
+    ox = W / 2 - (b.x0 + b.x1) / 2 * s; oy = d.air ? H / 2 - (b.y0 + b.y1) / 2 * s : Math.max(pad - b.y0 * s, Math.min(H - 2, H - pad - b.y1 * s));
   }
+  c.translate(ox, oy); c.scale(s, s); DRAW_U[type](c, T, { anim: 0, moving: false, recoil: 0 });
 }
 
 /* ---------- Hold a card for details ---------- */

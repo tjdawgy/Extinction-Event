@@ -237,7 +237,7 @@ function trIcon(cvs, t, side) { // a unit or building as the game draws it, in t
   const c = cvs.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
   try {
     if (t.kind === 'b') { const d = BD(t.fac, t.type), s = Math.min(54 / (d.half * 3.6), 31 / (d.half * 2 + d.h + 4)); c.translate(W / 2, H - 1 - d.half * s); c.scale(s, s); drawBOf(t.fac)[t.type](c, TEAM[side], 1.2, null, 1); }
-    else { const d = UDEF[t.type], s = d.air ? 1.1 : Math.min(1.45, 28 / (visH(t.type) + 4)); c.translate(W / 2, d.air ? H / 2 : H - 2); c.scale(s, s); DRAW_U[t.type](c, TEAM[side], { anim: 0, moving: false, recoil: 0 }); }
+    else fitUnitIcon(c, t.type, W, H, TEAM[side]); // v3.00 (batch 6j, A4): fitted like the Train cards
   } catch (e) {} // an icon is decoration: a draw function that wants more of a live unit just leaves it blank
 }
 function trSaved() { try { const o = JSON.parse(localStorage.getItem(TR_KEY) || 'null'); return o && Array.isArray(o.list) ? o.list.filter(x => x && typeof x.name === 'string' && x.set && Array.isArray(x.set.items)) : []; } catch (e) { return []; } }

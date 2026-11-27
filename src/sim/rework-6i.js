@@ -324,7 +324,7 @@ function ward6i(g, s, sc, spl) {
 const TURTLE6I = { at: 480, e: 300, near: 500, every: 5 };
 function plan6i(g, s, P) {
   const p = P.plan;
-  if (!B6I.turtlePlan || P.kind !== 'turtle' || facOf(g.sides[s].faction) !== 'bloomhost' || !p || p.includes('techlab')) return p;
+  if (!B6I.turtlePlan || P.kind !== 'turtle' || (facOf(g.sides[s].faction) !== 'bloomhost' && !turtleFac6j(g, s)) || !p || p.includes('techlab')) return p; // v3.00 (b6j): the Last Fist Turtle too
   return P.plan6i || (P.plan6i = p.concat('techlab'));
 }
 function turtle6i(g, s, mine) {

@@ -537,7 +537,7 @@ function aiNode6h(g, s, D, mine, theirs, N) {
   if (g.t - N.t < NODE6.every || danger || armyValue(mine) < NODE6.minArmy) return;
   N.t = g.t;
   const busy = new Set([side.scoutId, ...(side.raid ? side.raid.ids : []), ...(side.relicG ? side.relicG.ids : [])]);
-  const pool = mine.filter(u => !busy.has(u.id) && (!UDEF[u.type].air || u.type === 'skywyrm') && /* v2.99 (b6i): the Skywyrm joins the assault (its building rate sorts it first) */ !UDEF[u.type].support && !u.temp && UDEF[u.type].weapon && u.hp >= u.maxHp * 0.5 && !u.tn)
+  const pool = mine.filter(u => !busy.has(u.id) && (!UDEF[u.type].air || u.type === 'skywyrm') && /* v2.99 (b6i): the Skywyrm joins the assault (its building rate sorts it first) */ !UDEF[u.type].support && !u.temp && UDEF[u.type].weapon && (u.hp >= u.maxHp * 0.5 || wyrm6j(g, u)) && !u.tn)
     .sort((a, b) => bldMul6g(g, b.type) - bldMul6g(g, a.type) || armyValue([b]) - armyValue([a]) || a.id - b.id).slice(0, NODE6.maxN);
   const cand = g.nodes.map((n, i) => i).filter(i => g.nodes[i].owner === 1 - s && g.nodes[i].type !== 'relic')
     .sort((a, b) => ((g.t - (N.lost[b] ?? -1e9) < B6G4.lost) - (g.t - (N.lost[a] ?? -1e9) < B6G4.lost)) || Math.abs(g.nodes[a].u - hqU(s)) - Math.abs(g.nodes[b].u - hqU(s)) || a - b);
