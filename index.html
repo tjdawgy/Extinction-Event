@@ -1950,7 +1950,7 @@ function trySell(g, s, b) {
   if (b.hp <= 0) return { ok: false, msg: 'That building is gone' };
   const r = sellValue(b);
   side.res.c += r.c; side.res.e += r.e;
-  for (const q of b.queue) { const k = q === 'razor6' ? trainCost(g, q) : unitCost6(g, q); /* v2.99 (b6i): a queued Razorwing flock is refunded whole */ side.res.c += k.c; side.res.e += k.e; logSpend(g, s, 'u', -k.c, -k.e); } // queued units are refunded: never spent (v2.95: at batch 6e's price, unitCost6)
+  for (const q of b.queue) { const k = q === 'razor6' || (q === 'skitterling' && rwB6jfix(g)) ? trainCost(g, q) : unitCost6(g, q); /* v3.00 (b6jfix, A5): a queued brood too */ /* v2.99 (b6i): a queued Razorwing flock is refunded whole */ side.res.c += k.c; side.res.e += k.e; logSpend(g, s, 'u', -k.c, -k.e); } // queued units are refunded: never spent (v2.95: at batch 6e's price, unitCost6)
   if (g.log) { const T = g.log.tot[s]; T.sold[0] += r.c; T.sold[1] += r.e; T.bSold++; lg(g, s, 'S', b.type, b.tier); }
   b.queue.length = 0; b.hp = 0; b.dead = true; b.sold = true;
   if (b.slot >= 0 && side.slots[b.slot] === b) side.slots[b.slot] = null;
@@ -7558,7 +7558,7 @@ function aiNode6h(g, s, D, mine, theirs, N) {
   if (g.t - N.t < NODE6.every || danger || armyValue(mine) < NODE6.minArmy) return;
   N.t = g.t;
   const busy = new Set([side.scoutId, ...(side.raid ? side.raid.ids : []), ...(side.relicG ? side.relicG.ids : [])]);
-  const pool = mine.filter(u => !busy.has(u.id) && (!UDEF[u.type].air || u.type === 'skywyrm') && /* v2.99 (b6i): the Skywyrm joins the assault (its building rate sorts it first) */ !UDEF[u.type].support && !u.temp && UDEF[u.type].weapon && u.hp >= u.maxHp * 0.5 && !u.tn)
+  const pool = mine.filter(u => !busy.has(u.id) && (!UDEF[u.type].air || u.type === 'skywyrm') && /* v2.99 (b6i): the Skywyrm joins the assault (its building rate sorts it first) */ !UDEF[u.type].support && !u.temp && UDEF[u.type].weapon && (u.hp >= u.maxHp * 0.5 || wyrm6j(g, u)) && !u.tn)
     .sort((a, b) => bldMul6g(g, b.type) - bldMul6g(g, a.type) || armyValue([b]) - armyValue([a]) || a.id - b.id).slice(0, NODE6.maxN);
   const cand = g.nodes.map((n, i) => i).filter(i => g.nodes[i].owner === 1 - s && g.nodes[i].type !== 'relic')
     .sort((a, b) => ((g.t - (N.lost[b] ?? -1e9) < B6G4.lost) - (g.t - (N.lost[a] ?? -1e9) < B6G4.lost)) || Math.abs(g.nodes[a].u - hqU(s)) - Math.abs(g.nodes[b].u - hqU(s)) || a - b);
@@ -7914,7 +7914,7 @@ function ward6i(g, s, sc, spl) {
 const TURTLE6I = { at: 480, e: 300, near: 500, every: 5 };
 function plan6i(g, s, P) {
   const p = P.plan;
-  if (!B6I.turtlePlan || P.kind !== 'turtle' || facOf(g.sides[s].faction) !== 'bloomhost' || !p || p.includes('techlab')) return p;
+  if (!B6I.turtlePlan || P.kind !== 'turtle' || (facOf(g.sides[s].faction) !== 'bloomhost' && !turtleFac6j(g, s)) || !p || p.includes('techlab')) return p; // v3.00 (b6j): the Last Fist Turtle too
   return P.plan6i || (P.plan6i = p.concat('techlab'));
 }
 function turtle6i(g, s, mine) {
@@ -8003,6 +8003,10 @@ const sw6iR = (g, s) => g.sides[s].r6i || (g.sides[s].r6i = { charge: 0 });
    - REWORK.b6j: the AI fixes (Part B) and the balance tuning (Part D); B6J holds every number. */
 const B6J = {
   queen: { ahead: 6, spread: 9 }, // A2: Mites appear queen body + mite body + ahead in front of her, spread across
+  siege: { reach: 20 },            // B1: a siege line is used only when 2+ Artillery there reach a known enemy building (art range - reach)
+  turtle: ['lastfist'],            // B1: the factions whose Turtle grows a late air building (6i's turtle6i; Bloomhost has it since 6i)
+  air: { at: 480, ref: 3, c: 0.6 }, // B2: from 8:00, with 3 built Refineries and 60% of the upgrade's credits, the air building's T2 and T3 first
+  wyrm: { hp: 0.3 },               // B3: a Skywyrm joins a node assault from 30% health (6h's pool: 50%)
 };
 // A2: where a Queen's next Mite hatches: in front of her (her target, else her order's target, else her facing), clear of her body
 function queenSpot6j(g, q) {
@@ -8022,6 +8026,41 @@ const mitePush6j = (g, A, B) => rwB6jfix(g) && A.side === B.side && (A.type === 
 // lane check (±LANE_V + 25, the middle of the map) on the lane maps too.
 const aimV6j = g => rwB6jfix(g) && MAP_2D ? MAP.size.h / 2 : 240;
 const brood6j = g => rwB6jfix(g) && MAP_LANED;
+
+/* ---- Part B: the AI fixes (b6j) ---- */
+// B1: the AI's "siege" attack stops the whole army just outside the enemy HQ gun's reach (siegeLine) so its siege guns can
+// shell the base. v2.99 counted any two siege units (AI_SIEGE: Artillery and Titans) and never asked whether anything there
+// could be reached: since the Titan's reach was cut (160) two Titans parked 555 from the HQ with nothing in reach, and since
+// batch 6c's shield rule the HQ itself can't be hurt while another building stands. With b6j a siege needs 2+ Artillery-type
+// guns (AI_ART) and a known enemy building (the fog's memory, not the HQ) within their reach of the line; otherwise 0 (the
+// attack goes in).
+function siegeN6j(g, s, mine, line, n0) {
+  if (!rwB6j(g)) return n0;
+  const art = mine.filter(u => AI_ART.includes(u.type) && rwHas(g, u.type)); if (art.length < 2) return 0;
+  const R = Math.min(...art.map(u => rwD(g, u.type).range)) - B6J.siege.reach;
+  const ok = Object.values(g.fog[s].ghosts).some(b => b.side !== s && b.type !== 'hq' && Math.abs(b.u - line) - (b.half || 0) <= R);
+  return ok ? art.length : 0;
+}
+// B1: the Last Fist Turtle's plan (batch 6d) has no Tech Lab (no air at all: "air superiority" is Last Fist's), so with b6j it
+// grows one late exactly as 6i's Bloomhost Turtle grows its Bloomspire (plan6i, turtle6i: from 8:00, every pad taken, 300 energy
+// spare, no enemy near its HQ, its lowest Reactor sold for it).
+const turtleFac6j = (g, s) => rwB6j(g) && B6J.turtle.includes(facOf(g.sides[s].faction));
+// B2: tier-3 air. The AI upgrades in a fixed order (AI_UPG): the air building's T3 is 16th of 20, after every Refinery,
+// Habitat and production building reaches T3, so with matches of about 14 minutes it rarely gets there. With b6j, from
+// B6J.air.at, with its air building built, B6J.air.ref Refineries built and the credits for most of the step banked, the
+// air building's T2 and T3 go first.
+function air6j(g, s) {
+  if (!rwB6j(g) || g.t < B6J.air.at) return [];
+  const side = g.sides[s], T = alive(g, s, 'techlab').find(b => b.built && b.tier < 3 && !b.upgrading); if (!T) return [];
+  if (alive(g, s, 'refinery').filter(b => b.built).length < B6J.air.ref) return [];
+  const up = bdOf(T).up[T.tier + 1]; if (!up || side.res.c < up.c * B6J.air.c) return [];
+  return [['techlab', 2], ['techlab', 3]];
+}
+// B3: the Bloomhost node assault (aiNode6h) takes a Skywyrm from B6J.wyrm.hp of its health (the pool's 50% kept others out)
+const wyrm6j = (g, u) => rwB6j(g) && u.type === 'skywyrm' && u.hp >= u.maxHp * B6J.wyrm.hp;
+function aiRework6j(g, s, mine) {
+  if (turtleFac6j(g, s) && facOf(g.sides[s].faction) !== 'bloomhost') turtle6i(g, s, mine); // B1: the Last Fist Turtle's late Tech Lab
+}
 /* ---------- Enemy AI: same economy, same rules, same upgrades as the player ---------- */
 // Known base defenses: the enemy HQ gun plus remembered Turrets, each at its last-seen tier
 const HQ_VAL = 400, TURRET_VAL = 300;
@@ -8115,7 +8154,7 @@ function aiUpdate(g, s, dt) {
   // Under real pressure every personality drops its style and plays the standard defense (the safety floor)
   const pressed = threat && (infantryRush || myV < thV * 0.8);
   const sig = SIG.on && bdS(g, s, 'sigA') ? (dl.sig || (P.kind === 'aggressor' || P.kind === 'trickster' ? 'sigA' : 'sigB')) : null; // v2.43: a preset can name its signature building (dial sig)
-  const sigLate = aiFix(P, 'sig'), planBase = pressed ? AI_PLAN : rwB6i(g) ? plan6i(g, s, P) : P.plan; // v2.99 (b6i): a Bloomhost Turtle grows a Bloomspire too (plan6i) // v2.40 (sig): the plan keeps its economy; the signature building comes later
+  const sigLate = aiFix(P, 'sig'), planBase = pressed ? AI_PLAN : rwB6i(g) || turtleFac6j(g, s) ? plan6i(g, s, P) : P.plan; // v2.99 (b6i): a Bloomhost Turtle grows a Bloomspire too (plan6i) // v2.40 (sig): the plan keeps its economy; the signature building comes later
   const sigPad = sigPadOn(); // v2.43: the signature building has its own pad: no plan pad given up for it
   const plan = sigLate || sigPad ? planBase : aiPlanWith(planBase, sig);
   const sigDup = sigLate && sig ? planBase[aiPlanWith(planBase, '#').indexOf('#')] : null; // the duplicate it trades for the signature building once that pays
@@ -8218,7 +8257,7 @@ function aiUpdate(g, s, dt) {
   const tf = dl.tech || (aiFix(P, 'tech') ? AI_TECH[P.kind] : null), techFocus = tf ? [[tf, 2], [tf, 3]] : []; // v2.40 (tech): its strategy's building goes to T3 right after T2 (the tech dial: the Hard preset's searched order)
   if (g.t >= D.upStart + P.upShift - (ecoMood ? 30 : 0) && (!upgrading || rich2) && (buildDone || floating) && (!(calm || defend) || floating || b6aiCalmUp(g, P)) && !(punishOn && !floating) && !(D.maxTier < 3 && simRnd() < 0.5)) {
     const energyShort = (side.res.e < 120 && side.res.c > 800) || starved; // v2.41 (power): starved, the Reactor upgrade first
-    for (const [type, tier] of [...(energyShort ? [['reactor', 2], ['reactor', 3]] : []), ...(rich2 ? [['habitat', 2], ['habitat', 3], ['reactor', 2], ['reactor', 3]] : []), ...P.upgFirst, ...techFocus, ...AI_UPG]) {
+    for (const [type, tier] of [...(energyShort ? [['reactor', 2], ['reactor', 3]] : []), ...(rich2 ? [['habitat', 2], ['habitat', 3], ['reactor', 2], ['reactor', 3]] : []), ...air6j(g, s), ...P.upgFirst, ...techFocus, ...AI_UPG]) { // v3.00 (b6j): tier-3 air first when it can (air6j)
       if (rich2 && upgrading && alive(g, s, type).some(x => x.upgrading)) continue;
       if (tier > D.maxTier) continue;
       if (type === 'reactor' && side.res.e > ENERGY_PLENTY) continue;
@@ -8410,7 +8449,7 @@ function aiUpdate(g, s, dt) {
   // 4) Strategy: hold the near node, take the field, siege just outside the enemy guns, or go all in
   const hqGun = BDEF.hq.gun[oppTier], hqVal = knownDefense(g, s);
   const rich = side.res.c > dl.bank;
-  const nSiege = mine.filter(u => aiSiegeT(g, u.type)).length; // v2.83: not a batch 2b Ruinmaw
+  const nSiege = siegeN6j(g, s, mine, hqU(opp) - dir * (hqGun.range + 25), mine.filter(u => aiSiegeT(g, u.type)).length); // v2.83: not a batch 2b Ruinmaw; v3.00 (b6j): Artillery that reach a known building from the siege line (siegeN6j)
   const ae = P.attackEdge * (ecoMood ? 1.2 : 1); // how much of an edge this personality wants before a base attack
   const wave = Math.min(3600, 400 + g.t * 4) * D.wave * P.wave * (ecoMood ? 1.3 : 1) * (hasCond(g, 'scarce') ? COND.scarce.army : 1) * (rwB5b(g) && facOf(side.faction) === 'bloomhost' ? AI5B.wave : 1); // v2.88: a batch 5b swarm waits for a bigger wave; v2.72: scarce: smaller armies
   const full = used >= cap * fill - 2, since = g.t - side.stanceAt; // full by its own army limit
@@ -8532,6 +8571,7 @@ function aiUpdate(g, s, dt) {
   if (rwB4a(g)) aiRework4a(g, s, mine); // v2.86: Wraithwings raid economy buildings
   if (rwB4b(g)) aiRework4b(g, s, mine); // v2.87: Voidcarriers over the army near its front
   if (rwB5b(g)) aiRework5b(g, s, mine); // v2.88: the swarm attacks as a pack, Spitters with it
+  if (rwB6j(g)) aiRework6j(g, s, mine); // v3.00 (batch 6j): the Last Fist Turtle's late Tech Lab (src/sim/rework-6j.js)
   if (rwB6i(g)) aiRework6i(g, s, mine); // v2.99 (batch 6i): Blightwings behind, Razorwing raids (src/sim/rework-6i.js)
   if (rwB6h(g)) aiRework6h(g, s, mine); // v2.98 (batch 6h): Queens behind, Broodbacks lead, the Ruinmaw's rally (src/sim/rework-6h.js)
 }
@@ -17080,11 +17120,29 @@ function drawIcon(cvs, kind, type, fac) {
   if (kind === 'b') {
     const d = BDEF[type], s = Math.min(54 / (d.half * 3.6), 31 / (d.half * 2 + d.h + 4));
     c.translate(W / 2, H - 1 - d.half * s); c.scale(s, s); drawBOf(fac)[type](c, TEAM[myS()], 1.2, null, 1);
-  } else {
-    const d = UDEF[type], s = d.air ? 1.1 : Math.min(1.45, 28 / (visH(type) + 4));
-    c.translate(W / 2 - (type === 'artillery' || type === 'titan' ? 3 : 0), d.air ? H / 2 : H - 2); c.scale(s, s);
-    DRAW_U[type](c, TEAM[myS()], { anim: 0, moving: false, recoil: 0 });
+  } else fitUnitIcon(c, type, W, H, TEAM[myS()]);
+}
+// v3.00 (batch 6j, A4; drawing only): a unit's card picture keeps its old scale and place unless its art would cross the card's
+// edge (the top or sides; a ground unit may stand on the bottom edge): then it shrinks to fit and is centred. artBB measures the
+// art's drawn extent about its origin once per type (alpha over 24 on a scratch canvas at 2×).
+const ART_BB = {};
+function artBB(type) {
+  if (ART_BB[type] !== undefined) return ART_BB[type];
+  const SW = 640, SH = 480, Z = 2, sc = document.createElement('canvas'); sc.width = SW; sc.height = SH;
+  const c = sc.getContext('2d'); c.translate(SW / 2, SH / 2); c.scale(Z, Z);
+  try { DRAW_U[type](c, TEAM[0], { anim: 0, moving: false, recoil: 0 }); } catch (e) { return (ART_BB[type] = null); }
+  const px = c.getImageData(0, 0, SW, SH).data; let x0 = SW, y0 = SH, x1 = -1, y1 = -1;
+  for (let y = 0; y < SH; y++) for (let x = 0; x < SW; x++) if (px[(y * SW + x) * 4 + 3] > 24) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  return (ART_BB[type] = x1 < 0 ? null : { x0: (x0 - SW / 2) / Z, x1: (x1 + 1 - SW / 2) / Z, y0: (y0 - SH / 2) / Z, y1: (y1 + 1 - SH / 2) / Z });
+}
+function fitUnitIcon(c, type, W, H, T) {
+  const d = UDEF[type], b = artBB(type), pad = 1;
+  let s = d.air ? 1.1 : Math.min(1.45, 28 / (visH(type) + 4)), ox = W / 2 - (type === 'artillery' || type === 'titan' ? 3 : 0), oy = d.air ? H / 2 : H - 2;
+  if (b && (ox + b.x0 * s < pad || ox + b.x1 * s > W - pad || oy + b.y0 * s < pad || (d.air && oy + b.y1 * s > H - pad))) {
+    s = Math.min(s, (W - 2 * pad) / (b.x1 - b.x0), (H - 2 * pad) / (b.y1 - b.y0));
+    ox = W / 2 - (b.x0 + b.x1) / 2 * s; oy = d.air ? H / 2 - (b.y0 + b.y1) / 2 * s : Math.max(pad - b.y0 * s, Math.min(H - 2, H - pad - b.y1 * s));
   }
+  c.translate(ox, oy); c.scale(s, s); DRAW_U[type](c, T, { anim: 0, moving: false, recoil: 0 });
 }
 
 /* ---------- Hold a card for details ---------- */
@@ -19172,7 +19230,7 @@ function trIcon(cvs, t, side) { // a unit or building as the game draws it, in t
   const c = cvs.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
   try {
     if (t.kind === 'b') { const d = BD(t.fac, t.type), s = Math.min(54 / (d.half * 3.6), 31 / (d.half * 2 + d.h + 4)); c.translate(W / 2, H - 1 - d.half * s); c.scale(s, s); drawBOf(t.fac)[t.type](c, TEAM[side], 1.2, null, 1); }
-    else { const d = UDEF[t.type], s = d.air ? 1.1 : Math.min(1.45, 28 / (visH(t.type) + 4)); c.translate(W / 2, d.air ? H / 2 : H - 2); c.scale(s, s); DRAW_U[t.type](c, TEAM[side], { anim: 0, moving: false, recoil: 0 }); }
+    else fitUnitIcon(c, t.type, W, H, TEAM[side]); // v3.00 (batch 6j, A4): fitted like the Train cards
   } catch (e) {} // an icon is decoration: a draw function that wants more of a live unit just leaves it blank
 }
 function trSaved() { try { const o = JSON.parse(localStorage.getItem(TR_KEY) || 'null'); return o && Array.isArray(o.list) ? o.list.filter(x => x && typeof x.name === 'string' && x.set && Array.isArray(x.set.items)) : []; } catch (e) { return []; } }
