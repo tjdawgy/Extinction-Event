@@ -1,0 +1,10 @@
+faction persona | W-L-D win% | TechLab built / TL path / tier3 | turrets refineries | first attack, attacks | army 6/9/12 min | credits/10s 3/6/9 | upgrades spent | sig | top units per side
+axiarchs boomer | 19-15-2 53% | 26/36 22 36 | 1.8 3.3 | 156 s, 19.8 | 2120 2735 2165 | 267 250 250 | 6165 | 33 | shardling 46.4, lancer 12.3, riftstalker 10.6, bastion 5.7, gravemantle 4.8, wraithwing 3.3, prismwing 3.3
+axiarchs economist | 17-15-4 47% | 27/36 19 36 | 2.2 3.3 | 155 s, 20.8 | 1740 2905 2915 | 250 301 250 | 6868 | 30 | shardling 45.4, lancer 9.8, prismwing 6.8, riftstalker 6.4, bastion 6.2, gravemantle 3.1, marksman 2.5
+axiarchs turtle | 17-16-3 47% | 10/36 9 36 | 2.9 3.2 | 152 s, 25.0 | 1590 2060 1710 | 290 311 260 | 7318 | 33 | shardling 49.8, riftstalker 12.6, lancer 12.1, marksman 6.6, bastion 5.0, prismwing 4.5, parallax 2.3
+bloomhost boomer | 15-19-2 42% | 28/36 28 36 | 2.6 3.1 | 154 s, 21.4 | 1543 2550 2714 | 222 294 330 | 6369 | 36 | skitterling 61.3, spitter 28.4, razor6 23.6, leaper 16.3, bulwark 16.0, broodback 8.5, gnatcloud 8.0
+bloomhost economist | 24-9-3 67% | 29/36 29 36 | 4.5 3.1 | 158 s, 28.1 | 2368 2060 2587 | 210 311 290 | 7446 | 36 | skitterling 64.0, spitter 37.5, razor6 21.3, bulwark 20.6, gnatcloud 11.3, bilecaster 8.5, broodback 8.1
+bloomhost turtle | 14-18-4 39% | 16/36 15 36 | 5.4 3.1 | 170 s, 31.1 | 1477 2075 2450 | 210 325 290 | 7563 | 34 | skitterling 55.8, spitter 35.2, bulwark 22.7, bilecaster 9.6, leaper 9.5, broodback 9.4, gorebore 5.2
+lastfist boomer | 12-19-5 33% | 33/36 29 36 | 2.0 3.2 | 162 s, 16.9 | 2135 3055 3375 | 213 286 319 | 5919 | 33 | rifle 79.1, heavy 16.5, tank 12.4, artillery 7.5, aircraft 5.7, flame 5.1, sniper 4.3
+lastfist economist | 16-13-7 44% | 27/36 24 36 | 2.4 3.1 | 164 s, 18.8 | 2190 2815 3115 | 244 385 326 | 7010 | 33 | rifle 110.8, heavy 20.5, flame 19.0, tank 8.1, aircraft 7.7, sniper 4.8, drone 2.9
+lastfist turtle | 11-21-4 31% | 12/36 11 36 | 3.1 3.1 | 169 s, 30.0 | 1875 2385 2415 | 250 374 310 | 7272 | 35 | rifle 113.6, heavy 21.1, flame 15.8, tank 15.4, sniper 5.8, artillery 5.5, aircraft 2.1

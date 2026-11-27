@@ -18,7 +18,10 @@ const B6J = {
   // Part D: the balance pass. unit: per-game unit values (through rwD's rwOver6, health and shields at spawn, the Codex through
   // rwShow); gnat: the Gnatcloud's B6I numbers. Each with its old value and the reason in docs/BALANCE_AUDIT.md section 18.
   unit: {
-    titan: { range: 190 },   // R1: the Titan's reach (160 since 2b) is outranged by the Lancer (170): 2 Titans lost 0-20 to equal-value Lancers
+    titan: { range: 180 },   // R1: the Titan's reach (160 since 2b) is outranged by the Lancer (170): 2 Titans lost 0-20 to equal-value Lancers (190); R2: 180 (17-3 at 190 with R1's Lancer)
+    heavy: { dmg: 19 },      // R2: Last Fist's weakest fighting unit in every run (30-32 value killed per 100 spent) with Last Fist at 36% (16)
+    tank: { dmg: 36 },       // R2: batch 6d's cut (42 -> 32) when Last Fist won 62%; Last Fist 36% now, the Tank 38-42 per 100 spent (32)
+    spitter: { dmg: 5 },     // R2: Bloomhost's most efficient unit (138 per 100 spent) and Spitter openers 88% for the Economist (6 a quill)
     lancer: { dmg: 15 },     // R1: the most efficient unit in the game (137 value killed per 100 spent); the Axiarchs win 71% of matches under 15:00 (16)
     broodback: { dmg: 24 },  // R1: Bloomhost's weakest unit (8 value killed per 100 spent; 6h's newest) with Bloomhost at 39% (bite 12)
   },
