@@ -1151,3 +1151,124 @@ The Skywyrm joins assaults first when there is one (6 assault places in 36 match
 6. **Tier-3 air** at 31% of Bloomhost sides, set by the AI's upgrade order (17.3; docs/FACTION_REWORK.md "Batch 6i", Part F2).
 7. **Selling a Larva Pit with a queued brood** refunds the brood at one Skitterling's price (`trySell` uses `unitCost6`; since batch 5b,
    not changed here; the Razorwing flock is refunded whole).
+
+## 18. After batch 6j (v3.00): the AI fixes, the balance pass, the playtest fixes
+
+Persona-balanced self-play (audit/sim/selfplay-6c.js, 162 Hard vs Hard matches a run, 0 errors in every run, `EE_B6H=1`), each run on a
+frozen copy of the build it measured (audit/logs-p1/b6j/builds/r1.html, r2.html, r3.html; `EE_HTML`). Reports: report6c.md (95% Wilson
+intervals), b6j.md (audit/sim/b6j-report.js: unit cost-efficiency, what deals the damage each faction takes, win rate by length,
+Bloomhost openers, tier-3 air, signature buildings), diag.txt (audit/sim/b6j-diag.js: build, tiers, attacks, army and income over time
+by faction and personality). One 162-match run moves about ±10 points between seed sets; a pairing on one map (18 matches) about ±23.
+
+| run | what changed | Last Fist | Bloomhost | Axiarchs | Boomer / Economist / Turtle |
+|---|---|---|---|---|---|
+| 6i (v2.99), seeds 600+ (selfplay6i-on) | - | 36% (28-46) | 43% (34-52) | 56% (46-65) | 43 / 51 / 41% |
+| Parts A-B (selfplay6j-ab) | b6jfix; B1 siege, Last Fist Turtle's Tech Lab, B2 air6j, B3 | 44% (35-54) | 39% (30-48) | 51% (42-60) | 41 / 48 / 45% |
+| round 1 (selfplay6j-r1) | + late6j (B2), 4 values | 36% (28-46) | 49% (40-58) | 49% (40-58) | 43 / 53 / 39% |
+| round 2 (selfplay6j-r2) | + 4 values | 42% (33-51) | 44% (35-53) | 47% (38-57) | 42 / 49 / 42% |
+| round 3 (selfplay6j-r3), seeds 600+ | + 2 values, the first Leviathan (B2) | 46% (37-56) | 49% (40-58) | 44% (35-53) | 47 / 49 / 43% |
+| round 3, seeds 1000+ (selfplay6j-r3b) | the same build | 40% (31-49) | 43% (34-52) | 54% (44-63) | 45 / 49 / 42% |
+| **final: round 3, both sets, 324 (selfplay6j-final)** | | **43% (37-50)** | **46% (39-52)** | **49% (42-55)** | **46 / 49 / 42%** |
+
+### 18.1 The tuning table (`B6J.unit`, `B6J.gnat`, src/sim/rework-6j.js; every change, every round)
+
+| unit | stat | old -> new | reason (from the diagnosis) | round |
+|---|---|---|---|---|
+| Titan | range | 160 -> 190 | the 2b cut left it outranged by the Lancer (170): 2 Titans lost 0-20 to equal-value Lancers (Test Range); Last Fist 31% against the Axiarchs | 1 |
+| Lancer | damage | 16 -> 15 | the most efficient unit in the game (137 value killed per 100 spent); the Axiarchs won 71% of matches under 15:00, 64% on Classic | 1 |
+| Broodback | bite | 12 -> 24 | Bloomhost's weakest unit (8 value killed per 100 spent), 6h's newest, with Bloomhost at 39% | 1 |
+| Gnatcloud | damage a second (B6I.gnat.dps) | 8 -> 3 | 4 Gnatclouds beat 10 Marines (cost-equal) 20-0 attacking and 20-0 both attacking | 1 |
+| Titan | range | 190 -> 180 | with round 1's Lancer, Titans beat equal-value Lancers 17-3: past 65% | 2 |
+| Heavy | damage | 16 -> 19 | Last Fist's weakest fighting unit in every run (30-32 value killed per 100 spent), Last Fist at 36% | 2 |
+| Tank | damage | 32 -> 36 | batch 6d's cut (42 -> 32) was made with Last Fist at 62%; Last Fist 36%, the Tank 38-42 per 100 spent | 2 |
+| Spitter | quill damage | 6 -> 5 | Bloomhost's most efficient unit (138 per 100 spent); Bloomhost Economists opening with Spitters won 14 of 16 (88%) | 2 |
+| Gnatcloud | damage a second | 3 -> 3.075 | Bloomhost's least efficient unit in matches (6 per 100 spent at 3); the clouds-attack check alone 2-18 at 3: 11-9 (20 seeds), 22-18 (40) at 3.075 | 3 |
+| Lancer | damage | 15 -> 14 | still the most efficient unit (147 per 100 spent) with the Axiarchs at 64% on Classic | 3 |
+
+AI changes inside the rounds (not values): `late6j` (a late air building for every Last Fist and Axiarch personality without one,
+from round 1) and the first-Leviathan score (`aiScores6j`, round 3); docs/FACTION_REWORK.md "Batch 6j" Part B.
+
+### 18.2 The final 324 matches (round 3's build, seeds 600+ and 1000+)
+
+Factions: Last Fist 93-101-22, **43% (37-50)**; Bloomhost 99-100-17, **46% (39-52)**; the Axiarchs 105-96-15, **49% (42-55)**.
+
+| faction | Classic | Two-Lane | Three-Lane |
+|---|---|---|---|
+| Last Fist | 47% (36-59) | **29% (20-41)** | 53% (41-64) |
+| Bloomhost | 36% (26-48) | 60% (48-70) | 42% (31-53) |
+| Axiarchs | 60% (48-70) | 44% (34-56) | 42% (31-53) |
+
+Pairings (first named; all maps): Last Fist vs Bloomhost 54-42-12, 50% (41-59); Last Fist vs the Axiarchs 39-59-10, 36% (28-46);
+Bloomhost vs the Axiarchs 57-46-5, 53% (43-62). Per map: Last Fist vs Bloomhost 69 / 19 / 61%, Last Fist vs the Axiarchs 25 / 39 / 44%,
+Bloomhost vs the Axiarchs 50 / 56 / 53% (Classic / Two-Lane / Three-Lane, 36 matches each).
+
+| personality | all | Last Fist | Bloomhost | Axiarchs |
+|---|---|---|---|---|
+| Boomer | 46% (40-53) | 43% | 47% | 49% |
+| Economist | 49% (42-56) | 50% | 47% | 50% |
+| Turtle | 42% (36-49) | 36% | 43% | 47% |
+
+Median length 15:53 (Classic 11:35, Two-Lane 18:21, Three-Lane 17:44), ended by an HQ 92%, side 1's share of decided even.
+Bloomhost openers with Spitters: Boomer 11 of 18 (61%), Economist 18 of 30 (60%), Turtle 18 of 30 (60%).
+
+### 18.3 Targets
+
+| target | final (324) | met |
+|---|---|---|
+| every faction 42-58% overall | 43 / 46 / 49% | yes |
+| every faction 35-65% on each map | 29-60% | no: Last Fist on Two-Lane 29% (20-41) |
+| every pairing 35-65% | 50 / 36 / 53% | yes (Last Fist vs the Axiarchs at 36%) |
+| every personality 40-60% | 46 / 49 / 42% | yes |
+| Spitter openers at most 65% for any personality | 61 / 60 / 60% | yes |
+| Test Range cost-equal checks 35-65% (20 seeds) | 4 Gnatclouds attacking 10 Marines 11-9 (55%); 2 Titans vs equal-value Lancers 20-0 | Gnatcloud yes; Titan no (11-9 after round 2, 20-0 after round 3's Lancer cut) |
+| node scenario: Bloomhost pad buildings destroyed +30% over 977 | NODE | NODE |
+
+Why Last Fist on Two-Lane misses: it is the Last Fist vs Bloomhost pairing there (7-23-6, 19%); after Parts A-B it was 7-6-5, after
+round 1 4-10-4, round 2 2-11-5. TWOLANE
+
+### 18.4 Diagnosis (Part C)
+
+Sources: 6i's run (audit/logs-p1/b6j/diag-6i.md) and the Parts A-B run (audit/logs-p1/selfplay6j-ab/b6j.md, diag.txt). Value killed
+and damage are per 100 credits and energy spent on that unit; the Gnatcloud's from the corrected attribution (its cloud's damage was
+logged as an unknown weapon before batch 6j; recomputed from those logs).
+
+- **Last Fist** (6i 36%). Cost-efficiency: Sniper 157, Hydra 146, Artillery 76, Flame Tank 54, Marine 48, Titan 46, Tank 42, Heavy
+  32 (the weakest fighting unit). What hurts its units most: HQ guns 27% (it attacks into bases), Spitters 12%, Turrets 7%, Chitin
+  Wardens 6%, acid pools 5%, Lancers 5%. By length: under 10:00 21%, 10-15 31-41%, 15-20 62%, 20:00+ 24-40%. Against the Axiarchs 31%
+  (6i), on Classic 33%, Two-Lane 31%. Classified: AI logic (the siege push with nothing in reach, the Turtle with no Tech Lab, no
+  tier-3 air: Part B) and numbers (the Heavy, the Tank, the Titan's reach against the Lancer: Part D).
+- **Bloomhost** (6i 43%, 39% after Parts A-B). Spitter 130-138 (the most efficient), Razorwing 71-80, Talonmaw 66-74, Gorebore 48-55,
+  Chitin Warden 50; the weakest: Broodback 8-11, Gnatcloud 12-16, Ruinmaw 14-17, Dreadthorn 17, Skitterling 19-21. Hurt by HQ guns
+  20-23%, Tanks 8-9%, Turrets 8-9%, Lancers 8%, Marines 7-8%. By length: even (27-50% in every band). Classified: numbers (the
+  Broodback; the Spitter as the outlier behind the Spitter openers; the Gnatcloud in the Test Range check) and AI use (Gnatclouds
+  sent one at a time, below).
+- **The Axiarchs** (6i 56%, Classic 64%). Lancer 137-143 (the most efficient unit in the game), Astral Marksman 88-102, Worldbreaker
+  67-79; the weakest: Parallax 14-16, Gravemantle 29, Shardling 35. Hurt by HQ guns 18%, Spitters 10%, Marines 8%. By length: under
+  10:00 71%, 10-15 71-72%, 15-20 30-46%, 20:00+ 10-15%: an early-game faction; Classic (median 10:42) is its best map. Classified:
+  numbers (the Lancer).
+- **The Gnatcloud.** In the Test Range one cloud attacking 10 Marines dies in 7 s without a kill (6i's flag), but four clouds of
+  equal cost win 20-0 attacking and 20-0 with both sides attacking: clouds stack (32 a second to every Marine within 40) and Marines'
+  single hits do half. In matches it was among Bloomhost's least efficient units at 8 a second (12-16 value killed per 100 spent;
+  the AI sends single clouds at a clump) and the least efficient after round 1 (6). Tuned in rounds 1 and 3 for the check; its
+  in-match efficiency stays the lowest (6 in the final run): an AI-use problem left for the next batch.
+- **The Wraithwing** (the player finds it weak). Value killed per 100 spent 66 (Parts A-B), 45 (final), with the Prismwing 47-48
+  and the Axiarch average about 50; in the Test Range two beat two Gunships of equal value 20-0 and lose to 13 Marines 0-20 (rapid
+  anti-air, its counter). Not weak by the numbers; not tuned (no change to offset).
+- **Spitter openers** (6i: Boomer 40%, Economist 63%, Turtle 43%; Parts A-B 40 / 50 / 50%; round 1 40 / 88 / 50%; final 61 / 60 / 60%).
+- **The Titan's reach** (190 / 280 planted before 2b, 160 since). It matters against the Lancer (170): 2 Titans against equal-value
+  Lancers lost 0-20 at 160 and won 8 of 20 at 190 (6i's Lancer). It is 1.6-1.8 Titans a Last Fist side; 41-53 value killed per 100.
+  Tuned (rounds 1-2).
+- **The signature pad** (A6): used in 94% of sides, always the same building per faction.
+
+### 18.5 Tier-3 air (sides with a tier-3 aircraft; in matches of 15:00 or more)
+
+| run | Last Fist | Bloomhost | Axiarchs |
+|---|---|---|---|
+| 6i (v2.99) | 3 of 108 (3 of 59) | 33 of 108 (27 of 53) | 12 of 108 (9 of 44) |
+| Parts A-B (air6j) | 6 of 108 (6 of 67) | 32 of 108 (30 of 60) | 13 of 108 (10 of 43) |
+| round 1 (+ late6j) | 9 of 108 (9 of 62) | 35 of 108 (26 of 57) | 14 of 108 (11 of 45) |
+| final 324 (+ the first Leviathan) | 20 of 216 (20 of 126) | 79 of 216 (64 of 115) | 30 of 216 (24 of 93) |
+
+Last Fist's tier-3 aircraft is the Leviathan on the Tech Lab's Air Power path; its Turtle takes Support (no tier-3 aircraft) by
+design, and the Leviathan's score falls with the enemy's anti-air. Bloomhost reaches it in 56% of long matches, the Axiarchs 26%,
+Last Fist 16%.
