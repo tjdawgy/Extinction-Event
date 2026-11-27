@@ -1986,7 +1986,28 @@ rejected version that cost it a third of its income); a queued Razorwing flock r
 
 ### Tests
 
-TESTS6I
+`npm test` 870/870 and `npm run test:slow` 28/28 on v2.99 (quiet machine, clean tree, the final commit; audit/logs-p1/b6i/fast-suite-v299.txt,
+slow-suite-v299.txt). Fingerprints: with b6i and b6iresp off FP_V298 and every older set match (tests/determinism.test.js holds both off in
+every older set); FP_V299 recorded with every switch on.
+
+How the suites got there (each failure measured and classified; no unit value changed to pass a test):
+- The first fast run (861 tests) failed 23. Fixed as regressions: the spore cone without a projectile speed (orders-weapons' weapon check;
+  `PSPEED.spore6`), "three" in the Razorwing's description (live-text), the switch lists of older test sets (rework-2a's expected JSON,
+  the seeded skirmishes of rework-3b, -4a, -4b, -5b, hardhuman, attack's v2.59 run, tactics' v2.39 replay: each now holds b6i and
+  b6iresp off like the other new keys), the index.html not rebuilt after the version bump. Seed variance: ai.test's "Easy keeps spending
+  on upgrades under threat" (unseeded; 20 of 20 with every switch on). Held off as intended effects with `pin6i` (tests/load-sim.js; the
+  same helper as pin6h) and checked with every switch on in tests/switches-on-6i.test.js or tests/rework-6i*.test.js: b6i: bh-spire's path
+  test and its AI path test (the old four), bloomhost's "each faction trains only its own units" (the old Razorwing), bloomhost-ui's match as
+  Bloomhost (the Bloomspire picker; held off in the page), rework-4b's Brood Tyrant and Worldrender tests, rework-5b's swarm surge (a
+  Needlewing as its aircraft), Needlewing and AI tests (the anti-air path), rework-5c's two Bloomspire-roll tests (the lean to Swarm Bloom
+  is gone); b6iresp: rework-6g's two under-fire tests (beyond reach + 80 they now stand; the pull-back is gone).
+- The first slow run (26) failed 3: ai-stats' Bloomhost base AI (Razorwings) and Bloomspire Economist (Brood Tyrants, Worldrenders) checks
+  are intended (new ids; held b6i off; counterparts in tests/slow/switches-on-6i.test.js with rates measured over 20: Razorwing flocks
+  100%, a Bloomspire path 100%, a T2 unit 100%, a T3 one 85%); switches-on-6c's Two-Lane test failed "a watchtower was taken", then "most
+  matches decided by an HQ falling": seed variance over 20 matches (an HQ fell in 16 of 20 with every switch on and with b6i and b6iresp
+  off; a tower in 19 and 20), moved to seeds 532-537 with every check unchanged (audit/logs-p1/b6i/slow/slow.md).
+- Tests added: tests/rework-6i.test.js (12), tests/rework-6i-ui.test.js (7, screenshots), tests/switches-on-6i.test.js (9),
+  tests/slow/switches-on-6i.test.js (2).
 
 ### Departures
 

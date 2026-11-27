@@ -1,0 +1,185 @@
+
+> extinction-event@2.99.0 test:slow
+> node --test "tests/slow/*.test.js"
+
+TAP version 13
+# Subtest: Bloomhost AI (Turtle) uses all three of its abilities, under one shared cooldown (rates over N matches)
+ok 1 - Bloomhost AI (Turtle) uses all three of its abilities, under one shared cooldown (rates over N matches)
+  ---
+  duration_ms: 539710.003446
+  type: 'test'
+  ...
+# Subtest: Bloomhost AI (Turtle vs a Last Fist Aggressor): economy, Maws, all three base units, nodes and attacks (rates over N matches)
+ok 2 - Bloomhost AI (Turtle vs a Last Fist Aggressor): economy, Maws, all three base units, nodes and attacks (rates over N matches)
+  ---
+  duration_ms: 273361.002147
+  type: 'test'
+  ...
+# Subtest: Bloomhost AI (Economist): the Bloomspire path through its taste, Brood Tyrants and Worldrenders (rates over N matches)
+ok 3 - Bloomhost AI (Economist): the Bloomspire path through its taste, Brood Tyrants and Worldrenders (rates over N matches)
+  ---
+  duration_ms: 418844.468979
+  type: 'test'
+  ...
+# Subtest: Axiarch AI with each personality: economy, base units, nodes and attacks; a Null Lance in some matches (rates over N matches)
+ok 4 - Axiarch AI with each personality: economy, base units, nodes and attacks; a Null Lance in some matches (rates over N matches)
+  ---
+  duration_ms: 157074.880102
+  type: 'test'
+  ...
+# Subtest: Last Fist AI uses its abilities with every personality, under one shared cooldown; the Aggressor strikes defences (rates over N matches)
+ok 5 - Last Fist AI uses its abilities with every personality, under one shared cooldown; the Aggressor strikes defences (rates over N matches)
+  ---
+  duration_ms: 259545.874646
+  type: 'test'
+  ...
+# Subtest: Easy never uses the Orbital Strike (3 seeded matches)
+ok 6 - Easy never uses the Orbital Strike (3 seeded matches)
+  ---
+  duration_ms: 58447.271572
+  type: 'test'
+  ...
+# Subtest: two AIs play the two-lane test map to a finish
+ok 7 - two AIs play the two-lane test map to a finish
+  ---
+  duration_ms: 252764.756313
+  type: 'test'
+  ...
+# \# lastfist: decided left 37 – right 38; ahead at the end (decided or draw) left 52 – right 48 of 100
+# Subtest: lastfist Hard mirror: neither spawn side comes out ahead in more than 60% of 100 seeded matches
+ok 8 - lastfist Hard mirror: neither spawn side comes out ahead in more than 60% of 100 seeded matches
+  ---
+  duration_ms: 840713.771703
+  type: 'test'
+  ...
+# \# bloomhost: decided left 51 – right 43; ahead at the end (decided or draw) left 54 – right 46 of 100
+# Subtest: bloomhost Hard mirror: neither spawn side comes out ahead in more than 60% of 100 seeded matches
+ok 9 - bloomhost Hard mirror: neither spawn side comes out ahead in more than 60% of 100 seeded matches
+  ---
+  duration_ms: 1499845.773689
+  type: 'test'
+  ...
+# \# axiarchs: decided left 39 – right 53; ahead at the end (decided or draw) left 43 – right 57 of 100
+# Subtest: axiarchs Hard mirror: neither spawn side comes out ahead in more than 60% of 100 seeded matches
+ok 10 - axiarchs Hard mirror: neither spawn side comes out ahead in more than 60% of 100 seeded matches
+  ---
+  duration_ms: 692766.735501
+  type: 'test'
+  ...
+# Subtest: all three mirrors together: neither spawn side wins more than 60% of the decided matches
+ok 11 - all three mirrors together: neither spawn side wins more than 60% of the decided matches
+  ---
+  duration_ms: 0.273531
+  type: 'test'
+  ...
+# Subtest: AI vs AI always finishes by 27:00, on every difficulty
+ok 12 - AI vs AI always finishes by 27:00, on every difficulty
+  ---
+  duration_ms: 292807.869155
+  type: 'test'
+  ...
+# Subtest: on: v2.11: Repair Pulse is never wasted by the AI; repairHealable tells the player when nothing in range can be healed
+ok 13 - on: v2.11: Repair Pulse is never wasted by the AI; repairHealable tells the player when nothing in range can be healed
+  ---
+  duration_ms: 135190.562618
+  type: 'test'
+  ...
+# Subtest: on: abilities.test.js: every listed test found for the re-run
+ok 14 - on: abilities.test.js: every listed test found for the re-run
+  ---
+  duration_ms: 1.036704
+  type: 'test'
+  ...
+# Subtest: on: the AI casts all three under one shared cooldown; Mass Warp only for 4+ units below 40% health in one area
+ok 15 - on: the AI casts all three under one shared cooldown; Mass Warp only for 4+ units below 40% health in one area
+  ---
+  duration_ms: 118210.772118
+  type: 'test'
+  ...
+# Subtest: on: ax-abilities.test.js: every listed test found for the re-run
+ok 16 - on: ax-abilities.test.js: every listed test found for the re-run
+  ---
+  duration_ms: 0.787758
+  type: 'test'
+  ...
+# Subtest: on: the AI maps its Last Fist path taste onto Bloomhost and trains path units (one seeded Hard match each way)
+ok 17 - on: the AI maps its Last Fist path taste onto Bloomhost and trains path units (one seeded Hard match each way)
+  ---
+  duration_ms: 66981.321449
+  type: 'test'
+  ...
+# Subtest: on: bh-trees.test.js: every listed test found for the re-run
+ok 18 - on: bh-trees.test.js: every listed test found for the re-run
+  ---
+  duration_ms: 0.101095
+  type: 'test'
+  ...
+# Subtest: on: a full AI-vs-AI match: samples every 10 s, counts that agree with the match log, damage, timestamps, the result
+ok 19 - on: a full AI-vs-AI match: samples every 10 s, counts that agree with the match log, damage, timestamps, the result
+  ---
+  duration_ms: 94747.04352
+  type: 'test'
+  ...
+# Subtest: on: stats.test.js: every listed test found for the re-run
+ok 20 - on: stats.test.js: every listed test found for the re-run
+  ---
+  duration_ms: 0.925541
+  type: 'test'
+  ...
+# Subtest: on: Hard vs Hard on Two-Lane: decided matches, both lanes, the centre and forward pads (every switch on)
+ok 21 - on: Hard vs Hard on Two-Lane: decided matches, both lanes, the centre and forward pads (every switch on)
+  ---
+  duration_ms: 652803.112168
+  type: 'test'
+  ...
+# Subtest: on (6d): the Axiarch Hard AI maps its Last Fist paths onto the Axiarchs and trains path units (every switch on)
+ok 22 - on (6d): the Axiarch Hard AI maps its Last Fist paths onto the Axiarchs and trains path units (every switch on)
+  ---
+  duration_ms: 138878.946412
+  type: 'test'
+  ...
+# Subtest: on (6e): Hard vs Hard on Three-Lane: decided matches; the other factions use all three lanes, the Axiarchs move one army between lanes (every switch on)
+ok 23 - on (6e): Hard vs Hard on Three-Lane: decided matches; the other factions use all three lanes, the Axiarchs move one army between lanes (every switch on)
+  ---
+  duration_ms: 883283.020002
+  type: 'test'
+  ...
+# Subtest: on (ai-stats): the Bloomhost base AI (Turtle vs a Last Fist Aggressor) trains Razorwing flocks
+ok 24 - on (ai-stats): the Bloomhost base AI (Turtle vs a Last Fist Aggressor) trains Razorwing flocks
+  ---
+  duration_ms: 318732.356997
+  type: 'test'
+  ...
+# Subtest: on (ai-stats): the Bloomspire Economist takes a path and trains its units (Talonmaws or Gnatclouds; a Skywyrm or Blightwing in some)
+ok 25 - on (ai-stats): the Bloomspire Economist takes a path and trains its units (Talonmaws or Gnatclouds; a Skywyrm or Blightwing in some)
+  ---
+  duration_ms: 399777.930955
+  type: 'test'
+  ...
+# Subtest: Hard vs Hard on Three-Lane: decided matches, all three lanes, the crossings and the centre
+ok 26 - Hard vs Hard on Three-Lane: decided matches, all three lanes, the crossings and the centre
+  ---
+  duration_ms: 775265.208482
+  type: 'test'
+  ...
+# Subtest: Hard vs Hard on Two-Lane: decided matches, both lanes, the centre and forward pads
+ok 27 - Hard vs Hard on Two-Lane: decided matches, both lanes, the centre and forward pads
+  ---
+  duration_ms: 420649.148512
+  type: 'test'
+  ...
+# Subtest: two Hard AIs play Two-Lane to a finish, never inside the ridge
+ok 28 - two Hard AIs play Two-Lane to a finish, never inside the ridge
+  ---
+  duration_ms: 208370.340054
+  type: 'test'
+  ...
+1..28
+# tests 28
+# suites 0
+# pass 28
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 3247374.788487
