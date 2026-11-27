@@ -315,6 +315,15 @@ function ward6i(g, s, sc, spl) {
   if (have >= want) sc.bulwark = Math.min(sc.bulwark, 0.4); // at its quota: no more
   else if (spl > 0) sc.bulwark = Math.max(sc.bulwark, 1.6 + spl * 1.5);
 }
+// The batch 6d Turtle's plan has no Tech Lab (a ground fortress), and its eight items fill every pad once its Habitats are up; with
+// b6i a Bloomhost Turtle grows a Bloomspire in place of its third Refinery, which moves to the end of the plan (built if a pad is
+// left), so its Skywyrms (siege and air defence) and the rest of the air roster are within its reach too. Other plans unchanged.
+function plan6i(g, s, P) {
+  const p = P.plan;
+  if (P.kind !== 'turtle' || facOf(g.sides[s].faction) !== 'bloomhost' || !p || p.includes('techlab')) return p;
+  if (!P.plan6i) { const q = p.slice(), i = q.lastIndexOf('refinery'); if (i >= 0) q.splice(i, 1); q.push('techlab', 'refinery'); P.plan6i = q; }
+  return P.plan6i;
+}
 const RAZ6I = { min: 6, end: 3, dur: 35, every: 2, home: 430, hurt: 0.5 };
 const AIRWAIT6I = { blight: 60 };
 function aiRework6i(g, s, mine) {

@@ -6245,7 +6245,7 @@ const aiAirSignal5b = (g, s, type, theirs) => aiAirShare(theirs) >= AI5B.air || 
 function aiPath5b(g, s, b, theirs) {
   if (facOf(g.sides[s].faction) !== 'bloomhost') return null;
   if (!aiAirSignal5b(g, s, b.type, theirs)) return null; // the Bloomspire also reads what it has seen of the enemy's air production
-  const want = b.type === 'barracks' ? (rwB6h(g) ? null : 'B') : b.type === 'techlab' ? 'A' : null; // v2.98 (b6h): Spitters come from the start; no path needed for anti-air
+  const want = b.type === 'barracks' ? (rwB6h(g) ? null : 'B') : b.type === 'techlab' && !rwB6i(g) ? 'A' : null; // v2.99 (b6i): every Bloomspire path has anti-air // v2.98 (b6h): Spitters come from the start; no path needed for anti-air
   if (!want) return null;
   const have = g.ents.some(e => e !== b && e.side === s && e.type === b.type && e.hp > 0 && (e.path || e.upPath) === want);
   return have ? null : want;
@@ -6306,7 +6306,7 @@ function aiAirExpected5c(g, s, theirs) {
 function aiBloomRoll5c(g, s, def, theirs) {
   const side = g.sides[s], R = side.pRoll || (side.pRoll = {});
   if (!R.techlab) {
-    const exp = aiAirExpected5c(g, s, theirs), pSwarm = exp ? AI5C.lean : def === 'B' ? PATHROLL.keep : 1 - PATHROLL.keep;
+    const exp = !rwB6i(g) && aiAirExpected5c(g, s, theirs) /* v2.99 (b6i): every Bloomspire unit hits aircraft: no lean to Swarm Bloom for anti-air */, pSwarm = exp ? AI5C.lean : def === 'B' ? PATHROLL.keep : 1 - PATHROLL.keep;
     R.techlab = simRnd() < pSwarm ? 'B' : 'A';
     rw5cCount(g, s, R.techlab === 'B' ? 'swarm' : 'apex'); if (exp) rw5cCount(g, s, 'airExp');
   }
@@ -7903,6 +7903,15 @@ function ward6i(g, s, sc, spl) {
   if (have >= want) sc.bulwark = Math.min(sc.bulwark, 0.4); // at its quota: no more
   else if (spl > 0) sc.bulwark = Math.max(sc.bulwark, 1.6 + spl * 1.5);
 }
+// The batch 6d Turtle's plan has no Tech Lab (a ground fortress), and its eight items fill every pad once its Habitats are up; with
+// b6i a Bloomhost Turtle grows a Bloomspire in place of its third Refinery, which moves to the end of the plan (built if a pad is
+// left), so its Skywyrms (siege and air defence) and the rest of the air roster are within its reach too. Other plans unchanged.
+function plan6i(g, s, P) {
+  const p = P.plan;
+  if (P.kind !== 'turtle' || facOf(g.sides[s].faction) !== 'bloomhost' || !p || p.includes('techlab')) return p;
+  if (!P.plan6i) { const q = p.slice(), i = q.lastIndexOf('refinery'); if (i >= 0) q.splice(i, 1); q.push('techlab', 'refinery'); P.plan6i = q; }
+  return P.plan6i;
+}
 const RAZ6I = { min: 6, end: 3, dur: 35, every: 2, home: 430, hurt: 0.5 };
 const AIRWAIT6I = { blight: 60 };
 function aiRework6i(g, s, mine) {
@@ -8058,7 +8067,7 @@ function aiUpdate(g, s, dt) {
   // Under real pressure every personality drops its style and plays the standard defense (the safety floor)
   const pressed = threat && (infantryRush || myV < thV * 0.8);
   const sig = SIG.on && bdS(g, s, 'sigA') ? (dl.sig || (P.kind === 'aggressor' || P.kind === 'trickster' ? 'sigA' : 'sigB')) : null; // v2.43: a preset can name its signature building (dial sig)
-  const sigLate = aiFix(P, 'sig'), planBase = pressed ? AI_PLAN : P.plan; // v2.40 (sig): the plan keeps its economy; the signature building comes later
+  const sigLate = aiFix(P, 'sig'), planBase = pressed ? AI_PLAN : rwB6i(g) ? plan6i(g, s, P) : P.plan; // v2.99 (b6i): a Bloomhost Turtle grows a Bloomspire too (plan6i) // v2.40 (sig): the plan keeps its economy; the signature building comes later
   const sigPad = sigPadOn(); // v2.43: the signature building has its own pad: no plan pad given up for it
   const plan = sigLate || sigPad ? planBase : aiPlanWith(planBase, sig);
   const sigDup = sigLate && sig ? planBase[aiPlanWith(planBase, '#').indexOf('#')] : null; // the duplicate it trades for the signature building once that pays

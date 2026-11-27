@@ -91,7 +91,7 @@ function aiUpdate(g, s, dt) {
   // Under real pressure every personality drops its style and plays the standard defense (the safety floor)
   const pressed = threat && (infantryRush || myV < thV * 0.8);
   const sig = SIG.on && bdS(g, s, 'sigA') ? (dl.sig || (P.kind === 'aggressor' || P.kind === 'trickster' ? 'sigA' : 'sigB')) : null; // v2.43: a preset can name its signature building (dial sig)
-  const sigLate = aiFix(P, 'sig'), planBase = pressed ? AI_PLAN : P.plan; // v2.40 (sig): the plan keeps its economy; the signature building comes later
+  const sigLate = aiFix(P, 'sig'), planBase = pressed ? AI_PLAN : rwB6i(g) ? plan6i(g, s, P) : P.plan; // v2.99 (b6i): a Bloomhost Turtle grows a Bloomspire too (plan6i) // v2.40 (sig): the plan keeps its economy; the signature building comes later
   const sigPad = sigPadOn(); // v2.43: the signature building has its own pad: no plan pad given up for it
   const plan = sigLate || sigPad ? planBase : aiPlanWith(planBase, sig);
   const sigDup = sigLate && sig ? planBase[aiPlanWith(planBase, '#').indexOf('#')] : null; // the duplicate it trades for the signature building once that pays

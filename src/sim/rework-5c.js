@@ -30,7 +30,7 @@ function aiAirExpected5c(g, s, theirs) {
 function aiBloomRoll5c(g, s, def, theirs) {
   const side = g.sides[s], R = side.pRoll || (side.pRoll = {});
   if (!R.techlab) {
-    const exp = aiAirExpected5c(g, s, theirs), pSwarm = exp ? AI5C.lean : def === 'B' ? PATHROLL.keep : 1 - PATHROLL.keep;
+    const exp = !rwB6i(g) && aiAirExpected5c(g, s, theirs) /* v2.99 (b6i): every Bloomspire unit hits aircraft: no lean to Swarm Bloom for anti-air */, pSwarm = exp ? AI5C.lean : def === 'B' ? PATHROLL.keep : 1 - PATHROLL.keep;
     R.techlab = simRnd() < pSwarm ? 'B' : 'A';
     rw5cCount(g, s, R.techlab === 'B' ? 'swarm' : 'apex'); if (exp) rw5cCount(g, s, 'airExp');
   }
