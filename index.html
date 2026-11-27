@@ -212,6 +212,7 @@ button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 #ov.hide{display:none}
 #title{position:fixed;inset:0;z-index:60;display:flex;align-items:flex-end;justify-content:center;background:#05070d url('assets/title-screen.jpg') center/cover no-repeat;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 7vh);cursor:pointer;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;transition:opacity .35s}
 #title.out{opacity:0;pointer-events:none}
+#title .tver{position:absolute;right:calc(env(safe-area-inset-right,0px) + 3vw);bottom:calc(env(safe-area-inset-bottom,0px) + 1.5vh);font-style:normal;font-size:11px;color:rgba(255,255,255,.6);text-shadow:0 1px 4px rgba(0,0,0,.9);font-variant-numeric:tabular-nums;pointer-events:none} /* v3.00: the build's version */
 #title h1{position:absolute;top:calc(env(safe-area-inset-top,0px) + 1.5vh);left:calc(env(safe-area-inset-left,0px) + 3vw);margin:0;font-size:clamp(20px,6vmin,44px);line-height:1;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#fff;text-shadow:0 3px 14px rgba(0,0,0,.95),0 0 28px rgba(255,60,40,.5)}
 #title h1 span{color:#ff5a3c}
 @media (orientation:portrait){#title{background-position:82% center}#title h1{top:calc(env(safe-area-inset-top,0px) + 3vh);left:0;right:0;text-align:center;font-size:clamp(30px,11vw,56px);line-height:.95}#title h1 span{display:block}}
@@ -2020,6 +2021,7 @@ function spawnUnit(g, s, type, u, v) {
   if (rwB6d(g)) rw6dSpawn(g, unit); // v2.94: batch 6d's health and shields
   if (rwB6e(g)) rw6eSpawn(g, unit); // v2.95: batch 6e's Riftstalker shields
   if (rwB6h(g)) rw6hSpawn(g, unit); // v2.98: a batch 6h Mite's health
+  if (rwB6j(g)) rw6jSpawn(g, unit); // v3.00: batch 6j's health and shields
   if (rwB2b(g)) rw2bSpawn(g, unit); // v2.83: a batch 2b Ruinmaw's health and armour
   if (MAP_LANED) unit.lane = laneNew(g.sides[s]); // v2.63: the lane it walks (Classic: no lane key at all)
   if (NAV.on && !d.air && navShut(unit.u, unit.v)) [unit.u, unit.v] = navOpen(unit.u, unit.v); // v2.66: a ground unit never appears on closed ground (a warp-in or brood on the ridge)
@@ -4074,7 +4076,7 @@ function damage1(g, e, amt, weapon, fromSide, src) {
   if (e.mkT > g.t) dmg *= markBonus(g, e, fromSide); // v2.86: marked by a batch 4a Astral Marksman
   if (e.wd6 === g.t && e.kind === 'u' && area6h(weapon)) dmg = ward6hCut(g, e, dmg); // v2.98 (b6h): a Chitin Warden's aura
   if (e.rn6T > g.t) dmg *= rendAmp6i(g, e, fromSide); // v2.99 (b6i): rent by a Talonmaw: more from Bloomhost
-  if (e.type === 'gnatcloud' && gnatCut6i(e, weapon)) dmg *= 1 - B6I.gnat.cut; // v2.99 (b6i): a single-target hit barely thins a Gnatcloud
+  if (e.type === 'gnatcloud' && gnatCut6i(e, weapon)) dmg *= 1 - gnat6j(g, 'cut'); // v2.99 (b6i): a single-target hit barely thins a Gnatcloud
   if (e.cov && !noCover(weapon)) dmg *= 1 - TITAN.cover; // v2.83: Last Fist infantry in a Titan's cover take less from ranged attacks
   const br = e.kind === 'u' && (b3 ? ud3 : UDEF[e.type]).brace, pre = dmg; // v2.85: a batch 3b Bastion has none
   if (br) { // the Bulwark braces on the first hit after its cooldown (v2.17)
@@ -4626,7 +4628,8 @@ function rwD(g, t) { // the definition a unit of type t plays by in game g
 // Ruinmaw's bite counts as its weapon there
 function rwShow(g, t) { // v2.94: with batch 6d's values on top (B6D.unit)
   const d = rwShow0(g, t), o = (g ? rwB6d(g) : REWORK.b6d) ? B6D.unit[t] : null, e6 = (g ? rwB6e(g) : REWORK.b6e), c = e6 && !((g ? rwB6f(g) : REWORK.b6f) && B6F.undo(t)) ? B6E.cost[t] : null, /* v2.96 (b6f): v2.94's Axiarch prices */ u6 = e6 ? B6E.unit[t] : null; // v2.95: batch 6e's Axiarch costs (B6E.cost) and the Riftstalker's shields (B6E.unit)
-  return o || c || u6 ? Object.assign({}, d, o || {}, u6 || {}, c ? { cost: c } : {}) : d;
+  const j6 = (g ? rwB6j(g) : REWORK.b6j) ? B6J.unit[t] : null; // v3.00: batch 6j's values
+  return o || c || u6 || j6 ? Object.assign({}, d, o || {}, u6 || {}, c ? { cost: c } : {}, j6 || {}) : d;
 }
 function rwShow0(g, t) {
   if (RW3A_D[t]) return (g ? rwB3a(g) : REWORK.b3a) ? RW3A_D[t](g || { rw: REWORK }) : UDEF[t]; // v2.84: batch 3a's four
@@ -6566,7 +6569,7 @@ B6E.unit = { riftstalker: { shp: 160 } };
 const rw6eUnit = (g, t) => rwB6e(g) && B6E.unit[t] ? B6E.unit[t] : null;
 function rw6eSpawn(g, u) { const o = B6E.unit[u.type]; if (o && o.shp !== undefined) { u.shp = u.maxShp = o.shp; } }
 // Batch 6d's and 6e's per-game values for type t together (rwD's overlay), or null
-function rwOver6(g, t) { const a = rw6dUnit(g, t), c = rw6eCost(g, t), o = rw6eUnit(g, t), h = rw6hUnit(g, t); /* v2.98: batch 6h's (src/sim/rework-6h.js) */ return c || o || h ? Object.assign({}, a || {}, o || {}, c ? { cost: c } : {}, h || {}) : a; }
+function rwOver6(g, t) { const a = rw6dUnit(g, t), c = rw6eCost(g, t), o = rw6eUnit(g, t), h = rw6hUnit(g, t), j = rw6jUnit(g, t); /* v2.98: batch 6h's (src/sim/rework-6h.js); v3.00: batch 6j's (src/sim/rework-6j.js) */ return c || o || h || j ? Object.assign({}, a || {}, o || {}, c ? { cost: c } : {}, h || {}, j || {}) : a; }
 const unitCost6 = (g, t) => rw6eCost(g, t) || UDEF[t].cost; // what a unit of type t costs in game g (a brood aside: trainCost)
 
 /* ---- b6elane: one army, one lane ---- */
@@ -7709,9 +7712,9 @@ function update6i(g, dt) {
     for (const e of g.ents) {
       if (e.side === c.side || e.side === NEUTRAL || e.hp <= 0 || e.gone || e.shielded || Math.abs(e.u - c.u) > B6I.gnat.r + (e.half || 0)) continue;
       const dd = Math.hypot(e.u - c.u, e.v - c.v) - (e.kind === 'b' ? e.half : 0); if (dd > B6I.gnat.r) continue;
-      damage(g, e, B6I.gnat.dps * dt * (sideBuff(g, c.side) ? NANO.dmg : 1) * outMul(g, c), 'gnat6', c.side, null); n++;
+      damage(g, e, gnat6j(g, 'dps') * dt * (sideBuff(g, c.side) ? NANO.dmg : 1) * outMul(g, c), 'gnat6', c.side, null); n++;
     }
-    if (n) { c.lastAct = g.t; c.gnT6 = g.t; sw6i(g, c.side).gnat += B6I.gnat.dps * dt * n; }
+    if (n) { c.lastAct = g.t; c.gnT6 = g.t; sw6i(g, c.side).gnat += gnat6j(g, 'dps') * dt * n; }
   }
   // Snatched units (eaten in a Talonmaw's talons) and dragged aircraft (a Skywyrm's tendril)
   for (const e of C) {
@@ -8005,8 +8008,17 @@ const B6J = {
   queen: { ahead: 6, spread: 9 }, // A2: Mites appear queen body + mite body + ahead in front of her, spread across
   siege: { reach: 20 },            // B1: a siege line is used only when 2+ Artillery there reach a known enemy building (art range - reach)
   turtle: ['lastfist'],            // B1: the factions whose Turtle grows a late air building (6i's turtle6i; Bloomhost has it since 6i)
+  late: ['lastfist', 'axiarchs'],  // B2: every personality of these factions without an air building grows one late the same way (late6j)
   air: { at: 480, ref: 3, c: 0.6 }, // B2: from 8:00, with 3 built Refineries and 60% of the upgrade's credits, the air building's T2 and T3 first
   wyrm: { hp: 0.3 },               // B3: a Skywyrm joins a node assault from 30% health (6h's pool: 50%)
+  // Part D: the balance pass. unit: per-game unit values (through rwD's rwOver6, health and shields at spawn, the Codex through
+  // rwShow); gnat: the Gnatcloud's B6I numbers. Each with its old value and the reason in docs/BALANCE_AUDIT.md section 18.
+  unit: {
+    titan: { range: 190 },   // R1: the Titan's reach (160 since 2b) is outranged by the Lancer (170): 2 Titans lost 0-20 to equal-value Lancers
+    lancer: { dmg: 15 },     // R1: the most efficient unit in the game (137 value killed per 100 spent); the Axiarchs win 71% of matches under 15:00 (16)
+    broodback: { dmg: 24 },  // R1: Bloomhost's weakest unit (8 value killed per 100 spent; 6h's newest) with Bloomhost at 39% (bite 12)
+  },
+  gnat: { dps: 3 },          // R1: 4 Gnatclouds beat 10 Marines 20-0 attacking and 20-0 both attacking (8); 3: 2-18 and 20-0
 };
 // A2: where a Queen's next Mite hatches: in front of her (her target, else her order's target, else her facing), clear of her body
 function queenSpot6j(g, q) {
@@ -8058,9 +8070,34 @@ function air6j(g, s) {
 }
 // B3: the Bloomhost node assault (aiNode6h) takes a Skywyrm from B6J.wyrm.hp of its health (the pool's 50% kept others out)
 const wyrm6j = (g, u) => rwB6j(g) && u.type === 'skywyrm' && u.hp >= u.maxHp * B6J.wyrm.hp;
+// B2: an air building at all. Most Last Fist and Axiarch sides never built one in v2.99 (their plan's last item; the pads fill with
+// Refineries and Habitats first: Last Fist Economist 11 of 36 sides, the Axiarch Turtle 0 of 36). With b6j every personality of
+// those factions grows one late as 6i's Bloomhost Turtle does (TURTLE6I: from 8:00, every pad taken, 300 energy spare beyond its
+// price, no enemy within 500 of its HQ, its lowest Reactor sold for it).
+function late6j(g, s) {
+  const side = g.sides[s], P = side.persona;
+  if (!P || side.hush || g.t < TURTLE6I.at || g.t < (side.tt6j || 0) || !B6J.late.includes(facOf(side.faction))) return;
+  side.tt6j = g.t + TURTLE6I.every;
+  if (countB(g, s, 'techlab') || padsOpen(g, s) > 0 || side.res.e < TURTLE6I.e) return;
+  const d = bdS(g, s, 'techlab'); if (!d || side.res.c < d.cost.c || side.res.e - TURTLE6I.e < d.cost.e) return;
+  const hq = side.hq; if (g.ents.some(e => e.kind === 'u' && e.side === 1 - s && e.hp > 0 && Math.hypot(e.u - hq.u, e.v - hq.v) < TURTLE6I.near && visibleTo(g, s, e))) return;
+  const R = alive(g, s, 'reactor').filter(b => b.built && !b.upgrading).sort((a, b) => a.tier - b.tier || a.id - b.id)[0]; if (!R) return;
+  const pad = R.slot; if (!trySell(g, s, R).ok) return;
+  const r = tryBuild(g, s, 'techlab', pad); (side.j6 || (side.j6 = { late: 0 })).late++; lg(g, s, 'G', 'late6j', r.ok ? 1 : 0);
+}
 function aiRework6j(g, s, mine) {
   if (turtleFac6j(g, s) && facOf(g.sides[s].faction) !== 'bloomhost') turtle6i(g, s, mine); // B1: the Last Fist Turtle's late Tech Lab
+  late6j(g, s); // B2: any Last Fist or Axiarch personality without an air building
 }
+
+/* ---- Part D: the balance pass (b6j) ---- */
+const rw6jUnit = (g, t) => rwB6j(g) && B6J.unit[t] ? B6J.unit[t] : null;
+function rw6jSpawn(g, u) {
+  const o = B6J.unit[u.type]; if (!o) return;
+  if (o.hp !== undefined) { u.hp = u.maxHp = o.hp; }
+  if (o.shp !== undefined) { u.shp = u.maxShp = o.shp; }
+}
+const gnat6j = (g, k) => rwB6j(g) && B6J.gnat[k] !== undefined ? B6J.gnat[k] : B6I.gnat[k]; // the Gnatcloud's dps and cut in game g
 /* ---------- Enemy AI: same economy, same rules, same upgrades as the player ---------- */
 // Known base defenses: the enemy HQ gun plus remembered Turrets, each at its last-seen tier
 const HQ_VAL = 400, TURRET_VAL = 300;
@@ -17649,7 +17686,7 @@ function ctlFieldTap(x, y) {
   if (!ctlOn()) return false;
   const live = SELN.size && selLive().length;
   if (!live && foeBldAt(x, y)) return false; // a tap on an enemy building selects nothing (not the units fighting beside it)
-  const mine = unitHit(x, y, live && rwB6jfix(game) ? myUnits().filter(e => e.type !== 'mite') : myUnits()), foe = live // v3.00 (b6jfix, A2): with units selected, a tap never lands on your Mites (it targets the enemy or moves the selection) ? foeUnitHit(x, y) : null, now = performance.now();
+  const mine = unitHit(x, y, live && rwB6jfix(game) ? myUnits().filter(e => e.type !== 'mite') : myUnits()) /* v3.00 (b6jfix, A2): with units selected, a tap never lands on your Mites (it targets the enemy or moves the selection) */, foe = live ? foeUnitHit(x, y) : null, now = performance.now();
   if (foe && (!mine || foe.d < mine.d)) { ctlTap.t = 0; issue('target', foe.e.id); return true; }
   if (live && (!mine || mine.d > CT.onBld)) { const b = foeBldAt(x, y); if (b) { ctlTap.t = 0; issue('target', b.id); return true; } }
   const e = mine && mine.e;
@@ -19707,6 +19744,8 @@ buildAbil();
 resize();
 homeCamera();
 showStart();
+// v3.00 (batch 6j, Step 0): the version, small in the title screen's corner, so a player can tell which build the phone runs
+$('title').insertAdjacentHTML('beforeend', `<i class="tver">v${VERSION}</i>`);
 // Title screen covers the main menu on load; a tap (click, so no ghost tap reaches the menu) fades it away
 $('title').addEventListener('click', () => { const t = $('title'); t.classList.add('out'); setTimeout(() => t.remove(), 400); });
 requestAnimationFrame(frame);

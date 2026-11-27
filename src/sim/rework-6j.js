@@ -12,12 +12,17 @@ const B6J = {
   queen: { ahead: 6, spread: 9 }, // A2: Mites appear queen body + mite body + ahead in front of her, spread across
   siege: { reach: 20 },            // B1: a siege line is used only when 2+ Artillery there reach a known enemy building (art range - reach)
   turtle: ['lastfist'],            // B1: the factions whose Turtle grows a late air building (6i's turtle6i; Bloomhost has it since 6i)
+  late: ['lastfist', 'axiarchs'],  // B2: every personality of these factions without an air building grows one late the same way (late6j)
   air: { at: 480, ref: 3, c: 0.6 }, // B2: from 8:00, with 3 built Refineries and 60% of the upgrade's credits, the air building's T2 and T3 first
   wyrm: { hp: 0.3 },               // B3: a Skywyrm joins a node assault from 30% health (6h's pool: 50%)
   // Part D: the balance pass. unit: per-game unit values (through rwD's rwOver6, health and shields at spawn, the Codex through
   // rwShow); gnat: the Gnatcloud's B6I numbers. Each with its old value and the reason in docs/BALANCE_AUDIT.md section 18.
-  unit: {},
-  gnat: {},
+  unit: {
+    titan: { range: 190 },   // R1: the Titan's reach (160 since 2b) is outranged by the Lancer (170): 2 Titans lost 0-20 to equal-value Lancers
+    lancer: { dmg: 15 },     // R1: the most efficient unit in the game (137 value killed per 100 spent); the Axiarchs win 71% of matches under 15:00 (16)
+    broodback: { dmg: 24 },  // R1: Bloomhost's weakest unit (8 value killed per 100 spent; 6h's newest) with Bloomhost at 39% (bite 12)
+  },
+  gnat: { dps: 3 },          // R1: 4 Gnatclouds beat 10 Marines 20-0 attacking and 20-0 both attacking (8); 3: 2-18 and 20-0
 };
 // A2: where a Queen's next Mite hatches: in front of her (her target, else her order's target, else her facing), clear of her body
 function queenSpot6j(g, q) {
@@ -69,8 +74,24 @@ function air6j(g, s) {
 }
 // B3: the Bloomhost node assault (aiNode6h) takes a Skywyrm from B6J.wyrm.hp of its health (the pool's 50% kept others out)
 const wyrm6j = (g, u) => rwB6j(g) && u.type === 'skywyrm' && u.hp >= u.maxHp * B6J.wyrm.hp;
+// B2: an air building at all. Most Last Fist and Axiarch sides never built one in v2.99 (their plan's last item; the pads fill with
+// Refineries and Habitats first: Last Fist Economist 11 of 36 sides, the Axiarch Turtle 0 of 36). With b6j every personality of
+// those factions grows one late as 6i's Bloomhost Turtle does (TURTLE6I: from 8:00, every pad taken, 300 energy spare beyond its
+// price, no enemy within 500 of its HQ, its lowest Reactor sold for it).
+function late6j(g, s) {
+  const side = g.sides[s], P = side.persona;
+  if (!P || side.hush || g.t < TURTLE6I.at || g.t < (side.tt6j || 0) || !B6J.late.includes(facOf(side.faction))) return;
+  side.tt6j = g.t + TURTLE6I.every;
+  if (countB(g, s, 'techlab') || padsOpen(g, s) > 0 || side.res.e < TURTLE6I.e) return;
+  const d = bdS(g, s, 'techlab'); if (!d || side.res.c < d.cost.c || side.res.e - TURTLE6I.e < d.cost.e) return;
+  const hq = side.hq; if (g.ents.some(e => e.kind === 'u' && e.side === 1 - s && e.hp > 0 && Math.hypot(e.u - hq.u, e.v - hq.v) < TURTLE6I.near && visibleTo(g, s, e))) return;
+  const R = alive(g, s, 'reactor').filter(b => b.built && !b.upgrading).sort((a, b) => a.tier - b.tier || a.id - b.id)[0]; if (!R) return;
+  const pad = R.slot; if (!trySell(g, s, R).ok) return;
+  const r = tryBuild(g, s, 'techlab', pad); (side.j6 || (side.j6 = { late: 0 })).late++; lg(g, s, 'G', 'late6j', r.ok ? 1 : 0);
+}
 function aiRework6j(g, s, mine) {
   if (turtleFac6j(g, s) && facOf(g.sides[s].faction) !== 'bloomhost') turtle6i(g, s, mine); // B1: the Last Fist Turtle's late Tech Lab
+  late6j(g, s); // B2: any Last Fist or Axiarch personality without an air building
 }
 
 /* ---- Part D: the balance pass (b6j) ---- */
