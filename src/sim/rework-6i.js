@@ -119,9 +119,9 @@ function update6i(g, dt) {
     for (const e of g.ents) {
       if (e.side === c.side || e.side === NEUTRAL || e.hp <= 0 || e.gone || e.shielded || Math.abs(e.u - c.u) > B6I.gnat.r + (e.half || 0)) continue;
       const dd = Math.hypot(e.u - c.u, e.v - c.v) - (e.kind === 'b' ? e.half : 0); if (dd > B6I.gnat.r) continue;
-      damage(g, e, B6I.gnat.dps * dt * (sideBuff(g, c.side) ? NANO.dmg : 1) * outMul(g, c), 'gnat6', c.side, null); n++;
+      damage(g, e, gnat6j(g, 'dps') * dt * (sideBuff(g, c.side) ? NANO.dmg : 1) * outMul(g, c), 'gnat6', c.side, null); n++;
     }
-    if (n) { c.lastAct = g.t; c.gnT6 = g.t; sw6i(g, c.side).gnat += B6I.gnat.dps * dt * n; }
+    if (n) { c.lastAct = g.t; c.gnT6 = g.t; sw6i(g, c.side).gnat += gnat6j(g, 'dps') * dt * n; }
   }
   // Snatched units (eaten in a Talonmaw's talons) and dragged aircraft (a Skywyrm's tendril)
   for (const e of C) {

@@ -45,7 +45,8 @@ function rwD(g, t) { // the definition a unit of type t plays by in game g
 // Ruinmaw's bite counts as its weapon there
 function rwShow(g, t) { // v2.94: with batch 6d's values on top (B6D.unit)
   const d = rwShow0(g, t), o = (g ? rwB6d(g) : REWORK.b6d) ? B6D.unit[t] : null, e6 = (g ? rwB6e(g) : REWORK.b6e), c = e6 && !((g ? rwB6f(g) : REWORK.b6f) && B6F.undo(t)) ? B6E.cost[t] : null, /* v2.96 (b6f): v2.94's Axiarch prices */ u6 = e6 ? B6E.unit[t] : null; // v2.95: batch 6e's Axiarch costs (B6E.cost) and the Riftstalker's shields (B6E.unit)
-  return o || c || u6 ? Object.assign({}, d, o || {}, u6 || {}, c ? { cost: c } : {}) : d;
+  const j6 = (g ? rwB6j(g) : REWORK.b6j) ? B6J.unit[t] : null; // v3.00: batch 6j's values
+  return o || c || u6 || j6 ? Object.assign({}, d, o || {}, u6 || {}, c ? { cost: c } : {}, j6 || {}) : d;
 }
 function rwShow0(g, t) {
   if (RW3A_D[t]) return (g ? rwB3a(g) : REWORK.b3a) ? RW3A_D[t](g || { rw: REWORK }) : UDEF[t]; // v2.84: batch 3a's four

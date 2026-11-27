@@ -214,7 +214,7 @@ function damage1(g, e, amt, weapon, fromSide, src) {
   if (e.mkT > g.t) dmg *= markBonus(g, e, fromSide); // v2.86: marked by a batch 4a Astral Marksman
   if (e.wd6 === g.t && e.kind === 'u' && area6h(weapon)) dmg = ward6hCut(g, e, dmg); // v2.98 (b6h): a Chitin Warden's aura
   if (e.rn6T > g.t) dmg *= rendAmp6i(g, e, fromSide); // v2.99 (b6i): rent by a Talonmaw: more from Bloomhost
-  if (e.type === 'gnatcloud' && gnatCut6i(e, weapon)) dmg *= 1 - B6I.gnat.cut; // v2.99 (b6i): a single-target hit barely thins a Gnatcloud
+  if (e.type === 'gnatcloud' && gnatCut6i(e, weapon)) dmg *= 1 - gnat6j(g, 'cut'); // v2.99 (b6i): a single-target hit barely thins a Gnatcloud
   if (e.cov && !noCover(weapon)) dmg *= 1 - TITAN.cover; // v2.83: Last Fist infantry in a Titan's cover take less from ranged attacks
   const br = e.kind === 'u' && (b3 ? ud3 : UDEF[e.type]).brace, pre = dmg; // v2.85: a batch 3b Bastion has none
   if (br) { // the Bulwark braces on the first hit after its cooldown (v2.17)

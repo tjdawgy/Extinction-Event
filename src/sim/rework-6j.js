@@ -14,6 +14,10 @@ const B6J = {
   turtle: ['lastfist'],            // B1: the factions whose Turtle grows a late air building (6i's turtle6i; Bloomhost has it since 6i)
   air: { at: 480, ref: 3, c: 0.6 }, // B2: from 8:00, with 3 built Refineries and 60% of the upgrade's credits, the air building's T2 and T3 first
   wyrm: { hp: 0.3 },               // B3: a Skywyrm joins a node assault from 30% health (6h's pool: 50%)
+  // Part D: the balance pass. unit: per-game unit values (through rwD's rwOver6, health and shields at spawn, the Codex through
+  // rwShow); gnat: the Gnatcloud's B6I numbers. Each with its old value and the reason in docs/BALANCE_AUDIT.md section 18.
+  unit: {},
+  gnat: {},
 };
 // A2: where a Queen's next Mite hatches: in front of her (her target, else her order's target, else her facing), clear of her body
 function queenSpot6j(g, q) {
@@ -68,3 +72,12 @@ const wyrm6j = (g, u) => rwB6j(g) && u.type === 'skywyrm' && u.hp >= u.maxHp * B
 function aiRework6j(g, s, mine) {
   if (turtleFac6j(g, s) && facOf(g.sides[s].faction) !== 'bloomhost') turtle6i(g, s, mine); // B1: the Last Fist Turtle's late Tech Lab
 }
+
+/* ---- Part D: the balance pass (b6j) ---- */
+const rw6jUnit = (g, t) => rwB6j(g) && B6J.unit[t] ? B6J.unit[t] : null;
+function rw6jSpawn(g, u) {
+  const o = B6J.unit[u.type]; if (!o) return;
+  if (o.hp !== undefined) { u.hp = u.maxHp = o.hp; }
+  if (o.shp !== undefined) { u.shp = u.maxShp = o.shp; }
+}
+const gnat6j = (g, k) => rwB6j(g) && B6J.gnat[k] !== undefined ? B6J.gnat[k] : B6I.gnat[k]; // the Gnatcloud's dps and cut in game g

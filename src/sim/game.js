@@ -323,6 +323,7 @@ function spawnUnit(g, s, type, u, v) {
   if (rwB6d(g)) rw6dSpawn(g, unit); // v2.94: batch 6d's health and shields
   if (rwB6e(g)) rw6eSpawn(g, unit); // v2.95: batch 6e's Riftstalker shields
   if (rwB6h(g)) rw6hSpawn(g, unit); // v2.98: a batch 6h Mite's health
+  if (rwB6j(g)) rw6jSpawn(g, unit); // v3.00: batch 6j's health and shields
   if (rwB2b(g)) rw2bSpawn(g, unit); // v2.83: a batch 2b Ruinmaw's health and armour
   if (MAP_LANED) unit.lane = laneNew(g.sides[s]); // v2.63: the lane it walks (Classic: no lane key at all)
   if (NAV.on && !d.air && navShut(unit.u, unit.v)) [unit.u, unit.v] = navOpen(unit.u, unit.v); // v2.66: a ground unit never appears on closed ground (a warp-in or brood on the ridge)

@@ -61,7 +61,7 @@ B6E.unit = { riftstalker: { shp: 160 } };
 const rw6eUnit = (g, t) => rwB6e(g) && B6E.unit[t] ? B6E.unit[t] : null;
 function rw6eSpawn(g, u) { const o = B6E.unit[u.type]; if (o && o.shp !== undefined) { u.shp = u.maxShp = o.shp; } }
 // Batch 6d's and 6e's per-game values for type t together (rwD's overlay), or null
-function rwOver6(g, t) { const a = rw6dUnit(g, t), c = rw6eCost(g, t), o = rw6eUnit(g, t), h = rw6hUnit(g, t); /* v2.98: batch 6h's (src/sim/rework-6h.js) */ return c || o || h ? Object.assign({}, a || {}, o || {}, c ? { cost: c } : {}, h || {}) : a; }
+function rwOver6(g, t) { const a = rw6dUnit(g, t), c = rw6eCost(g, t), o = rw6eUnit(g, t), h = rw6hUnit(g, t), j = rw6jUnit(g, t); /* v2.98: batch 6h's (src/sim/rework-6h.js); v3.00: batch 6j's (src/sim/rework-6j.js) */ return c || o || h || j ? Object.assign({}, a || {}, o || {}, c ? { cost: c } : {}, h || {}, j || {}) : a; }
 const unitCost6 = (g, t) => rw6eCost(g, t) || UDEF[t].cost; // what a unit of type t costs in game g (a brood aside: trainCost)
 
 /* ---- b6elane: one army, one lane ---- */

@@ -2,7 +2,8 @@
 //   node audit/sim/b6j-range.js [--seeds 20] [--only name] [--html file] [--rw b6j=0] [--out audit/logs-p1/b6j/range.md]
 // gnat4: 4 Gnatclouds (480 credits, 160 energy) attacking 10 Marines (480) on Hold; gnat4b: both attacking; gnat1: one cloud
 // attacking 10 Marines (6i's check); wwGs: 2 Wraithwings (460/200) against 2 Gunships (aircraft, about the same value), both attacking; wwMar: 2
-// Wraithwings attacking 13 Marines (624, about their value in credits and energy) on Hold. Units are spread over a row.
+// Wraithwings attacking 13 Marines (624, about their value in credits and energy) on Hold; titanLn / titanSp: 2 Titans
+// (840/320) against 7 Lancers (840/315) or 13 Spitters (910/260), both attacking. Units are spread over a row.
 const { loadSim } = require('./load'), fs = require('fs'), path = require('path');
 const arg = (n, d) => { const i = process.argv.indexOf('--' + n); return i > 0 ? process.argv[i + 1] : d; };
 const N = +arg('seeds', '20'), ONLY = arg('only', null), RW = {}; for (const kv of (arg('rw', '') || '').split(',').filter(Boolean)) { const [k, v] = kv.split('='); RW[k] = v !== '0'; }
@@ -15,6 +16,8 @@ const SC = {
   gnat1: { f: ['bloomhost', 'lastfist'], m: ['attack', 'hold'], a: ['needlewing', 1, 640], b: ['rifle', 10, 820] },
   wwGs: { f: ['axiarchs', 'lastfist'], m: ['attack', 'attack'], a: ['wraithwing', 2, 600], b: ['aircraft', 2, 900] },
   wwMar: { f: ['axiarchs', 'lastfist'], m: ['attack', 'hold'], a: ['wraithwing', 2, 640], b: ['rifle', 13, 820] },
+  titanLn: { f: ['lastfist', 'axiarchs'], m: ['attack', 'attack'], a: ['titan', 2, 600], b: ['lancer', 7, 900] },
+  titanSp: { f: ['lastfist', 'bloomhost'], m: ['attack', 'attack'], a: ['titan', 2, 600], b: ['spitter', 13, 900] },
 };
 function run(name, sc, seed) {
   const S = loadSim(seed, { instrument: H + (arg('code') ? '\n' + arg('code') : ''), file: arg('html') }), R = S.R6; // --code: an ablation (a SIM constant set before the fight)
