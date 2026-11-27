@@ -296,7 +296,7 @@ if (require.main === module && process.argv[2] === '--print6h') console.log(JSON
 // Every set above holds both off and matches as before (with both off the game is v2.98). The same two modern matches with every
 // switch on: FP_V299.
 const RW_ALL6I = { b6hq: true, b6c: true, b6ai: true, b6d: true, b6elane: true, b6e: true, b6fai: true, b6f: true, b6g: true, b6h: true, b6hbody: true, b6hnode: true, b6i: true, b6iresp: true };
-const FP_V299 = ['01a9ca3ea34522622212ea572791390977aa829391d6f391a4e751900129603f', '86c3805340131a9f62baa5f327fed5c5726940cc2485fd0dae342517e729530f']; // every switch on (the new-game default)
+const FP_V299 = ['651d408afac44a42c168c83c387b0aea682e70c9b0053ce83cdb2957d4c211bd', '86c3805340131a9f62baa5f327fed5c5726940cc2485fd0dae342517e729530f']; // every switch on (the new-game default)
 test('v2.99: modern matches with every switch on (FP_V299)', () => {
   assert.deepStrictEqual(modern(RW_ALL6I), FP_V299);
 });

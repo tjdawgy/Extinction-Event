@@ -1047,3 +1047,107 @@ Cloudwing 0.4, Brood Tyrant 0.2, Worldrender 0.1; every faction's in b6h.md.
    match under 5:00).
 4. **The Axiarchs on Three-Lane** 31% (44% in 6g).
 5. **The node scenario**: pad buildings destroyed short of the +50% asked (docs/FACTION_REWORK.md "Batch 6h", Part G).
+
+## 17. After batch 6i (v2.99): the Bloomhost air rework, the under-fire response rework
+
+Persona-balanced self-play (audit/sim/selfplay-6c.js, 162 Hard vs Hard matches, seeds 600+, 0 errors, with the batch 6h counters
+`EE_B6H=1` and the batch 6i counters): every switch on, on the final build (audit/logs-p1/selfplay6i-on/), against 6h's run on the same
+seeds (audit/logs-p1/selfplay6h-on/, v2.98). report6c.md (95% Wilson intervals), b6i.md (audit/sim/b6i-report.js: the air units,
+tier-3 air, the air mechanics, the 6h swarm metrics, under-fire charges, units trained per type), b6h.md. A first 162-match run with an
+earlier Turtle plan is kept and reported (audit/logs-p1/b6i/selfplay-v1-refinery/; docs/FACTION_REWORK.md "Batch 6i", Part F2).
+**No unit value was tuned in this batch** (Bloomhost's balance pass is the next batch). One 162-match run moves about ±10 points
+between seed sets.
+
+### 17.1 Factions
+
+| faction | v2.98 (6h) | every switch on (6i) |
+|---|---|---|
+| Last Fist | 36-55-17, 33% (25-43) | 39-54-15, 36% (28-46) |
+| Bloomhost | 58-39-11, 54% (44-63) | 46-53-9, 43% (34-52) |
+| Axiarchs | 49-49-10, 45% (36-55) | 60-38-10, 56% (46-65) |
+
+Per map (Classic / Two-Lane / Three-Lane):
+
+| faction | v2.98 | every switch on |
+|---|---|---|
+| Last Fist | 28 / 31 / 42% | 33 (20-50) / 31 (18-47) / 44 (30-60)% |
+| Bloomhost | 53 / 56 / 53% | 44 (30-60) / 44 (30-60) / 39 (25-55)% |
+| Axiarchs | 64 / 42 / 31% | 64 (48-78) / 53 (37-68) / 50 (34-66)% |
+
+Pairings (first named): Last Fist vs Bloomhost 22-25-7, 41% (29-54); Last Fist vs the Axiarchs 17-29-8, 31% (21-45); Bloomhost vs the
+Axiarchs 21-31-2, 39% (27-52) (v2.98: 30 / 37 / 54%). Per map: Last Fist vs Bloomhost 44 / 33 / 44%, Last Fist vs the Axiarchs 22 / 28 /
+44%, Bloomhost vs the Axiarchs 39 / 44 / 33%. Side 1's share of decided 54% (46-62). Median length 14:32 (Classic 10:56, Two-Lane 17:18,
+Three-Lane 15:38), draws 17, ended by an HQ 90%.
+
+### 17.2 Personalities
+
+| personality | v2.98 | every switch on |
+|---|---|---|
+| Boomer | 46-54-8, 43% (34-52) | 46-53-9, 43% (34-52) |
+| Economist | 54-44-10, 50% (41-59) | 55-44-9, 51% (42-60) |
+| Turtle | 43-45-20, 40% (31-49) | 44-48-16, 41% (32-50) |
+
+Per faction (Boomer / Economist / Turtle): Last Fist 25 / 56 / 28%, Bloomhost 44 / 44 / 39%, the Axiarchs 58 / 53 / 56% (v2.98: 33 /
+47 / 19%, 44 / 64 / 53%, 50 / 39 / 47%).
+
+### 17.3 The Bloomhost air and swarm (per Bloomhost side and match; audit/logs-p1/selfplay6i-on/b6i.md)
+
+| metric | v2.98 | every switch on |
+|---|---|---|
+| Bloomhost sides with a tier-3 aircraft (Cloudwing or Worldrender / Blightwing or Skywyrm) | Cloudwing 0.4, Worldrender 0.1 a side | 33 of 108 (31%): Blightwing 18, Skywyrm 15 |
+| Bloomspire paths taken (Swarm / Apex) | - | 37 / 32 |
+| Razorwing birds / Gnatclouds / Blightwings / Talonmaws / Skywyrms trained | (Razorwing 11.6, Needlewing 8.0) | 14.5 / 7.4 / 0.4 / 1.9 / 0.2 |
+| Chitin Wardens trained | 27.5 | 18.4 |
+| Gnatcloud damage | - | 532 |
+| units blighted, Mites from Blight | - | 2.0, 1.0 |
+| Snatches (eaten, dropped), Rends | - | 1.5 (1.2, 0.3), 3.5 |
+| tendril drags, jaws bites, acid spews landed | - | 0.1, 0.4, 5.2 |
+| Razorwing raids | - | 1.4 |
+| peak Bloomhost units alive | 37.4 | 36.4 |
+| share of Bloomhost damage by melee | 61.4% | 54.4% |
+| Mites spawned (by Queens, by Blight) | 165.4 (164.1, -) | 148.3 (147.3, 1.0) |
+| damage the Wardens' auras took off | 2,991 | 2,721 |
+| Pounces, Tunnel trips | 96.2, 18.2 | 79.0, 20.1 |
+| under-fire charges a side (Last Fist / Bloomhost / Axiarchs) | - | 24.5 / 79.7 / 55.2 |
+
+### 17.4 The node scenario (audit/sim/b6g-scen.js --set nodes, 36 matches, every switch on; audit/logs-p1/b6i/nodes/, node.md)
+
+| run | retakes | enemy pad buildings destroyed | Bloomhost W-L-D |
+|---|---|---|---|
+| v2.98 (6h shipped) | 126 | 1,008 | 3-29-4 |
+| every switch on (6i) | 121 (-4%) | 977 (-3%) | 0-30-6 |
+
+The Skywyrm joins assaults first when there is one (6 assault places in 36 matches); the first Turtle plan's run: 88 / 851 / 0-33-3.
+
+### 17.5 Reference targets (reported, not tuned toward)
+
+| target | every switch on | met |
+|---|---|---|
+| every faction 42-58% overall | 36 / 43 / 56% | no: Last Fist 36% (28-46) |
+| every faction 35-65% on each map | 31-64% | no: Last Fist 33% Classic, 31% Two-Lane |
+| every pairing 35-65% | 41 / 31 / 39% (first named) | no: Last Fist vs the Axiarchs 31% |
+| personalities 40-60% | 43 / 51 / 41% | yes |
+
+### 17.6 Bug bar
+
+- No faction below 30% or above 70% overall (36 / 43 / 56%).
+- Every new or reworked unit is built by the AI (17.3). None wins absurdly in the Test Range (docs/FACTION_REWORK.md "Batch 6i", Part F1:
+  three Razorwing flocks beat two Gunships of about equal cost and lose to three Interceptors; a Gnatcloud dies to 10 Marines in 7 s;
+  a Skywyrm alone takes down two T1 Turrets and a Refinery with 87 of its 1,600 health left).
+- Found and fixed while measuring (mechanics and AI use, not values): the Bloomspire roll's lean to Swarm Bloom for anti-air (every
+  Bloomspire unit hits aircraft now); the Bloomhost Turtle with no Bloomspire (its plan fills every pad; a late Bloomspire, after one
+  rejected version that cost it a third of its income: the Bloomhost Turtle 11%, Bloomhost 33% overall); a queued Razorwing flock
+  refunded at one bird's price when its Bloomspire is sold; the Gnatcloud out of reach of all area damage (it is an aircraft; ground
+  splash and flame now hit it as light armour).
+
+### 17.7 Flags (reported, not fixed)
+
+1. **Last Fist 36%** (Classic 33%, Two-Lane 31%; against the Axiarchs 31%; its Boomer 25% and Turtle 28%).
+2. **The Axiarchs on Three-Lane**: 50% (31% in 6h): no longer outside 35-65%.
+3. **Spitter openers**: Bloomhost won 40% (Boomer), 63% (Economist) and 43% (Turtle) of the matches it opened with Spitters (10 / 16 /
+   14 sides; 6h: 40 / 75 / 71%).
+4. **Bloomhost** 54% → 43% (the Chitin Warden quota, the air roster); its Three-Lane 39%.
+5. **The Gnatcloud** against infantry: one cloud dies to 10 Marines before it eats one (82 damage in 7 s); the numbers are the brief's.
+6. **Tier-3 air** at 31% of Bloomhost sides, set by the AI's upgrade order (17.3; docs/FACTION_REWORK.md "Batch 6i", Part F2).
+7. **Selling a Larva Pit with a queued brood** refunds the brood at one Skitterling's price (`trySell` uses `unitCost6`; since batch 5b,
+   not changed here; the Razorwing flock is refunded whole).

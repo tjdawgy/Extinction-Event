@@ -1748,10 +1748,263 @@ off a group, and the Warden's aura takes off a further 17% of it.
 - The bodies-off self-play ran on the build before the last one-line body change (the every-switch-on run replayed identically
   across that change; the node scenario did not, reported both).
 
+## Batch 6i: the Bloomhost air rework, the under-fire response rework
+
+**Batch 6i (v2.99).** Two switches in src/sim/rework-6i.js, per game in `g.rw`, on by default, saved only when on, each with a Test
+Range switch ("Batch 6i air", "Batch 6i response"): `REWORK.b6i` (parts A-D: the Bloomspire roster, its AI, art and texts, the
+Chitin Warden quota) and `REWORK.b6iresp` (part E: units under fire). Both off: v2.98 exactly (FP_V298 and every older set match).
+Recorded: FP_V299 (every switch on). Art: src/render/units-rework-6i.js. Tests: tests/rework-6i.test.js, tests/rework-6i-ui.test.js,
+tests/switches-on-6i.test.js. Measurement scripts: audit/sim/b6i-range.js (Test Range), audit/sim/b6i-report.js (the air tables of a
+self-play run). Logs: audit/logs-p1/b6i/, audit/logs-p1/selfplay6i-on/.
+
+### Step 0
+
+- GitHub Pages: "pages build and deployment" run 108 built 16ef576 (v2.98) and succeeded (2026-11-26 21:34 UTC).
+- The Bloomspire roster in the code matched the brief: Razorwing (T1, no path); Swarm Bloom: Needlewing T2, Cloudwing T3; Apex Bloom:
+  Brood Tyrant T2, Worldrender T3 (TREES_BH.techlab). Other places that name the four cut units: the AI's base scores (ai.js) and the
+  Default AI's smart scores, batch 4b's scores, aims and tastes for the Brood Tyrant and Worldrender (`aim4b`, `RW4B_TASTE`), batch 5b's
+  Needlewing anti-air (`RW5B_D`, `aiScores5b`, the Bloomspire lean in `aiPath5b`), batch 5c's Bloomspire roll (`aiBloomRoll5c`, which
+  leaned to Swarm Bloom as the anti-air path), the Cloudwing's offspring (`updateSpawn`, `SPAWN`), the Brood Tyrant's pustules (batch 4b
+  `tyrImpact`, `pusBurst`: a building that falls with pustules bursts into Mites, counted in the Mite cap of 30 since 6h), spawn heights
+  (`spawnUnit`), shadows and death blasts (render, `kill`), body classes (`BODY6H_A`), the Worldrender's Test Range readout, UNIT_TIPS,
+  the Codex (through UNIT_ORDER and the trees), the art (units-rework-4b, -5a, -5b; AIR_CYC, AIR_BOX), and tests (bh-spire, rework-4b,
+  rework-5b, rework-5a/5c, bloomhost, bloomhost-ui, signature, salvage, determinism, slow ai-stats and others). The tutorial names none.
+
+### The Bloomhost roster with b6i on (ground and air)
+
+| building | start | path A (T2 / T3) | path B (T2 / T3) |
+|---|---|---|---|
+| Larva Pit | Skitterling (broods of 4), Spitter | Predatory Evolution: Leaper / Ravager | Acidic Evolution: Queen / Bilecaster |
+| Evolution Chamber | Chitin Warden | Burrowing Evolution: Gorebore / Ruinmaw | Behemoth Evolution: Broodback / Dreadthorn |
+| Bloomspire | **Razorwing** (flocks of 3) | Swarm Bloom: **Gnatcloud** / **Blightwing** | Apex Bloom: **Talonmaw** / **Skywyrm** |
+| Brood Mound | Mite (free; Queens and Blight make them too) | | |
+
+| unit | cost (credits / energy) | army size | HP | speed | attack | air / ground |
+|---|---|---|---|---|---|---|
+| Skitterling | 120 a brood of 4 (b6c's brood price) | 0.5 each | 50 | as before | claw | ground |
+| Spitter | 70 / 20 | 2 | 110 | as before | quill volleys, range 150 | both |
+| Queen | 150 / 50 | 3 | 260 | 26 | bile bolt 10 / 1.4 s, range 150; Mites | both |
+| Leaper | as before | | | | leap 260 / 10 s, latch | ground |
+| Ravager | as before (+Pounce) | | | | | ground |
+| Bilecaster | as before | | | | bile glob, pools | ground |
+| Chitin Warden | 140 / 25 | as before | 840 | | slam; aura: 40% less area damage | ground |
+| Gorebore | 170 / 60 | 3 | 300 | 22 | burrow, eruption (+Pounce) | ground |
+| Ruinmaw | 400 / 150 | as before | 1,500 | | eruption, swallow, Tunnel | ground |
+| Broodback | 180 / 40 | 3 | 520 | 22 | bite 12 / 1.2 s; bursts | ground |
+| Dreadthorn | as before (+Pounce) | | | | charge | ground |
+| **Razorwing** (a bird) | **150 / 50 a flock of 3** | **1** | **90** | 95, +5% per Razorwing within 80 (up to +40%) | dive **6 / 0.75 s**, range 50 (talon table; **1.25× to aircraft**) | both |
+| **Gnatcloud** | **120 / 40** | **2** | **220** | **55** | **8/s to every enemy within 40** (units, aircraft, buildings; clouds stack) | both |
+| **Blightwing** | **220 / 90** | **3** | **320** | **60** | **spore cone every 3 s: 15, range 120, 50°, Blight 8 s** | both (and buildings) |
+| **Talonmaw** | **200 / 70** | **3** | **480** | **90** | **claws 20 / 1 s, range 40; Snatch; Rend** | both |
+| **Skywyrm** | **480 / 220** | **7** | **1,600** | **22** | **acid spew 45 / 2.2 s, range 200, radius 40, 2.5× to buildings; tendrils; jaws 30 / 1 s** | spew ground and buildings; tendrils and jaws air and ground |
+| Mite | free | 0 | 30 | 64 | bite 4 / 0.6 s, corrodes; 10 s | ground |
+
+### Part A: the Bloomspire roster (b6i)
+
+The four cut units are not trainable, not used by the AI and not in the Codex; each new unit takes its slot (`rwType`, `RW6I_SWAP`:
+razorwing → `razor6`, needlewing → `gnatcloud`, cloudwing → `blightwing`, broodtyrant → `talonmaw`, worldrender → `skywyrm`; new ids, so a
+b6i-off game, an old save or a replay still has the old five). The Brood Tyrant's pustule Mite source goes with it (no Brood Tyrants).
+
+- **A1. The Razorwing** (`razor6`, named Razorwing): one Bloomspire order is a flock of **3** birds (`flockTrain6i`, `flockN6i`): **150
+  credits, 50 energy**, one queue slot, 10 s; each bird army size **1**, **90 HP** (a queued flock counts 3 against supply). Flock speed:
+  **+5%** for every other Razorwing of its side within **80**, up to **+40%** (`u.fl6N`, counted each tick in update6i). A melee dive at
+  ground units and aircraft, weapon `talon6`: the old talon table (light 1.1, heavy and vehicles 0.9, buildings 0.6) with **1.25 to
+  aircraft**. Per bird **6 damage every 0.75 s** (8 a second): a flock of 3 does **24 a second, 120% of the old Razorwing's 20** (15 /
+  0.75 s). The Test Range places a Razorwing as a flock of three.
+- **A2. The Gnatcloud** (Swarm Bloom T2): 120 / 40, army size 2, 220 HP, speed 55. It flies onto its target (`gnat6i`, range 14): every
+  enemy unit, aircraft and building within **40** takes **8 a second** (weapon `gnat6`, every armour 1.0; area damage); clouds stack. It
+  takes **50% less from single-target hits** and full damage from area damage: 6h's AREA6H list, plus a splash shell's own target
+  (`A6I.sp`). Departure: a Gnatcloud hangs low over what it eats, so **ground splash and flame weapons can target and hit it** (Tanks,
+  Titans, Artillery, Flame Tanks, Bilecasters and the like, `gnLow6i`; it counts as light armour to weapons that can't hit aircraft,
+  `gnArm6i`), and ground splash catches it (`splashHit`, the Flame Tank's strip); without this no area damage could ever reach it (the
+  brief's Tank-splash check needs it). Art: particles (46 specks orbiting in a cloud, a third in its side's colour, a glowing heart and
+  a faint ground haze the size of its reach), drawn live, a few dozen rectangles a frame.
+- **A3. The Blightwing** (Swarm Bloom T3): 220 / 90, army size 3, 320 HP, speed 60. Every **3 s** a spore cone (`cone6i`): range **120**,
+  **50°**, **15** to every enemy ground unit, aircraft and building in it (area damage); units are **blighted for 8 s** (refreshed, never
+  stacked; buildings take the damage but aren't blighted). An enemy unit that dies blighted bursts into **2 Mites** for the Blightwing's
+  side (`blightDie6i`, within the side's cap of 30 with the Brood Mound's and the Queen's). Blighted units shed drifting green spores.
+- **A4. The Talonmaw** (Apex Bloom T2): 200 / 70, army size 3, 480 HP, speed 90. Claws **20 every 1 s** at air and ground. **Snatch**
+  (every **8 s**, small ground units: the body class small, `snatchOk6i`): it lifts the unit out of the fight (`u.sn6`, gone, untargetable,
+  drawn in its talons) and eats it at **40/s**; if the Talonmaw takes **25%** of its maximum health while carrying it drops the prey, which
+  lands stunned **0.5 s**; a kill heals it **50% of the prey's maximum health, at most 25% of its own** a meal. **Rend** (every **6 s**,
+  medium, large and huge ground units and vehicles): a dive for **60**, and the target takes **+15% damage from Bloomhost for 6 s**
+  (`rendAmp6i`); no heal. It picks by the target's size and claws between; with an ability ready for a target within 150 it dives at
+  **2×** speed. AI Talonmaws hunt (within 220) small units for Snatch and bigger ones for Rend.
+- **A5. The Skywyrm** (Apex Bloom T3): 480 / 220, army size 7, 1,600 HP, speed 22. **Acid spew** every **2.2 s**: a lobbed glob at range
+  **200** for **45** within **40** (area damage, ground units and buildings, **2.5× to buildings and Turrets**, weapon `spew6`; it prefers
+  buildings, `preferB`). **Tendrils** every **6 s**: an enemy aircraft within **180** is dragged to its jaws over **1.5 s** (`u.dr6`,
+  helpless meanwhile) and bitten for **70**. **Jaws**: **30 every 1 s** to the nearest enemy unit, air or ground, beside its jaws (45).
+- **A6. Mites**: Blight's Mites count toward the side's 30 with the Brood Mound's and the Queen's (one counter, `miteCount6h`).
+
+### Part B: the Bloomhost air AI (b6i, every personality and difficulty)
+
+Scores (`aiScores6i`, tastes `RW6I_TASTE`): Razorwing flocks for anti-air and early harassment (enemy air raises them, +0.4 before
+7:00); Gnatclouds against packed armies and aircraft; Blightwings against infantry and mixed armies; Talonmaws against light units and
+vehicles; Skywyrms against turtles and fortified nodes (+0.2 per known turret at an enemy node, up to four; +0.6 more when b6hnode
+counts the enemy nodes fortified) and aircraft. Behaviour (`aiRework6i`, the unit steps): **Razorwing raids** (six or more birds at 60%
+health while the army is home: they fly at the enemy's nearest Refinery or held node no known gun covers, for up to 35 s, back when the
+flock is down to 3, half its health or an attack starts); **Gnatclouds** at the thickest clump of enemies they can see within 220,
+aircraft counting double; **Blightwings** wait 60 behind the median of the swarm on the attack; **Talonmaws** hunt small units to snatch
+and vehicles to rend; the **Skywyrm** joins 6h's node assault (`aiNode6h`'s pool now takes it; its 2.5× building rate sorts it first as
+the building-breaker) and its scores lean to it when the enemy's nodes are fortified. Two path fixes for the new roster: the Bloomspire
+roll (5c) and 5b's path rule no longer lean to Swarm Bloom "for anti-air" (every Bloomspire unit hits aircraft); the batch 6d Turtle's
+plan had no Tech Lab and its eight items fill every pad once its first Habitat stands, so a Bloomhost Turtle never had a Bloomspire: it
+now **grows one late** (`turtle6i`, `plan6i`): its opening is unchanged, its plan ends with a Bloomspire, and from 8:00, with every pad
+taken, 300 energy banked beyond the Bloomspire's price and no enemy within 500 of its HQ, it sells its lowest Reactor and grows the
+Bloomspire on that pad. Two earlier versions were measured and rejected (the Bloomspire in place of its third Refinery: a third less
+income from 3:00 and the Turtle won 4 of 36; in place of its Reactor: it never found a pad, 14 of 36, no air; see Part F). Easy never reaches T3 (its maximum tier is 2, unchanged), so it uses the Razorwing, the
+Gnatcloud and the Talonmaw.
+
+### Part D: the Chitin Warden quota (b6i)
+
+6h's rule (`aiScores6h`) wanted about one Warden per 12 army supply against area damage, but it was a floor, not a quota: at or over the
+quota it kept `Math.max(score, 0.9)`, and the Warden's own base score (about 1.6-2.3, a generic tank) stayed; and it counted only the
+Wardens alive, not those queued, so several were queued at once. With b6i (`ward6i`): the Wardens alive **and queued** are counted;
+at the quota its score drops to 0.4; under it, against area damage, 1.6 + 1.5 × the enemy's splash share as before. No Warden value
+changed.
+
+### Part E: units under fire (b6iresp, every faction, the AI and the player)
+
+What was wrong (6g's fix 3, `fire6g`): a unit holding or attack-moving that was hit by an enemy it couldn't hit from where it stood
+either charged it (within 250) or, if it couldn't hurt it at all, pulled back out of its reach. In play, Tanks on Hold ran from aircraft
+they can't shoot, and units chased long guns across the map. With b6iresp on, `fire6i` replaces it (6g's `hurt6g`, which records who
+hurt a unit, still runs; b6iresp needs b6g):
+1. **No pull-back**, ever. Retreating is the player's order or the AI's army-level decision.
+2. A unit answers only an attacker **within its own reach + 80** (a melee unit: **100**).
+3. Only one it **can hurt** (`hits6g`: the right weapon for air or ground, a damage table that touches its armour). A Tank hit by
+   aircraft does nothing different.
+4. Long guns beyond that distance (Artillery, Snipers, anything firing from further) get **no automatic response**.
+5. On **Hold** the leash is **100** from its held spot (it goes no further, and its Hold walks it back afterwards); on **Attack** or an
+   attack-move the leash is **250**. A charge also ends after 8 s, when the attacker dies, leaves sight or would take it past its leash.
+6. Kept from 6g: never on a move order or a Retreat (an AI's Retreat at home counts as holding, as in 6g); attackers that are shielded,
+   untargetable (phased, just after a Wraithwing's hop) or buildings are ignored.
+With b6iresp off, 6g's behaviour is unchanged. Counter: `side.r6i.charge` (self-play).
+
+### Part C: art, Codex, tips (b6i)
+
+- Art (src/render/units-rework-6i.js, the Bloomhost style with team colour on the largest surfaces): the **Razorwing** flock bird (the
+  batch 5b bat-winged Razorwing at 72% size, its wing membranes and back plate in its side's colour); the **Gnatcloud** (particles: a
+  churning cloud of specks, a third in its side's colour, a glowing heart, a faint ground haze the size of its reach; drawn live, cheap);
+  the **Blightwing** (a bloated moth: team eye-spots on its wings, glowing team spore sacs on its abdomen, feathered antennae, a spore puff
+  when it fires); the **Talonmaw** (a raptor with team wing membranes, a team crest, a hooked beak and hooked bone talons thrust forward in
+  a dive); the **Skywyrm** (a long sinuous serpent with a team plate and glow on every segment, team fins, writhing tendrils at its
+  throat, a wide fanged maw with acid in it and dripping). Razorwings, Blightwings and Talonmaws are cached as aircraft poses (AIR_CYC,
+  AIR_BOX); the Gnatcloud and the Skywyrm draw live. Effects: the prey hanging in a Talonmaw's talons (drawn smaller as it is eaten,
+  dripping), the drop (a dust ring), Rend (three slashes; a scar in the Talonmaw side's colour on the target while it lasts), Blight
+  (green spores drifting up from a blighted unit; a burst where Mites come out), the spore cone, a tendril (a writhing line from the jaws
+  to the dragged aircraft) and the bite, the acid spew (a lobbed green glob and a splash with a dashed rim in the side's colour).
+  Screenshots at 667×375: docs/screenshots/rework6i-flock, -gnatcloud, -blight, -snatch, -rend, -skywyrm, -codex.
+- Codex (follows the new-game default): the Bloomspire's tree (Gnatclouds and Blightwings on Swarm Bloom, Talonmaws and Skywyrms on Apex
+  Bloom), its description and T1 line ("Grows Razorwing flocks"); every new unit's card; the Razorwing's card and the stats table show a
+  flock's price ("150 credits, 50 energy for a flock of 3", army size 1 each); the four cut units are gone from it. With b6i off it
+  shows v2.98's. The Train card reads "FLOCK ×3"; the info card gives the flock's price.
+- Tips (UNIT_TIPS, numbers read live): the five units. The tutorial names none of the cut units (nothing to change).
+
+### Part F1: Test Range (audit/sim/b6i-range.js, 20 seeds each; audit/logs-p1/b6i/range.md)
+
+| scene | every switch on | v2.98 (the switch off) |
+|---|---|---|
+| 3 Razorwing flocks (450 / 150) (600 in all) against 2 Gunships (650), both attacking | the flocks win in 6 s, 8 of 9 birds left (588 HP of 810) | 3 single Razorwings (570 in all): win in 13 s, 1.2 left (148 HP) |
+| 3 Razorwing flocks against 3 Interceptors (450 / 180) | the Interceptors win in 6 s, all 3 left (356 HP of 570): flak (1.8× to aircraft) owns the air | - |
+| a Gnatcloud attacking 10 Marines (holding) | the cloud dies in 7 s; 82 damage eaten, no Marine killed | - |
+| the same with a Tank among the Marines | the cloud dies in 5 s (the Tank shells it); 46 eaten | - |
+| 2 Blightwings behind 8 Skitterlings attacking 10 Marines, 60 s | 3.4 Mites born from blighted kills (2-8), up to 2 alive at once; 6.3 Marines left; 3 units blighted | - |
+| a Talonmaw attacking 8 Marines | 2 snatched and eaten, 4 Marines killed in all; the Talonmaw dies at 15 s (no drop) | - |
+| a Talonmaw attacking a Tank | 4 Rends; the Tank dies at 21 s; the Talonmaw unhurt (a Tank can't hit it) | - |
+| a Talonmaw and 2 Skitterlings attacking 2 Tanks | 7 Rends; both Tanks dead at 43 s | - |
+| a Skywyrm attacking two T1 Turrets and a Refinery (a turreted node) | the Refinery down at 20 s, the Turrets at 31 and 36 s; the Skywyrm survives with 87 of 1,600 | a Worldrender: Turrets down at 35 and 58 s, the Refinery at 68 s; 756 left |
+| a Skywyrm holding, 2 Gunships attacking it, 60 s | 2 tendril drags, 6 jaws bites; 1 Gunship killed; the Skywyrm left with 108 HP | - |
+| 4 Tanks on Hold, 2 Prismwings (which they can't hit) attacking, 25 s | moved 0 (b6iresp) | moved 174 (6g's pull-back) |
+| 6 Marines on Hold, an Artillery 380 away (beyond 120 + 80), 25 s | moved 0, 3.6 Marines killed | moved 125 (pulled back), 1.8 killed |
+| a Ravager on Hold, a Marine 95 away shooting it | charges (out 71), kills it at 2.0 s, back on its spot (1 px) | the same (6g charged too) |
+
+### Part F2: self-play (audit/logs-p1/selfplay6i-on/: report6c.md, b6i.md, b6h.md; 162 matches, every switch on, seeds 600+, `EE_B6H=1`)
+
+No unit value was tuned (Bloomhost's balance pass is the next batch). Factions: Last Fist 39-54-15, **36%** (28-46); Bloomhost 46-53-9,
+**43%** (34-52); the Axiarchs 60-38-10, **56%** (46-65). Personalities: Boomer 43%, Economist 51%, Turtle 41%. Full tables (maps,
+pairings, faction × personality, lengths) in docs/BALANCE_AUDIT.md section 17.
+
+Units trained per Bloomhost side and match: Skitterling 56.7, Spitter 28.5, Chitin Warden 18.4 (6h: 27.5), Razorwing 14.5 birds (4.8
+flocks), Leaper 11.5, Bilecaster 8.3, Broodback 8.1, Gnatcloud 7.4, Gorebore 4.3, Queen 4.0, Talonmaw 1.9, Ravager 1.2, Dreadthorn 1.1,
+Ruinmaw 0.7, Blightwing 0.4, Skywyrm 0.2. By personality (Razorwing birds / Gnatcloud / Blightwing / Talonmaw / Skywyrm): Boomer 19.5 /
+8.3 / 0.3 / 2.9 / 0.2; Economist 20.0 / 8.6 / 0.5 / 2.3 / 0.3; Turtle 4.0 / 5.3 / 0.4 / 0.4 / 0.1.
+
+**Tier-3 air** (the open flag): Bloomhost sides that trained a Blightwing or a Skywyrm: **33 of 108 (31%)**: 18 a Blightwing, 15 a
+Skywyrm; Boomer 12 of 36, Economist 11, Turtle 10; median first tier-3 aircraft 12:20 (the Turtle's 16:13). In 6h's run the
+Cloudwing and the Worldrender were trained 0.4 and 0.1 times per side and match. Last Fist sides 3 of 108, the Axiarchs 12 of 108. The
+Bloomspire's paths (sides that took one): Swarm Bloom 37, Apex Bloom 32. Why it stays at a third: the AI upgrades in a fixed order
+(AI_UPG) and the Bloomspire's T3 is 15th of 20 (after the Refineries, Habitats, Larva Pit and Evolution Chamber reach T3), and the
+median match lasts 14:32; that is the AI's priority, not a logic bug. Two logic bugs that blocked Bloomhost air were fixed (Part B): the
+Bloomspire roll's lean to Swarm Bloom "for anti-air" (14 Swarm against 3 Apex in the first 52 matches; 37 / 32 after) and the Turtle that
+never had a Bloomspire.
+
+Air mechanics per Bloomhost side and match: Gnatcloud damage 532; units blighted 2.0, Mites born from Blight 1.0; Snatches 1.5 (1.2
+eaten, 0.3 dropped); Rends 3.5; tendril drags 0.1, jaws bites 0.4, acid spews landed 5.2; Razorwing raids 1.4.
+
+The 6h swarm metrics (per Bloomhost side and match; 6h's run in brackets): peak Bloomhost units alive 36.4 (37.4); share of Bloomhost
+damage by melee 54.4% (61.4%); Mites spawned 148.3 (165.4), 147.3 by Queens, 1.0 by Blight; damage taken off by Wardens' auras 2,721
+(2,991); Pounces 79.0 (96.2); Tunnel trips 20.1 (18.2). Openers (Boomer / Economist / Turtle): swarm 20 / 6 / 4, Spitters 10 / 16 / 14,
+mixed 6 / 14 / 18; Bloomhost won 40% / 63% / 43% of the matches it opened with Spitters (6h: 40 / 75 / 71%).
+
+Under-fire charges (b6iresp) per side and match: Last Fist 24.5, Bloomhost 79.7, the Axiarchs 55.2.
+
+**The Bloomhost Turtle** (36 sides each, the same seeds; audit/logs-p1/b6i/):
+
+| run | Bloomhost Turtle W-L-D | Wardens | air units | income at 3 / 7 / 11 min (credits per 10 s) |
+|---|---|---|---|---|
+| 6h (v2.98, every switch on) | 19-13-4 | 39.1 | 0 | 226 / 292 / 338 |
+| 6i, first version: its Bloomspire in place of its third Refinery (selfplay-v1-refinery) | 4-30-2 | 9.5 | 18.3 | 154 / 226 / 235 |
+| the same, the Warden fix off (turtle-nowardfix) | 4-31-1 | 14.7 | 20.7 | 154 / 250 / 243 |
+| the same, no Bloomspire for the Turtle (turtle-noplan) | 14-17-5 | 22.1 | 0 | 226 / 285 / 291 |
+| its Bloomspire in place of its Reactor (turtle-reactor: never found a pad) | 14-17-5 | 22.6 | 0 | 210 / 296 / 295 |
+| **shipped: the late Bloomspire (selfplay6i-on)** | **14-18-4** | 22.0 | 10.2 | - |
+
+The first version cost the Turtle a third of its income (its third Refinery was never built) and it won 4 of 36; the Warden fix alone
+was not the cause. The first 162-match run with that version: Last Fist 44%, Bloomhost 33%, the Axiarchs 59%, the Bloomhost Turtle 11%
+(audit/logs-p1/b6i/selfplay-v1-refinery/).
+
+### Part F3: the node scenario (audit/sim/b6g-scen.js --set nodes, 36 matches, every switch on; audit/logs-p1/b6i/nodes/, node.md)
+
+| run | retakes | enemy pad buildings destroyed | Bloomhost W-L-D |
+|---|---|---|---|
+| 6h shipped (v2.98) | 126 | 1,008 | 3-29-4 |
+| 6i, the first Turtle plan (nodes-v1-refinery) | 88 | 851 | 0-33-3 |
+| **6i shipped** | **121** | **977** | **0-30-6** |
+
+Assault decisions: 409 launched in 10,482 checks (3.9%);
+assault units by type: Spitter 1,338, Skitterling 1,196, Warden 909, Broodback 321, Bilecaster 243, Queen 181, Gorebore 113, Leaper 87,
+Dreadthorn 57, Ravager 13, Ruinmaw 12, **Skywyrm 6** (it joins first when there is one; 3 to 4 Skywyrms are trained in these 36 matches);
+assault units killed 1,867 (Turrets 1,045). The Skywyrm is the building-breaker when one is up, but Bloomhost rarely has one in this
+scenario, so the numbers stay near 6h's (retakes -4%, pad kills -3%).
+
+### Part F4: the bug bar
+
+No faction below 30% or above 70% (36 / 43 / 56%). Every new unit is built by the AI. None wins absurdly in the Test Range (F1). Found and
+fixed while measuring (mechanics and AI use, no values): the Bloomspire roll's lean to Swarm Bloom; the Turtle with no Bloomspire (and the
+rejected version that cost it a third of its income); a queued Razorwing flock refunded at one bird's price when its Bloomspire is sold
+(`trySell`); the Gnatcloud out of reach of all area damage. Flags in docs/BALANCE_AUDIT.md section 17.7.
+
+### Tests
+
+TESTS6I
+
+### Departures
+
+- New internal ids (`razor6`, `gnatcloud`, `blightwing`, `talonmaw`, `skywyrm`), so a b6i-off game, an old save or a replay keeps the old
+  five; the Razorwing's id differs from its slot's (`razorwing`), its name is the same.
+- The Gnatcloud can be targeted and hit by ground splash and flame weapons (light armour to them): otherwise, as an aircraft, it could
+  never take area damage at all. A splash shell aimed at it counts as area damage for its own target too.
+- Rend's +15% applies to damage from any Bloomhost side (the Talonmaw's own side in a match; either side in a Bloomhost mirror).
+- Blight's Mites burst from any enemy unit that dies blighted, Mites included (the cap of 30 bounds it).
+- The Skywyrm's spew prefers buildings (it is the siege unit); its jaws and tendrils pick their own targets.
+- Under-fire responses keep 6g's eligibility: an AI's Retreat at home counts as holding (leash 100). b6iresp works through 6g's records
+  of who hurt a unit, so it needs b6g on.
+- Easy never reaches T3 (its maximum tier is 2), so it never trains a Blightwing or a Skywyrm.
+
 ## Unchanged (already distinct)
 
 Marine, Heavy, Tank, Flame Tank, Hydra, Interceptor, Medevac, Recon Drone, Mite, Razorwing, Cloudwing, Thornback, Lancer,
-Gravemantle, Eventide, Prismwing, Shardstorm. (Batch 6h, with b6h on: the Mite reworked and redrawn, the Thornback replaced by the Broodback.) (Every one of them is now drawn in the new style: Last Fist in batch 5a, the Bloomhost ones
+Gravemantle, Eventide, Prismwing, Shardstorm. (Batch 6h, with b6h on: the Mite reworked and redrawn, the Thornback replaced by the Broodback.) (Batch 6i, with b6i on: the Razorwing reworked into flocks, the Cloudwing replaced by the Blightwing.) (Every one of them is now drawn in the new style: Last Fist in batch 5a, the Bloomhost ones
 in 5b, the Axiarch five in 5c; their mechanics are unchanged.) (The Skitterling, Spitter and Needlewing changed in batch 5b, the swarm pass; the Mite,
 Razorwing, Cloudwing and Thornback kept their mechanics there but were redrawn, and gained swarm surge and kill frenzy.)
 
@@ -1814,6 +2067,8 @@ buildings: batch 5d, v2.91, with team colour on their largest surfaces).
    (`b6g`): smart warp-in, attack orders, units under fire, node play, the Purification Beam, the Wraithwing. Batch 6h (v2.98): the Bloomhost
    ground rework (`b6h`: Pounce, the loose swarm, the Mite, the Spitter from the start, the Queen, the Leaper, the Chitin Warden,
    the Broodback, the Ruinmaw and its Tunnel, the AI), unit bodies for every faction (`b6hbody`), the Bloomhost node contest
-   (`b6hnode`). Next: batch 6i, the Bloomhost air rework; then Bloomhost's balance.
+   (`b6hnode`). Batch 6i (v2.99): the Bloomhost air
+   rework (`b6i`: the Razorwing flock, the Gnatcloud, Blightwing, Talonmaw and Skywyrm, the air AI, the Chitin Warden quota) and the
+   under-fire response rework (`b6iresp`). Next: Bloomhost's balance pass.
 
 Then: the paused balance pass, with all three factions reworked.

@@ -52,6 +52,8 @@ test('the Razorwing flock: one order, 150/50, three birds of army size 1 and 90 
   const birds = g.ents.filter(e => e.type === 'razor6' && e.side === 0);
   assert.strictEqual(birds.length, 3); for (const e of birds) assert.strictEqual(e.maxHp, 90);
   assert.strictEqual(sim.popUsed(g, 0) - pop0, 3);
+  const c1 = s.res.c, e1 = s.res.e; assert.ok(sim.tryTrain(g, 0, 'razor6').ok); sim.trySell(g, 0, b); // a queued flock comes back whole when the Bloomspire is sold
+  assert.ok(Math.abs(s.res.c - (c1 + sim.sellValue(b).c)) < 1e-6 && Math.abs(s.res.e - (e1 + sim.sellValue(b).e)) < 1e-6, 'refunded 150 / 50');
   const old = sim.UDEF.razorwing, nu = sim.UDEF.razor6, k = 3 * nu.dmg / nu.cd / (old.dmg / old.cd);
   assert.ok(Math.abs(k - 1.2) < 1e-9, `flock dps ${k}× the old Razorwing's`);
   assert.strictEqual(sim.DMG.talon6.air, 1.25);
