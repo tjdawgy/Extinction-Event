@@ -31,7 +31,7 @@ const B6I = {
   blight: { range: 120, deg: 50, dmg: 15, dur: 8, mites: 2 },
   talon: { sCd: 8, sDps: 40, drop: 0.25, stun: 0.5, heal: 0.5, cap: 0.25, rCd: 6, rDmg: 60, rDur: 6, amp: 0.15, dive: 2, diveR: 150, hunt: 220 },
   wyrm: { bmul: 2.5, tCd: 6, tR: 180, pull: 1.5, bite: 70, jDmg: 30, jCd: 1, jR: 45 },
-  wardFix: true, // Part D (an audit can switch it off to measure the old rule; always on in a game)
+  wardFix: true, turtlePlan: true, // Part D; Part B's Bloomhost Turtle plan (an audit can switch either off to measure it; always on in a game) // Part D (an audit can switch it off to measure the old rule; always on in a game)
   resp: { near: 80, melee: 100, hold: 100, attack: 250, charge: 8 },
 };
 /* ---- the five units (UDEF; their slots in rwType) ---- */
@@ -315,20 +315,35 @@ function ward6i(g, s, sc, spl) {
   if (have >= want) sc.bulwark = Math.min(sc.bulwark, 0.4); // at its quota: no more
   else if (spl > 0) sc.bulwark = Math.max(sc.bulwark, 1.6 + spl * 1.5);
 }
-// The batch 6d Turtle's plan has no Tech Lab (a ground fortress), and its eight items fill every pad once its Habitats are up; with
-// b6i a Bloomhost Turtle grows a Bloomspire in place of its third Refinery, which moves to the end of the plan (built if a pad is
-// left), so its Skywyrms (siege and air defence) and the rest of the air roster are within its reach too. Other plans unchanged.
+// The batch 6d Turtle's plan has no Tech Lab (a ground fortress), and its eight items fill every pad once its first Habitat is up.
+// With b6i a Bloomhost Turtle keeps that opening (measured: giving its third Refinery's or its Reactor's place in the plan to a
+// Bloomspire cost it a third of its income, or never found a pad) and grows a Bloomspire late: the plan ends with one, and from
+// TURTLE6I.at, with every pad taken, energy banked (TURTLE6I.e), the Bloomspire's price in hand and no enemy near its HQ, it sells
+// its Reactor and grows the Bloomspire on that pad (turtle6i). Its Skywyrms (siege and air defence) and the rest of the air roster
+// are within its reach then. Other plans unchanged.
+const TURTLE6I = { at: 480, e: 300, near: 500, every: 5 };
 function plan6i(g, s, P) {
   const p = P.plan;
-  if (P.kind !== 'turtle' || facOf(g.sides[s].faction) !== 'bloomhost' || !p || p.includes('techlab')) return p;
-  if (!P.plan6i) { const q = p.slice(), i = q.lastIndexOf('refinery'); if (i >= 0) q.splice(i, 1); q.push('techlab', 'refinery'); P.plan6i = q; }
-  return P.plan6i;
+  if (!B6I.turtlePlan || P.kind !== 'turtle' || facOf(g.sides[s].faction) !== 'bloomhost' || !p || p.includes('techlab')) return p;
+  return P.plan6i || (P.plan6i = p.concat('techlab'));
+}
+function turtle6i(g, s, mine) {
+  const side = g.sides[s], P = side.persona;
+  if (!B6I.turtlePlan || !P || P.kind !== 'turtle' || side.hush || g.t < TURTLE6I.at || g.t < (side.tt6i || 0)) return;
+  side.tt6i = g.t + TURTLE6I.every;
+  if (countB(g, s, 'techlab') || padsOpen(g, s) > 0 || side.res.e < TURTLE6I.e) return;
+  const d = bdS(g, s, 'techlab'); if (!d || side.res.c < d.cost.c || side.res.e - TURTLE6I.e < d.cost.e) return;
+  const hq = side.hq; if (g.ents.some(e => e.kind === 'u' && e.side === 1 - s && e.hp > 0 && Math.hypot(e.u - hq.u, e.v - hq.v) < TURTLE6I.near && visibleTo(g, s, e))) return;
+  const R = alive(g, s, 'reactor').filter(b => b.built && !b.upgrading).sort((a, b) => a.tier - b.tier || a.id - b.id)[0]; if (!R) return;
+  const pad = R.slot; if (!trySell(g, s, R).ok) return;
+  const r = tryBuild(g, s, 'techlab', pad); sw6i(g, s).spire = r.ok ? g.t : -g.t; lg(g, s, 'G', 'spire6i', r.ok ? 1 : 0);
 }
 const RAZ6I = { min: 6, end: 3, dur: 35, every: 2, home: 430, hurt: 0.5 };
 const AIRWAIT6I = { blight: 60 };
 function aiRework6i(g, s, mine) {
   const side = g.sides[s], dir = dirOf(s);
   if (facOf(side.faction) !== 'bloomhost') return;
+  turtle6i(g, s, mine); // a Bloomhost Turtle's late Bloomspire
   // Blightwings behind the main army on the attack (they cone what is in reach)
   if (side.stance === 'attack') {
     const front = mine.filter(u => isSwarmG(UDEF[u.type]) && !u.gone && !u.temp && UDEF[u.type].weapon && !u.tn);

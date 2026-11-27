@@ -64,7 +64,7 @@ const SC = {
     place: (R, g) => ({ a: R.rangeUnits(g, 0, 'worldrender', 560, 0, 1), t1: R.rangeBuilding(g, 1, 'lastfist', 'turret', 900, -30), t2: R.rangeBuilding(g, 1, 'lastfist', 'turret', 900, 40), r: R.rangeBuilding(g, 1, 'lastfist', 'refinery', 960, 0) }),
     tick: (R, g, U, t, st) => { for (const k of ['t1', 't2', 'r']) if (U[k].hp <= 0 && st[k] == null) st[k] = +t.toFixed(1); },
     done: (g, U) => alive(g, U.a) === 0 || (U.t1.hp <= 0 && U.t2.hp <= 0 && U.r.hp <= 0),
-    read: (g, U, t, st) => ({ t: Math.round(t), wyrm: alive(g, U.a), wyrmHp: hpOf(U.a), turret1: st.t1 ?? '-', turret2: st.t2 ?? '-', refinery: st.r ?? '-', turretsDownAt: st.t1 != null && st.t2 != null ? Math.max(st.t1, st.t2) : '-' }) },
+    read: (g, U, t, st) => { for (const k of ['t1', 't2', 'r']) if (U[k].hp <= 0 && st[k] == null) st[k] = +t.toFixed(1); return { t: Math.round(t), wyrm: alive(g, U.a), wyrmHp: hpOf(U.a), turret1: st.t1 ?? '-', turret2: st.t2 ?? '-', refinery: st.r ?? '-', turretsDownAt: st.t1 != null && st.t2 != null ? Math.max(st.t1, st.t2) : '-' }; } },
   wyrmAir: { f: ['bloomhost', 'lastfist'], m0: 'hold', m1: 'attack', T: 60,
     place: (R, g) => ({ a: R.rangeUnits(g, 0, 'worldrender', 600, 0, 1), b: R.rangeUnits(g, 1, 'aircraft', 820, 0, 2) }),
     done: (g, U) => both(g, U.a, U.b),

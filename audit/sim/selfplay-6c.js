@@ -21,6 +21,7 @@ for (const map of MAPS) for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) 
   const [lo, hi, plo, phi] = a < b ? [a, b, pa, pb] : [b, a, pb, pa];
   const pairIdx = lo === 0 ? hi - 1 : 2; // LF-BH 0, LF-AX 1, BH-AX 2
   const seed = +arg('seedBase', '600') + pairIdx * 27 + ALLMAPS.indexOf(map) * 9 + plo * 3 + phi; // v2.96 (batch 6f): --seedBase 1000 for a second run with other seeds
+  const fp = arg('facPersona', ''); if (fp) { const [ff, pp] = fp.split(':'); if (!((F[a] === ff && P[pa] === pp) || (F[b] === ff && P[pb] === pp))) continue; } // v2.99 (batch 6i): --facPersona bloomhost:turtle keeps the matches a faction plays with that personality
   if (!only || only.has(P[pa] + ':' + P[pb])) jobs.push({ map, f0: F[a], f1: F[b], p0: P[pa], p1: P[pb], seed });
 }
 const key = j => [j.map, j.f0, j.f1, j.seed, j.p0, j.p1].join();
