@@ -30,7 +30,7 @@ test('title image: shows first, covers the screen uncropped-centered, tap goes t
     assert.match(r.img, /assets\/title-screen\.jpg/);
     assert.deepStrictEqual([r.w, r.h], [dev.width, dev.height]);
     assert.ok(r.top, 'title screen is on top of the menu');
-    assert.strictEqual(r.text, 'Extinction EventTAP TO PLAY');
+    assert.strictEqual(r.text, 'Extinction EventTAP TO PLAY' + await page.evaluate(() => 'v' + VERSION)); // v3.00 (batch 6j): the version in the corner
     assert.strictEqual(r.anim, 'tapPulse');
     await page.mouse.click(dev.width * 0.3, dev.height * 0.5);
     await page.waitForTimeout(500);

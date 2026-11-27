@@ -12,7 +12,7 @@ const until = (s, g, f, sec = 20) => { for (let i = 0; i < sec * 60; i++) { if (
 const tough = (...es) => es.forEach(e => { e.hp = e.maxHp = 1e6; });
 
 test('switch: per game; b5b off plays the v2.87 units (UDEF untouched), on the batch\'s definitions; saves', () => {
-  const s = loadSim(); s.REWORK.b6c = false; s.REWORK.b6ai = false; s.REWORK.b6d = false; s.REWORK.b6elane = false; s.REWORK.b6e = false; s.REWORK.b6fai = false; s.REWORK.b6f = false; s.REWORK.b6g = false; s.REWORK.b6h = false; s.REWORK.b6hbody = false; s.REWORK.b6hnode = false; s.REWORK.b6i = false; s.REWORK.b6iresp = false; /* v2.96 */ /* v2.95 */ /* v2.94 */ /* v2.93: v2.92's numbers (batch 6c's tuning, on by default, is tested in tests/rework-6c.test.js) */
+  const s = loadSim(); s.REWORK.b6c = false; s.REWORK.b6ai = false; s.REWORK.b6d = false; s.REWORK.b6elane = false; s.REWORK.b6e = false; s.REWORK.b6fai = false; s.REWORK.b6f = false; s.REWORK.b6g = false; s.REWORK.b6h = false; s.REWORK.b6hbody = false; s.REWORK.b6hnode = false; s.REWORK.b6i = false; s.REWORK.b6iresp = false; s.REWORK.b6jfix = false; s.REWORK.b6j = false; /* v2.96 */ /* v2.95 */ /* v2.94 */ /* v2.93: v2.92's numbers (batch 6c's tuning, on by default, is tested in tests/rework-6c.test.js) */
   assert.strictEqual(s.rwInit().b5b, true, 'on by default');
   const on = s.rangeGame({ factions: ['bloomhost', 'lastfist'] }), off = s.rangeGame({ factions: ['bloomhost', 'lastfist'], rework: { b5b: false } });
   const sk = s.rwD(on, 'skitterling'); assert.ok(sk.hp === 50 && sk.brood.n === 4 && sk.brood.c === 120 && sk.brood.time === 6 && sk.swarm && s.UDEF.skitterling.hp !== 50 && s.rwD(off, 'skitterling') === s.UDEF.skitterling);
@@ -27,7 +27,7 @@ test('switch: per game; b5b off plays the v2.87 units (UDEF untouched), on the b
 });
 
 test('broods: one order costs 120 for 4 Skitterlings of 50 health in 6 s, counts 4 against supply and the limit; past the limit only what fits hatches, the rest refunded', () => {
-  const s = loadSim(); s.REWORK.b6c = false; s.REWORK.b6ai = false; s.REWORK.b6d = false; s.REWORK.b6elane = false; s.REWORK.b6e = false; s.REWORK.b6fai = false; s.REWORK.b6f = false; s.REWORK.b6g = false; s.REWORK.b6h = false; s.REWORK.b6hbody = false; s.REWORK.b6hnode = false; s.REWORK.b6i = false; s.REWORK.b6iresp = false; /* v2.96 */ /* v2.95 */ /* v2.94 */ /* v2.93: v2.92's numbers (batch 6c's tuning, on by default, is tested in tests/rework-6c.test.js) */
+  const s = loadSim(); s.REWORK.b6c = false; s.REWORK.b6ai = false; s.REWORK.b6d = false; s.REWORK.b6elane = false; s.REWORK.b6e = false; s.REWORK.b6fai = false; s.REWORK.b6f = false; s.REWORK.b6g = false; s.REWORK.b6h = false; s.REWORK.b6hbody = false; s.REWORK.b6hnode = false; s.REWORK.b6i = false; s.REWORK.b6iresp = false; s.REWORK.b6jfix = false; s.REWORK.b6j = false; /* v2.96 */ /* v2.95 */ /* v2.94 */ /* v2.93: v2.92's numbers (batch 6c's tuning, on by default, is tested in tests/rework-6c.test.js) */
   const g = s.newGame('normal', { seed: 3, factions: ['bloomhost', 'lastfist'], countdown: 0 }); g.sides[0].aiT = g.sides[1].aiT = 1e9;
   s.rangeBuilding(g, 0, 'bloomhost', 'barracks', 300, 0);
   const sd = g.sides[0]; sd.res.c = 1000; sd.res.e = 0;

@@ -62,6 +62,6 @@ test('supply: at its limit with money banked and every Habitat at T3, Hard trade
   const r = runMatch({ seed: 3, diff: 'hard', maxT: 900, sides: [{ faction: 'bloomhost', ai: 'hard', persona: 'random' }, { faction: 'bloomhost', ai: 'hard', persona: 'random' }] });
   const cap = r.samples.map(x => Math.max(...x.cap));
   assert.ok(Math.max(...cap) > 34, `army limit grew past one T3 Habitat (${Math.max(...cap)})`);
-  const old = runMatch({ seed: 3, diff: 'hard', maxT: 900, code: 'REWORK.b2b = false; REWORK.b3a = false; REWORK.b3b = false; REWORK.b5b = false; REWORK.b5c = false; REWORK.b6side = false; REWORK.b6art = false; REWORK.b6hq = false; REWORK.b6c = false; REWORK.b6i = false; REWORK.b6iresp = false', sides: [{ faction: 'bloomhost', ai: 'hard259', persona: 'random' }, { faction: 'bloomhost', ai: 'hard259', persona: 'random' }] });
+  const old = runMatch({ seed: 3, diff: 'hard', maxT: 900, code: 'REWORK.b2b = false; REWORK.b3a = false; REWORK.b3b = false; REWORK.b5b = false; REWORK.b5c = false; REWORK.b6side = false; REWORK.b6art = false; REWORK.b6hq = false; REWORK.b6c = false; REWORK.b6i = false; REWORK.b6iresp = false; REWORK.b6jfix = false; REWORK.b6j = false', sides: [{ faction: 'bloomhost', ai: 'hard259', persona: 'random' }, { faction: 'bloomhost', ai: 'hard259', persona: 'random' }] });
   assert.ok(Math.max(...old.samples.map(x => Math.max(...x.cap))) <= 34, 'v2.59 Hard stays at 34');
 });

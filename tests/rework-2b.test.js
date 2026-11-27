@@ -2,11 +2,11 @@
 // Worldbreaker (the crack, the ridge), behind REWORK.b2b (per game, g.rw.b2b). Played on Test Range games (the real SIM).
 const test = require('node:test');
 const assert = require('node:assert');
-const { loadSim, pin6h } = require('./load-sim');
+const { loadSim, pin6h, pin6j } = require('./load-sim');
 
 const step = (s, g, sec) => { for (let i = 0; i < Math.round(sec * 60); i++) s.rangeStep(g); };
 
-test('switch: per game; b2b off plays the v2.82 units (UDEF untouched), on plays the batch\'s definitions', () => {
+test('switch: per game; b2b off plays the v2.82 units (UDEF untouched), on plays the batch\'s definitions', pin6j(['b6j'], () => { // v3.00 (batch 6j): held b6j off (intended: its Titan reach); counterpart in tests/switches-on-6j.test.js
   const s = loadSim();
   const on = s.rangeGame({ factions: ['lastfist', 'bloomhost'] }), off = s.rangeGame({ factions: ['lastfist', 'bloomhost'], rework: { b2b: false } });
   assert.ok(s.rwB2b(on) && !s.rwB2b(off));
@@ -19,7 +19,7 @@ test('switch: per game; b2b off plays the v2.82 units (UDEF untouched), on plays
   const g = s.newGame('normal', { seed: 5 }); for (let i = 0; i < 120; i++) s.update(g, s.TICK);
   assert.strictEqual(s.deserialize(s.serialize(g, {})).rw.b2b, true);
   const o = JSON.parse(s.serialize(g, {})); delete o.rw.b2b; assert.strictEqual(s.deserialize(JSON.stringify(o)).rw.b2b, false);
-});
+}));
 
 test('Titan cover: Last Fist infantry within reach take 30% less from ranged attacks, not from melee; Titans don\'t stack', () => {
   const s = loadSim();
