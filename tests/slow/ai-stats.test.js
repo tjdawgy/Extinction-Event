@@ -45,7 +45,7 @@ test('Bloomhost AI (Turtle) uses all three of its abilities, under one shared co
 
 test('Bloomhost AI (Turtle vs a Last Fist Aggressor): economy, Maws, all three base units, nodes and attacks (rates over N matches)', () => {
   const B = ['refinery', 'reactor', 'habitat', 'barracks', 'factory', 'techlab', 'turret'];
-  const rows = playN(N, 200, { persona: 'turtle', autoPersona: 'aggressor', factions: ['lastfist', 'bloomhost'] }, 1200,
+  const rows = playN(N, 200, { persona: 'turtle', autoPersona: 'aggressor', factions: ['lastfist', 'bloomhost'], rework: { b6i: false } /* v2.99 (batch 6i): held b6i off (the Razorwing is a flock with b6i, id razor6); counterpart in tests/slow/switches-on-6i.test.js */ }, 1200,
     (g, S, st) => { st.b = st.b || new Set(); for (const e of g.ents) if (e.side === 1 && e.kind === 'b') st.b.add(e.type); },
     (g, S, st) => ({ built: st.b, tr: g.sides[1].aiLog.trained, node: g.log.tot[1].nodeCap > 0, att: g.sides[1].aiLog.attacks > 0, ended: g.over }));
   check('Bloomhost base AI', rows, [['its whole base (7 roles)', r => B.every(k => r.built.has(k)), 0.2], ['a Maw', r => r.built.has('turret'), 0.7], // 40%, 100%
@@ -57,7 +57,7 @@ test('Bloomhost AI (Economist): the Bloomspire path through its taste, Brood Tyr
   // v2.39: against an Axiarch Turtle (was a Last Fist Turtle). After the balance pass the Bloomhost Economist beats the Last
   // Fist Turtle in about 9 minutes (10 of 10 on these seeds), before any Worldrender; against the Axiarch Turtle the matches
   // run about 16 minutes: path 100%, Apex 100%, Brood Tyrants 100%, a Worldrender 80% (seeds 300-309)
-  const rows = playN(N, 300, { persona: 'economist', autoPersona: 'turtle', factions: ['axiarchs', 'bloomhost'] }, 1200,
+  const rows = playN(N, 300, { persona: 'economist', autoPersona: 'turtle', factions: ['axiarchs', 'bloomhost'], rework: { b6i: false } /* v2.99 (batch 6i): held b6i off (no Brood Tyrants or Worldrenders with b6i); counterpart in tests/slow/switches-on-6i.test.js */ }, 1200,
     (g, S, st) => { for (const e of g.ents) if (e.side === 1 && e.type === 'techlab' && e.path) st.path = e.path; },
     (g, S, st) => ({ path: st.path || null, tr: g.sides[1].aiLog.trained }));
   const pathed = rows.filter(r => r.path);
