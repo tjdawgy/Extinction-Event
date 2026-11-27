@@ -8011,6 +8011,7 @@ const B6J = {
   late: ['lastfist', 'axiarchs'],  // B2: every personality of these factions without an air building grows one late the same way (late6j)
   air: { at: 480, ref: 3, c: 0.6 }, // B2: from 8:00, with 3 built Refineries and 60% of the upgrade's credits, the air building's T2 and T3 first
   wyrm: { hp: 0.3 },               // B3: a Skywyrm joins a node assault from 30% health (6h's pool: 50%)
+  lev: 1.6,                        // B2 (round 3): a Last Fist AI with Air Power T3 and no Leviathan scores its first at least this
   // Part D: the balance pass. unit: per-game unit values (through rwD's rwOver6, health and shields at spawn, the Codex through
   // rwShow); gnat: the Gnatcloud's B6I numbers. Each with its old value and the reason in docs/BALANCE_AUDIT.md section 18.
   unit: {
@@ -8018,10 +8019,10 @@ const B6J = {
     heavy: { dmg: 19 },      // R2: Last Fist's weakest fighting unit in every run (30-32 value killed per 100 spent) with Last Fist at 36% (16)
     tank: { dmg: 36 },       // R2: batch 6d's cut (42 -> 32) when Last Fist won 62%; Last Fist 36% now, the Tank 38-42 per 100 spent (32)
     spitter: { dmg: 5 },     // R2: Bloomhost's most efficient unit (138 per 100 spent) and Spitter openers 88% for the Economist (6 a quill)
-    lancer: { dmg: 15 },     // R1: the most efficient unit in the game (137 value killed per 100 spent); the Axiarchs win 71% of matches under 15:00 (16)
+    lancer: { dmg: 14 },     // R1: the most efficient unit in the game (137 value killed per 100 spent); the Axiarchs win 71% of matches under 15:00 (16 -> 15); R3: still the most efficient (147) with the Axiarchs at 64% on Classic (15 -> 14)
     broodback: { dmg: 24 },  // R1: Bloomhost's weakest unit (8 value killed per 100 spent; 6h's newest) with Bloomhost at 39% (bite 12)
   },
-  gnat: { dps: 3 },          // R1: 4 Gnatclouds beat 10 Marines 20-0 attacking and 20-0 both attacking (8); 3: 2-18 and 20-0
+  gnat: { dps: 3.075 },      // R1: 4 Gnatclouds beat 10 Marines 20-0 attacking and 20-0 both attacking (8 -> 3: 2-18 and 20-0); R3: the attacking setup alone in 35-65% (3 -> 3.075: 11-9 over 20 seeds, 22-18 over 40)
 };
 // A2: where a Queen's next Mite hatches: in front of her (her target, else her order's target, else her facing), clear of her body
 function queenSpot6j(g, q) {
@@ -8101,6 +8102,12 @@ function rw6jSpawn(g, u) {
   if (o.shp !== undefined) { u.shp = u.maxShp = o.shp; }
 }
 const gnat6j = (g, k) => rwB6j(g) && B6J.gnat[k] !== undefined ? B6J.gnat[k] : B6I.gnat[k]; // the Gnatcloud's dps and cut in game g
+// B2 (round 3): Last Fist's tier-3 aircraft. With b6j 41 of 108 Last Fist sides took Air Power and 8 trained a Leviathan: its score
+// falls with the enemy's anti-air (every Bloomspire unit and the Spitter hit aircraft), so it was rarely the pick. A side with the
+// Leviathan unlocked and none alive scores it at least B6J.lev (one at a time; the counter rule decides the rest).
+function aiScores6j(g, s, sc, mine) {
+  if (sc.leviathan !== undefined && !mine.some(u => u.type === 'leviathan')) sc.leviathan = Math.max(sc.leviathan, B6J.lev);
+}
 /* ---------- Enemy AI: same economy, same rules, same upgrades as the player ---------- */
 // Known base defenses: the enemy HQ gun plus remembered Turrets, each at its last-seen tier
 const HQ_VAL = 400, TURRET_VAL = 300;
@@ -8433,6 +8440,7 @@ function aiUpdate(g, s, dt) {
     }
     if (rwB5b(g)) aiScores5b(g, s, sc, { comp, theirs, mine });
     if (rwB6h(g)) aiScores6h(g, s, sc, { comp, theirs, mine });
+    if (rwB6j(g)) aiScores6j(g, s, sc, mine); // v3.00 (batch 6j): a first Leviathan (src/sim/rework-6j.js)
     if (rwB6i(g)) aiScores6i(g, s, sc, { comp, theirs, mine }); // v2.99 (batch 6i): the Bloomspire's five (src/sim/rework-6i.js) // v2.98 (batch 6h): openers, Queens, Broodbacks, Wardens against area damage (src/sim/rework-6h.js) // v2.88 (rework batch 5b): broods are the swarm's backbone; Spitters and Needlewings answer aircraft
     if (!threat) for (const t of types) { const b = P.bias[t] || (rwB6i(g) && RW6I_TASTE[t] ? RW6I_TASTE[t][P.kind] : rwB6h(g) && RW6H_TASTE[t] ? RW6H_TASTE[t][P.kind] : rwB4b(g) && RW4B_TASTE[t] ? RW4B_TASTE[t][P.kind] : rwB4a(g) && RW4A_TASTE[t] ? RW4A_TASTE[t][P.kind] : rwB3b(g) && RW3B_TASTE[t] ? RW3B_TASTE[t][P.kind] : rwB3a(g) && RW3A_TASTE[t] ? RW3A_TASTE[t][P.kind] : rwB2b(g) && RW2B_TASTE[t] ? RW2B_TASTE[t][P.kind] : P.bias[AI_TWIN[t]]); if (b && sc[t] > 0) sc[t] *= b; } // v2.84: batch 3a's four have tastes of their own; // v2.83: the Ruinmaw and Worldbreaker have tastes of their own in batch 2b // the personality's taste in units (threats are answered on merit)
     for (const t of types) if (dl.comp[t] !== undefined) sc[t] *= dl.comp[t]; // the composition dial (v2.38; legacy has none)

@@ -330,6 +330,7 @@ function aiUpdate(g, s, dt) {
     }
     if (rwB5b(g)) aiScores5b(g, s, sc, { comp, theirs, mine });
     if (rwB6h(g)) aiScores6h(g, s, sc, { comp, theirs, mine });
+    if (rwB6j(g)) aiScores6j(g, s, sc, mine); // v3.00 (batch 6j): a first Leviathan (src/sim/rework-6j.js)
     if (rwB6i(g)) aiScores6i(g, s, sc, { comp, theirs, mine }); // v2.99 (batch 6i): the Bloomspire's five (src/sim/rework-6i.js) // v2.98 (batch 6h): openers, Queens, Broodbacks, Wardens against area damage (src/sim/rework-6h.js) // v2.88 (rework batch 5b): broods are the swarm's backbone; Spitters and Needlewings answer aircraft
     if (!threat) for (const t of types) { const b = P.bias[t] || (rwB6i(g) && RW6I_TASTE[t] ? RW6I_TASTE[t][P.kind] : rwB6h(g) && RW6H_TASTE[t] ? RW6H_TASTE[t][P.kind] : rwB4b(g) && RW4B_TASTE[t] ? RW4B_TASTE[t][P.kind] : rwB4a(g) && RW4A_TASTE[t] ? RW4A_TASTE[t][P.kind] : rwB3b(g) && RW3B_TASTE[t] ? RW3B_TASTE[t][P.kind] : rwB3a(g) && RW3A_TASTE[t] ? RW3A_TASTE[t][P.kind] : rwB2b(g) && RW2B_TASTE[t] ? RW2B_TASTE[t][P.kind] : P.bias[AI_TWIN[t]]); if (b && sc[t] > 0) sc[t] *= b; } // v2.84: batch 3a's four have tastes of their own; // v2.83: the Ruinmaw and Worldbreaker have tastes of their own in batch 2b // the personality's taste in units (threats are answered on merit)
     for (const t of types) if (dl.comp[t] !== undefined) sc[t] *= dl.comp[t]; // the composition dial (v2.38; legacy has none)
