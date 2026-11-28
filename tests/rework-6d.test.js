@@ -2,7 +2,7 @@
 // src/sim/rework-6d.js. Fingerprints (FP_V294A, FP_V294) are in tests/determinism.test.js.
 const test = require('node:test');
 const assert = require('node:assert');
-const { loadSim } = require('./load-sim');
+const { loadSim, pin6j } = require('./load-sim');
 const sim = loadSim();
 const J = x => x === undefined ? x : JSON.parse(JSON.stringify(x)); // values from the SIM's sandbox, compared as plain data
 const same = (a, b, m) => assert.deepStrictEqual(J(a), J(b), m);
@@ -65,7 +65,7 @@ test('b6ai: the Economist spends past its cap; the Turtle attacks on army size, 
   assert.strictEqual(sim.aiB6ai(g0, 1, T, c({ myV: 9000, thV: 0 })), null, 'off: no batch 6d push');
 });
 
-test('b6d: its four values play when on (Tank damage, Shardling health, Artillery salvo, the Salvage Yard share); off v2.93\'s; the Codex shows the game default', () => {
+test('b6d: its four values play when on (Tank damage, Shardling health, Artillery salvo, the Salvage Yard share); off v2.93\'s; the Codex shows the game default', pin6j(['b6j'], () => { // v3.00 (batch 6j): held b6j off (intended: its Tank damage is 36); counterpart in tests/switches-on-6j.test.js
   const on = game(), off = game({ b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false });
   assert.strictEqual(sim.rwD(on, 'tank').dmg, sim.B6D.unit.tank.dmg); assert.strictEqual(sim.rwD(off, 'tank').dmg, sim.UDEF.tank.dmg);
   assert.strictEqual(sim.rwD(on, 'artillery').dmg, sim.B6D.unit.artillery.dmg); assert.strictEqual(sim.rwD(off, 'artillery').dmg, sim.ART6.dmg, 'off: 6b\'s salvo');
@@ -79,7 +79,7 @@ test('b6d: its four values play when on (Tank damage, Shardling health, Artiller
   assert.strictEqual(sim.rwShow(off, 'shardling').hp, sim.UDEF.shardling.hp);
   assert.ok(Object.keys(sim.B6D.unit).length + Object.keys(sim.B6D.yard).length <= 4, 'at most four values');
   assert.strictEqual(sim.UDEF.tank.dmg, 42, 'UDEF untouched');
-});
+}));
 
 test('b6d: a kill pays the Salvage Yard\'s batch 6d share', () => {
   for (const [rw, pct] of [[undefined, sim.B6D.yard.pct], [{ b6d: false, b6elane: false, b6e: false, b6fai: false, b6f: false, b6g: false, b6h: false, b6hbody: false, b6hnode: false }, sim.YARD.pct]]) {

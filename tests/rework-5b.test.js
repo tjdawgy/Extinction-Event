@@ -5,7 +5,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const crypto = require('crypto');
-const { loadSim, pin6h, pin6i } = require('./load-sim');
+const { loadSim, pin6h, pin6i, pin6j } = require('./load-sim');
 
 const step = (s, g, sec) => { for (let i = 0; i < Math.round(sec * 60); i++) s.rangeStep(g); };
 const until = (s, g, f, sec = 20) => { for (let i = 0; i < sec * 60; i++) { if (f()) return true; s.rangeStep(g); } return f(); };
@@ -86,7 +86,7 @@ test('kill frenzy: an enemy unit dying within 120 makes nearby Bloomhost units a
   s.kill(g0, A0, 0); assert.ok(!n0.kfT, 'off: none');
 });
 
-test('Spitter: volleys of 3 quills 0.12 s apart, a volley every 1.2 s, 6 each, 1.5× to aircraft, aircraft first, corrosion kept', () => {
+test('Spitter: volleys of 3 quills 0.12 s apart, a volley every 1.2 s, 6 each, 1.5× to aircraft, aircraft first, corrosion kept', pin6j(['b6j'], () => { // v3.00 (batch 6j): held b6j off (intended: its Spitter quill is 5); counterpart in tests/switches-on-6j.test.js
   const s = loadSim();
   const g = s.rangeGame({ factions: ['bloomhost', 'lastfist'] });
   const S = s.rangeUnit(g, 0, 'spitter', 500, 0), R = s.rangeUnit(g, 1, 'rifle', 600, 0), G = s.rangeUnit(g, 1, 'aircraft', 620, 10); tough(S, R, G); S.cd = 0;
@@ -100,7 +100,7 @@ test('Spitter: volleys of 3 quills 0.12 s apart, a volley every 1.2 s, 6 each, 1
   assert.ok(shots.every(x => Math.abs(x.dmg - 6) < 1e-9));
   const h0 = G.hp; s.damage(g, G, 6, 'quill', 0); assert.ok(Math.abs(h0 - G.hp - 6 * 1.5 * (1 + s.corrNow(G, g.t))) < 1e-6, '1.5× to aircraft');
   assert.ok(G.corrT > g.t, 'corroded');
-});
+}));
 
 test('Needlewing: hits aircraft too (swarm bonus kept); with b5b off it can\'t', pin6i(['b6i'], () => { // v2.99 (batch 6i): held b6i off: the Needlewing is gone with it
   const s = loadSim();

@@ -453,7 +453,7 @@ test('on: disrupt: a Parallax blow makes the target deal less damage for a while
   sim.disrupt(g, r, { amt: 0.1, dur: 10 }); assert.strictEqual(r.dis, sim.DISRUPT.cap, 'a weaker one never lowers it'); assert.ok(r.disT >= g.t + 9, 'the later end is kept');
   const b = put(0, 'bastion', 760, 0); b.cd = 1e6; b.bwHp = 0; b.bwHit = -99; b.bwDn = 1e9; b.bwF = -1; const h0 = b.shp + b.hp; // barrier down
   sim.fire(g, r, b, sim.rwD(g, 'heavy')); for (let i = 0; i < 60 && g.projs.length; i++) sim.update(g, 1 / 30);
-  const dealt = h0 - (b.shp + b.hp), full = U.heavy.dmg * sim.DMG.rocket.vehicle;
+  const dealt = h0 - (b.shp + b.hp), full = sim.rwD(g, 'heavy').dmg * sim.DMG.rocket.vehicle; // v3.00: the game's Heavy (batch 6j's damage)
   assert.ok(Math.abs(dealt - full * (1 - sim.DISRUPT.cap)) < 1, `a disrupted Heavy's rocket: ${dealt.toFixed(1)} of ${full}`);
   step(g, 11); assert.ok(!(r.disT > g.t), 'it wears off');
 });
