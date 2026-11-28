@@ -1224,7 +1224,11 @@ Bloomhost openers with Spitters: Boomer 11 of 18 (61%), Economist 18 of 30 (60%)
 | node scenario: Bloomhost pad buildings destroyed +30% over 977 | NODE | NODE |
 
 Why Last Fist on Two-Lane misses: it is the Last Fist vs Bloomhost pairing there (7-23-6, 19%); after Parts A-B it was 7-6-5, after
-round 1 4-10-4, round 2 2-11-5. TWOLANE
+round 1 4-10-4, round 2 2-11-5. Two diagnostic ablations on round 3's Two-Lane matches (seeds 600+, 54 matches each, round 3's build with one change taken back by
+`EE_CODE`; audit/logs-p1/b6j/abl-broodback/, abl-late/): Last Fist against Bloomhost there 4-11 in round 3, 5-9 with the Broodback's
+old bite, 6-9 without the late air building (`late6j`); Last Fist on Two-Lane 14-18, 15-16, 15-16. Neither explains it alone (both
+within the noise of 18 and 36 matches). Bloomhost is strong on Two-Lane in every run since round 1 (53-64%); the Parts A-B run's 7-6-5
+may itself have been a lucky draw (6i's run: 33% for Last Fist on Two-Lane against Bloomhost). Not tuned further (three rounds).
 
 ### 18.4 Diagnosis (Part C)
 

@@ -91,11 +91,44 @@ checks, run logs), audit/logs-p1/selfplay6j-ab/, -r1/, -r2/, -r3/, -r3b/. The 6a
 
 ### Part C: diagnosis (6i's run and the Parts A-B run; audit/logs-p1/b6j/diag-6i.md, audit/logs-p1/selfplay6j-ab/b6j.md)
 
-PART_C
+Baseline 6i's run (Last Fist 36%, Bloomhost 43%, the Axiarchs 56%) and the Parts A-B run (162, every switch on: Last Fist 44% (35-54),
+Bloomhost 39% (30-48), the Axiarchs 51% (42-60); personalities 41 / 48 / 45%). Per faction (the full tables in docs/BALANCE_AUDIT.md
+section 18.4):
+- Last Fist: Snipers and Hydras the most efficient (146-157 value killed per 100 spent), the Heavy (32) and Tank (42) the least of its
+  fighting units; a quarter of the damage its units take comes from HQ guns; it wins 62% of matches of 15-20 minutes, 21% under 10.
+  AI logic: the siege push, the Turtle's Tech Lab, tier-3 air (Part B). Numbers: the Heavy, the Tank, the Titan's reach (Part D).
+- Bloomhost: the Spitter the most efficient unit (130-138), the Broodback (8-11) and Gnatcloud (12-16, corrected attribution) the
+  least; even across match lengths. Numbers: the Broodback, the Spitter, the Gnatcloud. AI use: Gnatclouds sent one at a time.
+- The Axiarchs: the Lancer the most efficient unit in the game (137-143); 71% under 15 minutes, 10-15% past 20 (an early-game
+  faction; Classic its best map at 64%). Numbers: the Lancer.
+- The checks asked for: Last Fist against the Axiarchs 31% (6i) / 46% (A-B), on Classic 33 / 33%, on Two-Lane 31 / 44%; the Axiarchs on
+  Classic 64 / 64%; the Gnatcloud (four clouds beat 10 Marines 20-0; one dies without a kill); the Wraithwing (45-66 per 100, as the
+  Prismwing; wins against Gunships, loses to Marines: not weak); Spitter openers by personality (40 / 50 / 50% after A-B, 40 / 88 /
+  50% after round 1); the Titan's reach (it decides the Titan against the Lancer: 0-20 at 160, 8-12 at 190).
 
 ### Part D: tuning (b6j; docs/BALANCE_AUDIT.md section 18 has every table)
 
-PART_D
+Three rounds, each measured with 162 matches; the last confirmed with 324 (two seed sets). Every change (docs/BALANCE_AUDIT.md
+section 18.1):
+
+| round | unit | stat | old -> new |
+|---|---|---|---|
+| 1 | Titan | range | 160 -> 190 |
+| 1 | Lancer | damage | 16 -> 15 |
+| 1 | Broodback | bite | 12 -> 24 |
+| 1 | Gnatcloud | damage a second | 8 -> 3 |
+| 2 | Titan | range | 190 -> 180 |
+| 2 | Heavy | damage | 16 -> 19 |
+| 2 | Tank | damage | 32 -> 36 |
+| 2 | Spitter | quill damage | 6 -> 5 |
+| 3 | Gnatcloud | damage a second | 3 -> 3.075 |
+| 3 | Lancer | damage | 15 -> 14 |
+
+Final (324): Last Fist 43% (37-50), Bloomhost 46% (39-52), the Axiarchs 49% (42-55); personalities 46 / 49 / 42%; pairings 50 / 36 /
+53%; Spitter openers 61 / 60 / 60%. Missed: Last Fist on Two-Lane 29% (20-41) (its pairing with Bloomhost there 7-23-6; two
+ablations explain neither change alone); the Titan against equal-value Lancers 20-0 in the Test Range after round 3's Lancer cut
+(11-9 after round 2). The Gnatcloud's clouds-attack check 11-9 (20 seeds) and 22-18 (40), but its efficiency in matches stays
+Bloomhost's lowest (6 per 100 spent). The node scenario: docs/BALANCE_AUDIT.md section 18.3.
 
 ### Tests
 
