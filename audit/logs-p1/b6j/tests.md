@@ -15,3 +15,9 @@
 - FP_V300 not yet recorded (recorded on round 3's build).
 - browser "title image": the title screen now carries the version label (the test reads it).
 - rework-2b "switch: per game; b2b off plays the v2.82 units": intended (b6j sets the Titan's reach): held b6j off, counterpart in tests/switches-on-6j.test.js.
+
+## Fast suite, second full run (891 tests: 890 passed, 1 failed; fast-suite-v300-second.txt)
+
+| test | classification | what was done |
+|---|---|---|
+| trees-ui "Tech Lab (v2.15): ... Army tab gets a Support group" (passed in the first run) | timing (a flaky browser check): over 20 runs 16 passed with every switch on, 13 with b6jfix and b6j off: a unit that Hold spreads out reads 'go' until it reaches its spot | the test waits (up to 5 s) for every unit to hold before the same assertion: 20 of 20 |

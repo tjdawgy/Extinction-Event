@@ -120,6 +120,7 @@ test('Tech Lab (v2.15): needs only a Barracks (v2.16); Air Power or Support in t
   await page.evaluate(() => { selType('medic'); selSet(myUnits().filter(e => e.type === 'drone'), true); }); // v2.74: select the support units, then Hold
   assert.deepStrictEqual(await page.evaluate(() => selLive().map(e => e.type).sort()), ['drone', 'medic']);
   await page.click('#cmdbar [data-c="hold"]');
+  await page.waitForFunction(() => myUnits().every(e => e.po.o === 'hold'), null, { timeout: 5000 }).catch(() => {}); // v3.00 (batch 6j): a unit Hold spreads out walks to its spot ('go') first; wait for it (timing: 16 of 20 with every switch on, 13 of 20 with b6jfix and b6j off without the wait; audit/logs-p1/b6j/tests.md)
   assert.deepStrictEqual(await page.evaluate(() => myUnits().map(e => e.type + ':' + e.po.o).sort()), ['drone:hold', 'medic:hold', 'rifle:hold']);
   await page.evaluate(() => showInfo('u', 'medic'));
   assert.match(await page.textContent('#info'), /Heals.*2\.5%\/s/);
