@@ -305,7 +305,7 @@ if (require.main === module && process.argv[2] === '--print6i') console.log(JSON
 // above holds both off and matches as before (with both off the game is v2.99). The same two modern matches with every switch
 // on: FP_V300.
 const RW_ALL6J = Object.assign({}, RW_ALL6I, { b6jfix: true, b6j: true });
-const FP_V300 = ['TBD', 'TBD']; // every switch on (the new-game default)
+const FP_V300 = ['baa73bae057a4d5876b777f76db330816abc2fc2845dff0863adeb743e321ea4', 'c1909641ca723434ec64318acbc74b00f56e9781ef6a2f634050e31c35fcdae7']; // every switch on (the new-game default)
 test('v3.00: modern matches with every switch on (FP_V300)', () => {
   assert.deepStrictEqual(modern(RW_ALL6J), FP_V300);
 });
