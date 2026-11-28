@@ -128,7 +128,7 @@ Final (324): Last Fist 43% (37-50), Bloomhost 46% (39-52), the Axiarchs 49% (42-
 53%; Spitter openers 61 / 60 / 60%. Missed: Last Fist on Two-Lane 29% (20-41) (its pairing with Bloomhost there 7-23-6; two
 ablations explain neither change alone); the Titan against equal-value Lancers 20-0 in the Test Range after round 3's Lancer cut
 (11-9 after round 2). The Gnatcloud's clouds-attack check 11-9 (20 seeds) and 22-18 (40), but its efficiency in matches stays
-Bloomhost's lowest (6 per 100 spent). The node scenario: docs/BALANCE_AUDIT.md section 18.3.
+Bloomhost's lowest (6 per 100 spent). The node scenario (36): Bloomhost destroyed 895 enemy pad buildings (6i 977; the target of +30% missed), retakes 120 (121), Bloomhost 1-26-9; Skywyrms in assaults 4 times (6i 6).
 
 ### Tests
 

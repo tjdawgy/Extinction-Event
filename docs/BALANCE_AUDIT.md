@@ -1221,7 +1221,7 @@ Bloomhost openers with Spitters: Boomer 11 of 18 (61%), Economist 18 of 30 (60%)
 | every personality 40-60% | 46 / 49 / 42% | yes |
 | Spitter openers at most 65% for any personality | 61 / 60 / 60% | yes |
 | Test Range cost-equal checks 35-65% (20 seeds) | 4 Gnatclouds attacking 10 Marines 11-9 (55%); 2 Titans vs equal-value Lancers 20-0 | Gnatcloud yes; Titan no (11-9 after round 2, 20-0 after round 3's Lancer cut) |
-| node scenario: Bloomhost pad buildings destroyed +30% over 977 | NODE | NODE |
+| node scenario: Bloomhost pad buildings destroyed +30% over 977 (at least 1,270) | 895 (-8%); retakes 120 (121); Bloomhost 1-26-9 | no |
 
 Why Last Fist on Two-Lane misses: it is the Last Fist vs Bloomhost pairing there (7-23-6, 19%); after Parts A-B it was 7-6-5, after
 round 1 4-10-4, round 2 2-11-5. Two diagnostic ablations on round 3's Two-Lane matches (seeds 600+, 54 matches each, round 3's build with one change taken back by
@@ -1229,6 +1229,13 @@ round 1 4-10-4, round 2 2-11-5. Two diagnostic ablations on round 3's Two-Lane m
 old bite, 6-9 without the late air building (`late6j`); Last Fist on Two-Lane 14-18, 15-16, 15-16. Neither explains it alone (both
 within the noise of 18 and 36 matches). Bloomhost is strong on Two-Lane in every run since round 1 (53-64%); the Parts A-B run's 7-6-5
 may itself have been a lucky draw (6i's run: 33% for Last Fist on Two-Lane against Bloomhost). Not tuned further (three rounds).
+
+The node scenario (audit/sim/b6g-scen.js --set nodes, 36 matches, round 3's build; audit/logs-p1/b6j/nodes/node.md): 447 assaults
+launched in 10,729 checks (6i 409); assault units Spitter 1,735, Skitterling 1,366, Chitin Warden 947, Broodback 358, Queen 201, ...,
+Skywyrm 4 (6i 6); assault units killed 2,070, 1,161 by Turrets. Why it misses: what decides it is building damage at a Turret-covered
+pad, and the assault is the ground swarm (the Spitter's quill was cut, round 2); the Skywyrm, the one building-breaker, is still
+rarely there (B2/B3 raised Bloomhost's tier-3 air to 56% of long matches, but this scenario's Turrets and Last Fist's stronger Tank
+and Heavy hold it down: Bloomhost 1-26-9 here, 0-30-6 in 6i). Behaviour (the Skywyrm from 30% health) moved nothing measurable.
 
 ### 18.4 Diagnosis (Part C)
 
