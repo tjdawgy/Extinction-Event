@@ -2156,7 +2156,20 @@ Bloomhost's lowest (6 per 100 spent). The node scenario (36): Bloomhost destroye
 
 ### Tests
 
-TESTS
+`npm test` 891/891 and `npm run test:slow` 28/28 on v3.00 (commit 4b9cd81: quiet machine, clean tree; audit/logs-p1/b6j/fast-suite-v300.txt,
+slow-suite-v300.txt; the slow suite passed on its first run). Fingerprints: with b6jfix and b6j off FP_V299 and every older set match
+(every older set and replay holds both off); FP_V300 recorded with every switch on (round 3's build).
+
+How the suites got there (each failure measured and classified, audit/logs-p1/b6j/tests.md; no value changed to pass a test):
+- The first fast run (on round 1's build, 888) failed 21: the older fingerprint sets and replays did not yet hold the two new keys off
+  (each now does), FP_V300 not yet recorded, the title test (the version label), and rework-2b's switch test (intended: b6j sets the
+  Titan's reach; held b6j off with `pin6j`, counterpart in tests/switches-on-6j.test.js).
+- The first fast run on the final build (889) failed 5: rework-5b's Spitter volley test and rework-6d's b6d values test (intended:
+  b6j's quill and Tank; held b6j off, counterparts in tests/switches-on-6j.test.js); switches-on-6c's disrupt test read UDEF's Heavy
+  damage (now the game's); controls' fall-back test on Two-Lane and Three-Lane (seed variance: 30 of 40 over seeds 1-20 with every
+  switch on, 32 of 40 with both off; moved to seed 5, every check unchanged).
+- The second (891) failed 1: trees-ui's Tech Lab test (a timing flake, 16 of 20 on and 13 of 20 off; it now waits for Hold: 20 of 20).
+- Tests added: tests/rework-6j.test.js (9), tests/rework-6j-ui.test.js (8, screenshots), tests/switches-on-6j.test.js (3).
 
 ### Departures
 
